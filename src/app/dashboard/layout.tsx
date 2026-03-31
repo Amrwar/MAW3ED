@@ -17,12 +17,16 @@ export default async function DashboardLayout({
   if (!session?.user?.id) redirect("/login");
 
   // Check if onboarding is complete
-  const business = session.user.businessId
-    ? await db.business.findUnique({
-        where:  { id: session.user.businessId },
-        select: { nameAr: true, city: { select: { nameAr: true } } },
-      })
-    : null;
+  const businessId = session.user.businessId;
+  const [business, pendingCount] = businessId
+    ? await Promise.all([
+        db.business.findUnique({
+          where:  { id: businessId },
+          select: { nameAr: true, city: { select: { nameAr: true } } },
+        }),
+        db.booking.count({ where: { businessId, status: "PENDING" } }),
+      ])
+    : [null, 0];
 
   if (!business) redirect("/onboarding");
 
@@ -31,6 +35,7 @@ export default async function DashboardLayout({
       <DashboardSidebar
         businessName={business.nameAr}
         cityName={business.city.nameAr}
+        pendingCount={pendingCount}
       />
 
       <div className="md:ms-60">

@@ -77,6 +77,11 @@ export const availabilitySchema = z.object({
   availability: z.array(availabilityDaySchema).length(7),
 });
 
+// ─── Booking status update ────────────────────────────────
+export const bookingStatusSchema = z.object({
+  status: z.enum(["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"]),
+});
+
 // ─── Booking ──────────────────────────────────────────────
 export const bookingSchema = z.object({
   serviceId:     z.string().min(1, "اختر خدمة"),

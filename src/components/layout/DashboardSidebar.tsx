@@ -26,7 +26,6 @@ const navItems = [
     label: "المواعيد",
     icon: CalendarDays,
     href: "/dashboard/bookings",
-    badge: "12",
   },
   {
     label: "الخدمات",
@@ -62,9 +61,10 @@ const bottomItems = [
 interface DashboardSidebarProps {
   businessName?: string;
   cityName?: string;
+  pendingCount?: number;
 }
 
-export default function DashboardSidebar({ businessName = "عملك", cityName = "" }: DashboardSidebarProps) {
+export default function DashboardSidebar({ businessName = "عملك", cityName = "", pendingCount = 0 }: DashboardSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -93,6 +93,7 @@ export default function DashboardSidebar({ businessName = "عملك", cityName =
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         {navItems.map((item) => {
           const active = pathname === item.href;
+          const badge = item.href === "/dashboard/bookings" ? pendingCount : null;
           return (
             <Link
               key={item.href}
@@ -106,7 +107,7 @@ export default function DashboardSidebar({ businessName = "عملك", cityName =
             >
               <item.icon size={17} />
               <span className="flex-1">{item.label}</span>
-              {item.badge && (
+              {badge != null && badge > 0 && (
                 <span
                   className={cn(
                     "text-xs px-1.5 py-0.5 rounded-full font-medium",
@@ -115,7 +116,7 @@ export default function DashboardSidebar({ businessName = "عملك", cityName =
                       : "bg-[var(--color-accent-light)] text-[var(--color-accent)]"
                   )}
                 >
-                  {item.badge}
+                  {badge}
                 </span>
               )}
             </Link>
