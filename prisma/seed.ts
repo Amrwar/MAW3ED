@@ -1,25 +1,47 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import "dotenv/config";
 
-const db = new PrismaClient();
+const adapter = new PrismaNeon({
+  connectionString: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL ?? "",
+});
+const db = new PrismaClient({ adapter });
 
 async function main() {
   console.log("🌱 Seeding database...");
 
   // ─── Categories ───────────────────────────────────────────
   const categories = [
-    { slug: "clinics",      nameAr: "عيادات",        nameEn: "Clinics",       icon: "🏥", color: "#0EA5E9", bgColor: "#F0F9FF" },
-    { slug: "salons",       nameAr: "صالونات",       nameEn: "Salons",        icon: "✂️", color: "#EC4899", bgColor: "#FDF2F8" },
-    { slug: "restaurants",  nameAr: "مطاعم",         nameEn: "Restaurants",   icon: "🍽️", color: "#F59E0B", bgColor: "#FFFBEB" },
-    { slug: "gyms",         nameAr: "جيم وفيتنس",    nameEn: "Gyms",          icon: "💪", color: "#10B981", bgColor: "#ECFDF5" },
-    { slug: "spas",         nameAr: "سبا وتدليك",    nameEn: "Spa",           icon: "🧖", color: "#8B5CF6", bgColor: "#F5F3FF" },
-    { slug: "dentists",     nameAr: "طب أسنان",      nameEn: "Dentistry",     icon: "🦷", color: "#06B6D4", bgColor: "#ECFEFF" },
-    { slug: "labs",         nameAr: "مختبرات",       nameEn: "Medical Labs",  icon: "🔬", color: "#EF4444", bgColor: "#FEF2F2" },
-    { slug: "photography",  nameAr: "تصوير",         nameEn: "Photography",   icon: "📸", color: "#F97316", bgColor: "#FFF7ED" },
+    // Medical
+    { slug: "clinics",        nameAr: "عيادات طبية",       nameEn: "Clinics",          icon: "🏥", color: "#0EA5E9", bgColor: "#F0F9FF" },
+    { slug: "dentists",       nameAr: "طب أسنان",           nameEn: "Dentistry",        icon: "🦷", color: "#06B6D4", bgColor: "#ECFEFF" },
+    { slug: "labs",           nameAr: "مختبرات وتحاليل",    nameEn: "Medical Labs",     icon: "🔬", color: "#EF4444", bgColor: "#FEF2F2" },
+
+    // Beauty & Wellness
+    { slug: "salons",         nameAr: "صالونات حلاقة",     nameEn: "Salons",           icon: "✂️", color: "#EC4899", bgColor: "#FDF2F8" },
+    { slug: "beauty-centers", nameAr: "مراكز تجميل",       nameEn: "Beauty Centers",   icon: "💄", color: "#F472B6", bgColor: "#FFF0F6" },
+    { slug: "spas",           nameAr: "سبا وتدليك",        nameEn: "Spa & Massage",    icon: "🧖", color: "#8B5CF6", bgColor: "#F5F3FF" },
+    { slug: "gyms",           nameAr: "جيم وفيتنس",        nameEn: "Gyms & Fitness",   icon: "💪", color: "#10B981", bgColor: "#ECFDF5" },
+
+    // Food & Hospitality
+    { slug: "restaurants",    nameAr: "مطاعم وكافيهات",    nameEn: "Restaurants",      icon: "🍽️", color: "#F59E0B", bgColor: "#FFFBEB" },
+
+    // Professional Services
+    { slug: "consulting",     nameAr: "استشارات",           nameEn: "Consulting",       icon: "💼", color: "#6366F1", bgColor: "#EEF2FF" },
+    { slug: "legal",          nameAr: "محاماة وقانون",      nameEn: "Legal",            icon: "⚖️", color: "#374151", bgColor: "#F9FAFB" },
+
+    // Home & Auto
+    { slug: "home-services",  nameAr: "خدمات منزلية",      nameEn: "Home Services",    icon: "🏠", color: "#D97706", bgColor: "#FFFBEB" },
+    { slug: "car-services",   nameAr: "خدمات سيارات",      nameEn: "Car Services",     icon: "🚗", color: "#64748B", bgColor: "#F8FAFC" },
+
+    // Creative
+    { slug: "photography",    nameAr: "تصوير",              nameEn: "Photography",      icon: "📸", color: "#F97316", bgColor: "#FFF7ED" },
+    { slug: "education",      nameAr: "تعليم وتدريب",       nameEn: "Education",        icon: "📚", color: "#7C3AED", bgColor: "#F5F3FF" },
   ];
 
   for (const cat of categories) {
     await db.category.upsert({
-      where: { slug: cat.slug },
+      where:  { slug: cat.slug },
       update: cat,
       create: cat,
     });
@@ -28,27 +50,51 @@ async function main() {
 
   // ─── Cities ───────────────────────────────────────────────
   const cities = [
-    { slug: "cairo",        nameAr: "القاهرة",      nameEn: "Cairo" },
-    { slug: "giza",         nameAr: "الجيزة",       nameEn: "Giza" },
-    { slug: "alexandria",   nameAr: "الإسكندرية",   nameEn: "Alexandria" },
-    { slug: "qalyubia",     nameAr: "القليوبية",    nameEn: "Qalyubia" },
-    { slug: "sharqia",      nameAr: "الشرقية",      nameEn: "Sharqia" },
-    { slug: "dakahlia",     nameAr: "الدقهلية",     nameEn: "Dakahlia" },
-    { slug: "beheira",      nameAr: "البحيرة",      nameEn: "Beheira" },
-    { slug: "minya",        nameAr: "المنيا",       nameEn: "Minya" },
-    { slug: "asyut",        nameAr: "أسيوط",        nameEn: "Asyut" },
-    { slug: "sohag",        nameAr: "سوهاج",        nameEn: "Sohag" },
-    { slug: "luxor",        nameAr: "الأقصر",       nameEn: "Luxor" },
-    { slug: "aswan",        nameAr: "أسوان",        nameEn: "Aswan" },
-    { slug: "red-sea",      nameAr: "البحر الأحمر", nameEn: "Red Sea" },
-    { slug: "suez",         nameAr: "السويس",       nameEn: "Suez" },
-    { slug: "ismailia",     nameAr: "الإسماعيلية",  nameEn: "Ismailia" },
-    { slug: "port-said",    nameAr: "بورسعيد",      nameEn: "Port Said" },
+    // Greater Cairo
+    { slug: "cairo",            nameAr: "القاهرة",           nameEn: "Cairo" },
+    { slug: "new-cairo",        nameAr: "القاهرة الجديدة",   nameEn: "New Cairo" },
+    { slug: "nasr-city",        nameAr: "مدينة نصر",         nameEn: "Nasr City" },
+    { slug: "heliopolis",       nameAr: "مصر الجديدة",       nameEn: "Heliopolis" },
+    { slug: "maadi",            nameAr: "المعادي",            nameEn: "Maadi" },
+    { slug: "zamalek",          nameAr: "الزمالك",            nameEn: "Zamalek" },
+    { slug: "dokki",            nameAr: "الدقي",              nameEn: "Dokki" },
+    { slug: "mohandessin",      nameAr: "المهندسين",          nameEn: "Mohandessin" },
+
+    // Giza & West Cairo
+    { slug: "giza",             nameAr: "الجيزة",             nameEn: "Giza" },
+    { slug: "sheikh-zayed",     nameAr: "الشيخ زايد",        nameEn: "Sheikh Zayed" },
+    { slug: "october",          nameAr: "السادس من أكتوبر",  nameEn: "6th of October" },
+    { slug: "haram",            nameAr: "الهرم",              nameEn: "Haram" },
+
+    // Alexandria
+    { slug: "alexandria",       nameAr: "الإسكندرية",        nameEn: "Alexandria" },
+    { slug: "sidi-bishr",       nameAr: "سيدي بشر",          nameEn: "Sidi Bishr" },
+    { slug: "smouha",           nameAr: "سموحة",              nameEn: "Smouha" },
+
+    // Delta
+    { slug: "mansoura",         nameAr: "المنصورة",           nameEn: "Mansoura" },
+    { slug: "tanta",            nameAr: "طنطا",               nameEn: "Tanta" },
+    { slug: "zagazig",          nameAr: "الزقازيق",           nameEn: "Zagazig" },
+    { slug: "damanhur",         nameAr: "دمنهور",             nameEn: "Damanhur" },
+
+    // Canal Zone
+    { slug: "suez",             nameAr: "السويس",             nameEn: "Suez" },
+    { slug: "ismailia",         nameAr: "الإسماعيلية",       nameEn: "Ismailia" },
+    { slug: "port-said",        nameAr: "بورسعيد",            nameEn: "Port Said" },
+
+    // Upper Egypt
+    { slug: "assiut",           nameAr: "أسيوط",              nameEn: "Assiut" },
+    { slug: "luxor",            nameAr: "الأقصر",             nameEn: "Luxor" },
+    { slug: "aswan",            nameAr: "أسوان",              nameEn: "Aswan" },
+
+    // Coasts
+    { slug: "hurghada",         nameAr: "الغردقة",            nameEn: "Hurghada" },
+    { slug: "sharm-el-sheikh",  nameAr: "شرم الشيخ",         nameEn: "Sharm El-Sheikh" },
   ];
 
   for (const city of cities) {
     await db.city.upsert({
-      where: { slug: city.slug },
+      where:  { slug: city.slug },
       update: city,
       create: city,
     });

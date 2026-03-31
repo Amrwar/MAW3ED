@@ -1,10 +1,10 @@
-import { db } from "@/lib/db";
+import { getCategories, getCities } from "@/lib/data";
 import OnboardingForm from "./_components/OnboardingForm";
 
 export default async function OnboardingPage() {
   const [categories, cities] = await Promise.all([
-    db.category.findMany({ orderBy: { nameAr: "asc" } }),
-    db.city.findMany({ orderBy: { nameAr: "asc" } }),
+    getCategories(),
+    getCities(),
   ]);
 
   return <OnboardingForm categories={categories} cities={cities} />;

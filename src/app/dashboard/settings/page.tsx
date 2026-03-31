@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
+import { getCategories, getCities } from "@/lib/data";
 import SettingsClient from "./_components/SettingsClient";
 
 export const metadata: Metadata = { title: "الإعدادات | موعد" };
@@ -20,8 +21,8 @@ export default async function SettingsPage() {
         services:     { where: { isAvailable: true }, orderBy: { sortOrder: "asc" }, take: 5 },
       },
     }),
-    db.city.findMany({ orderBy: { nameAr: "asc" } }),
-    db.category.findMany({ orderBy: { nameAr: "asc" } }),
+    getCities(),
+    getCategories(),
   ]);
 
   if (!business) redirect("/dashboard");
