@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Menu, X, ChevronDown } from "lucide-react";
 import Logo from "@/components/shared/Logo";
-import Button from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -57,12 +56,12 @@ export default function Navbar() {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="text-sm">
+            <Link href="/login" className="btn btn-ghost btn-sm text-sm">
               تسجيل دخول
-            </Button>
-            <Button variant="primary" size="sm" className="text-sm">
+            </Link>
+            <Link href="/signup" className="btn btn-primary btn-sm text-sm">
               ابدأ مجانًا
-            </Button>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -94,12 +93,12 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="flex flex-col gap-2 px-4 pt-2">
-              <Button variant="outline" fullWidth>
+              <Link href="/login" className="btn btn-outline w-full">
                 تسجيل دخول
-              </Button>
-              <Button variant="primary" fullWidth>
+              </Link>
+              <Link href="/signup" className="btn btn-primary w-full">
                 ابدأ مجانًا
-              </Button>
+              </Link>
             </div>
           </div>
         )}

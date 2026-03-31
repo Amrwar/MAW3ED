@@ -21,41 +21,48 @@ const navItems = [
     label: "الرئيسية",
     icon: LayoutDashboard,
     href: "/dashboard",
+    soon: false,
   },
   {
     label: "المواعيد",
     icon: CalendarDays,
     href: "/dashboard/bookings",
+    soon: false,
   },
   {
     label: "الخدمات",
     icon: Store,
     href: "/dashboard/services",
+    soon: false,
   },
   {
     label: "العملاء",
     icon: Users,
     href: "/dashboard/customers",
+    soon: true,
   },
   {
     label: "الإحصائيات",
     icon: BarChart3,
     href: "/dashboard/analytics",
+    soon: true,
   },
   {
     label: "التقييمات",
     icon: MessageSquare,
     href: "/dashboard/reviews",
+    soon: true,
   },
   {
     label: "الإعدادات",
     icon: Settings,
     href: "/dashboard/settings",
+    soon: false,
   },
 ];
 
 const bottomItems = [
-  { label: "المساعدة", icon: HelpCircle, href: "/help" },
+  { label: "المساعدة", icon: HelpCircle, href: "/help", soon: true },
 ];
 
 interface DashboardSidebarProps {
@@ -94,6 +101,20 @@ export default function DashboardSidebar({ businessName = "عملك", cityName =
         {navItems.map((item) => {
           const active = pathname === item.href;
           const badge = item.href === "/dashboard/bookings" ? pendingCount : null;
+          if (item.soon) {
+            return (
+              <div
+                key={item.href}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--color-text-muted)] cursor-not-allowed opacity-60"
+              >
+                <item.icon size={17} />
+                <span className="flex-1">{item.label}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[var(--color-surface-2)] text-[var(--color-text-muted)]">
+                  قريبًا
+                </span>
+              </div>
+            );
+          }
           return (
             <Link
               key={item.href}
@@ -126,16 +147,29 @@ export default function DashboardSidebar({ businessName = "عملك", cityName =
 
       {/* Bottom */}
       <div className="px-3 py-4 border-t border-[var(--color-border)] space-y-0.5">
-        {bottomItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text-primary)] transition-colors"
-          >
-            <item.icon size={17} />
-            {item.label}
-          </Link>
-        ))}
+        {bottomItems.map((item) =>
+          item.soon ? (
+            <div
+              key={item.href}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--color-text-muted)] opacity-60 cursor-not-allowed"
+            >
+              <item.icon size={17} />
+              <span className="flex-1">{item.label}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[var(--color-surface-2)] text-[var(--color-text-muted)]">
+                قريبًا
+              </span>
+            </div>
+          ) : (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text-primary)] transition-colors"
+            >
+              <item.icon size={17} />
+              {item.label}
+            </Link>
+          )
+        )}
         <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors">
           <LogOut size={17} />
           تسجيل الخروج

@@ -1,5 +1,5 @@
 import Container from "@/components/ui/Container";
-import Button from "@/components/ui/Button";
+import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 
 const benefits = [
@@ -72,12 +72,12 @@ export default function WhyJoin() {
             </ul>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button variant="primary" size="lg">
+              <Link href="/signup" className="btn btn-primary btn-lg">
                 ابدأ مجانًا الآن
-              </Button>
-              <Button variant="outline" size="lg">
+              </Link>
+              <Link href="/signup" className="btn btn-outline btn-lg">
                 شاهد العرض التوضيحي
-              </Button>
+              </Link>
             </div>
           </div>
 

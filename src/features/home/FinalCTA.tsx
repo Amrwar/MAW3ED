@@ -1,5 +1,4 @@
 import Container from "@/components/ui/Container";
-import Button from "@/components/ui/Button";
 import Link from "next/link";
 
 export default function FinalCTA() {
@@ -32,13 +31,12 @@ export default function FinalCTA() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button
-                variant="accent"
-                size="lg"
-                className="shadow-lg shadow-[var(--color-accent)]/25"
+              <Link
+                href="/#businesses"
+                className="btn btn-accent btn-lg shadow-lg shadow-[var(--color-accent)]/25"
               >
                 ابحث وأحجز الآن
-              </Button>
+              </Link>
               <Link
                 href="/dashboard"
                 className="btn btn-outline btn-lg border-white/30 text-white hover:bg-white/10 hover:border-white/50"

@@ -1,5 +1,5 @@
 import Container from "@/components/ui/Container";
-import Button from "@/components/ui/Button";
+import Link from "next/link";
 import { Play, CheckCircle, Star, MapPin, Clock } from "lucide-react";
 
 export default function DemoSection() {
@@ -150,10 +150,10 @@ export default function DemoSection() {
               ))}
             </div>
 
-            <Button variant="accent" size="lg">
+            <Link href="/signup" className="btn btn-accent btn-lg">
               <Play size={16} />
               شاهد العرض كاملًا
-            </Button>
+            </Link>
           </div>
         </div>
       </Container>
