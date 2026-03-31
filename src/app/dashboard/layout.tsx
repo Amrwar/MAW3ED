@@ -1,32 +1,45 @@
 import type { Metadata } from "next";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
-import { Bell, Search, Menu } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import Logo from "@/components/shared/Logo";
+import { db } from "@/lib/db";
 
-export const metadata: Metadata = {
-  title: "لوحة التحكم",
-};
+export const metadata: Metadata = { title: "لوحة التحكم | موعد" };
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  // Check if onboarding is complete
+  const business = session.user.businessId
+    ? await db.business.findUnique({
+        where:  { id: session.user.businessId },
+        select: { nameAr: true, city: { select: { nameAr: true } } },
+      })
+    : null;
+
+  if (!business) redirect("/onboarding");
+
   return (
     <div className="min-h-screen bg-[var(--color-surface-2)]">
-      {/* Sidebar */}
-      <DashboardSidebar />
+      <DashboardSidebar
+        businessName={business.nameAr}
+        cityName={business.city.nameAr}
+      />
 
-      {/* Main content area */}
       <div className="md:ms-60">
         {/* Top bar */}
         <header className="sticky top-0 z-30 bg-white border-b border-[var(--color-border)] h-16 flex items-center px-5 gap-4">
-          {/* Mobile logo */}
           <div className="md:hidden">
             <Logo size="sm" />
           </div>
 
-          {/* Search */}
           <div className="flex-1 max-w-sm hidden md:flex items-center gap-2 bg-[var(--color-surface-2)] rounded-xl px-3 py-2">
             <Search size={15} className="text-[var(--color-text-muted)]" />
             <input
@@ -37,20 +50,15 @@ export default function DashboardLayout({
           </div>
 
           <div className="ms-auto flex items-center gap-2">
-            {/* Notifications */}
             <button className="relative w-9 h-9 rounded-xl bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] flex items-center justify-center transition-colors">
               <Bell size={16} className="text-[var(--color-text-secondary)]" />
-              <span className="absolute top-1.5 end-1.5 w-2 h-2 bg-[var(--color-accent)] rounded-full" />
             </button>
-
-            {/* Avatar */}
             <div className="w-9 h-9 rounded-full bg-[var(--color-accent-light)] flex items-center justify-center text-sm font-bold text-[var(--color-accent)] cursor-pointer">
-              ب
+              {business.nameAr[0]}
             </div>
           </div>
         </header>
 
-        {/* Page content */}
         <main className="p-5 md:p-6">{children}</main>
       </div>
     </div>

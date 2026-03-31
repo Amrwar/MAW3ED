@@ -59,7 +59,12 @@ const bottomItems = [
   { label: "المساعدة", icon: HelpCircle, href: "/help" },
 ];
 
-export default function DashboardSidebar() {
+interface DashboardSidebarProps {
+  businessName?: string;
+  cityName?: string;
+}
+
+export default function DashboardSidebar({ businessName = "عملك", cityName = "" }: DashboardSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -73,13 +78,13 @@ export default function DashboardSidebar() {
       <div className="px-4 py-4 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-[var(--color-accent-light)] flex items-center justify-center text-sm font-bold text-[var(--color-accent)]">
-            ب س
+            {businessName[0]}
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
-              صالون بيلا
+              {businessName}
             </p>
-            <p className="text-xs text-[var(--color-text-muted)]">الزمالك، القاهرة</p>
+            <p className="text-xs text-[var(--color-text-muted)]">{cityName}</p>
           </div>
         </div>
       </div>
