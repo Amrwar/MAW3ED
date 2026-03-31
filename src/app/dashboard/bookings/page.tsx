@@ -19,7 +19,7 @@ export default async function BookingsPage() {
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
   );
 
-  const [rawToday, services, totalBookings] = await Promise.all([
+  const [rawToday, services, totalBookings, business] = await Promise.all([
     // Today's bookings (all statuses except cancelled, ordered by startTime)
     db.booking.findMany({
       where: {
@@ -30,14 +30,19 @@ export default async function BookingsPage() {
       include: { service: { select: { nameAr: true, duration: true } } },
       orderBy: { startTime: "asc" },
     }),
-    // Services for filter dropdown
+    // Services for filter dropdown + manual booking
     db.service.findMany({
-      where:   { businessId },
-      select:  { id: true, nameAr: true },
+      where:   { businessId, isAvailable: true },
+      select:  { id: true, nameAr: true, duration: true, price: true, currency: true },
       orderBy: { sortOrder: "asc" },
     }),
     // Total booking count
     db.booking.count({ where: { businessId } }),
+    // Slug for slot generation
+    db.business.findUnique({
+      where:  { id: businessId },
+      select: { slug: true },
+    }),
   ]);
 
   // Serialize to plain objects (no Date / Decimal)
@@ -58,10 +63,20 @@ export default async function BookingsPage() {
     createdAt:       b.createdAt.toISOString(),
   }));
 
+  const serviceOptions = services.map((s) => ({
+    id:       s.id,
+    nameAr:   s.nameAr,
+    duration: s.duration,
+    price:    Number(s.price),
+    currency: s.currency,
+  }));
+
   return (
     <BookingsClient
       initialTodayBookings={initialTodayBookings}
       services={services}
+      serviceOptions={serviceOptions}
+      slug={business?.slug ?? ""}
       totalBookings={totalBookings}
     />
   );

@@ -1,5 +1,6 @@
 import { type Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { bookingSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
 
 /**
@@ -76,5 +77,97 @@ export async function GET(req: Request) {
     if (e instanceof Response) return e;
     console.error("[bookings GET]", e);
     return err("حدث خطأ", 500);
+  }
+}
+
+/**
+ * POST /api/business/bookings
+ * Create a manual booking (by the business owner on behalf of a customer).
+ * Status defaults to CONFIRMED.
+ */
+export async function POST(req: Request) {
+  try {
+    const { business } = await requireBusiness();
+    const body   = await req.json();
+    const parsed = bookingSchema.safeParse(body);
+    if (!parsed.success) return err(parsed.error.issues[0].message, 422);
+
+    const { serviceId, date, startTime, customerName, customerPhone, notes } = parsed.data;
+
+    // Validate service belongs to this business
+    const service = await db.service.findFirst({
+      where: { id: serviceId, businessId: business.id },
+    });
+    if (!service) return err("الخدمة غير موجودة", 404);
+
+    // Parse date to UTC midnight
+    const [y, m, d] = date.split("-").map(Number);
+    const dateUTC   = new Date(Date.UTC(y, m - 1, d));
+
+    // Calculate end time
+    const [h, min]  = startTime.split(":").map(Number);
+    const endMins   = h * 60 + min + service.duration;
+    const endTime   = `${String(Math.floor(endMins / 60)).padStart(2, "0")}:${String(endMins % 60).padStart(2, "0")}`;
+
+    // Conflict check
+    const conflict = await db.booking.findFirst({
+      where: {
+        businessId: business.id,
+        date:       dateUTC,
+        startTime,
+        status:     { in: ["PENDING", "CONFIRMED"] },
+      },
+    });
+    if (conflict) return err("هذا الموعد محجوز بالفعل، اختر وقتًا آخر", 409);
+
+    // Upsert customer
+    const customer = await db.customer.upsert({
+      where:  { businessId_phone: { businessId: business.id, phone: customerPhone } },
+      create: { businessId: business.id, name: customerName, phone: customerPhone },
+      update: { name: customerName },
+    });
+
+    // Create booking (CONFIRMED by default for manual bookings)
+    const booking = await db.booking.create({
+      data: {
+        businessId:    business.id,
+        serviceId,
+        customerId:    customer.id,
+        customerName,
+        customerPhone,
+        date:          dateUTC,
+        startTime,
+        endTime,
+        status:        "CONFIRMED",
+        totalPrice:    service.price,
+        currency:      service.currency,
+        notes:         notes || null,
+      },
+      include: { service: { select: { nameAr: true, duration: true } } },
+    });
+
+    return ok(
+      {
+        id:              booking.id,
+        customerName:    booking.customerName,
+        customerPhone:   booking.customerPhone,
+        serviceName:     booking.service.nameAr,
+        serviceDuration: booking.service.duration,
+        date:            booking.date.toISOString().split("T")[0],
+        startTime:       booking.startTime,
+        endTime:         booking.endTime,
+        status:          booking.status,
+        totalPrice:      Number(booking.totalPrice),
+        currency:        booking.currency,
+        notes:           booking.notes,
+        customerNotes:   null,
+        createdAt:       booking.createdAt.toISOString(),
+      },
+      201
+    );
+  } catch (e) {
+    if (e instanceof Response) return e;
+    console.error("[bookings POST]", e);
+    return err("حدث خطأ أثناء إنشاء الحجز", 500);
   }
 }

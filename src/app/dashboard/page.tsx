@@ -3,10 +3,11 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { CalendarDays, ExternalLink, Store, Clock, Users } from "lucide-react";
+import { CalendarDays, ExternalLink, Store, Clock } from "lucide-react";
 import StatsCards from "@/features/dashboard/StatsCards";
 import RecentBookings, { type RecentBooking } from "@/features/dashboard/RecentBookings";
 import QuickActions from "@/features/dashboard/QuickActions";
+import NewBookingButton from "@/features/dashboard/NewBookingButton";
 import Button from "@/components/ui/Button";
 
 export const metadata: Metadata = { title: "لوحة التحكم | موعد" };
@@ -83,10 +84,18 @@ export default async function DashboardPage() {
             <ExternalLink size={14} />
             عرض صفحتك
           </Link>
-          <Button variant="primary" size="sm" className="gap-1.5">
-            <CalendarDays size={14} />
-            حجز جديد
-          </Button>
+          <NewBookingButton
+            slug={business.slug}
+            services={business.services.map((s) => ({
+              id:       s.id,
+              nameAr:   s.nameAr,
+              duration: s.duration,
+              price:    Number(s.price),
+              currency: s.currency,
+            }))}
+            className="btn btn-primary btn-sm gap-1.5"
+            label="حجز جديد"
+          />
         </div>
       </div>
 

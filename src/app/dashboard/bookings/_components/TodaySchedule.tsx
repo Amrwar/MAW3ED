@@ -1,13 +1,14 @@
 import StatusBadge from "@/features/dashboard/bookings/StatusBadge";
 import { type DashboardBooking } from "@/features/dashboard/bookings/types";
-import { Clock } from "lucide-react";
+import { Clock, Plus } from "lucide-react";
 
 interface TodayScheduleProps {
-  bookings:   DashboardBooking[];
-  onSelect:   (b: DashboardBooking) => void;
+  bookings:     DashboardBooking[];
+  onSelect:     (b: DashboardBooking) => void;
+  onNewBooking?: () => void;
 }
 
-export default function TodaySchedule({ bookings, onSelect }: TodayScheduleProps) {
+export default function TodaySchedule({ bookings, onSelect, onNewBooking }: TodayScheduleProps) {
   if (bookings.length === 0) return null;
 
   const pending   = bookings.filter((b) => b.status === "PENDING").length;
@@ -26,18 +27,29 @@ export default function TodaySchedule({ bookings, onSelect }: TodayScheduleProps
             {bookings.length}
           </span>
         </div>
-        <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
-          {pending > 0 && (
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
-              {pending} \u0641\u064a \u0627\u0644\u0627\u0646\u062a\u0638\u0627\u0631
-            </span>
-          )}
-          {confirmed > 0 && (
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-              {confirmed} \u0645\u0624\u0643\u062f
-            </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
+            {pending > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                {pending} في الانتظار
+              </span>
+            )}
+            {confirmed > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                {confirmed} مؤكد
+              </span>
+            )}
+          </div>
+          {onNewBooking && (
+            <button
+              onClick={onNewBooking}
+              className="btn btn-outline btn-sm gap-1.5 text-xs"
+            >
+              <Plus size={13} />
+              موعد جديد
+            </button>
           )}
         </div>
       </div>

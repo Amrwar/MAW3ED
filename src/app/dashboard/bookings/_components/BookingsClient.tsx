@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import BookingFilters from "./BookingFilters";
 import TodaySchedule from "./TodaySchedule";
 import BookingsTable from "./BookingsTable";
 import BookingDetailPanel from "./BookingDetailPanel";
+import ManualBookingPanel, { type ServiceOption } from "@/features/dashboard/ManualBookingPanel";
 import {
   type DashboardBooking,
   type DashboardBookingStatus,
@@ -15,19 +16,24 @@ import {
 interface BookingsClientProps {
   initialTodayBookings: DashboardBooking[];
   services:             Array<{ id: string; nameAr: string }>;
+  serviceOptions:       ServiceOption[];
+  slug:                 string;
   totalBookings:        number;
 }
 
 export default function BookingsClient({
   initialTodayBookings,
   services,
+  serviceOptions,
+  slug,
   totalBookings,
 }: BookingsClientProps) {
   // ── Bookings data ──────────────────────────────────────────
-  const [bookings,      setBookings]      = useState<DashboardBooking[]>([]);
-  const [total,         setTotal]         = useState(totalBookings);
-  const [loading,       setLoading]       = useState(true);
-  const [selectedBooking,setSelectedBooking]= useState<DashboardBooking | null>(null);
+  const [bookings,        setBookings]        = useState<DashboardBooking[]>([]);
+  const [total,           setTotal]           = useState(totalBookings);
+  const [loading,         setLoading]         = useState(true);
+  const [selectedBooking, setSelectedBooking] = useState<DashboardBooking | null>(null);
+  const [newBookingOpen,  setNewBookingOpen]  = useState(false);
 
   // Today's schedule — starts from server-fetched data, kept in sync on status changes
   const [todayBookings, setTodayBookings] = useState<DashboardBooking[]>(
@@ -64,6 +70,19 @@ export default function BookingsClient({
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
+
+  // ── Manual booking created ────────────────────────────────
+  function handleNewBooking(booking: DashboardBooking) {
+    // Add to today's schedule if it's for today
+    if (booking.date === getTodayISO()) {
+      setTodayBookings((prev) =>
+        [...prev, booking].sort((a, b) => a.startTime.localeCompare(b.startTime))
+      );
+    }
+    // Refresh the main bookings table
+    fetchBookings();
+    setTotal((t) => t + 1);
+  }
 
   // ── Status update ──────────────────────────────────────────
   async function handleStatusChange(id: string, status: DashboardBookingStatus) {
@@ -105,9 +124,18 @@ export default function BookingsClient({
             {total.toLocaleString("ar-EG")} \u062d\u062c\u0632 \u0625\u062c\u0645\u0627\u0644\u064a\u064b\u0627
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-          <CalendarDays size={15} />
-          <span>{new Date().toLocaleDateString("ar-EG", { weekday: "long", month: "long", day: "numeric" })}</span>
+        <div className="flex items-center gap-3">
+          <span className="hidden sm:flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+            <CalendarDays size={15} />
+            {new Date().toLocaleDateString("ar-EG", { weekday: "long", month: "long", day: "numeric" })}
+          </span>
+          <button
+            onClick={() => setNewBookingOpen(true)}
+            className="btn btn-primary btn-sm gap-2"
+          >
+            <Plus size={15} />
+            موعد جديد
+          </button>
         </div>
       </div>
 
@@ -126,6 +154,7 @@ export default function BookingsClient({
         <TodaySchedule
           bookings={activeTodayBookings}
           onSelect={setSelectedBooking}
+          onNewBooking={() => setNewBookingOpen(true)}
         />
       )}
 
@@ -145,6 +174,15 @@ export default function BookingsClient({
           onStatusChange={handleStatusChange}
         />
       )}
+
+      {/* Manual booking panel */}
+      <ManualBookingPanel
+        open={newBookingOpen}
+        onClose={() => setNewBookingOpen(false)}
+        slug={slug}
+        services={serviceOptions}
+        onCreated={handleNewBooking}
+      />
     </div>
   );
 }
