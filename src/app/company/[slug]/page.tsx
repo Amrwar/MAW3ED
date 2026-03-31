@@ -77,6 +77,10 @@ export default async function CompanyPage({ params }: Params) {
     })),
   };
 
+  const openDays: number[] = dbBusiness.availability
+    .filter((a) => !a.isClosed)
+    .map((a) => a.dayOfWeek);
+
   const services: Service[] = dbBusiness.services.map((s) => ({
     id:            s.id,
     businessId:    s.businessId,
@@ -129,9 +133,14 @@ export default async function CompanyPage({ params }: Params) {
               />
             </div>
 
-            {/* Booking widget */}
-            <div className="hidden lg:block">
-              <BookingWidget services={services} businessName={business.nameAr} />
+            {/* Booking widget — visible on all screen sizes */}
+            <div>
+              <BookingWidget
+                services={services}
+                businessName={business.nameAr}
+                slug={dbBusiness.slug}
+                openDays={openDays}
+              />
             </div>
           </div>
         </div>
@@ -149,9 +158,11 @@ export default async function CompanyPage({ params }: Params) {
                   : "—"}
               </p>
             </div>
-            <Button variant="accent" fullWidth className="flex-2">
-              احجز موعدك الآن
-            </Button>
+            <a href="#booking" className="flex-2">
+              <Button variant="accent" fullWidth>
+                احجز موعدك الآن
+              </Button>
+            </a>
           </div>
         </div>
       </div>

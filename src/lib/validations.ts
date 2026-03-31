@@ -77,7 +77,21 @@ export const availabilitySchema = z.object({
   availability: z.array(availabilityDaySchema).length(7),
 });
 
-export type SignUpInput      = z.infer<typeof signUpSchema>;
-export type OnboardingInput  = z.infer<typeof onboardingSchema>;
-export type BusinessUpdate   = z.infer<typeof businessUpdateSchema>;
-export type ServiceInput      = z.infer<typeof serviceSchema>;
+// ─── Booking ──────────────────────────────────────────────
+export const bookingSchema = z.object({
+  serviceId:     z.string().min(1, "اختر خدمة"),
+  date:          z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاريخ غير صحيح"),
+  startTime:     z.string().regex(/^\d{2}:\d{2}$/, "وقت غير صحيح"),
+  customerName:  z.string().min(2, "أدخل اسمك الكامل"),
+  customerPhone: z
+    .string()
+    .min(8, "أدخل رقم الهاتف")
+    .refine((v) => /^[+\d][\d\s()\-+]{6,}$/.test(v), "رقم الهاتف غير صحيح"),
+  notes:         z.string().max(500).optional(),
+});
+
+export type SignUpInput     = z.infer<typeof signUpSchema>;
+export type OnboardingInput = z.infer<typeof onboardingSchema>;
+export type BusinessUpdate  = z.infer<typeof businessUpdateSchema>;
+export type ServiceInput    = z.infer<typeof serviceSchema>;
+export type BookingInput    = z.infer<typeof bookingSchema>;

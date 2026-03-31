@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { CalendarDays, ExternalLink, Store, Clock, Users } from "lucide-react";
 import StatsCards from "@/features/dashboard/StatsCards";
-import RecentBookings from "@/features/dashboard/RecentBookings";
+import RecentBookings, { type RecentBooking } from "@/features/dashboard/RecentBookings";
 import QuickActions from "@/features/dashboard/QuickActions";
 import Button from "@/components/ui/Button";
 
@@ -27,6 +27,26 @@ export default async function DashboardPage() {
   });
 
   if (!business) redirect("/onboarding");
+
+  // Fetch the 20 most recent bookings for this business
+  const rawBookings = await db.booking.findMany({
+    where:   { businessId: session.user.businessId },
+    include: { service: { select: { nameAr: true } } },
+    orderBy: { date: "desc" },
+    take:    20,
+  });
+
+  const recentBookings: RecentBooking[] = rawBookings.map((b) => ({
+    id:            b.id,
+    customerName:  b.customerName,
+    customerPhone: b.customerPhone,
+    serviceName:   b.service.nameAr,
+    date:          b.date,
+    startTime:     b.startTime,
+    status:        b.status as RecentBooking["status"],
+    totalPrice:    Number(b.totalPrice),
+    currency:      b.currency,
+  }));
 
   const today = new Date().toLocaleDateString("ar-EG", {
     weekday: "long",
@@ -185,7 +205,7 @@ export default async function DashboardPage() {
       {/* Recent bookings + Quick actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <RecentBookings />
+          <RecentBookings bookings={recentBookings} />
         </div>
         <div>
           <QuickActions />
