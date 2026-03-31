@@ -52,13 +52,15 @@ export const onboardingSchema = z.object({
 
 // ─── Business update ──────────────────────────────────────
 export const businessUpdateSchema = z.object({
-  nameAr:    z.string().min(2).optional(),
-  nameEn:    z.string().optional(),
-  taglineAr: z.string().max(120).optional(),
-  phone:     z.string().optional(),
-  whatsapp:  z.string().optional(),
-  address:   z.string().optional(),
-  about:     z.string().max(600).optional(),
+  nameAr:     z.string().min(2, "أدخل اسم العمل").optional(),
+  nameEn:     z.string().optional(),
+  taglineAr:  z.string().max(120).optional(),
+  phone:      z.string().optional(),
+  whatsapp:   z.string().optional(),
+  address:    z.string().optional(),
+  about:      z.string().max(600).optional(),
+  cityId:     z.string().optional(),
+  categoryId: z.string().optional(),
 });
 
 // ─── Service ──────────────────────────────────────────────
