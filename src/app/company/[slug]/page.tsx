@@ -11,6 +11,7 @@ import CompanyContent from "@/features/company/CompanyContent";
 import type { Business } from "@/types/business";
 import type { Service } from "@/types/service";
 import type { PublicBusiness } from "@/lib/data";
+import { buildLocalBusinessJsonLd } from "@/lib/jsonld";
 
 interface Params { params: Promise<{ slug: string }> }
 
@@ -171,8 +172,31 @@ export default async function CompanyPage({ params }: Params) {
     isAvailable:   s.isAvailable,
   }));
 
+  const jsonLd = buildLocalBusinessJsonLd({
+    slug:         dbBusiness.slug,
+    nameAr:       dbBusiness.nameAr,
+    nameEn:       dbBusiness.nameEn,
+    about:        dbBusiness.about,
+    taglineAr:    dbBusiness.taglineAr,
+    phone:        dbBusiness.phone,
+    coverImage:   dbBusiness.coverImage,
+    logoImage:    dbBusiness.logoImage,
+    address:      dbBusiness.address,
+    city:         dbBusiness.city,
+    category:     dbBusiness.category,
+    availability: dbBusiness.availability,
+    services:     dbBusiness.services.map((s) => ({
+      price:    Number(s.price),
+      currency: s.currency,
+    })),
+  });
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Compact top navbar */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[var(--color-border)]">
         <div className="container-app h-14 flex items-center justify-between">
