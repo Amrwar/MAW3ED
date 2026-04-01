@@ -1,13 +1,25 @@
 import Link from "next/link";
 import Container from "@/components/ui/Container";
-import { categories } from "@/data/categories";
 import { ArrowLeft } from "lucide-react";
 
-export default function CategoriesSection() {
+type DbCategory = {
+  id:      string;
+  slug:    string;
+  nameAr:  string;
+  nameEn:  string;
+  icon:    string;
+  color:   string;
+  bgColor: string;
+};
+
+interface Props {
+  categories: DbCategory[];
+}
+
+export default function CategoriesSection({ categories }: Props) {
   return (
     <section className="section-padding">
       <Container>
-        {/* Header */}
         <div className="flex items-end justify-between mb-10">
           <div>
             <p className="section-eyebrow mb-2">الأقسام</p>
@@ -22,14 +34,12 @@ export default function CategoriesSection() {
           </Link>
         </div>
 
-        {/* Categories grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {categories.map((cat) => (
             <Link
               key={cat.id}
-              href={`/?category=${cat.slug}`}
-              className="group flex flex-col items-center gap-3 p-5 rounded-xl border border-[var(--color-border)] bg-white hover:border-current hover:shadow-md transition-all duration-200"
-              style={{ "--hover-color": cat.color } as React.CSSProperties}
+              href={`/businesses?category=${cat.slug}`}
+              className="group flex flex-col items-center gap-3 p-5 rounded-xl border border-[var(--color-border)] bg-white hover:shadow-md hover:border-[var(--color-accent)]/30 transition-all duration-200"
             >
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-transform duration-200 group-hover:scale-110"
@@ -37,16 +47,9 @@ export default function CategoriesSection() {
               >
                 {cat.icon}
               </div>
-              <div className="text-center">
-                <p className="font-semibold text-sm text-[var(--color-text-primary)] group-hover:text-inherit transition-colors">
-                  {cat.nameAr}
-                </p>
-                {cat.count && (
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                    {cat.count}+ عمل
-                  </p>
-                )}
-              </div>
+              <p className="font-semibold text-sm text-center text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)] transition-colors leading-tight">
+                {cat.nameAr}
+              </p>
             </Link>
           ))}
         </div>

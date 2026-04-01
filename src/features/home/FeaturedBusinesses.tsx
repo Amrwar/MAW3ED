@@ -1,20 +1,23 @@
 import Link from "next/link";
 import Container from "@/components/ui/Container";
-import BusinessCard from "@/components/shared/BusinessCard";
-import { getFeaturedBusinesses } from "@/data/businesses";
+import PublicBusinessCard from "@/components/shared/PublicBusinessCard";
+import type { PublicBusiness } from "@/lib/data";
 import { ArrowLeft } from "lucide-react";
 
-export default function FeaturedBusinesses() {
-  const businesses = getFeaturedBusinesses();
+interface Props {
+  businesses: PublicBusiness[];
+}
+
+export default function FeaturedBusinesses({ businesses }: Props) {
+  if (businesses.length === 0) return null;
 
   return (
     <section id="businesses" className="section-padding bg-[var(--color-surface-2)]">
       <Container>
-        {/* Header */}
         <div className="flex items-end justify-between mb-10">
           <div>
-            <p className="section-eyebrow mb-2">الأعمال المميزة</p>
-            <h2 className="section-title">الأكثر حجزًا هذا الأسبوع</h2>
+            <p className="section-eyebrow mb-2">الأعمال المتاحة</p>
+            <h2 className="section-title">تصفح وأحجز الآن</h2>
           </div>
           <Link
             href="/businesses"
@@ -25,14 +28,12 @@ export default function FeaturedBusinesses() {
           </Link>
         </div>
 
-        {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {businesses.map((business) => (
-            <BusinessCard key={business.id} business={business} />
+          {businesses.map((b) => (
+            <PublicBusinessCard key={b.id} business={b} />
           ))}
         </div>
 
-        {/* Mobile CTA */}
         <div className="mt-8 text-center md:hidden">
           <Link href="/businesses" className="btn btn-outline">
             عرض جميع الأعمال

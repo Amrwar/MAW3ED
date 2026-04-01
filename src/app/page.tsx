@@ -10,20 +10,27 @@ import WhyJoin from "@/features/home/WhyJoin";
 import DemoSection from "@/features/home/DemoSection";
 import Testimonials from "@/features/home/Testimonials";
 import FinalCTA from "@/features/home/FinalCTA";
+import { getCategories, getCities, getPublishedBusinesses } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "موعد | MAW3ED — احجز موعدك في ثوانٍ",
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [categories, cities, featured] = await Promise.all([
+    getCategories(),
+    getCities(),
+    getPublishedBusinesses({ take: 6 }),
+  ]);
+
   return (
     <>
       <Navbar />
       <main>
-        <HeroSection />
+        <HeroSection categories={categories} cities={cities} />
         <TrustStats />
-        <CategoriesSection />
-        <FeaturedBusinesses />
+        <CategoriesSection categories={categories} />
+        <FeaturedBusinesses businesses={featured} />
         <HowItWorks />
         <WhyJoin />
         <DemoSection />
