@@ -3,12 +3,14 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { CalendarDays, ExternalLink, Store, Clock } from "lucide-react";
+import { ExternalLink, Store, Clock } from "lucide-react";
 import StatsCards, { type DashboardStats } from "@/features/dashboard/StatsCards";
 import RecentBookings, { type RecentBooking } from "@/features/dashboard/RecentBookings";
 import QuickActions from "@/features/dashboard/QuickActions";
 import NewBookingButton from "@/features/dashboard/NewBookingButton";
+import DashboardTodayWidget from "@/features/dashboard/DashboardTodayWidget";
 import Button from "@/components/ui/Button";
+import { type DashboardBooking } from "@/features/dashboard/bookings/types";
 
 export const metadata: Metadata = { title: "لوحة التحكم | موعد" };
 
@@ -33,9 +35,11 @@ export default async function DashboardPage() {
   const now              = new Date();
   const startThisMonth   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const startLastMonth   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  const todayStart       = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const todayEnd         = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
   const businessId       = session.user.businessId;
 
-  // Fetch the 20 most recent bookings + real stats in parallel
+  // Fetch the 20 most recent bookings + real stats + today's schedule in parallel
   const [
     rawBookings,
     bookingsThisMonth,
@@ -45,6 +49,7 @@ export default async function DashboardPage() {
     pendingBookings,
     revenueThisMonth,
     revenueLastMonth,
+    rawTodayBookings,
   ] = await Promise.all([
     db.booking.findMany({
       where:   { businessId },
@@ -69,6 +74,15 @@ export default async function DashboardPage() {
       where: { businessId, status: { in: ["CONFIRMED", "COMPLETED"] }, createdAt: { gte: startLastMonth, lt: startThisMonth } },
       _sum:  { totalPrice: true },
     }),
+    db.booking.findMany({
+      where: {
+        businessId,
+        date:   { gte: todayStart, lt: todayEnd },
+        status: { in: ["PENDING", "CONFIRMED"] },
+      },
+      include: { service: { select: { nameAr: true, duration: true } } },
+      orderBy: { startTime: "asc" },
+    }),
   ]);
 
   const stats: DashboardStats = {
@@ -92,6 +106,31 @@ export default async function DashboardPage() {
     status:        b.status as RecentBooking["status"],
     totalPrice:    Number(b.totalPrice),
     currency:      b.currency,
+  }));
+
+  const todayBookings: DashboardBooking[] = rawTodayBookings.map((b) => ({
+    id:              b.id,
+    customerName:    b.customerName,
+    customerPhone:   b.customerPhone,
+    serviceName:     b.service.nameAr,
+    serviceDuration: b.service.duration,
+    date:            b.date.toISOString().slice(0, 10),
+    startTime:       b.startTime,
+    endTime:         b.endTime ?? null,
+    status:          b.status as DashboardBooking["status"],
+    totalPrice:      Number(b.totalPrice),
+    currency:        b.currency,
+    notes:           b.notes ?? null,
+    customerNotes:   b.customerNotes ?? null,
+    createdAt:       b.createdAt.toISOString(),
+  }));
+
+  const widgetServices = business.services.map((s) => ({
+    id:       s.id,
+    nameAr:   s.nameAr,
+    duration: s.duration,
+    price:    Number(s.price),
+    currency: s.currency,
   }));
 
   const today = new Date().toLocaleDateString("ar-EG", {
@@ -221,6 +260,13 @@ export default async function DashboardPage() {
 
       {/* Real stats */}
       <StatsCards stats={stats} />
+
+      {/* Today's schedule */}
+      <DashboardTodayWidget
+        initialBookings={todayBookings}
+        slug={business.slug}
+        services={widgetServices}
+      />
 
       {/* Services quick list */}
       {business.services.length > 0 && (
