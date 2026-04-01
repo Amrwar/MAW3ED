@@ -12,11 +12,13 @@ import { formatPrice, formatDuration } from "@/lib/utils";
 // ─── Types ────────────────────────────────────────────────
 
 interface BookingWidgetProps {
-  services:     Service[];
-  businessName: string;
-  slug:         string;
+  services:            Service[];
+  businessName:        string;
+  slug:                string;
   /** day-of-week numbers (0=Sun to 6=Sat) that the business is OPEN */
-  openDays:     number[];
+  openDays:            number[];
+  /** When set, the widget pre-selects this service and jumps to step 2 */
+  preselectedService?: Service | null;
 }
 
 type BookingConfirmation = {
@@ -119,9 +121,21 @@ export default function BookingWidget({
   businessName,
   slug,
   openDays,
+  preselectedService,
 }: BookingWidgetProps) {
   const [step,            setStep]           = useState<1 | 2 | 3 | 4>(1);
   const [selectedService, setSelectedService]= useState<Service | null>(null);
+
+  // When parent signals a pre-selected service (e.g. from ServicesSection "احجز" button)
+  // select it and advance straight to step 2
+  useEffect(() => {
+    if (!preselectedService) return;
+    setSelectedService(preselectedService);
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setSlots([]);
+    setStep(2);
+  }, [preselectedService]);
   const [selectedDate,    setSelectedDate]   = useState<string | null>(null);
   const [selectedTime,    setSelectedTime]   = useState<string | null>(null);
 

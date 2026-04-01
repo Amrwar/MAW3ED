@@ -6,16 +6,11 @@ import { db } from "@/lib/db";
 import Logo from "@/components/shared/Logo";
 import Button from "@/components/ui/Button";
 import CompanyHero from "@/features/company/CompanyHero";
-import AboutSection from "@/features/company/AboutSection";
 import BusinessInfoRow from "@/features/company/BusinessInfoRow";
-import ServicesSection from "@/features/company/ServicesSection";
-import BookingWidget from "@/features/company/BookingWidget";
-import GallerySection from "@/features/company/GallerySection";
-import ReviewsSection from "@/features/company/ReviewsSection";
-import FAQSection from "@/features/company/FAQSection";
-import SimilarBusinesses from "@/features/company/SimilarBusinesses";
+import CompanyContent from "@/features/company/CompanyContent";
 import type { Business } from "@/types/business";
 import type { Service } from "@/types/service";
+import type { PublicBusiness } from "@/lib/data";
 
 interface Params { params: Promise<{ slug: string }> }
 
@@ -35,45 +30,85 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function CompanyPage({ params }: Params) {
   const { slug } = await params;
 
-  const dbBusiness = await db.business.findUnique({
-    where:   { slug, isPublished: true },
-    include: {
-      category:     true,
-      city:         true,
-      services:     { where: { isAvailable: true }, orderBy: { sortOrder: "asc" } },
-      availability: { orderBy: { dayOfWeek: "asc" } },
-      _count:       { select: { bookings: true } },
-    },
-  });
+  const [dbBusiness, similarRaw] = await Promise.all([
+    db.business.findUnique({
+      where:   { slug, isPublished: true },
+      include: {
+        category:     true,
+        city:         true,
+        services:     { where: { isAvailable: true }, orderBy: { sortOrder: "asc" } },
+        availability: { orderBy: { dayOfWeek: "asc" } },
+        _count:       { select: { bookings: true } },
+      },
+    }),
+    // Fetched after we know the category — resolved below
+    Promise.resolve(null as null),
+  ]);
 
   if (!dbBusiness) notFound();
 
-  // Map DB model → UI types so existing components continue to work
+  // Fetch similar businesses (same category, different slug, published)
+  const similarRows = await db.business.findMany({
+    where: {
+      isPublished: true,
+      slug:        { not: slug },
+      categoryId:  dbBusiness.categoryId,
+    },
+    select: {
+      id:         true,
+      slug:       true,
+      nameAr:     true,
+      nameEn:     true,
+      taglineAr:  true,
+      coverImage: true,
+      logoImage:  true,
+      isVerified: true,
+      category:   { select: { nameAr: true, icon: true, color: true, bgColor: true, slug: true } },
+      city:       { select: { nameAr: true } },
+      services:   {
+        where:   { isAvailable: true },
+        orderBy: { price: "asc" },
+        take:    1,
+        select:  { price: true, currency: true },
+      },
+    },
+    take: 3,
+    orderBy: { createdAt: "desc" },
+  });
+
+  const similarBusinesses: PublicBusiness[] = similarRows.map((b) => ({
+    ...b,
+    minPrice: b.services[0] ? Number(b.services[0].price) : null,
+    currency: b.services[0]?.currency ?? "EGP",
+  }));
+
+  // Map DB → UI types
   const business: Business = {
-    id:           dbBusiness.id,
-    slug:         dbBusiness.slug,
-    nameAr:       dbBusiness.nameAr,
-    nameEn:       dbBusiness.nameEn ?? "",
-    taglineAr:    dbBusiness.taglineAr ?? "",
-    category:     dbBusiness.category.nameAr,
+    id:          dbBusiness.id,
+    slug:        dbBusiness.slug,
+    nameAr:      dbBusiness.nameAr,
+    nameEn:      dbBusiness.nameEn ?? "",
+    taglineAr:   dbBusiness.taglineAr ?? "",
+    category:    dbBusiness.category.nameAr,
     categorySlug: dbBusiness.category.slug,
-    rating:       4.8,           // placeholder until reviews are built (step 3)
-    reviewCount:  0,
-    location:     dbBusiness.city.nameAr,
-    locationAr:   dbBusiness.city.nameAr,
-    address:      dbBusiness.address ?? undefined,
-    phone:        dbBusiness.phone ?? undefined,
-    whatsapp:     dbBusiness.whatsapp ?? undefined,
-    coverImage:   dbBusiness.coverImage ?? "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&q=80",
-    isVerified:   dbBusiness.isVerified,
-    isOpen:       isOpenNow(dbBusiness.availability),
-    about:        dbBusiness.about ?? undefined,
+    rating:      4.8,
+    reviewCount: 0,
+    location:    dbBusiness.city.nameAr,
+    locationAr:  dbBusiness.city.nameAr,
+    address:     dbBusiness.address ?? undefined,
+    phone:       dbBusiness.phone ?? undefined,
+    whatsapp:    dbBusiness.whatsapp ?? undefined,
+    coverImage:  dbBusiness.coverImage ??
+      "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&q=80",
+    isVerified:  dbBusiness.isVerified,
+    isOpen:      isOpenNow(dbBusiness.availability),
+    about:       dbBusiness.about ?? undefined,
     hours: dbBusiness.availability.map((a) => ({
-      day:      dayName(a.dayOfWeek),
-      dayAr:    dayNameAr(a.dayOfWeek),
-      open:     a.openTime,
-      close:    a.closeTime,
-      closed:   a.isClosed,
+      day:    dayName(a.dayOfWeek),
+      dayAr:  dayNameAr(a.dayOfWeek),
+      open:   a.openTime,
+      close:  a.closeTime,
+      closed: a.isClosed,
     })),
   };
 
@@ -102,14 +137,16 @@ export default async function CompanyPage({ params }: Params) {
             <Link href="/" className="hover:text-[var(--color-text-primary)] transition-colors">
               <Logo size="sm" />
             </Link>
-            <ChevronRight size={14} className="text-[var(--color-border-2)] rotate-180" />
+            <ChevronRight size={14} className="text-[var(--color-border)] rotate-180" />
             <span className="text-[var(--color-text-primary)] font-medium truncate max-w-[160px]">
               {business.nameAr}
             </span>
           </div>
           <div className="hidden md:flex items-center gap-2">
             <Button variant="ghost" size="sm" className="text-xs">مشاركة</Button>
-            <Button variant="accent" size="sm">احجز الآن</Button>
+            <a href="#booking">
+              <Button variant="accent" size="sm">احجز الآن</Button>
+            </a>
           </div>
         </div>
       </header>
@@ -119,30 +156,13 @@ export default async function CompanyPage({ params }: Params) {
         <BusinessInfoRow business={business} />
 
         <div className="container-app py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main content */}
-            <div className="lg:col-span-2">
-              <AboutSection business={business} />
-              <ServicesSection services={services} />
-              <GallerySection />
-              <ReviewsSection rating={business.rating} reviewCount={business.reviewCount} />
-              <FAQSection />
-              <SimilarBusinesses
-                currentSlug={business.slug}
-                categorySlug={business.categorySlug}
-              />
-            </div>
-
-            {/* Booking widget — visible on all screen sizes */}
-            <div>
-              <BookingWidget
-                services={services}
-                businessName={business.nameAr}
-                slug={dbBusiness.slug}
-                openDays={openDays}
-              />
-            </div>
-          </div>
+          <CompanyContent
+            business={business}
+            services={services}
+            openDays={openDays}
+            slug={slug}
+            similarBusinesses={similarBusinesses}
+          />
         </div>
       </main>
 
@@ -158,7 +178,7 @@ export default async function CompanyPage({ params }: Params) {
                   : "—"}
               </p>
             </div>
-            <a href="#booking" className="flex-2">
+            <a href="#booking" className="flex-1">
               <Button variant="accent" fullWidth>
                 احجز موعدك الآن
               </Button>
@@ -172,7 +192,14 @@ export default async function CompanyPage({ params }: Params) {
 
 // ─── Helpers ──────────────────────────────────────────────
 
-function isOpenNow(availability: Array<{ dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }>) {
+function isOpenNow(
+  availability: Array<{
+    dayOfWeek: number;
+    openTime:  string;
+    closeTime: string;
+    isClosed:  boolean;
+  }>,
+) {
   const now        = new Date();
   const dayOfWeek  = now.getDay();
   const currentMin = now.getHours() * 60 + now.getMinutes();
@@ -188,5 +215,5 @@ function isOpenNow(availability: Array<{ dayOfWeek: number; openTime: string; cl
 const EN_DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const AR_DAYS = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 
-function dayName(d: number) { return EN_DAYS[d] ?? ""; }
+function dayName(d: number)   { return EN_DAYS[d] ?? ""; }
 function dayNameAr(d: number) { return AR_DAYS[d] ?? ""; }

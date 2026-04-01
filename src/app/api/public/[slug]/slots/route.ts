@@ -25,12 +25,10 @@ export async function GET(req: Request, { params }: Params) {
     const dateUTC = new Date(Date.UTC(year, month - 1, day));
     if (isNaN(dateUTC.getTime())) return err("تاريخ غير صحيح", 400);
 
-    // Reject past dates
-    const todayUTC = new Date(Date.UTC(
-      new Date().getUTCFullYear(),
-      new Date().getUTCMonth(),
-      new Date().getUTCDate(),
-    ));
+    // Reject past dates — compare in Egypt local time to avoid UTC-day mismatch
+    const nowEgyptStr = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" }); // YYYY-MM-DD
+    const [ty, tm, td] = nowEgyptStr.split("-").map(Number);
+    const todayUTC = new Date(Date.UTC(ty, tm - 1, td));
     if (dateUTC < todayUTC) return ok({ slots: [] });
 
     const business = await db.business.findUnique({
@@ -67,15 +65,16 @@ export async function GET(req: Request, { params }: Params) {
 
     // Filter booked slots out; also filter past times when date is today
     const isToday = dateUTC.getTime() === todayUTC.getTime();
-    const nowMinutes = new Date().getUTCHours() * 60 + new Date().getUTCMinutes();
+    // Current local time in Egypt (Africa/Cairo = UTC+2 / UTC+3 DST)
+    const nowEgypt    = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Cairo" }));
+    const nowMinutes  = nowEgypt.getHours() * 60 + nowEgypt.getMinutes();
+    const BUFFER_MINS = 30; // don't show slots starting within the next 30 min
 
     const available = allSlots.filter((slot) => {
       if (bookedSet.has(slot)) return false;
       if (isToday) {
         const [h, m] = slot.split(":").map(Number);
-        // Add 120-min buffer for Egypt UTC+2 offset so we don't show slots that
-        // have already passed in local time
-        if (h * 60 + m <= nowMinutes + 120) return false;
+        if (h * 60 + m < nowMinutes + BUFFER_MINS) return false;
       }
       return true;
     });
