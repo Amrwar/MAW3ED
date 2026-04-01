@@ -21,7 +21,7 @@ export async function uploadImageToCloudinary(
     .digest("hex");
 
   const form = new FormData();
-  form.append("file",      new Blob([buffer]), filename);
+  form.append("file",      new Blob([buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)]), filename);
   form.append("api_key",   API_KEY);
   form.append("timestamp", timestamp);
   form.append("folder",    folder);
