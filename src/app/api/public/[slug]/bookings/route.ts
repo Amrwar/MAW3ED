@@ -1,6 +1,12 @@
 import { db } from "@/lib/db";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
+import { sendWhatsAppMessage } from "@/lib/services/whatsapp";
+import {
+  formatBusinessNotification,
+  formatCustomerConfirmation,
+  type BookingNotificationData,
+} from "@/lib/services/whatsapp-messages";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -9,6 +15,7 @@ type Params = { params: Promise<{ slug: string }> };
  *
  * Creates a booking for a public business.
  * Handles customer upsert (by phone + businessId) and conflict prevention.
+ * Fires WhatsApp notifications after creation (non-blocking).
  * No auth required — public endpoint.
  */
 export async function POST(req: Request, { params }: Params) {
@@ -34,8 +41,7 @@ export async function POST(req: Request, { params }: Params) {
     const [year, month, day] = date.split("-").map(Number);
     const dateUTC = new Date(Date.UTC(year, month - 1, day));
 
-    // ── Conflict check ───────────────────────────────────────────────────────
-    // Re-validate that the slot is still available at submission time
+    // ── Conflict check ────────────────────────────────────────────────────────
     const conflict = await db.booking.findFirst({
       where: {
         businessId: business.id,
@@ -46,7 +52,7 @@ export async function POST(req: Request, { params }: Params) {
     });
     if (conflict) return err("هذا الموعد محجوز بالفعل، اختر وقتًا آخر", 409);
 
-    // ── Calculate end time ───────────────────────────────────────────────────
+    // ── Calculate end time ─────────────────────────────────────────────────────
     const [sh, sm] = startTime.split(":").map(Number);
     const endMinutes = sh * 60 + sm + service.duration;
     const endTime = [
@@ -54,15 +60,14 @@ export async function POST(req: Request, { params }: Params) {
       (endMinutes % 60).toString().padStart(2, "0"),
     ].join(":");
 
-    // ── Upsert customer ──────────────────────────────────────────────────────
-    // Keyed on (businessId, phone) — same customer rebooking gets the same record
+    // ── Upsert customer ────────────────────────────────────────────────────────
     const customer = await db.customer.upsert({
       where:  { businessId_phone: { businessId: business.id, phone: customerPhone } },
       create: { businessId: business.id, name: customerName, phone: customerPhone },
       update: { name: customerName },
     });
 
-    // ── Create booking ───────────────────────────────────────────────────────
+    // ── Create booking ─────────────────────────────────────────────────────────
     const booking = await db.booking.create({
       data: {
         businessId:    business.id,
@@ -78,6 +83,34 @@ export async function POST(req: Request, { params }: Params) {
         currency:      service.currency,
         notes:         notes ?? null,
       },
+    });
+
+    // ── WhatsApp notifications (fire-and-forget, never blocks response) ────────
+    const notifData: BookingNotificationData = {
+      businessName:  business.nameAr,
+      serviceName:   service.nameAr,
+      date,
+      startTime,
+      endTime,
+      customerName,
+      customerPhone,
+      totalPrice:    Number(service.price),
+      currency:      service.currency,
+    };
+
+    // Notify business owner — prefer WhatsApp number, fall back to phone
+    const businessPhone = business.whatsapp ?? business.phone;
+    if (businessPhone) {
+      void sendWhatsAppMessage({
+        to:      businessPhone,
+        message: formatBusinessNotification(notifData),
+      });
+    }
+
+    // Confirm to customer
+    void sendWhatsAppMessage({
+      to:      customerPhone,
+      message: formatCustomerConfirmation(notifData),
     });
 
     return ok(
