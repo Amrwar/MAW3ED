@@ -35,6 +35,7 @@ export default async function CustomersPage() {
       id:              c.id,
       name:            c.name,
       phone:           c.phone,
+      email:           c.email,
       notes:           c.notes,
       createdAt:       c.createdAt.toISOString(),
       bookingCount:    active.length,

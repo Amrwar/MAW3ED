@@ -98,6 +98,11 @@ export const bookingSchema = z.object({
     .string()
     .min(8, "أدخل رقم الهاتف")
     .refine((v) => /^[+\d][\d\s()\-+]{6,}$/.test(v), "رقم الهاتف غير صحيح"),
+  customerEmail: z
+    .string()
+    .email("البريد الإلكتروني غير صحيح")
+    .optional()
+    .or(z.literal("")),
   notes:         z.string().max(500).optional(),
 });
 

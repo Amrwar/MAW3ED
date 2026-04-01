@@ -5,6 +5,7 @@ export type CustomerRow = {
   id:              string;
   name:            string;
   phone:           string;
+  email:           string | null;
   notes:           string | null;
   createdAt:       string;
   bookingCount:    number;
@@ -64,6 +65,7 @@ export async function GET(req: Request) {
         id:              c.id,
         name:            c.name,
         phone:           c.phone,
+        email:           c.email,
         notes:           c.notes,
         createdAt:       c.createdAt.toISOString(),
         bookingCount:    active.length,

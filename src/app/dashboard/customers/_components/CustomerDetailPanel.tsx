@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Phone, Calendar, DollarSign, BookOpen, Loader2, Check, StickyNote } from "lucide-react";
+import { X, Phone, Mail, Calendar, DollarSign, BookOpen, Loader2, Check, StickyNote } from "lucide-react";
 import StatusBadge from "@/features/dashboard/bookings/StatusBadge";
 import { type DashboardBookingStatus, formatDateAr } from "@/features/dashboard/bookings/types";
 import type { CustomerRow } from "@/app/api/business/customers/route";
@@ -117,6 +117,9 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
             <Section title="بيانات التواصل">
               <InfoRow label="الاسم"   value={customer.name} />
               <InfoRow label="الهاتف"  value={customer.phone} ltr icon={<Phone size={12} />} />
+              {customer.email && (
+                <InfoRow label="البريد" value={customer.email} ltr icon={<Mail size={12} />} />
+              )}
               <InfoRow
                 label="عميل منذ"
                 value={new Date(customer.createdAt).toLocaleDateString("ar-EG", {

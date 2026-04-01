@@ -36,6 +36,7 @@ export async function GET(_req: Request, { params }: Params) {
       id:              customer.id,
       name:            customer.name,
       phone:           customer.phone,
+      email:           customer.email,
       notes:           customer.notes,
       createdAt:       customer.createdAt.toISOString(),
       bookingCount:    activeBookings.length,

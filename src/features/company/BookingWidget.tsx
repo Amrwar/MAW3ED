@@ -141,8 +141,9 @@ export default function BookingWidget({
 
   const [name,   setName]   = useState("");
   const [phone,  setPhone]  = useState("");
+  const [email,  setEmail]  = useState("");
   const [notes,  setNotes]  = useState("");
-  const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; phone?: string; email?: string }>({});
 
   const [slots,        setSlots]        = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -182,14 +183,16 @@ export default function BookingWidget({
   function validate(): boolean {
     const errs: typeof errors = {};
     if (name.trim().length < 2)
-      errs.name = "\u0623\u062f\u062e\u0644 \u0627\u0633\u0645\u0643 \u0627\u0644\u0643\u0627\u0645\u0644";
+      errs.name = "أدخل اسمك الكامل";
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 8)
-      errs.phone = "\u0623\u062f\u062e\u0644 \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062a\u0641";
+      errs.phone = "أدخل رقم الهاتف";
     else if (digits.length > 15)
-      errs.phone = "\u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062a\u0641 \u063a\u064a\u0631 \u0635\u062d\u064a\u062d";
+      errs.phone = "رقم الهاتف غير صحيح";
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+      errs.email = "البريد الإلكتروني غير صحيح";
     setErrors(errs);
-    return !errs.name && !errs.phone;
+    return !errs.name && !errs.phone && !errs.email;
   }
 
   async function handleSubmit() {
@@ -207,6 +210,7 @@ export default function BookingWidget({
           startTime:     selectedTime,
           customerName:  name.trim(),
           customerPhone: phone.trim(),
+          customerEmail: email.trim() || undefined,
           notes:         notes.trim() || undefined,
         }),
       });
@@ -237,6 +241,7 @@ export default function BookingWidget({
     setSelectedTime(null);
     setName("");
     setPhone("");
+    setEmail("");
     setNotes("");
     setErrors({});
     setSlots([]);
@@ -550,10 +555,36 @@ export default function BookingWidget({
                 )}
               </div>
 
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1.5">
+                  البريد الإلكتروني{" "}
+                  <span className="text-[var(--color-text-muted)] font-normal">
+                    (اختياري)
+                  </span>
+                </label>
+                <input
+                  type="email"
+                  placeholder="example@email.com"
+                  value={email}
+                  dir="ltr"
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setErrors((p) => ({ ...p, email: undefined }));
+                  }}
+                  className={`input ${
+                    errors.email ? "border-red-400 focus:ring-red-200" : ""
+                  }`}
+                />
+                {errors.email && (
+                  <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+                )}
+              </div>
+
               {/* Notes */}
               <div>
                 <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1.5">
-                  \u0645\u0644\u0627\u062d\u0638\u0627\u062a{" "}
+                  ملاحظات{" "}
                   <span className="text-[var(--color-text-muted)] font-normal">
                     (\u0627\u062e\u062a\u064a\u0627\u0631\u064a)
                   </span>

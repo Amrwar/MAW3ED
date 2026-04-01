@@ -151,6 +151,7 @@ model Customer {
   businessId  String
   name        String
   phone       String
+  email       String?
   notes       String?
   createdAt   DateTime  @default(now())
 

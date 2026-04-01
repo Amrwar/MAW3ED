@@ -30,7 +30,7 @@ export async function POST(req: Request, { params }: Params) {
     const parsed = bookingSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
-    const { serviceId, date, startTime, customerName, customerPhone, notes } = parsed.data;
+    const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes } = parsed.data;
 
     const business = await db.business.findUnique({
       where:   { slug, isPublished: true },
@@ -69,8 +69,8 @@ export async function POST(req: Request, { params }: Params) {
     // ── Upsert customer ────────────────────────────────────────────────────────
     const customer = await db.customer.upsert({
       where:  { businessId_phone: { businessId: business.id, phone: customerPhone } },
-      create: { businessId: business.id, name: customerName, phone: customerPhone },
-      update: { name: customerName },
+      create: { businessId: business.id, name: customerName, phone: customerPhone, email: customerEmail || null },
+      update: { name: customerName, ...(customerEmail ? { email: customerEmail } : {}) },
     });
 
     // ── Create booking ─────────────────────────────────────────────────────────
@@ -138,9 +138,10 @@ export async function POST(req: Request, { params }: Params) {
       void sendNewBookingAlertToBusiness(business.owner.email, emailData);
     }
 
-    // Customer confirmation — only if we have their email (not collected yet; placeholder)
-    // When Step 17 adds customer email field, pass it here instead of empty string
-    void sendBookingConfirmationToCustomer("", emailData);
+    // Customer confirmation — only if they provided an email
+    if (customerEmail) {
+      void sendBookingConfirmationToCustomer(customerEmail, emailData);
+    }
 
     return ok(
       {
