@@ -40,7 +40,7 @@ const navItems = [
     label: "العملاء",
     icon: Users,
     href: "/dashboard/customers",
-    soon: true,
+    soon: false,
   },
   {
     label: "الإحصائيات",
