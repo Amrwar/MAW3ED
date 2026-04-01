@@ -16,19 +16,25 @@ export default async function DashboardLayout({
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  // Check if onboarding is complete
-  const businessId = session.user.businessId;
-  const [business, pendingCount] = businessId
-    ? await Promise.all([
-        db.business.findUnique({
-          where:  { id: businessId },
-          select: { nameAr: true, city: { select: { nameAr: true } } },
-        }),
-        db.booking.count({ where: { businessId, status: "PENDING" } }),
-      ])
-    : [null, 0];
+  // Find business — use token businessId first (fast path), fall back to ownerId
+  // lookup for stale tokens (e.g. session minted before onboarding completed).
+  const tokenBusinessId = session.user.businessId;
+
+  const business = tokenBusinessId
+    ? await db.business.findUnique({
+        where:  { id: tokenBusinessId },
+        select: { id: true, nameAr: true, city: { select: { nameAr: true } } },
+      })
+    : await db.business.findUnique({
+        where:  { ownerId: session.user.id },
+        select: { id: true, nameAr: true, city: { select: { nameAr: true } } },
+      });
 
   if (!business) redirect("/onboarding");
+
+  const pendingCount = await db.booking.count({
+    where: { businessId: business.id, status: "PENDING" },
+  });
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-2)]">
