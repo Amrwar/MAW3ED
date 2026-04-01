@@ -2,6 +2,7 @@ import { type Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { sendNewBookingAlertToBusiness, type BookingEmailData } from "@/lib/services/email";
 
 /**
  * GET /api/business/bookings
@@ -143,8 +144,28 @@ export async function POST(req: Request) {
         currency:      service.currency,
         notes:         notes || null,
       },
-      include: { service: { select: { nameAr: true, duration: true } } },
+      include: {
+        service:  { select: { nameAr: true, duration: true } },
+        business: { include: { owner: { select: { email: true } } } },
+      },
     });
+
+    // ── Email alert to business owner (fire-and-forget) ───────────────────────
+    if (booking.business.owner.email) {
+      const emailData: BookingEmailData = {
+        businessName:  booking.business.nameAr,
+        serviceName:   booking.service.nameAr,
+        date:          booking.date.toISOString().split("T")[0],
+        startTime:     booking.startTime,
+        endTime:       booking.endTime ?? "",
+        customerName:  booking.customerName,
+        customerPhone: booking.customerPhone,
+        totalPrice:    Number(booking.totalPrice),
+        currency:      booking.currency,
+        notes:         booking.notes,
+      };
+      void sendNewBookingAlertToBusiness(booking.business.owner.email, emailData);
+    }
 
     return ok(
       {

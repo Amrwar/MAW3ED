@@ -7,6 +7,11 @@ import {
   formatCustomerConfirmation,
   type BookingNotificationData,
 } from "@/lib/services/whatsapp-messages";
+import {
+  sendBookingConfirmationToCustomer,
+  sendNewBookingAlertToBusiness,
+  type BookingEmailData,
+} from "@/lib/services/email";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -28,7 +33,8 @@ export async function POST(req: Request, { params }: Params) {
     const { serviceId, date, startTime, customerName, customerPhone, notes } = parsed.data;
 
     const business = await db.business.findUnique({
-      where: { slug, isPublished: true },
+      where:   { slug, isPublished: true },
+      include: { owner: { select: { email: true } } },
     });
     if (!business) return err("لم يتم العثور على هذا العمل", 404);
 
@@ -112,6 +118,29 @@ export async function POST(req: Request, { params }: Params) {
       to:      customerPhone,
       message: formatCustomerConfirmation(notifData),
     });
+
+    // ── Email notifications (fire-and-forget) ─────────────────────────────────
+    const emailData: BookingEmailData = {
+      businessName:  business.nameAr,
+      serviceName:   service.nameAr,
+      date,
+      startTime,
+      endTime,
+      customerName,
+      customerPhone,
+      totalPrice:    Number(service.price),
+      currency:      service.currency,
+      notes:         notes ?? null,
+    };
+
+    // Business owner alert (uses owner's account email)
+    if (business.owner.email) {
+      void sendNewBookingAlertToBusiness(business.owner.email, emailData);
+    }
+
+    // Customer confirmation — only if we have their email (not collected yet; placeholder)
+    // When Step 17 adds customer email field, pass it here instead of empty string
+    void sendBookingConfirmationToCustomer("", emailData);
 
     return ok(
       {
