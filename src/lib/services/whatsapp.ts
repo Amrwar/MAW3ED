@@ -62,6 +62,8 @@ export async function sendWhatsAppMessage({ to, message }: WhatsAppTextPayload):
     text:              { body: message, preview_url: false },
   });
 
+  console.log(`[WhatsApp] Sending to ${phone} via phone ID ${PHONE_ID}`);
+
   try {
     const res = await fetch(url, {
       method:  "POST",
@@ -72,12 +74,15 @@ export async function sendWhatsAppMessage({ to, message }: WhatsAppTextPayload):
       body,
     });
 
-    if (!res.ok) {
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      console.log(`[WhatsApp] Sent successfully to ${phone}. Message ID: ${data?.messages?.[0]?.id ?? "unknown"}`);
+    } else {
       const detail = await res.text().catch(() => "(no body)");
       console.error(`[WhatsApp] API error ${res.status} sending to ${phone}:`, detail);
     }
   } catch (err) {
-    console.error("[WhatsApp] Network error:", err);
+    console.error("[WhatsApp] Network error sending to", phone, ":", err);
   }
 }
 
