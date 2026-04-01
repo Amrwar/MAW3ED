@@ -46,23 +46,39 @@ export async function POST(req: Request, { params }: Params) {
     const [year, month, day] = date.split("-").map(Number);
     const dateUTC = new Date(Date.UTC(year, month - 1, day));
 
-    // ── Conflict check ────────────────────────────────────────────────────────
-    const conflict = await db.booking.findFirst({
+    // ── Calculate new booking's time range ────────────────────────────────────
+    const [sh, sm] = startTime.split(":").map(Number);
+    const newStart = sh * 60 + sm;
+    const newEnd   = newStart + service.duration;
+
+    // ── Overlap conflict check ────────────────────────────────────────────────
+    // Reject if any existing PENDING/CONFIRMED booking overlaps [newStart, newEnd)
+    const existingBookings = await db.booking.findMany({
       where: {
         businessId: business.id,
         date:       dateUTC,
-        startTime,
         status:     { in: ["PENDING", "CONFIRMED"] },
       },
+      select: {
+        startTime: true,
+        endTime:   true,
+        service:   { select: { duration: true } },
+      },
     });
-    if (conflict) return err("هذا الموعد محجوز بالفعل، اختر وقتًا آخر", 409);
 
-    // ── Calculate end time ─────────────────────────────────────────────────────
-    const [sh, sm] = startTime.split(":").map(Number);
-    const endMinutes = sh * 60 + sm + service.duration;
+    const hasConflict = existingBookings.some((b) => {
+      const [bsh, bsm] = b.startTime.split(":").map(Number);
+      const bStart = bsh * 60 + bsm;
+      const bEnd   = b.endTime
+        ? (() => { const [beh, bem] = b.endTime!.split(":").map(Number); return beh * 60 + bem; })()
+        : bStart + b.service.duration;
+      return newStart < bEnd && newEnd > bStart;
+    });
+
+    if (hasConflict) return err("هذا الموعد محجوز بالفعل، اختر وقتًا آخر", 409);
     const endTime = [
-      Math.floor(endMinutes / 60).toString().padStart(2, "0"),
-      (endMinutes % 60).toString().padStart(2, "0"),
+      Math.floor(newEnd / 60).toString().padStart(2, "0"),
+      (newEnd % 60).toString().padStart(2, "0"),
     ].join(":");
 
     // ── Upsert customer ────────────────────────────────────────────────────────

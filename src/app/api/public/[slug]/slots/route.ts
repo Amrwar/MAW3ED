@@ -52,30 +52,53 @@ export async function GET(req: Request, { params }: Params) {
     // Generate all candidate slots within open hours
     const allSlots = generateSlots(rule.openTime, rule.closeTime, service.duration);
 
-    // Fetch already-booked start times for this date
+    // Fetch already-booked ranges for this date (PENDING + CONFIRMED)
     const booked = await db.booking.findMany({
       where: {
         businessId: business.id,
         date:       dateUTC,
         status:     { in: ["PENDING", "CONFIRMED"] },
       },
-      select: { startTime: true },
+      select: {
+        startTime: true,
+        endTime:   true,
+        service:   { select: { duration: true } },
+      },
     });
-    const bookedSet = new Set(booked.map((b) => b.startTime));
 
-    // Filter booked slots out; also filter past times when date is today
+    // Convert each booking to a [startMin, endMin) range
+    const bookedRanges = booked.map((b) => {
+      const [sh, sm] = b.startTime.split(":").map(Number);
+      const startMin = sh * 60 + sm;
+      let endMin: number;
+      if (b.endTime) {
+        const [eh, em] = b.endTime.split(":").map(Number);
+        endMin = eh * 60 + em;
+      } else {
+        endMin = startMin + b.service.duration;
+      }
+      return { startMin, endMin };
+    });
+
+    // Filter out slots that overlap any booked range; also filter past times for today
     const isToday = dateUTC.getTime() === todayUTC.getTime();
-    // Current local time in Egypt (Africa/Cairo = UTC+2 / UTC+3 DST)
     const nowEgypt    = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Cairo" }));
     const nowMinutes  = nowEgypt.getHours() * 60 + nowEgypt.getMinutes();
     const BUFFER_MINS = 30; // don't show slots starting within the next 30 min
+    const serviceDuration = service.duration;
 
     const available = allSlots.filter((slot) => {
-      if (bookedSet.has(slot)) return false;
-      if (isToday) {
-        const [h, m] = slot.split(":").map(Number);
-        if (h * 60 + m < nowMinutes + BUFFER_MINS) return false;
+      const [h, m] = slot.split(":").map(Number);
+      const slotStart = h * 60 + m;
+      const slotEnd   = slotStart + serviceDuration;
+
+      // Overlaps if: slotStart < bookedEnd AND slotEnd > bookedStart
+      if (bookedRanges.some(({ startMin, endMin }) => slotStart < endMin && slotEnd > startMin)) {
+        return false;
       }
+
+      if (isToday && slotStart < nowMinutes + BUFFER_MINS) return false;
+
       return true;
     });
 
