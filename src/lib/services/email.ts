@@ -10,7 +10,7 @@
  */
 
 import { Resend } from "resend";
-import { customerConfirmationHtml, businessAlertHtml } from "./email-templates";
+import { customerConfirmationHtml, customerReminderHtml, businessAlertHtml } from "./email-templates";
 
 const client  = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM    = process.env.EMAIL_FROM ?? "Maw3ed <noreply@maw3ed.app>";
@@ -73,6 +73,23 @@ export async function sendBookingConfirmationToCustomer(
     to:      customerEmail.trim(),
     subject: `✅ تم تسجيل حجزك في ${data.businessName}`,
     html:    customerConfirmationHtml(data),
+  });
+}
+
+/**
+ * Send a reminder to the customer the day before their booking.
+ * Only sent if customerEmail is provided and non-empty.
+ */
+export async function sendBookingReminderToCustomer(
+  customerEmail: string,
+  data: BookingEmailData,
+): Promise<void> {
+  if (!customerEmail?.trim()) return;
+
+  await sendEmail({
+    to:      customerEmail.trim(),
+    subject: `⏰ تذكير: موعدك في ${data.businessName} غداً`,
+    html:    customerReminderHtml(data),
   });
 }
 

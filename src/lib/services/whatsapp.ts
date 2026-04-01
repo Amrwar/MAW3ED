@@ -46,6 +46,8 @@ const TEMPLATE_BUSINESS_NEW_BOOKING  =
   process.env.WHATSAPP_TEMPLATE_BUSINESS_NEW_BOOKING   ?? "maw3ed_business_new_booking";
 const TEMPLATE_CUSTOMER_CONFIRMATION =
   process.env.WHATSAPP_TEMPLATE_CUSTOMER_CONFIRMATION  ?? "maw3ed_customer_booking_confirmation";
+const TEMPLATE_CUSTOMER_REMINDER     =
+  process.env.WHATSAPP_TEMPLATE_CUSTOMER_REMINDER      ?? "maw3ed_customer_reminder";
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -205,6 +207,35 @@ export async function sendCustomerConfirmationTemplate(
   await sendWhatsAppTemplate({
     to,
     templateName: TEMPLATE_CUSTOMER_CONFIRMATION,
+    bodyParams: [
+      param(data.businessName),
+      param(data.serviceName),
+      param(formatDateAr(data.date)),
+      param(formatTimeRange(data.startTime, data.endTime)),
+    ],
+  });
+}
+
+/**
+ * Send a booking reminder template to the customer the day before.
+ *
+ * Expected template body in Meta Business Manager:
+ *   ⏰ تذكير بموعدك غداً!
+ *
+ *   🏢 {{1}}
+ *   ✂️ الخدمة: {{2}}
+ *   📅 {{3}}
+ *   ⏰ {{4}}
+ *
+ *   نراك غداً 👋
+ */
+export async function sendCustomerReminderTemplate(
+  to:   string,
+  data: BookingNotificationData,
+): Promise<void> {
+  await sendWhatsAppTemplate({
+    to,
+    templateName: TEMPLATE_CUSTOMER_REMINDER,
     bodyParams: [
       param(data.businessName),
       param(data.serviceName),

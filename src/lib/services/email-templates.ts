@@ -107,6 +107,39 @@ export function customerConfirmationHtml(d: BookingEmailData): string {
   return layout(body);
 }
 
+// ── Customer reminder template ────────────────────────────────
+
+export function customerReminderHtml(d: BookingEmailData): string {
+  const body = `
+    <!-- Heading -->
+    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">تذكير بموعدك غداً ⏰</p>
+    <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
+      أهلًا <strong>${d.customerName}</strong>، هذا تذكير بموعدك المحجوز غداً.
+    </p>
+
+    <!-- Details table -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+      ${row("المنشأة",   d.businessName)}
+      ${row("الخدمة",   d.serviceName)}
+      ${row("التاريخ",  formatDateAr(d.date))}
+      ${row("الوقت",    `${d.startTime} – ${d.endTime}`, true)}
+      ${row("الإجمالي", `${d.totalPrice.toLocaleString("ar-EG")} ${d.currency}`)}
+    </table>
+
+    <!-- Reminder note -->
+    <div style="background:#eff6ff;border-right:3px solid #3b82f6;border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:24px;">
+      <p style="margin:0;font-size:14px;color:#1d4ed8;font-weight:600;">
+        📅 موعدك مؤكد — نراك غداً!
+      </p>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
+
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#6366f1;">موعد</strong> 🙏</p>
+  `;
+  return layout(body);
+}
+
 // ── Business owner alert template ─────────────────────────────
 
 export function businessAlertHtml(d: BookingEmailData): string {
