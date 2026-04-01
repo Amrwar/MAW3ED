@@ -52,8 +52,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.businessId = (user as { businessId?: string | null }).businessId ?? null;
       }
 
-      // Re-fetch business after onboarding completes (triggered by update())
-      if (trigger === "update" && token.id) {
+      // Re-fetch when explicitly triggered (e.g. after onboarding) OR when
+      // businessId is missing from the token (stale session, tab left open, etc.)
+      if ((trigger === "update" || !token.businessId) && token.id) {
         const dbUser = await db.user.findUnique({
           where:   { id: token.id as string },
           include: { business: { select: { id: true } } },
