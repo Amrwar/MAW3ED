@@ -46,7 +46,7 @@ const navItems = [
     label: "الإحصائيات",
     icon: BarChart3,
     href: "/dashboard/analytics",
-    soon: true,
+    soon: false,
   },
   {
     label: "التقييمات",
