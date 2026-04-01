@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { CalendarDays, ExternalLink, Store, Clock } from "lucide-react";
-import StatsCards from "@/features/dashboard/StatsCards";
+import StatsCards, { type DashboardStats } from "@/features/dashboard/StatsCards";
 import RecentBookings, { type RecentBooking } from "@/features/dashboard/RecentBookings";
 import QuickActions from "@/features/dashboard/QuickActions";
 import NewBookingButton from "@/features/dashboard/NewBookingButton";
@@ -29,13 +29,58 @@ export default async function DashboardPage() {
 
   if (!business) redirect("/onboarding");
 
-  // Fetch the 20 most recent bookings for this business
-  const rawBookings = await db.booking.findMany({
-    where:   { businessId: session.user.businessId },
-    include: { service: { select: { nameAr: true } } },
-    orderBy: { date: "desc" },
-    take:    20,
-  });
+  // Date range helpers
+  const now              = new Date();
+  const startThisMonth   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const startLastMonth   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  const businessId       = session.user.businessId;
+
+  // Fetch the 20 most recent bookings + real stats in parallel
+  const [
+    rawBookings,
+    bookingsThisMonth,
+    bookingsLastMonth,
+    totalCustomers,
+    newCustomers,
+    pendingBookings,
+    revenueThisMonth,
+    revenueLastMonth,
+  ] = await Promise.all([
+    db.booking.findMany({
+      where:   { businessId },
+      include: { service: { select: { nameAr: true } } },
+      orderBy: { date: "desc" },
+      take:    20,
+    }),
+    db.booking.count({
+      where: { businessId, createdAt: { gte: startThisMonth } },
+    }),
+    db.booking.count({
+      where: { businessId, createdAt: { gte: startLastMonth, lt: startThisMonth } },
+    }),
+    db.customer.count({ where: { businessId } }),
+    db.customer.count({ where: { businessId, createdAt: { gte: startThisMonth } } }),
+    db.booking.count({ where: { businessId, status: "PENDING" } }),
+    db.booking.aggregate({
+      where: { businessId, status: { in: ["CONFIRMED", "COMPLETED"] }, createdAt: { gte: startThisMonth } },
+      _sum:  { totalPrice: true },
+    }),
+    db.booking.aggregate({
+      where: { businessId, status: { in: ["CONFIRMED", "COMPLETED"] }, createdAt: { gte: startLastMonth, lt: startThisMonth } },
+      _sum:  { totalPrice: true },
+    }),
+  ]);
+
+  const stats: DashboardStats = {
+    bookingsThisMonth,
+    bookingsLastMonth,
+    totalCustomers,
+    newCustomers,
+    pendingBookings,
+    revenueThisMonth: Number(revenueThisMonth._sum.totalPrice ?? 0),
+    revenueLastMonth: Number(revenueLastMonth._sum.totalPrice ?? 0),
+    currency: business.services[0]?.currency ?? "EGP",
+  };
 
   const recentBookings: RecentBooking[] = rawBookings.map((b) => ({
     id:            b.id,
@@ -174,8 +219,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats (placeholder — real booking stats in step 3) */}
-      <StatsCards />
+      {/* Real stats */}
+      <StatsCards stats={stats} />
 
       {/* Services quick list */}
       {business.services.length > 0 && (
@@ -217,7 +262,7 @@ export default async function DashboardPage() {
           <RecentBookings bookings={recentBookings} />
         </div>
         <div>
-          <QuickActions />
+          <QuickActions slug={business.slug} />
         </div>
       </div>
     </div>
