@@ -16,14 +16,57 @@ interface Params { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
+
   const biz = await db.business.findUnique({
     where:  { slug, isPublished: true },
-    select: { nameAr: true, taglineAr: true },
+    select: {
+      nameAr:     true,
+      taglineAr:  true,
+      about:      true,
+      coverImage: true,
+      city:       { select: { nameAr: true } },
+      category:   { select: { nameAr: true } },
+    },
   });
-  if (!biz) return { title: "غير موجود" };
+
+  // Unpublished or missing — return minimal metadata; page itself will 404
+  if (!biz) return { title: "غير موجود | موعد" };
+
+  const baseUrl   = (process.env.AUTH_URL ?? "https://maw3ed.app").replace(/\/$/, "");
+  const pageUrl   = `${baseUrl}/company/${slug}`;
+
+  const title = `${biz.nameAr} | حجز موعد في ${biz.city.nameAr} | موعد`;
+
+  // Description priority: tagline → about (truncated) → generated fallback
+  const description =
+    biz.taglineAr?.trim() ||
+    (biz.about?.trim()
+      ? biz.about.trim().slice(0, 150) + (biz.about.trim().length > 150 ? "…" : "")
+      : `احجز موعدك في ${biz.nameAr} — ${biz.category.nameAr} في ${biz.city.nameAr}. حجز سريع وسهل عبر منصة موعد.`);
+
+  const ogImages = biz.coverImage
+    ? [{ url: biz.coverImage, width: 1200, height: 630, alt: biz.nameAr }]
+    : [];
+
   return {
-    title:       `${biz.nameAr} — احجز موعدك`,
-    description: biz.taglineAr ?? undefined,
+    title,
+    description,
+    alternates: { canonical: pageUrl },
+    openGraph: {
+      title,
+      description,
+      url:      pageUrl,
+      siteName: "موعد",
+      locale:   "ar_EG",
+      type:     "website",
+      images:   ogImages,
+    },
+    twitter: {
+      card:        biz.coverImage ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(biz.coverImage ? { images: [biz.coverImage] } : {}),
+    },
   };
 }
 
