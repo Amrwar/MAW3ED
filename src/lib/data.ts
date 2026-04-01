@@ -39,6 +39,7 @@ export async function getCityBySlug(slug: string) {
 export async function getPublishedBusinesses(opts?: {
   search?:       string;
   cityId?:       string;
+  citySlug?:     string;
   categorySlug?: string;
   take?:         number;
 }): Promise<PublicBusiness[]> {
@@ -55,6 +56,7 @@ export async function getPublishedBusinesses(opts?: {
           }
         : {}),
       ...(opts?.cityId       ? { cityId:              opts.cityId }              : {}),
+      ...(opts?.citySlug     ? { city:     { slug:    opts.citySlug } }          : {}),
       ...(opts?.categorySlug ? { category: { slug:    opts.categorySlug } }      : {}),
     },
     select: {

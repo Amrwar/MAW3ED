@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X } from "lucide-react";
+import Link from "next/link";
+import { Search, X, MapPin } from "lucide-react";
 import PublicBusinessCard from "@/components/shared/PublicBusinessCard";
 import Container from "@/components/ui/Container";
 import type { PublicBusiness } from "@/lib/data";
 
 type Category = { id: string; slug: string; nameAr: string; icon: string };
-type City     = { id: string; nameAr: string };
+type City     = { id: string; slug: string; nameAr: string };
 
 interface Props {
   businesses:      PublicBusiness[];
@@ -118,6 +119,27 @@ export default function BusinessesClient({
       </div>
 
       <Container className="py-8">
+        {/* Browse by City — shown only when no filters active */}
+        {!hasFilters && cities.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wide mb-3">
+              تصفح حسب المدينة
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {cities.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/cities/${c.slug}`}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-white rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] font-medium hover:border-[var(--color-brand)] hover:text-[var(--color-brand)] transition-all"
+                >
+                  <MapPin size={13} />
+                  {c.nameAr}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Results header */}
         <div className="flex items-center justify-between mb-6">
           <div>
