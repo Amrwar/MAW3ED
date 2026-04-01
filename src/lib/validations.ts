@@ -38,6 +38,8 @@ export const onboardingSchema = z.object({
   address:    z.string().optional(),
   taglineAr:  z.string().max(120).optional(),
   about:      z.string().max(600).optional(),
+  coverImage: z.string().url().optional(),
+  logoImage:  z.string().url().optional(),
   services:   z.array(serviceItemSchema).min(1, "أضف خدمة واحدة على الأقل"),
   availability: z.array(availabilityDaySchema).length(7),
   slug:       z
@@ -52,15 +54,17 @@ export const onboardingSchema = z.object({
 
 // ─── Business update ──────────────────────────────────────
 export const businessUpdateSchema = z.object({
-  nameAr:     z.string().min(2, "أدخل اسم العمل").optional(),
-  nameEn:     z.string().optional(),
-  taglineAr:  z.string().max(120).optional(),
-  phone:      z.string().optional(),
-  whatsapp:   z.string().optional(),
-  address:    z.string().optional(),
-  about:      z.string().max(600).optional(),
-  cityId:     z.string().optional(),
-  categoryId: z.string().optional(),
+  nameAr:      z.string().min(2, "أدخل اسم العمل").optional(),
+  nameEn:      z.string().optional(),
+  taglineAr:   z.string().max(120).optional(),
+  phone:       z.string().optional(),
+  whatsapp:    z.string().optional(),
+  address:     z.string().optional(),
+  about:       z.string().max(600).optional(),
+  cityId:      z.string().optional(),
+  categoryId:  z.string().optional(),
+  coverImage:  z.string().url("رابط صورة الغلاف غير صحيح").optional(),
+  logoImage:   z.string().url("رابط الشعار غير صحيح").optional(),
 });
 
 // ─── Service ──────────────────────────────────────────────

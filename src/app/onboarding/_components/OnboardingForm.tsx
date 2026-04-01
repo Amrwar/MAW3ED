@@ -38,6 +38,8 @@ export type OnboardingData = {
   address:      string;
   taglineAr:    string;
   about:        string;
+  coverImage?:  string;
+  logoImage?:   string;
   services:     ServiceItem[];
   availability: AvailabilityDay[];
   slug:         string;

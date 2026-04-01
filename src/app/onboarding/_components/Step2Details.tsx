@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ImagePlus } from "lucide-react";
 import Button from "@/components/ui/Button";
+import ImageUpload from "@/components/shared/ImageUpload";
 import type { OnboardingData } from "./OnboardingForm";
 
 const schema = z.object({
@@ -19,6 +20,9 @@ interface Props {
 }
 
 export default function Step2Details({ data, onNext, onBack }: Props) {
+  const [coverImage, setCoverImage] = useState<string | undefined>(data.coverImage);
+  const [logoImage,  setLogoImage]  = useState<string | undefined>(data.logoImage);
+
   const { register, handleSubmit, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -31,8 +35,12 @@ export default function Step2Details({ data, onNext, onBack }: Props) {
   const about    = watch("about")    ?? "";
   const tagline  = watch("taglineAr") ?? "";
 
+  function onSubmit(formData: FormData) {
+    onNext({ ...formData, coverImage: coverImage || undefined, logoImage: logoImage || undefined });
+  }
+
   return (
-    <form onSubmit={handleSubmit(onNext)} className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div>
         <h2 className="text-xl font-black text-[var(--color-text-primary)] mb-1">
           تفاصيل عملك
@@ -42,7 +50,7 @@ export default function Step2Details({ data, onNext, onBack }: Props) {
         </p>
       </div>
 
-      {/* Image placeholders */}
+      {/* Image uploads */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Cover */}
         <div>
@@ -50,10 +58,12 @@ export default function Step2Details({ data, onNext, onBack }: Props) {
             صورة الغلاف{" "}
             <span className="text-[var(--color-text-muted)] text-xs">(اختياري)</span>
           </p>
-          <div className="h-24 rounded-xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] flex flex-col items-center justify-center gap-1.5 cursor-not-allowed">
-            <ImagePlus size={20} className="text-[var(--color-text-muted)]" />
-            <p className="text-xs text-[var(--color-text-muted)]">رفع الصور قريبًا</p>
-          </div>
+          <ImageUpload
+            variant="cover"
+            value={coverImage}
+            onChange={setCoverImage}
+            onRemove={() => setCoverImage(undefined)}
+          />
         </div>
 
         {/* Logo */}
@@ -62,10 +72,12 @@ export default function Step2Details({ data, onNext, onBack }: Props) {
             شعار العمل{" "}
             <span className="text-[var(--color-text-muted)] text-xs">(اختياري)</span>
           </p>
-          <div className="h-24 rounded-xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] flex flex-col items-center justify-center gap-1.5 cursor-not-allowed">
-            <ImagePlus size={20} className="text-[var(--color-text-muted)]" />
-            <p className="text-xs text-[var(--color-text-muted)]">رفع الشعار قريبًا</p>
-          </div>
+          <ImageUpload
+            variant="logo"
+            value={logoImage}
+            onChange={setLogoImage}
+            onRemove={() => setLogoImage(undefined)}
+          />
         </div>
       </div>
 

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, ImagePlus, Check } from "lucide-react";
+import { Loader2, Check } from "lucide-react";
 import type { Profile, City, CategoryItem } from "./SettingsClient";
+import ImageUpload from "@/components/shared/ImageUpload";
 
 type Props = {
   profile:    Profile;
@@ -23,6 +24,8 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
     cityId:     profile.cityId,
     categoryId: profile.categoryId,
   });
+  const [coverImage, setCoverImage] = useState<string | null>(profile.coverImage ?? null);
+  const [logoImage,  setLogoImage]  = useState<string | null>(profile.logoImage  ?? null);
   const [saving,  setSaving]  = useState(false);
   const [success, setSuccess] = useState(false);
   const [error,   setError]   = useState("");
@@ -54,6 +57,8 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
           about:      form.about.trim()      || undefined,
           cityId:     form.cityId            || undefined,
           categoryId: form.categoryId        || undefined,
+          coverImage: coverImage             || undefined,
+          logoImage:  logoImage              || undefined,
         }),
       });
 
@@ -79,29 +84,25 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
         {/* Cover */}
         <div>
           <p className="text-sm text-[var(--color-text-secondary)] mb-2">صورة الغلاف</p>
-          <div className="relative w-full h-32 rounded-xl bg-gradient-to-br from-[var(--color-accent-light)] to-[var(--color-surface-2)] border-2 border-dashed border-[var(--color-border)] flex items-center justify-center cursor-not-allowed">
-            {profile.coverImage ? (
-              <img src={profile.coverImage} alt="" className="w-full h-full object-cover rounded-xl" />
-            ) : (
-              <div className="text-center space-y-1">
-                <ImagePlus size={24} className="text-[var(--color-text-muted)] mx-auto" />
-                <p className="text-xs text-[var(--color-text-muted)]">رفع الصور قريبًا</p>
-              </div>
-            )}
-          </div>
+          <ImageUpload
+            variant="cover"
+            value={coverImage}
+            onChange={setCoverImage}
+            onRemove={() => setCoverImage(null)}
+            label="JPG أو PNG أو WebP — حتى 5MB"
+          />
         </div>
 
         {/* Logo */}
         <div>
           <p className="text-sm text-[var(--color-text-secondary)] mb-2">شعار العمل</p>
-          <div className="w-20 h-20 rounded-xl bg-[var(--color-surface-2)] border-2 border-dashed border-[var(--color-border)] flex items-center justify-center cursor-not-allowed">
-            {profile.logoImage ? (
-              <img src={profile.logoImage} alt="" className="w-full h-full object-cover rounded-xl" />
-            ) : (
-              <ImagePlus size={20} className="text-[var(--color-text-muted)]" />
-            )}
-          </div>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1.5">رفع الشعار قريبًا</p>
+          <ImageUpload
+            variant="logo"
+            value={logoImage}
+            onChange={setLogoImage}
+            onRemove={() => setLogoImage(null)}
+            label="شعار مربع — حتى 5MB"
+          />
         </div>
       </div>
 

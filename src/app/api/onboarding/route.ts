@@ -16,6 +16,7 @@ export async function POST(req: Request) {
     const {
       nameAr, nameEn, categoryId, cityId,
       phone, whatsapp, address, taglineAr, about,
+      coverImage, logoImage,
       services, availability, slug,
     } = parsed.data;
 
@@ -34,6 +35,8 @@ export async function POST(req: Request) {
       const biz = await tx.business.create({
         data: {
           slug, nameAr, nameEn, taglineAr, phone, whatsapp, address, about,
+          coverImage: coverImage ?? null,
+          logoImage:  logoImage  ?? null,
           ownerId:    session.user.id,
           categoryId, cityId,
           isPublished: true,
