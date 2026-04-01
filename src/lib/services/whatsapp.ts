@@ -208,11 +208,10 @@ export async function sendCustomerConfirmationTemplate(
     to,
     templateName: TEMPLATE_CUSTOMER_CONFIRMATION,
     bodyParams: [
-      param(data.customerName),                                    // {{1}} Hello {{1}}
-      param(data.businessName),                                    // {{2}} booking with {{2}}
-      param(data.serviceName),                                     // {{3}} appointment for {{3}}
-      param(formatDateAr(data.date)),                              // {{4}} on {{4}}
-      param(formatTimeRange(data.startTime, data.endTime)),        // {{5}} at {{5}}
+      param(data.customerName),                                // {{1}} Hello {{1}}
+      param(data.businessName),                                // {{2}} booking with {{2}}
+      param(formatDateAr(data.date)),                          // {{3}} on {{3}}
+      param(formatTimeRange(data.startTime, data.endTime)),    // {{4}} at {{4}}
     ],
   });
 }
