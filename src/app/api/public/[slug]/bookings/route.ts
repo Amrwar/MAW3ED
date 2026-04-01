@@ -1,12 +1,11 @@
 import { db } from "@/lib/db";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
-import { sendWhatsAppMessage } from "@/lib/services/whatsapp";
 import {
-  formatBusinessNotification,
-  formatCustomerConfirmation,
-  type BookingNotificationData,
-} from "@/lib/services/whatsapp-messages";
+  sendBusinessBookingTemplate,
+  sendCustomerConfirmationTemplate,
+} from "@/lib/services/whatsapp";
+import type { BookingNotificationData } from "@/lib/services/whatsapp-messages";
 import {
   sendBookingConfirmationToCustomer,
   sendNewBookingAlertToBusiness,
@@ -104,20 +103,14 @@ export async function POST(req: Request, { params }: Params) {
       currency:      service.currency,
     };
 
-    // Notify business owner — prefer WhatsApp number, fall back to phone
+    // Notify business owner via template — prefer WhatsApp number, fall back to phone
     const businessPhone = business.whatsapp ?? business.phone;
     if (businessPhone) {
-      void sendWhatsAppMessage({
-        to:      businessPhone,
-        message: formatBusinessNotification(notifData),
-      });
+      void sendBusinessBookingTemplate(businessPhone, notifData);
     }
 
-    // Confirm to customer
-    void sendWhatsAppMessage({
-      to:      customerPhone,
-      message: formatCustomerConfirmation(notifData),
-    });
+    // Confirm to customer via template
+    void sendCustomerConfirmationTemplate(customerPhone, notifData);
 
     // ── Email notifications (fire-and-forget) ─────────────────────────────────
     const emailData: BookingEmailData = {
