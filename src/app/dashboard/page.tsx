@@ -121,7 +121,7 @@ export default async function DashboardPage() {
     totalPrice:      Number(b.totalPrice),
     currency:        b.currency,
     notes:           b.notes ?? null,
-    customerNotes:   b.customerNotes ?? null,
+    customerNotes:   null,
     createdAt:       b.createdAt.toISOString(),
   }));
 
