@@ -237,8 +237,6 @@ export async function sendCustomerReminderTemplate(
     to,
     templateName: TEMPLATE_CUSTOMER_REMINDER,
     bodyParams: [
-      param(data.businessName),
-      param(data.serviceName),
       param(formatDateAr(data.date)),
       param(formatTimeRange(data.startTime, data.endTime)),
     ],
