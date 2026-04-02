@@ -31,11 +31,13 @@ export default function BookingsClient({
   // ── Bookings data ──────────────────────────────────────────
   const [bookings,        setBookings]        = useState<DashboardBooking[]>([]);
   const [total,           setTotal]           = useState(totalBookings);
+  const [totalPages,      setTotalPages]      = useState(1);
+  const [page,            setPage]            = useState(1);
   const [loading,         setLoading]         = useState(true);
   const [selectedBooking, setSelectedBooking] = useState<DashboardBooking | null>(null);
   const [newBookingOpen,  setNewBookingOpen]  = useState(false);
 
-  // Today's schedule — starts from server-fetched data, kept in sync on status changes
+  // Today's schedule — seeded from server, kept in sync on status changes
   const [todayBookings, setTodayBookings] = useState<DashboardBooking[]>(
     initialTodayBookings.sort((a, b) => a.startTime.localeCompare(b.startTime)),
   );
@@ -43,44 +45,48 @@ export default function BookingsClient({
   // ── Filters ───────────────────────────────────────────────
   const [statusFilter,  setStatusFilter]  = useState("ALL");
   const [search,        setSearch]        = useState("");
-  const [dateFilter,    setDateFilter]    = useState("");
+  const [dateFrom,      setDateFrom]      = useState("");
+  const [dateTo,        setDateTo]        = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
 
-  // ── Fetch bookings ─────────────────────────────────────────
-  const fetchBookings = useCallback(async () => {
+  // ── Fetch ─────────────────────────────────────────────────
+  const fetchBookings = useCallback(async (targetPage = 1) => {
     setLoading(true);
+    setPage(targetPage);
     try {
       const params = new URLSearchParams();
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       if (search.trim())          params.set("search", search.trim());
-      if (dateFilter)             params.set("date", dateFilter);
+      if (dateFrom)               params.set("dateFrom", dateFrom);
+      if (dateTo)                 params.set("dateTo", dateTo);
       if (serviceFilter)          params.set("serviceId", serviceFilter);
+      params.set("page", String(targetPage));
 
       const res  = await fetch(`/api/business/bookings?${params}`);
       const data = await res.json();
       setBookings(data.bookings ?? []);
       setTotal(data.total ?? 0);
+      setTotalPages(data.totalPages ?? 1);
     } catch {
       // keep previous data on error
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search, dateFilter, serviceFilter]);
+  }, [statusFilter, search, dateFrom, dateTo, serviceFilter]);
 
+  // Refetch page 1 whenever filters change
   useEffect(() => {
-    fetchBookings();
+    fetchBookings(1);
   }, [fetchBookings]);
 
   // ── Manual booking created ────────────────────────────────
   function handleNewBooking(booking: DashboardBooking) {
-    // Add to today's schedule if it's for today
     if (booking.date === getTodayISO()) {
       setTodayBookings((prev) =>
         [...prev, booking].sort((a, b) => a.startTime.localeCompare(b.startTime))
       );
     }
-    // Refresh the main bookings table
-    fetchBookings();
+    fetchBookings(1);
     setTotal((t) => t + 1);
   }
 
@@ -92,25 +98,20 @@ export default function BookingsClient({
       body:    JSON.stringify({ status }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "\u062d\u062f\u062b \u062e\u0637\u0623");
+    if (!res.ok) throw new Error(data.error ?? "حدث خطأ");
 
-    // Optimistically update all lists
     const update = (b: DashboardBooking) =>
       b.id === id ? { ...b, status } : b;
 
-    setBookings((prev) => prev.map(update));
-    setTodayBookings((prev) => prev.map(update));
+    setBookings((prev)       => prev.map(update));
+    setTodayBookings((prev)  => prev.map(update));
     setSelectedBooking((prev) => (prev?.id === id ? { ...prev, status } : prev));
   }
 
   // ── Today filter ───────────────────────────────────────────
   const todayISO = getTodayISO();
-  // todayBookings that haven't been cancelled/completed already shown
-  const activeTodayBookings = todayBookings.filter(
-    (b) => b.status !== "CANCELLED",
-  );
-
-  const hasFilters = statusFilter !== "ALL" || search || dateFilter || serviceFilter;
+  const activeTodayBookings = todayBookings.filter((b) => b.status !== "CANCELLED");
+  const showTodaySchedule   = (!dateFrom && !dateTo) || (dateFrom <= todayISO && (!dateTo || dateTo >= todayISO));
 
   return (
     <div className="space-y-5">
@@ -118,10 +119,10 @@ export default function BookingsClient({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-[var(--color-text-primary)]">
-            \u0627\u0644\u062d\u062c\u0648\u0632\u0627\u062a
+            الحجوزات
           </h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-            {total.toLocaleString("ar-EG")} \u062d\u062c\u0632 \u0625\u062c\u0645\u0627\u0644\u064a\u064b\u0627
+            {total.toLocaleString("ar-EG")} حجز
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -143,14 +144,15 @@ export default function BookingsClient({
       <BookingFilters
         statusFilter={statusFilter}    onStatusChange={setStatusFilter}
         search={search}                onSearchChange={setSearch}
-        dateFilter={dateFilter}        onDateChange={setDateFilter}
+        dateFrom={dateFrom}            onDateFromChange={setDateFrom}
+        dateTo={dateTo}                onDateToChange={setDateTo}
         serviceFilter={serviceFilter}  onServiceChange={setServiceFilter}
         services={services}
         total={total}
       />
 
-      {/* Today's schedule — only when no date filter or date filter is today */}
-      {(!dateFilter || dateFilter === todayISO) && activeTodayBookings.length > 0 && (
+      {/* Today's schedule */}
+      {showTodaySchedule && activeTodayBookings.length > 0 && (
         <TodaySchedule
           bookings={activeTodayBookings}
           onSelect={setSelectedBooking}
@@ -164,6 +166,10 @@ export default function BookingsClient({
         loading={loading}
         selected={selectedBooking?.id ?? null}
         onSelect={setSelectedBooking}
+        onStatusChange={handleStatusChange}
+        page={page}
+        totalPages={totalPages}
+        onPageChange={(p) => fetchBookings(p)}
       />
 
       {/* Detail panel overlay */}

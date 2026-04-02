@@ -21,7 +21,7 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
         <div className="flex items-center gap-2">
           <Clock size={15} className="text-[var(--color-brand)]" />
           <h3 className="font-bold text-sm text-[var(--color-text-primary)]">
-            \u0645\u0648\u0627\u0639\u064a\u062f \u0627\u0644\u064a\u0648\u0645
+            مواعيد اليوم
           </h3>
           <span className="text-xs font-bold bg-[var(--color-brand)] text-white px-2 py-0.5 rounded-full">
             {bookings.length}

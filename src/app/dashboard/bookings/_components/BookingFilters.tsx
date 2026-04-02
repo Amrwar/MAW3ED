@@ -5,7 +5,7 @@ import { Search, X } from "lucide-react";
 import { type DashboardBookingStatus, STATUS_CONFIG } from "@/features/dashboard/bookings/types";
 
 const ALL_STATUSES: Array<{ value: string; label: string }> = [
-  { value: "ALL",       label: "\u0627\u0644\u0643\u0644" },
+  { value: "ALL",       label: "الكل" },
   { value: "PENDING",   label: STATUS_CONFIG.PENDING.label   },
   { value: "CONFIRMED", label: STATUS_CONFIG.CONFIRMED.label },
   { value: "COMPLETED", label: STATUS_CONFIG.COMPLETED.label },
@@ -13,13 +13,36 @@ const ALL_STATUSES: Array<{ value: string; label: string }> = [
   { value: "NO_SHOW",   label: STATUS_CONFIG.NO_SHOW.label   },
 ];
 
+function todayISO() {
+  const now = new Date();
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function yesterdayISO() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+type DatePreset = "all" | "today" | "upcoming" | "past" | "custom";
+
 interface BookingFiltersProps {
   statusFilter:    string;
   onStatusChange:  (s: string) => void;
   search:          string;
   onSearchChange:  (s: string) => void;
-  dateFilter:      string;
-  onDateChange:    (d: string) => void;
+  dateFrom:        string;
+  dateTo:          string;
+  onDateFromChange: (d: string) => void;
+  onDateToChange:   (d: string) => void;
   serviceFilter:   string;
   onServiceChange: (id: string) => void;
   services:        Array<{ id: string; nameAr: string }>;
@@ -31,30 +54,62 @@ export default function BookingFilters({
   onStatusChange,
   search,
   onSearchChange,
-  dateFilter,
-  onDateChange,
+  dateFrom,
+  dateTo,
+  onDateFromChange,
+  onDateToChange,
   serviceFilter,
   onServiceChange,
   services,
   total,
 }: BookingFiltersProps) {
-  // Debounce search locally
-  const [localSearch, setLocalSearch] = useState(search);
+  const [localSearch,  setLocalSearch]  = useState(search);
+  const [datePreset,   setDatePreset]   = useState<DatePreset>("all");
+  const [showCustom,   setShowCustom]   = useState(false);
+
+  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => onSearchChange(localSearch), 350);
     return () => clearTimeout(t);
   }, [localSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function applyPreset(preset: DatePreset) {
+    setDatePreset(preset);
+    setShowCustom(preset === "custom");
+    if (preset === "all") {
+      onDateFromChange(""); onDateToChange("");
+    } else if (preset === "today") {
+      const t = todayISO();
+      onDateFromChange(t); onDateToChange(t);
+    } else if (preset === "upcoming") {
+      onDateFromChange(todayISO()); onDateToChange("");
+    } else if (preset === "past") {
+      onDateFromChange(""); onDateToChange(yesterdayISO());
+    }
+    // "custom" keeps whatever from/to the user typed
+  }
+
   const hasActiveFilters =
-    statusFilter !== "ALL" || localSearch || dateFilter || serviceFilter;
+    statusFilter !== "ALL" || localSearch || dateFrom || dateTo || serviceFilter;
 
   function clearAll() {
     setLocalSearch("");
     onSearchChange("");
     onStatusChange("ALL");
-    onDateChange("");
+    onDateFromChange("");
+    onDateToChange("");
     onServiceChange("");
+    setDatePreset("all");
+    setShowCustom(false);
   }
+
+  const DATE_PRESETS: Array<{ key: DatePreset; label: string }> = [
+    { key: "all",      label: "كل التواريخ" },
+    { key: "today",    label: "اليوم" },
+    { key: "upcoming", label: "القادمة" },
+    { key: "past",     label: "السابقة" },
+    { key: "custom",   label: "مخصص" },
+  ];
 
   return (
     <div className="card p-4 space-y-3">
@@ -75,9 +130,8 @@ export default function BookingFilters({
         ))}
       </div>
 
-      {/* Search + Service + Date row */}
+      {/* Search + Service row */}
       <div className="flex flex-col sm:flex-row gap-2">
-        {/* Search */}
         <div className="relative flex-1">
           <Search
             size={14}
@@ -85,21 +139,20 @@ export default function BookingFilters({
           />
           <input
             type="text"
-            placeholder="\u0628\u062d\u062b \u0628\u0627\u0633\u0645 \u0627\u0644\u0639\u0645\u064a\u0644 \u0623\u0648 \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062a\u0641\u2026"
+            placeholder="بحث باسم العميل أو رقم الهاتف…"
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             className="input pe-9 text-sm"
           />
         </div>
 
-        {/* Service filter */}
         {services.length > 0 && (
           <select
             value={serviceFilter}
             onChange={(e) => onServiceChange(e.target.value)}
             className="input text-sm min-w-[160px]"
           >
-            <option value="">\u0643\u0644 \u0627\u0644\u062e\u062f\u0645\u0627\u062a</option>
+            <option value="">كل الخدمات</option>
             {services.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.nameAr}
@@ -107,28 +160,56 @@ export default function BookingFilters({
             ))}
           </select>
         )}
-
-        {/* Date filter */}
-        <input
-          type="date"
-          value={dateFilter}
-          onChange={(e) => onDateChange(e.target.value)}
-          className="input text-sm min-w-[150px]"
-        />
       </div>
+
+      {/* Date preset pills */}
+      <div className="flex gap-1.5 flex-wrap">
+        {DATE_PRESETS.map((p) => (
+          <button
+            key={p.key}
+            onClick={() => applyPreset(p.key)}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${
+              datePreset === p.key
+                ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-[var(--color-accent)]/30"
+                : "bg-white text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-accent)]/30"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Custom date range inputs */}
+      {showCustom && (
+        <div className="flex gap-2 items-center">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => onDateFromChange(e.target.value)}
+            className="input text-sm flex-1"
+            placeholder="من"
+          />
+          <span className="text-[var(--color-text-muted)] text-sm">—</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => onDateToChange(e.target.value)}
+            className="input text-sm flex-1"
+            placeholder="إلى"
+          />
+        </div>
+      )}
 
       {/* Active filter summary */}
       {hasActiveFilters && (
         <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-          <span>
-            {total} \u0646\u062a\u064a\u062c\u0629
-          </span>
+          <span>{total.toLocaleString("ar-EG")} نتيجة</span>
           <button
             onClick={clearAll}
             className="flex items-center gap-1 text-red-500 hover:text-red-600 font-medium transition-colors"
           >
             <X size={11} />
-            \u0645\u0633\u062d \u0627\u0644\u0641\u0644\u0627\u062a\u0631
+            مسح الفلاتر
           </button>
         </div>
       )}

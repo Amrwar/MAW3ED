@@ -23,9 +23,9 @@ export default function BookingDetailPanel({
   onClose,
   onStatusChange,
 }: BookingDetailPanelProps) {
-  const [loading,      setLoading]      = useState(false);
-  const [actionError,  setActionError]  = useState<string | null>(null);
-  const [actionSuccess,setActionSuccess]= useState<string | null>(null);
+  const [loading,       setLoading]       = useState(false);
+  const [actionError,   setActionError]   = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const allowedNext = ALLOWED_TRANSITIONS[booking.status] ?? [];
 
@@ -35,14 +35,10 @@ export default function BookingDetailPanel({
     setActionSuccess(null);
     try {
       await onStatusChange(booking.id, newStatus);
-      setActionSuccess(
-        `\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u062d\u0627\u0644\u0629 \u0625\u0644\u0649 "${ACTION_LABELS[newStatus]}"`,
-      );
+      setActionSuccess(`تم تحديث الحالة إلى "${ACTION_LABELS[newStatus]}"`);
     } catch (e: unknown) {
       setActionError(
-        e instanceof Error
-          ? e.message
-          : "\u062d\u062f\u062b \u062e\u0637\u0623 \u0623\u062b\u0646\u0627\u0621 \u0627\u0644\u062a\u062d\u062f\u064a\u062b",
+        e instanceof Error ? e.message : "حدث خطأ أثناء التحديث",
       );
     } finally {
       setLoading(false);
@@ -63,7 +59,7 @@ export default function BookingDetailPanel({
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
           <div>
             <h2 className="font-bold text-base text-[var(--color-text-primary)]">
-              \u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u062d\u062c\u0632
+              تفاصيل الحجز
             </h2>
             <p className="text-xs text-[var(--color-text-muted)] mt-0.5" dir="ltr">
               #{booking.id.slice(-8).toUpperCase()}
@@ -81,51 +77,40 @@ export default function BookingDetailPanel({
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Current status */}
           <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--color-text-muted)]">
-              \u0627\u0644\u062d\u0627\u0644\u0629 \u0627\u0644\u062d\u0627\u0644\u064a\u0629
-            </p>
+            <p className="text-sm text-[var(--color-text-muted)]">الحالة الحالية</p>
             <StatusBadge status={booking.status} />
           </div>
 
           {/* Customer info */}
-          <Section title="\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0639\u0645\u064a\u0644">
+          <Section title="بيانات العميل">
+            <InfoRow label="الاسم"  value={booking.customerName} />
             <InfoRow
-              label="\u0627\u0644\u0627\u0633\u0645"
-              value={booking.customerName}
-            />
-            <InfoRow
-              label="\u0627\u0644\u0647\u0627\u062a\u0641"
+              label="الهاتف"
               value={booking.customerPhone}
               ltr
               icon={<Phone size={12} />}
             />
             {booking.customerNotes && (
-              <InfoRow
-                label="\u0645\u0644\u0627\u062d\u0638\u0627\u062a \u0627\u0644\u0639\u0645\u064a\u0644"
-                value={booking.customerNotes}
-              />
+              <InfoRow label="ملاحظات العميل" value={booking.customerNotes} />
             )}
           </Section>
 
           {/* Booking info */}
-          <Section title="\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u062d\u062c\u0632">
-            <InfoRow label="\u0627\u0644\u062e\u062f\u0645\u0629" value={booking.serviceName} />
+          <Section title="تفاصيل الحجز">
+            <InfoRow label="الخدمة"  value={booking.serviceName} />
+            <InfoRow label="المدة"   value={`${booking.serviceDuration} دقيقة`} />
+            <InfoRow label="التاريخ" value={formatDateAr(booking.date)} />
             <InfoRow
-              label="\u0627\u0644\u0645\u062f\u0629"
-              value={`${booking.serviceDuration} \u062f\u0642\u064a\u0642\u0629`}
-            />
-            <InfoRow label="\u0627\u0644\u062a\u0627\u0631\u064a\u062e" value={formatDateAr(booking.date)} />
-            <InfoRow
-              label="\u0627\u0644\u0648\u0642\u062a"
+              label="الوقت"
               value={
                 booking.endTime
-                  ? `${booking.startTime} \u2013 ${booking.endTime}`
+                  ? `${booking.startTime} – ${booking.endTime}`
                   : booking.startTime
               }
               ltr
             />
             <InfoRow
-              label="\u0627\u0644\u0633\u0639\u0631"
+              label="السعر"
               value={`${booking.totalPrice.toLocaleString("ar-EG")} ${booking.currency}`}
               bold
             />
@@ -133,7 +118,7 @@ export default function BookingDetailPanel({
 
           {/* Notes */}
           {booking.notes && (
-            <Section title="\u0645\u0644\u0627\u062d\u0638\u0627\u062a \u0627\u0644\u0639\u0645\u064a\u0644">
+            <Section title="ملاحظات العميل">
               <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed bg-[var(--color-surface-2)] rounded-xl px-4 py-3">
                 {booking.notes}
               </p>
@@ -141,9 +126,9 @@ export default function BookingDetailPanel({
           )}
 
           {/* Booking meta */}
-          <Section title="\u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0625\u0636\u0627\u0641\u064a\u0629">
+          <Section title="معلومات إضافية">
             <InfoRow
-              label="\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u062d\u062c\u0632"
+              label="تاريخ الحجز"
               value={new Date(booking.createdAt).toLocaleDateString("ar-EG", {
                 year: "numeric", month: "long", day: "numeric",
               })}
@@ -153,7 +138,6 @@ export default function BookingDetailPanel({
 
         {/* Actions footer */}
         <div className="border-t border-[var(--color-border)] p-5 space-y-3">
-          {/* Feedback messages */}
           {actionError && (
             <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-2.5">
               {actionError}
@@ -165,11 +149,10 @@ export default function BookingDetailPanel({
             </div>
           )}
 
-          {/* Action buttons */}
           {allowedNext.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-medium text-[var(--color-text-muted)]">
-                \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u062d\u0627\u0644\u0629
+                تحديث الحالة
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {allowedNext.map((nextStatus) => (
@@ -183,9 +166,8 @@ export default function BookingDetailPanel({
                   >
                     {loading ? (
                       <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      ACTION_LABELS[nextStatus]
-                    )}
+                    ) : null}
+                    {ACTION_LABELS[nextStatus]}
                   </button>
                 ))}
               </div>
@@ -193,7 +175,7 @@ export default function BookingDetailPanel({
           ) : (
             <div className="text-center py-2">
               <p className="text-xs text-[var(--color-text-muted)]">
-                \u0627\u0644\u062d\u062c\u0632 \u0641\u064a \u062d\u0627\u0644\u0629 \u0646\u0647\u0627\u0626\u064a\u0629 \u2014 \u0644\u0627 \u064a\u0645\u0643\u0646 \u062a\u063a\u064a\u064a\u0631\u0647\u0627
+                الحجز في حالة نهائية — لا يمكن تغييرها
               </p>
             </div>
           )}
@@ -209,7 +191,7 @@ function Section({
   title,
   children,
 }: {
-  title: string;
+  title:    string;
   children: React.ReactNode;
 }) {
   return (
@@ -231,11 +213,11 @@ function InfoRow({
   bold = false,
   icon,
 }: {
-  label: string;
-  value: string;
-  ltr?:  boolean;
-  bold?: boolean;
-  icon?: React.ReactNode;
+  label:  string;
+  value:  string;
+  ltr?:   boolean;
+  bold?:  boolean;
+  icon?:  React.ReactNode;
 }) {
   return (
     <div className="flex items-start justify-between gap-4 text-sm">

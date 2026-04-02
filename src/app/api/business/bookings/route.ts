@@ -22,7 +22,11 @@ export async function GET(req: Request) {
     const status    = searchParams.get("status");
     const serviceId = searchParams.get("serviceId");
     const date      = searchParams.get("date");
+    const dateFrom  = searchParams.get("dateFrom");
+    const dateTo    = searchParams.get("dateTo");
     const search    = searchParams.get("search")?.trim();
+    const page      = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+    const limit     = 25;
 
     const where: Prisma.BookingWhereInput = { businessId: business.id };
 
@@ -32,10 +36,24 @@ export async function GET(req: Request) {
     if (serviceId) {
       where.serviceId = serviceId;
     }
-    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+
+    // Date range takes priority over single-date filter
+    if (dateFrom || dateTo) {
+      const range: { gte?: Date; lte?: Date } = {};
+      if (dateFrom && /^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) {
+        const [y, m, d] = dateFrom.split("-").map(Number);
+        range.gte = new Date(Date.UTC(y, m - 1, d));
+      }
+      if (dateTo && /^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {
+        const [y, m, d] = dateTo.split("-").map(Number);
+        range.lte = new Date(Date.UTC(y, m - 1, d));
+      }
+      where.date = range;
+    } else if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
       const [y, m, d] = date.split("-").map(Number);
       where.date = new Date(Date.UTC(y, m - 1, d));
     }
+
     if (search) {
       where.OR = [
         { customerName:  { contains: search, mode: "insensitive" } },
@@ -51,7 +69,8 @@ export async function GET(req: Request) {
           customer: { select: { notes: true } },
         },
         orderBy: [{ date: "desc" }, { startTime: "asc" }],
-        take: 100,
+        take:    limit,
+        skip:    (page - 1) * limit,
       }),
       db.booking.count({ where }),
     ]);
@@ -73,7 +92,7 @@ export async function GET(req: Request) {
       createdAt:       b.createdAt.toISOString(),
     }));
 
-    return ok({ bookings: serialized, total });
+    return ok({ bookings: serialized, total, page, totalPages: Math.ceil(total / limit), limit });
   } catch (e) {
     if (e instanceof Response) return e;
     console.error("[bookings GET]", e);
