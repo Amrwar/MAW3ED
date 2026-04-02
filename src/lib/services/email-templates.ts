@@ -180,7 +180,7 @@ export function businessAlertHtml(d: BookingEmailData): string {
     </div>` : ""}
 
     <!-- CTA -->
-    <a href="${process.env.AUTH_URL ?? "https://maw3ed.app"}dashboard/bookings"
+    <a href="${process.env.AUTH_URL ?? "https://maw3ed.net"}dashboard/bookings"
        style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;margin-bottom:24px;">
       إدارة الحجوزات ←
     </a>

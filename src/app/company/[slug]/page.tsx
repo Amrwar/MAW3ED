@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // Unpublished or missing — return minimal metadata; page itself will 404
   if (!biz) return { title: "غير موجود | موعد" };
 
-  const baseUrl   = (process.env.AUTH_URL ?? "https://maw3ed.app").replace(/\/$/, "");
+  const baseUrl   = (process.env.AUTH_URL ?? "https://maw3ed.net").replace(/\/$/, "");
   const pageUrl   = `${baseUrl}/company/${slug}`;
 
   const title = `${biz.nameAr} | حجز موعد في ${biz.city.nameAr} | موعد`;

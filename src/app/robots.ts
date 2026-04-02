@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const BASE_URL = (process.env.AUTH_URL ?? "https://maw3ed.app").replace(/\/$/, "");
+const BASE_URL = (process.env.AUTH_URL ?? "https://maw3ed.net").replace(/\/$/, "");
 
 export default function robots(): MetadataRoute.Robots {
   return {

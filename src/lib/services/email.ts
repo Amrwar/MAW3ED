@@ -13,7 +13,7 @@ import { Resend } from "resend";
 import { customerConfirmationHtml, customerReminderHtml, businessAlertHtml } from "./email-templates";
 
 const client  = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM    = process.env.EMAIL_FROM ?? "Maw3ed <noreply@maw3ed.app>";
+const FROM    = process.env.EMAIL_FROM ?? "Maw3ed <noreply@maw3ed.net>";
 
 export interface EmailPayload {
   to:      string;

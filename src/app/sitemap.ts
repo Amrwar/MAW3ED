@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
 
-const BASE_URL = (process.env.AUTH_URL ?? "https://maw3ed.app").replace(/\/$/, "");
+const BASE_URL = (process.env.AUTH_URL ?? "https://maw3ed.net").replace(/\/$/, "");
 
 function url(path: string): string {
   return `${BASE_URL}${path}`;

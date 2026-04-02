@@ -5,7 +5,7 @@
  * more than one place.
  */
 
-const BASE = (process.env.AUTH_URL ?? "https://maw3ed.app").replace(/\/$/, "");
+const BASE = (process.env.AUTH_URL ?? "https://maw3ed.net").replace(/\/$/, "");
 
 /** Full absolute URL for a customer's booking management page */
 export function bookingPageUrl(accessToken: string): string {
