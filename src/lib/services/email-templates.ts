@@ -99,6 +99,18 @@ export function customerConfirmationHtml(d: BookingEmailData): string {
       ⏳ في انتظار التأكيد
     </div>
 
+    ${d.bookingUrl ? `
+    <!-- Booking link CTA -->
+    <div style="margin-bottom:24px;">
+      <a href="${d.bookingUrl}"
+         style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;">
+        عرض الحجز وإدارته ←
+      </a>
+    </div>
+    <p style="margin:0 0 20px;font-size:12px;color:#9ca3af;">
+      احتفظ بهذا الرابط للرجوع إليه في أي وقت وإلغاء الحجز إذا لزم الأمر.
+    </p>` : ""}
+
     <!-- Divider -->
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
 

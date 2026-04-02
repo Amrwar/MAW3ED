@@ -55,6 +55,7 @@ export interface BookingEmailData {
   totalPrice:    number;
   currency:      string;
   notes?:        string | null;
+  bookingUrl?:   string | null;
 }
 
 // ── Public API ────────────────────────────────────────────────

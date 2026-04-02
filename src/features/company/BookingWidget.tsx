@@ -588,9 +588,9 @@ export default function BookingWidget({
               تم حجز موعدك!
             </h3>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
-              يسعدنا استقبالك.
+              يسعدنا استقبالك. سيتواصل معك الفريق قريبًا.
               <br />
-              سيتواصل معك الفريق قريبًا.
+              تم إرسال تفاصيل الحجز ورابط الإدارة إلى بريدك الإلكتروني.
             </p>
 
             <div className="text-start bg-[var(--color-surface-2)] rounded-xl p-4 space-y-3 mb-5">

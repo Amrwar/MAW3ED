@@ -28,6 +28,7 @@ export interface BookingNotificationData {
   customerPhone: string;
   totalPrice:    number;
   currency:      string;
+  bookingUrl?:   string | null;
 }
 
 /**

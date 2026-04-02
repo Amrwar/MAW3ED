@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
+import { bookingPageUrl } from "@/lib/url";
 import {
   sendBusinessBookingTemplate,
   sendCustomerConfirmationTemplate,
@@ -109,6 +110,9 @@ export async function POST(req: Request, { params }: Params) {
       },
     });
 
+    // ── Build booking URL for customer self-service ───────────────────────────
+    const bookingUrl = bookingPageUrl(accessToken);
+
     // ── WhatsApp notifications (fire-and-forget, never blocks response) ────────
     const notifData: BookingNotificationData = {
       businessName:  business.nameAr,
@@ -120,6 +124,7 @@ export async function POST(req: Request, { params }: Params) {
       customerPhone,
       totalPrice:    Number(service.price),
       currency:      service.currency,
+      bookingUrl,
     };
 
     // Notify business owner via template — prefer WhatsApp number, fall back to phone
@@ -143,6 +148,7 @@ export async function POST(req: Request, { params }: Params) {
       totalPrice:    Number(service.price),
       currency:      service.currency,
       notes:         notes ?? null,
+      bookingUrl,
     };
 
     // Business owner alert (uses owner's account email)
