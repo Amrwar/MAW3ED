@@ -202,3 +202,41 @@ export function businessAlertHtml(d: BookingEmailData): string {
   `;
   return layout(body);
 }
+
+// ── Password reset template ───────────────────────────────────
+
+export function passwordResetHtml(resetUrl: string): string {
+  const body = `
+    <!-- Heading -->
+    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">إعادة تعيين كلمة المرور 🔐</p>
+    <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
+      تلقّينا طلبًا لإعادة تعيين كلمة المرور لحسابك في <strong>موعد</strong>.
+      انقر على الزر أدناه لاختيار كلمة مرور جديدة.
+    </p>
+
+    <!-- CTA -->
+    <div style="margin-bottom:24px;">
+      <a href="${resetUrl}"
+         style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
+        إعادة تعيين كلمة المرور ←
+      </a>
+    </div>
+
+    <!-- Expiry note -->
+    <div style="background:#fef3c7;border-radius:10px;padding:12px 16px;margin-bottom:24px;">
+      <p style="margin:0;font-size:13px;color:#92400e;">
+        ⏳ هذا الرابط صالح لمدة <strong>ساعة واحدة</strong> فقط.
+      </p>
+    </div>
+
+    <!-- Security note -->
+    <p style="margin:0 0 16px;font-size:13px;color:#9ca3af;">
+      إذا لم تطلب إعادة تعيين كلمة المرور، تجاهل هذا البريد — حسابك بأمان تام.
+    </p>
+
+    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
+
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#6366f1;">موعد</strong> 🙏</p>
+  `;
+  return layout(body);
+}

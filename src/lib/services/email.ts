@@ -10,7 +10,7 @@
  */
 
 import { Resend } from "resend";
-import { customerConfirmationHtml, customerReminderHtml, businessAlertHtml } from "./email-templates";
+import { customerConfirmationHtml, customerReminderHtml, businessAlertHtml, passwordResetHtml } from "./email-templates";
 
 const client  = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM    = process.env.EMAIL_FROM ?? "Maw3ed <noreply@maw3ed.net>";
@@ -91,6 +91,21 @@ export async function sendBookingReminderToCustomer(
     to:      customerEmail.trim(),
     subject: `⏰ تذكير: موعدك في ${data.businessName} غداً`,
     html:    customerReminderHtml(data),
+  });
+}
+
+/**
+ * Send a password-reset link to the user.
+ */
+export async function sendPasswordResetEmail(
+  to: string,
+  resetUrl: string,
+): Promise<void> {
+  if (!to?.trim()) return;
+  await sendEmail({
+    to:      to.trim(),
+    subject: "🔐 إعادة تعيين كلمة المرور — موعد",
+    html:    passwordResetHtml(resetUrl),
   });
 }
 

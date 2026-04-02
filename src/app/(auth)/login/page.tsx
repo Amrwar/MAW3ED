@@ -74,9 +74,17 @@ export default function LoginPage() {
 
         {/* Password */}
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-            كلمة المرور
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-sm font-medium text-[var(--color-text-secondary)]">
+              كلمة المرور
+            </label>
+            <Link
+              href="/forgot-password"
+              className="text-xs text-[var(--color-accent)] hover:underline"
+            >
+              نسيت كلمة المرور؟
+            </Link>
+          </div>
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
