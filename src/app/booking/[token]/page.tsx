@@ -7,6 +7,7 @@ import {
 import { db } from "@/lib/db";
 import Logo from "@/components/shared/Logo";
 import CancelButton from "./_components/CancelButton";
+import RescheduleFlow from "./_components/RescheduleFlow";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -49,7 +50,7 @@ export default async function BookingPage({ params }: Params) {
     where:   { accessToken: token },
     include: {
       business: { select: { nameAr: true, slug: true, phone: true } },
-      service:  { select: { nameAr: true } },
+      service:  { select: { id: true, nameAr: true } },
     },
   });
 
@@ -57,7 +58,8 @@ export default async function BookingPage({ params }: Params) {
 
   const status     = STATUS_CONFIG[booking.status as keyof typeof STATUS_CONFIG];
   const StatusIcon = status.icon;
-  const cancellable = canCancel(booking.status, booking.date, booking.startTime);
+  const cancellable    = canCancel(booking.status, booking.date, booking.startTime);
+  const reschedulable  = cancellable; // same eligibility rules
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-2)]" dir="rtl">
@@ -112,15 +114,31 @@ export default async function BookingPage({ params }: Params) {
         </div>
 
         {/* Actions */}
-        {cancellable && (
-          <div className="bg-white rounded-2xl border border-[var(--color-border)] p-5">
-            <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">
+        {(cancellable || reschedulable) && (
+          <div className="bg-white rounded-2xl border border-[var(--color-border)] p-5 space-y-3">
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">
               إدارة الحجز
             </p>
-            <p className="text-xs text-[var(--color-text-muted)] mb-4">
-              يمكنك إلغاء الحجز حتى {CUTOFF_HOURS} ساعات قبل الموعد
+            <p className="text-xs text-[var(--color-text-muted)]">
+              يمكنك تعديل أو إلغاء الحجز حتى {CUTOFF_HOURS} ساعات قبل الموعد
             </p>
-            <CancelButton token={token} onCancelled={() => window.location.reload()} />
+
+            {reschedulable && (
+              <RescheduleFlow
+                token={token}
+                slug={booking.business.slug}
+                serviceId={booking.service.id}
+                currentDate={booking.date.toISOString().split("T")[0]}
+                currentStart={booking.startTime}
+                currentEnd={booking.endTime ?? booking.startTime}
+                serviceName={booking.service.nameAr}
+                businessName={booking.business.nameAr}
+              />
+            )}
+
+            {cancellable && (
+              <CancelButton token={token} onCancelled={() => window.location.reload()} />
+            )}
           </div>
         )}
 

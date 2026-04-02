@@ -51,12 +51,14 @@ export async function hasBookingConflict(
   dateUTC:           Date,
   candidateStartMin: number,
   candidateEndMin:   number,
+  excludeBookingId?: string, // used during reschedule to exclude the booking being moved
 ): Promise<boolean> {
   const existing = await db.booking.findMany({
     where: {
       businessId,
       date:   dateUTC,
       status: { in: ["PENDING", "CONFIRMED"] },
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
     },
     select: {
       startTime: true,

@@ -95,6 +95,36 @@ export async function sendBookingReminderToCustomer(
 }
 
 /**
+ * Send reschedule confirmation to the customer.
+ */
+export async function sendRescheduleConfirmationToCustomer(
+  customerEmail: string,
+  data: BookingEmailData,
+): Promise<void> {
+  if (!customerEmail?.trim()) return;
+  await sendEmail({
+    to:      customerEmail.trim(),
+    subject: `📅 تم إعادة جدولة حجزك في ${data.businessName}`,
+    html:    customerConfirmationHtml(data),
+  });
+}
+
+/**
+ * Send reschedule alert to the business owner.
+ */
+export async function sendRescheduleAlertToBusiness(
+  ownerEmail: string,
+  data: BookingEmailData,
+): Promise<void> {
+  if (!ownerEmail?.trim()) return;
+  await sendEmail({
+    to:      ownerEmail.trim(),
+    subject: `🔄 إعادة جدولة حجز من ${data.customerName}`,
+    html:    businessAlertHtml(data),
+  });
+}
+
+/**
  * Send new booking alert to the business owner.
  * Only sent if ownerEmail is provided and non-empty.
  */
