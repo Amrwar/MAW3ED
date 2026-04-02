@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
@@ -89,6 +90,7 @@ export async function POST(req: Request, { params }: Params) {
     });
 
     // ── Create booking ─────────────────────────────────────────────────────────
+    const accessToken = randomBytes(32).toString("hex");
     const booking = await db.booking.create({
       data: {
         businessId:    business.id,
@@ -103,6 +105,7 @@ export async function POST(req: Request, { params }: Params) {
         totalPrice:    service.price,
         currency:      service.currency,
         notes:         notes ?? null,
+        accessToken,
       },
     });
 
@@ -156,6 +159,7 @@ export async function POST(req: Request, { params }: Params) {
       {
         booking: {
           id:           booking.id,
+          accessToken:  booking.accessToken,
           businessName: business.nameAr,
           serviceName:  service.nameAr,
           date,

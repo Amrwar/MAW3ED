@@ -23,6 +23,7 @@ interface BookingWidgetProps {
 
 type BookingConfirmation = {
   id:           string;
+  accessToken:  string | null;
   businessName: string;
   serviceName:  string;
   date:         string;
@@ -612,6 +613,16 @@ export default function BookingWidget({
               </div>
             </div>
 
+            {confirmation.accessToken && (
+              <a
+                href={`/booking/${confirmation.accessToken}`}
+                target="_blank"
+                rel="noreferrer"
+                className="block w-full text-center py-2.5 rounded-xl border-2 border-[var(--color-brand)] text-[var(--color-brand)] text-sm font-bold hover:bg-[var(--color-surface-2)] transition-colors mb-3"
+              >
+                عرض تفاصيل الحجز
+              </a>
+            )}
             <Button variant="outline" fullWidth onClick={reset}>
               حجز موعد آخر
             </Button>

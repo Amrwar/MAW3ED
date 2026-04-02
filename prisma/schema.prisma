@@ -175,6 +175,7 @@ model Booking {
   totalPrice    Decimal       @db.Decimal(10, 2)
   currency      String        @default("EGP")
   notes                   String?
+  accessToken             String?   @unique // secure random token for customer self-service URL
   customerReminderSentAt  DateTime? // set after reminder is sent — prevents duplicate sends
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
