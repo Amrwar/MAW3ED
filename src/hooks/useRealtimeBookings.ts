@@ -5,7 +5,7 @@ import type { DashboardBooking } from "@/features/dashboard/bookings/types";
 
 export type RealtimeBookingEvent =
   | { type: "BOOKING_CREATED"; booking: DashboardBooking }
-  | { type: "BOOKING_UPDATED"; id: string; status: string };
+  | { type: "BOOKING_UPDATED"; id: string; status: string; customerName: string };
 
 /**
  * Subscribes to /api/realtime/bookings (Server-Sent Events).
@@ -54,11 +54,12 @@ export function useRealtimeBookings(
 
       es.addEventListener("BOOKING_UPDATED", (raw) => {
         try {
-          const { id, status } = JSON.parse((raw as MessageEvent).data) as {
+          const { id, status, customerName } = JSON.parse((raw as MessageEvent).data) as {
             id: string;
             status: string;
+            customerName: string;
           };
-          onEventRef.current({ type: "BOOKING_UPDATED", id, status });
+          onEventRef.current({ type: "BOOKING_UPDATED", id, status, customerName });
         } catch {
           // malformed payload — ignore
         }
