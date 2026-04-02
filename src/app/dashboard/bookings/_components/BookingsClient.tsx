@@ -12,6 +12,7 @@ import {
   type DashboardBookingStatus,
   getTodayISO,
 } from "@/features/dashboard/bookings/types";
+import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
 
 interface BookingsClientProps {
   initialTodayBookings: DashboardBooking[];
@@ -107,6 +108,29 @@ export default function BookingsClient({
     setTodayBookings((prev)  => prev.map(update));
     setSelectedBooking((prev) => (prev?.id === id ? { ...prev, status } : prev));
   }
+
+  // ── Real-time updates via SSE ──────────────────────────────
+  useRealtimeBookings((event) => {
+    if (event.type === "BOOKING_UPDATED") {
+      const { id, status } = event;
+      const s = status as DashboardBookingStatus;
+      setBookings((prev)        => prev.map((b) => b.id === id ? { ...b, status: s } : b));
+      setTodayBookings((prev)   => prev.map((b) => b.id === id ? { ...b, status: s } : b));
+      setSelectedBooking((prev) => prev?.id === id ? { ...prev, status: s } : prev);
+    } else {
+      // New booking from any source (public or manual).
+      // fetchBookings updates both the list and the total count from the API.
+      fetchBookings(page);
+      const b = event.booking;
+      if (b.date === getTodayISO() && b.status !== "CANCELLED") {
+        setTodayBookings((prev) => {
+          // Guard against the manual-booking flow already having added this booking
+          if (prev.some((x) => x.id === b.id)) return prev;
+          return [...prev, b].sort((a, x) => a.startTime.localeCompare(x.startTime));
+        });
+      }
+    }
+  });
 
   // ── Today filter ───────────────────────────────────────────
   const todayISO = getTodayISO();
