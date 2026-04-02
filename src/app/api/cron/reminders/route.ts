@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { sendCustomerReminderTemplate } from "@/lib/services/whatsapp";
 import { sendBookingReminderToCustomer, type BookingEmailData } from "@/lib/services/email";
 import type { BookingNotificationData } from "@/lib/services/whatsapp-messages";
+import { bookingPageUrl } from "@/lib/url";
 
 /**
  * GET /api/cron/reminders
@@ -44,10 +45,20 @@ export async function GET(req: Request) {
       status:                 "CONFIRMED",
       customerReminderSentAt: null,           // skip already-reminded
     },
-    include: {
+    select: {
+      id:           true,
+      accessToken:  true,
+      customerName: true,
+      customerPhone:true,
+      date:         true,
+      startTime:    true,
+      endTime:      true,
+      totalPrice:   true,
+      currency:     true,
+      notes:        true,
       business: { select: { nameAr: true } },
       service:  { select: { nameAr: true } },
-      customer: { select: { email: true } },  // for optional email reminder
+      customer: { select: { email: true } },
     },
   });
 
@@ -58,7 +69,8 @@ export async function GET(req: Request) {
 
   for (const booking of bookings) {
     try {
-      const dateStr = booking.date.toISOString().split("T")[0];
+      const dateStr   = booking.date.toISOString().split("T")[0];
+      const bookingUrl = booking.accessToken ? bookingPageUrl(booking.accessToken) : null;
 
       const notifData: BookingNotificationData = {
         businessName:  booking.business.nameAr,
@@ -78,7 +90,11 @@ export async function GET(req: Request) {
       // Email reminder — only if customer has an email on file
       const customerEmail = booking.customer?.email;
       if (customerEmail) {
-        const emailData: BookingEmailData = { ...notifData, notes: booking.notes };
+        const emailData: BookingEmailData = {
+          ...notifData,
+          notes:      booking.notes,
+          bookingUrl,
+        };
         await sendBookingReminderToCustomer(customerEmail, emailData);
       }
 

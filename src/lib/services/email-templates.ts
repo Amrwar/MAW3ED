@@ -145,6 +145,15 @@ export function customerReminderHtml(d: BookingEmailData): string {
       </p>
     </div>
 
+    ${d.bookingUrl ? `
+    <!-- Booking management link -->
+    <div style="margin-bottom:24px;">
+      <a href="${d.bookingUrl}"
+         style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;">
+        عرض الحجز أو إلغائه ←
+      </a>
+    </div>` : ""}
+
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
 
     <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#6366f1;">موعد</strong> 🙏</p>
