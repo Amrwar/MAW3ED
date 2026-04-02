@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
+import { timeToMinutes, overlaps } from "@/lib/bookings/overlap";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -66,34 +67,27 @@ export async function GET(req: Request, { params }: Params) {
       },
     });
 
-    // Convert each booking to a [startMin, endMin) range
+    // Convert each booking to a [startMin, endMin) range (legacy fallback for missing endTime)
     const bookedRanges = booked.map((b) => {
-      const [sh, sm] = b.startTime.split(":").map(Number);
-      const startMin = sh * 60 + sm;
-      let endMin: number;
-      if (b.endTime) {
-        const [eh, em] = b.endTime.split(":").map(Number);
-        endMin = eh * 60 + em;
-      } else {
-        endMin = startMin + b.service.duration;
-      }
+      const startMin = timeToMinutes(b.startTime);
+      const endMin   = b.endTime
+        ? timeToMinutes(b.endTime)
+        : startMin + b.service.duration;
       return { startMin, endMin };
     });
 
     // Filter out slots that overlap any booked range; also filter past times for today
-    const isToday = dateUTC.getTime() === todayUTC.getTime();
-    const nowEgypt    = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Cairo" }));
-    const nowMinutes  = nowEgypt.getHours() * 60 + nowEgypt.getMinutes();
-    const BUFFER_MINS = 30; // don't show slots starting within the next 30 min
+    const isToday       = dateUTC.getTime() === todayUTC.getTime();
+    const nowEgypt      = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Cairo" }));
+    const nowMinutes    = nowEgypt.getHours() * 60 + nowEgypt.getMinutes();
+    const BUFFER_MINS   = 30;
     const serviceDuration = service.duration;
 
     const available = allSlots.filter((slot) => {
-      const [h, m] = slot.split(":").map(Number);
-      const slotStart = h * 60 + m;
+      const slotStart = timeToMinutes(slot);
       const slotEnd   = slotStart + serviceDuration;
 
-      // Overlaps if: slotStart < bookedEnd AND slotEnd > bookedStart
-      if (bookedRanges.some(({ startMin, endMin }) => slotStart < endMin && slotEnd > startMin)) {
+      if (bookedRanges.some(({ startMin, endMin }) => overlaps(slotStart, slotEnd, startMin, endMin))) {
         return false;
       }
 

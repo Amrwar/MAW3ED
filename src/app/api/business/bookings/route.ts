@@ -2,6 +2,7 @@ import { type Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { hasBookingConflict, timeToMinutes, minutesToTime } from "@/lib/bookings/overlap";
 import { sendNewBookingAlertToBusiness, type BookingEmailData } from "@/lib/services/email";
 
 /**
@@ -124,21 +125,15 @@ export async function POST(req: Request) {
     const [y, m, d] = date.split("-").map(Number);
     const dateUTC   = new Date(Date.UTC(y, m - 1, d));
 
-    // Calculate end time
-    const [h, min]  = startTime.split(":").map(Number);
-    const endMins   = h * 60 + min + service.duration;
-    const endTime   = `${String(Math.floor(endMins / 60)).padStart(2, "0")}:${String(endMins % 60).padStart(2, "0")}`;
+    // Calculate candidate time range
+    const candidateStart = timeToMinutes(startTime);
+    const candidateEnd   = candidateStart + service.duration;
+    const endTime        = minutesToTime(candidateEnd);
 
-    // Conflict check
-    const conflict = await db.booking.findFirst({
-      where: {
-        businessId: business.id,
-        date:       dateUTC,
-        startTime,
-        status:     { in: ["PENDING", "CONFIRMED"] },
-      },
-    });
-    if (conflict) return err("هذا الموعد محجوز بالفعل، اختر وقتًا آخر", 409);
+    // Range-overlap conflict check (same rule as the public booking flow)
+    if (await hasBookingConflict(business.id, dateUTC, candidateStart, candidateEnd)) {
+      return err("هذا الموعد يتعارض مع حجز موجود، اختر وقتًا آخر", 409);
+    }
 
     // Upsert customer
     const customer = await db.customer.upsert({

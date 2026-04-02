@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import { bookingPageUrl } from "@/lib/url";
+import { hasBookingConflict, timeToMinutes, minutesToTime } from "@/lib/bookings/overlap";
 import {
   sendBusinessBookingTemplate,
   sendCustomerConfirmationTemplate,
@@ -48,40 +49,15 @@ export async function POST(req: Request, { params }: Params) {
     const [year, month, day] = date.split("-").map(Number);
     const dateUTC = new Date(Date.UTC(year, month - 1, day));
 
-    // ── Calculate new booking's time range ────────────────────────────────────
-    const [sh, sm] = startTime.split(":").map(Number);
-    const newStart = sh * 60 + sm;
-    const newEnd   = newStart + service.duration;
+    // ── Calculate candidate time range ────────────────────────────────────────
+    const candidateStart = timeToMinutes(startTime);
+    const candidateEnd   = candidateStart + service.duration;
+    const endTime        = minutesToTime(candidateEnd);
 
-    // ── Overlap conflict check ────────────────────────────────────────────────
-    // Reject if any existing PENDING/CONFIRMED booking overlaps [newStart, newEnd)
-    const existingBookings = await db.booking.findMany({
-      where: {
-        businessId: business.id,
-        date:       dateUTC,
-        status:     { in: ["PENDING", "CONFIRMED"] },
-      },
-      select: {
-        startTime: true,
-        endTime:   true,
-        service:   { select: { duration: true } },
-      },
-    });
-
-    const hasConflict = existingBookings.some((b) => {
-      const [bsh, bsm] = b.startTime.split(":").map(Number);
-      const bStart = bsh * 60 + bsm;
-      const bEnd   = b.endTime
-        ? (() => { const [beh, bem] = b.endTime!.split(":").map(Number); return beh * 60 + bem; })()
-        : bStart + b.service.duration;
-      return newStart < bEnd && newEnd > bStart;
-    });
-
-    if (hasConflict) return err("هذا الموعد محجوز بالفعل، اختر وقتًا آخر", 409);
-    const endTime = [
-      Math.floor(newEnd / 60).toString().padStart(2, "0"),
-      (newEnd % 60).toString().padStart(2, "0"),
-    ].join(":");
+    // ── Overlap conflict check ─────────────────────────────────────────────────
+    if (await hasBookingConflict(business.id, dateUTC, candidateStart, candidateEnd)) {
+      return err("هذا الموعد محجوز بالفعل، اختر وقتًا آخر", 409);
+    }
 
     // ── Upsert customer ────────────────────────────────────────────────────────
     const customer = await db.customer.upsert({
