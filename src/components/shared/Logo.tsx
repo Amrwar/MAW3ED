@@ -11,9 +11,9 @@ interface LogoProps {
 }
 
 const sizeMap = {
-  sm: { width: 80,  height: 40  },
-  md: { width: 110, height: 55  },
-  lg: { width: 140, height: 70  },
+  sm: { width: 130, height: 56  },
+  md: { width: 170, height: 72  },
+  lg: { width: 220, height: 94  },
 };
 
 export default function Logo({
