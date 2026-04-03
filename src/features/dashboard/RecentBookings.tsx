@@ -20,23 +20,23 @@ interface RecentBookingsProps {
 }
 
 const statusConfig: Record<BookingStatus, { label: string; icon: typeof CheckCircle; className: string }> = {
-  CONFIRMED: { label: "\u0645\u0624\u0643\u062f",         icon: CheckCircle, className: "bg-green-50 text-green-600" },
-  PENDING:   { label: "\u0641\u064a \u0627\u0644\u0627\u0646\u062a\u0638\u0627\u0631", icon: Clock,        className: "bg-amber-50 text-amber-600" },
-  COMPLETED: { label: "\u0645\u0643\u062a\u0645\u0644",         icon: CheckCircle, className: "bg-blue-50 text-blue-600"  },
-  CANCELLED: { label: "\u0645\u0644\u063a\u064a",          icon: XCircle,     className: "bg-red-50 text-red-500"    },
-  NO_SHOW:   { label: "\u0644\u0645 \u064a\u062d\u0636\u0631",    icon: AlertCircle, className: "bg-gray-100 text-gray-500" },
+  CONFIRMED: { label: "مؤكد",         icon: CheckCircle, className: "bg-green-50 text-green-600" },
+  PENDING:   { label: "في الانتظار",  icon: Clock,        className: "bg-amber-50 text-amber-600" },
+  COMPLETED: { label: "مكتمل",        icon: CheckCircle, className: "bg-blue-50 text-blue-600"  },
+  CANCELLED: { label: "ملغي",         icon: XCircle,     className: "bg-red-50 text-red-500"    },
+  NO_SHOW:   { label: "لم يحضر",      icon: AlertCircle, className: "bg-gray-100 text-gray-500" },
 };
 
 const AR_MONTHS = [
-  "\u064a\u0646\u0627\u064a\u0631","\u0641\u0628\u0631\u0627\u064a\u0631","\u0645\u0627\u0631\u0633",
-  "\u0623\u0628\u0631\u064a\u0644","\u0645\u0627\u064a\u0648","\u064a\u0648\u0646\u064a\u0648",
-  "\u064a\u0648\u0644\u064a\u0648","\u0623\u063a\u0633\u0637\u0633","\u0633\u0628\u062a\u0645\u0628\u0631",
-  "\u0623\u0643\u062a\u0648\u0628\u0631","\u0646\u0648\u0641\u0645\u0628\u0631","\u062f\u064a\u0633\u0645\u0628\u0631",
+  "يناير", "فبراير", "مارس",
+  "أبريل", "مايو", "يونيو",
+  "يوليو", "أغسطس", "سبتمبر",
+  "أكتوبر", "نوفمبر", "ديسمبر",
 ];
 
 function formatBookingDate(date: Date, startTime: string): string {
   const d = new Date(date);
-  return `${d.getUTCDate()} ${AR_MONTHS[d.getUTCMonth()]}\u060c ${startTime}`;
+  return `${d.getUTCDate()} ${AR_MONTHS[d.getUTCMonth()]}، ${startTime}`;
 }
 
 export default function RecentBookings({ bookings }: RecentBookingsProps) {
@@ -44,15 +44,15 @@ export default function RecentBookings({ bookings }: RecentBookingsProps) {
     <div className="card p-0 overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
         <h3 className="font-bold text-[var(--color-text-primary)]">
-          \u0622\u062e\u0631 \u0627\u0644\u062d\u062c\u0648\u0632\u0627\u062a
+          آخر الحجوزات
         </h3>
-        <span className="text-xs text-[var(--color-text-muted)]">{bookings.length} \u062d\u062c\u0632</span>
+        <span className="text-xs text-[var(--color-text-muted)]">{bookings.length} حجز</span>
       </div>
 
       {bookings.length === 0 ? (
         <div className="px-5 py-12 text-center">
           <p className="text-sm text-[var(--color-text-muted)]">
-            \u0644\u0627 \u062a\u0648\u062c\u062f \u062d\u062c\u0648\u0632\u0627\u062a \u0628\u0639\u062f \u2014 \u0633\u062a\u0638\u0647\u0631 \u0647\u0646\u0627 \u0628\u0639\u062f \u0623\u0648\u0644 \u062d\u062c\u0632
+            لا توجد حجوزات بعد — ستظهر هنا بعد أول حجز
           </p>
         </div>
       ) : (
@@ -60,7 +60,7 @@ export default function RecentBookings({ bookings }: RecentBookingsProps) {
           <table className="w-full min-w-[580px]">
             <thead>
               <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                {["\u0627\u0644\u0639\u0645\u064a\u0644", "\u0627\u0644\u062e\u062f\u0645\u0629", "\u0627\u0644\u0645\u0648\u0639\u062f", "\u0627\u0644\u0633\u0639\u0631", "\u0627\u0644\u062d\u0627\u0644\u0629"].map((h) => (
+                {["العميل", "الخدمة", "الموعد", "السعر", "الحالة"].map((h) => (
                   <th
                     key={h}
                     className="text-start px-5 py-3 text-xs font-semibold text-[var(--color-text-muted)]"
