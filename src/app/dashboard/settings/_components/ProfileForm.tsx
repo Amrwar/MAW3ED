@@ -66,7 +66,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
       if (!res.ok) { setError(data.error || "حدث خطأ أثناء الحفظ"); return; }
 
       setSuccess(true);
-      onSaved(form);
+      onSaved({ ...form, coverImage: coverImage, logoImage: logoImage });
       setTimeout(() => setSuccess(false), 3000);
     } catch {
       setError("حدث خطأ في الاتصال");
