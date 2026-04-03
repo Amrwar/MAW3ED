@@ -41,9 +41,19 @@ export default function CompanyHero({ business }: CompanyHeroProps) {
           <div className="flex flex-col md:flex-row md:items-end gap-5">
             {/* Logo / Avatar */}
             <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white border-2 border-white shadow-lg overflow-hidden shrink-0 flex items-center justify-center">
-              <div className="w-full h-full bg-[var(--color-surface-2)] flex items-center justify-center text-3xl font-black text-[var(--color-brand)]">
-                {business.nameAr[0]}
-              </div>
+              {business.logoImage ? (
+                <Image
+                  src={business.logoImage}
+                  alt={business.nameAr}
+                  width={96}
+                  height={96}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-[var(--color-surface-2)] flex items-center justify-center text-3xl font-black text-[var(--color-brand)]">
+                  {business.nameAr[0]}
+                </div>
+              )}
             </div>
 
             {/* Info */}
