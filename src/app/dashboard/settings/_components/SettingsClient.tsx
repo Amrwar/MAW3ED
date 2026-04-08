@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { User, Clock, Eye, CreditCard, Zap } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import ProfileForm from "./ProfileForm";
 import AvailabilityForm from "./AvailabilityForm";
 import PublicPagePreview from "./PublicPagePreview";
@@ -54,15 +55,10 @@ type Props = {
   daysUntilExpiry:    number | null;
 };
 
-const TABS = [
-  { id: "profile",      label: "الملف التجاري",  Icon: User       },
-  { id: "availability", label: "أوقات العمل",    Icon: Clock      },
-  { id: "payments",     label: "المدفوعات",       Icon: CreditCard },
-  { id: "subscription", label: "الاشتراك",        Icon: Zap        },
-  { id: "preview",      label: "معاينة الصفحة",  Icon: Eye        },
-] as const;
+const TAB_IDS = ["profile", "availability", "payments", "subscription", "preview"] as const;
+const TAB_ICONS = [User, Clock, CreditCard, Zap, Eye];
 
-type Tab = typeof TABS[number]["id"];
+type Tab = typeof TAB_IDS[number];
 
 export default function SettingsClient({
   profile,
@@ -80,14 +76,22 @@ export default function SettingsClient({
 }: Props) {
   const [tab,            setTab]            = useState<Tab>("profile");
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
+  const { t } = useLanguage();
+  const st = t.dashboard.settings;
+
+  const TABS = TAB_IDS.map((id, i) => ({
+    id,
+    label: st.tabs[id as keyof typeof st.tabs],
+    Icon:  TAB_ICONS[i],
+  }));
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-[var(--color-text-primary)]">الإعدادات</h1>
+        <h1 className="text-2xl font-black text-[var(--color-text-primary)]">{st.title}</h1>
         <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-          إدارة بيانات عملك وأوقات العمل
+          {st.subtitle}
         </p>
       </div>
 

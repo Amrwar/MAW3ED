@@ -1,67 +1,74 @@
+"use client";
+
 import { TrendingUp, TrendingDown, Calendar, Users, Clock, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export type DashboardStats = {
   bookingsThisMonth: number;
   bookingsLastMonth: number;
   totalCustomers:    number;
-  newCustomers:      number;   // this month
+  newCustomers:      number;
   pendingBookings:   number;
   revenueThisMonth:  number;
   revenueLastMonth:  number;
   currency:          string;
 };
 
-function pctChange(curr: number, prev: number): { label: string; up: boolean } {
-  if (prev === 0 && curr === 0) return { label: "٠٪", up: true };
-  if (prev === 0) return { label: "+١٠٠٪", up: true };
+function pctChange(curr: number, prev: number, lang: string): { label: string; up: boolean } {
+  if (prev === 0 && curr === 0) return { label: lang === "ar" ? "٠٪" : "0%", up: true };
+  if (prev === 0)               return { label: "+100%", up: true };
   const pct = Math.round(((curr - prev) / prev) * 100);
   return {
-    label: `${pct >= 0 ? "+" : ""}${Math.abs(pct).toLocaleString("ar-EG")}٪`,
+    label: `${pct >= 0 ? "+" : ""}${Math.abs(pct).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}%`,
     up:    pct >= 0,
   };
 }
 
 export default function StatsCards({ stats }: { stats: DashboardStats }) {
-  const bookingChange = pctChange(stats.bookingsThisMonth, stats.bookingsLastMonth);
-  const revenueChange = pctChange(stats.revenueThisMonth,  stats.revenueLastMonth);
+  const { t, lang } = useLanguage();
+  const sc = t.dashboard.statsCards;
+
+  const bookingChange = pctChange(stats.bookingsThisMonth, stats.bookingsLastMonth, lang);
+  const revenueChange = pctChange(stats.revenueThisMonth,  stats.revenueLastMonth,  lang);
+  const locale        = lang === "ar" ? "ar-EG" : "en-US";
 
   const cards = [
     {
-      label:  "حجوزات هذا الشهر",
-      value:  stats.bookingsThisMonth.toLocaleString("ar-EG"),
+      label:  sc.bookingsThisMonth,
+      value:  stats.bookingsThisMonth.toLocaleString(locale),
       change: bookingChange.label,
       up:     bookingChange.up,
-      period: "مقارنة بالشهر الماضي",
+      period: sc.vsLastMonth,
       icon:   Calendar,
       color:  "blue",
     },
     {
-      label:  "حجوزات معلقة",
-      value:  stats.pendingBookings.toLocaleString("ar-EG"),
+      label:  sc.pendingBookings,
+      value:  stats.pendingBookings.toLocaleString(locale),
       change: null,
       up:     true,
-      period: "تنتظر تأكيدك الآن",
+      period: sc.pendingWaiting,
       icon:   Clock,
       color:  stats.pendingBookings > 0 ? "amber" : "green",
     },
     {
-      label:  "إجمالي العملاء",
-      value:  stats.totalCustomers.toLocaleString("ar-EG"),
+      label:  sc.totalCustomers,
+      value:  stats.totalCustomers.toLocaleString(locale),
       change: stats.newCustomers > 0
-        ? `+${stats.newCustomers.toLocaleString("ar-EG")} هذا الشهر`
+        ? `+${stats.newCustomers.toLocaleString(locale)} ${sc.thisMonth}`
         : null,
       up:     true,
-      period: "عملاء مسجلون",
+      period: sc.registeredCustomers,
       icon:   Users,
       color:  "green",
     },
     {
-      label:  "إيرادات الشهر",
-      value:  stats.revenueThisMonth.toLocaleString("ar-EG"),
+      label:  sc.monthlyRevenue,
+      value:  stats.revenueThisMonth.toLocaleString(locale),
       change: revenueChange.label,
       up:     revenueChange.up,
-      period: "مقارنة بالشهر الماضي",
+      period: sc.vsLastMonth,
       icon:   DollarSign,
       color:  "purple",
       suffix: stats.currency,

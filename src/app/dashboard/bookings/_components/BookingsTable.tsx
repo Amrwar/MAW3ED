@@ -7,9 +7,9 @@ import {
   type DashboardBooking,
   type DashboardBookingStatus,
   ALLOWED_TRANSITIONS,
-  ACTION_LABELS,
   formatDateAr,
 } from "@/features/dashboard/bookings/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface BookingsTableProps {
   bookings:        DashboardBooking[];
@@ -33,6 +33,10 @@ export default function BookingsTable({
   onPageChange,
 }: BookingsTableProps) {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const { t, lang } = useLanguage();
+  const bk = t.dashboard.bookings;
+  const ba = t.dashboard.bookingActions;
+  const locale = lang === "ar" ? "ar-EG" : "en-US";
 
   async function handleQuickAction(
     e: React.MouseEvent,
@@ -53,7 +57,7 @@ export default function BookingsTable({
     <div className="card p-0 overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
-        <h3 className="font-bold text-[var(--color-text-primary)]">جميع الحجوزات</h3>
+        <h3 className="font-bold text-[var(--color-text-primary)]">{bk.allBookings}</h3>
         {loading && <Loader2 size={16} className="animate-spin text-[var(--color-brand)]" />}
       </div>
 
@@ -62,7 +66,7 @@ export default function BookingsTable({
         <table className="w-full min-w-[760px]">
           <thead>
             <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-2)]">
-              {["العميل", "الخدمة", "التاريخ", "الوقت", "الحالة", "السعر", ""].map((h) => (
+              {[bk.columns.customer, bk.columns.service, bk.columns.date, bk.columns.time, bk.columns.status, bk.columns.price, ""].map((h) => (
                 <th
                   key={h}
                   className="text-start px-4 py-3 text-xs font-semibold text-[var(--color-text-muted)]"
@@ -90,7 +94,7 @@ export default function BookingsTable({
               <tr>
                 <td colSpan={7} className="px-5 py-16 text-center">
                   <p className="text-sm text-[var(--color-text-muted)]">
-                    لا توجد حجوزات تطابق البحث
+                    {bk.noResults}
                   </p>
                 </td>
               </tr>
@@ -125,7 +129,7 @@ export default function BookingsTable({
                     <td className="px-4 py-3.5">
                       <p className="text-sm text-[var(--color-text-secondary)]">{b.serviceName}</p>
                       <p className="text-xs text-[var(--color-text-muted)]">
-                        {b.serviceDuration} دقيقة
+                        {b.serviceDuration} {bk.minutes}
                       </p>
                     </td>
 
@@ -151,14 +155,14 @@ export default function BookingsTable({
                     {/* Price */}
                     <td className="px-4 py-3.5">
                       <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                        {b.totalPrice.toLocaleString("ar-EG")}{" "}
+                        {b.totalPrice.toLocaleString(locale)}{" "}
                         <span className="font-normal text-[var(--color-text-muted)]">
                           {b.currency}
                         </span>
                       </p>
                       {b.depositAmount !== null && (
                         <p className="text-xs text-orange-600 mt-0.5">
-                          عربون: {b.depositAmount.toLocaleString("ar-EG")}
+                          {bk.deposit} {b.depositAmount?.toLocaleString(locale)}
                         </p>
                       )}
                     </td>
@@ -182,10 +186,10 @@ export default function BookingsTable({
                           {isActionLoading ? (
                             <Loader2 size={12} className="animate-spin" />
                           ) : null}
-                          {ACTION_LABELS[primaryAction]}
+                          {(ba as Record<string, string>)[primaryAction] ?? primaryAction}
                         </button>
                       ) : (
-                        <span className="text-xs text-[var(--color-text-muted)]">تفاصيل</span>
+                        <span className="text-xs text-[var(--color-text-muted)]">{bk.details}</span>
                       )}
                     </td>
                   </tr>
@@ -200,7 +204,7 @@ export default function BookingsTable({
       {totalPages > 1 && (
         <div className="px-5 py-3.5 border-t border-[var(--color-border)] flex items-center justify-between">
           <p className="text-xs text-[var(--color-text-muted)]">
-            صفحة {page} من {totalPages}
+            {bk.page} {page} {bk.of} {totalPages}
           </p>
           <div className="flex items-center gap-1">
             <button

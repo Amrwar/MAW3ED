@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Clock, ToggleLeft, ToggleRight } from "lucide-react";
 import ServicePanel from "./ServicePanel";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export type Service = {
   id:            string;
@@ -24,6 +25,8 @@ export default function ServicesClient({ initialServices }: Props) {
   const [editing, setEditing]     = useState<Service | null>(null);
   const [deletingId, setDeletingId]   = useState<string | null>(null);
   const [togglingId, setTogglingId]   = useState<string | null>(null);
+  const { t, lang } = useLanguage();
+  const sv = t.dashboard.services;
 
   function openAdd() {
     setEditing(null);
@@ -54,7 +57,7 @@ export default function ServicesClient({ initialServices }: Props) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("هل أنت متأكد من حذف هذه الخدمة؟ لا يمكن التراجع عن هذا الإجراء.")) return;
+    if (!confirm(sv.deleteConfirm)) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/business/services/${id}`, { method: "DELETE" });
@@ -79,14 +82,14 @@ export default function ServicesClient({ initialServices }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-[var(--color-text-primary)]">الخدمات</h1>
+          <h1 className="text-2xl font-black text-[var(--color-text-primary)]">{sv.title}</h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-            {active} نشطة · {inactive} مخفية
+            {active} {sv.activeSuffix} · {inactive} {sv.hiddenSuffix}
           </p>
         </div>
         <button onClick={openAdd} className="btn btn-primary gap-2">
           <Plus size={16} />
-          إضافة خدمة
+          {sv.addBtn}
         </button>
       </div>
 
@@ -94,12 +97,12 @@ export default function ServicesClient({ initialServices }: Props) {
       {services.length === 0 && (
         <div className="card p-14 text-center space-y-3">
           <p className="text-4xl">📋</p>
-          <p className="font-semibold text-[var(--color-text-primary)]">لا توجد خدمات بعد</p>
+          <p className="font-semibold text-[var(--color-text-primary)]">{sv.emptyTitle}</p>
           <p className="text-sm text-[var(--color-text-muted)]">
-            أضف خدماتك حتى يتمكن العملاء من الحجز
+            {sv.emptySub}
           </p>
           <button onClick={openAdd} className="btn btn-primary mt-2">
-            أضف خدمتك الأولى
+            {sv.addFirst}
           </button>
         </div>
       )}
@@ -117,7 +120,7 @@ export default function ServicesClient({ initialServices }: Props) {
                 onClick={() => handleToggle(s)}
                 disabled={togglingId === s.id}
                 className="shrink-0 transition-opacity disabled:opacity-40"
-                title={s.isAvailable ? "إخفاء الخدمة" : "تفعيل الخدمة"}
+                title={s.isAvailable ? sv.hideService : sv.showService}
               >
                 {s.isAvailable
                   ? <ToggleRight size={28} className="text-[var(--color-accent)]" />
@@ -151,7 +154,7 @@ export default function ServicesClient({ initialServices }: Props) {
                 <div className="flex items-center gap-3 mt-1">
                   <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
                     <Clock size={11} />
-                    {s.duration} دقيقة
+                    {s.duration} {sv.minutes}
                   </span>
                   <span className="text-xs font-bold text-[var(--color-accent)]">
                     {s.price.toLocaleString("ar-EG")} {s.currency}
@@ -164,7 +167,7 @@ export default function ServicesClient({ initialServices }: Props) {
                 <button
                   onClick={() => openEdit(s)}
                   className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-3)] hover:text-[var(--color-text-primary)] transition-colors"
-                  title="تعديل"
+                  title={sv.edit}
                 >
                   <Pencil size={14} />
                 </button>
@@ -172,7 +175,7 @@ export default function ServicesClient({ initialServices }: Props) {
                   onClick={() => handleDelete(s.id)}
                   disabled={deletingId === s.id}
                   className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)] hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-40"
-                  title="حذف"
+                  title={sv.delete}
                 >
                   <Trash2 size={14} />
                 </button>

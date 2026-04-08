@@ -9,6 +9,7 @@ import Logo from "@/components/shared/Logo";
 import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
 import type { RealtimeBookingEvent } from "@/hooks/useRealtimeBookings";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -30,35 +31,31 @@ interface ToastItem {
   body:    string;
 }
 
-// ── Config ────────────────────────────────────────────────────────────────────
+// ── Static visual config (no labels — labels come from translations) ────────
 
-const VARIANT_CONFIG: Record<
+const VARIANT_VISUAL: Record<
   NotifVariant,
-  { Icon: React.ElementType; iconClass: string; toastClass: string; label: string }
+  { Icon: React.ElementType; iconClass: string; toastClass: string }
 > = {
   new: {
     Icon:       CalendarPlus,
     iconClass:  "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
     toastClass: "border-[var(--color-accent)] bg-white",
-    label:      "حجز جديد",
   },
   confirmed: {
     Icon:       CheckCircle2,
     iconClass:  "bg-green-50 text-green-600",
     toastClass: "border-green-200 bg-white",
-    label:      "تم التأكيد",
   },
   cancelled: {
     Icon:       Ban,
     iconClass:  "bg-red-50 text-red-500",
     toastClass: "border-red-200 bg-white",
-    label:      "تم الإلغاء",
   },
   updated: {
     Icon:       RefreshCw,
     iconClass:  "bg-blue-50 text-blue-500",
     toastClass: "border-blue-100 bg-white",
-    label:      "تحديث",
   },
 };
 
@@ -68,18 +65,21 @@ function variantFromStatus(status: string): NotifVariant {
   return "updated";
 }
 
-// ── Time-ago (Arabic) ─────────────────────────────────────────────────────────
+// ── Time-ago ──────────────────────────────────────────────────────────────────
 
-function timeAgo(date: Date): string {
+function timeAgo(
+  date: Date,
+  units: { now: string; seconds: string; minutes: string; hours: string; days: string },
+): string {
   const s = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (s < 10)    return "الآن";
-  if (s < 60)    return `${s} ث`;
-  if (s < 3600)  return `${Math.floor(s / 60)} د`;
-  if (s < 86400) return `${Math.floor(s / 3600)} س`;
-  return `${Math.floor(s / 86400)} ي`;
+  if (s < 10)    return units.now;
+  if (s < 60)    return `${s}${units.seconds}`;
+  if (s < 3600)  return `${Math.floor(s / 60)}${units.minutes}`;
+  if (s < 86400) return `${Math.floor(s / 3600)}${units.hours}`;
+  return `${Math.floor(s / 86400)}${units.days}`;
 }
 
-// ── Sound (AudioContext created on first user interaction) ────────────────────
+// ── Sound ─────────────────────────────────────────────────────────────────────
 
 function makeChime(ctx: AudioContext) {
   const osc  = ctx.createOscillator();
@@ -98,6 +98,9 @@ function makeChime(ctx: AudioContext) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function DashboardHeader({ businessName }: { businessName: string }) {
+  const { t } = useLanguage();
+  const h     = t.dashboard.header;
+
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [toasts,        setToasts]        = useState<ToastItem[]>([]);
   const [notifOpen,     setNotifOpen]     = useState(false);
@@ -107,7 +110,6 @@ export default function DashboardHeader({ businessName }: { businessName: string
   const audioCtxRef  = useRef<AudioContext | null>(null);
   const unreadCount  = notifications.filter((n) => !n.read).length;
 
-  // ── Close dropdown on outside click ──────────────────────
   useEffect(() => {
     if (!notifOpen) return;
     function onOutside(e: MouseEvent) {
@@ -119,17 +121,15 @@ export default function DashboardHeader({ businessName }: { businessName: string
     return () => document.removeEventListener("mousedown", onOutside);
   }, [notifOpen]);
 
-  // ── Mark all read when dropdown is opened ─────────────────
   useEffect(() => {
     if (notifOpen) {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     }
   }, [notifOpen]);
 
-  // ── Toast helpers ─────────────────────────────────────────
   const pushToast = useCallback((toast: Omit<ToastItem, "id">) => {
     const id = crypto.randomUUID();
-    setToasts((prev) => [...prev.slice(-3), { id, ...toast }]); // max 4 on screen
+    setToasts((prev) => [...prev.slice(-3), { id, ...toast }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4500);
   }, []);
 
@@ -137,15 +137,13 @@ export default function DashboardHeader({ businessName }: { businessName: string
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // ── Notification-center helper ────────────────────────────
   const pushNotification = useCallback((item: Omit<NotificationItem, "id" | "timestamp" | "read">) => {
     setNotifications((prev) => [
       { id: crypto.randomUUID(), timestamp: new Date(), read: false, ...item },
-      ...prev.slice(0, 29), // cap at 30
+      ...prev.slice(0, 29),
     ]);
   }, []);
 
-  // ── Browser notification ──────────────────────────────────
   const browserNotify = useCallback((title: string, body: string) => {
     if (typeof Notification === "undefined") return;
     if (Notification.permission === "granted") {
@@ -157,7 +155,6 @@ export default function DashboardHeader({ businessName }: { businessName: string
     }
   }, []);
 
-  // ── Sound toggle (AudioContext created on click = user gesture) ────────────
   function handleSoundToggle() {
     if (!soundEnabled && !audioCtxRef.current) {
       try { audioCtxRef.current = new AudioContext(); } catch { /* unsupported */ }
@@ -165,13 +162,12 @@ export default function DashboardHeader({ businessName }: { businessName: string
     setSoundEnabled((v) => !v);
   }
 
-  // ── Realtime event handler ────────────────────────────────
   useRealtimeBookings(useCallback((event: RealtimeBookingEvent) => {
     if (event.type === "BOOKING_CREATED") {
       const { customerName, status } = event.booking;
       const isManual  = status === "CONFIRMED";
       const variant: NotifVariant = isManual ? "confirmed" : "new";
-      const title     = isManual ? "حجز يدوي جديد" : "حجز جديد";
+      const title     = isManual ? h.variant.confirmed : h.variant.new;
 
       pushNotification({ variant, title, body: customerName });
       pushToast({ variant, title, body: customerName });
@@ -184,50 +180,44 @@ export default function DashboardHeader({ businessName }: { businessName: string
       }
     } else {
       const { status, customerName } = event;
-      // Skip low-priority terminal states
       if (status === "COMPLETED" || status === "NO_SHOW" || status === "PENDING") return;
 
-      const variant = variantFromStatus(status);
-      const labels: Record<string, string> = {
-        CONFIRMED: "تم تأكيد الحجز",
-        CANCELLED: "تم إلغاء الحجز",
+      const variant  = variantFromStatus(status);
+      const titleMap: Record<string, string> = {
+        CONFIRMED: h.variant.confirmed,
+        CANCELLED: h.variant.cancelled,
       };
-      const title = labels[status] ?? "تحديث الحجز";
+      const title = titleMap[status] ?? h.variant.updated;
 
       pushNotification({ variant, title, body: customerName });
       pushToast({ variant, title, body: customerName });
 
       if (status === "CANCELLED") {
-        browserNotify("موعد · إلغاء حجز", customerName);
+        browserNotify(`موعد · ${h.variant.cancelled}`, customerName);
       }
     }
-  }, [pushNotification, pushToast, browserNotify, soundEnabled]));
+  }, [pushNotification, pushToast, browserNotify, soundEnabled, h.variant]));
 
-  // ─────────────────────────────────────────────────────────
   return (
     <>
-      {/* ── Top bar ──────────────────────────────────────── */}
       <header className="sticky top-0 z-30 bg-white border-b border-[var(--color-border)] h-16 flex items-center px-5 gap-4">
-        {/* Mobile logo */}
         <div className="md:hidden">
           <Logo size="sm" />
         </div>
 
-        {/* Search */}
         <div className="flex-1 max-w-sm hidden md:flex items-center gap-2 bg-[var(--color-surface-2)] rounded-xl px-3 py-2">
           <Search size={15} className="text-[var(--color-text-muted)]" />
           <input
             type="text"
-            placeholder="ابحث عن حجز أو عميل..."
+            placeholder={h.searchPlaceholder}
             className="bg-transparent text-sm outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] w-full"
           />
         </div>
 
         <div className="ms-auto flex items-center gap-2">
-          {/* Sound toggle */}
           <button
             onClick={handleSoundToggle}
-            title={soundEnabled ? "إيقاف صوت التنبيهات" : "تشغيل صوت التنبيهات"}
+            title={soundEnabled ? h.disableSound : h.enableSound}
             className="hidden sm:flex w-9 h-9 rounded-xl bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] items-center justify-center transition-colors"
           >
             {soundEnabled
@@ -236,7 +226,6 @@ export default function DashboardHeader({ businessName }: { businessName: string
             }
           </button>
 
-          {/* Notification bell + dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setNotifOpen((v) => !v)}
@@ -260,22 +249,21 @@ export default function DashboardHeader({ businessName }: { businessName: string
               <NotificationDropdown
                 notifications={notifications}
                 onClear={() => setNotifications([])}
+                title={h.notifications}
+                clearLabel={h.clearAll}
+                emptyLabel={h.noNotifications}
+                timeAgoUnits={h.timeAgo}
               />
             )}
           </div>
 
-          {/* Business avatar */}
           <div className="w-9 h-9 rounded-full bg-[var(--color-accent-light)] flex items-center justify-center text-sm font-bold text-[var(--color-accent)] cursor-pointer select-none">
             {businessName[0]}
           </div>
         </div>
       </header>
 
-      {/* ── Toast stack — fixed, bottom-left (away from sidebar) */}
-      <div
-        className="fixed bottom-6 left-6 z-50 flex flex-col gap-2.5 pointer-events-none"
-        dir="rtl"
-      >
+      <div className="fixed bottom-6 left-6 z-50 flex flex-col gap-2.5 pointer-events-none" dir="rtl">
         {toasts.map((t) => (
           <Toast key={t.id} toast={t} onDismiss={dismissToast} />
         ))}
@@ -293,7 +281,7 @@ function Toast({
   toast: ToastItem;
   onDismiss: (id: string) => void;
 }) {
-  const { Icon, iconClass, toastClass } = VARIANT_CONFIG[toast.variant];
+  const { Icon, iconClass, toastClass } = VARIANT_VISUAL[toast.variant];
 
   return (
     <div
@@ -334,11 +322,18 @@ function Toast({
 function NotificationDropdown({
   notifications,
   onClear,
+  title,
+  clearLabel,
+  emptyLabel,
+  timeAgoUnits,
 }: {
   notifications: NotificationItem[];
   onClear: () => void;
+  title: string;
+  clearLabel: string;
+  emptyLabel: string;
+  timeAgoUnits: { now: string; seconds: string; minutes: string; hours: string; days: string };
 }) {
-  // Force re-render every 30 s so relative timestamps stay fresh
   const [, tick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 30_000);
@@ -350,29 +345,27 @@ function NotificationDropdown({
       className="animate-dropdown-in absolute top-full mt-2 end-0 w-80 bg-white border border-[var(--color-border)] rounded-2xl shadow-xl overflow-hidden z-50"
       dir="rtl"
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
-        <p className="text-sm font-bold text-[var(--color-text-primary)]">الإشعارات</p>
+        <p className="text-sm font-bold text-[var(--color-text-primary)]">{title}</p>
         {notifications.length > 0 && (
           <button
             onClick={onClear}
             className="text-xs text-[var(--color-text-muted)] hover:text-red-500 transition-colors"
           >
-            مسح الكل
+            {clearLabel}
           </button>
         )}
       </div>
 
-      {/* Items */}
       <div className="max-h-[22rem] overflow-y-auto overscroll-contain">
         {notifications.length === 0 ? (
           <div className="py-12 text-center">
             <Bell size={28} className="mx-auto mb-2 text-[var(--color-text-muted)] opacity-30" />
-            <p className="text-sm text-[var(--color-text-muted)]">لا توجد إشعارات</p>
+            <p className="text-sm text-[var(--color-text-muted)]">{emptyLabel}</p>
           </div>
         ) : (
           notifications.map((n) => {
-            const { Icon, iconClass } = VARIANT_CONFIG[n.variant];
+            const { Icon, iconClass } = VARIANT_VISUAL[n.variant];
             return (
               <div
                 key={n.id}
@@ -395,7 +388,7 @@ function NotificationDropdown({
                     </p>
                   )}
                   <p className="text-[11px] text-[var(--color-text-muted)] mt-1">
-                    {timeAgo(n.timestamp)}
+                    {timeAgo(n.timestamp, timeAgoUnits)}
                   </p>
                 </div>
 

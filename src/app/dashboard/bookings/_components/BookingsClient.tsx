@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { CalendarDays, Plus } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import BookingFilters from "./BookingFilters";
 import TodaySchedule from "./TodaySchedule";
 import BookingsTable from "./BookingsTable";
@@ -29,6 +30,8 @@ export default function BookingsClient({
   slug,
   totalBookings,
 }: BookingsClientProps) {
+  const { t, lang } = useLanguage();
+  const b = t.dashboard.bookings;
   // ── Bookings data ──────────────────────────────────────────
   const [bookings,        setBookings]        = useState<DashboardBooking[]>([]);
   const [total,           setTotal]           = useState(totalBookings);
@@ -99,7 +102,7 @@ export default function BookingsClient({
       body:    JSON.stringify({ status }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "حدث خطأ");
+    if (!res.ok) throw new Error(data.error ?? t.dashboard.bookingActions.error);
 
     const update = (b: DashboardBooking) =>
       b.id === id ? { ...b, status } : b;
@@ -143,23 +146,23 @@ export default function BookingsClient({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-[var(--color-text-primary)]">
-            الحجوزات
+            {b.title}
           </h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-            {total.toLocaleString("ar-EG")} حجز
+            {total.toLocaleString(lang === "ar" ? "ar-EG" : "en-US")} {b.count}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden sm:flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
             <CalendarDays size={15} />
-            {new Date().toLocaleDateString("ar-EG", { weekday: "long", month: "long", day: "numeric" })}
+            {new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "long", month: "long", day: "numeric" })}
           </span>
           <button
             onClick={() => setNewBookingOpen(true)}
             className="btn btn-primary btn-sm gap-2"
           >
             <Plus size={15} />
-            موعد جديد
+            {b.newBtn}
           </button>
         </div>
       </div>

@@ -1,5 +1,8 @@
+"use client";
+
 import { CheckCircle, Clock, XCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "PENDING_PAYMENT" | "FAILED_PAYMENT";
 
@@ -19,42 +22,54 @@ interface RecentBookingsProps {
   bookings: RecentBooking[];
 }
 
-const statusConfig: Record<BookingStatus, { label: string; icon: typeof CheckCircle; className: string }> = {
-  CONFIRMED:       { label: "مؤكد",            icon: CheckCircle, className: "bg-green-50 text-green-600"   },
-  PENDING:         { label: "في الانتظار",     icon: Clock,       className: "bg-amber-50 text-amber-600"   },
-  COMPLETED:       { label: "مكتمل",           icon: CheckCircle, className: "bg-blue-50 text-blue-600"     },
-  CANCELLED:       { label: "ملغي",            icon: XCircle,     className: "bg-red-50 text-red-500"       },
-  NO_SHOW:         { label: "لم يحضر",         icon: AlertCircle, className: "bg-gray-100 text-gray-500"    },
-  PENDING_PAYMENT: { label: "في انتظار الدفع", icon: Clock,       className: "bg-orange-50 text-orange-600" },
-  FAILED_PAYMENT:  { label: "فشل الدفع",       icon: XCircle,     className: "bg-red-100 text-red-700"      },
+const STATUS_ICON: Record<BookingStatus, typeof CheckCircle> = {
+  CONFIRMED:       CheckCircle,
+  PENDING:         Clock,
+  COMPLETED:       CheckCircle,
+  CANCELLED:       XCircle,
+  NO_SHOW:         AlertCircle,
+  PENDING_PAYMENT: Clock,
+  FAILED_PAYMENT:  XCircle,
 };
 
-const AR_MONTHS = [
-  "يناير", "فبراير", "مارس",
-  "أبريل", "مايو", "يونيو",
-  "يوليو", "أغسطس", "سبتمبر",
-  "أكتوبر", "نوفمبر", "ديسمبر",
-];
+const STATUS_CLASS: Record<BookingStatus, string> = {
+  CONFIRMED:       "bg-green-50 text-green-600",
+  PENDING:         "bg-amber-50 text-amber-600",
+  COMPLETED:       "bg-blue-50 text-blue-600",
+  CANCELLED:       "bg-red-50 text-red-500",
+  NO_SHOW:         "bg-gray-100 text-gray-500",
+  PENDING_PAYMENT: "bg-orange-50 text-orange-600",
+  FAILED_PAYMENT:  "bg-red-100 text-red-700",
+};
 
-function formatBookingDate(date: Date, startTime: string): string {
-  const d = new Date(date);
-  return `${d.getUTCDate()} ${AR_MONTHS[d.getUTCMonth()]}، ${startTime}`;
-}
+const EN_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const AR_MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 
 export default function RecentBookings({ bookings }: RecentBookingsProps) {
+  const { t, lang } = useLanguage();
+  const rb      = t.dashboard.recentBookings;
+  const bs      = t.dashboard.bookingStatus;
+  const months  = lang === "ar" ? AR_MONTHS : EN_MONTHS;
+  const locale  = lang === "ar" ? "ar-EG" : "en-US";
+
+  function formatBookingDate(date: Date, startTime: string): string {
+    const d = new Date(date);
+    return `${d.getUTCDate()} ${months[d.getUTCMonth()]}، ${startTime}`;
+  }
+
   return (
     <div className="card p-0 overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
         <h3 className="font-bold text-[var(--color-text-primary)]">
-          آخر الحجوزات
+          {rb.title}
         </h3>
-        <span className="text-xs text-[var(--color-text-muted)]">{bookings.length} حجز</span>
+        <span className="text-xs text-[var(--color-text-muted)]">{bookings.length} {rb.count}</span>
       </div>
 
       {bookings.length === 0 ? (
         <div className="px-5 py-12 text-center">
           <p className="text-sm text-[var(--color-text-muted)]">
-            لا توجد حجوزات بعد — ستظهر هنا بعد أول حجز
+            {rb.empty}
           </p>
         </div>
       ) : (
@@ -62,7 +77,7 @@ export default function RecentBookings({ bookings }: RecentBookingsProps) {
           <table className="w-full min-w-[580px]">
             <thead>
               <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                {["العميل", "الخدمة", "الموعد", "السعر", "الحالة"].map((h) => (
+                {[rb.columns.customer, rb.columns.service, rb.columns.date, rb.columns.price, rb.columns.status].map((h) => (
                   <th
                     key={h}
                     className="text-start px-5 py-3 text-xs font-semibold text-[var(--color-text-muted)]"
@@ -74,8 +89,9 @@ export default function RecentBookings({ bookings }: RecentBookingsProps) {
             </thead>
             <tbody>
               {bookings.map((booking) => {
-                const status    = statusConfig[booking.status];
-                const StatusIcon = status.icon;
+                const StatusIcon  = STATUS_ICON[booking.status];
+                const statusClass = STATUS_CLASS[booking.status];
+                const statusLabel = (bs as Record<string, string>)[booking.status] ?? booking.status;
                 return (
                   <tr
                     key={booking.id}
@@ -99,18 +115,18 @@ export default function RecentBookings({ bookings }: RecentBookingsProps) {
                     </td>
                     <td className="px-5 py-4">
                       <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                        {booking.totalPrice.toLocaleString("ar-EG")} {booking.currency}
+                        {booking.totalPrice.toLocaleString(locale)} {booking.currency}
                       </p>
                     </td>
                     <td className="px-5 py-4">
                       <span
                         className={cn(
                           "inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full",
-                          status.className,
+                          statusClass,
                         )}
                       >
                         <StatusIcon size={11} />
-                        {status.label}
+                        {statusLabel}
                       </span>
                     </td>
                   </tr>

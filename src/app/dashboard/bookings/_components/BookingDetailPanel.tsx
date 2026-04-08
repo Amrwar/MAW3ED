@@ -7,10 +7,10 @@ import {
   type DashboardBooking,
   type DashboardBookingStatus,
   ALLOWED_TRANSITIONS,
-  ACTION_LABELS,
   ACTION_VARIANTS,
   formatDateAr,
 } from "@/features/dashboard/bookings/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface BookingDetailPanelProps {
   booking:        DashboardBooking;
@@ -26,6 +26,10 @@ export default function BookingDetailPanel({
   const [loading,       setLoading]       = useState(false);
   const [actionError,   setActionError]   = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const { t, lang }   = useLanguage();
+  const bd = t.dashboard.bookingDetail;
+  const ba = t.dashboard.bookingActions;
+  const locale = lang === "ar" ? "ar-EG" : "en-US";
 
   const allowedNext = ALLOWED_TRANSITIONS[booking.status] ?? [];
 
@@ -35,10 +39,11 @@ export default function BookingDetailPanel({
     setActionSuccess(null);
     try {
       await onStatusChange(booking.id, newStatus);
-      setActionSuccess(`تم تحديث الحالة إلى "${ACTION_LABELS[newStatus]}"`);
+      const label = (ba as Record<string, string>)[newStatus] ?? newStatus;
+      setActionSuccess(`${ba.updatedTo} "${label}"`);
     } catch (e: unknown) {
       setActionError(
-        e instanceof Error ? e.message : "حدث خطأ أثناء التحديث",
+        e instanceof Error ? e.message : ba.error,
       );
     } finally {
       setLoading(false);
@@ -59,7 +64,7 @@ export default function BookingDetailPanel({
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
           <div>
             <h2 className="font-bold text-base text-[var(--color-text-primary)]">
-              تفاصيل الحجز
+              {bd.title}
             </h2>
             <p className="text-xs text-[var(--color-text-muted)] mt-0.5" dir="ltr">
               #{booking.id.slice(-8).toUpperCase()}
@@ -77,31 +82,31 @@ export default function BookingDetailPanel({
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Current status */}
           <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--color-text-muted)]">الحالة الحالية</p>
+            <p className="text-sm text-[var(--color-text-muted)]">{bd.currentStatus}</p>
             <StatusBadge status={booking.status} />
           </div>
 
           {/* Customer info */}
-          <Section title="بيانات العميل">
-            <InfoRow label="الاسم"  value={booking.customerName} />
+          <Section title={bd.customer}>
+            <InfoRow label={bd.customer} value={booking.customerName} />
             <InfoRow
-              label="الهاتف"
+              label={bd.phone}
               value={booking.customerPhone}
               ltr
               icon={<Phone size={12} />}
             />
             {booking.customerNotes && (
-              <InfoRow label="ملاحظات العميل" value={booking.customerNotes} />
+              <InfoRow label={bd.customerNotes} value={booking.customerNotes} />
             )}
           </Section>
 
           {/* Booking info */}
-          <Section title="تفاصيل الحجز">
-            <InfoRow label="الخدمة"  value={booking.serviceName} />
-            <InfoRow label="المدة"   value={`${booking.serviceDuration} دقيقة`} />
-            <InfoRow label="التاريخ" value={formatDateAr(booking.date)} />
+          <Section title={bd.title}>
+            <InfoRow label={bd.service}  value={booking.serviceName} />
+            <InfoRow label={bd.duration} value={`${booking.serviceDuration} ${bd.minutes}`} />
+            <InfoRow label={bd.date}     value={formatDateAr(booking.date)} />
             <InfoRow
-              label="الوقت"
+              label={bd.time}
               value={
                 booking.endTime
                   ? `${booking.startTime} – ${booking.endTime}`
@@ -110,27 +115,21 @@ export default function BookingDetailPanel({
               ltr
             />
             <InfoRow
-              label="إجمالي السعر"
-              value={`${booking.totalPrice.toLocaleString("ar-EG")} ${booking.currency}`}
+              label={bd.price}
+              value={`${booking.totalPrice.toLocaleString(locale)} ${booking.currency}`}
               bold
             />
             {booking.depositAmount !== null && (
               <InfoRow
-                label="العربون المدفوع"
-                value={`${booking.depositAmount.toLocaleString("ar-EG")} ${booking.currency}`}
-              />
-            )}
-            {booking.depositAmount !== null && (
-              <InfoRow
-                label="المتبقي"
-                value={`${(booking.totalPrice - booking.depositAmount).toLocaleString("ar-EG")} ${booking.currency}`}
+                label={bd.deposit}
+                value={`${booking.depositAmount.toLocaleString(locale)} ${booking.currency}`}
               />
             )}
           </Section>
 
           {/* Notes */}
           {booking.notes && (
-            <Section title="ملاحظات العميل">
+            <Section title={bd.notes}>
               <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed bg-[var(--color-surface-2)] rounded-xl px-4 py-3">
                 {booking.notes}
               </p>
@@ -138,10 +137,10 @@ export default function BookingDetailPanel({
           )}
 
           {/* Booking meta */}
-          <Section title="معلومات إضافية">
+          <Section title={lang === "ar" ? "معلومات إضافية" : "Additional Info"}>
             <InfoRow
-              label="تاريخ الحجز"
-              value={new Date(booking.createdAt).toLocaleDateString("ar-EG", {
+              label={lang === "ar" ? "تاريخ الحجز" : "Booked On"}
+              value={new Date(booking.createdAt).toLocaleDateString(locale, {
                 year: "numeric", month: "long", day: "numeric",
               })}
             />
@@ -164,7 +163,7 @@ export default function BookingDetailPanel({
           {allowedNext.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-medium text-[var(--color-text-muted)]">
-                تحديث الحالة
+                {bd.actions}
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {allowedNext.map((nextStatus) => (
@@ -179,7 +178,7 @@ export default function BookingDetailPanel({
                     {loading ? (
                       <Loader2 size={14} className="animate-spin" />
                     ) : null}
-                    {ACTION_LABELS[nextStatus]}
+                    {(ba as Record<string, string>)[nextStatus] ?? nextStatus}
                   </button>
                 ))}
               </div>
@@ -187,7 +186,7 @@ export default function BookingDetailPanel({
           ) : (
             <div className="text-center py-2">
               <p className="text-xs text-[var(--color-text-muted)]">
-                الحجز في حالة نهائية — لا يمكن تغييرها
+                {lang === "ar" ? "الحجز في حالة نهائية — لا يمكن تغييرها" : "Booking is in a final state — no further changes"}
               </p>
             </div>
           )}

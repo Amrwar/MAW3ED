@@ -1,5 +1,8 @@
+"use client";
+
 import { CalendarPlus, Share2, Settings, BarChart3, Eye } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props {
   slug: string;
@@ -13,50 +16,27 @@ const colorMap: Record<string, { bg: string; icon: string }> = {
   gray:   { bg: "bg-gray-50",   icon: "text-gray-500"   },
 };
 
+const ACTION_ICONS = [CalendarPlus, Eye, BarChart3, Settings];
+const ACTION_COLORS = ["blue", "purple", "rose", "gray"];
+const ACTION_HREFS  = ["/dashboard/bookings", "", "/dashboard/analytics", "/dashboard/settings"];
+
 export default function QuickActions({ slug }: Props) {
-  const actions = [
-    {
-      icon:        CalendarPlus,
-      label:       "حجز يدوي",
-      description: "أضف حجزًا بنفسك",
-      href:        "/dashboard/bookings",
-      color:       "blue",
-    },
-    {
-      icon:        Eye,
-      label:       "صفحتك العامة",
-      description: "شوف كيف تبدو",
-      href:        `/company/${slug}`,
-      color:       "purple",
-    },
-    {
-      icon:        BarChart3,
-      label:       "الإحصائيات",
-      description: "تقارير وأداء العمل",
-      href:        "/dashboard/analytics",
-      color:       "rose",
-    },
-    {
-      icon:        Settings,
-      label:       "إعدادات العمل",
-      description: "أوقات العمل والخدمات",
-      href:        "/dashboard/settings",
-      color:       "gray",
-    },
-  ];
+  const { t }   = useLanguage();
+  const qa      = t.dashboard.quickActions;
 
   return (
     <div className="card p-5">
-      <h3 className="font-bold text-[var(--color-text-primary)] mb-4">إجراءات سريعة</h3>
+      <h3 className="font-bold text-[var(--color-text-primary)] mb-4">{qa.title}</h3>
       <div className="grid grid-cols-2 gap-3">
-        {actions.map((action) => {
-          const colors = colorMap[action.color];
-          const Icon   = action.icon;
+        {qa.actions.map((action, i) => {
+          const href   = i === 1 ? `/company/${slug}` : ACTION_HREFS[i];
+          const colors = colorMap[ACTION_COLORS[i]];
+          const Icon   = ACTION_ICONS[i];
 
           return (
             <Link
-              key={action.label}
-              href={action.href}
+              key={i}
+              href={href}
               className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--color-surface-2)] transition-colors border border-transparent hover:border-[var(--color-border)]"
             >
               <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${colors.bg}`}>
@@ -67,7 +47,7 @@ export default function QuickActions({ slug }: Props) {
                   {action.label}
                 </p>
                 <p className="text-[10px] text-[var(--color-text-muted)] truncate">
-                  {action.description}
+                  {action.desc}
                 </p>
               </div>
             </Link>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Copy, Check, Gift, Users, Trophy, Link2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Referral = {
   id:       string;
@@ -16,18 +17,19 @@ interface Props {
   referrals:    Referral[];
 }
 
-const AR_MONTHS = [
-  "يناير","فبراير","مارس","أبريل","مايو","يونيو",
-  "يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر",
-];
+const EN_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const AR_MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 
-function formatDate(iso: string) {
+function formatDate(iso: string, lang: string) {
   const d = new Date(iso);
-  return `${d.getDate()} ${AR_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  const months = lang === "ar" ? AR_MONTHS : EN_MONTHS;
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 export default function ReferralsClient({ referralCode, referralLink, referrals }: Props) {
   const [copied, setCopied] = useState(false);
+  const { t, lang } = useLanguage();
+  const rf = t.dashboard.referrals;
 
   const rewardedCount = referrals.filter((r) => r.rewarded).length;
   const totalCount    = referrals.length;
@@ -45,9 +47,9 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-[var(--color-text-primary)]">ادعُ واكسب</h1>
+        <h1 className="text-2xl font-black text-[var(--color-text-primary)]">{rf.title}</h1>
         <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-          ادعُ أصحاب الأعمال وكسب شهرًا مجانيًا لكل عميل يشترك
+          {rf.subtitle}
         </p>
       </div>
 
@@ -55,14 +57,10 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
       <div className="card p-6">
         <h2 className="font-bold text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
           <Gift size={16} className="text-[var(--color-accent)]" />
-          كيف يعمل؟
+          {rf.howItWorksTitle}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            { step: "١", title: "شارك رابطك",       desc: "أرسل رابط الإحالة لأي صاحب عمل" },
-            { step: "٢", title: "يسجّل ويكمل إعداده", desc: "يفتح حساب ويجهّز عمله على موعد"  },
-            { step: "٣", title: "تكسب شهرًا مجانيًا", desc: "بمجرد اشتراكه تحصل على 30 يومًا إضافية" },
-          ].map(({ step, title, desc }) => (
+          {rf.steps.map(({ step, title, desc }) => (
             <div key={step} className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-[var(--color-accent-light)] flex items-center justify-center text-sm font-black text-[var(--color-accent)] shrink-0">
                 {step}
@@ -80,7 +78,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
       <div className="card p-6">
         <h2 className="font-bold text-[var(--color-text-primary)] mb-3 flex items-center gap-2">
           <Link2 size={16} className="text-[var(--color-accent)]" />
-          رابط الإحالة الخاص بك
+          {rf.yourLink}
         </h2>
         <div className="flex items-center gap-2 bg-[var(--color-surface-2)] rounded-xl px-4 py-3">
           <span className="flex-1 text-sm text-[var(--color-text-secondary)] truncate" dir="ltr">
@@ -91,11 +89,11 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-brand)] text-white text-xs font-bold hover:opacity-90 transition-opacity shrink-0"
           >
             {copied ? <Check size={13} /> : <Copy size={13} />}
-            {copied ? "تم النسخ" : "نسخ"}
+            {copied ? rf.copied : rf.copy}
           </button>
         </div>
         <p className="text-xs text-[var(--color-text-muted)] mt-2">
-          كود الإحالة: <span className="font-mono font-bold tracking-widest text-[var(--color-text-primary)]">{referralCode}</span>
+          {rf.refCode} <span className="font-mono font-bold tracking-widest text-[var(--color-text-primary)]">{referralCode}</span>
         </p>
       </div>
 
@@ -108,7 +106,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
           <p className="text-2xl font-black text-[var(--color-text-primary)]">
             {totalCount.toLocaleString("ar-EG")}
           </p>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">إجمالي الإحالات</p>
+          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{rf.statsTotal}</p>
         </div>
 
         <div className="card p-5 text-center">
@@ -118,7 +116,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
           <p className="text-2xl font-black text-[var(--color-text-primary)]">
             {rewardedCount.toLocaleString("ar-EG")}
           </p>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">إحالات ناجحة</p>
+          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{rf.statsSuccess}</p>
         </div>
 
         <div className="card p-5 text-center">
@@ -128,15 +126,15 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
           <p className="text-2xl font-black text-[var(--color-text-primary)]">
             {daysEarned.toLocaleString("ar-EG")}
           </p>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">يومًا مكافأة</p>
+          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{rf.statsDays}</p>
         </div>
       </div>
 
       {/* Referrals list */}
       <div className="card p-0 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
-          <h3 className="font-bold text-[var(--color-text-primary)]">قائمة الإحالات</h3>
-          <span className="text-xs text-[var(--color-text-muted)]">{totalCount} عمل</span>
+          <h3 className="font-bold text-[var(--color-text-primary)]">{rf.listTitle}</h3>
+          <span className="text-xs text-[var(--color-text-muted)]">{totalCount} {rf.businesses}</span>
         </div>
 
         {totalCount === 0 ? (
@@ -144,9 +142,9 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
             <div className="w-12 h-12 rounded-full bg-[var(--color-surface-2)] flex items-center justify-center mx-auto mb-3">
               <Users size={22} className="text-[var(--color-text-muted)]" />
             </div>
-            <p className="text-sm font-semibold text-[var(--color-text-primary)]">لا توجد إحالات بعد</p>
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">{rf.emptyTitle}</p>
             <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              شارك رابطك مع أصحاب الأعمال وستظهر إحالاتهم هنا
+              {rf.emptySub}
             </p>
           </div>
         ) : (
@@ -160,7 +158,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
                   <div>
                     <p className="text-sm font-semibold text-[var(--color-text-primary)]">{ref.nameAr}</p>
                     <p className="text-xs text-[var(--color-text-muted)]">
-                      انضم {formatDate(ref.joinedAt)}
+                      {rf.joined} {formatDate(ref.joinedAt, lang)}
                     </p>
                   </div>
                 </div>
@@ -171,7 +169,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
                       : "bg-amber-50 text-amber-600"
                   }`}
                 >
-                  {ref.rewarded ? "مكافأة ✓" : "لم يشترك بعد"}
+                  {ref.rewarded ? rf.rewarded : rf.notSubscribed}
                 </span>
               </div>
             ))}

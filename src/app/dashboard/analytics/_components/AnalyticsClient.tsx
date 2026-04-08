@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import KPICards        from "./KPICards";
 import RevenueChart    from "./RevenueChart";
 import ServiceBreakdown from "./ServiceBreakdown";
@@ -17,37 +18,21 @@ function toISO(d: Date) {
 type Preset = "thisMonth" | "lastMonth" | "last3Months" | "custom";
 
 function presetRange(p: Preset): { from: string; to: string } {
-  const now   = new Date();
-  const y     = now.getFullYear();
-  const m     = now.getMonth();
+  const now = new Date();
+  const y   = now.getFullYear();
+  const m   = now.getMonth();
 
   switch (p) {
     case "thisMonth":
-      return {
-        from: toISO(new Date(y, m, 1)),
-        to:   toISO(now),
-      };
+      return { from: toISO(new Date(y, m, 1)),     to: toISO(now) };
     case "lastMonth":
-      return {
-        from: toISO(new Date(y, m - 1, 1)),
-        to:   toISO(new Date(y, m, 0)), // last day of prev month
-      };
+      return { from: toISO(new Date(y, m - 1, 1)), to: toISO(new Date(y, m, 0)) };
     case "last3Months":
-      return {
-        from: toISO(new Date(y, m - 2, 1)),
-        to:   toISO(now),
-      };
+      return { from: toISO(new Date(y, m - 2, 1)), to: toISO(now) };
     default:
-      return { from: toISO(new Date(y, m, 1)), to: toISO(now) };
+      return { from: toISO(new Date(y, m, 1)),     to: toISO(now) };
   }
 }
-
-const PRESETS: Array<{ key: Preset; label: string }> = [
-  { key: "thisMonth",   label: "هذا الشهر"    },
-  { key: "lastMonth",   label: "الشهر الماضي"  },
-  { key: "last3Months", label: "آخر 3 أشهر"   },
-  { key: "custom",      label: "مخصص"          },
-];
 
 // ── Component ────────────────────────────────────────────────
 
@@ -56,6 +41,16 @@ interface Props {
 }
 
 export default function AnalyticsClient({ initial }: Props) {
+  const { t }  = useLanguage();
+  const an     = t.dashboard.analytics;
+
+  const PRESETS: Array<{ key: Preset; label: string }> = [
+    { key: "thisMonth",   label: an.presets.thisMonth   },
+    { key: "lastMonth",   label: an.presets.lastMonth   },
+    { key: "last3Months", label: an.presets.last3Months },
+    { key: "custom",      label: an.presets.custom      },
+  ];
+
   const [preset,  setPreset]  = useState<Preset>("thisMonth");
   const [from,    setFrom]    = useState(() => presetRange("thisMonth").from);
   const [to,      setTo]      = useState(() => presetRange("thisMonth").to);
@@ -75,7 +70,6 @@ export default function AnalyticsClient({ initial }: Props) {
     }
   }, []);
 
-  // Refetch when dates change
   useEffect(() => {
     fetchData(from, to);
   }, [from, to, fetchData]);
@@ -94,23 +88,22 @@ export default function AnalyticsClient({ initial }: Props) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-[var(--color-text-primary)]">الإحصائيات</h1>
+          <h1 className="text-2xl font-black text-[var(--color-text-primary)]">{an.title}</h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-            تحليل أداء عملك من بيانات الحجوزات
+            {an.subtitle}
           </p>
         </div>
 
         {loading && (
           <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
             <Loader2 size={14} className="animate-spin" />
-            جاري التحديث...
+            {an.updating}
           </div>
         )}
       </div>
 
       {/* Date range filter */}
       <div className="card p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        {/* Preset pills */}
         <div className="flex gap-1.5 flex-wrap">
           {PRESETS.map((p) => (
             <button
@@ -127,7 +120,6 @@ export default function AnalyticsClient({ initial }: Props) {
           ))}
         </div>
 
-        {/* Custom date inputs */}
         {preset === "custom" && (
           <div className="flex items-center gap-2 flex-wrap">
             <input
@@ -138,7 +130,7 @@ export default function AnalyticsClient({ initial }: Props) {
               className="input text-sm py-1.5"
               dir="ltr"
             />
-            <span className="text-xs text-[var(--color-text-muted)]">إلى</span>
+            <span className="text-xs text-[var(--color-text-muted)]">{an.to}</span>
             <input
               type="date"
               value={to}
@@ -161,15 +153,13 @@ export default function AnalyticsClient({ initial }: Props) {
         className="grid grid-cols-1 lg:grid-cols-3 gap-5"
         style={{ opacity: loading ? 0.6 : 1, transition: "opacity 0.2s" }}
       >
-        {/* Revenue chart — spans 2 cols */}
         <div className="lg:col-span-2">
           <RevenueChart data={data.revenueByPeriod} currency={data.kpis.currency} />
         </div>
-        {/* Service breakdown */}
         <ServiceBreakdown data={data.bookingsByService} currency={data.kpis.currency} />
       </div>
 
-      {/* Heatmap — full width */}
+      {/* Heatmap */}
       <div style={{ opacity: loading ? 0.6 : 1, transition: "opacity 0.2s" }}>
         <HeatmapChart data={data.heatmap} />
       </div>

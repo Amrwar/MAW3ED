@@ -5,6 +5,7 @@ import { Search, ChevronDown, ChevronUp, Users } from "lucide-react";
 import CustomerDetailPanel from "./CustomerDetailPanel";
 import type { CustomerRow } from "@/app/api/business/customers/route";
 import { formatDateAr } from "@/features/dashboard/bookings/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type SortKey = "createdAt" | "bookingCount" | "totalSpend" | "lastVisit" | "name";
 
@@ -20,6 +21,8 @@ export default function CustomersClient({ initialCustomers }: Props) {
   const [sortKey,    setSortKey]    = useState<SortKey>("createdAt");
   const [sortOrder,  setSortOrder]  = useState<"asc" | "desc">("desc");
   const [selected,   setSelected]   = useState<CustomerRow | null>(null);
+  const { t, lang } = useLanguage();
+  const cu = t.dashboard.customers;
 
   // Debounce search input
   useEffect(() => {
@@ -78,9 +81,9 @@ export default function CustomersClient({ initialCustomers }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-[var(--color-text-primary)]">العملاء</h1>
+          <h1 className="text-2xl font-black text-[var(--color-text-primary)]">{cu.title}</h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-            {customers.length.toLocaleString("ar-EG")} عميل مسجل
+            {customers.length.toLocaleString(lang === "ar" ? "ar-EG" : "en-US")} {cu.countSuffix}
           </p>
         </div>
       </div>
@@ -93,7 +96,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="ابحث بالاسم أو رقم الهاتف..."
+            placeholder={cu.searchPlaceholder}
             className="input pe-9 text-sm w-full"
           />
         </div>
@@ -111,13 +114,13 @@ export default function CustomersClient({ initialCustomers }: Props) {
                     onClick={() => toggleSort("name")}
                     className="flex items-center gap-1 hover:text-[var(--color-text-primary)] transition-colors"
                   >
-                    العميل <SortIcon k="name" />
+                    {cu.columns.customer} <SortIcon k="name" />
                   </button>
                 </th>
 
                 {/* Phone */}
                 <th className="text-start px-5 py-3 text-xs font-semibold text-[var(--color-text-muted)]">
-                  الهاتف
+                  {cu.columns.phone}
                 </th>
 
                 {/* Booking count */}
@@ -126,7 +129,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                     onClick={() => toggleSort("bookingCount")}
                     className="flex items-center gap-1 hover:text-[var(--color-text-primary)] transition-colors"
                   >
-                    الحجوزات <SortIcon k="bookingCount" />
+                    {cu.columns.bookings} <SortIcon k="bookingCount" />
                   </button>
                 </th>
 
@@ -136,7 +139,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                     onClick={() => toggleSort("lastVisit")}
                     className="flex items-center gap-1 hover:text-[var(--color-text-primary)] transition-colors"
                   >
-                    آخر زيارة <SortIcon k="lastVisit" />
+                    {cu.columns.lastVisit} <SortIcon k="lastVisit" />
                   </button>
                 </th>
 
@@ -146,7 +149,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                     onClick={() => toggleSort("totalSpend")}
                     className="flex items-center gap-1 hover:text-[var(--color-text-primary)] transition-colors"
                   >
-                    الإنفاق <SortIcon k="totalSpend" />
+                    {cu.columns.spend} <SortIcon k="totalSpend" />
                   </button>
                 </th>
 
@@ -175,11 +178,11 @@ export default function CustomersClient({ initialCustomers }: Props) {
                         <Users size={22} className="text-[var(--color-text-muted)]" />
                       </div>
                       <p className="text-sm font-medium text-[var(--color-text-secondary)]">
-                        {search ? "لا يوجد عملاء يطابقون البحث" : "لا يوجد عملاء بعد"}
+                        {search ? cu.emptySearch : cu.emptyTitle}
                       </p>
                       {!search && (
                         <p className="text-xs text-[var(--color-text-muted)]">
-                          سيظهر عملاؤك هنا بعد أول حجز
+                          {cu.emptySub}
                         </p>
                       )}
                     </div>
@@ -222,7 +225,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                     {/* Booking count */}
                     <td className="px-5 py-3.5">
                       <span className="inline-flex items-center gap-1 text-xs font-semibold bg-[var(--color-surface-2)] text-[var(--color-text-primary)] px-2.5 py-1 rounded-full border border-[var(--color-border)]">
-                        {c.bookingCount.toLocaleString("ar-EG")} حجز
+                        {c.bookingCount.toLocaleString(lang === "ar" ? "ar-EG" : "en-US")} {cu.bookingCount}
                       </span>
                     </td>
 
@@ -243,7 +246,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
 
                     {/* Arrow */}
                     <td className="px-5 py-3.5">
-                      <span className="text-xs text-[var(--color-text-muted)]">تفاصيل</span>
+                      <span className="text-xs text-[var(--color-text-muted)]">{cu.details}</span>
                     </td>
                   </tr>
                 ))

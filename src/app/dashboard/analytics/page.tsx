@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { translations, type Lang } from "@/lib/i18n";
 import AnalyticsClient from "./_components/AnalyticsClient";
 import type { AnalyticsPayload, RevenuePoint, ServiceSlice, HeatCell } from "@/app/api/business/analytics/route";
 import { getEffectivePlan, canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
@@ -22,6 +24,9 @@ const AR_MONTHS = [
 export default async function AnalyticsPage() {
   const session = await auth();
   if (!session?.user?.businessId) redirect("/onboarding");
+
+  const lang = ((await cookies()).get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const an   = translations[lang].dashboard.analytics;
 
   const businessId = session.user.businessId;
 
@@ -43,19 +48,20 @@ export default async function AnalyticsPage() {
             <span className="text-3xl">📊</span>
           </div>
           <h1 className="text-xl font-black text-[var(--color-text-primary)] mb-2">
-            لوحة الإحصائيات
+            {an.upsell.title}
           </h1>
           <p className="text-sm text-[var(--color-text-muted)] mb-6 max-w-sm leading-relaxed">
-            الإحصائيات التفصيلية متاحة في خطة{" "}
-            <strong className="text-blue-600">النمو</strong> أو{" "}
-            <strong className="text-amber-600">الاحترافي</strong>.
-            قم بالترقية للوصول إلى تقارير الإيرادات والحجوزات.
+            {an.upsell.sub.split(an.upsell.growth)[0]}
+            <strong className="text-blue-600">{an.upsell.growth}</strong>
+            {an.upsell.sub.split(an.upsell.growth)[1]?.split(an.upsell.pro)[0]}
+            <strong className="text-amber-600">{an.upsell.pro}</strong>
+            {an.upsell.sub.split(an.upsell.pro)[1]}
           </p>
           <Link
             href="/pricing"
             className="px-6 py-3 rounded-xl bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
           >
-            عرض الخطط والأسعار
+            {an.upsell.cta}
           </Link>
         </div>
       );

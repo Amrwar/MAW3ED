@@ -3,15 +3,9 @@
 import { useState, useEffect } from "react";
 import { Search, X } from "lucide-react";
 import { type DashboardBookingStatus, STATUS_CONFIG } from "@/features/dashboard/bookings/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const ALL_STATUSES: Array<{ value: string; label: string }> = [
-  { value: "ALL",       label: "الكل" },
-  { value: "PENDING",   label: STATUS_CONFIG.PENDING.label   },
-  { value: "CONFIRMED", label: STATUS_CONFIG.CONFIRMED.label },
-  { value: "COMPLETED", label: STATUS_CONFIG.COMPLETED.label },
-  { value: "CANCELLED", label: STATUS_CONFIG.CANCELLED.label },
-  { value: "NO_SHOW",   label: STATUS_CONFIG.NO_SHOW.label   },
-];
+const STATUS_KEYS: DashboardBookingStatus[] = ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"];
 
 function todayISO() {
   const now = new Date();
@@ -66,6 +60,14 @@ export default function BookingFilters({
   const [localSearch,  setLocalSearch]  = useState(search);
   const [datePreset,   setDatePreset]   = useState<DatePreset>("all");
   const [showCustom,   setShowCustom]   = useState(false);
+  const { t, lang } = useLanguage();
+  const bf = t.dashboard.bookingFilters;
+  const bs = t.dashboard.bookingStatus;
+
+  const ALL_STATUSES = [
+    { value: "ALL",       label: bs.ALL },
+    ...STATUS_KEYS.map((k) => ({ value: k, label: (bs as Record<string, string>)[k] ?? STATUS_CONFIG[k].label })),
+  ];
 
   // Debounce search
   useEffect(() => {
@@ -104,11 +106,11 @@ export default function BookingFilters({
   }
 
   const DATE_PRESETS: Array<{ key: DatePreset; label: string }> = [
-    { key: "all",      label: "كل التواريخ" },
-    { key: "today",    label: "اليوم" },
-    { key: "upcoming", label: "القادمة" },
-    { key: "past",     label: "السابقة" },
-    { key: "custom",   label: "مخصص" },
+    { key: "all",      label: bf.dateAll },
+    { key: "today",    label: bf.dateToday },
+    { key: "upcoming", label: bf.dateUpcoming },
+    { key: "past",     label: bf.datePast },
+    { key: "custom",   label: bf.dateCustom },
   ];
 
   return (
@@ -139,7 +141,7 @@ export default function BookingFilters({
           />
           <input
             type="text"
-            placeholder="بحث باسم العميل أو رقم الهاتف…"
+            placeholder={bf.searchPlaceholder}
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             className="input pe-9 text-sm"
@@ -152,7 +154,7 @@ export default function BookingFilters({
             onChange={(e) => onServiceChange(e.target.value)}
             className="input text-sm min-w-[160px]"
           >
-            <option value="">كل الخدمات</option>
+            <option value="">{bf.allServices}</option>
             {services.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.nameAr}
@@ -203,13 +205,13 @@ export default function BookingFilters({
       {/* Active filter summary */}
       {hasActiveFilters && (
         <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-          <span>{total.toLocaleString("ar-EG")} نتيجة</span>
+          <span>{total.toLocaleString(lang === "ar" ? "ar-EG" : "en-US")} {bf.results}</span>
           <button
             onClick={clearAll}
             className="flex items-center gap-1 text-red-500 hover:text-red-600 font-medium transition-colors"
           >
             <X size={11} />
-            مسح الفلاتر
+            {bf.clearFilters}
           </button>
         </div>
       )}

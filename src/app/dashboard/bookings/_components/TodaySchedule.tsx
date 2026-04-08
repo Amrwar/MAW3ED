@@ -1,6 +1,9 @@
+"use client";
+
 import StatusBadge from "@/features/dashboard/bookings/StatusBadge";
 import { type DashboardBooking } from "@/features/dashboard/bookings/types";
 import { Clock, Plus } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface TodayScheduleProps {
   bookings:     DashboardBooking[];
@@ -9,6 +12,11 @@ interface TodayScheduleProps {
 }
 
 export default function TodaySchedule({ bookings, onSelect, onNewBooking }: TodayScheduleProps) {
+  const { t, lang } = useLanguage();
+  const bs = t.dashboard.bookingStatus;
+  const b2 = t.dashboard.bookings;
+  const locale = lang === "ar" ? "ar-EG" : "en-US";
+
   if (bookings.length === 0) return null;
 
   const pending   = bookings.filter((b) => b.status === "PENDING").length;
@@ -21,7 +29,7 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
         <div className="flex items-center gap-2">
           <Clock size={15} className="text-[var(--color-brand)]" />
           <h3 className="font-bold text-sm text-[var(--color-text-primary)]">
-            مواعيد اليوم
+            {lang === "ar" ? "مواعيد اليوم" : "Today's Schedule"}
           </h3>
           <span className="text-xs font-bold bg-[var(--color-brand)] text-white px-2 py-0.5 rounded-full">
             {bookings.length}
@@ -32,13 +40,13 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
             {pending > 0 && (
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
-                {pending} في الانتظار
+                {pending} {bs.PENDING}
               </span>
             )}
             {confirmed > 0 && (
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-                {confirmed} مؤكد
+                {confirmed} {bs.CONFIRMED}
               </span>
             )}
           </div>
@@ -48,7 +56,7 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
               className="btn btn-outline btn-sm gap-1.5 text-xs"
             >
               <Plus size={13} />
-              موعد جديد
+              {b2.newBtn}
             </button>
           )}
         </div>
@@ -101,7 +109,7 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
             <div className="flex flex-col items-end gap-1 shrink-0">
               <StatusBadge status={b.status} size="sm" />
               <p className="text-xs font-semibold text-[var(--color-accent)]">
-                {b.totalPrice.toLocaleString("ar-EG")} {b.currency}
+                {b.totalPrice.toLocaleString(locale)} {b.currency}
               </p>
             </div>
           </button>
