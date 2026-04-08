@@ -85,6 +85,7 @@ model Business {
   currentPeriodEnd          DateTime?
   pendingPlan               Plan?
   subscriptionPaymobOrderId String?            // Paymob order ID for subscription payment
+  subscriptionReminderSentAt DateTime?         // prevents duplicate renewal reminder emails
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

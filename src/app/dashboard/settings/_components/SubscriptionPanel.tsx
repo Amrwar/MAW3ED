@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Zap, CheckCircle, Loader2, Crown, Star, Sparkles } from "lucide-react";
+import { Zap, CheckCircle, Loader2, Crown, Star, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
 import {
   PLAN_FEATURES,
   PLAN_NAMES_AR,
@@ -15,6 +15,7 @@ interface SubscriptionPanelProps {
   subscriptionStatus: SubscriptionStatus;
   currentPeriodEnd:   string | null; // ISO date string
   effectivePlan:      Plan;
+  daysUntilExpiry:    number | null; // null if no expiry date
 }
 
 const PLAN_ICONS = {
@@ -42,9 +43,13 @@ export default function SubscriptionPanel({
   subscriptionStatus,
   currentPeriodEnd,
   effectivePlan,
+  daysUntilExpiry,
 }: SubscriptionPanelProps) {
   const [loading, setLoading] = useState<Plan | null>(null);
   const [error,   setError]   = useState<string | null>(null);
+
+  const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
+  const isInactive     = subscriptionStatus === "INACTIVE" && plan !== "FREE";
 
   async function handleUpgrade(targetPlan: "GROWTH" | "PRO") {
     setLoading(targetPlan);
@@ -72,6 +77,55 @@ export default function SubscriptionPanel({
 
   return (
     <div className="space-y-6">
+
+      {/* Expired / inactive banner */}
+      {isInactive && (
+        <div className="card p-5 bg-red-50 border-red-200 border-2">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} className="text-red-500 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="font-bold text-red-800">انتهى اشتراكك</p>
+              <p className="text-sm text-red-600 mt-0.5">
+                تم التحويل إلى الخطة المجانية. جدِّد اشتراكك الآن لاستعادة جميع المميزات.
+              </p>
+            </div>
+            <button
+              onClick={() => handleUpgrade(plan as "GROWTH" | "PRO")}
+              disabled={!!loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors disabled:opacity-50 shrink-0"
+            >
+              {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+              تجديد
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Expiring soon warning */}
+      {isExpiringSoon && !isInactive && (
+        <div className="card p-5 bg-amber-50 border-amber-300 border-2">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} className="text-amber-500 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="font-bold text-amber-800">
+                اشتراكك سينتهي خلال {daysUntilExpiry} {daysUntilExpiry === 1 ? "يوم" : "أيام"}
+              </p>
+              <p className="text-sm text-amber-700 mt-0.5">
+                تاريخ الانتهاء: <span dir="ltr" className="font-medium">{currentPeriodEnd}</span>
+              </p>
+            </div>
+            <button
+              onClick={() => handleUpgrade(plan as "GROWTH" | "PRO")}
+              disabled={!!loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-sm font-bold hover:bg-amber-700 transition-colors disabled:opacity-50 shrink-0"
+            >
+              {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+              تجديد الآن
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Current plan card */}
       <div className="card p-6">
         <div className="flex items-center gap-3 mb-4">

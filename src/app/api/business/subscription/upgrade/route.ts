@@ -38,9 +38,12 @@ export async function POST(req: Request) {
       return err("لا يمكن الرجوع لخطة أقل من هنا", 400);
     }
 
-    // Don't re-pay for the same active plan
-    if (business.plan === plan && business.subscriptionStatus === "ACTIVE") {
-      return err("أنت مشترك بالفعل في هذه الخطة", 400);
+    // Don't re-pay for the same active plan (unless renewing — INACTIVE is OK)
+    if (business.plan === plan && business.subscriptionStatus === "ACTIVE" && business.currentPeriodEnd) {
+      const daysLeft = Math.ceil((business.currentPeriodEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      if (daysLeft > 7) {
+        return err("أنت مشترك بالفعل في هذه الخطة وتجديدها لا يزال بعيدًا", 400);
+      }
     }
 
     // Get owner info for billing

@@ -203,6 +203,85 @@ export function businessAlertHtml(d: BookingEmailData): string {
   return layout(body);
 }
 
+// ── Subscription renewal reminder template ────────────────────
+
+export function subscriptionRenewalReminderHtml(params: {
+  businessName: string;
+  planName:     string;
+  expiryDate:   string;
+  renewUrl:     string;
+  daysLeft:     number;
+}): string {
+  const { businessName, planName, expiryDate, renewUrl, daysLeft } = params;
+  const body = `
+    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">تذكير بتجديد اشتراكك ⏰</p>
+    <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
+      مرحبًا، اشتراكك في منصة <strong>موعد</strong> لعملك
+      <strong>${businessName}</strong> سينتهي خلال <strong>${daysLeft} أيام</strong>.
+    </p>
+
+    <div style="background:#fef3c7;border-radius:10px;padding:16px;margin-bottom:24px;">
+      <p style="margin:0;font-size:14px;color:#92400e;">
+        📅 تاريخ انتهاء خطة <strong>${planName}</strong>: <strong dir="ltr">${expiryDate}</strong>
+      </p>
+      <p style="margin:8px 0 0;font-size:13px;color:#b45309;">
+        بعد الانتهاء، سيتم التحويل تلقائيًا إلى الخطة المجانية وستفقد مميزات خطتك الحالية.
+      </p>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <a href="${renewUrl}"
+         style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
+        تجديد الاشتراك الآن ←
+      </a>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#6366f1;">موعد</strong> 🙏</p>
+  `;
+  return layout(body);
+}
+
+// ── Subscription expired template ─────────────────────────────
+
+export function subscriptionExpiredHtml(params: {
+  businessName: string;
+  planName:     string;
+  renewUrl:     string;
+}): string {
+  const { businessName, planName, renewUrl } = params;
+  const body = `
+    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">انتهى اشتراكك 😔</p>
+    <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
+      للأسف، انتهت صلاحية اشتراك عملك <strong>${businessName}</strong>
+      في خطة <strong>${planName}</strong>.
+      تم التحويل تلقائيًا إلى الخطة المجانية.
+    </p>
+
+    <div style="background:#fee2e2;border-radius:10px;padding:16px;margin-bottom:24px;">
+      <p style="margin:0;font-size:14px;color:#991b1b;">
+        ⚠️ المميزات التالية أصبحت غير متاحة:
+      </p>
+      <ul style="margin:8px 0 0;padding-right:20px;font-size:13px;color:#b91c1c;">
+        <li>إشعارات واتساب</li>
+        <li>لوحة الإحصائيات</li>
+        ${planName === "الاحترافي" ? "<li>دفع العربون من العملاء</li>" : ""}
+      </ul>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <a href="${renewUrl}"
+         style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
+        تجديد الاشتراك ←
+      </a>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#6366f1;">موعد</strong> 🙏</p>
+  `;
+  return layout(body);
+}
+
 // ── Password reset template ───────────────────────────────────
 
 export function passwordResetHtml(resetUrl: string): string {

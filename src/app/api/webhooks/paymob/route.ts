@@ -184,10 +184,11 @@ async function handleSubscriptionPayment(
       where: { id: business.id },
       data:  {
         plan,
-        subscriptionStatus:        "ACTIVE",
+        subscriptionStatus:         "ACTIVE",
         currentPeriodEnd,
-        pendingPlan:               null,
-        subscriptionPaymobOrderId: null,
+        pendingPlan:                null,
+        subscriptionPaymobOrderId:  null,
+        subscriptionReminderSentAt: null, // reset so reminder fires again next cycle
       },
     });
 

@@ -10,7 +10,14 @@
  */
 
 import { Resend } from "resend";
-import { customerConfirmationHtml, customerReminderHtml, businessAlertHtml, passwordResetHtml } from "./email-templates";
+import {
+  customerConfirmationHtml,
+  customerReminderHtml,
+  businessAlertHtml,
+  passwordResetHtml,
+  subscriptionRenewalReminderHtml,
+  subscriptionExpiredHtml,
+} from "./email-templates";
 
 const client  = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM    = process.env.EMAIL_FROM ?? "Maw3ed <noreply@maw3ed.net>";
@@ -136,6 +143,46 @@ export async function sendRescheduleAlertToBusiness(
     to:      ownerEmail.trim(),
     subject: `🔄 إعادة جدولة حجز من ${data.customerName}`,
     html:    businessAlertHtml(data),
+  });
+}
+
+/**
+ * Send a subscription renewal reminder to the business owner (3 days before expiry).
+ */
+export async function sendSubscriptionRenewalReminder(
+  ownerEmail: string,
+  params: {
+    businessName: string;
+    planName:     string;
+    expiryDate:   string;
+    renewUrl:     string;
+    daysLeft:     number;
+  },
+): Promise<void> {
+  if (!ownerEmail?.trim()) return;
+  await sendEmail({
+    to:      ownerEmail.trim(),
+    subject: `⏰ اشتراكك في موعد سينتهي خلال ${params.daysLeft} أيام`,
+    html:    subscriptionRenewalReminderHtml(params),
+  });
+}
+
+/**
+ * Send a subscription expired notification to the business owner.
+ */
+export async function sendSubscriptionExpiredEmail(
+  ownerEmail: string,
+  params: {
+    businessName: string;
+    planName:     string;
+    renewUrl:     string;
+  },
+): Promise<void> {
+  if (!ownerEmail?.trim()) return;
+  await sendEmail({
+    to:      ownerEmail.trim(),
+    subject: "😔 انتهى اشتراكك في موعد — جدِّد الآن",
+    html:    subscriptionExpiredHtml(params),
   });
 }
 

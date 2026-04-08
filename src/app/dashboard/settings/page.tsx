@@ -72,6 +72,10 @@ export default async function SettingsPage() {
     business.trialEndsAt,
   );
 
+  const daysUntilExpiry = business.currentPeriodEnd
+    ? Math.ceil((business.currentPeriodEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+
   return (
     <SettingsClient
       profile={profile}
@@ -85,6 +89,7 @@ export default async function SettingsPage() {
       subscriptionStatus={business.subscriptionStatus as SubscriptionStatus}
       currentPeriodEnd={business.currentPeriodEnd?.toISOString().split("T")[0] ?? null}
       effectivePlan={effectivePlan}
+      daysUntilExpiry={daysUntilExpiry}
     />
   );
 }

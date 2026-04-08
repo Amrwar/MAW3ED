@@ -51,6 +51,7 @@ type Props = {
   subscriptionStatus: SubscriptionStatus;
   currentPeriodEnd:   string | null;
   effectivePlan:      Plan;
+  daysUntilExpiry:    number | null;
 };
 
 const TABS = [
@@ -75,6 +76,7 @@ export default function SettingsClient({
   subscriptionStatus,
   currentPeriodEnd,
   effectivePlan,
+  daysUntilExpiry,
 }: Props) {
   const [tab,            setTab]            = useState<Tab>("profile");
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
@@ -132,6 +134,7 @@ export default function SettingsClient({
           subscriptionStatus={subscriptionStatus}
           currentPeriodEnd={currentPeriodEnd}
           effectivePlan={effectivePlan}
+          daysUntilExpiry={daysUntilExpiry}
         />
       )}
       {tab === "preview" && (
