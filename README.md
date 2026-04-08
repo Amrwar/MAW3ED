@@ -140,6 +140,24 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-09 — FAQ section premium redesign
+
+**Decision:** Redesigned `src/features/home/FAQ.tsx` for a premium, SaaS-quality FAQ experience.
+
+**Key changes:**
+- Background: `#F8FAFC` with two radial glows (blue at top-center, indigo at bottom-end) for soft depth.
+- Header: unified eyebrow badge (blue dot + uppercase tracking), `5xl` heading, improved subtitle.
+- Accordion: smooth CSS grid expand/collapse using `grid-rows-[0fr]` → `grid-rows-[1fr]` transition (no JS height calc). Open item gets `border-s-[3px] border-s-[#3B82F6]` (logical property, RTL-safe), blue question text, blue-tinted shadow. Closed items have a hairline shadow and hover border darkening. Answer revealed with a blue→transparent gradient hairline separator.
+- Chevron: wrapped in a `w-7 h-7` circle pill — `bg-[#F1F5F9]` when closed, `bg-[#DBEAFE]` + blue when open. Rotates 180° on open.
+- Support CTA: `rounded-3xl` card with blue gradient background (`rgba(59,130,246,0.06)`), dot-grid texture overlay, gradient icon container (MessageCircle), subtitle, gradient CTA button with `brightness(1.06)` hover.
+- Arrow icon in CTA rotated 180° in RTL mode for correct directionality.
+
+**Trade-offs:**
+- `grid-rows-[0fr]/[1fr]` requires Tailwind v3.3+. Confirmed this project uses Tailwind v3+.
+- `border-s-[3px]` and `border-s-[#3B82F6]` use arbitrary values + logical properties — supported in Tailwind v3.3+.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
