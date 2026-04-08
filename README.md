@@ -68,6 +68,39 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-08 — Homepage redesign (premium SaaS brand identity)
+
+**Decision:** Full redesign of the homepage and shared layout components to match a premium modern SaaS brand identity (Stripe/Linear/Calendly style) using a new blue-navy color system.
+
+**Color system update:**
+- Primary: `#0F172A` (dark navy) — replaces `#0A0A0A` for hero, navbar, footer, CTA sections
+- Accent: `#3B82F6` (blue) — replaces `#E85C3A` (orange) as the single brand accent
+- Accent light: `#DBEAFE`, Accent hover: `#2563EB`
+- Background: `#F8FAFC`, Border: `#E2E8F0`, Text secondary: `#475569`
+
+**Files changed:**
+- `src/app/globals.css` — updated CSS design tokens and button/input/gradient styles
+- `src/app/page.tsx` — restructured section order, removed FeaturedBusinesses from home, added FAQ
+- `src/components/layout/Navbar.tsx` — clean white navbar with blue active states
+- `src/components/layout/Footer.tsx` — dark navy footer with organized columns
+- `src/features/home/HeroSection.tsx` — dark navy hero with inline booking widget mockup
+- `src/features/home/TrustStats.tsx` — stat numbers + business-type pill strip
+- `src/features/home/CategoriesSection.tsx` — premium category grid
+- `src/features/home/WhyJoin.tsx` — feature benefit grid with lucide icons
+- `src/features/home/HowItWorks.tsx` — tabbed (customers/businesses) step cards
+- `src/features/home/DemoSection.tsx` — dark navy section with booking + confirmation UI mockups
+- `src/features/home/PricingPreview.tsx` — 3-plan pricing with featured middle card
+- `src/features/home/Testimonials.tsx` — hardcoded review cards (no external data dependency)
+- `src/features/home/FinalCTA.tsx` — dark navy CTA with blue primary button
+- `src/features/home/FAQ.tsx` — **new** accordion FAQ component (uses existing `t.faq` translations)
+
+**Trade-offs:**
+- `FeaturedBusinesses` removed from homepage (requires DB query for 6 businesses; page now needs only `getCategories()`).
+- Hero section no longer has a search bar (search is in Navbar + `/businesses` page).
+- Testimonials are hardcoded static cards; not pulled from DB.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

@@ -6,25 +6,27 @@
 /* ─── Design Tokens ──────────────────────────────────────── */
 @theme inline {
   /* Colors */
-  --color-brand:           #0A0A0A;
-  --color-brand-gray:      #5C6370;
-  --color-accent:          #E85C3A;
-  --color-accent-hover:    #D44D2D;
-  --color-accent-light:    #FEF1EE;
+  --color-brand:           #0F172A;
+  --color-brand-light:     #1E293B;
+  --color-brand-soft:      #334155;
+  --color-brand-gray:      #64748B;
+  --color-accent:          #3B82F6;
+  --color-accent-hover:    #2563EB;
+  --color-accent-light:    #DBEAFE;
 
-  --color-primary:         #111827;
-  --color-primary-hover:   #1F2937;
+  --color-primary:         #0F172A;
+  --color-primary-hover:   #1E293B;
 
   --color-surface:         #FFFFFF;
-  --color-surface-2:       #F9FAFB;
-  --color-surface-3:       #F3F4F6;
+  --color-surface-2:       #F8FAFC;
+  --color-surface-3:       #F1F5F9;
 
-  --color-border:          #E5E7EB;
-  --color-border-2:        #D1D5DB;
+  --color-border:          #E2E8F0;
+  --color-border-2:        #CBD5E1;
 
   --color-text-primary:    #0F172A;
-  --color-text-secondary:  #4B5563;
-  --color-text-muted:      #9CA3AF;
+  --color-text-secondary:  #475569;
+  --color-text-muted:      #94A3B8;
   --color-text-inverse:    #FFFFFF;
 
   --color-success:         #10B981;
@@ -181,7 +183,7 @@ body {
 .btn-accent:hover {
   background: var(--color-accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgb(232 92 58 / 0.35);
+  box-shadow: 0 4px 12px rgb(59 130 246 / 0.35);
 }
 
 .btn-outline {
@@ -237,8 +239,8 @@ body {
 }
 
 .input:focus {
-  border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgb(10 10 10 / 0.08);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.12);
 }
 
 /* ─── Badge Styles ───────────────────────────────────────── */
@@ -304,7 +306,14 @@ body {
 
 /* ─── Gradient Text ──────────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #0A0A0A 0%, #E85C3A 100%);
+  background: linear-gradient(135deg, #FFFFFF 0%, #93C5FD 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-dark {
+  background: linear-gradient(135deg, #0F172A 0%, #3B82F6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
