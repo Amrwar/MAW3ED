@@ -4,6 +4,7 @@ import { bookingSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { hasBookingConflict, timeToMinutes, minutesToTime } from "@/lib/bookings/overlap";
 import { sendNewBookingAlertToBusiness, type BookingEmailData } from "@/lib/services/email";
+import { getEffectivePlan, getMonthlyBookingLimit, type Plan, type SubscriptionStatus } from "@/lib/plans";
 
 /**
  * GET /api/business/bookings
@@ -115,6 +116,29 @@ export async function POST(req: Request) {
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
     const { serviceId, date, startTime, customerName, customerPhone, notes } = parsed.data;
+
+    // ── Enforce monthly booking limit ─────────────────────────────────────────
+    const effectivePlan = getEffectivePlan(
+      business.plan as Plan,
+      business.subscriptionStatus as SubscriptionStatus,
+      business.trialEndsAt,
+    );
+    const monthlyLimit = getMonthlyBookingLimit(effectivePlan);
+    if (isFinite(monthlyLimit)) {
+      const now        = new Date();
+      const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const monthEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+      const count = await db.booking.count({
+        where: {
+          businessId: business.id,
+          createdAt:  { gte: monthStart, lt: monthEnd },
+          status:     { notIn: ["FAILED_PAYMENT", "CANCELLED"] },
+        },
+      });
+      if (count >= monthlyLimit) {
+        return err(`بلغت الحد الأقصى (${monthlyLimit}) من الحجوزات الشهرية. يرجى الترقية للاستمرار`, 429);
+      }
+    }
 
     // Validate service belongs to this business
     const service = await db.service.findFirst({

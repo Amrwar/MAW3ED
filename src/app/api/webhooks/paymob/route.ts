@@ -1,23 +1,21 @@
 /**
  * POST /api/webhooks/paymob
  *
- * Receives Paymob transaction processed callbacks.
- * Paymob sends a JSON body with:
- *   { type: "TRANSACTION", obj: { ...transaction }, hmac: "..." }
+ * Handles two types of Paymob transaction callbacks:
+ *   1. Booking deposit — identified by paymobOrderId on Booking
+ *   2. Subscription upgrade — identified by subscriptionPaymobOrderId on Business
  *
- * Security:
- *  - Always verify the HMAC before trusting any payment data.
- *  - Never confirm a booking based on query params alone.
- *  - The hmac may arrive as a query param OR in the body — we check both.
+ * Security: always verify HMAC before trusting payment data.
  *
- * Configure this URL in Paymob dashboard:
- *   Settings → Webhook endpoints → https://your-domain/api/webhooks/paymob
+ * Configure in Paymob dashboard:
+ *   Settings → Transaction processed callback → https://your-domain/api/webhooks/paymob
  */
 
 import { db } from "@/lib/db";
 import { err } from "@/lib/api";
 import { verifyWebhookHmac, type PaymobTransactionObj } from "@/lib/services/paymob";
 import { bookingPageUrl } from "@/lib/url";
+import { type Plan, PLAN_NAMES_AR } from "@/lib/plans";
 import {
   sendBusinessBookingTemplate,
   sendCustomerConfirmationTemplate,
@@ -44,7 +42,6 @@ export async function POST(req: Request) {
     return err("invalid JSON", 400);
   }
 
-  // Only handle TRANSACTION type events
   if (body.type !== "TRANSACTION") {
     return Response.json({ received: true }, { status: 200 });
   }
@@ -54,15 +51,15 @@ export async function POST(req: Request) {
 
   if (!obj) return err("missing transaction object", 400);
 
-  // ── 1. Verify HMAC signature ───────────────────────────────────────────────
+  // ── 1. Verify HMAC ────────────────────────────────────────────────────────
   if (!verifyWebhookHmac(obj, hmac)) {
-    console.warn("[paymob webhook] HMAC verification failed — possible forgery");
+    console.warn("[paymob webhook] HMAC verification failed");
     return err("invalid signature", 403);
   }
 
   const paymobOrderId = String(obj.order.id);
 
-  // ── 2. Find the booking linked to this Paymob order ───────────────────────
+  // ── 2. Try booking payment first ──────────────────────────────────────────
   const booking = await db.booking.findFirst({
     where:   { paymobOrderId },
     include: {
@@ -78,32 +75,47 @@ export async function POST(req: Request) {
     },
   });
 
-  if (!booking) {
-    // Could be a legitimate order from a different system; log and ack
-    console.warn("[paymob webhook] no booking for order", paymobOrderId);
-    return Response.json({ received: true }, { status: 200 });
+  if (booking) {
+    return handleBookingPayment(booking, obj);
   }
 
-  // ── 3. Idempotency — skip if already in a terminal state ─────────────────
+  // ── 3. Try subscription payment ───────────────────────────────────────────
+  const business = await db.business.findFirst({
+    where:   { subscriptionPaymobOrderId: paymobOrderId },
+    include: { owner: { select: { email: true, name: true } } },
+  });
+
+  if (business) {
+    return handleSubscriptionPayment(business, obj);
+  }
+
+  // Unknown order — log and ack
+  console.warn("[paymob webhook] no booking or subscription for order", paymobOrderId);
+  return Response.json({ received: true }, { status: 200 });
+}
+
+// ─── Booking deposit handler ──────────────────────────────────────────────────
+
+async function handleBookingPayment(
+  booking: NonNullable<Awaited<ReturnType<typeof findBooking>>>,
+  obj:     PaymobTransactionObj,
+) {
   const terminalStatuses = ["CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW", "FAILED_PAYMENT"];
   if (terminalStatuses.includes(booking.status)) {
     return Response.json({ received: true, skipped: true }, { status: 200 });
   }
 
-  // ── 4. Update booking based on transaction result ─────────────────────────
   if (obj.success && !obj.pending && !obj.error_occured) {
-    // Payment successful — confirm the booking
     const updated = await db.booking.update({
       where: { id: booking.id },
       data:  {
-        status:               "CONFIRMED",
-        paymobTransactionId:  String(obj.id),
+        status:              "CONFIRMED",
+        paymobTransactionId: String(obj.id),
       },
     });
 
-    // ── 5. Send confirmation notifications ──────────────────────────────────
-    const bookingUrl    = bookingPageUrl(booking.accessToken ?? "");
-    const bookingDate   = updated.date.toISOString().split("T")[0];
+    const bookingUrl  = bookingPageUrl(booking.accessToken ?? "");
+    const bookingDate = updated.date.toISOString().split("T")[0];
 
     const notifData: BookingNotificationData = {
       businessName:  booking.business.nameAr,
@@ -139,9 +151,7 @@ export async function POST(req: Request) {
     if (booking.business.owner.email) {
       void sendNewBookingAlertToBusiness(booking.business.owner.email, emailData);
     }
-    // Customer email: we don't store it on the booking — skip unless you add it
   } else {
-    // Payment failed or pending
     await db.booking.update({
       where: { id: booking.id },
       data:  { status: "FAILED_PAYMENT" },
@@ -149,4 +159,74 @@ export async function POST(req: Request) {
   }
 
   return Response.json({ received: true }, { status: 200 });
+}
+
+// ─── Subscription payment handler ─────────────────────────────────────────────
+
+async function handleSubscriptionPayment(
+  business: Awaited<ReturnType<typeof findBusiness>>,
+  obj:      PaymobTransactionObj,
+) {
+  if (!business) return Response.json({ received: true }, { status: 200 });
+
+  if (obj.success && !obj.pending && !obj.error_occured) {
+    const plan = business.pendingPlan as Plan | null;
+    if (!plan || plan === "FREE") {
+      console.warn("[paymob webhook] subscription payment with no pendingPlan", business.id);
+      return Response.json({ received: true }, { status: 200 });
+    }
+
+    // Activate subscription: 30-day period from now
+    const currentPeriodEnd = new Date();
+    currentPeriodEnd.setDate(currentPeriodEnd.getDate() + 30);
+
+    await db.business.update({
+      where: { id: business.id },
+      data:  {
+        plan,
+        subscriptionStatus:        "ACTIVE",
+        currentPeriodEnd,
+        pendingPlan:               null,
+        subscriptionPaymobOrderId: null,
+      },
+    });
+
+    console.info(
+      `[paymob webhook] subscription activated: business=${business.id} plan=${plan} until=${currentPeriodEnd.toISOString()}`,
+    );
+  } else {
+    // Payment failed — clear pending plan
+    await db.business.update({
+      where: { id: business.id },
+      data:  { pendingPlan: null, subscriptionPaymobOrderId: null },
+    });
+  }
+
+  return Response.json({ received: true }, { status: 200 });
+}
+
+// ─── Type helpers ─────────────────────────────────────────────────────────────
+
+function findBooking(paymobOrderId: string) {
+  return db.booking.findFirst({
+    where:   { paymobOrderId },
+    include: {
+      business: {
+        select: {
+          nameAr:   true,
+          whatsapp: true,
+          phone:    true,
+          owner:    { select: { email: true } },
+        },
+      },
+      service: { select: { nameAr: true } },
+    },
+  });
+}
+
+function findBusiness(paymobOrderId: string) {
+  return db.business.findFirst({
+    where:   { subscriptionPaymobOrderId: paymobOrderId },
+    include: { owner: { select: { email: true, name: true } } },
+  });
 }

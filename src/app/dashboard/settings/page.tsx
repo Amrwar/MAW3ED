@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { getCategories, getCities } from "@/lib/data";
 import SettingsClient from "./_components/SettingsClient";
+import { getEffectivePlan, type Plan, type SubscriptionStatus } from "@/lib/plans";
 
 export const metadata: Metadata = { title: "الإعدادات | موعد" };
 
@@ -24,7 +25,6 @@ export default async function SettingsPage() {
     getCities(),
     getCategories(),
   ]);
-
 
   if (!business) redirect("/dashboard");
 
@@ -54,7 +54,6 @@ export default async function SettingsPage() {
     isClosed:  a.isClosed,
   }));
 
-  // Ensure all 7 days present (fill missing with closed)
   const fullWeek = Array.from({ length: 7 }, (_, i) => {
     const found = availability.find((a) => a.dayOfWeek === i);
     return found ?? { dayOfWeek: i, openTime: "09:00", closeTime: "21:00", isClosed: true };
@@ -67,6 +66,12 @@ export default async function SettingsPage() {
     currency: s.currency,
   }));
 
+  const effectivePlan = getEffectivePlan(
+    business.plan as Plan,
+    business.subscriptionStatus as SubscriptionStatus,
+    business.trialEndsAt,
+  );
+
   return (
     <SettingsClient
       profile={profile}
@@ -76,6 +81,10 @@ export default async function SettingsPage() {
       services={services}
       depositEnabled={business.depositEnabled}
       depositPercent={business.depositPercent}
+      plan={business.plan as Plan}
+      subscriptionStatus={business.subscriptionStatus as SubscriptionStatus}
+      currentPeriodEnd={business.currentPeriodEnd?.toISOString().split("T")[0] ?? null}
+      effectivePlan={effectivePlan}
     />
   );
 }

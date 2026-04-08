@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import AnalyticsClient from "./_components/AnalyticsClient";
 import type { AnalyticsPayload, RevenuePoint, ServiceSlice, HeatCell } from "@/app/api/business/analytics/route";
+import { getEffectivePlan, canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
 
 export const metadata: Metadata = { title: "الإحصائيات | موعد" };
 
@@ -22,6 +24,43 @@ export default async function AnalyticsPage() {
   if (!session?.user?.businessId) redirect("/onboarding");
 
   const businessId = session.user.businessId;
+
+  // ── Plan gate: analytics requires GROWTH+ ────────────────────────────────
+  const bizPlan = await db.business.findUnique({
+    where:  { id: businessId },
+    select: { plan: true, subscriptionStatus: true, trialEndsAt: true },
+  });
+  if (bizPlan) {
+    const effectivePlan = getEffectivePlan(
+      bizPlan.plan as Plan,
+      bizPlan.subscriptionStatus as SubscriptionStatus,
+      bizPlan.trialEndsAt,
+    );
+    if (!canUseFeature(effectivePlan, "analytics")) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+          <div className="w-20 h-20 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-5">
+            <span className="text-3xl">📊</span>
+          </div>
+          <h1 className="text-xl font-black text-[var(--color-text-primary)] mb-2">
+            لوحة الإحصائيات
+          </h1>
+          <p className="text-sm text-[var(--color-text-muted)] mb-6 max-w-sm leading-relaxed">
+            الإحصائيات التفصيلية متاحة في خطة{" "}
+            <strong className="text-blue-600">النمو</strong> أو{" "}
+            <strong className="text-amber-600">الاحترافي</strong>.
+            قم بالترقية للوصول إلى تقارير الإيرادات والحجوزات.
+          </p>
+          <Link
+            href="/pricing"
+            className="px-6 py-3 rounded-xl bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+          >
+            عرض الخطط والأسعار
+          </Link>
+        </div>
+      );
+    }
+  }
 
   // Default range: this month
   const now        = new Date();

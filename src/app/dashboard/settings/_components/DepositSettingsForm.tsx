@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, CreditCard, Info } from "lucide-react";
+import { Loader2, CreditCard, Info, Lock } from "lucide-react";
+import Link from "next/link";
 
 interface DepositSettingsFormProps {
-  initialEnabled: boolean;
-  initialPercent: number;
+  initialEnabled:  boolean;
+  initialPercent:  number;
+  canUseDeposits?: boolean;
 }
 
 export default function DepositSettingsForm({
   initialEnabled,
   initialPercent,
+  canUseDeposits = true,
 }: DepositSettingsFormProps) {
   const [enabled,  setEnabled]  = useState(initialEnabled);
   const [percent,  setPercent]  = useState(initialPercent);
@@ -41,6 +44,28 @@ export default function DepositSettingsForm({
     } finally {
       setSaving(false);
     }
+  }
+
+  if (!canUseDeposits) {
+    return (
+      <div className="card p-8 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
+          <Lock size={24} className="text-amber-500" />
+        </div>
+        <h2 className="font-bold text-[var(--color-text-primary)] mb-2">ميزة حجب العربون</h2>
+        <p className="text-sm text-[var(--color-text-muted)] mb-5 leading-relaxed max-w-sm mx-auto">
+          إعدادات العربون متاحة فقط في خطة{" "}
+          <strong className="text-amber-600">الاحترافي (PRO)</strong>.
+          يمكنك الترقية الآن للبدء في استقبال مدفوعات مسبقة من عملائك.
+        </p>
+        <Link
+          href="/pricing"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 transition-colors"
+        >
+          عرض الخطط والأسعار
+        </Link>
+      </div>
+    );
   }
 
   return (

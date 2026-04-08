@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { db } from "@/lib/db";
+import { getEffectivePlan, type Plan, type SubscriptionStatus } from "@/lib/plans";
 
 export const metadata: Metadata = { title: "لوحة التحكم | موعد" };
 
@@ -19,15 +20,17 @@ export default async function DashboardLayout({
   // lookup for stale tokens (e.g. session minted before onboarding completed).
   const tokenBusinessId = session.user.businessId;
 
+  const businessSelect = {
+    id: true, nameAr: true,
+    city: { select: { nameAr: true } },
+    plan: true,
+    subscriptionStatus: true,
+    trialEndsAt: true,
+  } as const;
+
   const business = tokenBusinessId
-    ? await db.business.findUnique({
-        where:  { id: tokenBusinessId },
-        select: { id: true, nameAr: true, city: { select: { nameAr: true } } },
-      })
-    : await db.business.findUnique({
-        where:  { ownerId: session.user.id },
-        select: { id: true, nameAr: true, city: { select: { nameAr: true } } },
-      });
+    ? await db.business.findUnique({ where: { id: tokenBusinessId },       select: businessSelect })
+    : await db.business.findUnique({ where: { ownerId: session.user.id },  select: businessSelect });
 
   if (!business) redirect("/onboarding");
 
@@ -41,6 +44,11 @@ export default async function DashboardLayout({
         businessName={business.nameAr}
         cityName={business.city.nameAr}
         pendingCount={pendingCount}
+        plan={getEffectivePlan(
+          business.plan as Plan,
+          business.subscriptionStatus as SubscriptionStatus,
+          business.trialEndsAt,
+        )}
       />
 
       <div className="md:ms-60">

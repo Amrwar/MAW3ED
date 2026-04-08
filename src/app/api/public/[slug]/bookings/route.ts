@@ -15,6 +15,7 @@ import {
   type BookingEmailData,
 } from "@/lib/services/email";
 import { createPaymentSession, calcDepositCents } from "@/lib/services/paymob";
+import { getEffectivePlan, getMonthlyBookingLimit, canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -40,6 +41,7 @@ export async function POST(req: Request, { params }: Params) {
     const business = await db.business.findUnique({
       where:   { slug, isPublished: true },
       include: { owner: { select: { email: true } } },
+      // include subscription fields for feature gating
     });
     if (!business) return err("لم يتم العثور على هذا العمل", 404);
 
@@ -69,8 +71,33 @@ export async function POST(req: Request, { params }: Params) {
       update: { name: customerName, ...(customerEmail ? { email: customerEmail } : {}) },
     });
 
+    // ── Resolve effective plan and enforce booking limit ──────────────────────
+    const effectivePlan = getEffectivePlan(
+      business.plan as Plan,
+      business.subscriptionStatus as SubscriptionStatus,
+      business.trialEndsAt,
+    );
+
+    const monthlyLimit = getMonthlyBookingLimit(effectivePlan);
+    if (isFinite(monthlyLimit)) {
+      const now       = new Date();
+      const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const monthEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+      const count = await db.booking.count({
+        where: {
+          businessId: business.id,
+          createdAt:  { gte: monthStart, lt: monthEnd },
+          status:     { notIn: ["FAILED_PAYMENT", "CANCELLED"] },
+        },
+      });
+      if (count >= monthlyLimit) {
+        return err("عذرًا، هذا العمل بلغ الحد الأقصى من الحجوزات الشهرية", 429);
+      }
+    }
+
     // ── Determine initial status and deposit ──────────────────────────────────
-    const requiresDeposit = business.depositEnabled;
+    // Deposits require PRO plan
+    const requiresDeposit = business.depositEnabled && canUseFeature(effectivePlan, "deposits");
     const depositCents    = requiresDeposit
       ? calcDepositCents(Number(service.price), business.depositPercent)
       : 0;
@@ -169,11 +196,12 @@ export async function POST(req: Request, { params }: Params) {
       bookingUrl,
     };
 
-    const businessPhone = business.whatsapp ?? business.phone;
-    if (businessPhone) {
-      void sendBusinessBookingTemplate(businessPhone, notifData);
+    // WhatsApp notifications require GROWTH+ plan
+    if (canUseFeature(effectivePlan, "whatsapp")) {
+      const businessPhone = business.whatsapp ?? business.phone;
+      if (businessPhone) void sendBusinessBookingTemplate(businessPhone, notifData);
+      void sendCustomerConfirmationTemplate(customerPhone, notifData);
     }
-    void sendCustomerConfirmationTemplate(customerPhone, notifData);
 
     const emailData: BookingEmailData = {
       businessName:  business.nameAr,

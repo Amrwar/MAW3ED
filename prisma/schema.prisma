@@ -78,6 +78,13 @@ model Business {
   isPublished    Boolean   @default(true)
   depositEnabled Boolean   @default(false)
   depositPercent Int       @default(20)
+  // ── Subscription ──────────────────────────────────────────
+  plan                      Plan               @default(FREE)
+  subscriptionStatus        SubscriptionStatus @default(ACTIVE)
+  trialEndsAt               DateTime?
+  currentPeriodEnd          DateTime?
+  pendingPlan               Plan?
+  subscriptionPaymobOrderId String?            // Paymob order ID for subscription payment
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -208,4 +215,16 @@ enum BookingStatus {
   CANCELLED        // owner or customer cancelled
   NO_SHOW          // customer didn't show up
   FAILED_PAYMENT   // payment failed or expired
+}
+
+enum Plan {
+  FREE
+  GROWTH
+  PRO
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  INACTIVE
 }

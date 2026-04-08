@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Logo from "@/components/shared/Logo";
 import { cn } from "@/lib/utils";
+import type { Plan } from "@/lib/plans";
 
 const navItems = [
   {
@@ -66,13 +67,25 @@ const bottomItems = [
   { label: "المساعدة", icon: HelpCircle, href: "/help", soon: true },
 ];
 
+const PLAN_BADGE: Record<Plan, { label: string; className: string }> = {
+  FREE:   { label: "مجاني",      className: "bg-gray-100 text-gray-500"   },
+  GROWTH: { label: "نمو",        className: "bg-blue-100 text-blue-600"   },
+  PRO:    { label: "احترافي",    className: "bg-amber-100 text-amber-600" },
+};
+
 interface DashboardSidebarProps {
   businessName?: string;
-  cityName?: string;
+  cityName?:     string;
   pendingCount?: number;
+  plan?:         Plan;
 }
 
-export default function DashboardSidebar({ businessName = "عملك", cityName = "", pendingCount = 0 }: DashboardSidebarProps) {
+export default function DashboardSidebar({
+  businessName = "عملك",
+  cityName     = "",
+  pendingCount = 0,
+  plan         = "FREE",
+}: DashboardSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -88,12 +101,15 @@ export default function DashboardSidebar({ businessName = "عملك", cityName =
           <div className="w-9 h-9 rounded-full bg-[var(--color-accent-light)] flex items-center justify-center text-sm font-bold text-[var(--color-accent)]">
             {businessName[0]}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
               {businessName}
             </p>
             <p className="text-xs text-[var(--color-text-muted)]">{cityName}</p>
           </div>
+          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0", PLAN_BADGE[plan].className)}>
+            {PLAN_BADGE[plan].label}
+          </span>
         </div>
       </div>
 

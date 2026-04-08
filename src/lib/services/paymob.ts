@@ -238,3 +238,39 @@ export function verifyWebhookHmac(
 export function calcDepositCents(priceEGP: number, depositPercent: number): number {
   return Math.ceil(priceEGP * (depositPercent / 100) * 100);
 }
+
+// ─── Public: Create a subscription payment session ────────────────────────────
+
+/**
+ * Create a Paymob payment session for a subscription upgrade.
+ * merchant_order_id is set to "sub_{businessId}_{plan}" for webhook identification.
+ */
+export async function createSubscriptionPaymentSession(params: {
+  businessId:   string;
+  plan:         "GROWTH" | "PRO";
+  amountCents:  number;
+  ownerName:    string;
+  ownerPhone:   string;
+  ownerEmail?:  string;
+}): Promise<PaymentSession> {
+  const { businessId, plan, amountCents, ownerName, ownerPhone, ownerEmail } = params;
+
+  const merchantOrderId = `sub_${businessId}_${plan}_${Date.now()}`;
+  const nameParts = ownerName.trim().split(/\s+/);
+  const firstName = nameParts[0];
+  const lastName  = nameParts.slice(1).join(" ") || "NA";
+
+  const authToken  = await authenticate();
+  const orderId    = await createOrder(authToken, amountCents, "EGP", merchantOrderId);
+  const paymentKey = await getPaymentKey(authToken, amountCents, orderId, "EGP", {
+    firstName,
+    lastName,
+    phone: ownerPhone || "01000000000",
+    email: ownerEmail,
+  });
+
+  const iframeId   = process.env.PAYMOB_IFRAME_ID ?? "";
+  const paymentUrl = `https://accept.paymob.com/api/acceptance/iframes/${iframeId}?payment_token=${paymentKey}`;
+
+  return { paymentUrl, paymobOrderId: String(orderId) };
+}

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { User, Clock, Eye, CreditCard } from "lucide-react";
+import { User, Clock, Eye, CreditCard, Zap } from "lucide-react";
 import ProfileForm from "./ProfileForm";
 import AvailabilityForm from "./AvailabilityForm";
 import PublicPagePreview from "./PublicPagePreview";
 import DepositSettingsForm from "./DepositSettingsForm";
+import SubscriptionPanel from "./SubscriptionPanel";
+import type { Plan, SubscriptionStatus } from "@/lib/plans";
 
 export type Profile = {
   id:             string;
@@ -38,26 +40,43 @@ export type CategoryItem = { id: string; nameAr: string; icon: string };
 export type ServicePreview = { nameAr: string; duration: number; price: number; currency: string };
 
 type Props = {
-  profile:        Profile;
-  availability:   AvailabilityDay[];
-  cities:         City[];
-  categories:     CategoryItem[];
-  services:       ServicePreview[];
-  depositEnabled: boolean;
-  depositPercent: number;
+  profile:            Profile;
+  availability:       AvailabilityDay[];
+  cities:             City[];
+  categories:         CategoryItem[];
+  services:           ServicePreview[];
+  depositEnabled:     boolean;
+  depositPercent:     number;
+  plan:               Plan;
+  subscriptionStatus: SubscriptionStatus;
+  currentPeriodEnd:   string | null;
+  effectivePlan:      Plan;
 };
 
 const TABS = [
   { id: "profile",      label: "الملف التجاري",  Icon: User       },
   { id: "availability", label: "أوقات العمل",    Icon: Clock      },
   { id: "payments",     label: "المدفوعات",       Icon: CreditCard },
+  { id: "subscription", label: "الاشتراك",        Icon: Zap        },
   { id: "preview",      label: "معاينة الصفحة",  Icon: Eye        },
 ] as const;
 
 type Tab = typeof TABS[number]["id"];
 
-export default function SettingsClient({ profile, availability, cities, categories, services, depositEnabled, depositPercent }: Props) {
-  const [tab, setTab]             = useState<Tab>("profile");
+export default function SettingsClient({
+  profile,
+  availability,
+  cities,
+  categories,
+  services,
+  depositEnabled,
+  depositPercent,
+  plan,
+  subscriptionStatus,
+  currentPeriodEnd,
+  effectivePlan,
+}: Props) {
+  const [tab,            setTab]            = useState<Tab>("profile");
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
 
   return (
@@ -71,7 +90,7 @@ export default function SettingsClient({ profile, availability, cities, categori
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[var(--color-surface-2)] rounded-xl p-1.5 w-fit">
+      <div className="flex flex-wrap gap-1 bg-[var(--color-surface-2)] rounded-xl p-1.5 w-fit">
         {TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
@@ -104,6 +123,15 @@ export default function SettingsClient({ profile, availability, cities, categori
         <DepositSettingsForm
           initialEnabled={depositEnabled}
           initialPercent={depositPercent}
+          canUseDeposits={effectivePlan === "PRO"}
+        />
+      )}
+      {tab === "subscription" && (
+        <SubscriptionPanel
+          plan={plan}
+          subscriptionStatus={subscriptionStatus}
+          currentPeriodEnd={currentPeriodEnd}
+          effectivePlan={effectivePlan}
         />
       )}
       {tab === "preview" && (
