@@ -21,26 +21,6 @@ interface Props {
   initialCategory: string;
 }
 
-// ─── Sidebar section wrapper ──────────────────────────────
-
-function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{
-        background: "#FFFFFF",
-        border:     "1px solid #E2E8F0",
-        boxShadow:  "0 1px 4px rgba(15,23,42,0.04)",
-      }}
-    >
-      <div className="px-4 py-3" style={{ borderBottom: "1px solid #F1F5F9" }}>
-        <h3 className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest">{title}</h3>
-      </div>
-      <div className="p-2">{children}</div>
-    </div>
-  );
-}
-
 // ─── Sidebar filter item ──────────────────────────────────
 
 function SidebarItem({
@@ -89,6 +69,7 @@ export default function BusinessesClient({
   const [q,        setQ]        = useState(initialQ);
   const [city,     setCity]     = useState(initialCity);
   const [category, setCategory] = useState(initialCategory);
+  const [sidebarTab, setSidebarTab] = useState<"cities" | "categories">("cities");
 
   function apply(nQ: string, nCity: string, nCat: string) {
     const p = new URLSearchParams();
@@ -323,43 +304,82 @@ export default function BusinessesClient({
                 </div>
               )}
 
-              {/* Cities — first, per requested tab order */}
-              <SidebarSection title={isAr ? "المدن" : "Cities"}>
-                <SidebarItem
-                  active={!city}
-                  onClick={() => { setCity(""); apply(q, "", category); }}
-                  icon={<MapPin size={13} />}
-                  label={b.allCities}
-                />
-                {cities.map((c) => (
-                  <SidebarItem
-                    key={c.id}
-                    active={city === c.id}
-                    onClick={() => { setCity(c.id); apply(q, c.id, category); }}
-                    icon={<MapPin size={13} />}
-                    label={getName(c)}
-                  />
-                ))}
-              </SidebarSection>
+              {/* Cities | Categories — horizontal tabs, Cities left of Categories */}
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{
+                  background: "#FFFFFF",
+                  border:     "1px solid #E2E8F0",
+                  boxShadow:  "0 1px 4px rgba(15,23,42,0.04)",
+                }}
+              >
+                {/* Tab row */}
+                <div className="flex" style={{ borderBottom: "1px solid #F1F5F9" }}>
+                  {(["cities", "categories"] as const).map((tab) => {
+                    const label = tab === "cities"
+                      ? (isAr ? "المدن"        : "Cities")
+                      : (isAr ? "التصنيفات"    : "Categories");
+                    const isActive = sidebarTab === tab;
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => setSidebarTab(tab)}
+                        className="flex-1 py-2.5 text-xs font-bold transition-all duration-150"
+                        style={{
+                          color:       isActive ? "#1D4ED8"  : "#94A3B8",
+                          background:  isActive ? "#FFFFFF"  : "#F8FAFC",
+                          borderBottom: isActive
+                            ? "2px solid #3B82F6"
+                            : "2px solid transparent",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
 
-              {/* Categories — second */}
-              <SidebarSection title={isAr ? "التصنيفات" : "Categories"}>
-                <SidebarItem
-                  active={!category}
-                  onClick={() => { setCategory(""); apply(q, city, ""); }}
-                  icon={<span className="text-base">🔍</span>}
-                  label={b.allCategories}
-                />
-                {categories.map((cat) => (
-                  <SidebarItem
-                    key={cat.id}
-                    active={category === cat.slug}
-                    onClick={() => { setCategory(cat.slug); apply(q, city, cat.slug); }}
-                    icon={<span className="text-base">{cat.icon}</span>}
-                    label={getName(cat)}
-                  />
-                ))}
-              </SidebarSection>
+                {/* Tab content */}
+                <div className="p-2">
+                  {sidebarTab === "cities" ? (
+                    <>
+                      <SidebarItem
+                        active={!city}
+                        onClick={() => { setCity(""); apply(q, "", category); }}
+                        icon={<MapPin size={13} />}
+                        label={b.allCities}
+                      />
+                      {cities.map((c) => (
+                        <SidebarItem
+                          key={c.id}
+                          active={city === c.id}
+                          onClick={() => { setCity(c.id); apply(q, c.id, category); }}
+                          icon={<MapPin size={13} />}
+                          label={getName(c)}
+                        />
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <SidebarItem
+                        active={!category}
+                        onClick={() => { setCategory(""); apply(q, city, ""); }}
+                        icon={<span className="text-base">🔍</span>}
+                        label={b.allCategories}
+                      />
+                      {categories.map((cat) => (
+                        <SidebarItem
+                          key={cat.id}
+                          active={category === cat.slug}
+                          onClick={() => { setCategory(cat.slug); apply(q, city, cat.slug); }}
+                          icon={<span className="text-base">{cat.icon}</span>}
+                          label={getName(cat)}
+                        />
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
 
             </div>
           </aside>
