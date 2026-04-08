@@ -32,16 +32,16 @@ export default function FinalCTA() {
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                href="/#businesses"
+                href="/businesses"
                 className="btn btn-accent btn-lg shadow-lg shadow-[var(--color-accent)]/25"
               >
                 ابحث وأحجز الآن
               </Link>
               <Link
-                href="/dashboard"
+                href="/signup?type=business"
                 className="btn btn-outline btn-lg border-white/30 text-white hover:bg-white/10 hover:border-white/50"
               >
-                أضف عملك مجانًا
+                أضف نشاطك مجانًا
               </Link>
             </div>
 

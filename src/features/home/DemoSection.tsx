@@ -150,9 +150,9 @@ export default function DemoSection() {
               ))}
             </div>
 
-            <Link href="/signup" className="btn btn-accent btn-lg">
+            <Link href="/for-business" className="btn btn-accent btn-lg">
               <Play size={16} />
-              شاهد العرض كاملًا
+              اعرف أكثر للشركات
             </Link>
           </div>
         </div>

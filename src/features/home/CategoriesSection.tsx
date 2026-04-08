@@ -26,7 +26,7 @@ export default function CategoriesSection({ categories }: Props) {
             <h2 className="section-title">تصفح حسب التخصص</h2>
           </div>
           <Link
-            href="/businesses"
+            href="/categories"
             className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             <span>عرض الكل</span>

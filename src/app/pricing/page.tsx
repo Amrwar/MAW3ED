@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, X, Zap, Crown, Star, ArrowLeft } from "lucide-react";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import Container from "@/components/ui/Container";
 import { PLAN_FEATURES, PLAN_PRICES_EGP, PLAN_NAMES_AR } from "@/lib/plans";
 
 export const metadata: Metadata = { title: "الأسعار والخطط | موعد" };
@@ -67,26 +70,22 @@ function FeatureValue({ planId, featureKey }: { planId: "FREE" | "GROWTH" | "PRO
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]" dir="rtl">
+    <>
+      <Navbar />
+      <main className="pt-16 min-h-screen">
       {/* Header */}
-      <div className="text-center py-16 px-4">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] mb-8 transition-colors"
-        >
-          <ArrowLeft size={14} />
-          العودة للرئيسية
-        </Link>
-        <h1 className="text-3xl md:text-4xl font-black text-[var(--color-text-primary)] mb-3">
-          خطط بسيطة وشفافة
-        </h1>
-        <p className="text-[var(--color-text-muted)] text-lg max-w-xl mx-auto">
-          ابدأ مجانًا، وقم بالترقية عندما تكون جاهزًا. لا رسوم خفية.
-        </p>
-      </div>
+      <section className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)] py-16 text-center">
+        <Container>
+          <p className="section-eyebrow mb-2">الأسعار</p>
+          <h1 className="section-title mb-3">خطط بسيطة وشفافة</h1>
+          <p className="section-subtitle mx-auto">
+            ابدأ مجانًا، وقم بالترقية عندما تكون جاهزًا. لا رسوم خفية.
+          </p>
+        </Container>
+      </section>
 
       {/* Plan cards */}
-      <div className="max-w-5xl mx-auto px-4 pb-16">
+      <div className="max-w-5xl mx-auto px-4 py-16">
         <div className="grid md:grid-cols-3 gap-6">
           {PLANS.map((plan) => {
             const Icon = plan.icon;
@@ -225,6 +224,8 @@ export default function PricingPage() {
           ))}
         </div>
       </div>
-    </div>
+      </main>
+      <Footer />
+    </>
   );
 }

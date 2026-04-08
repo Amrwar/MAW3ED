@@ -72,11 +72,11 @@ export default function WhyJoin() {
             </ul>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link href="/signup" className="btn btn-primary btn-lg">
+              <Link href="/signup?type=business" className="btn btn-primary btn-lg">
                 ابدأ مجانًا الآن
               </Link>
-              <Link href="/signup" className="btn btn-outline btn-lg">
-                شاهد العرض التوضيحي
+              <Link href="/for-business" className="btn btn-outline btn-lg">
+                اعرف أكثر عن موعد
               </Link>
             </div>
           </div>

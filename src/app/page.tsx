@@ -8,6 +8,7 @@ import FeaturedBusinesses from "@/features/home/FeaturedBusinesses";
 import HowItWorks from "@/features/home/HowItWorks";
 import WhyJoin from "@/features/home/WhyJoin";
 import DemoSection from "@/features/home/DemoSection";
+import PricingPreview from "@/features/home/PricingPreview";
 import Testimonials from "@/features/home/Testimonials";
 import FinalCTA from "@/features/home/FinalCTA";
 import { getCategories, getCities, getPublishedBusinesses } from "@/lib/data";
@@ -27,14 +28,25 @@ export default async function HomePage() {
     <>
       <Navbar />
       <main>
+        {/* 1. Hero + search */}
         <HeroSection categories={categories} cities={cities} />
+        {/* 2. Trust stats */}
         <TrustStats />
+        {/* 3. Browse by category */}
         <CategoriesSection categories={categories} />
+        {/* 4. Featured businesses */}
         <FeaturedBusinesses businesses={featured} />
+        {/* 5. How it works */}
         <HowItWorks />
+        {/* 6. Why Maw3ed (for businesses) */}
         <WhyJoin />
+        {/* 7. Product demo */}
         <DemoSection />
+        {/* 8. Pricing preview */}
+        <PricingPreview />
+        {/* 9. Testimonials */}
         <Testimonials />
+        {/* 10. Final CTA */}
         <FinalCTA />
       </main>
       <Footer />

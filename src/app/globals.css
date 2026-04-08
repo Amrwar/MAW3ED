@@ -339,6 +339,7 @@ body {
 
 .animate-pulse-soft {
   animation: pulse-soft 2s ease-in-out infinite;
+}
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(10px) scale(0.97); }
@@ -354,5 +355,4 @@ body {
 }
 .animate-dropdown-in {
   animation: dropdown-in 0.15s ease forwards;
-}
 }
