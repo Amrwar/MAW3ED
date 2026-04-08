@@ -86,6 +86,10 @@ model Business {
   pendingPlan               Plan?
   subscriptionPaymobOrderId String?            // Paymob order ID for subscription payment
   subscriptionReminderSentAt DateTime?         // prevents duplicate renewal reminder emails
+  // ── Referrals ─────────────────────────────────────────────
+  referralCode              String?            @unique // 8-char uppercase code e.g. "A3F7C2D1"
+  referredById              String?            // businessId that referred this business
+  referralRewardedAt        DateTime?          // set once referrer receives their 30-day bonus
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -102,6 +106,9 @@ model Business {
   availability AvailabilityRule[]
   bookings     Booking[]
   customers    Customer[]
+
+  referredBy   Business?  @relation("BusinessReferrals", fields: [referredById], references: [id])
+  referrals    Business[] @relation("BusinessReferrals")
 }
 
 model Category {

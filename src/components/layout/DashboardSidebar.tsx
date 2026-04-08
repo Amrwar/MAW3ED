@@ -11,6 +11,7 @@ import {
   BarChart3,
   Users,
   MessageSquare,
+  Gift,
   HelpCircle,
   LogOut,
 } from "lucide-react";
@@ -54,6 +55,12 @@ const navItems = [
     icon: MessageSquare,
     href: "/dashboard/reviews",
     soon: true,
+  },
+  {
+    label: "ادعُ واكسب",
+    icon: Gift,
+    href: "/dashboard/referrals",
+    soon: false,
   },
   {
     label: "الإعدادات",

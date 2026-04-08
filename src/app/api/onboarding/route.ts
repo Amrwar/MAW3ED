@@ -1,6 +1,22 @@
 import { db } from "@/lib/db";
 import { onboardingSchema } from "@/lib/validations";
 import { ok, err, requireSession } from "@/lib/api";
+import { cookies } from "next/headers";
+import crypto from "crypto";
+
+/** Generate a unique 8-char uppercase hex referral code. */
+async function generateReferralCode(): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const candidate = crypto.randomBytes(4).toString("hex").toUpperCase();
+    const exists = await db.business.findUnique({
+      where:  { referralCode: candidate },
+      select: { id: true },
+    });
+    if (!exists) return candidate;
+  }
+  // Extremely unlikely — fall back to longer code
+  return crypto.randomBytes(8).toString("hex").toUpperCase();
+}
 
 export async function POST(req: Request) {
   try {
@@ -30,16 +46,37 @@ export async function POST(req: Request) {
     const slugTaken = await db.business.findUnique({ where: { slug } });
     if (slugTaken) return err("هذا الرابط محجوز، جرّب رابطًا آخر", 409);
 
+    // Resolve referral — read cookie set by /ref/[code]
+    const cookieStore  = await cookies();
+    const refCode      = cookieStore.get("maw3ed_ref")?.value ?? null;
+    let   referredById: string | null = null;
+
+    if (refCode) {
+      const referrer = await db.business.findUnique({
+        where:  { referralCode: refCode },
+        select: { id: true, ownerId: true },
+      });
+      // Prevent self-referral (different account, same person using two accounts)
+      if (referrer && referrer.ownerId !== session.user.id) {
+        referredById = referrer.id;
+      }
+    }
+
+    // Pre-generate a unique referral code for the new business
+    const referralCode = await generateReferralCode();
+
     // Create business + services + availability in a single transaction
     const business = await db.$transaction(async (tx) => {
       const biz = await tx.business.create({
         data: {
           slug, nameAr, nameEn, taglineAr, phone, whatsapp, address, about,
-          coverImage: coverImage ?? null,
-          logoImage:  logoImage  ?? null,
-          ownerId:    session.user.id,
-          categoryId, cityId,
+          coverImage:  coverImage  ?? null,
+          logoImage:   logoImage   ?? null,
+          ownerId:     session.user.id,
+          categoryId,  cityId,
           isPublished: true,
+          referralCode,
+          referredById: referredById ?? undefined,
         },
       });
 
@@ -71,6 +108,9 @@ export async function POST(req: Request) {
 
       return biz;
     });
+
+    // Clear referral cookie so it isn't accidentally reused
+    if (refCode) cookieStore.delete("maw3ed_ref");
 
     return ok({ business: { id: business.id, slug: business.slug } }, 201);
   } catch (e) {

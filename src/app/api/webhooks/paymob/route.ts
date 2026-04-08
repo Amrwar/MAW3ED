@@ -195,6 +195,42 @@ async function handleSubscriptionPayment(
     console.info(
       `[paymob webhook] subscription activated: business=${business.id} plan=${plan} until=${currentPeriodEnd.toISOString()}`,
     );
+
+    // ── Referral reward: add 30 free days to the referrer ────────────────────
+    if (business.referredById && !business.referralRewardedAt) {
+      try {
+        const referrer = await db.business.findUnique({
+          where:  { id: business.referredById },
+          select: { id: true, currentPeriodEnd: true },
+        });
+        if (referrer) {
+          const now  = new Date();
+          const base = referrer.currentPeriodEnd && referrer.currentPeriodEnd > now
+            ? referrer.currentPeriodEnd
+            : now;
+          const newEnd = new Date(base);
+          newEnd.setDate(newEnd.getDate() + 30);
+
+          await db.$transaction([
+            db.business.update({
+              where: { id: referrer.id },
+              data:  { currentPeriodEnd: newEnd },
+            }),
+            db.business.update({
+              where: { id: business.id },
+              data:  { referralRewardedAt: now },
+            }),
+          ]);
+
+          console.info(
+            `[referral reward] referrer=${referrer.id} +30 days → ${newEnd.toISOString()}`,
+          );
+        }
+      } catch (e) {
+        // Non-fatal — log but don't fail the webhook response
+        console.error("[referral reward]", e);
+      }
+    }
   } else {
     // Payment failed — clear pending plan
     await db.business.update({
@@ -227,7 +263,13 @@ function findBooking(paymobOrderId: string) {
 
 function findBusiness(paymobOrderId: string) {
   return db.business.findFirst({
-    where:   { subscriptionPaymobOrderId: paymobOrderId },
-    include: { owner: { select: { email: true, name: true } } },
+    where:  { subscriptionPaymobOrderId: paymobOrderId },
+    select: {
+      id:                        true,
+      pendingPlan:               true,
+      referredById:              true,
+      referralRewardedAt:        true,
+      owner:                     { select: { email: true, name: true } },
+    },
   });
 }
