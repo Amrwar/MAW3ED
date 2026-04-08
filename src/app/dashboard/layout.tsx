@@ -16,18 +16,17 @@ export default async function DashboardLayout({
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  // Find business — use token businessId first (fast path), fall back to ownerId
-  // lookup for stale tokens (e.g. session minted before onboarding completed).
   const tokenBusinessId = session.user.businessId;
 
+  // Core query — only fields that have always existed
   const business = tokenBusinessId
     ? await db.business.findUnique({
         where:  { id: tokenBusinessId },
-        select: { id: true, nameAr: true, city: { select: { nameAr: true } }, plan: true, subscriptionStatus: true, trialEndsAt: true },
+        select: { id: true, nameAr: true, city: { select: { nameAr: true } } },
       })
     : await db.business.findUnique({
         where:  { ownerId: session.user.id },
-        select: { id: true, nameAr: true, city: { select: { nameAr: true } }, plan: true, subscriptionStatus: true, trialEndsAt: true },
+        select: { id: true, nameAr: true, city: { select: { nameAr: true } } },
       });
 
   if (!business) redirect("/onboarding");
@@ -36,17 +35,32 @@ export default async function DashboardLayout({
     where: { businessId: business.id, status: "PENDING" },
   });
 
+  // Subscription fields — separate query with fallback so dashboard loads
+  // even if the Prisma client was generated before the schema migration.
+  let effectivePlan: Plan = "FREE";
+  try {
+    const sub = await db.business.findUnique({
+      where:  { id: business.id },
+      select: { plan: true, subscriptionStatus: true, trialEndsAt: true },
+    });
+    if (sub) {
+      effectivePlan = getEffectivePlan(
+        sub.plan as Plan,
+        sub.subscriptionStatus as SubscriptionStatus,
+        sub.trialEndsAt,
+      );
+    }
+  } catch {
+    // Prisma client not yet regenerated — fall back to FREE badge
+  }
+
   return (
     <div className="min-h-screen bg-[var(--color-surface-2)]">
       <DashboardSidebar
         businessName={business.nameAr}
         cityName={business.city.nameAr}
         pendingCount={pendingCount}
-        plan={getEffectivePlan(
-          business.plan as Plan,
-          business.subscriptionStatus as SubscriptionStatus,
-          business.trialEndsAt,
-        )}
+        plan={effectivePlan}
       />
 
       <div className="md:ms-60">
