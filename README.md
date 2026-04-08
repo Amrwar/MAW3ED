@@ -121,6 +121,25 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-09 — Testimonials section premium redesign
+
+**Decision:** Redesigned `src/features/home/Testimonials.tsx` with a trust-focused, SaaS-grade layout.
+
+**Key changes:**
+- Background: white base with blue radial glow at top (`rgba(59,130,246,0.055)`) and a bottom fade to `#F8FAFC` blending into the next section.
+- Header: eyebrow badge + stronger heading + trust sub-line ("Trusted by businesses across Egypt").
+- Trust stats row: 4 pill badges (500+ Businesses, 10,000+ Bookings, 4.9★ Rating, 24/7 Support) with a glowing blue dot.
+- Cards: `rounded-3xl`, `onMouseEnter/Leave` shadow/border/lift transitions. Featured middle card elevated `translateY(-6px)` with blue-tinted border and deeper shadow.
+- Card anatomy: decorative quote mark (large `"` in Georgia, low opacity), star row, review text, divider, avatar (gradient initials) + name + role + location + verified badge pill.
+- Testimonial data enriched: longer review text in both AR and EN, gradient per reviewer, `featured: true` on center card.
+- Navigation dots below: middle dot is wider (24px pill), flanking dots are small circles — purely decorative.
+
+**Trade-offs:**
+- Testimonials remain hardcoded (no DB query) — same as before.
+- `featured` flag in TESTIMONIALS array drives the center-card emphasis; if card order changes, update the flag accordingly.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
