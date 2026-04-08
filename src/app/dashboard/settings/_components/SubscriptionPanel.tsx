@@ -192,7 +192,8 @@ export default function SubscriptionPanel({
 
           <div className="grid gap-4">
             {(["GROWTH", "PRO"] as const).map((targetPlan) => {
-              const isCurrentOrLower = effectivePlan === "PRO" || effectivePlan === targetPlan;
+              const ep = effectivePlan as string;
+              const isCurrentOrLower = ep === "PRO" || ep === targetPlan;
               const PlanIcon = PLAN_ICONS[targetPlan];
               return (
                 <div
