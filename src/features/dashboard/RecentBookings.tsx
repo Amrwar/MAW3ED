@@ -1,7 +1,7 @@
 import { CheckCircle, Clock, XCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "PENDING_PAYMENT" | "FAILED_PAYMENT";
 
 export type RecentBooking = {
   id:            string;
@@ -20,11 +20,13 @@ interface RecentBookingsProps {
 }
 
 const statusConfig: Record<BookingStatus, { label: string; icon: typeof CheckCircle; className: string }> = {
-  CONFIRMED: { label: "مؤكد",         icon: CheckCircle, className: "bg-green-50 text-green-600" },
-  PENDING:   { label: "في الانتظار",  icon: Clock,        className: "bg-amber-50 text-amber-600" },
-  COMPLETED: { label: "مكتمل",        icon: CheckCircle, className: "bg-blue-50 text-blue-600"  },
-  CANCELLED: { label: "ملغي",         icon: XCircle,     className: "bg-red-50 text-red-500"    },
-  NO_SHOW:   { label: "لم يحضر",      icon: AlertCircle, className: "bg-gray-100 text-gray-500" },
+  CONFIRMED:       { label: "مؤكد",            icon: CheckCircle, className: "bg-green-50 text-green-600"   },
+  PENDING:         { label: "في الانتظار",     icon: Clock,       className: "bg-amber-50 text-amber-600"   },
+  COMPLETED:       { label: "مكتمل",           icon: CheckCircle, className: "bg-blue-50 text-blue-600"     },
+  CANCELLED:       { label: "ملغي",            icon: XCircle,     className: "bg-red-50 text-red-500"       },
+  NO_SHOW:         { label: "لم يحضر",         icon: AlertCircle, className: "bg-gray-100 text-gray-500"    },
+  PENDING_PAYMENT: { label: "في انتظار الدفع", icon: Clock,       className: "bg-orange-50 text-orange-600" },
+  FAILED_PAYMENT:  { label: "فشل الدفع",       icon: XCircle,     className: "bg-red-100 text-red-700"      },
 };
 
 const AR_MONTHS = [
