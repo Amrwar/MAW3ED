@@ -4,18 +4,18 @@ import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Link2, CalendarCheck2, BellRing, BarChart3, Star, Gift,
-  Check, TrendingUp, Clock, ArrowUpRight,
+  Check, TrendingUp, Clock, ArrowUpRight, ArrowRight,
 } from "lucide-react";
 
 // ─── Icon map ──────────────────────────────────────────────
 
 const ICON_MAP: Record<string, React.ReactNode> = {
-  "📲": <Link2      size={20} />,
-  "🗓️": <CalendarCheck2 size={20} />,
-  "🔔": <BellRing  size={20} />,
-  "📊": <BarChart3 size={20} />,
-  "⭐": <Star      size={20} />,
-  "🆓": <Gift      size={20} />,
+  "📲": <Link2      size={18} />,
+  "🗓️": <CalendarCheck2 size={18} />,
+  "🔔": <BellRing  size={18} />,
+  "📊": <BarChart3 size={18} />,
+  "⭐": <Star      size={18} />,
+  "🆓": <Gift      size={18} />,
 };
 
 // ─── Dashboard mockup ──────────────────────────────────────
@@ -26,11 +26,14 @@ function DashboardMockup() {
 
       {/* ── Floating notification card (top-right) ── */}
       <div
-        className="absolute -top-6 -right-4 z-30 bg-white rounded-2xl shadow-xl border border-[#E2E8F0] px-4 py-3 flex items-center gap-3"
-        style={{ minWidth: 210 }}
+        className="absolute -top-6 -right-4 z-30 bg-white rounded-2xl border border-[#E2E8F0] px-4 py-3 flex items-center gap-3"
+        style={{
+          minWidth: 210,
+          boxShadow: "0 8px 30px rgba(15,23,42,0.10), 0 2px 8px rgba(15,23,42,0.06)",
+        }}
       >
-        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center shrink-0">
-          <Check size={14} className="text-green-600" strokeWidth={2.5} />
+        <div className="w-8 h-8 bg-green-50 border border-green-100 rounded-full flex items-center justify-center shrink-0">
+          <Check size={13} className="text-green-600" strokeWidth={2.5} />
         </div>
         <div>
           <p className="text-xs font-bold text-[#0F172A]">حجز جديد تم تأكيده</p>
@@ -39,7 +42,10 @@ function DashboardMockup() {
       </div>
 
       {/* ── Main dashboard card ── */}
-      <div className="bg-white rounded-3xl shadow-2xl border border-[#E2E8F0] overflow-hidden mt-6">
+      <div
+        className="bg-white rounded-3xl border border-[#E2E8F0] overflow-hidden mt-6"
+        style={{ boxShadow: "0 20px 60px rgba(15,23,42,0.12), 0 4px 16px rgba(15,23,42,0.06)" }}
+      >
 
         {/* Card header */}
         <div
@@ -51,7 +57,7 @@ function DashboardMockup() {
             <p className="text-blue-300 text-xs mt-0.5">عيادة د. أحمد السيد</p>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-green-400" />
+            <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]" />
             <span className="text-green-300 text-[10px] font-semibold">مفتوح الآن</span>
           </div>
         </div>
@@ -59,13 +65,13 @@ function DashboardMockup() {
         {/* Stat pills */}
         <div className="grid grid-cols-3 gap-3 p-4">
           {[
-            { value: "٣٢١",   label: "حجز",    sub: "هذا الشهر", color: "text-[#3B82F6]", bg: "bg-[#DBEAFE]"  },
-            { value: "٢٣.٥ك", label: "إيراد",  sub: "جنيه",       color: "text-[#7C3AED]", bg: "bg-purple-50" },
-            { value: "٩٨٪",   label: "رضا",    sub: "العملاء",    color: "text-[#10B981]", bg: "bg-emerald-50"},
+            { value: "٣٢١",   label: "حجز",    sub: "هذا الشهر", color: "text-[#3B82F6]", bg: "bg-[#EFF6FF]",   border: "border-[#BFDBFE]" },
+            { value: "٢٣.٥ك", label: "إيراد",  sub: "جنيه",      color: "text-[#7C3AED]", bg: "bg-violet-50",  border: "border-violet-100" },
+            { value: "٩٨٪",   label: "رضا",    sub: "العملاء",   color: "text-[#059669]", bg: "bg-emerald-50", border: "border-emerald-100" },
           ].map((stat) => (
             <div
               key={stat.label}
-              className={`${stat.bg} rounded-xl p-3 text-center`}
+              className={`${stat.bg} border ${stat.border} rounded-xl p-3 text-center`}
             >
               <p className={`text-lg font-black ${stat.color}`}>{stat.value}</p>
               <p className="text-[10px] font-semibold text-[#0F172A] mt-0.5">{stat.label}</p>
@@ -85,7 +91,7 @@ function DashboardMockup() {
                   height: `${h}%`,
                   background: i === 10
                     ? "#3B82F6"
-                    : `rgba(59,130,246,${0.15 + (i / 11) * 0.25})`,
+                    : `rgba(59,130,246,${0.12 + (i / 11) * 0.22})`,
                 }}
               />
             ))}
@@ -94,7 +100,7 @@ function DashboardMockup() {
         </div>
 
         {/* Booking list */}
-        <div className="border-t border-[#E2E8F0] px-4 py-3">
+        <div className="border-t border-[#F1F5F9] px-4 py-3">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-bold text-[#0F172A]">آخر الحجوزات</p>
             <span className="text-[10px] text-[#3B82F6] font-semibold">عرض الكل</span>
@@ -107,7 +113,7 @@ function DashboardMockup() {
             ].map((b) => (
               <div key={b.name} className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-6 h-6 rounded-full bg-[#F1F5F9] flex items-center justify-center shrink-0 text-[10px]">
+                  <div className="w-6 h-6 rounded-full bg-[#F1F5F9] border border-[#E2E8F0] flex items-center justify-center shrink-0 text-[10px]">
                     👤
                   </div>
                   <div className="min-w-0">
@@ -122,8 +128,8 @@ function DashboardMockup() {
                   <span
                     className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${
                       b.status === "confirmed"
-                        ? "bg-green-50 text-green-600"
-                        : "bg-amber-50 text-amber-600"
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                        : "bg-amber-50 text-amber-600 border border-amber-100"
                     }`}
                   >
                     {b.status === "confirmed" ? "مؤكد" : "انتظار"}
@@ -137,36 +143,42 @@ function DashboardMockup() {
 
       {/* ── Floating link card (bottom-left) ── */}
       <div
-        className="absolute -bottom-5 -left-4 z-30 bg-white rounded-2xl shadow-xl border border-[#E2E8F0] px-4 py-3"
-        style={{ minWidth: 200 }}
+        className="absolute -bottom-5 -left-4 z-30 bg-white rounded-2xl border border-[#E2E8F0] px-4 py-3"
+        style={{
+          minWidth: 200,
+          boxShadow: "0 8px 30px rgba(15,23,42,0.10), 0 2px 8px rgba(15,23,42,0.06)",
+        }}
       >
         <p className="text-[10px] text-[#94A3B8] mb-1">رابط الحجز الخاص بك</p>
         <div className="flex items-center gap-2">
-          <span
-            className="text-xs font-bold text-[#3B82F6] truncate"
-            dir="ltr"
-          >
+          <span className="text-xs font-bold text-[#3B82F6] truncate" dir="ltr">
             maw3ed.com/dr-ahmed
           </span>
           <ArrowUpRight size={13} className="text-[#3B82F6] shrink-0" />
         </div>
-        <div className="mt-2 h-1.5 rounded-full bg-[#DBEAFE] overflow-hidden">
+        <div className="mt-2 h-1.5 rounded-full bg-[#EFF6FF] overflow-hidden">
           <div className="h-full w-3/4 rounded-full bg-[#3B82F6]" />
         </div>
         <p className="text-[9px] text-[#94A3B8] mt-1">٧٥٪ نسبة إتمام الحجز</p>
       </div>
 
       {/* ── Floating rating badge (top-left) ── */}
-      <div className="absolute top-2 -left-4 z-30 bg-[#0F172A] rounded-xl shadow-lg px-3 py-2 flex items-center gap-1.5">
+      <div
+        className="absolute top-2 -left-4 z-30 bg-[#0F172A] rounded-xl px-3 py-2 flex items-center gap-1.5"
+        style={{ boxShadow: "0 4px 16px rgba(15,23,42,0.25)" }}
+      >
         <Star size={12} className="text-amber-400 fill-amber-400" />
         <span className="text-white text-xs font-bold">٤.٩</span>
-        <span className="text-[#64748B] text-[10px]">تقييم</span>
+        <span className="text-slate-500 text-[10px]">تقييم</span>
       </div>
 
       {/* ── Rising metric badge (far right) ── */}
-      <div className="absolute top-1/2 -right-5 -translate-y-1/2 z-30 bg-white border border-[#E2E8F0] rounded-xl shadow-md px-3 py-2 flex items-center gap-1.5">
-        <TrendingUp size={14} className="text-[#10B981]" />
-        <span className="text-[11px] font-bold text-[#10B981]">+٢٤٪</span>
+      <div
+        className="absolute top-1/2 -right-5 -translate-y-1/2 z-30 bg-white border border-emerald-100 rounded-xl px-3 py-2 flex items-center gap-1.5"
+        style={{ boxShadow: "0 4px 16px rgba(15,23,42,0.08)" }}
+      >
+        <TrendingUp size={14} className="text-[#059669]" />
+        <span className="text-[11px] font-bold text-[#059669]">+٢٤٪</span>
       </div>
     </div>
   );
@@ -187,44 +199,67 @@ export default function WhyJoin() {
 
       {/* ── Background layers ── */}
 
-      {/* Subtle grid */}
+      {/* Very faint dot grid — extremely subtle */}
       <div
         aria-hidden
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: `
-            linear-gradient(rgba(226,232,240,0.5) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(226,232,240,0.5) 1px, transparent 1px)
-          `,
-          backgroundSize: "48px 48px",
+          backgroundImage: `radial-gradient(circle, rgba(148,163,184,0.18) 1px, transparent 1px)`,
+          backgroundSize: "32px 32px",
         }}
       />
 
-      {/* Blue radial glow — top-start corner */}
+      {/* Top-edge fade so grid fades in gently */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-24 pointer-events-none"
+        style={{ background: "linear-gradient(to bottom, #F8FAFC, transparent)" }}
+      />
+      <div
+        aria-hidden
+        className="absolute inset-x-0 bottom-0 h-24 pointer-events-none"
+        style={{ background: "linear-gradient(to top, #F8FAFC, transparent)" }}
+      />
+
+      {/* Primary blue radial glow — mockup side (start) */}
       <div
         aria-hidden
         className="absolute pointer-events-none"
         style={{
-          insetInlineStart: "-10%",
-          top: "-10%",
-          width: 600,
-          height: 600,
+          insetInlineStart: "-5%",
+          top: "15%",
+          width: 700,
+          height: 700,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(59,130,246,0.07) 0%, rgba(59,130,246,0.03) 40%, transparent 70%)",
+          filter: "blur(1px)",
         }}
       />
 
-      {/* Soft accent glow — bottom-end corner */}
+      {/* Secondary glow — cards side (end) */}
       <div
         aria-hidden
         className="absolute pointer-events-none"
         style={{
-          insetInlineEnd: "-5%",
-          bottom: "-10%",
-          width: 500,
+          insetInlineEnd: "-8%",
+          top: "30%",
+          width: 560,
+          height: 560,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 65%)",
+          filter: "blur(2px)",
+        }}
+      />
+
+      {/* Warm center ambient — keeps the middle from feeling cold */}
+      <div
+        aria-hidden
+        className="absolute pointer-events-none left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+        style={{
+          width: 900,
           height: 500,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse, rgba(219,234,254,0.22) 0%, transparent 70%)",
         }}
       />
 
@@ -232,18 +267,34 @@ export default function WhyJoin() {
 
         {/* ── Section header ── */}
         <div className="text-center mb-16 lg:mb-20">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#DBEAFE] bg-[#DBEAFE]/70 mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
-            <span className="text-[#3B82F6] text-xs font-semibold tracking-wide uppercase">
+
+          {/* Badge */}
+          <div
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6"
+            style={{
+              background: "rgba(219,234,254,0.7)",
+              border: "1px solid rgba(147,197,253,0.6)",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]"
+              style={{ boxShadow: "0 0 6px rgba(59,130,246,0.5)" }}
+            />
+            <span className="text-[#2563EB] text-xs font-semibold tracking-widest uppercase">
               {w.eyebrow}
             </span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F172A] leading-tight mb-5">
+          {/* Heading */}
+          <h2
+            className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F172A] mb-5"
+            style={{ lineHeight: 1.15, letterSpacing: "-0.02em" }}
+          >
             {w.title}{" "}
             <span
               style={{
-                background: "linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)",
+                background: "linear-gradient(135deg, #3B82F6 0%, #6366F1 80%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -253,13 +304,15 @@ export default function WhyJoin() {
             </span>
           </h2>
 
-          <p className="text-[#475569] text-lg max-w-2xl mx-auto leading-relaxed">
+          <p
+            className="text-[#475569] text-lg max-w-xl mx-auto"
+            style={{ lineHeight: 1.75 }}
+          >
             {w.subtitle}
           </p>
         </div>
 
         {/* ── Two-column: mockup + features ── */}
-        {/* We use LTR here so mockup stays visually on the left regardless of site language */}
         <div
           className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-16"
           dir="ltr"
@@ -268,6 +321,17 @@ export default function WhyJoin() {
           {/* ── Left: Dashboard mockup ── */}
           <div className="flex justify-center lg:justify-start">
             <div className="relative w-full max-w-[440px] py-10 px-6">
+
+              {/* Spotlight glow behind mockup */}
+              <div
+                aria-hidden
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: "radial-gradient(ellipse at 50% 50%, rgba(59,130,246,0.10) 0%, transparent 65%)",
+                  filter: "blur(8px)",
+                }}
+              />
+
               <DashboardMockup />
             </div>
           </div>
@@ -276,39 +340,60 @@ export default function WhyJoin() {
           <div dir={lang === "ar" ? "rtl" : "ltr"}>
             <div className="grid sm:grid-cols-2 gap-4">
               {w.benefits.map((benefit, i) => {
-                const isHighlighted = i === 1; // highlight "إدارة ذكية" as featured
+                const isHighlighted = i === 1;
                 return (
                   <div
                     key={benefit.title}
-                    className={`group relative p-5 rounded-2xl border transition-all duration-200 cursor-default ${
+                    className={`group relative p-6 rounded-2xl border transition-all duration-250 cursor-default ${
                       isHighlighted
-                        ? "border-[#3B82F6]/40 bg-white shadow-lg shadow-blue-100/60 hover:shadow-xl hover:shadow-blue-100"
-                        : "border-[#E2E8F0] bg-white hover:border-[#3B82F6]/40 hover:shadow-md hover:shadow-slate-100"
-                    } hover:-translate-y-1`}
+                        ? "border-[#3B82F6]/30 bg-white"
+                        : "border-[#E2E8F0] bg-white hover:border-[#93C5FD]"
+                    }`}
+                    style={
+                      isHighlighted
+                        ? {
+                            boxShadow: "0 4px 24px rgba(59,130,246,0.10), 0 1px 4px rgba(15,23,42,0.05)",
+                          }
+                        : {
+                            boxShadow: "0 1px 4px rgba(15,23,42,0.04)",
+                          }
+                    }
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLDivElement).style.boxShadow =
+                        "0 8px 32px rgba(59,130,246,0.12), 0 2px 8px rgba(15,23,42,0.06)";
+                      (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLDivElement).style.boxShadow = isHighlighted
+                        ? "0 4px 24px rgba(59,130,246,0.10), 0 1px 4px rgba(15,23,42,0.05)"
+                        : "0 1px 4px rgba(15,23,42,0.04)";
+                      (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+                    }}
                   >
-                    {/* Subtle top accent line on highlighted */}
+                    {/* Top accent line on highlighted */}
                     {isHighlighted && (
                       <div
-                        className="absolute top-0 inset-x-0 h-0.5 rounded-t-2xl"
+                        className="absolute top-0 inset-x-0 h-[2px] rounded-t-2xl"
                         style={{ background: "linear-gradient(90deg, #3B82F6, #6366F1)" }}
                       />
                     )}
 
                     {/* Icon */}
                     <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-colors ${
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-colors duration-200 ${
                         isHighlighted
                           ? "bg-[#3B82F6] text-white"
-                          : "bg-[#DBEAFE] text-[#3B82F6] group-hover:bg-[#3B82F6] group-hover:text-white"
+                          : "bg-[#EFF6FF] text-[#3B82F6] group-hover:bg-[#3B82F6] group-hover:text-white"
                       }`}
+                      style={isHighlighted ? { boxShadow: "0 4px 12px rgba(59,130,246,0.30)" } : {}}
                     >
                       {ICON_MAP[benefit.icon] ?? <span className="text-lg">{benefit.icon}</span>}
                     </div>
 
-                    <h3 className="text-sm font-bold text-[#0F172A] mb-1.5 leading-snug">
+                    <h3 className="text-sm font-bold text-[#0F172A] mb-1.5 leading-snug tracking-tight">
                       {benefit.title}
                     </h3>
-                    <p className="text-xs text-[#475569] leading-relaxed">
+                    <p className="text-xs text-[#64748B] leading-relaxed">
                       {benefit.description}
                     </p>
                   </div>
@@ -316,18 +401,35 @@ export default function WhyJoin() {
               })}
             </div>
 
-            {/* Inline CTA inside feature column */}
-            <div className="mt-7 flex flex-wrap gap-3">
+            {/* CTA buttons */}
+            <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/signup?type=business"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white text-sm shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:-translate-y-0.5 transition-all"
-                style={{ background: "#3B82F6" }}
+                className="group inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white text-sm transition-all duration-200 hover:-translate-y-0.5"
+                style={{
+                  background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
+                  boxShadow: "0 4px 16px rgba(59,130,246,0.30), 0 1px 4px rgba(59,130,246,0.20)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.boxShadow =
+                    "0 8px 24px rgba(59,130,246,0.40), 0 2px 8px rgba(59,130,246,0.25)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.boxShadow =
+                    "0 4px 16px rgba(59,130,246,0.30), 0 1px 4px rgba(59,130,246,0.20)";
+                }}
               >
                 {w.cta1}
+                <ArrowRight
+                  size={15}
+                  className="transition-transform duration-200 group-hover:translate-x-0.5"
+                  style={{ transform: lang === "ar" ? "scaleX(-1)" : undefined }}
+                />
               </Link>
               <Link
                 href="/for-business"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm border border-[#E2E8F0] text-[#475569] hover:border-[#3B82F6] hover:text-[#3B82F6] hover:bg-[#DBEAFE] transition-all"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-[#475569] border border-[#E2E8F0] bg-white hover:border-[#93C5FD] hover:text-[#2563EB] hover:bg-[#EFF6FF] transition-all duration-200"
+                style={{ boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }}
               >
                 {w.cta2}
               </Link>
@@ -335,13 +437,18 @@ export default function WhyJoin() {
           </div>
         </div>
 
-        {/* ── Bottom "quick bullets" trust bar ── */}
-        <div className="border-t border-[#E2E8F0] pt-10">
-          <div className="flex flex-wrap justify-center gap-x-10 gap-y-4">
+        {/* ── Bottom trust bar ── */}
+        <div
+          className="pt-8 mt-2"
+          style={{ borderTop: "1px solid rgba(226,232,240,0.8)" }}
+        >
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
             {w.bullets.map((bullet) => (
-              <div key={bullet} className="flex items-center gap-2.5 text-sm text-[#475569]">
-                <span className="w-5 h-5 rounded-full bg-[#DBEAFE] flex items-center justify-center shrink-0">
-                  <Check size={11} className="text-[#3B82F6]" strokeWidth={2.5} />
+              <div key={bullet} className="flex items-center gap-2 text-sm text-[#64748B]">
+                <span
+                  className="w-5 h-5 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center shrink-0"
+                >
+                  <Check size={10} className="text-[#3B82F6]" strokeWidth={2.5} />
                 </span>
                 {bullet}
               </div>
