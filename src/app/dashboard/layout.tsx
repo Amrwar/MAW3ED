@@ -20,17 +20,15 @@ export default async function DashboardLayout({
   // lookup for stale tokens (e.g. session minted before onboarding completed).
   const tokenBusinessId = session.user.businessId;
 
-  const businessSelect = {
-    id: true, nameAr: true,
-    city: { select: { nameAr: true } },
-    plan: true,
-    subscriptionStatus: true,
-    trialEndsAt: true,
-  } as const;
-
   const business = tokenBusinessId
-    ? await db.business.findUnique({ where: { id: tokenBusinessId },       select: businessSelect })
-    : await db.business.findUnique({ where: { ownerId: session.user.id },  select: businessSelect });
+    ? await db.business.findUnique({
+        where:  { id: tokenBusinessId },
+        select: { id: true, nameAr: true, city: { select: { nameAr: true } }, plan: true, subscriptionStatus: true, trialEndsAt: true },
+      })
+    : await db.business.findUnique({
+        where:  { ownerId: session.user.id },
+        select: { id: true, nameAr: true, city: { select: { nameAr: true } }, plan: true, subscriptionStatus: true, trialEndsAt: true },
+      });
 
   if (!business) redirect("/onboarding");
 
