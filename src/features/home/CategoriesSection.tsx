@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import Container from "@/components/ui/Container";
 import { ArrowLeft } from "lucide-react";
@@ -11,6 +12,7 @@ type DbCategory = {
   nameAr:  string;
   nameEn:  string;
   icon:    string;
+  iconSvg?: string;
   color:   string;
   bgColor: string;
 };
@@ -51,7 +53,11 @@ export default function CategoriesSection({ categories }: Props) {
                 className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-transform duration-200 group-hover:scale-110"
                 style={{ backgroundColor: cat.bgColor }}
               >
-                {cat.icon}
+                {cat.iconSvg ? (
+                  <Image src={cat.iconSvg} alt={cat.nameEn} width={36} height={36} />
+                ) : (
+                  cat.icon
+                )}
               </div>
               <p className="font-semibold text-sm text-center text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)] transition-colors leading-tight">
                 {lang === "en" ? (cat.nameEn || cat.nameAr) : cat.nameAr}

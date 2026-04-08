@@ -4,6 +4,7 @@ export type Category = {
   nameAr: string;
   nameEn: string;
   icon: string;
+  iconSvg?: string;
   color: string;
   bgColor: string;
   count?: number;

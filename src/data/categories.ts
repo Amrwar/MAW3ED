@@ -81,4 +81,15 @@ export const categories: Category[] = [
     bgColor: "#FFF7ED",
     count: 63,
   },
+  {
+    id: "9",
+    slug: "consulting",
+    nameAr: "استشارات",
+    nameEn: "Consulting",
+    icon: "💼",
+    iconSvg: "/consulting-icon.svg",
+    color: "#2F6FBF",
+    bgColor: "#EFF6FF",
+    count: 48,
+  },
 ];
