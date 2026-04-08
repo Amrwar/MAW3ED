@@ -158,6 +158,44 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-09 — Browse page premium redesign
+
+**Decision:** Redesigned `src/app/businesses/_components/BusinessesClient.tsx` and `src/components/shared/PublicBusinessCard.tsx` for a premium marketplace layout.
+
+**Layout changes:**
+- Desktop: two-column layout — 224px sidebar + flex-1 results area (`flex gap-7`). Sidebar is `sticky top-36`.
+- Mobile/tablet: sidebar hidden (`hidden lg:block`). Horizontal category chips in the sticky search bar instead.
+- Removed `Container` import (replaced with `container-app` class on divs, consistent with the rest of the app).
+
+**Sticky search bar:**
+- `rgba(255,255,255,0.97)` + `backdrop-filter: blur(12px)` — feels premium, not flat.
+- Search input + city dropdown + search button in a row.
+- Category chips row below, mobile/tablet only (`lg:hidden`).
+- Gradient blue search button with `brightness(1.06)` hover.
+
+**Sidebar (desktop only):**
+- `SidebarSection` + `SidebarItem` helper components for clean composition.
+- Categories section: "All" + each category with icon, active = `#DBEAFE` blue tint.
+- Cities section: same pattern.
+- Active filters summary card (shown only when `hasFilters`): removable tags per active filter.
+
+**Featured row:**
+- Shown when `!hasFilters && businesses.length >= 3`.
+- First 2 businesses displayed in a 2-column grid with `featured={true}` prop (h-56 cover instead of h-44).
+- `Sparkles` icon + "Top Picks" / "أبرز الأعمال" label above.
+- Horizontal divider labeled "All Businesses" between featured and main grid.
+
+**PublicBusinessCard redesign:**
+- `rounded-3xl`, `onMouseEnter/Leave` transitions for shadow/lift/border.
+- Cover: h-44 (h-56 when `featured`), `group-hover:scale-105`, bottom gradient overlay.
+- Category badge and verified badge overlays on the cover.
+- Body: name + tagline (line-clamp-1) + location/price row + CTA row with `ArrowRight` icon (rotates 180° in RTL).
+- `ArrowRight` translates on hover (direction-aware).
+
+**Empty state:** Replaced emoji with a `Search` lucide icon in a rounded container. Premium white card with border and shadow.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
