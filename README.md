@@ -53,6 +53,21 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-08 — BookingWidget redesign (new visual style)
+
+**Decision:** Redesigned `src/features/company/BookingWidget.tsx` to match the new UI spec — dark navy/blue gradient header, numbered circular stepper with connecting lines, service cards with icon box + checkmark indicator + price, and a full-width navy "التالي" button.
+
+**Why:** User requested a more polished, app-like booking UI matching a provided design mockup.
+
+**Implementation details:**
+- Header uses `linear-gradient(135deg, #1f3c88 → #3b5fc9)` with a `CalendarDays` icon in a translucent rounded box.
+- Stepper replaces the old inline progress bar with centered circles and labels below.
+- Service cards have a `w-14 h-14` icon box (falls back to first-letter avatar if `service.image` is absent), a corner checkmark badge when selected, and the price in `#1f3c88` bold.
+- All `Button` component usages replaced with plain `<button>` elements styled in Tailwind for full design control.
+- All logic (slots, validation, submit, reset) is unchanged.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

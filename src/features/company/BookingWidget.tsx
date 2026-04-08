@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import {
-  ChevronRight, ChevronLeft, CheckCircle,
-  Loader2, CalendarDays, Clock,
+  ChevronRight, CheckCircle,
+  Loader2, CalendarDays, Clock, Check,
 } from "lucide-react";
-import Button from "@/components/ui/Button";
 import type { Service } from "@/types/service";
 import { formatPrice, formatDuration } from "@/lib/utils";
 
@@ -97,13 +96,45 @@ function SummaryRow({
         dir={ltr ? "ltr" : undefined}
         className={`text-end ${
           bold
-            ? "font-black text-[var(--color-accent)]"
+            ? "font-black text-[#1f3c88]"
             : "font-semibold text-[var(--color-text-primary)]"
         }`}
       >
         {value}
       </span>
     </div>
+  );
+}
+
+// ─── Section Title ─────────────────────────────────────────
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 mb-4" dir="rtl">
+      <div className="w-1 h-5 bg-[#1f3c88] rounded-full" />
+      <h4 className="text-base font-bold text-[#1f3c88]">{children}</h4>
+    </div>
+  );
+}
+
+// ─── Service Icon ──────────────────────────────────────────
+
+function ServiceIcon({ service }: { service: Service }) {
+  if (service.image) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={service.image}
+        alt={service.nameAr}
+        className="w-10 h-10 object-contain"
+      />
+    );
+  }
+  // Fallback: first letter avatar
+  return (
+    <span className="text-xl font-bold text-[#5b6fa8]">
+      {service.nameAr.charAt(0)}
+    </span>
   );
 }
 
@@ -209,7 +240,6 @@ export default function BookingWidget({
         return;
       }
 
-      // If a deposit is required, redirect to Paymob payment page
       if (data.requiresPayment && data.paymentUrl) {
         window.location.href = data.paymentUrl;
         return;
@@ -247,114 +277,148 @@ export default function BookingWidget({
   ];
 
   return (
-    <div id="booking" className="card p-0 overflow-hidden lg:sticky lg:top-24">
-      {/* Header */}
-      <div className="bg-[var(--color-brand)] px-5 py-4">
-        <h3 className="text-white font-bold text-base">احجز موعدك</h3>
-        <p className="text-white/60 text-xs mt-0.5">{businessName}</p>
+    <div
+      id="booking"
+      className="overflow-hidden rounded-2xl shadow-xl bg-white lg:sticky lg:top-24"
+      dir="rtl"
+      style={{ fontFamily: "var(--font-cairo, Cairo, sans-serif)" }}
+    >
+      {/* ── Header ── */}
+      <div
+        className="px-5 py-5 flex items-center justify-between"
+        style={{
+          background: "linear-gradient(135deg, #1f3c88 0%, #3b5fc9 100%)",
+        }}
+      >
+        <div>
+          <h2 className="text-white text-xl font-bold leading-tight">احجز موعدك</h2>
+          <p className="text-blue-200 text-sm mt-0.5">{businessName}</p>
+        </div>
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-white/20 shrink-0">
+          <CalendarDays size={22} className="text-white" />
+        </div>
       </div>
 
-      {/* Step progress bar */}
+      {/* ── Stepper ── */}
       {step < 4 && (
-        <div className="flex items-center px-5 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]">
-          {STEPS.map((s, i) => (
-            <div key={s.n} className="flex items-center flex-1 last:flex-none">
-              <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
-                  step >= s.n
-                    ? "bg-[var(--color-brand)] text-white"
-                    : "bg-[var(--color-border)] text-[var(--color-text-muted)]"
-                }`}
-              >
-                {step > s.n ? <CheckCircle size={12} /> : s.n}
-              </div>
-              <span
-                className={`text-[10px] font-medium ms-1 ${
-                  step >= s.n
-                    ? "text-[var(--color-text-primary)]"
-                    : "text-[var(--color-text-muted)]"
-                }`}
-              >
-                {s.label}
-              </span>
-              {i < STEPS.length - 1 && (
-                <div
-                  className={`flex-1 h-0.5 mx-2 ${
-                    step > s.n ? "bg-[var(--color-brand)]" : "bg-[var(--color-border)]"
-                  }`}
-                />
-              )}
-            </div>
-          ))}
+        <div className="px-5 pt-5 pb-3">
+          <div className="flex items-start justify-between relative">
+            {/* connecting line behind circles */}
+            <div
+              className="absolute top-4 right-4 left-4 h-0.5 bg-gray-200"
+              style={{ zIndex: 0 }}
+            />
+            {STEPS.map((s) => {
+              const done   = step > s.n;
+              const active = step === s.n;
+              return (
+                <div key={s.n} className="flex flex-col items-center gap-1.5 relative z-10">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                      active
+                        ? "bg-[#1f3c88] text-white shadow-md"
+                        : done
+                        ? "bg-[#1f3c88] text-white"
+                        : "bg-gray-200 text-gray-400"
+                    }`}
+                  >
+                    {done ? <Check size={14} strokeWidth={3} /> : s.n}
+                  </div>
+                  <span
+                    className={`text-[11px] font-semibold ${
+                      active ? "text-[#1f3c88]" : "text-gray-400"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      <div className="p-5">
+      <div className="px-5 pb-5 pt-4">
 
         {/* ═══ STEP 1: Service ═══ */}
         {step === 1 && (
-          <div className="space-y-2.5">
-            <p className="text-sm font-semibold text-[var(--color-text-secondary)] mb-4">
-              اختر الخدمة
-            </p>
+          <div>
+            <SectionTitle>اختر الخدمة</SectionTitle>
+
             {services.length === 0 ? (
-              <p className="text-sm text-[var(--color-text-muted)] text-center py-6">
+              <p className="text-sm text-gray-400 text-center py-6">
                 لا توجد خدمات متاحة حاليًا
               </p>
             ) : (
-              services.map((service) => (
-                <button
-                  key={service.id}
-                  onClick={() => setSelectedService(service)}
-                  className={`w-full text-start p-3.5 rounded-xl border-2 transition-all ${
-                    selectedService?.id === service.id
-                      ? "border-[var(--color-brand)] bg-[var(--color-surface-2)]"
-                      : "border-[var(--color-border)] hover:border-[var(--color-brand)]/40"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug">
-                        {service.nameAr}
-                      </p>
-                      {service.descriptionAr && (
-                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5 line-clamp-1">
-                          {service.descriptionAr}
-                        </p>
+              <div className="space-y-3">
+                {services.map((service) => {
+                  const selected = selectedService?.id === service.id;
+                  return (
+                    <button
+                      key={service.id}
+                      onClick={() => setSelectedService(service)}
+                      className={`w-full text-start rounded-2xl border-2 p-3.5 transition-all relative ${
+                        selected
+                          ? "border-[#1f3c88] bg-blue-50/50"
+                          : "border-gray-200 bg-white hover:border-[#1f3c88]/40"
+                      }`}
+                    >
+                      {/* checkmark badge */}
+                      {selected && (
+                        <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[#1f3c88] flex items-center justify-center">
+                          <Check size={13} strokeWidth={3} className="text-white" />
+                        </span>
                       )}
-                      {service.duration > 0 && (
-                        <p className="text-xs text-[var(--color-text-muted)] mt-1 flex items-center gap-1">
-                          <Clock size={10} />
-                          {formatDuration(service.duration)}
+
+                      <div className="flex items-center gap-3">
+                        {/* icon box */}
+                        <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                          <ServiceIcon service={service} />
+                        </div>
+
+                        {/* name + duration */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[15px] font-bold text-gray-800 leading-snug">
+                            {service.nameAr}
+                          </p>
+                          {service.duration > 0 && (
+                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                              <Clock size={11} />
+                              {formatDuration(service.duration)}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* price */}
+                        <p className="text-base font-black text-[#1f3c88] shrink-0">
+                          {formatPrice(service.price, service.currency)}
                         </p>
-                      )}
-                    </div>
-                    <p className="text-sm font-black text-[var(--color-accent)] shrink-0">
-                      {formatPrice(service.price, service.currency)}
-                    </p>
-                  </div>
-                </button>
-              ))
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             )}
-            <Button
-              variant="primary"
-              fullWidth
-              className="mt-4"
+
+            <button
               disabled={!selectedService}
               onClick={() => setStep(2)}
+              className={`mt-5 w-full py-3.5 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 transition-all ${
+                selectedService
+                  ? "bg-[#1f3c88] hover:bg-[#162d6e] shadow-md"
+                  : "bg-gray-300 cursor-not-allowed"
+              }`}
             >
               التالي
-              <ChevronLeft size={15} />
-            </Button>
+              <span className="text-lg leading-none">←</span>
+            </button>
           </div>
         )}
 
         {/* ═══ STEP 2: Date + Time ═══ */}
         {step === 2 && (
           <div>
-            <p className="text-sm font-semibold text-[var(--color-text-secondary)] mb-3">
-              اختر اليوم
-            </p>
+            <SectionTitle>اختر اليوم</SectionTitle>
 
             {/* Scrollable date carousel */}
             <div
@@ -372,10 +436,10 @@ export default function BookingWidget({
                     onClick={() => setSelectedDate(d.iso)}
                     className={`flex flex-col items-center py-2.5 px-2.5 rounded-xl text-xs shrink-0 min-w-[44px] transition-all ${
                       disabled
-                        ? "opacity-30 cursor-not-allowed bg-[var(--color-surface-2)] text-[var(--color-text-muted)]"
+                        ? "opacity-30 cursor-not-allowed bg-gray-100 text-gray-400"
                         : selected
-                        ? "bg-[var(--color-brand)] text-white shadow-md"
-                        : "bg-[var(--color-surface-2)] hover:bg-[var(--color-border)] text-[var(--color-text-primary)]"
+                        ? "bg-[#1f3c88] text-white shadow-md"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                     }`}
                   >
                     <span className="text-[9px] opacity-70">{d.dayAr.slice(0, 3)}</span>
@@ -389,14 +453,12 @@ export default function BookingWidget({
             {/* Time slots */}
             {selectedDate ? (
               <div className="mt-5">
-                <p className="text-sm font-semibold text-[var(--color-text-secondary)] mb-3">
-                  اختر الوقت
-                </p>
+                <SectionTitle>اختر الوقت</SectionTitle>
 
                 {slotsLoading && (
                   <div className="flex items-center justify-center py-8 gap-2">
-                    <Loader2 size={20} className="animate-spin text-[var(--color-brand)]" />
-                    <span className="text-sm text-[var(--color-text-muted)]">جارٍ التحميل…</span>
+                    <Loader2 size={20} className="animate-spin text-[#1f3c88]" />
+                    <span className="text-sm text-gray-400">جارٍ التحميل…</span>
                   </div>
                 )}
 
@@ -406,14 +468,9 @@ export default function BookingWidget({
 
                 {!slotsLoading && !slotsError && slots.length === 0 && (
                   <div className="text-center py-6">
-                    <CalendarDays
-                      size={28}
-                      className="mx-auto text-[var(--color-text-muted)] mb-2 opacity-40"
-                    />
-                    <p className="text-sm text-[var(--color-text-muted)]">لا توجد مواعيد متاحة</p>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1 opacity-60">
-                      اختر يومًا آخر
-                    </p>
+                    <CalendarDays size={28} className="mx-auto text-gray-300 mb-2" />
+                    <p className="text-sm text-gray-400">لا توجد مواعيد متاحة</p>
+                    <p className="text-xs text-gray-300 mt-1">اختر يومًا آخر</p>
                   </div>
                 )}
 
@@ -426,8 +483,8 @@ export default function BookingWidget({
                         onClick={() => setSelectedTime(slot)}
                         className={`py-2.5 rounded-xl text-xs font-semibold border-2 transition-all ${
                           selectedTime === slot
-                            ? "bg-[var(--color-brand)] text-white border-[var(--color-brand)] shadow-md"
-                            : "bg-white border-[var(--color-border)] hover:border-[var(--color-brand)]/50 text-[var(--color-text-primary)]"
+                            ? "bg-[#1f3c88] text-white border-[#1f3c88] shadow-md"
+                            : "bg-white border-gray-200 hover:border-[#1f3c88]/50 text-gray-700"
                         }`}
                       >
                         {slot}
@@ -437,25 +494,31 @@ export default function BookingWidget({
                 )}
               </div>
             ) : (
-              <p className="text-xs text-[var(--color-text-muted)] mt-4 text-center opacity-70">
+              <p className="text-xs text-gray-400 mt-4 text-center">
                 اختر يومًا لعرض المواعيد المتاحة
               </p>
             )}
 
             <div className="flex gap-2 mt-5">
-              <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
+              <button
+                onClick={() => setStep(1)}
+                className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold text-sm flex items-center justify-center gap-1 hover:border-gray-300 transition-all"
+              >
                 <ChevronRight size={15} />
                 رجوع
-              </Button>
-              <Button
-                variant="primary"
-                className="flex-1"
+              </button>
+              <button
                 disabled={!selectedDate || !selectedTime}
                 onClick={() => setStep(3)}
+                className={`flex-1 py-3.5 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                  selectedDate && selectedTime
+                    ? "bg-[#1f3c88] hover:bg-[#162d6e] shadow-md"
+                    : "bg-gray-300 cursor-not-allowed"
+                }`}
               >
                 التالي
-                <ChevronLeft size={15} />
-              </Button>
+                <span className="text-base leading-none">←</span>
+              </button>
             </div>
           </div>
         )}
@@ -464,20 +527,18 @@ export default function BookingWidget({
         {step === 3 && (
           <div>
             {/* Mini summary */}
-            <div className="bg-[var(--color-surface-2)] rounded-xl px-4 py-3 mb-5 space-y-1.5">
+            <div className="bg-blue-50 rounded-2xl px-4 py-3 mb-5 space-y-1.5 border border-blue-100">
               <SummaryRow label="الخدمة" value={selectedService?.nameAr ?? ""} />
               <SummaryRow label="اليوم"  value={selectedDate ? formatDateAr(selectedDate) : ""} />
               <SummaryRow label="الوقت"  value={selectedTime ?? ""} ltr />
             </div>
 
-            <p className="text-sm font-semibold text-[var(--color-text-secondary)] mb-4">
-              بياناتك
-            </p>
+            <SectionTitle>بياناتك</SectionTitle>
 
             <div className="space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                   الاسم الكامل <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -488,14 +549,18 @@ export default function BookingWidget({
                     setName(e.target.value);
                     setErrors((p) => ({ ...p, name: undefined }));
                   }}
-                  className={`input ${errors.name ? "border-red-400 focus:ring-red-200" : ""}`}
+                  className={`w-full rounded-xl border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${
+                    errors.name
+                      ? "border-red-400 focus:border-red-400"
+                      : "border-gray-200 focus:border-[#1f3c88]"
+                  }`}
                 />
                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
               </div>
 
               {/* Phone */}
               <div>
-                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                   رقم الهاتف <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -507,16 +572,20 @@ export default function BookingWidget({
                     setPhone(e.target.value);
                     setErrors((p) => ({ ...p, phone: undefined }));
                   }}
-                  className={`input ${errors.phone ? "border-red-400 focus:ring-red-200" : ""}`}
+                  className={`w-full rounded-xl border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${
+                    errors.phone
+                      ? "border-red-400 focus:border-red-400"
+                      : "border-gray-200 focus:border-[#1f3c88]"
+                  }`}
                 />
                 {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
               </div>
 
               {/* Email */}
               <div>
-                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                   البريد الإلكتروني{" "}
-                  <span className="text-[var(--color-text-muted)] font-normal">(اختياري)</span>
+                  <span className="text-gray-400 font-normal">(اختياري)</span>
                 </label>
                 <input
                   type="email"
@@ -527,23 +596,27 @@ export default function BookingWidget({
                     setEmail(e.target.value);
                     setErrors((p) => ({ ...p, email: undefined }));
                   }}
-                  className={`input ${errors.email ? "border-red-400 focus:ring-red-200" : ""}`}
+                  className={`w-full rounded-xl border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${
+                    errors.email
+                      ? "border-red-400 focus:border-red-400"
+                      : "border-gray-200 focus:border-[#1f3c88]"
+                  }`}
                 />
                 {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1.5">
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                   ملاحظات{" "}
-                  <span className="text-[var(--color-text-muted)] font-normal">(اختياري)</span>
+                  <span className="text-gray-400 font-normal">(اختياري)</span>
                 </label>
                 <textarea
                   placeholder="أي معلومات إضافية…"
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="input resize-none"
+                  className="w-full rounded-xl border-2 border-gray-200 px-3.5 py-2.5 text-sm outline-none focus:border-[#1f3c88] transition-all resize-none"
                 />
               </div>
             </div>
@@ -555,30 +628,28 @@ export default function BookingWidget({
             )}
 
             <div className="flex gap-2 mt-5">
-              <Button
-                variant="outline"
-                className="flex-1"
+              <button
                 onClick={() => setStep(2)}
                 disabled={submitting}
+                className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold text-sm flex items-center justify-center gap-1 hover:border-gray-300 transition-all disabled:opacity-50"
               >
                 <ChevronRight size={15} />
                 رجوع
-              </Button>
-              <Button
-                variant="accent"
-                className="flex-1"
+              </button>
+              <button
                 onClick={handleSubmit}
                 disabled={submitting}
+                className="flex-1 py-3.5 rounded-2xl bg-[#1f3c88] hover:bg-[#162d6e] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
               >
                 {submitting ? (
-                  <span className="flex items-center gap-2">
+                  <>
                     <Loader2 size={14} className="animate-spin" />
                     جارٍ الحجز…
-                  </span>
+                  </>
                 ) : (
                   "تأكيد الحجز"
                 )}
-              </Button>
+              </button>
             </div>
           </div>
         )}
@@ -590,19 +661,19 @@ export default function BookingWidget({
               <CheckCircle size={40} className="text-green-500" />
             </div>
 
-            <h3 className="font-black text-xl text-[var(--color-text-primary)] mb-1">
+            <h3 className="font-black text-xl text-gray-800 mb-1">
               تم حجز موعدك!
             </h3>
-            <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
+            <p className="text-sm text-gray-400 mb-6 leading-relaxed">
               يسعدنا استقبالك. سيتواصل معك الفريق قريبًا.
               <br />
               تم إرسال تفاصيل الحجز ورابط الإدارة إلى بريدك الإلكتروني.
             </p>
 
-            <div className="text-start bg-[var(--color-surface-2)] rounded-xl p-4 space-y-3 mb-5">
-              <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-                <p className="text-xs font-medium text-[var(--color-text-muted)]">رقم الحجز</p>
-                <p className="text-xs font-mono text-[var(--color-text-secondary)]" dir="ltr">
+            <div className="text-start bg-blue-50 rounded-2xl p-4 space-y-3 mb-5 border border-blue-100">
+              <div className="flex items-center justify-between pb-3 border-b border-blue-100">
+                <p className="text-xs font-medium text-gray-400">رقم الحجز</p>
+                <p className="text-xs font-mono text-gray-600" dir="ltr">
                   #{confirmation.id.slice(-8).toUpperCase()}
                 </p>
               </div>
@@ -610,7 +681,7 @@ export default function BookingWidget({
               <SummaryRow label="الخدمة"   value={confirmation.serviceName} />
               <SummaryRow label="التاريخ"  value={formatDateAr(confirmation.date)} />
               <SummaryRow label="الوقت"    value={`${confirmation.startTime} – ${confirmation.endTime}`} ltr />
-              <div className="pt-3 border-t border-[var(--color-border)]">
+              <div className="pt-3 border-t border-blue-100">
                 <SummaryRow
                   label="الإجمالي"
                   value={`${confirmation.totalPrice.toLocaleString("ar-EG")} ${confirmation.currency}`}
@@ -624,14 +695,18 @@ export default function BookingWidget({
                 href={`/booking/${confirmation.accessToken}`}
                 target="_blank"
                 rel="noreferrer"
-                className="block w-full text-center py-2.5 rounded-xl border-2 border-[var(--color-brand)] text-[var(--color-brand)] text-sm font-bold hover:bg-[var(--color-surface-2)] transition-colors mb-3"
+                className="block w-full text-center py-3 rounded-2xl border-2 border-[#1f3c88] text-[#1f3c88] text-sm font-bold hover:bg-blue-50 transition-colors mb-3"
               >
                 عرض تفاصيل الحجز
               </a>
             )}
-            <Button variant="outline" fullWidth onClick={reset}>
+
+            <button
+              onClick={reset}
+              className="w-full py-3 rounded-2xl border-2 border-gray-200 text-gray-500 font-bold text-sm hover:border-gray-300 transition-all"
+            >
               حجز موعد آخر
-            </Button>
+            </button>
           </div>
         )}
 
