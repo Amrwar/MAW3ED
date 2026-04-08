@@ -196,6 +196,27 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-09 — Browse page card + sidebar refinements
+
+**Decision:** Aligned `PublicBusinessCard` with the homepage `FeaturedCard` design system, and reordered sidebar tabs.
+
+**Card changes (Update 1):**
+- Outer element changed from `<Link>` to `<div>` to match `FeaturedCard` structure (CTAs are the navigation points).
+- Cover: identical vignette gradient (`rgba(0,0,0,0.38) → transparent 68%`) + decorative ring (`top:-38%, insetInlineEnd:-7%, w-200, border 1.5px rgba(255,255,255,0.15)`).
+- Avatar overlap: `-mt-8`, `w-14 h-14 rounded-2xl`, background is `category.color` (solid), ring is `0 0 0 3px #ffffff` + `category.color + 55` drop shadow. Initial letter from business name.
+- Verified pair: `CheckCircle2` + label (same end-side placement as FeaturedCard).
+- Name: `text-[15px] font-extrabold`, `letterSpacing: -0.015em` — exact match.
+- Category pill + city row: same tag/MapPin layout.
+- Tagline slot: `minHeight: 2.5rem` so cards stay aligned in grid when some lack taglines.
+- Price bar: bordered top+bottom (`#F1F5F9`), `fromLabel` left + `price + currency` right — mirrors homepage stats bar visual treatment.
+- Dual CTA: gradient "Book Now" (`#3B82F6→#2563EB`) with `boxShadow glow + translateY(-1px)` hover + ghost "View Profile" border button — exact match to FeaturedCard.
+
+**Sidebar reorder (Update 2):**
+- Cities section now renders before Categories section in the desktop sidebar.
+- No changes to mobile layout (city uses `<select>` dropdown in the search bar, category chips are in the mobile chip row — order unaffected).
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

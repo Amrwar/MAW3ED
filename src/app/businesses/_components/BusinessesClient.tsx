@@ -323,26 +323,7 @@ export default function BusinessesClient({
                 </div>
               )}
 
-              {/* Categories */}
-              <SidebarSection title={isAr ? "التصنيفات" : "Categories"}>
-                <SidebarItem
-                  active={!category}
-                  onClick={() => { setCategory(""); apply(q, city, ""); }}
-                  icon={<span className="text-base">🔍</span>}
-                  label={b.allCategories}
-                />
-                {categories.map((cat) => (
-                  <SidebarItem
-                    key={cat.id}
-                    active={category === cat.slug}
-                    onClick={() => { setCategory(cat.slug); apply(q, city, cat.slug); }}
-                    icon={<span className="text-base">{cat.icon}</span>}
-                    label={getName(cat)}
-                  />
-                ))}
-              </SidebarSection>
-
-              {/* Cities */}
+              {/* Cities — first, per requested tab order */}
               <SidebarSection title={isAr ? "المدن" : "Cities"}>
                 <SidebarItem
                   active={!city}
@@ -357,6 +338,25 @@ export default function BusinessesClient({
                     onClick={() => { setCity(c.id); apply(q, c.id, category); }}
                     icon={<MapPin size={13} />}
                     label={getName(c)}
+                  />
+                ))}
+              </SidebarSection>
+
+              {/* Categories — second */}
+              <SidebarSection title={isAr ? "التصنيفات" : "Categories"}>
+                <SidebarItem
+                  active={!category}
+                  onClick={() => { setCategory(""); apply(q, city, ""); }}
+                  icon={<span className="text-base">🔍</span>}
+                  label={b.allCategories}
+                />
+                {categories.map((cat) => (
+                  <SidebarItem
+                    key={cat.id}
+                    active={category === cat.slug}
+                    onClick={() => { setCategory(cat.slug); apply(q, city, cat.slug); }}
+                    icon={<span className="text-base">{cat.icon}</span>}
+                    label={getName(cat)}
                   />
                 ))}
               </SidebarSection>
