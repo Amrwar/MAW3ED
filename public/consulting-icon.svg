@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none">
+  <!-- Background -->
+  <rect width="80" height="80" rx="18" fill="#1E3A5F"/>
+
+  <!-- Briefcase body -->
+  <rect x="12" y="34" width="56" height="34" rx="5" fill="#2F6FBF"/>
+
+  <!-- Briefcase handle -->
+  <path d="M28 34V26C28 22.686 30.686 20 34 20H46C49.314 20 52 22.686 52 26V34"
+        stroke="#5B9BD5" stroke-width="4" stroke-linecap="round" fill="none"/>
+
+  <!-- Divider line across middle of briefcase -->
+  <line x1="12" y1="47" x2="68" y2="47" stroke="#5B9BD5" stroke-width="1.5" stroke-dasharray="0"/>
+
+  <!-- Center clasp -->
+  <rect x="35" y="43" width="10" height="8" rx="2" fill="#1E3A5F" stroke="#5B9BD5" stroke-width="1.5"/>
+
+  <!-- Trend line inside briefcase -->
+  <polyline
+    points="20,60 30,52 42,56 56,44"
+    stroke="#60D394" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Arrow at end of trend line -->
+  <polyline
+    points="50,42 56,44 54,50"
+    stroke="#60D394" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
