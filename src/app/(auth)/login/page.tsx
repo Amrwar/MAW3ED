@@ -7,15 +7,18 @@ import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, LogIn } from "lucide-react";
-import { loginSchema, type SignUpInput } from "@/lib/validations";
+import { loginSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type LoginForm = { email: string; password: string };
 
 export default function LoginPage() {
+  const { t } = useLanguage();
+  const l = t.auth.login;
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [serverError,  setServerError]  = useState<string | null>(null);
 
   const {
     register,
@@ -32,12 +35,10 @@ export default function LoginPage() {
     });
 
     if (result?.error) {
-      setServerError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      setServerError(l.invalidCredentials);
       return;
     }
 
-    // NextAuth doesn't expose businessId in client session immediately,
-    // so redirect to /dashboard — middleware handles the onboarding redirect
     router.push("/dashboard");
     router.refresh();
   }
@@ -45,19 +46,15 @@ export default function LoginPage() {
   return (
     <div className="card p-7">
       <div className="text-center mb-7">
-        <h1 className="text-2xl font-black text-[var(--color-text-primary)] mb-1">
-          أهلًا بعودتك
-        </h1>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          سجّل دخولك للوصول للوحة التحكم
-        </p>
+        <h1 className="text-2xl font-black text-[var(--color-text-primary)] mb-1">{l.title}</h1>
+        <p className="text-sm text-[var(--color-text-muted)]">{l.subtitle}</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         {/* Email */}
         <div>
           <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-            البريد الإلكتروني
+            {l.email}
           </label>
           <input
             type="email"
@@ -76,13 +73,10 @@ export default function LoginPage() {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-sm font-medium text-[var(--color-text-secondary)]">
-              كلمة المرور
+              {l.password}
             </label>
-            <Link
-              href="/forgot-password"
-              className="text-xs text-[var(--color-accent)] hover:underline"
-            >
-              نسيت كلمة المرور؟
+            <Link href="/forgot-password" className="text-xs text-[var(--color-accent)] hover:underline">
+              {l.forgotPassword}
             </Link>
           </div>
           <div className="relative">
@@ -106,32 +100,25 @@ export default function LoginPage() {
           )}
         </div>
 
-        {/* Server error */}
         {serverError && (
           <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
             {serverError}
           </div>
         )}
 
-        <Button
-          type="submit"
-          variant="primary"
-          fullWidth
-          isLoading={isSubmitting}
-          className="mt-2"
-        >
+        <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting} className="mt-2">
           <LogIn size={15} />
-          تسجيل الدخول
+          {l.submit}
         </Button>
       </form>
 
       <p className="text-center text-sm text-[var(--color-text-muted)] mt-5">
-        ليس لديك حساب؟{" "}
+        {l.noAccount}{" "}
         <Link
           href="/signup"
           className="font-semibold text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors"
         >
-          أنشئ حسابًا مجانًا
+          {l.createAccount}
         </Link>
       </p>
     </div>

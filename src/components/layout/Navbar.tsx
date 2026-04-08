@@ -3,22 +3,15 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Globe } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Logo from "@/components/shared/Logo";
 import { cn } from "@/lib/utils";
-
-const navLinks = [
-  { label: "الرئيسية",     href: "/" },
-  { label: "تصفح الأعمال", href: "/businesses" },
-  { label: "الفئات",       href: "/categories" },
-  { label: "المدن",        href: "/cities" },
-  { label: "الأسعار",      href: "/pricing" },
-  { label: "للشركات",      href: "/for-business" },
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Navbar() {
   const { data: session } = useSession();
+  const { t, lang, toggleLang } = useLanguage();
   const pathname = usePathname();
   const [isOpen,   setIsOpen]   = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -29,7 +22,6 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close mobile menu on route change
   useEffect(() => { setIsOpen(false); }, [pathname]);
 
   const isLoggedIn  = !!session?.user;
@@ -39,6 +31,15 @@ export default function Navbar() {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   }
+
+  const navLinks = [
+    { label: t.nav.home,        href: "/" },
+    { label: t.nav.businesses,  href: "/businesses" },
+    { label: t.nav.categories,  href: "/categories" },
+    { label: t.nav.cities,      href: "/cities" },
+    { label: t.nav.pricing,     href: "/pricing" },
+    { label: t.nav.forBusiness, href: "/for-business" },
+  ];
 
   return (
     <header
@@ -51,10 +52,10 @@ export default function Navbar() {
     >
       <div className="container-app">
         <div className="flex items-center justify-between h-16 gap-4">
-          {/* Logo — visual right in RTL */}
+          {/* Logo */}
           <Logo size="sm" href="/" />
 
-          {/* Desktop nav — centre */}
+          {/* Desktop nav */}
           <nav className="hidden lg:flex items-center gap-0.5">
             {navLinks.map((link) => (
               <Link
@@ -75,38 +76,51 @@ export default function Navbar() {
             ))}
           </nav>
 
-          {/* Desktop actions — visual left in RTL */}
+          {/* Desktop actions */}
           <div className="hidden lg:flex items-center gap-2 shrink-0">
+            {/* Language toggle */}
+            <button
+              onClick={toggleLang}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-2)] transition-colors"
+              aria-label="Toggle language"
+            >
+              <Globe size={13} />
+              {t.nav.langToggle}
+            </button>
+
             {isLoggedIn ? (
-              <Link
-                href="/dashboard"
-                className="btn btn-primary btn-sm"
-              >
-                {hasBusiness ? "لوحة التحكم" : "إكمال الإعداد"}
+              <Link href="/dashboard" className="btn btn-primary btn-sm">
+                {hasBusiness ? t.nav.dashboard : t.nav.completeSetup}
               </Link>
             ) : (
               <>
-                <Link href="/login"  className="btn btn-ghost btn-sm">تسجيل الدخول</Link>
-                <Link href="/signup" className="btn btn-outline btn-sm">إنشاء حساب</Link>
-                <Link
-                  href="/signup?type=business"
-                  className="btn btn-accent btn-sm"
-                >
-                  أضف نشاطك
+                <Link href="/login"  className="btn btn-ghost btn-sm">{t.nav.login}</Link>
+                <Link href="/signup" className="btn btn-outline btn-sm">{t.nav.signup}</Link>
+                <Link href="/signup?type=business" className="btn btn-accent btn-sm">
+                  {t.nav.addBusiness}
                 </Link>
               </>
             )}
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            className="lg:hidden p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] transition-colors"
-            onClick={() => setIsOpen(!isOpen)}
-            aria-label="القائمة"
-            aria-expanded={isOpen}
-          >
-            {isOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {/* Mobile: lang toggle + hamburger */}
+          <div className="lg:hidden flex items-center gap-2">
+            <button
+              onClick={toggleLang}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] transition-colors"
+            >
+              <Globe size={12} />
+              {t.nav.langToggle}
+            </button>
+            <button
+              className="p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] transition-colors"
+              onClick={() => setIsOpen(!isOpen)}
+              aria-label="Menu"
+              aria-expanded={isOpen}
+            >
+              {isOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile menu */}
@@ -130,17 +144,14 @@ export default function Navbar() {
             <div className="px-4 pt-3 pb-1 flex flex-col gap-2 border-t border-[var(--color-border)] mt-2 mx-2">
               {isLoggedIn ? (
                 <Link href="/dashboard" className="btn btn-primary w-full">
-                  {hasBusiness ? "لوحة التحكم" : "إكمال الإعداد"}
+                  {hasBusiness ? t.nav.dashboard : t.nav.completeSetup}
                 </Link>
               ) : (
                 <>
-                  <Link href="/login"  className="btn btn-outline w-full">تسجيل الدخول</Link>
-                  <Link href="/signup" className="btn btn-ghost w-full">إنشاء حساب</Link>
-                  <Link
-                    href="/signup?type=business"
-                    className="btn btn-accent w-full"
-                  >
-                    أضف نشاطك
+                  <Link href="/login"  className="btn btn-outline w-full">{t.nav.login}</Link>
+                  <Link href="/signup" className="btn btn-ghost w-full">{t.nav.signup}</Link>
+                  <Link href="/signup?type=business" className="btn btn-accent w-full">
+                    {t.nav.addBusiness}
                   </Link>
                 </>
               )}

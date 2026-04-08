@@ -1,38 +1,16 @@
-import Container from "@/components/ui/Container";
+"use client";
 
-const stats = [
-  {
-    value: "٣٠٠+",
-    label: "عمل موثّق",
-    description: "عيادات، صالونات، مراكز",
-    icon: "🏢",
-  },
-  {
-    value: "١٢ألف+",
-    label: "حجز مكتمل",
-    description: "خلال آخر ٣ أشهر",
-    icon: "✅",
-  },
-  {
-    value: "٩٨٪",
-    label: "نسبة الرضا",
-    description: "من تقييمات العملاء",
-    icon: "⭐",
-  },
-  {
-    value: "٤ دقائق",
-    label: "وقت الحجز",
-    description: "متوسط وقت إتمام الحجز",
-    icon: "⚡",
-  },
-];
+import Container from "@/components/ui/Container";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function TrustStats() {
+  const { t } = useLanguage();
+
   return (
     <section className="py-16 bg-[var(--color-surface-2)] border-y border-[var(--color-border)]">
       <Container>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {stats.map((stat) => (
+          {t.trustStats.items.map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="text-3xl mb-2">{stat.icon}</div>
               <p className="text-3xl font-black text-[var(--color-text-primary)] mb-1">

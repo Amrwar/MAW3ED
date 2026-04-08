@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { MapPin, CheckCircle } from "lucide-react";
 import type { PublicBusiness } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const FALLBACK =
   "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&q=80";
@@ -12,6 +15,8 @@ interface Props {
 }
 
 export default function PublicBusinessCard({ business, className }: Props) {
+  const { t, lang } = useLanguage();
+  const card = t.businessCard;
   const cover = business.coverImage || FALLBACK;
 
   return (
@@ -41,7 +46,10 @@ export default function PublicBusinessCard({ business, className }: Props) {
               color:           business.category.color,
             }}
           >
-            {business.category.icon} {business.category.nameAr}
+            {business.category.icon}{" "}
+            {lang === "en"
+              ? ((business.category as { nameEn?: string }).nameEn || business.category.nameAr)
+              : business.category.nameAr}
           </span>
         </div>
 
@@ -50,7 +58,7 @@ export default function PublicBusinessCard({ business, className }: Props) {
           <div className="absolute top-3 end-3">
             <span className="flex items-center gap-1 text-xs font-semibold bg-white/95 text-green-700 px-2 py-0.5 rounded-full shadow-sm">
               <CheckCircle size={11} className="text-green-500" />
-              موثّق
+              {card.verified}
             </span>
           </div>
         )}
@@ -59,7 +67,7 @@ export default function PublicBusinessCard({ business, className }: Props) {
       {/* Body */}
       <div className="p-4">
         <h3 className="font-bold text-[var(--color-text-primary)] text-base leading-snug mb-1 group-hover:text-[var(--color-accent)] transition-colors">
-          {business.nameAr}
+          {lang === "en" && business.nameEn ? business.nameEn : business.nameAr}
         </h3>
 
         {business.taglineAr && (
@@ -71,18 +79,22 @@ export default function PublicBusinessCard({ business, className }: Props) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
             <MapPin size={12} />
-            <span>{business.city.nameAr}</span>
+            <span>
+              {lang === "en"
+                ? ((business.city as { nameEn?: string }).nameEn || business.city.nameAr)
+                : business.city.nameAr}
+            </span>
           </div>
           {business.minPrice != null && (
             <span className="text-xs font-semibold text-[var(--color-text-primary)]">
-              من {business.minPrice} ج.م
+              {card.from} {business.minPrice} {card.currency}
             </span>
           )}
         </div>
 
         <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
           <span className="text-xs font-semibold text-[var(--color-accent)]">
-            احجز الآن ←
+            {card.bookNow}
           </span>
         </div>
       </div>

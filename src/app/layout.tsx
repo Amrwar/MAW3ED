@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import "./globals.css";
 import Providers from "./providers";
+import type { Lang } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: {
@@ -24,10 +26,7 @@ export const metadata: Metadata = {
     title: "موعد | MAW3ED",
     description: "احجز مواعيدك في ثوانٍ مع أفضل العيادات والصالونات في مصر.",
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
@@ -36,15 +35,19 @@ export const viewport: Viewport = {
   themeColor: "#0A0A0A",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const dir  = lang === "en" ? "ltr" : "rtl";
+
   return (
-    <html lang="ar" dir="rtl">
+    <html lang={lang} dir={dir}>
       <body className="antialiased min-h-screen">
-        <Providers>{children}</Providers>
+        <Providers lang={lang}>{children}</Providers>
       </body>
     </html>
   );

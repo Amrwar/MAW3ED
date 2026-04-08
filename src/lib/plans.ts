@@ -59,6 +59,12 @@ export const PLAN_NAMES_AR: Record<Plan, string> = {
   PRO:    "الاحترافي",
 };
 
+export const PLAN_NAMES_EN: Record<Plan, string> = {
+  FREE:   "Free",
+  GROWTH: "Growth",
+  PRO:    "Pro",
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**

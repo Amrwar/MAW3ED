@@ -7,9 +7,10 @@ import { Search, X, MapPin } from "lucide-react";
 import PublicBusinessCard from "@/components/shared/PublicBusinessCard";
 import Container from "@/components/ui/Container";
 import type { PublicBusiness } from "@/lib/data";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-type Category = { id: string; slug: string; nameAr: string; icon: string };
-type City     = { id: string; slug: string; nameAr: string };
+type Category = { id: string; slug: string; nameAr: string; nameEn: string; icon: string };
+type City     = { id: string; slug: string; nameAr: string; nameEn: string };
 
 interface Props {
   businesses:      PublicBusiness[];
@@ -28,6 +29,8 @@ export default function BusinessesClient({
   initialCity,
   initialCategory,
 }: Props) {
+  const { t, lang } = useLanguage();
+  const b = t.businesses;
   const router               = useRouter();
   const [isPending, startTx] = useTransition();
   const [q,        setQ]        = useState(initialQ);
@@ -46,23 +49,25 @@ export default function BusinessesClient({
   const selectedCity = cities.find((c) => c.id === city);
   const hasFilters   = q || city || category;
 
+  const catName  = selectedCat  ? (lang === "en" ? (selectedCat.nameEn  || selectedCat.nameAr)  : selectedCat.nameAr)  : null;
+  const cityName = selectedCity ? (lang === "en" ? (selectedCity.nameEn || selectedCity.nameAr) : selectedCity.nameAr) : null;
+
   return (
     <div className="pb-16">
       {/* Sticky search + filter bar */}
       <div className="bg-white border-b border-[var(--color-border)] sticky top-16 z-30 py-4 shadow-sm">
         <Container>
-          {/* Search row */}
           <form
             onSubmit={(e) => { e.preventDefault(); apply(q, city, category); }}
             className="flex flex-col sm:flex-row gap-3"
           >
-            {/* Search input */}
             <div className="flex items-center gap-2 flex-1 bg-[var(--color-surface-2)] rounded-xl px-4 py-2.5 border border-[var(--color-border)] focus-within:border-[var(--color-accent)] transition-colors">
               <Search size={16} className="text-[var(--color-text-muted)] shrink-0" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="ابحث عن عمل أو خدمة..."
+                placeholder={b.searchPlaceholder}
+                dir={lang === "en" ? "ltr" : "rtl"}
                 className="flex-1 text-sm bg-transparent outline-none placeholder:text-[var(--color-text-muted)]"
               />
               {q && (
@@ -72,21 +77,20 @@ export default function BusinessesClient({
               )}
             </div>
 
-            {/* City select */}
             <select
               value={city}
               onChange={(e) => { setCity(e.target.value); apply(q, e.target.value, category); }}
               className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--color-text-secondary)] outline-none focus:border-[var(--color-accent)] sm:w-44"
             >
-              <option value="">كل المدن</option>
+              <option value="">{b.allCities}</option>
               {cities.map((c) => (
-                <option key={c.id} value={c.id}>{c.nameAr}</option>
+                <option key={c.id} value={c.id}>
+                  {lang === "en" ? (c.nameEn || c.nameAr) : c.nameAr}
+                </option>
               ))}
             </select>
 
-            <button type="submit" className="btn btn-accent px-6">
-              بحث
-            </button>
+            <button type="submit" className="btn btn-accent px-6">{b.searchBtn}</button>
           </form>
 
           {/* Category chips */}
@@ -99,7 +103,7 @@ export default function BusinessesClient({
                   : "border-[var(--color-border)] bg-white text-[var(--color-text-secondary)] hover:border-[var(--color-brand)]"
               }`}
             >
-              الكل
+              {b.allCategories}
             </button>
             {categories.map((cat) => (
               <button
@@ -111,7 +115,7 @@ export default function BusinessesClient({
                     : "border-[var(--color-border)] bg-white text-[var(--color-text-secondary)] hover:border-[var(--color-brand)]"
                 }`}
               >
-                {cat.icon} {cat.nameAr}
+                {cat.icon} {lang === "en" ? (cat.nameEn || cat.nameAr) : cat.nameAr}
               </button>
             ))}
           </div>
@@ -119,11 +123,11 @@ export default function BusinessesClient({
       </div>
 
       <Container className="py-8">
-        {/* Browse by City — shown only when no filters active */}
+        {/* Browse by City */}
         {!hasFilters && cities.length > 0 && (
           <div className="mb-8">
             <h2 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wide mb-3">
-              تصفح حسب المدينة
+              {b.browseByCityTitle}
             </h2>
             <div className="flex flex-wrap gap-2">
               {cities.map((c) => (
@@ -133,7 +137,7 @@ export default function BusinessesClient({
                   className="inline-flex items-center gap-1.5 px-4 py-2 bg-white rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] font-medium hover:border-[var(--color-brand)] hover:text-[var(--color-brand)] transition-all"
                 >
                   <MapPin size={13} />
-                  {c.nameAr}
+                  {lang === "en" ? (c.nameEn || c.nameAr) : c.nameAr}
                 </Link>
               ))}
             </div>
@@ -144,13 +148,11 @@ export default function BusinessesClient({
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-black text-[var(--color-text-primary)]">
-              {selectedCat
-                ? `${selectedCat.icon} ${selectedCat.nameAr}`
-                : "تصفح الأعمال"}
-              {selectedCity ? ` · ${selectedCity.nameAr}` : ""}
+              {catName ? `${selectedCat?.icon} ${catName}` : b.browseBusiness}
+              {cityName ? ` · ${cityName}` : ""}
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-              {isPending ? "جاري البحث..." : `${businesses.length} نتيجة`}
+              {isPending ? b.searching : `${businesses.length} ${b.results}`}
             </p>
           </div>
           {hasFilters && (
@@ -159,36 +161,28 @@ export default function BusinessesClient({
               className="text-sm text-[var(--color-accent)] hover:underline flex items-center gap-1"
             >
               <X size={14} />
-              مسح الفلاتر
+              {b.clearFilters}
             </button>
           )}
         </div>
 
         {/* Grid */}
         {businesses.length > 0 ? (
-          <div
-            className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 transition-opacity duration-150 ${
-              isPending ? "opacity-50" : "opacity-100"
-            }`}
-          >
-            {businesses.map((b) => (
-              <PublicBusinessCard key={b.id} business={b} />
+          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 transition-opacity duration-150 ${isPending ? "opacity-50" : "opacity-100"}`}>
+            {businesses.map((biz) => (
+              <PublicBusinessCard key={biz.id} business={biz} />
             ))}
           </div>
         ) : (
           <div className="text-center py-24">
             <div className="text-5xl mb-4">🔍</div>
-            <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-2">
-              لم نجد نتائج
-            </h2>
-            <p className="text-sm text-[var(--color-text-muted)] mb-6">
-              جرّب تغيير كلمة البحث أو الفلاتر
-            </p>
+            <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-2">{b.noResultsTitle}</h2>
+            <p className="text-sm text-[var(--color-text-muted)] mb-6">{b.noResultsSub}</p>
             <button
               onClick={() => { setQ(""); setCity(""); setCategory(""); apply("", "", ""); }}
               className="btn btn-outline"
             >
-              عرض كل الأعمال
+              {b.showAll}
             </button>
           </div>
         )}

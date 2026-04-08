@@ -4,28 +4,27 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, MapPin, ChevronDown, X } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-type HeroCategory = { id: string; slug: string; nameAr: string; icon: string };
-type HeroCity     = { id: string; slug: string; nameAr: string };
+type HeroCategory = { id: string; slug: string; nameAr: string; nameEn: string; icon: string };
+type HeroCity     = { id: string; slug: string; nameAr: string; nameEn: string };
 
 interface Props {
   categories: HeroCategory[];
   cities:     HeroCity[];
 }
 
-const heroStats = [
-  { value: "٣٠٠+",    label: "عمل مسجّل" },
-  { value: "١٢,٠٠٠+", label: "حجز ناجح" },
-  { value: "٤.٩",     label: "متوسط التقييم" },
-];
-
 export default function HeroSection({ categories, cities }: Props) {
+  const { t, lang } = useLanguage();
+  const h = t.hero;
   const router       = useRouter();
   const [q,        setQ]        = useState("");
   const [cityId,   setCityId]   = useState("");
   const [cityOpen, setCityOpen] = useState(false);
 
-  const selectedCityName = cities.find((c) => c.id === cityId)?.nameAr ?? "كل المدن";
+  const selectedCityName = cities.find((c) => c.id === cityId)
+    ? (lang === "en" ? (cities.find((c) => c.id === cityId)?.nameEn || cities.find((c) => c.id === cityId)?.nameAr) : cities.find((c) => c.id === cityId)?.nameAr)
+    : h.allCities;
 
   function search() {
     const p = new URLSearchParams();
@@ -50,38 +49,35 @@ export default function HeroSection({ categories, cities }: Props) {
 
       <div className="container-app relative z-10 py-20">
         <div className="max-w-2xl mx-auto text-center">
-
           {/* Eyebrow */}
           <div className="inline-flex items-center gap-2 bg-[var(--color-accent-light)] text-[var(--color-accent)] text-sm font-semibold px-4 py-1.5 rounded-full mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse" />
-            منصة الحجز الأولى في مصر
+            {h.eyebrow}
           </div>
 
           {/* Headline */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-6 text-[var(--color-text-primary)]">
-            احجز موعدك
+            {h.title}
             <br />
-            <span className="gradient-text">في ثوانٍ</span>
+            <span className="gradient-text">{h.titleAccent}</span>
           </h1>
 
-          <p className="text-lg md:text-xl text-[var(--color-text-secondary)] mb-10 leading-relaxed">
-            منصة موعد تربطك بأفضل العيادات والصالونات والمراكز الصحية.
-            <br className="hidden md:block" />
-            ابحث، اختار، واحجز — بدون انتظار.
+          <p className="text-lg md:text-xl text-[var(--color-text-secondary)] mb-10 leading-relaxed whitespace-pre-line">
+            {h.subtitle}
           </p>
 
           {/* Search bar */}
           <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.10)] border border-[var(--color-border)] p-1.5 flex flex-col sm:flex-row gap-1.5 mb-6">
-            {/* Text input */}
             <div className="flex items-center gap-3 flex-1 px-4 py-2">
               <Search size={18} className="text-[var(--color-text-muted)] shrink-0" />
               <input
                 type="text"
-                placeholder="ابحث عن عيادة، صالون، سبا..."
+                placeholder={h.searchPlaceholder}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && search()}
                 className="w-full text-sm bg-transparent outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
+                dir={lang === "en" ? "ltr" : "rtl"}
               />
               {q && (
                 <button type="button" onClick={() => setQ("")}>
@@ -109,7 +105,7 @@ export default function HeroSection({ categories, cities }: Props) {
                     onClick={() => { setCityId(""); setCityOpen(false); }}
                     className="w-full text-start px-4 py-2.5 text-sm hover:bg-[var(--color-surface-2)] transition-colors font-medium text-[var(--color-text-primary)]"
                   >
-                    كل المدن
+                    {h.allCities}
                   </button>
                   {cities.map((city) => (
                     <button
@@ -121,7 +117,7 @@ export default function HeroSection({ categories, cities }: Props) {
                           : "text-[var(--color-text-secondary)]"
                       }`}
                     >
-                      {city.nameAr}
+                      {lang === "en" ? (city.nameEn || city.nameAr) : city.nameAr}
                     </button>
                   ))}
                 </div>
@@ -133,7 +129,7 @@ export default function HeroSection({ categories, cities }: Props) {
               onClick={search}
               className="btn btn-accent shrink-0 rounded-xl px-6"
             >
-              ابحث
+              {h.searchBtn}
             </button>
           </div>
 
@@ -146,14 +142,14 @@ export default function HeroSection({ categories, cities }: Props) {
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border border-[var(--color-border)] bg-white text-[var(--color-text-secondary)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)] transition-all duration-150"
               >
                 <span>{cat.icon}</span>
-                <span>{cat.nameAr}</span>
+                <span>{lang === "en" ? (cat.nameEn || cat.nameAr) : cat.nameAr}</span>
               </Link>
             ))}
           </div>
 
           {/* Trust stats */}
           <div className="flex items-center justify-center gap-8 md:gap-12">
-            {heroStats.map((stat, i) => (
+            {h.stats.map((stat, i) => (
               <div key={i} className="text-center">
                 <p className="text-2xl md:text-3xl font-black text-[var(--color-text-primary)]">
                   {stat.value}

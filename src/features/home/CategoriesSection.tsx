@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import Container from "@/components/ui/Container";
 import { ArrowLeft } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type DbCategory = {
   id:      string;
@@ -17,20 +20,23 @@ interface Props {
 }
 
 export default function CategoriesSection({ categories }: Props) {
+  const { t, lang } = useLanguage();
+  const c = t.categories;
+
   return (
     <section className="section-padding">
       <Container>
         <div className="flex items-end justify-between mb-10">
           <div>
-            <p className="section-eyebrow mb-2">الأقسام</p>
-            <h2 className="section-title">تصفح حسب التخصص</h2>
+            <p className="section-eyebrow mb-2">{c.eyebrow}</p>
+            <h2 className="section-title">{c.title}</h2>
           </div>
           <Link
             href="/categories"
             className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
           >
-            <span>عرض الكل</span>
-            <ArrowLeft size={15} className="rotate-180" />
+            <span>{c.viewAll}</span>
+            <ArrowLeft size={15} className={lang === "ar" ? "rotate-180" : ""} />
           </Link>
         </div>
 
@@ -48,7 +54,7 @@ export default function CategoriesSection({ categories }: Props) {
                 {cat.icon}
               </div>
               <p className="font-semibold text-sm text-center text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)] transition-colors leading-tight">
-                {cat.nameAr}
+                {lang === "en" ? (cat.nameEn || cat.nameAr) : cat.nameAr}
               </p>
             </Link>
           ))}
