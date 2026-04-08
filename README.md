@@ -101,6 +101,26 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-08 — Homepage sections premium redesign (SaaS polish pass)
+
+**Decision:** Upgraded five homepage sections with a second premium polish pass: WhyJoin, CategoriesSection (with FeaturedCards), HowItWorks, SectionDivider system, Navbar UserMenu, and PricingPreview.
+
+**Key design decisions:**
+
+- **WhyJoin**: Dot-grid background with edge fades, blue radial spotlight behind product mockup, inline `onMouseEnter/Leave` shadow transitions on feature cards.
+- **CategoriesSection / FeaturedCards**: Booking-specific card design — gradient cover with watermark initial, `-mt-8` avatar overlap, 3 time-slot chips (Clock icon), services count chip, dual CTA (Book Now + View Profile). Provider counts per category via `SLUG_META` map.
+- **HowItWorks**: Dark navy `#0B1628` section, floating number circles with triple-ring blue glow, dashed connecting line at `top: 28px` (center of 56px circles), white-on-dark step cards, glass toggle for customers/businesses.
+- **SectionDivider**: New reusable `src/components/ui/SectionDivider.tsx` with 4 variants — `curve` (SVG arch path), `glow` (radial ellipse + hairline), `fade`, `line`. SVG path math: `M0,H L1440,H L1440,H/2 C1080,0 360,0 0,H/2 Z`.
+- **Navbar UserMenu**: New `src/components/layout/UserMenu.tsx` — `UserAvatar` (blue gradient initials), `NotificationBell` (placeholder), `UserMenu` (dropdown with pointerdown click-outside + Escape handlers, opacity+translateY animation). Mobile: identity card + `MobileMenuItem` list + red logout button.
+- **PricingPreview**: Blue radial glow behind featured card, `translateY(-10px)` elevation on featured, gradient badge with glow, gradient icon containers per plan tier, check icons in colored circles, featured CTA uses gradient + glow + brightness hover, trust row (no credit card / 5-min setup / 24/7 support).
+
+**Trade-offs:**
+- Inline `onMouseEnter/Leave` used instead of Tailwind hover classes to support multi-layer `boxShadow` transitions not expressible in static Tailwind.
+- RTL-safe dropdown uses Tailwind `end-0` (resolves to `right:0` LTR / `left:0` RTL). Scale transform avoided to sidestep `transform-origin` RTL issues.
+- Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩) don't parse with `/\d/` regex — EGP label intentionally hidden for AR plans since currency appears in the period field ("جنيه / شهر").
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
