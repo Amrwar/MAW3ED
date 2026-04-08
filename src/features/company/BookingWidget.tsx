@@ -209,6 +209,12 @@ export default function BookingWidget({
         return;
       }
 
+      // If a deposit is required, redirect to Paymob payment page
+      if (data.requiresPayment && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+        return;
+      }
+
       setConfirmation(data.booking);
       setStep(4);
     } catch {

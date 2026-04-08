@@ -14,6 +14,7 @@ import {
   sendNewBookingAlertToBusiness,
   type BookingEmailData,
 } from "@/lib/services/email";
+import { createPaymentSession, calcDepositCents } from "@/lib/services/paymob";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -21,8 +22,10 @@ type Params = { params: Promise<{ slug: string }> };
  * POST /api/public/[slug]/bookings
  *
  * Creates a booking for a public business.
- * Handles customer upsert (by phone + businessId) and conflict prevention.
- * Fires WhatsApp notifications after creation (non-blocking).
+ * If the business has depositEnabled, creates a PENDING_PAYMENT booking and
+ * initiates a Paymob payment session — the response includes paymentUrl.
+ * Otherwise creates a PENDING booking (existing manual-confirm flow).
+ *
  * No auth required — public endpoint.
  */
 export async function POST(req: Request, { params }: Params) {
@@ -66,6 +69,14 @@ export async function POST(req: Request, { params }: Params) {
       update: { name: customerName, ...(customerEmail ? { email: customerEmail } : {}) },
     });
 
+    // ── Determine initial status and deposit ──────────────────────────────────
+    const requiresDeposit = business.depositEnabled;
+    const depositCents    = requiresDeposit
+      ? calcDepositCents(Number(service.price), business.depositPercent)
+      : 0;
+    const depositAmount   = requiresDeposit ? depositCents / 100 : null;
+    const initialStatus   = requiresDeposit ? "PENDING_PAYMENT" : "PENDING";
+
     // ── Create booking ─────────────────────────────────────────────────────────
     const accessToken = randomBytes(32).toString("hex");
     const booking = await db.booking.create({
@@ -78,18 +89,73 @@ export async function POST(req: Request, { params }: Params) {
         date:          dateUTC,
         startTime,
         endTime,
-        status:        "PENDING",
+        status:        initialStatus,
         totalPrice:    service.price,
         currency:      service.currency,
         notes:         notes ?? null,
         accessToken,
+        depositAmount,
       },
     });
 
     // ── Build booking URL for customer self-service ───────────────────────────
     const bookingUrl = bookingPageUrl(accessToken);
 
-    // ── WhatsApp notifications (fire-and-forget, never blocks response) ────────
+    const bookingResponse = {
+      id:           booking.id,
+      accessToken:  booking.accessToken,
+      businessName: business.nameAr,
+      serviceName:  service.nameAr,
+      date,
+      startTime,
+      endTime,
+      customerName,
+      totalPrice:   Number(service.price),
+      depositAmount,
+      currency:     service.currency,
+      status:       booking.status,
+    };
+
+    // ── If deposit required: initiate Paymob payment session ─────────────────
+    if (requiresDeposit) {
+      try {
+        const { paymentUrl, paymobOrderId } = await createPaymentSession({
+          bookingId:     booking.id,
+          amountCents:   depositCents,
+          currency:      service.currency,
+          customerName,
+          customerPhone,
+          customerEmail,
+        });
+
+        // Store Paymob order ID for webhook correlation
+        await db.booking.update({
+          where: { id: booking.id },
+          data:  { paymobOrderId },
+        });
+
+        // No notifications yet — send after payment confirmed via webhook
+        return ok(
+          {
+            booking:         bookingResponse,
+            requiresPayment: true,
+            paymentUrl,
+          },
+          201,
+        );
+      } catch (paymobError) {
+        // Paymob session creation failed — cancel the PENDING_PAYMENT booking
+        // so the slot is freed, then return an error
+        await db.booking.update({
+          where: { id: booking.id },
+          data:  { status: "FAILED_PAYMENT" },
+        });
+        console.error("[booking POST] Paymob session failed:", paymobError);
+        return err("تعذّر بدء عملية الدفع، حاول مرة أخرى", 502);
+      }
+    }
+
+    // ── No deposit: send notifications and return ─────────────────────────────
     const notifData: BookingNotificationData = {
       businessName:  business.nameAr,
       serviceName:   service.nameAr,
@@ -103,16 +169,12 @@ export async function POST(req: Request, { params }: Params) {
       bookingUrl,
     };
 
-    // Notify business owner via template — prefer WhatsApp number, fall back to phone
     const businessPhone = business.whatsapp ?? business.phone;
     if (businessPhone) {
       void sendBusinessBookingTemplate(businessPhone, notifData);
     }
-
-    // Confirm to customer via template
     void sendCustomerConfirmationTemplate(customerPhone, notifData);
 
-    // ── Email notifications (fire-and-forget) ─────────────────────────────────
     const emailData: BookingEmailData = {
       businessName:  business.nameAr,
       serviceName:   service.nameAr,
@@ -127,31 +189,17 @@ export async function POST(req: Request, { params }: Params) {
       bookingUrl,
     };
 
-    // Business owner alert (uses owner's account email)
     if (business.owner.email) {
       void sendNewBookingAlertToBusiness(business.owner.email, emailData);
     }
-
-    // Customer confirmation — only if they provided an email
     if (customerEmail) {
       void sendBookingConfirmationToCustomer(customerEmail, emailData);
     }
 
     return ok(
       {
-        booking: {
-          id:           booking.id,
-          accessToken:  booking.accessToken,
-          businessName: business.nameAr,
-          serviceName:  service.nameAr,
-          date,
-          startTime,
-          endTime,
-          customerName,
-          totalPrice:   Number(service.price),
-          currency:     service.currency,
-          status:       booking.status,
-        },
+        booking:         bookingResponse,
+        requiresPayment: false,
       },
       201,
     );

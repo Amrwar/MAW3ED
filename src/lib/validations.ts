@@ -85,7 +85,7 @@ export const availabilitySchema = z.object({
 
 // ─── Booking status update ────────────────────────────────
 export const bookingStatusSchema = z.object({
-  status: z.enum(["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"]),
+  status: z.enum(["PENDING_PAYMENT", "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW", "FAILED_PAYMENT"]),
 });
 
 // ─── Booking ──────────────────────────────────────────────

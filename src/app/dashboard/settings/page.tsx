@@ -25,6 +25,7 @@ export default async function SettingsPage() {
     getCategories(),
   ]);
 
+
   if (!business) redirect("/dashboard");
 
   const profile = {
@@ -73,6 +74,8 @@ export default async function SettingsPage() {
       cities={cities.map((c) => ({ id: c.id, nameAr: c.nameAr }))}
       categories={categories.map((c) => ({ id: c.id, nameAr: c.nameAr, icon: c.icon }))}
       services={services}
+      depositEnabled={business.depositEnabled}
+      depositPercent={business.depositPercent}
     />
   );
 }

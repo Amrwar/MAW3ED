@@ -156,6 +156,11 @@ export default function BookingsTable({
                           {b.currency}
                         </span>
                       </p>
+                      {b.depositAmount !== null && (
+                        <p className="text-xs text-orange-600 mt-0.5">
+                          عربون: {b.depositAmount.toLocaleString("ar-EG")}
+                        </p>
+                      )}
                     </td>
 
                     {/* Quick action */}

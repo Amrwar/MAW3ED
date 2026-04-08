@@ -63,21 +63,23 @@ model VerificationToken {
 
 // ─── Core Business Models ──────────────────────────────────
 model Business {
-  id          String    @id @default(cuid())
-  slug        String    @unique
-  nameAr      String
-  nameEn      String?
-  taglineAr   String?
-  phone       String?
-  whatsapp    String?
-  address     String?
-  about       String?   @db.Text
-  coverImage  String?
-  logoImage   String?
-  isVerified  Boolean   @default(false)
-  isPublished Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  nameAr         String
+  nameEn         String?
+  taglineAr      String?
+  phone          String?
+  whatsapp       String?
+  address        String?
+  about          String?   @db.Text
+  coverImage     String?
+  logoImage      String?
+  isVerified     Boolean   @default(false)
+  isPublished    Boolean   @default(true)
+  depositEnabled Boolean   @default(false)
+  depositPercent Int       @default(20)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   ownerId     String    @unique
   owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
@@ -177,6 +179,9 @@ model Booking {
   notes                   String?
   accessToken             String?   @unique // secure random token for customer self-service URL
   customerReminderSentAt  DateTime? // set after reminder is sent — prevents duplicate sends
+  depositAmount           Decimal?  @db.Decimal(10, 2) // deposit amount required (null = no deposit)
+  paymobOrderId           String?   // Paymob order ID for payment tracking
+  paymobTransactionId     String?   // Paymob transaction ID after successful payment
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
 
@@ -196,9 +201,11 @@ model PasswordResetToken {
 }
 
 enum BookingStatus {
-  PENDING
-  CONFIRMED
-  COMPLETED
-  CANCELLED
-  NO_SHOW
+  PENDING_PAYMENT  // awaiting customer deposit payment
+  PENDING          // payment done (or no deposit required) — awaiting owner confirmation
+  CONFIRMED        // owner confirmed or auto-confirmed after payment
+  COMPLETED        // appointment finished
+  CANCELLED        // owner or customer cancelled
+  NO_SHOW          // customer didn't show up
+  FAILED_PAYMENT   // payment failed or expired
 }

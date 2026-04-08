@@ -110,10 +110,22 @@ export default function BookingDetailPanel({
               ltr
             />
             <InfoRow
-              label="السعر"
+              label="إجمالي السعر"
               value={`${booking.totalPrice.toLocaleString("ar-EG")} ${booking.currency}`}
               bold
             />
+            {booking.depositAmount !== null && (
+              <InfoRow
+                label="العربون المدفوع"
+                value={`${booking.depositAmount.toLocaleString("ar-EG")} ${booking.currency}`}
+              />
+            )}
+            {booking.depositAmount !== null && (
+              <InfoRow
+                label="المتبقي"
+                value={`${(booking.totalPrice - booking.depositAmount).toLocaleString("ar-EG")} ${booking.currency}`}
+              />
+            )}
           </Section>
 
           {/* Notes */}

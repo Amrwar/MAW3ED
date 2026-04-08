@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { User, Clock, Eye } from "lucide-react";
+import { User, Clock, Eye, CreditCard } from "lucide-react";
 import ProfileForm from "./ProfileForm";
 import AvailabilityForm from "./AvailabilityForm";
 import PublicPagePreview from "./PublicPagePreview";
+import DepositSettingsForm from "./DepositSettingsForm";
 
 export type Profile = {
   id:             string;
@@ -37,22 +38,25 @@ export type CategoryItem = { id: string; nameAr: string; icon: string };
 export type ServicePreview = { nameAr: string; duration: number; price: number; currency: string };
 
 type Props = {
-  profile:      Profile;
-  availability: AvailabilityDay[];
-  cities:       City[];
-  categories:   CategoryItem[];
-  services:     ServicePreview[];
+  profile:        Profile;
+  availability:   AvailabilityDay[];
+  cities:         City[];
+  categories:     CategoryItem[];
+  services:       ServicePreview[];
+  depositEnabled: boolean;
+  depositPercent: number;
 };
 
 const TABS = [
-  { id: "profile",      label: "الملف التجاري",  Icon: User  },
-  { id: "availability", label: "أوقات العمل",    Icon: Clock },
-  { id: "preview",      label: "معاينة الصفحة",  Icon: Eye   },
+  { id: "profile",      label: "الملف التجاري",  Icon: User       },
+  { id: "availability", label: "أوقات العمل",    Icon: Clock      },
+  { id: "payments",     label: "المدفوعات",       Icon: CreditCard },
+  { id: "preview",      label: "معاينة الصفحة",  Icon: Eye        },
 ] as const;
 
 type Tab = typeof TABS[number]["id"];
 
-export default function SettingsClient({ profile, availability, cities, categories, services }: Props) {
+export default function SettingsClient({ profile, availability, cities, categories, services, depositEnabled, depositPercent }: Props) {
   const [tab, setTab]             = useState<Tab>("profile");
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
 
@@ -95,6 +99,12 @@ export default function SettingsClient({ profile, availability, cities, categori
       )}
       {tab === "availability" && (
         <AvailabilityForm initialAvailability={availability} />
+      )}
+      {tab === "payments" && (
+        <DepositSettingsForm
+          initialEnabled={depositEnabled}
+          initialPercent={depositPercent}
+        />
       )}
       {tab === "preview" && (
         <PublicPagePreview profile={currentProfile} services={services} />

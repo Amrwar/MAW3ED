@@ -4,10 +4,11 @@ import { ok, err, requireBusiness } from "@/lib/api";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** Valid status transitions — terminal states (COMPLETED, CANCELLED, NO_SHOW) cannot be changed */
+/** Valid status transitions — terminal states (COMPLETED, CANCELLED, NO_SHOW, FAILED_PAYMENT) cannot be changed */
 const VALID_TRANSITIONS: Partial<Record<string, string[]>> = {
-  PENDING:   ["CONFIRMED", "CANCELLED"],
-  CONFIRMED: ["COMPLETED", "CANCELLED", "NO_SHOW"],
+  PENDING_PAYMENT: ["CANCELLED"],                      // owner can cancel awaiting-payment bookings
+  PENDING:         ["CONFIRMED", "CANCELLED"],
+  CONFIRMED:       ["COMPLETED", "CANCELLED", "NO_SHOW"],
 };
 
 /**

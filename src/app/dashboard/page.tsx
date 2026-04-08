@@ -119,6 +119,7 @@ export default async function DashboardPage() {
     endTime:         b.endTime ?? null,
     status:          b.status as DashboardBooking["status"],
     totalPrice:      Number(b.totalPrice),
+    depositAmount:   b.depositAmount !== null && b.depositAmount !== undefined ? Number(b.depositAmount) : null,
     currency:        b.currency,
     notes:           b.notes ?? null,
     customerNotes:   null,

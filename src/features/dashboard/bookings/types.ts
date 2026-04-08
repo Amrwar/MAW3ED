@@ -1,9 +1,11 @@
 export type DashboardBookingStatus =
+  | "PENDING_PAYMENT"
   | "PENDING"
   | "CONFIRMED"
   | "COMPLETED"
   | "CANCELLED"
-  | "NO_SHOW";
+  | "NO_SHOW"
+  | "FAILED_PAYMENT";
 
 export type DashboardBooking = {
   id:              string;
@@ -16,6 +18,7 @@ export type DashboardBooking = {
   endTime:         string | null;
   status:          DashboardBookingStatus;
   totalPrice:      number;
+  depositAmount:   number | null;
   currency:        string;
   notes:           string | null;
   customerNotes:   string | null;
@@ -26,17 +29,20 @@ export const STATUS_CONFIG: Record<
   DashboardBookingStatus,
   { label: string; className: string }
 > = {
-  PENDING:   { label: "في الانتظار", className: "bg-amber-50 text-amber-600 border border-amber-200" },
-  CONFIRMED: { label: "مؤكد",        className: "bg-green-50 text-green-600 border border-green-200"  },
-  COMPLETED: { label: "مكتمل",       className: "bg-blue-50 text-blue-600 border border-blue-200"    },
-  CANCELLED: { label: "ملغي",        className: "bg-red-50 text-red-500 border border-red-200"        },
-  NO_SHOW:   { label: "لم يحضر",     className: "bg-gray-100 text-gray-500 border border-gray-200"  },
+  PENDING_PAYMENT: { label: "في انتظار الدفع",  className: "bg-orange-50 text-orange-600 border border-orange-200" },
+  PENDING:         { label: "في الانتظار",       className: "bg-amber-50 text-amber-600 border border-amber-200"   },
+  CONFIRMED:       { label: "مؤكد",              className: "bg-green-50 text-green-600 border border-green-200"   },
+  COMPLETED:       { label: "مكتمل",             className: "bg-blue-50 text-blue-600 border border-blue-200"      },
+  CANCELLED:       { label: "ملغي",              className: "bg-red-50 text-red-500 border border-red-200"         },
+  NO_SHOW:         { label: "لم يحضر",           className: "bg-gray-100 text-gray-500 border border-gray-200"    },
+  FAILED_PAYMENT:  { label: "فشل الدفع",         className: "bg-red-100 text-red-700 border border-red-300"        },
 };
 
 /** Which status transitions are allowed from a given status */
 export const ALLOWED_TRANSITIONS: Partial<Record<DashboardBookingStatus, DashboardBookingStatus[]>> = {
-  PENDING:   ["CONFIRMED", "CANCELLED"],
-  CONFIRMED: ["COMPLETED", "NO_SHOW", "CANCELLED"],
+  PENDING_PAYMENT: ["CANCELLED"],          // owner can cancel unpaid bookings
+  PENDING:         ["CONFIRMED", "CANCELLED"],
+  CONFIRMED:       ["COMPLETED", "NO_SHOW", "CANCELLED"],
 };
 
 /** Arabic labels for action buttons */
@@ -45,6 +51,7 @@ export const ACTION_LABELS: Partial<Record<DashboardBookingStatus, string>> = {
   COMPLETED: "تمّ بنجاح",
   CANCELLED: "إلغاء الحجز",
   NO_SHOW:   "لم يحضر",
+  // PENDING_PAYMENT and FAILED_PAYMENT are used as target statuses via ALLOWED_TRANSITIONS only
 };
 
 /** Action button variant colour */

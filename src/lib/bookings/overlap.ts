@@ -57,7 +57,7 @@ export async function hasBookingConflict(
     where: {
       businessId,
       date:   dateUTC,
-      status: { in: ["PENDING", "CONFIRMED"] },
+      status: { in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"] },
       ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
     },
     select: {
