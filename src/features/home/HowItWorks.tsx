@@ -83,22 +83,8 @@ export default function HowItWorks() {
         }}
       />
 
-      {/* ── Top section divider ────────────────────────────── */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-28 pointer-events-none z-10"
-        style={{ background: "linear-gradient(to bottom, #F8FAFC 0%, transparent 100%)" }}
-      />
-
-      {/* ── Bottom section divider ─────────────────────────── */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 bottom-0 h-28 pointer-events-none z-10"
-        style={{ background: "linear-gradient(to top, #F8FAFC 0%, transparent 100%)" }}
-      />
-
       {/* ── Content ───────────────────────────────────────── */}
-      <div className="relative z-20 py-32 lg:py-40">
+      <div className="relative z-20 py-20 lg:py-28">
         <div className="container-app">
 
           {/* ── Section header ── */}

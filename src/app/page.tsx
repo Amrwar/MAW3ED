@@ -11,6 +11,7 @@ import PricingPreview from "@/features/home/PricingPreview";
 import Testimonials from "@/features/home/Testimonials";
 import FAQ from "@/features/home/FAQ";
 import FinalCTA from "@/features/home/FinalCTA";
+import { SectionDivider } from "@/components/ui/SectionDivider";
 import { getCategories } from "@/lib/data";
 
 export const metadata: Metadata = {
@@ -24,26 +25,52 @@ export default async function HomePage() {
     <>
       <Navbar />
       <main>
-        {/* 1. Hero */}
+
+        {/* 1 ─ Hero (dark #0F172A) */}
         <HeroSection />
-        {/* 2. Trust stats + business type strip */}
+
+        {/* ▼ dark → light */}
+        <SectionDivider variant="curve" from="#0F172A" to="#F8FAFC" />
+
+        {/* 2 ─ Trust stats (light #F8FAFC) */}
         <TrustStats />
-        {/* 3. Features / Why join */}
+
+        {/* 3 ─ Why Maw3ed (light #F8FAFC) — same bg, no divider needed */}
         <WhyJoin />
-        {/* 4. Browse by category */}
+
+        {/* 4 ─ Browse by Category (light #F8FAFC) — same bg, no divider */}
         <CategoriesSection categories={categories} />
-        {/* 5. How it works */}
+
+        {/* ▼ light → dark */}
+        <SectionDivider variant="curve" from="#F8FAFC" to="#0B1628" />
+
+        {/* 5 ─ How It Works (dark #0B1628) */}
         <HowItWorks />
-        {/* 6. Booking experience preview */}
+
+        {/* ▼ dark → dark (subtle blend between two close navy tones) */}
+        <SectionDivider variant="glow" from="#0B1628" to="#0F172A" height={56} />
+
+        {/* 6 ─ Demo / Booking preview (dark #0F172A) */}
         <DemoSection />
-        {/* 7. Pricing preview */}
+
+        {/* ▼ dark → light */}
+        <SectionDivider variant="curve" from="#0F172A" to="#F8FAFC" />
+
+        {/* 7 ─ Pricing preview (light #F8FAFC) */}
         <PricingPreview />
-        {/* 8. Testimonials */}
+
+        {/* 8 ─ Testimonials (#FFFFFF) — very close to F8FAFC, no divider */}
         <Testimonials />
-        {/* 9. FAQ */}
+
+        {/* 9 ─ FAQ (light #F8FAFC) — same family, no divider */}
         <FAQ />
-        {/* 10. Final CTA */}
+
+        {/* ▼ light → dark */}
+        <SectionDivider variant="curve" from="#F8FAFC" to="#0F172A" />
+
+        {/* 10 ─ Final CTA (dark #0F172A) */}
         <FinalCTA />
+
       </main>
       <Footer />
     </>
