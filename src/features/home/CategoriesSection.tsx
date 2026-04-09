@@ -52,7 +52,7 @@ function getCategoryMeta(slug: string, lang: "ar" | "en", idx: number) {
 const FEATURED_MOCK = [
   {
     id:          "f1",
-    slug:        "arty-dental-clinic",
+    slug:        "dr-amr-hefny",
     nameAr:      "عيادة أرتي لطب الأسنان",
     nameEn:      "Arty Dental Clinic",
     specialtyAr: "طب الأسنان",
@@ -79,7 +79,7 @@ const FEATURED_MOCK = [
   },
   {
     id:          "f2",
-    slug:        "glow-beauty-lounge",
+    slug:        "dr-amr-hefny",
     nameAr:      "صالون جلو للتجميل",
     nameEn:      "Glow Beauty Lounge",
     specialtyAr: "مركز تجميل",
@@ -105,7 +105,7 @@ const FEATURED_MOCK = [
   },
   {
     id:          "f3",
-    slug:        "peak-motion-gym",
+    slug:        "dr-amr-hefny",
     nameAr:      "جيم بيك موشن",
     nameEn:      "Peak Motion Gym",
     specialtyAr: "لياقة بدنية",
