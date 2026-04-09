@@ -12,23 +12,14 @@ import {
   Users,
   MessageSquare,
   Gift,
-  HelpCircle,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 import Logo from "@/components/shared/Logo";
-import { cn } from "@/lib/utils";
 import type { Plan } from "@/lib/plans";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const NAV_ICONS = [LayoutDashboard, CalendarDays, Store, Users, BarChart3, MessageSquare, Gift, Settings];
-const BOTTOM_ICONS = [HelpCircle];
-
-const PLAN_BADGE_CLASS: Record<Plan, string> = {
-  FREE:   "bg-gray-100 text-gray-500",
-  GROWTH: "bg-blue-100 text-blue-600",
-  PRO:    "bg-amber-100 text-amber-600",
-};
-
 const NAV_HREFS = [
   "/dashboard",
   "/dashboard/bookings",
@@ -39,8 +30,13 @@ const NAV_HREFS = [
   "/dashboard/referrals",
   "/dashboard/settings",
 ];
-
 const NAV_SOON = [false, false, false, false, false, true, false, false];
+
+const PLAN_STYLES: Record<Plan, { bg: string; text: string; label: string }> = {
+  FREE:   { bg: "#F1F5F9", text: "#64748B", label: "مجاني"  },
+  GROWTH: { bg: "#DBEAFE", text: "#1D4ED8", label: "نمو"    },
+  PRO:    { bg: "#FEF3C7", text: "#92400E", label: "احترافي" },
+};
 
 interface DashboardSidebarProps {
   businessName?: string;
@@ -58,77 +54,115 @@ export default function DashboardSidebar({
   const pathname = usePathname();
   const { t }    = useLanguage();
   const s        = t.dashboard.sidebar;
-
   const navLabels = [s.home, s.bookings, s.services, s.customers, s.analytics, s.reviews, s.referrals, s.settings];
   const name      = businessName || s.yourBusiness;
+  const planStyle = PLAN_STYLES[plan];
 
   return (
-    <aside className="hidden md:flex flex-col w-60 min-h-screen bg-white border-e border-[var(--color-border)] fixed top-0 bottom-0 start-0 z-40">
-      {/* Logo */}
-      <div className="h-16 flex items-center px-5 border-b border-[var(--color-border)]">
+    <aside
+      className="hidden md:flex flex-col w-64 min-h-screen fixed top-0 bottom-0 start-0 z-40"
+      style={{
+        background:  "#FFFFFF",
+        borderInlineEnd: "1px solid #E2E8F0",
+      }}
+    >
+      {/* ── Logo ── */}
+      <div
+        className="h-16 flex items-center px-5 shrink-0"
+        style={{ borderBottom: "1px solid #F1F5F9" }}
+      >
         <Logo size="sm" />
       </div>
 
-      {/* Business info */}
-      <div className="px-4 py-4 border-b border-[var(--color-border)]">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[var(--color-accent-light)] flex items-center justify-center text-sm font-bold text-[var(--color-accent)]">
+      {/* ── Business profile card ── */}
+      <div className="px-4 py-4 shrink-0" style={{ borderBottom: "1px solid #F1F5F9" }}>
+        <div className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: "#F8FAFC" }}>
+          {/* Avatar */}
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black text-white shrink-0"
+            style={{ background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)" }}
+          >
             {name[0]}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
-              {name}
-            </p>
-            <p className="text-xs text-[var(--color-text-muted)]">{cityName}</p>
+            <p className="text-sm font-bold text-[#0F172A] truncate leading-snug">{name}</p>
+            {cityName && (
+              <p className="text-xs text-[#94A3B8] truncate mt-0.5">{cityName}</p>
+            )}
           </div>
-          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0", PLAN_BADGE_CLASS[plan])}>
-            {s.planBadge[plan]}
+          {/* Plan badge */}
+          <span
+            className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+            style={{ background: planStyle.bg, color: planStyle.text }}
+          >
+            {planStyle.label}
           </span>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
+      {/* ── Navigation ── */}
+      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
         {NAV_HREFS.map((href, i) => {
           const Icon   = NAV_ICONS[i];
           const label  = navLabels[i];
-          const active = pathname === href;
+          const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
           const badge  = href === "/dashboard/bookings" ? pendingCount : null;
-          if (NAV_SOON[i]) {
+          const soon   = NAV_SOON[i];
+
+          if (soon) {
             return (
               <div
                 key={href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--color-text-muted)] cursor-not-allowed opacity-60"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm cursor-not-allowed opacity-50"
+                style={{ color: "#94A3B8" }}
               >
-                <Icon size={17} />
-                <span className="flex-1">{label}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[var(--color-surface-2)] text-[var(--color-text-muted)]">
+                <Icon size={16} strokeWidth={1.75} />
+                <span className="flex-1 font-medium">{label}</span>
+                <span
+                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: "#F1F5F9", color: "#94A3B8" }}
+                >
                   {s.comingSoon}
                 </span>
               </div>
             );
           }
+
           return (
             <Link
               key={href}
               href={href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                active
-                  ? "bg-[var(--color-brand)] text-white"
-                  : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text-primary)]"
-              )}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
+              style={{
+                background: active ? "#0F172A" : "transparent",
+                color:      active ? "#FFFFFF" : "#475569",
+              }}
+              onMouseEnter={(e) => {
+                if (!active) {
+                  (e.currentTarget as HTMLAnchorElement).style.background = "#F8FAFC";
+                  (e.currentTarget as HTMLAnchorElement).style.color = "#0F172A";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!active) {
+                  (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+                  (e.currentTarget as HTMLAnchorElement).style.color = "#475569";
+                }
+              }}
             >
-              <Icon size={17} />
+              <Icon
+                size={16}
+                strokeWidth={active ? 2 : 1.75}
+                style={{ opacity: active ? 1 : 0.75 }}
+              />
               <span className="flex-1">{label}</span>
               {badge != null && badge > 0 && (
                 <span
-                  className={cn(
-                    "text-xs px-1.5 py-0.5 rounded-full font-medium",
-                    active
-                      ? "bg-white/20 text-white"
-                      : "bg-[var(--color-accent-light)] text-[var(--color-accent)]"
-                  )}
+                  className="text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{
+                    background: active ? "rgba(255,255,255,0.2)" : "#DBEAFE",
+                    color:      active ? "#FFFFFF" : "#1D4ED8",
+                  }}
                 >
                   {badge}
                 </span>
@@ -138,25 +172,32 @@ export default function DashboardSidebar({
         })}
       </nav>
 
-      {/* Bottom */}
-      <div className="px-3 py-4 border-t border-[var(--color-border)] space-y-0.5">
-        {BOTTOM_ICONS.map((Icon, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--color-text-muted)] opacity-60 cursor-not-allowed"
+      {/* ── Bottom ── */}
+      <div className="px-3 py-4 shrink-0" style={{ borderTop: "1px solid #F1F5F9" }}>
+        {/* Upgrade nudge for FREE plan */}
+        {plan === "FREE" && (
+          <Link
+            href="/dashboard/settings"
+            className="flex items-center gap-2.5 px-3 py-3 mb-2 rounded-xl text-sm font-semibold transition-all duration-150"
+            style={{ background: "#EFF6FF", color: "#1D4ED8" }}
           >
-            <Icon size={17} />
-            <span className="flex-1">{s.help}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[var(--color-surface-2)] text-[var(--color-text-muted)]">
-              {s.comingSoon}
-            </span>
-          </div>
-        ))}
+            <Sparkles size={15} />
+            <span className="flex-1">ترقية الخطة</span>
+          </Link>
+        )}
+
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
+          style={{ color: "#EF4444" }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "#FEF2F2";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+          }}
         >
-          <LogOut size={17} />
+          <LogOut size={16} strokeWidth={1.75} />
           {s.signOut}
         </button>
       </div>

@@ -10,6 +10,7 @@ type Props = {
   slug:       string;
   onCreated?: (booking: DashboardBooking) => void;
   className?: string;
+  style?:     React.CSSProperties;
   label?:     string;
 };
 
@@ -18,6 +19,7 @@ export default function NewBookingButton({
   slug,
   onCreated,
   className = "btn btn-primary gap-2",
+  style,
   label = "موعد جديد",
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -29,7 +31,7 @@ export default function NewBookingButton({
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className={className}>
+      <button onClick={() => setOpen(true)} className={className} style={style}>
         <Plus size={16} />
         {label}
       </button>

@@ -55,7 +55,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-surface-2)]">
+    <div className="min-h-screen" style={{ background: "#F8FAFC" }}>
       <DashboardSidebar
         businessName={business.nameAr}
         cityName={business.city.nameAr}
@@ -63,9 +63,9 @@ export default async function DashboardLayout({
         plan={effectivePlan}
       />
 
-      <div className="md:ms-60">
+      <div className="md:ms-64">
         <DashboardHeader businessName={business.nameAr} />
-        <main className="p-5 md:p-6">{children}</main>
+        <main className="p-5 md:p-7 max-w-[1400px]">{children}</main>
       </div>
     </div>
   );

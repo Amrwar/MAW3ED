@@ -370,6 +370,37 @@ ShieldCheck  → cyan gradient (#0E7490 → #22D3EE)
 
 ---
 
+### 2026-04-09 — Dashboard full premium redesign
+
+**Decision:** Full visual redesign of the dashboard home page, sidebar, and all supporting widgets to match a premium SaaS admin standard while preserving all existing functionality and data bindings.
+
+**Files changed:**
+
+- `src/app/dashboard/layout.tsx` — background changed from `var(--color-surface-2)` to `#F8FAFC`, sidebar offset updated to `md:ms-64` (wider sidebar), main padding to `p-7`, `max-w-[1400px]` on main.
+
+- `src/components/layout/DashboardSidebar.tsx` — full redesign: width `w-64`, white background with `#F1F5F9` hairline borders, gradient blue avatar for business profile card, plan badge with direct hex colors (navy active state `#0F172A` replaces `var(--color-brand)`), `onMouseEnter/Leave` hover states, `strokeWidth={1.75}` for all icons, "ترقية الخطة" upgrade nudge for FREE plan, cleaner logout button.
+
+- `src/features/dashboard/DashboardHomeClient.tsx` — complete layout restructure: premium header card with greeting + action buttons, amber alert for incomplete profile, `InfoCard` helper component for snapshot cards (services / working days / open status), two-column `lg:grid-cols-[1fr_320px]` layout with Today widget + Recent bookings on left, Quick Actions + Services card on right. All `var(--color-*)` replaced with direct hex values.
+
+- `src/features/dashboard/StatsCards.tsx` — redesigned with colored top accent stripe per card, gradient icon containers (`CARD_ACCENTS` / `CARD_ICON_BG`), stronger `fontSize: 28` value display, amber pulse dot for pending bookings, `Banknote` replaces `DollarSign`. No CSS variables.
+
+- `src/features/dashboard/QuickActions.tsx` — replaced 2×2 grid with vertical action list; each item is a full-width row with icon box + title + desc + `ChevronLeft` arrow; `onMouseEnter/Leave` per-row background highlight using per-action accent color.
+
+- `src/features/dashboard/RecentBookings.tsx` — added gradient avatar initials column per customer (deterministic from char code), "عرض الكل" link in header, `#FAFBFD` header row, `onMouseEnter/Leave` row hover, direct hex status badge colors (no Tailwind color classes), `viewAll` fallback string.
+
+- `src/features/dashboard/DashboardTodayWidget.tsx` — premium empty state: decorative gradient icon area, descriptive copy, gradient "إضافة حجز" CTA button with `brightness` hover, ghost "عرض المواعيد" secondary link with hover color transition.
+
+- `src/features/dashboard/NewBookingButton.tsx` — added optional `style?: React.CSSProperties` prop so parent can pass gradient background inline.
+
+**Design system applied:**
+- All cards: `rounded-2xl border border-[#E2E8F0] bg-white`, `boxShadow: "0 1px 8px rgba(15,23,42,0.05)"`
+- Section dividers: `borderBottom: "1px solid #F1F5F9"` (softer than card border)
+- Active nav: `#0F172A` solid background, white text
+- Primary CTA: `linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)` + `0 4px 14px rgba(59,130,246,0.28)` shadow
+- Typography: `font-black` titles at `fontSize: 22–28`, `text-sm font-bold` section headers, `text-xs text-[#94A3B8]` meta
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
