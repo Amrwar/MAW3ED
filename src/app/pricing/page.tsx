@@ -1,235 +1,621 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Check, X, Zap, Crown, Star } from "lucide-react";
+import { Check, Minus, Zap, Crown, Sparkles, ChevronDown } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import Container from "@/components/ui/Container";
 import PageHero from "@/components/shared/PageHero";
 import { PLAN_FEATURES, PLAN_PRICES_EGP, PLAN_NAMES_AR, PLAN_NAMES_EN } from "@/lib/plans";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type PlanId = "FREE" | "GROWTH" | "PRO";
 
+// ─── Feature list (concise labels for both cards + table) ──────────────────
+
 const FEATURES_LIST_AR = [
   { key: "monthlyBookings" as const, label: "الحجوزات الشهرية" },
-  { key: "whatsapp"        as const, label: "إشعارات واتساب للعملاء والعمل" },
-  { key: "analytics"       as const, label: "لوحة الإحصائيات والتقارير" },
-  { key: "deposits"        as const, label: "دفع العربون من العملاء (Paymob)" },
-  { key: "customBranding"  as const, label: "إخفاء شعار موعد من صفحتك" },
+  { key: "whatsapp"        as const, label: "إشعارات واتساب" },
+  { key: "analytics"       as const, label: "الإحصائيات والتقارير" },
+  { key: "deposits"        as const, label: "دفع العربون (Paymob)" },
+  { key: "customBranding"  as const, label: "إخفاء شعار موعد" },
 ];
 const FEATURES_LIST_EN = [
   { key: "monthlyBookings" as const, label: "Monthly Bookings" },
-  { key: "whatsapp"        as const, label: "WhatsApp Notifications (Customers & Business)" },
-  { key: "analytics"       as const, label: "Analytics & Reports Dashboard" },
-  { key: "deposits"        as const, label: "Customer Deposit Payments (Paymob)" },
+  { key: "whatsapp"        as const, label: "WhatsApp Notifications" },
+  { key: "analytics"       as const, label: "Analytics & Reports" },
+  { key: "deposits"        as const, label: "Deposit Payments (Paymob)" },
   { key: "customBranding"  as const, label: "Remove Maw3ed Branding" },
 ];
 
-const PLANS = [
-  {
-    id:        "FREE"   as PlanId,
-    icon:      Star,
-    color:     "text-gray-500",
-    border:    "border-[var(--color-border)]",
-    badge:     false,
-    ctaHref:   "/signup",
-    ctaClass:  "border-2 border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-2)]",
-    highlight: false,
-  },
-  {
-    id:        "GROWTH" as PlanId,
-    icon:      Zap,
-    color:     "text-blue-600",
-    border:    "border-blue-300",
-    badge:     true,
-    ctaHref:   "/dashboard/settings?tab=subscription",
-    ctaClass:  "bg-blue-600 text-white hover:bg-blue-700",
-    highlight: true,
-  },
-  {
-    id:        "PRO"    as PlanId,
-    icon:      Crown,
-    color:     "text-amber-600",
-    border:    "border-amber-300",
-    badge:     false,
-    ctaHref:   "/dashboard/settings?tab=subscription",
-    ctaClass:  "bg-amber-500 text-white hover:bg-amber-600",
-    highlight: false,
-  },
-];
+// ─── Plan visual config ────────────────────────────────────────────────────
 
-function FeatureValue({
-  planId, featureKey, unlimited, bookings,
-}: {
-  planId: PlanId;
-  featureKey: keyof typeof PLAN_FEATURES.FREE;
-  unlimited: string;
-  bookings: string;
-}) {
-  const val = PLAN_FEATURES[planId][featureKey];
-  if (featureKey === "monthlyBookings") {
-    return (
-      <span className="text-sm font-bold text-[var(--color-text-primary)]">
-        {val === Infinity ? unlimited : `${val} ${bookings}`}
-      </span>
-    );
-  }
-  return val ? (
-    <Check size={18} className="text-green-500 mx-auto" />
-  ) : (
-    <X size={18} className="text-[var(--color-border)] mx-auto" />
+type PlanCfg = {
+  icon:      React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }>;
+  iconBg:    string;
+  iconColor: string;
+  featured:  boolean;
+  ctaHref:   string;
+  descAr:    string;
+  descEn:    string;
+};
+
+const PLANS_CONFIG: Record<PlanId, PlanCfg> = {
+  FREE: {
+    icon:      Sparkles,
+    iconBg:    "linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)",
+    iconColor: "#64748B",
+    featured:  false,
+    ctaHref:   "/signup",
+    descAr:    "للمبتدئين والتجربة",
+    descEn:    "For getting started",
+  },
+  GROWTH: {
+    icon:      Zap,
+    iconBg:    "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
+    iconColor: "#FFFFFF",
+    featured:  true,
+    ctaHref:   "/dashboard/settings?tab=subscription",
+    descAr:    "للأعمال في مرحلة النمو",
+    descEn:    "For growing businesses",
+  },
+  PRO: {
+    icon:      Crown,
+    iconBg:    "linear-gradient(135deg, #B45309 0%, #F59E0B 100%)",
+    iconColor: "#FFFFFF",
+    featured:  false,
+    ctaHref:   "/dashboard/settings?tab=subscription",
+    descAr:    "للأعمال الاحترافية",
+    descEn:    "For established businesses",
+  },
+};
+
+const PLAN_ORDER: PlanId[] = ["FREE", "GROWTH", "PRO"];
+
+// ─── Feature icon helpers ─────────────────────────────────────────────────
+
+function CheckCircle() {
+  return (
+    <div
+      className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+      style={{ background: "#DCFCE7" }}
+    >
+      <Check size={11} strokeWidth={2.5} style={{ color: "#16A34A" }} />
+    </div>
   );
 }
 
+function MinusCircle() {
+  return (
+    <div
+      className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+      style={{ background: "#F1F5F9" }}
+    >
+      <Minus size={11} strokeWidth={2} style={{ color: "#CBD5E1" }} />
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────
+
 export default function PricingPage() {
   const { t, lang } = useLanguage();
-  const p = t.pricing;
-  const featuresList = lang === "en" ? FEATURES_LIST_EN : FEATURES_LIST_AR;
-  const planNames = lang === "en" ? PLAN_NAMES_EN : PLAN_NAMES_AR;
+  const p    = t.pricing;
+  const isAr = lang === "ar";
+
+  const featuresList = isAr ? FEATURES_LIST_AR : FEATURES_LIST_EN;
+  const planNames    = isAr ? PLAN_NAMES_AR    : PLAN_NAMES_EN;
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const planCtas: Record<PlanId, string> = {
-    FREE:   lang === "en" ? "Start Free"          : "ابدأ مجانًا",
-    GROWTH: lang === "en" ? "Start Growing"       : "ابدأ بالنمو",
-    PRO:    lang === "en" ? "Upgrade to Pro"      : "الترقية للاحترافي",
+    FREE:   isAr ? "ابدأ مجانًا"       : "Start Free",
+    GROWTH: isAr ? "ابدأ بالنمو"       : "Get Started",
+    PRO:    isAr ? "الترقية للاحترافي" : "Upgrade to Pro",
   };
+
+  const trustItems = isAr
+    ? ["بدون بطاقة ائتمان", "إلغاء في أي وقت", "إعداد في ٥ دقائق"]
+    : ["No credit card required", "Cancel anytime", "5-minute setup"];
 
   return (
     <>
       <Navbar />
-      <main className="min-h-screen">
+      <main className="min-h-screen" style={{ background: "#F8FAFC" }}>
+
         <PageHero
           badge={p.eyebrow}
           title={p.title}
           subtitle={p.subtitle}
-          dir={lang === "ar" ? "rtl" : "ltr"}
+          dir={isAr ? "rtl" : "ltr"}
         />
 
-        {/* Plan cards */}
-        <div className="max-w-5xl mx-auto px-4 py-16">
-          <div className="grid md:grid-cols-3 gap-6">
-            {PLANS.map((plan) => {
-              const Icon = plan.icon;
-              return (
-                <div
-                  key={plan.id}
-                  className={`relative card p-6 flex flex-col border-2 ${plan.border} ${plan.highlight ? "shadow-lg scale-[1.02]" : ""}`}
-                >
-                  {plan.badge && (
-                    <div className="absolute -top-3 right-6 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">
-                      {p.mostPopular}
-                    </div>
-                  )}
+        {/* ══════════════════════════════════════════════════
+            Pricing section
+        ══════════════════════════════════════════════════ */}
+        <section
+          className="relative overflow-hidden"
+          dir={isAr ? "rtl" : "ltr"}
+        >
 
-                  <div className="mb-6">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${
-                      plan.id === "FREE" ? "bg-gray-100" : plan.id === "GROWTH" ? "bg-blue-100" : "bg-amber-100"
-                    }`}>
-                      <Icon size={20} className={plan.color} />
-                    </div>
-                    <h2 className="text-lg font-black text-[var(--color-text-primary)]">
-                      {planNames[plan.id]}
-                    </h2>
-                    <div className="mt-2 flex items-baseline gap-1">
-                      <span className="text-3xl font-black text-[var(--color-text-primary)]">
-                        {PLAN_PRICES_EGP[plan.id] === 0
-                          ? (lang === "en" ? "Free" : "مجاني")
-                          : PLAN_PRICES_EGP[plan.id].toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}
-                      </span>
-                      {PLAN_PRICES_EGP[plan.id] > 0 && (
-                        <span className="text-sm text-[var(--color-text-muted)]">
-                          {lang === "en" ? "EGP / mo" : "ج.م / شهر"}
-                        </span>
+          {/* Ambient blue glow */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 top-0 pointer-events-none"
+            style={{
+              height: 500,
+              background:
+                "radial-gradient(ellipse 70% 55% at 50% 0%, rgba(59,130,246,0.07) 0%, transparent 100%)",
+            }}
+          />
+
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20 relative z-10">
+
+            {/* ── Plan cards ──────────────────────────────── */}
+            <div className="grid md:grid-cols-3 gap-5 items-start">
+              {PLAN_ORDER.map((planId) => {
+                const cfg    = PLANS_CONFIG[planId];
+                const Icon   = cfg.icon;
+                const price  = PLAN_PRICES_EGP[planId];
+                const isFree = price === 0;
+                const { featured } = cfg;
+
+                return (
+                  <div
+                    key={planId}
+                    className="relative flex flex-col rounded-3xl bg-white overflow-hidden"
+                    style={{
+                      border: featured
+                        ? "1px solid rgba(59,130,246,0.38)"
+                        : "1px solid #E2E8F0",
+                      boxShadow: featured
+                        ? "0 0 0 4px rgba(59,130,246,0.08), 0 24px 64px rgba(59,130,246,0.14), 0 8px 24px rgba(15,23,42,0.06)"
+                        : "0 1px 4px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.04)",
+                      transform: featured ? "translateY(-10px)" : "translateY(0)",
+                      transition: "box-shadow 0.25s ease, transform 0.25s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!featured) {
+                        (e.currentTarget as HTMLDivElement).style.boxShadow =
+                          "0 8px 32px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.04)";
+                        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-4px)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!featured) {
+                        (e.currentTarget as HTMLDivElement).style.boxShadow =
+                          "0 1px 4px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.04)";
+                        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+                      }
+                    }}
+                  >
+
+                    {/* Blue top accent bar (featured only) */}
+                    {featured && (
+                      <div
+                        className="h-1 w-full shrink-0"
+                        style={{
+                          background:
+                            "linear-gradient(90deg, #1D4ED8 0%, #3B82F6 50%, #60A5FA 100%)",
+                        }}
+                      />
+                    )}
+
+                    <div className="flex flex-col flex-1 p-7">
+
+                      {/* Most Popular badge (featured only) */}
+                      {featured && (
+                        <div
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full mb-5 self-start"
+                          style={{
+                            background:
+                              "linear-gradient(135deg, rgba(29,78,216,0.10) 0%, rgba(59,130,246,0.10) 100%)",
+                            border: "1px solid rgba(59,130,246,0.25)",
+                          }}
+                        >
+                          <Zap size={10} style={{ color: "#3B82F6" }} />
+                          <span
+                            className="font-bold uppercase"
+                            style={{
+                              color: "#2563EB",
+                              fontSize: 10,
+                              letterSpacing: "0.06em",
+                            }}
+                          >
+                            {p.mostPopular}
+                          </span>
+                        </div>
                       )}
+
+                      {/* Icon + name + description */}
+                      <div className="flex items-start gap-4 mb-7">
+                        <div
+                          className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                          style={{ background: cfg.iconBg }}
+                        >
+                          <Icon
+                            size={22}
+                            strokeWidth={1.75}
+                            style={{ color: cfg.iconColor }}
+                          />
+                        </div>
+                        <div>
+                          <h2
+                            className="text-base font-black text-[#0F172A]"
+                            style={{ letterSpacing: "-0.015em" }}
+                          >
+                            {planNames[planId]}
+                          </h2>
+                          <p className="text-xs text-[#94A3B8] mt-0.5">
+                            {isAr ? cfg.descAr : cfg.descEn}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Price block */}
+                      <div className="mb-7">
+                        {isFree ? (
+                          <p
+                            className="text-4xl font-black"
+                            style={{ color: "#0F172A", letterSpacing: "-0.03em" }}
+                          >
+                            {isAr ? "مجاني" : "Free"}
+                          </p>
+                        ) : (
+                          <>
+                            <div className="flex items-baseline gap-1.5">
+                              <span
+                                className="text-4xl font-black"
+                                style={{
+                                  color: featured ? "#1D4ED8" : "#0F172A",
+                                  letterSpacing: "-0.03em",
+                                }}
+                              >
+                                {price.toLocaleString(isAr ? "ar-EG" : "en-US")}
+                              </span>
+                              <span className="text-sm font-semibold text-[#94A3B8]">
+                                {isAr ? "ج.م" : "EGP"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#94A3B8] mt-1">
+                              {isAr ? "شهريًا · يُجدَّد تلقائيًا" : "per month · auto-renewed"}
+                            </p>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Divider */}
+                      <div className="h-px mb-7" style={{ background: "#F1F5F9" }} />
+
+                      {/* Feature list */}
+                      <ul className="space-y-3.5 mb-8 flex-1">
+                        {featuresList.map(({ key, label }) => {
+                          const val     = PLAN_FEATURES[planId][key];
+                          const enabled = typeof val === "boolean" ? val : true;
+                          const display = key === "monthlyBookings"
+                            ? (val === Infinity ? p.unlimited : `${val} ${p.bookings}`)
+                            : label;
+
+                          return (
+                            <li key={key} className="flex items-center gap-3">
+                              {enabled ? <CheckCircle /> : <MinusCircle />}
+                              <span
+                                className="text-sm"
+                                style={{ color: enabled ? "#334155" : "#94A3B8" }}
+                              >
+                                {display}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+
+                      {/* CTA */}
+                      {planId === "FREE" && (
+                        <Link
+                          href={cfg.ctaHref}
+                          className="block text-center py-3 rounded-2xl text-sm font-bold transition-all duration-150"
+                          style={{
+                            background:  "#F8FAFC",
+                            border:      "1.5px solid #E2E8F0",
+                            color:       "#475569",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background    = "#F1F5F9";
+                            e.currentTarget.style.borderColor   = "#CBD5E1";
+                            e.currentTarget.style.color         = "#0F172A";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background    = "#F8FAFC";
+                            e.currentTarget.style.borderColor   = "#E2E8F0";
+                            e.currentTarget.style.color         = "#475569";
+                          }}
+                        >
+                          {planCtas[planId]}
+                        </Link>
+                      )}
+
+                      {planId === "GROWTH" && (
+                        <Link
+                          href={cfg.ctaHref}
+                          className="block text-center py-3 rounded-2xl text-sm font-bold text-white transition-all duration-150"
+                          style={{
+                            background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
+                            boxShadow:  "0 4px 16px rgba(59,130,246,0.40)",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.boxShadow = "0 6px 22px rgba(59,130,246,0.52)";
+                            e.currentTarget.style.filter    = "brightness(1.06)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.boxShadow = "0 4px 16px rgba(59,130,246,0.40)";
+                            e.currentTarget.style.filter    = "";
+                          }}
+                        >
+                          {planCtas[planId]}
+                        </Link>
+                      )}
+
+                      {planId === "PRO" && (
+                        <Link
+                          href={cfg.ctaHref}
+                          className="block text-center py-3 rounded-2xl text-sm font-bold text-white transition-all duration-150"
+                          style={{
+                            background: "linear-gradient(135deg, #B45309 0%, #F59E0B 100%)",
+                            boxShadow:  "0 4px 16px rgba(245,158,11,0.28)",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.boxShadow = "0 6px 22px rgba(245,158,11,0.44)";
+                            e.currentTarget.style.filter    = "brightness(1.04)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.boxShadow = "0 4px 16px rgba(245,158,11,0.28)";
+                            e.currentTarget.style.filter    = "";
+                          }}
+                        >
+                          {planCtas[planId]}
+                        </Link>
+                      )}
+
                     </div>
                   </div>
-
-                  <ul className="space-y-3 mb-8 flex-1">
-                    {featuresList.map(({ key, label }) => {
-                      const val     = PLAN_FEATURES[plan.id][key];
-                      const enabled = typeof val === "boolean" ? val : true;
-                      const display = key === "monthlyBookings"
-                        ? (val === Infinity ? p.unlimited : `${val} ${p.bookings}`)
-                        : label;
-                      return (
-                        <li key={key} className="flex items-center gap-2.5 text-sm">
-                          {enabled ? (
-                            <Check size={15} className="text-green-500 shrink-0" />
-                          ) : (
-                            <X size={15} className="text-[var(--color-border)] shrink-0" />
-                          )}
-                          <span className={enabled ? "text-[var(--color-text-secondary)]" : "text-[var(--color-text-muted)]"}>
-                            {display}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-
-                  <Link
-                    href={plan.ctaHref}
-                    className={`block text-center py-3 rounded-xl text-sm font-bold transition-colors ${plan.ctaClass}`}
-                  >
-                    {planCtas[plan.id]}
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Feature comparison table (desktop) */}
-          <div className="mt-16 hidden md:block">
-            <h2 className="text-xl font-black text-[var(--color-text-primary)] mb-6 text-center">
-              {p.comparison}
-            </h2>
-            <div className="card overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--color-border)]">
-                    <th className="text-start p-4 text-[var(--color-text-muted)] font-medium w-1/2">
-                      {p.feature}
-                    </th>
-                    {PLANS.map((pl) => (
-                      <th key={pl.id} className="text-center p-4 font-black text-[var(--color-text-primary)]">
-                        {planNames[pl.id]}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {featuresList.map(({ key, label }, i) => (
-                    <tr key={key} className={i % 2 === 0 ? "bg-[var(--color-surface-2)]" : ""}>
-                      <td className="p-4 text-[var(--color-text-secondary)]">{label}</td>
-                      {PLANS.map((pl) => (
-                        <td key={pl.id} className="p-4 text-center">
-                          <FeatureValue
-                            planId={pl.id}
-                            featureKey={key}
-                            unlimited={p.unlimited}
-                            bookings={p.bookings}
-                          />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                );
+              })}
             </div>
-          </div>
 
-          {/* FAQ */}
-          <div className="mt-16 max-w-2xl mx-auto space-y-4">
-            <h2 className="text-xl font-black text-[var(--color-text-primary)] text-center mb-6">
-              {p.faqTitle}
-            </h2>
-            {p.faqs.map(({ q, a }) => (
-              <div key={q} className="card p-5">
-                <p className="font-bold text-[var(--color-text-primary)] mb-1.5">{q}</p>
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{a}</p>
+            {/* Trust row */}
+            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 mt-8">
+              {trustItems.map((item) => (
+                <div key={item} className="flex items-center gap-1.5">
+                  <Check size={13} strokeWidth={2.5} style={{ color: "#22C55E" }} />
+                  <span className="text-xs font-medium text-[#475569]">{item}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* ══════════════════════════════════════════════
+                Feature comparison table
+            ══════════════════════════════════════════════ */}
+            <div className="mt-24">
+
+              {/* Section heading */}
+              <div className="text-center mb-10">
+                <h2
+                  className="text-2xl font-black text-[#0F172A]"
+                  style={{ letterSpacing: "-0.025em" }}
+                >
+                  {p.comparison}
+                </h2>
               </div>
-            ))}
+
+              {/* Table card */}
+              <div
+                className="overflow-hidden rounded-3xl"
+                style={{
+                  border:     "1px solid #E2E8F0",
+                  boxShadow:  "0 4px 24px rgba(15,23,42,0.06), 0 1px 4px rgba(15,23,42,0.03)",
+                }}
+              >
+                {/* Horizontal scroll wrapper for mobile */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" style={{ minWidth: 520 }}>
+
+                    {/* Dark navy header */}
+                    <thead>
+                      <tr style={{ background: "#0F172A" }}>
+                        <th
+                          className="text-start px-6 py-5 font-semibold"
+                          style={{ color: "#64748B", width: "42%" }}
+                        >
+                          {p.feature}
+                        </th>
+                        {PLAN_ORDER.map((planId) => {
+                          const cfg  = PLANS_CONFIG[planId];
+                          const Icon = cfg.icon;
+                          return (
+                            <th
+                              key={planId}
+                              className="text-center px-4 py-5"
+                              style={{
+                                background: cfg.featured ? "#1D4ED8" : "transparent",
+                                borderInlineStart: cfg.featured ? "none" : "none",
+                              }}
+                            >
+                              <div className="flex flex-col items-center gap-1.5">
+                                <div
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center"
+                                  style={{
+                                    background: cfg.featured
+                                      ? "rgba(255,255,255,0.18)"
+                                      : "rgba(255,255,255,0.07)",
+                                  }}
+                                >
+                                  <Icon
+                                    size={14}
+                                    strokeWidth={1.75}
+                                    style={{ color: "#FFFFFF" }}
+                                  />
+                                </div>
+                                <span className="text-sm font-bold text-white">
+                                  {planNames[planId]}
+                                </span>
+                              </div>
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+
+                    {/* Body rows */}
+                    <tbody>
+                      {featuresList.map(({ key, label }, i) => (
+                        <tr key={key}>
+                          {/* Feature label */}
+                          <td
+                            className="px-6 py-4 font-medium text-[#0F172A]"
+                            style={{
+                              background:   i % 2 === 0 ? "#FFFFFF" : "#F8FAFC",
+                              borderBottom: "1px solid #F1F5F9",
+                            }}
+                          >
+                            {label}
+                          </td>
+
+                          {/* Plan cells */}
+                          {PLAN_ORDER.map((planId) => {
+                            const cfg = PLANS_CONFIG[planId];
+                            const val = PLAN_FEATURES[planId][key];
+
+                            const rowBg = i % 2 === 0 ? "#FFFFFF" : "#F8FAFC";
+                            const cellBg = cfg.featured
+                              ? i % 2 === 0
+                                ? "rgba(59,130,246,0.05)"
+                                : "rgba(59,130,246,0.03)"
+                              : rowBg;
+
+                            let content: React.ReactNode;
+                            if (key === "monthlyBookings") {
+                              content = (
+                                <span
+                                  className="font-bold"
+                                  style={{ color: cfg.featured ? "#1D4ED8" : "#0F172A" }}
+                                >
+                                  {val === Infinity ? p.unlimited : `${val} ${p.bookings}`}
+                                </span>
+                              );
+                            } else if (val) {
+                              content = (
+                                <div
+                                  className="w-6 h-6 rounded-full flex items-center justify-center mx-auto"
+                                  style={{ background: "#DCFCE7" }}
+                                >
+                                  <Check size={12} strokeWidth={2.5} style={{ color: "#16A34A" }} />
+                                </div>
+                              );
+                            } else {
+                              content = (
+                                <div
+                                  className="w-6 h-6 rounded-full flex items-center justify-center mx-auto"
+                                  style={{ background: "#F1F5F9" }}
+                                >
+                                  <Minus size={12} strokeWidth={2} style={{ color: "#CBD5E1" }} />
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <td
+                                key={planId}
+                                className="px-4 py-4 text-center"
+                                style={{
+                                  background:   cellBg,
+                                  borderBottom: "1px solid #F1F5F9",
+                                }}
+                              >
+                                {content}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* ══════════════════════════════════════════════
+                FAQ accordion
+            ══════════════════════════════════════════════ */}
+            <div className="mt-24 max-w-2xl mx-auto">
+
+              <div className="text-center mb-10">
+                <h2
+                  className="text-2xl font-black text-[#0F172A]"
+                  style={{ letterSpacing: "-0.025em" }}
+                >
+                  {p.faqTitle}
+                </h2>
+              </div>
+
+              <div className="space-y-3">
+                {p.faqs.map(({ q, a }, i) => {
+                  const isOpen = openFaq === i;
+                  return (
+                    <div
+                      key={i}
+                      className="rounded-2xl overflow-hidden"
+                      style={{
+                        border:     isOpen ? "1.5px solid rgba(59,130,246,0.28)" : "1px solid #E2E8F0",
+                        background: "#FFFFFF",
+                        boxShadow:  isOpen
+                          ? "0 4px 16px rgba(59,130,246,0.08)"
+                          : "0 1px 4px rgba(15,23,42,0.04)",
+                        transition: "box-shadow 0.2s ease, border-color 0.2s ease",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setOpenFaq(isOpen ? null : i)}
+                        className="w-full flex items-center justify-between gap-4 px-6 py-4 text-start"
+                      >
+                        <span
+                          className="text-sm font-bold"
+                          style={{ color: isOpen ? "#1D4ED8" : "#0F172A" }}
+                        >
+                          {q}
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          style={{
+                            color:      isOpen ? "#3B82F6" : "#94A3B8",
+                            transform:  isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                            transition: "transform 0.2s ease",
+                            flexShrink: 0,
+                          }}
+                        />
+                      </button>
+                      {isOpen && (
+                        <div
+                          className="px-6 pb-5"
+                          style={{ borderTop: "1px solid rgba(59,130,246,0.10)" }}
+                        >
+                          <p
+                            className="text-sm leading-relaxed"
+                            style={{ color: "#475569" }}
+                          >
+                            {a}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+
           </div>
-        </div>
+        </section>
       </main>
       <Footer />
     </>

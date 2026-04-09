@@ -276,6 +276,34 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-09 — Pricing page premium redesign (Stripe/Linear style)
+
+**Decision:** Full redesign of `src/app/pricing/page.tsx` — pricing cards and comparison table — to match a premium SaaS standard while staying within the Maw3ed brand system.
+
+**Plan cards:**
+- `rounded-3xl` white cards, `1px solid` borders, subtle layered box-shadows
+- GROWTH (featured): `translateY(-10px)` elevation, `4px` blue outer glow ring, `1px` blue gradient top accent bar, "Most Popular" badge pill (inline, not floating)
+- FREE: ghost CTA button (`#F8FAFC` bg, `#E2E8F0` border) — changes to `#F1F5F9` on hover
+- GROWTH: blue gradient CTA (`#1D4ED8 → #3B82F6`) with `rgba(59,130,246,0.40)` glow; hover brightens
+- PRO: amber gradient CTA (`#B45309 → #F59E0B`) with amber glow
+- Feature rows: green `#DCFCE7` circle + `#16A34A` check for included; muted `#F1F5F9` circle + `#CBD5E1` dash for excluded — no red X
+- Plan descriptions added inline (descAr/descEn strings in PLANS_CONFIG)
+- Trust row below cards: 3 green-checkmark badges (no credit card / cancel anytime / 5-min setup)
+
+**Comparison table:**
+- Wrapped in `rounded-3xl` card with `border #E2E8F0` and layered box-shadow
+- Dark navy (`#0F172A`) header row; GROWTH column header uses `#1D4ED8` accent
+- Each plan column header shows a small icon in a translucent rounded square + plan name
+- Alternating row backgrounds: `#FFFFFF` / `#F8FAFC`; GROWTH data cells get subtle `rgba(59,130,246,0.05/0.03)` tint
+- `overflow-x-auto` wrapper with `minWidth: 520` for mobile horizontal scroll
+- Minus circles (not X) for excluded features; green check circles for included
+
+**FAQ:** Replaced static cards with an interactive accordion (`useState`). Open item gets blue border + question text turns blue + ChevronDown rotates 180°. No JS height calculation — renders/removes the answer div directly.
+
+**Removed:** `Container`, `Star`, `X` imports. Added `Minus`, `ChevronDown`, `useState`.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
