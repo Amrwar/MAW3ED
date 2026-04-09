@@ -543,3 +543,39 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Textarea rows: `4 → 3`
 - Footer: `py-4 → py-3`, added subtle box-shadow upward
 - Bottom spacer: `4px → 16px` for iOS scroll-bounce breathing room
+
+---
+
+### 2026-04-09 — Settings page: full premium redesign
+
+**Decision:** Full redesign of the settings page across `SettingsClient.tsx`, `ProfileForm.tsx`, `AvailabilityForm.tsx`, and `DepositSettingsForm.tsx`. The `SubscriptionPanel.tsx` and `PublicPagePreview.tsx` were left unchanged as they are already well-structured.
+
+**SettingsClient.tsx:**
+- New premium page header with 26px/900 title + 13px muted subtitle
+- Tab strip: pill-style `background: #F1F5F9` container, `#0F172A` navy background for active tab (was white pill with shadow), border `1.5px solid #E2E8F0` on the strip
+- Horizontal overflow scroll on mobile with `scrollbarWidth: none`
+- Max-width set to 900 (was 4xl ≈ 896, functionally same but explicit)
+
+**ProfileForm.tsx — full structure rewrite:**
+- Three section cards with consistent `border: 1.5px solid #E2E8F0`, `borderRadius: 20`, `boxShadow: 0 1px 6px ...`, and a `#FAFBFD` card header with icon + title + subtitle
+- Section 1 "الهوية البصرية": Cover upload wrapped in a styled border container, logo upload side-by-side with helper text block
+- Section 2 "المعلومات الأساسية": 2-col grid (nameAr/nameEn, category/city), full-width tagline and about
+- Section 3 "بيانات التواصل": 2-col grid (phone/whatsapp with icons), full-width address
+- All inputs use consistent `fieldBase` style object (same as ServicePanel) with onFocus/onBlur handlers
+- Bottom save action bar: info text left + navy gradient button right (replaces bottom-aligned `flex justify-end`)
+
+**AvailabilityForm.tsx — structure rewrite:**
+- Summary banner: active status dot + days-open counter + "جدولك نشط" pill
+- Day rows in a single white card with a `#FAFBFD` column header row
+- Toggle button uses navy (`#0F172A`) when open instead of the CSS var accent blue
+- Duration pill added inline next to time inputs (live-computed hours+minutes)
+- Weekend days (Fri/Sat) get a soft gray badge
+- Same premium save bar pattern as ProfileForm
+
+**DepositSettingsForm.tsx:**
+- Section card with icon header (same card pattern)
+- Toggle row uses green/gray state colors (same as ServicePanel toggle)
+- Percentage input redesigned: large centered number + live example chip
+- Paymob info banner matches the blue info chip pattern used elsewhere
+- Same save bar pattern
+- Locked state: amber gradient CTA button instead of plain `bg-amber-500`

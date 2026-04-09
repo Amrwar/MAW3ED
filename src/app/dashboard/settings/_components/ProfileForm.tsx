@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Check } from "lucide-react";
+import {
+  Loader2, Check, X,
+  Palette, LayoutGrid, Phone,
+  AlignLeft, Tag, MapPin, Globe,
+} from "lucide-react";
 import type { Profile, City, CategoryItem } from "./SettingsClient";
 import ImageUpload from "@/components/shared/ImageUpload";
 
@@ -12,6 +16,136 @@ type Props = {
   onSaved:    (updated: Partial<Profile>) => void;
 };
 
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const card: React.CSSProperties = {
+  background:   "#FFFFFF",
+  border:       "1.5px solid #E2E8F0",
+  borderRadius: 20,
+  boxShadow:    "0 1px 6px rgba(15,23,42,0.05)",
+  overflow:     "hidden",
+};
+
+const cardHead: React.CSSProperties = {
+  display:        "flex",
+  alignItems:     "center",
+  gap:            12,
+  padding:        "14px 22px",
+  background:     "#FAFBFD",
+  borderBottom:   "1px solid #F1F5F9",
+};
+
+const cardBody: React.CSSProperties = {
+  padding: "22px 24px",
+};
+
+const label: React.CSSProperties = {
+  fontSize:    12,
+  fontWeight:  600,
+  color:       "#374151",
+  display:     "block",
+  marginBottom: 6,
+};
+
+const hint: React.CSSProperties = {
+  fontSize:   11,
+  color:      "#94A3B8",
+  marginTop:  3,
+};
+
+const fieldBase: React.CSSProperties = {
+  width:         "100%",
+  borderRadius:  10,
+  border:        "1.5px solid #E2E8F0",
+  background:    "#F8FAFC",
+  color:         "#0F172A",
+  fontSize:      14,
+  paddingBlock:  10,
+  paddingInline: 12,
+  outline:       "none",
+  transition:    "border-color 0.15s, box-shadow 0.15s, background 0.15s",
+  lineHeight:    1.5,
+};
+
+function onFocus(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+  e.currentTarget.style.borderColor = "#1D4ED8";
+  e.currentTarget.style.background  = "#FFFFFF";
+  e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(29,78,216,0.1)";
+}
+function onBlur(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+  e.currentTarget.style.borderColor = "#E2E8F0";
+  e.currentTarget.style.background  = "#F8FAFC";
+  e.currentTarget.style.boxShadow   = "none";
+}
+
+// ─── Section card ─────────────────────────────────────────────────────────────
+function Section({
+  icon,
+  title,
+  subtitle,
+  iconBg = "#EFF6FF",
+  iconColor = "#1D4ED8",
+  children,
+}: {
+  icon:       React.ReactNode;
+  title:      string;
+  subtitle:   string;
+  iconBg?:    string;
+  iconColor?: string;
+  children:   React.ReactNode;
+}) {
+  return (
+    <div style={card}>
+      <div style={cardHead}>
+        <div
+          style={{
+            width:           32,
+            height:          32,
+            borderRadius:    10,
+            background:      iconBg,
+            display:         "flex",
+            alignItems:      "center",
+            justifyContent:  "center",
+            flexShrink:      0,
+            color:           iconColor,
+          }}
+        >
+          {icon}
+        </div>
+        <div>
+          <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{title}</p>
+          <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>{subtitle}</p>
+        </div>
+      </div>
+      <div style={cardBody}>{children}</div>
+    </div>
+  );
+}
+
+// ─── Field wrapper ────────────────────────────────────────────────────────────
+function Field({
+  label: labelText,
+  hint: hintText,
+  required,
+  children,
+}: {
+  label:     string;
+  hint?:     string;
+  required?: boolean;
+  children:  React.ReactNode;
+}) {
+  return (
+    <div>
+      <label style={label}>
+        {labelText}
+        {required && <span style={{ color: "#EF4444", marginInlineStart: 3 }}>*</span>}
+      </label>
+      {children}
+      {hintText && <p style={hint}>{hintText}</p>}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function ProfileForm({ profile, cities, categories, onSaved }: Props) {
   const [form, setForm] = useState({
     nameAr:     profile.nameAr,
@@ -66,7 +200,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
       if (!res.ok) { setError(data.error || "حدث خطأ أثناء الحفظ"); return; }
 
       setSuccess(true);
-      onSaved({ ...form, coverImage: coverImage, logoImage: logoImage });
+      onSaved({ ...form, coverImage, logoImage });
       setTimeout(() => setSuccess(false), 3000);
     } catch {
       setError("حدث خطأ في الاتصال");
@@ -76,86 +210,126 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Image placeholders */}
-      <div className="card p-5 space-y-4">
-        <h3 className="font-semibold text-[var(--color-text-primary)]">الصور</h3>
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
 
-        {/* Cover */}
-        <div>
-          <p className="text-sm text-[var(--color-text-secondary)] mb-2">صورة الغلاف</p>
-          <ImageUpload
-            variant="cover"
-            value={coverImage}
-            onChange={setCoverImage}
-            onRemove={() => setCoverImage(null)}
-            label="JPG أو PNG أو WebP — حتى 5MB"
-          />
+      {/* ── Section 1: Visual Identity ─────────────────────── */}
+      <Section
+        icon={<Palette size={14} />}
+        title="الهوية البصرية"
+        subtitle="شعار النشاط وصورة الغلاف التي تظهر في صفحة الحجز"
+      >
+        {/* Cover image */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={label}>صورة الغلاف</p>
+          <div
+            style={{
+              borderRadius: 14,
+              overflow:     "hidden",
+              border:       "1.5px solid #E2E8F0",
+            }}
+          >
+            <ImageUpload
+              variant="cover"
+              value={coverImage}
+              onChange={setCoverImage}
+              onRemove={() => setCoverImage(null)}
+            />
+          </div>
+          <p style={hint}>JPG أو PNG أو WebP · حتى 5MB · الحجم المقترح: 1200×400px</p>
         </div>
 
-        {/* Logo */}
+        {/* Logo image — side by side with helper text */}
         <div>
-          <p className="text-sm text-[var(--color-text-secondary)] mb-2">شعار العمل</p>
-          <ImageUpload
-            variant="logo"
-            value={logoImage}
-            onChange={setLogoImage}
-            onRemove={() => setLogoImage(null)}
-            label="شعار مربع — حتى 5MB"
-          />
+          <p style={label}>شعار النشاط</p>
+          <div className="flex items-start gap-4">
+            <div
+              style={{
+                borderRadius: 14,
+                overflow:     "hidden",
+                border:       "1.5px solid #E2E8F0",
+                flexShrink:   0,
+              }}
+            >
+              <ImageUpload
+                variant="logo"
+                value={logoImage}
+                onChange={setLogoImage}
+                onRemove={() => setLogoImage(null)}
+              />
+            </div>
+            <div style={{ paddingTop: 6 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                شعار مربع عالي الجودة
+              </p>
+              <p style={{ fontSize: 11, color: "#94A3B8", lineHeight: 1.7 }}>
+                PNG أو JPG أو WebP · حتى 5MB
+                <br />الحجم المقترح: 400×400px
+                <br />يظهر على بطاقة الحجز وصفحتك العامة
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      </Section>
 
-      {/* Basic info */}
-      <div className="card p-5 space-y-4">
-        <h3 className="font-semibold text-[var(--color-text-primary)]">المعلومات الأساسية</h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="form-label">
-              اسم العمل (عربي) <span className="text-red-500">*</span>
-            </label>
+      {/* ── Section 2: Basic Info ──────────────────────────── */}
+      <Section
+        icon={<LayoutGrid size={14} />}
+        title="المعلومات الأساسية"
+        subtitle="اسم النشاط والتخصص والمدينة والنبذة التعريفية"
+        iconBg="#F5F3FF"
+        iconColor="#6D28D9"
+      >
+        {/* Name row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 16 }}>
+          <Field label="اسم العمل بالعربية" required>
             <input
               value={form.nameAr}
               onChange={(e) => set("nameAr", e.target.value)}
-              className="input w-full mt-1.5"
+              style={fieldBase}
               placeholder="مثال: عيادة الدكتور أحمد"
+              onFocus={onFocus}
+              onBlur={onBlur}
             />
-          </div>
-          <div>
-            <label className="form-label">اسم العمل (إنجليزي)</label>
+          </Field>
+          <Field label="اسم العمل بالإنجليزية" hint="اختياري — للعملاء الدوليين">
             <input
               value={form.nameEn}
               onChange={(e) => set("nameEn", e.target.value)}
-              className="input w-full mt-1.5"
+              style={fieldBase}
               placeholder="e.g. Dr. Ahmed Clinic"
               dir="ltr"
+              onFocus={onFocus}
+              onBlur={onBlur}
             />
-          </div>
+          </Field>
         </div>
 
-        <div>
-          <label className="form-label">
-            شعار قصير{" "}
-            <span className="text-[var(--color-text-muted)] font-normal">
-              ({form.taglineAr.length}/120)
-            </span>
-          </label>
-          <input
-            value={form.taglineAr}
-            onChange={(e) => set("taglineAr", e.target.value.slice(0, 120))}
-            className="input w-full mt-1.5"
-            placeholder="مثال: أفضل خدمات العناية بالبشرة في القاهرة"
-          />
+        {/* Tagline */}
+        <div style={{ marginBottom: 16 }}>
+          <Field
+            label={`شعار قصير (${form.taglineAr.length}/120)`}
+            hint="جملة قصيرة تصف نشاطك — تظهر تحت الاسم في الصفحة"
+          >
+            <input
+              value={form.taglineAr}
+              onChange={(e) => set("taglineAr", e.target.value.slice(0, 120))}
+              style={fieldBase}
+              placeholder="مثال: أفضل خدمات العناية بالبشرة في القاهرة"
+              onFocus={onFocus}
+              onBlur={onBlur}
+            />
+          </Field>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="form-label">التخصص</label>
+        {/* Category + City row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 16 }}>
+          <Field label="التخصص">
             <select
               value={form.categoryId}
               onChange={(e) => set("categoryId", e.target.value)}
-              className="input w-full mt-1.5"
+              style={fieldBase}
+              onFocus={onFocus}
+              onBlur={onBlur}
             >
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -163,13 +337,14 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="form-label">المدينة</label>
+          </Field>
+          <Field label="المدينة">
             <select
               value={form.cityId}
               onChange={(e) => set("cityId", e.target.value)}
-              className="input w-full mt-1.5"
+              style={fieldBase}
+              onFocus={onFocus}
+              onBlur={onBlur}
             >
               {cities.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -177,84 +352,182 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
                 </option>
               ))}
             </select>
-          </div>
+          </Field>
         </div>
 
-        <div>
-          <label className="form-label">
-            نبذة عن العمل{" "}
-            <span className="text-[var(--color-text-muted)] font-normal">
-              ({form.about.length}/600)
-            </span>
-          </label>
+        {/* About */}
+        <Field
+          label={`نبذة عن العمل (${form.about.length}/600)`}
+          hint="وصف مختصر يساعد العملاء على معرفة المزيد — تظهر في صفحة الحجز"
+        >
           <textarea
             value={form.about}
             onChange={(e) => set("about", e.target.value.slice(0, 600))}
             rows={4}
-            className="input w-full mt-1.5 resize-none"
+            style={{ ...fieldBase, resize: "none", lineHeight: 1.7 }}
             placeholder="اكتب وصفًا مختصرًا يساعد العملاء على معرفة المزيد عن عملك..."
+            onFocus={onFocus}
+            onBlur={onBlur}
           />
+        </Field>
+      </Section>
+
+      {/* ── Section 3: Contact ──────────────────────────────── */}
+      <Section
+        icon={<Phone size={14} />}
+        title="بيانات التواصل"
+        subtitle="أرقام الهاتف وواتساب وعنوان النشاط"
+        iconBg="#ECFDF5"
+        iconColor="#065F46"
+      >
+        {/* Phone + WhatsApp */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 16 }}>
+          <Field label="رقم الهاتف">
+            <div className="relative">
+              <input
+                value={form.phone}
+                onChange={(e) => set("phone", e.target.value)}
+                style={{ ...fieldBase, paddingInlineEnd: 36 }}
+                placeholder="01XXXXXXXXX"
+                dir="ltr"
+                onFocus={onFocus}
+                onBlur={onBlur}
+              />
+              <Phone
+                size={13}
+                className="absolute top-1/2 -translate-y-1/2"
+                style={{ insetInlineEnd: 12, color: "#94A3B8", pointerEvents: "none" }}
+              />
+            </div>
+          </Field>
+          <Field label="رقم واتساب" hint="مع رمز الدولة — مثال: 201XXXXXXXXX+">
+            <div className="relative">
+              <input
+                value={form.whatsapp}
+                onChange={(e) => set("whatsapp", e.target.value)}
+                style={{ ...fieldBase, paddingInlineEnd: 36 }}
+                placeholder="201XXXXXXXXX+"
+                dir="ltr"
+                onFocus={onFocus}
+                onBlur={onBlur}
+              />
+              {/* WhatsApp icon as SVG */}
+              <svg
+                className="absolute top-1/2 -translate-y-1/2"
+                style={{ insetInlineEnd: 12, color: "#94A3B8", pointerEvents: "none", width: 13, height: 13 }}
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.555 4.116 1.523 5.847L.057 23.5l5.802-1.52A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.65-.488-5.184-1.34l-.371-.22-3.444.903.92-3.352-.242-.386A9.938 9.938 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
+              </svg>
+            </div>
+          </Field>
         </div>
-      </div>
 
-      {/* Contact */}
-      <div className="card p-5 space-y-4">
-        <h3 className="font-semibold text-[var(--color-text-primary)]">بيانات التواصل</h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="form-label">رقم الهاتف</label>
+        {/* Address */}
+        <Field label="العنوان" hint="الحي والشارع والمدينة كما تريد أن يظهر للعملاء">
+          <div className="relative">
             <input
-              value={form.phone}
-              onChange={(e) => set("phone", e.target.value)}
-              className="input w-full mt-1.5"
-              placeholder="01XXXXXXXXX"
-              dir="ltr"
+              value={form.address}
+              onChange={(e) => set("address", e.target.value)}
+              style={{ ...fieldBase, paddingInlineEnd: 36 }}
+              placeholder="مثال: ٤ شارع التحرير، المعادي، القاهرة"
+              onFocus={onFocus}
+              onBlur={onBlur}
+            />
+            <MapPin
+              size={13}
+              className="absolute top-1/2 -translate-y-1/2"
+              style={{ insetInlineEnd: 12, color: "#94A3B8", pointerEvents: "none" }}
             />
           </div>
-          <div>
-            <label className="form-label">رقم واتساب</label>
-            <input
-              value={form.whatsapp}
-              onChange={(e) => set("whatsapp", e.target.value)}
-              className="input w-full mt-1.5"
-              placeholder="201XXXXXXXXX+"
-              dir="ltr"
-            />
-          </div>
-        </div>
+        </Field>
+      </Section>
 
-        <div>
-          <label className="form-label">العنوان</label>
-          <input
-            value={form.address}
-            onChange={(e) => set("address", e.target.value)}
-            className="input w-full mt-1.5"
-            placeholder="مثال: ٤ شارع التحرير، المعادي، القاهرة"
-          />
-        </div>
-      </div>
-
-      {/* Feedback */}
+      {/* ── Feedback ─────────────────────────────────────────── */}
       {error && (
-        <p className="text-sm text-red-500 bg-red-50 px-4 py-3 rounded-xl">{error}</p>
+        <div
+          className="flex items-start gap-3 rounded-2xl px-4 py-3.5"
+          style={{ background: "#FEF2F2", border: "1.5px solid #FECACA" }}
+        >
+          <div
+            className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+            style={{ background: "#FEE2E2" }}
+          >
+            <X size={10} strokeWidth={2.5} style={{ color: "#EF4444" }} />
+          </div>
+          <p style={{ fontSize: 13, color: "#B91C1C", lineHeight: 1.5 }}>{error}</p>
+        </div>
       )}
       {success && (
-        <p className="text-sm text-green-600 bg-green-50 px-4 py-3 rounded-xl flex items-center gap-2">
-          <Check size={15} />
-          تم حفظ التغييرات بنجاح
-        </p>
+        <div
+          className="flex items-center gap-3 rounded-2xl px-4 py-3.5"
+          style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0" }}
+        >
+          <div
+            className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: "#DCFCE7" }}
+          >
+            <Check size={10} strokeWidth={2.5} style={{ color: "#16A34A" }} />
+          </div>
+          <p style={{ fontSize: 13, color: "#15803D", fontWeight: 600 }}>
+            تم حفظ التغييرات بنجاح
+          </p>
+        </div>
       )}
 
-      {/* Submit */}
-      <div className="flex justify-end">
+      {/* ── Save action bar ─────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between rounded-2xl px-5 py-4"
+        style={{
+          background: "#FAFBFD",
+          border:     "1.5px solid #E2E8F0",
+          marginBottom: 16,
+        }}
+      >
+        <p style={{ fontSize: 12, color: "#94A3B8" }}>
+          التغييرات ستُحدَّث فوراً على صفحة حجزك العامة
+        </p>
         <button
           type="submit"
           disabled={saving}
-          className="btn btn-primary gap-2 min-w-36"
+          className="flex items-center gap-2 rounded-xl font-black text-white transition-all duration-150 disabled:opacity-60"
+          style={{
+            padding:       "10px 22px",
+            fontSize:      13,
+            background:    "linear-gradient(135deg, #1D4ED8 0%, #2563EB 60%, #3B82F6 100%)",
+            boxShadow:     "0 3px 12px rgba(29,78,216,0.28)",
+            border:        "none",
+            cursor:        saving ? "not-allowed" : "pointer",
+            letterSpacing: "-0.01em",
+          }}
+          onMouseEnter={(e) => {
+            if (!saving) {
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.filter    = "brightness(1.08)";
+              el.style.boxShadow = "0 5px 18px rgba(29,78,216,0.38)";
+              el.style.transform = "translateY(-1px)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            const el = e.currentTarget as HTMLButtonElement;
+            el.style.filter    = "";
+            el.style.boxShadow = "0 3px 12px rgba(29,78,216,0.28)";
+            el.style.transform = "";
+          }}
         >
-          {saving && <Loader2 size={16} className="animate-spin" />}
-          {saving ? "جاري الحفظ..." : "حفظ التغييرات"}
+          {saving ? (
+            <>
+              <Loader2 size={14} className="animate-spin" />
+              جاري الحفظ...
+            </>
+          ) : (
+            <>
+              <Check size={14} />
+              حفظ التغييرات
+            </>
+          )}
         </button>
       </div>
     </form>

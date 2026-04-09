@@ -86,34 +86,69 @@ export default function SettingsClient({
   }));
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-[var(--color-text-primary)]">{st.title}</h1>
-        <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-          {st.subtitle}
-        </p>
-      </div>
+    <div style={{ maxWidth: 900, margin: "0 auto" }}>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 bg-[var(--color-surface-2)] rounded-xl p-1.5 w-fit">
-        {TABS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              tab === id
-                ? "bg-white text-[var(--color-text-primary)] shadow-sm"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
-            }`}
+      {/* ── Premium page header ─────────────────────────────── */}
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1
+            style={{
+              fontSize:      26,
+              fontWeight:    900,
+              color:         "#0F172A",
+              letterSpacing: "-0.03em",
+              lineHeight:    1.2,
+            }}
           >
-            <Icon size={15} />
-            {label}
-          </button>
-        ))}
+            {st.title}
+          </h1>
+          <p style={{ fontSize: 13, color: "#94A3B8", marginTop: 5, lineHeight: 1.5 }}>
+            إدارة بيانات النشاط التجاري ومعلومات التواصل والهوية
+          </p>
+        </div>
       </div>
 
-      {/* Tab content */}
+      {/* ── Premium tab strip ───────────────────────────────── */}
+      <div className="mb-8 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        <div
+          className="flex gap-1 p-1 rounded-2xl"
+          style={{
+            background:   "#F1F5F9",
+            width:        "fit-content",
+            minWidth:     "max-content",
+            border:       "1.5px solid #E2E8F0",
+          }}
+        >
+          {TABS.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className="flex items-center gap-2 rounded-xl font-semibold transition-all duration-150 whitespace-nowrap"
+              style={
+                tab === id
+                  ? {
+                      padding:     "9px 18px",
+                      fontSize:    13,
+                      background:  "#0F172A",
+                      color:       "#FFFFFF",
+                      boxShadow:   "0 2px 8px rgba(15,23,42,0.18)",
+                    }
+                  : {
+                      padding:     "9px 18px",
+                      fontSize:    13,
+                      color:       "#64748B",
+                      background:  "transparent",
+                    }
+              }
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Tab content ─────────────────────────────────────── */}
       {tab === "profile" && (
         <ProfileForm
           profile={currentProfile}
