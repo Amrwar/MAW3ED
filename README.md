@@ -458,3 +458,25 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - `BookingDetailPanel`: Customer card with avatar + status badge inline, sectioned layout with icon per section, `ACTION_STYLE` map for footer action buttons, no CSS vars
 
 **Design system applied:** Background `#F8FAFC`, white `rounded-2xl` cards, `border: 1px solid #E2E8F0`, active text `#0F172A`, accent `#1D4ED8→#3B82F6`, muted `#94A3B8`. Zero CSS custom properties — all direct hex.
+
+### Services Page — Premium Redesign (2026-04-09)
+
+**`ServicesClient.tsx`:**
+- Premium header card: page title + subtitle + gradient "إضافة خدمة" button, consistent with bookings/dashboard header pattern
+- 4 summary stat cards: total, active (with percentage), avg duration, avg price — each with icon in colored rounded-xl bg
+- Services section container: `rounded-2xl border bg-white`, section header with service count + active badge
+- `ServiceRow` extracted as sub-component: gradient avatar initial, name + English name + status badge, description, duration chip + price, RTL toggle switch (CSS-only, no ToggleLeft/Right icons), edit/delete icon buttons with `onMouseEnter/Leave` hover (blue for edit, red for delete)
+- Left border indicator: `borderInlineStart: 3px solid #3B82F6` when active, `#E2E8F0` when inactive
+- `EmptyState` sub-component: gradient icon box, descriptive copy, gradient CTA
+- Tip card at bottom: blue-tinted insight card about descriptions improving bookings
+- All CSS vars replaced with direct hex
+
+**`ServicePanel.tsx`:**
+- Premium panel header with subtitle line, close button with hover state
+- `PanelInput` helper: unified styled input with focus glow (`0 0 0 3px rgba(59,130,246,0.1)`)
+- `FieldLabel` helper: small uppercase-styled labels with colored icon per field
+- Icon decorations per field: Type (blue) for names, AlignLeft (gray) for description, Clock (purple) for duration, DollarSign (amber) for price
+- Availability toggle: CSS-only pill switch, label updates dynamically based on state ("تظهر للعملاء" vs "مخفية")
+- Error state: red-tinted card instead of plain text
+- Footer: ghost cancel + gradient submit button with hover brightness
+- No CSS vars, `boxShadow: -8px 0 40px rgba(15,23,42,0.12)` panel shadow
