@@ -6,8 +6,13 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  // PrismaNeon takes a PoolConfig directly (not a Pool instance)
-  const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL! });
+  // Strip channel_binding=require — @neondatabase/serverless uses HTTP/WS
+  // transport which doesn't support SCRAM channel binding.
+  const connectionString = (process.env.DATABASE_URL ?? "").replace(
+    /[&?]channel_binding=require/g,
+    ""
+  );
+  const adapter = new PrismaNeon({ connectionString });
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
