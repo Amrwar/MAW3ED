@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import { MapPin, Phone, MessageCircle, Share2, CheckCircle2, Star } from "lucide-react";
 import type { Business } from "@/types/business";

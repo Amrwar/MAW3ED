@@ -1,3 +1,5 @@
+"use client";
+
 import { MapPin, Clock, Phone, MessageCircle } from "lucide-react";
 import type { Business } from "@/types/business";
 
