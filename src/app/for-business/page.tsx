@@ -4,6 +4,7 @@ import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
+import PageHero from "@/components/shared/PageHero";
 import {
   CheckCircle, Calendar, BarChart3, Bell,
   Globe, Star, Shield, Zap, Users,
@@ -17,44 +18,55 @@ const benefitColors = [
 ];
 
 export default function ForBusinessPage() {
-  const { t } = useLanguage();
-  const fb = t.forBusiness;
+  const { t, lang } = useLanguage();
+  const fb   = t.forBusiness;
+  const isAr = lang === "ar";
+
+  const heroTitle = (
+    <>
+      {fb.heroTitle}{" "}
+      <span
+        style={{
+          background: "linear-gradient(135deg, #60A5FA 0%, #A78BFA 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+        }}
+      >
+        {fb.heroAccent}
+      </span>
+    </>
+  );
+
+  const heroCta = (
+    <div className="flex flex-col sm:flex-row justify-center gap-3">
+      <Link
+        href="/signup?type=business"
+        className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-white text-sm shadow-lg shadow-blue-500/20 hover:-translate-y-0.5 hover:shadow-blue-500/30 transition-all"
+        style={{ background: "#3B82F6" }}
+      >
+        {fb.cta1}
+      </Link>
+      <Link
+        href="/pricing"
+        className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm border border-white/15 text-white/75 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all"
+      >
+        {fb.cta2}
+      </Link>
+    </div>
+  );
 
   return (
     <>
       <Navbar />
       <main className="pt-16">
-        {/* Hero */}
-        <section className="relative overflow-hidden bg-[var(--color-brand)] text-white py-24">
-          <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-32 -end-32 w-96 h-96 rounded-full bg-white/5" />
-            <div className="absolute -bottom-32 -start-32 w-[500px] h-[500px] rounded-full bg-white/5" />
-            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage:"radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize:"32px 32px" }} />
-          </div>
-          <Container>
-            <div className="relative z-10 max-w-2xl">
-              <div className="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white text-sm font-semibold px-4 py-1.5 rounded-full mb-6">
-                <Zap size={14} />
-                {fb.badge}
-              </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-6">
-                {fb.heroTitle}
-                <br />
-                <span className="text-[var(--color-accent)]">{fb.heroAccent}</span>
-              </h1>
-              <p className="text-white/70 text-lg md:text-xl leading-relaxed mb-10">{fb.heroSub}</p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link href="/signup?type=business" className="btn btn-accent btn-lg shadow-lg shadow-[var(--color-accent)]/30">
-                  {fb.cta1}
-                </Link>
-                <Link href="/pricing" className="btn btn-outline btn-lg border-white/30 text-white hover:bg-white/10 hover:border-white/50">
-                  {fb.cta2}
-                </Link>
-              </div>
-              <p className="mt-5 text-white/40 text-sm">{fb.note}</p>
-            </div>
-          </Container>
-        </section>
+        <PageHero
+          badge={fb.badge}
+          title={heroTitle}
+          subtitle={fb.heroSub}
+          cta={heroCta}
+          dir={isAr ? "rtl" : "ltr"}
+        />
 
         {/* Benefits */}
         <section className="section-padding">

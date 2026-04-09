@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, X, MapPin, Sparkles } from "lucide-react";
 import PublicBusinessCard from "@/components/shared/PublicBusinessCard";
+import PageHero from "@/components/shared/PageHero";
 import type { PublicBusiness } from "@/lib/data";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
@@ -99,6 +100,10 @@ export default function BusinessesClient({
   const featuredBizs  = showFeatured ? businesses.slice(0, 2)  : [];
   const regularBizs   = showFeatured ? businesses.slice(2)     : businesses;
 
+  const heroSubtitle = isAr
+    ? "ابحث وأحجز من أفضل الأعمال والخدمات في منطقتك"
+    : "Search and book from the best businesses and services near you";
+
   return (
     <div
       className="min-h-screen"
@@ -106,15 +111,12 @@ export default function BusinessesClient({
       dir={isAr ? "rtl" : "ltr"}
     >
 
-      {/* Ambient background glow */}
-      <div
-        aria-hidden
-        className="fixed inset-x-0 top-0 h-96 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(59,130,246,0.07) 0%, transparent 100%)",
-          zIndex: 0,
-        }}
+      {/* ── Page hero ── */}
+      <PageHero
+        badge={isAr ? "اكتشف" : "Discover"}
+        title={b.pageTitle}
+        subtitle={heroSubtitle}
+        dir={isAr ? "rtl" : "ltr"}
       />
 
       {/* ── Sticky search bar ── */}

@@ -233,6 +233,34 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-09 — Unified PageHero across all internal pages
+
+**Decision:** Created `src/components/shared/PageHero.tsx` — a shared compact hero component used on all internal marketing/discovery pages (categories, browse, pricing, FAQ, for-business).
+
+**Why:** Each page had a different hero style (some light with CSS-variable colours, some dark with the old `--color-brand` variable, some using generic CSS class names). This broke visual cohesion across the site. The PageHero brings them all under one dark-navy branded system matching the homepage hero.
+
+**Visual language:**
+- Background: `#0F172A` (same dark navy as homepage hero)
+- Same dot-grid pattern (`rgba(255,255,255,0.04)` @ 40px)
+- Same blue radial glow (`#3B82F6`) + indigo glow (`#6366F1`) atmospheric treatment
+- Same eyebrow badge pill: `border border-[#3B82F6]/30 bg-[#3B82F6]/10` with `animate-pulse` blue dot and `#93C5FD` text
+- Same heading scale: `text-3xl sm:text-4xl lg:text-5xl font-black text-white`
+- Same subtitle color: `text-[#94A3B8]`
+- Bottom fade: `h-16` gradient `transparent → rgba(15,23,42,0.5)` to soften transition into page content
+
+**Props API:** `badge?`, `title: ReactNode`, `subtitle?`, `cta?: ReactNode`, `dir?`
+
+**Pages updated:**
+- `src/app/categories/page.tsx` — removed old light hero + background glows from `<main>`, uses PageHero
+- `src/app/pricing/page.tsx` — replaced `bg-[var(--color-surface-2)]` header section with PageHero
+- `src/app/faq/page.tsx` — replaced `bg-[var(--color-surface-2)]` header section with PageHero
+- `src/app/businesses/_components/BusinessesClient.tsx` — PageHero inserted above sticky search bar (uses `t.businesses.pageTitle` as title)
+- `src/app/for-business/page.tsx` — replaced `bg-[var(--color-brand)]` hero with PageHero; gradient-text accent + dual CTA passed via `title`/`cta` props
+
+**Navbar:** Already a single shared component — no changes needed.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

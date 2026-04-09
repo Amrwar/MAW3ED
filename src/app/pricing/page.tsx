@@ -5,6 +5,7 @@ import { Check, X, Zap, Crown, Star } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
+import PageHero from "@/components/shared/PageHero";
 import { PLAN_FEATURES, PLAN_PRICES_EGP, PLAN_NAMES_AR, PLAN_NAMES_EN } from "@/lib/plans";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -97,14 +98,12 @@ export default function PricingPage() {
     <>
       <Navbar />
       <main className="pt-16 min-h-screen">
-        {/* Header */}
-        <section className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)] py-16 text-center">
-          <Container>
-            <p className="section-eyebrow mb-2">{p.eyebrow}</p>
-            <h1 className="section-title mb-3">{p.title}</h1>
-            <p className="section-subtitle mx-auto">{p.subtitle}</p>
-          </Container>
-        </section>
+        <PageHero
+          badge={p.eyebrow}
+          title={p.title}
+          subtitle={p.subtitle}
+          dir={lang === "ar" ? "rtl" : "ltr"}
+        />
 
         {/* Plan cards */}
         <div className="max-w-5xl mx-auto px-4 py-16">

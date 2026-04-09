@@ -3,26 +3,24 @@
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
+import PageHero from "@/components/shared/PageHero";
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function FaqPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const f = t.faq;
 
   return (
     <>
       <Navbar />
       <main className="pt-16 min-h-screen">
-        <section className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)] py-14">
-          <Container>
-            <div className="text-center max-w-xl mx-auto">
-              <p className="section-eyebrow mb-2">{f.eyebrow}</p>
-              <h1 className="section-title mb-4">{f.title}</h1>
-              <p className="section-subtitle mx-auto">{f.subtitle}</p>
-            </div>
-          </Container>
-        </section>
+        <PageHero
+          badge={f.eyebrow}
+          title={f.title}
+          subtitle={f.subtitle}
+          dir={lang === "ar" ? "rtl" : "ltr"}
+        />
 
         <section className="section-padding">
           <Container>

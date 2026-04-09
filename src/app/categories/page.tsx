@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import PageHero from "@/components/shared/PageHero";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { ArrowRight, ArrowLeft, Search } from "lucide-react";
@@ -87,86 +88,21 @@ export default function CategoriesPage() {
     <>
       <Navbar />
       <main
-        className="pt-16 min-h-screen relative overflow-hidden"
+        className="pt-16 min-h-screen"
         style={{ background: "#F8FAFC" }}
         dir={isAr ? "rtl" : "ltr"}
       >
-
-        {/* ── Background glows ── */}
-        <div
-          aria-hidden
-          className="absolute inset-x-0 top-0 pointer-events-none"
-          style={{
-            height: 560,
-            background:
-              "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(59,130,246,0.07) 0%, transparent 100%)",
-          }}
+        <PageHero
+          badge={c.eyebrow}
+          title={c.title}
+          subtitle={c.subtitle}
+          dir={isAr ? "rtl" : "ltr"}
         />
-        <div
-          aria-hidden
-          className="absolute pointer-events-none"
-          style={{
-            insetInlineStart: "-6%", top: "10%",
-            width: 500, height: 500, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 65%)",
-          }}
-        />
-        <div
-          aria-hidden
-          className="absolute pointer-events-none"
-          style={{
-            insetInlineEnd: "-6%", top: "30%",
-            width: 400, height: 400, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(99,102,241,0.04) 0%, transparent 65%)",
-          }}
-        />
-
-        {/* ════════════════════════════════════════
-            Hero / intro section
-        ════════════════════════════════════════ */}
-        <section className="relative z-10 pt-14 pb-12 lg:pt-20 lg:pb-16">
-          <div className="container-app">
-            <div className="text-center max-w-2xl mx-auto">
-
-              {/* Eyebrow badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 bg-[#DBEAFE] border border-[#BFDBFE]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
-                <span className="text-[#3B82F6] text-xs font-semibold tracking-widest uppercase">
-                  {c.eyebrow}
-                </span>
-              </div>
-
-              <h1
-                className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F172A] mb-5"
-                style={{ letterSpacing: "-0.025em", lineHeight: 1.12 }}
-              >
-                {c.title}
-              </h1>
-
-              <p
-                className="text-[#475569] text-lg max-w-xl mx-auto"
-                style={{ lineHeight: 1.75 }}
-              >
-                {c.subtitle}
-              </p>
-            </div>
-          </div>
-
-          {/* Soft gradient divider below hero */}
-          <div
-            aria-hidden
-            className="absolute inset-x-0 bottom-0 h-px"
-            style={{
-              background:
-                "linear-gradient(to right, transparent, rgba(59,130,246,0.15), rgba(59,130,246,0.25), rgba(59,130,246,0.15), transparent)",
-            }}
-          />
-        </section>
 
         {/* ════════════════════════════════════════
             Category grid
         ════════════════════════════════════════ */}
-        <section className="relative z-10 py-12 lg:py-16">
+        <section className="py-12 lg:py-16">
           <div className="container-app">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {categories.map((cat, idx) => {
@@ -232,7 +168,7 @@ export default function CategoriesPage() {
         {/* ════════════════════════════════════════
             Bottom CTA
         ════════════════════════════════════════ */}
-        <section className="relative z-10 py-12 lg:py-16">
+        <section className="py-12 lg:py-16">
           <div className="container-app">
             <div className="max-w-lg mx-auto">
               <div
