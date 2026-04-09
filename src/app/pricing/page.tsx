@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, Minus, Zap, Crown, Sparkles, ChevronDown } from "lucide-react";
+import { Check, Minus, Zap, Crown, Sparkles, ChevronDown, MessageCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PageHero from "@/components/shared/PageHero";
@@ -544,74 +544,193 @@ export default function PricingPage() {
             </div>
 
             {/* ══════════════════════════════════════════════
-                FAQ accordion
+                FAQ section — premium branded block
             ══════════════════════════════════════════════ */}
-            <div className="mt-24 max-w-2xl mx-auto">
+            <div className="mt-24">
 
-              <div className="text-center mb-10">
-                <h2
-                  className="text-2xl font-black text-[#0F172A]"
-                  style={{ letterSpacing: "-0.025em" }}
-                >
-                  {p.faqTitle}
-                </h2>
-              </div>
+              {/* Outer surface card */}
+              <div
+                className="relative overflow-hidden rounded-3xl"
+                style={{
+                  background: "linear-gradient(135deg, rgba(59,130,246,0.04) 0%, rgba(99,102,241,0.025) 100%)",
+                  border:     "1px solid rgba(59,130,246,0.13)",
+                  boxShadow:  "0 2px 20px rgba(59,130,246,0.06), 0 1px 4px rgba(15,23,42,0.03)",
+                }}
+              >
+                {/* Dot-grid texture */}
+                <div
+                  aria-hidden
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    backgroundImage: "radial-gradient(circle, rgba(59,130,246,0.055) 1px, transparent 1px)",
+                    backgroundSize:  "22px 22px",
+                  }}
+                />
 
-              <div className="space-y-3">
-                {p.faqs.map(({ q, a }, i) => {
-                  const isOpen = openFaq === i;
-                  return (
-                    <div
-                      key={i}
-                      className="rounded-2xl overflow-hidden"
-                      style={{
-                        border:     isOpen ? "1.5px solid rgba(59,130,246,0.28)" : "1px solid #E2E8F0",
-                        background: "#FFFFFF",
-                        boxShadow:  isOpen
-                          ? "0 4px 16px rgba(59,130,246,0.08)"
-                          : "0 1px 4px rgba(15,23,42,0.04)",
-                        transition: "box-shadow 0.2s ease, border-color 0.2s ease",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setOpenFaq(isOpen ? null : i)}
-                        className="w-full flex items-center justify-between gap-4 px-6 py-4 text-start"
-                      >
+                <div className="relative z-10 p-8 lg:p-12">
+                  {/* Two-column: heading + support CTA | accordion */}
+                  <div className="grid lg:grid-cols-[1fr_1.5fr] gap-10 lg:gap-14 items-start">
+
+                    {/* ── Left: heading + support CTA ── */}
+                    <div>
+
+                      {/* Eyebrow badge */}
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#3B82F6]/25 bg-[#3B82F6]/10 mb-5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
                         <span
-                          className="text-sm font-bold"
-                          style={{ color: isOpen ? "#1D4ED8" : "#0F172A" }}
+                          className="font-semibold uppercase"
+                          style={{ color: "#2563EB", fontSize: 11, letterSpacing: "0.07em" }}
                         >
-                          {q}
+                          {isAr ? "أسئلة شائعة" : "FAQ"}
                         </span>
-                        <ChevronDown
-                          size={16}
-                          style={{
-                            color:      isOpen ? "#3B82F6" : "#94A3B8",
-                            transform:  isOpen ? "rotate(180deg)" : "rotate(0deg)",
-                            transition: "transform 0.2s ease",
-                            flexShrink: 0,
-                          }}
-                        />
-                      </button>
-                      {isOpen && (
-                        <div
-                          className="px-6 pb-5"
-                          style={{ borderTop: "1px solid rgba(59,130,246,0.10)" }}
-                        >
-                          <p
-                            className="text-sm leading-relaxed"
-                            style={{ color: "#475569" }}
-                          >
-                            {a}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      </div>
 
+                      {/* Heading */}
+                      <h2
+                        className="text-2xl lg:text-3xl font-black text-[#0F172A] mb-3"
+                        style={{ letterSpacing: "-0.025em", lineHeight: 1.15 }}
+                      >
+                        {p.faqTitle}
+                      </h2>
+
+                      {/* Subtitle */}
+                      <p className="text-sm text-[#475569] leading-relaxed mb-8">
+                        {isAr
+                          ? "إجابات على الأسئلة الأكثر شيوعًا حول خطط وأسعار موعد."
+                          : "Answers to the most common questions about Maw3ed plans and pricing."}
+                      </p>
+
+                      {/* Support CTA card */}
+                      <div
+                        className="rounded-2xl p-5"
+                        style={{
+                          background: "#FFFFFF",
+                          border:     "1px solid #E2E8F0",
+                          boxShadow:  "0 1px 4px rgba(15,23,42,0.05)",
+                        }}
+                      >
+                        {/* Icon */}
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                          style={{
+                            background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
+                            boxShadow:  "0 4px 12px rgba(59,130,246,0.30)",
+                          }}
+                        >
+                          <MessageCircle size={18} className="text-white" strokeWidth={1.75} />
+                        </div>
+
+                        <p
+                          className="text-sm font-bold text-[#0F172A] mb-1"
+                          style={{ letterSpacing: "-0.01em" }}
+                        >
+                          {isAr ? "لم تجد ما تبحث عنه؟" : "Still have questions?"}
+                        </p>
+                        <p className="text-xs text-[#94A3B8] mb-4" style={{ lineHeight: 1.6 }}>
+                          {isAr
+                            ? "فريق الدعم جاهز لمساعدتك في اختيار الخطة المناسبة."
+                            : "Our support team is ready to help you choose the right plan."}
+                        </p>
+
+                        <Link
+                          href="/contact"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold transition-colors duration-150"
+                          style={{ color: "#3B82F6" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = "#1D4ED8"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = "#3B82F6"; }}
+                        >
+                          {isAr ? "تواصل مع الدعم" : "Contact support"}
+                          {isAr
+                            ? <ArrowLeft  size={12} strokeWidth={2.5} />
+                            : <ArrowRight size={12} strokeWidth={2.5} />}
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* ── Right: accordion ── */}
+                    <div className="space-y-3">
+                      {p.faqs.map(({ q, a }, i) => {
+                        const isOpen = openFaq === i;
+                        return (
+                          <div
+                            key={i}
+                            className="rounded-3xl bg-white overflow-hidden"
+                            style={{
+                              border:     isOpen
+                                ? "1.5px solid rgba(59,130,246,0.32)"
+                                : "1px solid #E2E8F0",
+                              boxShadow:  isOpen
+                                ? "0 4px 20px rgba(59,130,246,0.10), 0 1px 4px rgba(15,23,42,0.04)"
+                                : "0 1px 3px rgba(15,23,42,0.04)",
+                              borderInlineStart: isOpen
+                                ? "3px solid #3B82F6"
+                                : undefined,
+                              transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+                            }}
+                          >
+                            {/* Question trigger */}
+                            <button
+                              type="button"
+                              onClick={() => setOpenFaq(isOpen ? null : i)}
+                              className="w-full flex items-center justify-between gap-4 px-6 py-5 text-start"
+                            >
+                              <span
+                                className="text-[15px] font-bold leading-snug"
+                                style={{ color: isOpen ? "#1D4ED8" : "#0F172A" }}
+                              >
+                                {q}
+                              </span>
+
+                              {/* Chevron pill */}
+                              <div
+                                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                                style={{
+                                  background:  isOpen ? "#DBEAFE" : "#F1F5F9",
+                                  transition:  "background 0.2s ease",
+                                  flexShrink:  0,
+                                }}
+                              >
+                                <ChevronDown
+                                  size={14}
+                                  style={{
+                                    color:      isOpen ? "#2563EB" : "#94A3B8",
+                                    transform:  isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                                    transition: "transform 0.25s ease, color 0.2s ease",
+                                  }}
+                                />
+                              </div>
+                            </button>
+
+                            {/* Answer — CSS grid-rows animation (no JS height calc) */}
+                            <div
+                              style={{
+                                display:           "grid",
+                                gridTemplateRows:  isOpen ? "1fr" : "0fr",
+                                transition:        "grid-template-rows 0.25s ease",
+                              }}
+                            >
+                              <div style={{ overflow: "hidden" }}>
+                                <div
+                                  className="px-6 pb-6"
+                                  style={{ borderTop: "1px solid rgba(59,130,246,0.08)" }}
+                                >
+                                  <p
+                                    className="text-sm pt-4"
+                                    style={{ color: "#475569", lineHeight: 1.75 }}
+                                  >
+                                    {a}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                  </div>
+                </div>
+              </div>
             </div>
 
           </div>

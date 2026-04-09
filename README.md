@@ -302,6 +302,8 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 **Removed:** `Container`, `Star`, `X` imports. Added `Minus`, `ChevronDown`, `useState`.
 
+**FAQ section redesign (follow-up):** Replaced the plain centered accordion with a premium two-column branded section. Left column: eyebrow badge + `text-3xl font-black` heading + pricing-specific subtitle + white support CTA card (blue gradient icon, "Contact support" link with direction-aware arrow). Right column: `rounded-3xl` accordion items with CSS `grid-template-rows: 0fr→1fr` smooth animation (no JS height calc). Open state: `3px` inline-start blue accent border + `border-color rgba(59,130,246,0.32)` + blue glow shadow + question turns `#1D4ED8` + chevron pill turns `#DBEAFE`. Whole block wrapped in a branded surface card: `rgba(59,130,246,0.04)` gradient bg + dot-grid texture + blue border. Added `MessageCircle`, `ArrowRight`, `ArrowLeft` to imports.
+
 ---
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
