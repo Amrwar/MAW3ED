@@ -84,7 +84,7 @@ export default function RecentBookings({ bookings }: { bookings: RecentBooking[]
           className="inline-flex items-center gap-1 text-xs font-semibold transition-colors"
           style={{ color: "#3B82F6" }}
         >
-          {rb.viewAll ?? "عرض الكل"}
+          {"عرض الكل"}
           <ArrowLeft size={12} />
         </Link>
       </div>
