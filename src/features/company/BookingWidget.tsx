@@ -280,9 +280,12 @@ export default function BookingWidget({
     <div
       id="booking"
       className="overflow-hidden rounded-3xl bg-white"
-      style={{ boxShadow: "0 4px 32px rgba(15,23,42,0.10), 0 1px 8px rgba(15,23,42,0.06)", border: "1px solid #E2E8F0" }}
       dir="rtl"
-      style={{ fontFamily: "var(--font-cairo, Cairo, sans-serif)" }}
+      style={{
+        boxShadow:  "0 4px 32px rgba(15,23,42,0.10), 0 1px 8px rgba(15,23,42,0.06)",
+        border:     "1px solid #E2E8F0",
+        fontFamily: "var(--font-cairo, Cairo, sans-serif)",
+      }}
     >
       {/* ── Header ── */}
       <div
