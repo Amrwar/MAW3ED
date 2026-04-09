@@ -506,3 +506,17 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Booking history cards: `#F8FAFC` bg with `border: 1px solid #F1F5F9`, inline status pill + price
 - Empty booking history: centered card instead of plain text
 - All CSS vars → direct hex, panel shadow: `-8px 0 40px rgba(15,23,42,0.12)`
+
+### Referrals Page — Premium Growth Dashboard Redesign (2026-04-09)
+
+**`ReferralsClient.tsx`:**
+- **Hero card**: Dark navy→blue gradient (`#0F172A→#1D4ED8→#2563EB`), ambient radial glow blobs, "30 يومًا مجانيًا" Zap pill badge, large heading, subtitle, two CTAs (copy + WhatsApp). When `daysEarned > 0`, a glass "earned days" counter renders on the right
+- **How it works**: 3-column card with `#FAFBFD` header, each step has colored icon in rounded-xl bg, gradient connector line between steps, numbered pill badge
+- **Referral link card**: Monospace URL display in `#F8FAFC` input row, dark navy copy button, WhatsApp + copy share buttons below
+- **4 stat cards**: Total, Successful (green accent), Pending, Days earned + conversion rate — matches services/customers card pattern
+- **Referrals list**: gradient avatar initials, name + join date, rewarded=green / pending=amber badge, `FAFBFD` row hover, footer with earned-days celebration or share nudge
+- **Empty state**: Blue gradient icon box, descriptive copy, two CTAs (WhatsApp + copy link)
+- **Bottom nudge card**: Appears only when list has entries — blue-tinted "شارك مع المزيد" bar with compact copy + WhatsApp buttons
+- WhatsApp URL: `https://wa.me/?text={encoded message + link}`
+- Conversion rate computed: `Math.round((rewarded / total) * 100)`
+- All CSS vars → direct hex
