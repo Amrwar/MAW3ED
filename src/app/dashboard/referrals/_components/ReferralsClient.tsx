@@ -74,7 +74,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
   }
 
   return (
-    <div className="space-y-5 max-w-3xl">
+    <div className="space-y-5">
 
       {/* ── Hero card ──────────────────────────────────────────── */}
       <div
