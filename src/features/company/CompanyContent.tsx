@@ -32,49 +32,101 @@ export default function CompanyContent({
 
   function handleBookService(service: Service) {
     setPreselected(service);
-    // Scroll to the booking widget smoothly
     setTimeout(() => {
       widgetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* ── Left column ── */}
-      <div className="lg:col-span-2">
-        <AboutSection business={business} />
-        <ServicesSection services={services} onBook={handleBookService} />
-        <GallerySection />
-        <ReviewsSection
-          rating={business.rating}
-          reviewCount={business.reviewCount}
+    <div
+      className="pb-32 lg:pb-16"
+      style={{ background: "#F8FAFC" }}
+      dir="rtl"
+    >
+      {/* Subtle ambient glows */}
+      <div className="relative overflow-hidden">
+        <div
+          aria-hidden
+          className="absolute pointer-events-none"
+          style={{
+            insetInlineStart: "-10%",
+            top: "5%",
+            width: 600,
+            height: 600,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 65%)",
+          }}
         />
-        <FAQSection />
+        <div
+          aria-hidden
+          className="absolute pointer-events-none"
+          style={{
+            insetInlineEnd: "-8%",
+            top: "30%",
+            width: 500,
+            height: 500,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(99,102,241,0.04) 0%, transparent 60%)",
+          }}
+        />
 
-        {/* Similar businesses */}
-        {similarBusinesses.length > 0 && (
-          <div className="py-8">
-            <h2 className="text-xl font-black text-[var(--color-text-primary)] mb-6">
-              أعمال مشابهة
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {similarBusinesses.map((b) => (
-                <PublicBusinessCard key={b.id} business={b} />
-              ))}
+        <div className="container-app relative z-10 py-8 lg:py-10">
+          <div className="flex flex-col lg:flex-row gap-7 items-start">
+
+            {/* ── Main content column ── */}
+            <div className="flex-1 min-w-0 space-y-5">
+              <AboutSection business={business} />
+              <ServicesSection services={services} onBook={handleBookService} />
+              <GallerySection />
+              <ReviewsSection rating={business.rating} reviewCount={business.reviewCount} />
+              <FAQSection />
+
+              {/* Similar businesses */}
+              {similarBusinesses.length > 0 && (
+                <div
+                  className="rounded-3xl border p-6 md:p-8"
+                  style={{
+                    background: "#FFFFFF",
+                    borderColor: "#E2E8F0",
+                    boxShadow: "0 2px 12px rgba(15,23,42,0.04)",
+                  }}
+                >
+                  <div className="flex items-center gap-3 mb-6">
+                    <div
+                      className="w-1 h-6 rounded-full shrink-0"
+                      style={{ background: "linear-gradient(to bottom, #1D4ED8, #3B82F6)" }}
+                    />
+                    <h2 className="text-xl font-black text-[#0F172A]">
+                      أعمال مشابهة
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {similarBusinesses.map((b) => (
+                      <PublicBusinessCard key={b.id} business={b} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* ── Right column: Booking widget ── */}
-      <div ref={widgetRef} id="booking">
-        <BookingWidget
-          services={services}
-          businessName={business.nameAr}
-          slug={slug}
-          openDays={openDays}
-          preselectedService={preselected}
-        />
+            {/* ── Booking widget sidebar ── */}
+            <div
+              ref={widgetRef}
+              id="booking"
+              className="w-full lg:w-[360px] xl:w-[390px] shrink-0 lg:sticky"
+              style={{ top: "84px" }}
+            >
+              <BookingWidget
+                services={services}
+                businessName={business.nameAr}
+                slug={slug}
+                openDays={openDays}
+                preselectedService={preselected}
+              />
+            </div>
+
+          </div>
+        </div>
       </div>
     </div>
   );

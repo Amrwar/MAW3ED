@@ -91,13 +91,13 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-center justify-between text-sm gap-4">
-      <span className="text-[var(--color-text-muted)] shrink-0">{label}</span>
+      <span className="text-[#94A3B8] shrink-0">{label}</span>
       <span
         dir={ltr ? "ltr" : undefined}
         className={`text-end ${
           bold
-            ? "font-black text-[#1f3c88]"
-            : "font-semibold text-[var(--color-text-primary)]"
+            ? "font-black text-[#1D4ED8]"
+            : "font-semibold text-[#0F172A]"
         }`}
       >
         {value}
@@ -111,8 +111,8 @@ function SummaryRow({
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 mb-4" dir="rtl">
-      <div className="w-1 h-5 bg-[#1f3c88] rounded-full" />
-      <h4 className="text-base font-bold text-[#1f3c88]">{children}</h4>
+      <div className="w-1 h-5 bg-[#1D4ED8] rounded-full" />
+      <h4 className="text-base font-bold text-[#1D4ED8]">{children}</h4>
     </div>
   );
 }
@@ -132,7 +132,7 @@ function ServiceIcon({ service }: { service: Service }) {
   }
   // Fallback: first letter avatar
   return (
-    <span className="text-xl font-bold text-[#5b6fa8]">
+    <span className="text-xl font-bold text-[#3B82F6]">
       {service.nameAr.charAt(0)}
     </span>
   );
@@ -279,7 +279,8 @@ export default function BookingWidget({
   return (
     <div
       id="booking"
-      className="overflow-hidden rounded-2xl shadow-xl bg-white lg:sticky lg:top-24"
+      className="overflow-hidden rounded-3xl bg-white"
+      style={{ boxShadow: "0 4px 32px rgba(15,23,42,0.10), 0 1px 8px rgba(15,23,42,0.06)", border: "1px solid #E2E8F0" }}
       dir="rtl"
       style={{ fontFamily: "var(--font-cairo, Cairo, sans-serif)" }}
     >
@@ -287,7 +288,7 @@ export default function BookingWidget({
       <div
         className="px-5 py-5 flex items-center justify-between"
         style={{
-          background: "linear-gradient(135deg, #1f3c88 0%, #3b5fc9 100%)",
+          background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
         }}
       >
         <div>
@@ -316,9 +317,9 @@ export default function BookingWidget({
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                       active
-                        ? "bg-[#1f3c88] text-white shadow-md"
+                        ? "bg-[#1D4ED8] text-white shadow-md"
                         : done
-                        ? "bg-[#1f3c88] text-white"
+                        ? "bg-[#1D4ED8] text-white"
                         : "bg-gray-200 text-gray-400"
                     }`}
                   >
@@ -326,7 +327,7 @@ export default function BookingWidget({
                   </div>
                   <span
                     className={`text-[11px] font-semibold ${
-                      active ? "text-[#1f3c88]" : "text-gray-400"
+                      active ? "text-[#1D4ED8]" : "text-gray-400"
                     }`}
                   >
                     {s.label}
@@ -359,13 +360,13 @@ export default function BookingWidget({
                       onClick={() => setSelectedService(service)}
                       className={`w-full text-start rounded-2xl border-2 p-3.5 transition-all relative ${
                         selected
-                          ? "border-[#1f3c88] bg-blue-50/50"
-                          : "border-gray-200 bg-white hover:border-[#1f3c88]/40"
+                          ? "border-[#1D4ED8] bg-blue-50/50"
+                          : "border-gray-200 bg-white hover:border-[#1D4ED8]/40"
                       }`}
                     >
                       {/* checkmark badge */}
                       {selected && (
-                        <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[#1f3c88] flex items-center justify-center">
+                        <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[#1D4ED8] flex items-center justify-center">
                           <Check size={13} strokeWidth={3} className="text-white" />
                         </span>
                       )}
@@ -390,7 +391,7 @@ export default function BookingWidget({
                         </div>
 
                         {/* price */}
-                        <p className="text-base font-black text-[#1f3c88] shrink-0">
+                        <p className="text-base font-black text-[#1D4ED8] shrink-0">
                           {formatPrice(service.price, service.currency)}
                         </p>
                       </div>
@@ -405,7 +406,7 @@ export default function BookingWidget({
               onClick={() => setStep(2)}
               className={`mt-5 w-full py-3.5 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 transition-all ${
                 selectedService
-                  ? "bg-[#1f3c88] hover:bg-[#162d6e] shadow-md"
+                  ? "bg-[#1D4ED8] hover:bg-[#1E40AF] shadow-md"
                   : "bg-gray-300 cursor-not-allowed"
               }`}
             >
@@ -438,7 +439,7 @@ export default function BookingWidget({
                       disabled
                         ? "opacity-30 cursor-not-allowed bg-gray-100 text-gray-400"
                         : selected
-                        ? "bg-[#1f3c88] text-white shadow-md"
+                        ? "bg-[#1D4ED8] text-white shadow-md"
                         : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                     }`}
                   >
@@ -457,7 +458,7 @@ export default function BookingWidget({
 
                 {slotsLoading && (
                   <div className="flex items-center justify-center py-8 gap-2">
-                    <Loader2 size={20} className="animate-spin text-[#1f3c88]" />
+                    <Loader2 size={20} className="animate-spin text-[#1D4ED8]" />
                     <span className="text-sm text-gray-400">جارٍ التحميل…</span>
                   </div>
                 )}
@@ -483,8 +484,8 @@ export default function BookingWidget({
                         onClick={() => setSelectedTime(slot)}
                         className={`py-2.5 rounded-xl text-xs font-semibold border-2 transition-all ${
                           selectedTime === slot
-                            ? "bg-[#1f3c88] text-white border-[#1f3c88] shadow-md"
-                            : "bg-white border-gray-200 hover:border-[#1f3c88]/50 text-gray-700"
+                            ? "bg-[#1D4ED8] text-white border-[#1D4ED8] shadow-md"
+                            : "bg-white border-gray-200 hover:border-[#1D4ED8]/50 text-gray-700"
                         }`}
                       >
                         {slot}
@@ -512,7 +513,7 @@ export default function BookingWidget({
                 onClick={() => setStep(3)}
                 className={`flex-1 py-3.5 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all ${
                   selectedDate && selectedTime
-                    ? "bg-[#1f3c88] hover:bg-[#162d6e] shadow-md"
+                    ? "bg-[#1D4ED8] hover:bg-[#1E40AF] shadow-md"
                     : "bg-gray-300 cursor-not-allowed"
                 }`}
               >
@@ -527,7 +528,7 @@ export default function BookingWidget({
         {step === 3 && (
           <div>
             {/* Mini summary */}
-            <div className="bg-blue-50 rounded-2xl px-4 py-3 mb-5 space-y-1.5 border border-blue-100">
+            <div className="rounded-2xl px-4 py-3 mb-5 space-y-1.5" style={{ background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.14)" }}>
               <SummaryRow label="الخدمة" value={selectedService?.nameAr ?? ""} />
               <SummaryRow label="اليوم"  value={selectedDate ? formatDateAr(selectedDate) : ""} />
               <SummaryRow label="الوقت"  value={selectedTime ?? ""} ltr />
@@ -552,7 +553,7 @@ export default function BookingWidget({
                   className={`w-full rounded-xl border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${
                     errors.name
                       ? "border-red-400 focus:border-red-400"
-                      : "border-gray-200 focus:border-[#1f3c88]"
+                      : "border-gray-200 focus:border-[#1D4ED8]"
                   }`}
                 />
                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
@@ -575,7 +576,7 @@ export default function BookingWidget({
                   className={`w-full rounded-xl border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${
                     errors.phone
                       ? "border-red-400 focus:border-red-400"
-                      : "border-gray-200 focus:border-[#1f3c88]"
+                      : "border-gray-200 focus:border-[#1D4ED8]"
                   }`}
                 />
                 {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
@@ -599,7 +600,7 @@ export default function BookingWidget({
                   className={`w-full rounded-xl border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${
                     errors.email
                       ? "border-red-400 focus:border-red-400"
-                      : "border-gray-200 focus:border-[#1f3c88]"
+                      : "border-gray-200 focus:border-[#1D4ED8]"
                   }`}
                 />
                 {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
@@ -616,7 +617,7 @@ export default function BookingWidget({
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded-xl border-2 border-gray-200 px-3.5 py-2.5 text-sm outline-none focus:border-[#1f3c88] transition-all resize-none"
+                  className="w-full rounded-xl border-2 border-gray-200 px-3.5 py-2.5 text-sm outline-none focus:border-[#1D4ED8] transition-all resize-none"
                 />
               </div>
             </div>
@@ -639,7 +640,7 @@ export default function BookingWidget({
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 py-3.5 rounded-2xl bg-[#1f3c88] hover:bg-[#162d6e] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
+                className="flex-1 py-3.5 rounded-2xl bg-[#1D4ED8] hover:bg-[#1E40AF] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
               >
                 {submitting ? (
                   <>
@@ -670,8 +671,8 @@ export default function BookingWidget({
               تم إرسال تفاصيل الحجز ورابط الإدارة إلى بريدك الإلكتروني.
             </p>
 
-            <div className="text-start bg-blue-50 rounded-2xl p-4 space-y-3 mb-5 border border-blue-100">
-              <div className="flex items-center justify-between pb-3 border-b border-blue-100">
+            <div className="text-start rounded-2xl p-4 space-y-3 mb-5" style={{ background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.14)" }}>
+              <div className="flex items-center justify-between pb-3 border-b border-[rgba(59,130,246,0.14)]">
                 <p className="text-xs font-medium text-gray-400">رقم الحجز</p>
                 <p className="text-xs font-mono text-gray-600" dir="ltr">
                   #{confirmation.id.slice(-8).toUpperCase()}
@@ -681,7 +682,7 @@ export default function BookingWidget({
               <SummaryRow label="الخدمة"   value={confirmation.serviceName} />
               <SummaryRow label="التاريخ"  value={formatDateAr(confirmation.date)} />
               <SummaryRow label="الوقت"    value={`${confirmation.startTime} – ${confirmation.endTime}`} ltr />
-              <div className="pt-3 border-t border-blue-100">
+              <div className="pt-3 border-t border-[rgba(59,130,246,0.14)]">
                 <SummaryRow
                   label="الإجمالي"
                   value={`${confirmation.totalPrice.toLocaleString("ar-EG")} ${confirmation.currency}`}
@@ -695,7 +696,7 @@ export default function BookingWidget({
                 href={`/booking/${confirmation.accessToken}`}
                 target="_blank"
                 rel="noreferrer"
-                className="block w-full text-center py-3 rounded-2xl border-2 border-[#1f3c88] text-[#1f3c88] text-sm font-bold hover:bg-blue-50 transition-colors mb-3"
+                className="block w-full text-center py-3 rounded-2xl border-2 border-[#1D4ED8] text-[#1D4ED8] text-sm font-bold hover:bg-blue-50 transition-colors mb-3"
               >
                 عرض تفاصيل الحجز
               </a>

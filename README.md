@@ -340,6 +340,36 @@ ShieldCheck  → cyan gradient (#0E7490 → #22D3EE)
 
 ---
 
+### 2026-04-09 — Company profile page full premium redesign
+
+**Decision:** Full redesign of all company page components — hero, info row, content layout, about, services, gallery, reviews, FAQ, and booking widget integration.
+
+**Files changed:**
+- `src/app/company/[slug]/page.tsx` — new sticky navbar (backdrop blur, breadcrumb, share + book actions), mobile sticky CTA bar with min-price display, removed old `Button`/`Logo` dependency in navbar, removed old `BusinessInfoRow` border hack.
+- `src/features/company/CompanyHero.tsx` — taller cover (`h-64 md:h-80 lg:h-96`), multi-stop dark vignette, glass share pill, open/closed badge at bottom-start, avatar overlapping cover with blue glow ring, name/category/rating/location meta row, action buttons (call, WhatsApp, book now) with hover transitions.
+- `src/features/company/BusinessInfoRow.tsx` — replaced grid with horizontal chip strip; each chip is a white `rounded-2xl` card with blue icon. Phone/WhatsApp chips are clickable with hover color transitions.
+- `src/features/company/CompanyContent.tsx` — flex layout replaces CSS grid; `lg:w-[360px]` sticky sidebar (`top: 84px`), ambient blue/indigo radial glows in background, `pb-32 lg:pb-16` for mobile CTA clearance, `dir="rtl"` on wrapper.
+- `src/features/company/AboutSection.tsx` — white `rounded-3xl` card, blue vertical accent bar section title, `leading-loose` body text, tag pills at bottom.
+- `src/features/company/ServicesSection.tsx` — white card container, cycling gradient icon boxes (6 colors), hover `translateY(-1px)` + blue border + shadow on cards, gradient "احجز" button with `brightness(1.06)` hover, category filter tabs with active blue state.
+- `src/features/company/GallerySection.tsx` — editorial grid (2×2 hero + 4 small tiles), dark gradient placeholder tiles per slot, hover overlay reveal, "عرض الكل" header link, "عرض جميع الصور" footer button.
+- `src/features/company/ReviewsSection.tsx` — rating summary card with blue-tinted gradient bg, rating number + star row + bar breakdown, review cards with gradient initials avatars, verified badge pill, separator hairline, hover card lift.
+- `src/features/company/FAQSection.tsx` — CSS `grid-template-rows 0fr→1fr` smooth accordion (no JS height), blue inline-start accent border on open item, chevron pill turns `#DBEAFE` blue, blue gradient hairline separator above answer.
+- `src/features/company/BookingWidget.tsx` — removed self-sticky (`lg:sticky lg:top-24`), switched to `rounded-3xl` with layered shadow + border, updated all `#1f3c88`→`#1D4ED8`, `#162d6e`→`#1E40AF`, `#5b6fa8`→`#3B82F6`, removed all `var(--color-*)` references, header gradient updated to `#1D4ED8→#3B82F6`, summary/confirmation cards use `rgba(59,130,246,0.06)` tinted surface.
+
+**Design system used:**
+- All cards: `rounded-3xl border border-[#E2E8F0]` white surfaces with `0 2px 12px rgba(15,23,42,0.04)` shadow
+- Section titles: `w-1 h-6` blue gradient vertical bar + `text-xl font-black text-[#0F172A]`
+- Page background: `#F8FAFC` with ambient blue/indigo radial glows
+- No `var(--color-*)` CSS variables in any redesigned file
+
+**Trade-offs:**
+- Gallery section uses gradient placeholder tiles (no real image data in DB at this time)
+- Reviews section uses 3 hardcoded mock reviews (no reviews DB table yet)
+- `onMouseEnter/Leave` used for multi-layer hover effects not expressible in static Tailwind
+- Sticky sidebar top offset is `84px` (16px navbar `h-16` + 20px gap) — matches the 64px navbar + 20px breathing room
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
