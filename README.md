@@ -579,3 +579,31 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Paymob info banner matches the blue info chip pattern used elsewhere
 - Same save bar pattern
 - Locked state: amber gradient CTA button instead of plain `bg-amber-500`
+
+---
+
+### 2026-04-09 — Dashboard navigation: premium redesign (sidebar + topbar)
+
+**Files changed:** `src/components/layout/DashboardSidebar.tsx`, `src/components/dashboard/DashboardHeader.tsx`
+**Files NOT touched:** all public/marketing layout components
+
+**DashboardSidebar:**
+- `borderInlineEnd` upgraded to `1.5px solid #F1F5F9` + soft `boxShadow: 4px 0 24px rgba(15,23,42,0.04)`
+- Business profile card: avatar gradient changed to `#0F172A → #334155` (navy, not blue), plan badge uses `borderRadius: 100` pill shape with letter-spacing
+- Nav extracted into a `NavItem` component and a `NavGroup` helper for cleaner rendering
+- Navigation split into three logical groups (main / secondary / utility) separated by thin `#F1F5F9` dividers instead of one flat list
+- Active item: navy bg + `boxShadow: 0 2px 8px rgba(15,23,42,0.16)` + `fontWeight: 600` (was already navy bg but no shadow or weight boost)
+- Inactive hover: `#F1F5F9` bg (was `#F8FAFC`) + `#0F172A` text (was no color change)
+- Logout: starts muted `#94A3B8` → red `#EF4444` on hover (was already red, now starts neutral for less visual noise)
+- Upgrade card: replaced the flat blue link with a `linear-gradient(135deg, #0F172A → #1E293B)` card with Sparkles icon (amber), description text, and ArrowUpRight icon; includes `translateY(-1px)` lift on hover
+
+**DashboardHeader:**
+- Height: `h-16 (64px) → 68px` (explicit via style)
+- Border: `border-b border-[var(--color-border)] → 1.5px solid #F1F5F9` + subtle `boxShadow`
+- Search: `rounded-xl bg-surface-2 → rounded-[12px] bg-[#F8FAFC] border-1.5px` with CSS-based focus ring on the wrapper div (not just the input)
+- Action icons: extracted into reusable `IconBtn` component with `w-36 h-36 border-1.5px` container; has active state (blue bg/border) for sound toggle
+- Separator: thin 1px `#E2E8F0` vertical divider between icons and avatar
+- Business avatar: `rounded-full bg-accent-light → rounded-[10px]` with same `#0F172A → #334155` gradient as sidebar, business name shown on large screens
+- Notification badge: `border: 2px solid #FFFFFF` ring for better separation from the icon bg
+- Notification dropdown: consistent card styling `border: 1.5px solid #E2E8F0`, `boxShadow: 0 8px 32px`, empty state uses a centered icon card, unread badge in header
+- All realtime booking logic, sound chime, browser notifications, and toast system are unchanged
