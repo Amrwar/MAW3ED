@@ -217,6 +217,22 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-09 — Categories page premium redesign
+
+**Decision:** Rewrote `src/app/categories/page.tsx` to match the premium Maw3ed design system.
+
+**Key changes:**
+- Removed `Container` import (replaced with `container-app` div, consistent with rest of app).
+- Background: `#F8FAFC` base + top radial ellipse glow (`rgba(59,130,246,0.07)`) + two side glows (blue start, indigo end).
+- Hero: unified eyebrow badge (blue dot + uppercase tracking), `5xl` h1 (`−0.025em` spacing), subtitle. Soft blue hairline gradient divider at the bottom of the hero section.
+- Category cards: match homepage `CategoriesSection` card exactly — `rounded-2xl`, white bg, `0 1px 4px` shadow, `onMouseEnter/Leave` for `translateY(-4px)` + blue shadow + `rgba(147,197,253,0.70)` border. Icon `w-14 h-14 rounded-2xl` with `group-hover:scale-110`. Name `text-sm font-bold` + hover `text-[#2563EB]`. Provider count `text-[10px] text-[#94A3B8]` below name.
+- `SLUG_META` added for provider counts (covers both static page slugs and DB slugs). Falls back to generic counts for unknown slugs.
+- `Image` from `next/image` used for `iconSvg` field (forward-compatible with consulting and other SVG-icon categories).
+- Bottom CTA: matches FAQ support card — `rounded-3xl`, blue gradient bg, dot-grid texture, gradient `Search` icon container, gradient button with `brightness(1.06)` + glow hover.
+- `ArrowLeft/Right` is direction-aware (RTL-safe).
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
