@@ -306,6 +306,40 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-09 — "Why Maw3ed" benefits section redesign with product mockup
+
+**Decision:** Redesigned the benefits section in `src/app/for-business/page.tsx` with a premium split-layout including a JSX-coded business dashboard mockup.
+
+**Layout:**
+- Centered eyebrow badge + heading + subtitle
+- Main `lg:grid-cols-[1fr_1.1fr]`: LEFT = first 3 feature cards stacked; RIGHT = dark dashboard mockup card
+- Bottom `lg:grid-cols-3`: last 3 benefits as vertical icon-above-text cards
+
+**Dashboard mockup (JSX, no images):**
+- Dark `#0F172A` card → `#1E293B` topbar with `LayoutDashboard` icon + "أعمال الغردقة / Hurghada Business" name + green "Live" indicator
+- 3 stat cards: Bookings (blue `#3B82F6`), Rating (amber `#F59E0B`), Clients (green `#10B981`)
+- 3 booking rows with gradient initials avatar, name, service, time, confirmed/pending badge
+- Blue notification card: `Bell` icon + bilingual "تم إرسال تذكير تلقائي ✓ / Auto reminder sent ✓"
+- All text uses `isAr ? "AR" : "EN"` inline conditionals for full bilingual support
+
+**Benefit icons system:**
+```
+Globe        → blue gradient (#1D4ED8 → #3B82F6)
+CalendarDays → purple gradient (#7C3AED → #A78BFA)
+Bell         → amber gradient (#B45309 → #F59E0B)
+BarChart3    → green gradient (#059669 → #34D399)
+Users        → indigo gradient (#4338CA → #818CF8)
+ShieldCheck  → cyan gradient (#0E7490 → #22D3EE)
+```
+
+**Feature cards:** `rounded-3xl`, `onMouseEnter/Leave` for `translateY(-4px)` + blue shadow + blue border. Horizontal layout for the top 3, vertical icon-above-text for the bottom 3.
+
+**Trade-offs:**
+- Mockup uses hardcoded bilingual strings (not connected to real DB data) — intentional, as this is a marketing illustration.
+- Updated imports: added `CalendarDays`, `ShieldCheck`, `LayoutDashboard`; removed old `Calendar`, `Shield`; removed unused `benefitIcons`/`benefitColors` arrays.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
