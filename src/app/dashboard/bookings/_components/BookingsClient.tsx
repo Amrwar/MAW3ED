@@ -31,8 +31,10 @@ export default function BookingsClient({
   totalBookings,
 }: BookingsClientProps) {
   const { t, lang } = useLanguage();
-  const b = t.dashboard.bookings;
-  // ── Bookings data ──────────────────────────────────────────
+  const b      = t.dashboard.bookings;
+  const locale = lang === "ar" ? "ar-EG" : "en-US";
+
+  // ── Data state ────────────────────────────────────────────
   const [bookings,        setBookings]        = useState<DashboardBooking[]>([]);
   const [total,           setTotal]           = useState(totalBookings);
   const [totalPages,      setTotalPages]      = useState(1);
@@ -41,12 +43,11 @@ export default function BookingsClient({
   const [selectedBooking, setSelectedBooking] = useState<DashboardBooking | null>(null);
   const [newBookingOpen,  setNewBookingOpen]  = useState(false);
 
-  // Today's schedule — seeded from server, kept in sync on status changes
   const [todayBookings, setTodayBookings] = useState<DashboardBooking[]>(
-    initialTodayBookings.sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    initialTodayBookings.sort((a, bk) => a.startTime.localeCompare(bk.startTime)),
   );
 
-  // ── Filters ───────────────────────────────────────────────
+  // ── Filter state ──────────────────────────────────────────
   const [statusFilter,  setStatusFilter]  = useState("ALL");
   const [search,        setSearch]        = useState("");
   const [dateFrom,      setDateFrom]      = useState("");
@@ -78,23 +79,20 @@ export default function BookingsClient({
     }
   }, [statusFilter, search, dateFrom, dateTo, serviceFilter]);
 
-  // Refetch page 1 whenever filters change
-  useEffect(() => {
-    fetchBookings(1);
-  }, [fetchBookings]);
+  useEffect(() => { fetchBookings(1); }, [fetchBookings]);
 
   // ── Manual booking created ────────────────────────────────
   function handleNewBooking(booking: DashboardBooking) {
     if (booking.date === getTodayISO()) {
       setTodayBookings((prev) =>
-        [...prev, booking].sort((a, b) => a.startTime.localeCompare(b.startTime))
+        [...prev, booking].sort((a, bk) => a.startTime.localeCompare(bk.startTime)),
       );
     }
     fetchBookings(1);
     setTotal((t) => t + 1);
   }
 
-  // ── Status update ──────────────────────────────────────────
+  // ── Status update ─────────────────────────────────────────
   async function handleStatusChange(id: string, status: DashboardBookingStatus) {
     const res  = await fetch(`/api/business/bookings/${id}`, {
       method:  "PATCH",
@@ -104,70 +102,95 @@ export default function BookingsClient({
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? t.dashboard.bookingActions.error);
 
-    const update = (b: DashboardBooking) =>
-      b.id === id ? { ...b, status } : b;
-
-    setBookings((prev)       => prev.map(update));
-    setTodayBookings((prev)  => prev.map(update));
+    const update = (bk: DashboardBooking) => bk.id === id ? { ...bk, status } : bk;
+    setBookings((prev)        => prev.map(update));
+    setTodayBookings((prev)   => prev.map(update));
     setSelectedBooking((prev) => (prev?.id === id ? { ...prev, status } : prev));
   }
 
-  // ── Real-time updates via SSE ──────────────────────────────
+  // ── Real-time updates ─────────────────────────────────────
   useRealtimeBookings((event) => {
     if (event.type === "BOOKING_UPDATED") {
       const { id, status } = event;
       const s = status as DashboardBookingStatus;
-      setBookings((prev)        => prev.map((b) => b.id === id ? { ...b, status: s } : b));
-      setTodayBookings((prev)   => prev.map((b) => b.id === id ? { ...b, status: s } : b));
+      setBookings((prev)        => prev.map((bk) => bk.id === id ? { ...bk, status: s } : bk));
+      setTodayBookings((prev)   => prev.map((bk) => bk.id === id ? { ...bk, status: s } : bk));
       setSelectedBooking((prev) => prev?.id === id ? { ...prev, status: s } : prev);
     } else {
-      // New booking from any source (public or manual).
-      // fetchBookings updates both the list and the total count from the API.
       fetchBookings(page);
-      const b = event.booking;
-      if (b.date === getTodayISO() && b.status !== "CANCELLED") {
+      const bk = event.booking;
+      if (bk.date === getTodayISO() && bk.status !== "CANCELLED") {
         setTodayBookings((prev) => {
-          // Guard against the manual-booking flow already having added this booking
-          if (prev.some((x) => x.id === b.id)) return prev;
-          return [...prev, b].sort((a, x) => a.startTime.localeCompare(x.startTime));
+          if (prev.some((x) => x.id === bk.id)) return prev;
+          return [...prev, bk].sort((a, x) => a.startTime.localeCompare(x.startTime));
         });
       }
     }
   });
 
-  // ── Today filter ───────────────────────────────────────────
   const todayISO = getTodayISO();
-  const activeTodayBookings = todayBookings.filter((b) => b.status !== "CANCELLED");
+  const activeTodayBookings = todayBookings.filter((bk) => bk.status !== "CANCELLED");
   const showTodaySchedule   = (!dateFrom && !dateTo) || (dateFrom <= todayISO && (!dateTo || dateTo >= todayISO));
+
+  const todayLabel = new Date().toLocaleDateString(locale, {
+    weekday: "long", month: "long", day: "numeric",
+  });
 
   return (
     <div className="space-y-5">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-[var(--color-text-primary)]">
-            {b.title}
-          </h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-            {total.toLocaleString(lang === "ar" ? "ar-EG" : "en-US")} {b.count}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden sm:flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-            <CalendarDays size={15} />
-            {new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "long", month: "long", day: "numeric" })}
-          </span>
-          <button
-            onClick={() => setNewBookingOpen(true)}
-            className="btn btn-primary btn-sm gap-2"
-          >
-            <Plus size={15} />
-            {b.newBtn}
-          </button>
+
+      {/* ── Premium page header ── */}
+      <div
+        className="rounded-2xl border bg-white px-6 py-5"
+        style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1
+              className="font-black text-[#0F172A] leading-tight"
+              style={{ fontSize: 22, letterSpacing: "-0.02em" }}
+            >
+              {b.title}
+            </h1>
+            <p className="text-sm text-[#94A3B8] mt-1">
+              إدارة ومتابعة جميع الحجوزات ·{" "}
+              <span className="font-semibold text-[#475569]">
+                {total.toLocaleString(locale)} {b.count}
+              </span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl"
+              style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#475569" }}
+            >
+              <CalendarDays size={13} strokeWidth={1.75} style={{ color: "#3B82F6" }} />
+              {todayLabel}
+            </span>
+            <button
+              onClick={() => setNewBookingOpen(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200"
+              style={{
+                background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
+                boxShadow:  "0 4px 14px rgba(59,130,246,0.28)",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.06)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 20px rgba(59,130,246,0.38)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.filter = "";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 14px rgba(59,130,246,0.28)";
+              }}
+            >
+              <Plus size={15} strokeWidth={2.5} />
+              {b.newBtn}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Filters */}
+      {/* ── Filters card ── */}
       <BookingFilters
         statusFilter={statusFilter}    onStatusChange={setStatusFilter}
         search={search}                onSearchChange={setSearch}
@@ -178,7 +201,7 @@ export default function BookingsClient({
         total={total}
       />
 
-      {/* Today's schedule */}
+      {/* ── Today's schedule ── */}
       {showTodaySchedule && activeTodayBookings.length > 0 && (
         <TodaySchedule
           bookings={activeTodayBookings}
@@ -187,7 +210,7 @@ export default function BookingsClient({
         />
       )}
 
-      {/* Main bookings table */}
+      {/* ── Bookings table ── */}
       <BookingsTable
         bookings={bookings}
         loading={loading}
@@ -196,10 +219,11 @@ export default function BookingsClient({
         onStatusChange={handleStatusChange}
         page={page}
         totalPages={totalPages}
+        total={total}
         onPageChange={(p) => fetchBookings(p)}
       />
 
-      {/* Detail panel overlay */}
+      {/* ── Detail panel ── */}
       {selectedBooking && (
         <BookingDetailPanel
           booking={selectedBooking}
@@ -208,7 +232,7 @@ export default function BookingsClient({
         />
       )}
 
-      {/* Manual booking panel */}
+      {/* ── Manual booking panel ── */}
       <ManualBookingPanel
         open={newBookingOpen}
         onClose={() => setNewBookingOpen(false)}

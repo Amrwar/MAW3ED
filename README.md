@@ -437,3 +437,24 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Design Decisions Log
+
+### Dashboard & Bookings Pages — Premium Redesign (2026-04-09)
+
+**Dashboard:**
+- `DashboardSidebar`: `w-64`, white bg, `border-inline-end: 1px solid #E2E8F0`, gradient blue avatar, business card with `#F8FAFC` bg, `onMouseEnter/Leave` nav hover, FREE plan nudge at bottom
+- `StatsCards`: Gradient top stripe per card (`CARD_ACCENTS`), `fontSize: 28` value, amber pulse dot for pending count
+- `QuickActions`: Vertical list in `rounded-2xl` card, per-action accent bg on hover via `onMouseEnter/Leave`
+- `RecentBookings`: Gradient avatar initials (deterministic from `charCodeAt`), `#FAFBFD` thead, `onMouseEnter/Leave` row hover, inline hex status badges; `rb.viewAll` missing from i18n — hardcoded `"عرض الكل"`
+- `DashboardTodayWidget`: Premium empty state with decorative `rounded-3xl` gradient icon, gradient CTA button
+- `DashboardHomeClient`: Premium header card, amber incomplete-profile alert, `InfoCard` helper for 3 snapshot tiles, two-column `lg:grid-cols-[1fr_300px]` layout
+
+**Bookings Page:**
+- `BookingsClient`: Premium header card with gradient "موعد جديد" button + date chip, passes new `total` prop to `BookingsTable`
+- `BookingFilters`: Status pills use `STATUS_PILL` map (inactive pastel → active solid), search input focus glow, date preset pills, result count shown only when filters active
+- `TodaySchedule`: `rounded-2xl border bg-white`, avatar initials, `STATUS_DOT` map for colored indicator, `onMouseEnter/Leave` row hover, removed `StatusBadge` dependency
+- `BookingsTable`: Added `total` prop to interface; gradient avatar initials; `STATUS_BADGE` and `ACTION_STYLE` maps (no CSS vars); `onMouseEnter/Leave` row hover and action button hover; skeleton rows use `#F1F5F9`; pagination active page uses blue gradient
+- `BookingDetailPanel`: Customer card with avatar + status badge inline, sectioned layout with icon per section, `ACTION_STYLE` map for footer action buttons, no CSS vars
+
+**Design system applied:** Background `#F8FAFC`, white `rounded-2xl` cards, `border: 1px solid #E2E8F0`, active text `#0F172A`, accent `#1D4ED8→#3B82F6`, muted `#94A3B8`. Zero CSS custom properties — all direct hex.
