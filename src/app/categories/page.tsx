@@ -88,7 +88,7 @@ export default function CategoriesPage() {
     <>
       <Navbar />
       <main
-        className="pt-16 min-h-screen"
+        className="min-h-screen"
         style={{ background: "#F8FAFC" }}
         dir={isAr ? "rtl" : "ltr"}
       >

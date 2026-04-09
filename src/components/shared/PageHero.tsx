@@ -22,7 +22,7 @@ export default function PageHero({
 }: PageHeroProps) {
   return (
     <section
-      className="relative overflow-hidden"
+      className="relative overflow-hidden pt-16"
       style={{ background: "#0F172A" }}
       dir={dir}
     >

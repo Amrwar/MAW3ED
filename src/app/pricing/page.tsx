@@ -97,7 +97,7 @@ export default function PricingPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-16 min-h-screen">
+      <main className="min-h-screen">
         <PageHero
           badge={p.eyebrow}
           title={p.title}

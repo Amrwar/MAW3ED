@@ -22,7 +22,7 @@ export default async function BusinessesPage({ searchParams }: Props) {
   return (
     <>
       <Navbar />
-      <main className="pt-16 min-h-screen">
+      <main className="min-h-screen">
         <BusinessesClient
           businesses={businesses}
           categories={categories}

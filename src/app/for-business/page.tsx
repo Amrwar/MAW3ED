@@ -59,7 +59,7 @@ export default function ForBusinessPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-16">
+      <main>
         <PageHero
           badge={fb.badge}
           title={heroTitle}

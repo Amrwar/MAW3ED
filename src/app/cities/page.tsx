@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import Container from "@/components/ui/Container";
+import PageHero from "@/components/shared/PageHero";
 import { MapPin } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
@@ -24,15 +24,18 @@ const staticCitiesEn = [
 ];
 
 const cityColors = [
-  "bg-blue-50 text-blue-600","bg-green-50 text-green-600","bg-purple-50 text-purple-600",
-  "bg-orange-50 text-orange-600","bg-pink-50 text-pink-600","bg-teal-50 text-teal-600",
-  "bg-amber-50 text-amber-600","bg-rose-50 text-rose-600","bg-indigo-50 text-indigo-600",
-  "bg-cyan-50 text-cyan-600",
+  "#F0F9FF","#F0FDF4","#F5F3FF","#FFF7ED","#FDF2F8",
+  "#ECFEFF","#FFFBEB","#FEF2F2","#EEF2FF","#ECFDF5",
+];
+const cityIconColors = [
+  "#0369A1","#15803D","#7C3AED","#EA580C","#9D174D",
+  "#0E7490","#B45309","#991B1B","#4338CA","#065F46",
 ];
 
 export default function CitiesPage() {
   const { t, lang } = useLanguage();
-  const c = t.citiesPage;
+  const c    = t.citiesPage;
+  const isAr = lang === "ar";
   const [cities, setCities] = useState<City[]>([]);
 
   useEffect(() => {
@@ -41,68 +44,132 @@ export default function CitiesPage() {
     }).catch(() => {});
   }, []);
 
+  const displayCities = cities.length > 0
+    ? cities.map((city, i) => ({
+        key:   city.id,
+        href:  `/businesses?city=${city.id}`,
+        name:  isAr ? city.nameAr : (city.nameEn || city.nameAr),
+        bg:    cityColors[i % cityColors.length],
+        color: cityIconColors[i % cityIconColors.length],
+      }))
+    : staticCitiesAr.map((nameAr, i) => ({
+        key:   nameAr,
+        href:  `/businesses?q=${nameAr}`,
+        name:  isAr ? nameAr : staticCitiesEn[i],
+        bg:    cityColors[i % cityColors.length],
+        color: cityIconColors[i % cityIconColors.length],
+      }));
+
   return (
     <>
       <Navbar />
-      <main className="pt-16 min-h-screen">
-        <section className="bg-[var(--color-surface-2)] border-b border-[var(--color-border)] py-14">
-          <Container>
-            <div className="text-center max-w-xl mx-auto">
-              <p className="section-eyebrow mb-2">{c.eyebrow}</p>
-              <h1 className="section-title mb-4">{c.title}</h1>
-              <p className="section-subtitle mx-auto">{c.subtitle}</p>
+      <main
+        className="min-h-screen"
+        style={{ background: "#F8FAFC" }}
+        dir={isAr ? "rtl" : "ltr"}
+      >
+        <PageHero
+          badge={c.eyebrow}
+          title={c.title}
+          subtitle={c.subtitle}
+          dir={isAr ? "rtl" : "ltr"}
+        />
+
+        <section className="py-12 lg:py-16">
+          <div className="container-app">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {displayCities.map(({ key, href, name, bg, color }) => (
+                <Link
+                  key={key}
+                  href={href}
+                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-[#E2E8F0] bg-white text-center"
+                  style={{
+                    boxShadow:  "0 1px 4px rgba(15,23,42,0.04)",
+                    transition: "box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLAnchorElement;
+                    el.style.boxShadow   = "0 8px 28px rgba(59,130,246,0.12), 0 2px 8px rgba(15,23,42,0.06)";
+                    el.style.transform   = "translateY(-4px)";
+                    el.style.borderColor = "rgba(147,197,253,0.70)";
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLAnchorElement;
+                    el.style.boxShadow   = "0 1px 4px rgba(15,23,42,0.04)";
+                    el.style.transform   = "translateY(0)";
+                    el.style.borderColor = "#E2E8F0";
+                  }}
+                >
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110 shrink-0"
+                    style={{ background: bg }}
+                  >
+                    <MapPin size={22} style={{ color }} strokeWidth={1.75} />
+                  </div>
+                  <span className="text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors duration-150 leading-snug">
+                    {name}
+                  </span>
+                </Link>
+              ))}
             </div>
-          </Container>
+          </div>
         </section>
 
-        <section className="section-padding">
-          <Container>
-            {cities.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {cities.map((city, i) => (
-                  <Link
-                    key={city.id}
-                    href={`/businesses?city=${city.id}`}
-                    className="card p-5 flex flex-col items-center text-center hover:border-[var(--color-accent)] hover:shadow-md transition-all duration-200 group"
+        <section className="py-12 lg:py-16">
+          <div className="container-app">
+            <div className="max-w-lg mx-auto">
+              <div
+                className="rounded-3xl p-8 text-center overflow-hidden relative"
+                style={{
+                  background: "linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(99,102,241,0.04) 100%)",
+                  border:     "1px solid rgba(59,130,246,0.18)",
+                  boxShadow:  "0 2px 16px rgba(59,130,246,0.07)",
+                }}
+              >
+                <div
+                  aria-hidden
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    backgroundImage: "radial-gradient(circle, rgba(59,130,246,0.07) 1px, transparent 1px)",
+                    backgroundSize:  "20px 20px",
+                  }}
+                />
+                <div className="relative z-10">
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                    style={{
+                      background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
+                      boxShadow:  "0 4px 14px rgba(59,130,246,0.35)",
+                    }}
                   >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-200 ${cityColors[i % cityColors.length]}`}>
-                      <MapPin size={20} />
-                    </div>
-                    <h2 className="font-semibold text-sm text-[var(--color-text-primary)]">
-                      {lang === "en" ? (city.nameEn || city.nameAr) : city.nameAr}
-                    </h2>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {staticCitiesAr.map((nameAr, i) => (
+                    <MapPin size={20} className="text-white" strokeWidth={1.75} />
+                  </div>
+                  <p className="text-base font-bold text-[#0F172A] mb-1.5">{c.notFoundTitle}</p>
+                  <p className="text-sm text-[#475569] mb-6" style={{ lineHeight: 1.7 }}>{c.notFoundSub}</p>
                   <Link
-                    key={nameAr}
-                    href={`/businesses?q=${nameAr}`}
-                    className="card p-5 flex flex-col items-center text-center hover:border-[var(--color-accent)] hover:shadow-md transition-all duration-200 group"
+                    href="/businesses"
+                    className="inline-flex items-center gap-2 px-7 py-3 rounded-2xl text-sm font-bold text-white transition-all duration-200"
+                    style={{
+                      background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
+                      boxShadow:  "0 4px 16px rgba(59,130,246,0.40)",
+                    }}
+                    onMouseEnter={(e) => {
+                      const el = e.currentTarget as HTMLAnchorElement;
+                      el.style.boxShadow = "0 6px 22px rgba(59,130,246,0.52)";
+                      el.style.filter    = "brightness(1.06)";
+                    }}
+                    onMouseLeave={(e) => {
+                      const el = e.currentTarget as HTMLAnchorElement;
+                      el.style.boxShadow = "0 4px 16px rgba(59,130,246,0.40)";
+                      el.style.filter    = "";
+                    }}
                   >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-200 ${cityColors[i % cityColors.length]}`}>
-                      <MapPin size={20} />
-                    </div>
-                    <h2 className="font-semibold text-sm text-[var(--color-text-primary)]">
-                      {lang === "en" ? staticCitiesEn[i] : nameAr}
-                    </h2>
+                    {c.viewAll}
                   </Link>
-                ))}
+                </div>
               </div>
-            )}
-          </Container>
-        </section>
-
-        <section className="section-padding bg-[var(--color-surface-2)]">
-          <Container>
-            <div className="text-center max-w-lg mx-auto">
-              <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-3">{c.notFoundTitle}</h2>
-              <p className="text-[var(--color-text-secondary)] mb-6">{c.notFoundSub}</p>
-              <Link href="/businesses" className="btn btn-primary btn-lg">{c.viewAll}</Link>
             </div>
-          </Container>
+          </div>
         </section>
       </main>
       <Footer />

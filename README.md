@@ -261,6 +261,21 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ---
 
+### 2026-04-09 — Navbar and hero background color unification
+
+**Decision:** Fixed the visual mismatch where the navbar appeared over white on internal pages but over dark navy on the homepage.
+
+**Root cause:** The homepage `<main>` has no `pt-16` — the dark `#0F172A` hero section itself carries `pt-16` for its internal content, so the dark background extends from `y=0` all the way behind the fixed navbar. Internal pages used `<main className="pt-16">`, causing their dark PageHero section to start at `y=64`, leaving a white body gap behind the navbar.
+
+**Fix:**
+- Added `pt-16` to `PageHero`'s `<section>` element so the dark background extends from `y=0` (matching the homepage hero exactly)
+- Removed `pt-16` from `<main>` on all pages using PageHero: categories, pricing, faq, for-business, businesses
+- Content position inside PageHero is unchanged (section `pt-16` + container `py-16` = same 128px from top as before)
+
+**Cities page:** Also updated from old `bg-[var(--color-surface-2)]` hero pattern to PageHero. City cards refactored to match the categories page card style (white card, `onMouseEnter/Leave` shadow/lift/border transitions, color-coded icon boxes using direct hex values instead of CSS variables).
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
