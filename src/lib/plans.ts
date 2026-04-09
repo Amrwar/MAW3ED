@@ -41,14 +41,14 @@ export type PlanFeature = keyof typeof PLAN_FEATURES.FREE;
 
 export const PLAN_PRICES_EGP: Record<Plan, number> = {
   FREE:   0,
-  GROWTH: 199,
-  PRO:    399,
+  GROWTH: 299,
+  PRO:    499,
 };
 
 /** Prices in cents for Paymob (only paid plans) */
 export const PLAN_PRICES_CENTS: Record<"GROWTH" | "PRO", number> = {
-  GROWTH: 19900,
-  PRO:    39900,
+  GROWTH: 29900,
+  PRO:    49900,
 };
 
 // ─── Arabic labels ────────────────────────────────────────────────────────────
