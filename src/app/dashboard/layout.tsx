@@ -64,7 +64,12 @@ export default async function DashboardLayout({
       />
 
       <div className="md:ms-64">
-        <DashboardHeader businessName={business.nameAr} />
+        <DashboardHeader
+          businessName={business.nameAr}
+          cityName={business.city.nameAr}
+          pendingCount={pendingCount}
+          plan={effectivePlan}
+        />
         <main className="p-5 md:p-7 max-w-[1400px]">{children}</main>
       </div>
     </div>

@@ -607,3 +607,29 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Notification badge: `border: 2px solid #FFFFFF` ring for better separation from the icon bg
 - Notification dropdown: consistent card styling `border: 1.5px solid #E2E8F0`, `boxShadow: 0 8px 32px`, empty state uses a centered icon card, unread badge in header
 - All realtime booking logic, sound chime, browser notifications, and toast system are unchanged
+
+---
+
+### 2026-04-09 — Dashboard mobile navigation: hamburger + slide-in drawer
+
+**Files changed:** `src/app/dashboard/layout.tsx`, `src/components/dashboard/DashboardHeader.tsx`
+**Files NOT touched:** `DashboardSidebar.tsx`, public layouts, any marketing pages
+
+**Problem:** The sidebar has `hidden md:flex` — on mobile it disappears with no replacement, leaving users unable to navigate between dashboard pages.
+
+**Solution:** Mobile drawer embedded inside `DashboardHeader` (not a separate component) so all state (open/close) stays local.
+
+**`layout.tsx`:** Now passes `cityName`, `pendingCount`, `plan` to `DashboardHeader` (previously only `businessName`) so the drawer can render the profile card and upgrade section correctly.
+
+**`DashboardHeader.tsx` changes:**
+- New props: `cityName`, `pendingCount`, `plan` (all optional with defaults)
+- New state: `mobileOpen` (boolean)
+- `usePathname` hook added for active state detection in mobile nav items
+- Body scroll lock: `useEffect` sets `document.body.style.overflow = "hidden"` when drawer open, restores on close/unmount
+- Route change auto-close: second `useEffect` closes drawer whenever `pathname` changes (i.e. after navigation)
+- **Hamburger button**: `md:hidden`, 36×36 rounded button, positioned before the logo in the mobile header
+- **Backdrop**: `fixed inset-0 z-[60] md:hidden` — opacity transition 0.25s, `pointer-events: none` when closed so it doesn't block desktop
+- **Drawer panel**: `fixed top-0 start-0 z-[70] w-[280px] md:hidden` — `start-0` resolves to `right: 0` in RTL, `translateX(100%)` pushes it off-screen when closed, `translateX(0)` when open; transition `0.28s cubic-bezier(0.4,0,0.2,1)`
+- **Drawer contents** (identical visual language to `DashboardSidebar`): logo + close button header, business profile card, nav groups with dividers, upgrade card (FREE only), logout button
+- Nav item touch targets: `paddingBlock: 13` (vs 10 on desktop) for better mobile usability
+- Desktop layout unchanged: all mobile-only elements use `md:hidden`, desktop uses existing `hidden md:flex` pattern
