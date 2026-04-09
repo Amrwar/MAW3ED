@@ -480,3 +480,29 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Error state: red-tinted card instead of plain text
 - Footer: ghost cancel + gradient submit button with hover brightness
 - No CSS vars, `boxShadow: -8px 0 40px rgba(15,23,42,0.12)` panel shadow
+
+### Customers Page — Premium CRM Redesign (2026-04-09)
+
+**`CustomersClient.tsx`:**
+- Premium header card: title + subtitle + live customer count, consistent with bookings/services header pattern
+- 4 summary stat cards: total, active (last 90 days), new this month, avg spend — computed client-side from props
+- `customerLabel()` helper: "جديد" (0 bookings), "عميل دائم" (1-4), "عميل مميز ⭐" (5+) — shown inline under name
+- `customerStatus()` helper: "نشط" (last booking ≤ 90 days), "غير نشط" (older/none) — shown as status badge column
+- `custGrad()` deterministic gradient avatar from name charCode
+- Sort chips row (الكل / الأكثر حجزاً / الأعلى إنفاقاً / آخر زيارة) with dark navy active state — replaces column-only sort
+- Column headers still sortable (click toggles asc/desc, deselects chip)
+- Premium table: `FAFBFD` hover, `rgba(59,130,246,0.04)` selected row, `F8FAFC` skeleton rows
+- Added Status column with semantic badge
+- Replaced plain "تفاصيل" text with Eye icon button that has blue hover state
+- Table footer showing count + hint text
+- All CSS vars → direct hex
+
+**`CustomerDetailPanel.tsx`:**
+- Large gradient avatar (11×11) in panel header with phone inline
+- Stats strip redesigned: each cell has colored icon in rounded-xl bg, separator via `borderInlineStart`
+- `BOOKING_STATUS_STYLE` inline map (no StatusBadge dependency)
+- `PanelSection` sub-component: colored icon + uppercase label + `#F8FAFC` card bg
+- Notes textarea: focus glow ring, line-height 1.6, gradient save button
+- Booking history cards: `#F8FAFC` bg with `border: 1px solid #F1F5F9`, inline status pill + price
+- Empty booking history: centered card instead of plain text
+- All CSS vars → direct hex, panel shadow: `-8px 0 40px rgba(15,23,42,0.12)`
