@@ -520,3 +520,26 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - WhatsApp URL: `https://wa.me/?text={encoded message + link}`
 - Conversion rate computed: `Math.round((rewarded / total) * 100)`
 - All CSS vars → direct hex
+
+---
+
+### 2026-04-09 — ServicePanel drawer: mobile layout fix + compact redesign
+
+**Decision:** Fixed the clipping bug in `src/app/dashboard/services/_components/ServicePanel.tsx` where the last 2 sections were cut off on mobile, and redesigned the drawer for a compact premium mobile-first feel.
+
+**Root cause of clipping (two bugs):**
+1. `fixed inset-y-0` uses `window.innerHeight` for the panel height — on mobile browsers this includes the URL bar / bottom toolbar, so the panel extends behind the browser UI. Fixed by using `height: 100dvh` (dynamic viewport height) which always matches the visible area.
+2. The `<form>` (the scrollable flex child) was missing `min-h-0`. Without this, a `flex-1 overflow-y-auto` child in a flex column does not constrain its height and expands past the footer, breaking scroll containment. Adding `min-h-0` forces the flex algorithm to honour the available space.
+
+**Layout structure (3-part fixed/scroll/fixed):**
+- Header: `shrink-0` — always visible, never scrolls
+- Body (`<form>`): `flex-1 min-h-0 overflow-y-auto` — only this scrolls; `WebkitOverflowScrolling: touch` for iOS momentum
+- Footer: `shrink-0` — always visible, subtle top shadow to lift it above content
+
+**Visual compaction:**
+- Section header: `py-4 → py-2.5`, icon `w-8→w-7`, title font `13→12px`, subtitle `11→10px`
+- Section body: `py-5 space-y-4 → py-3.5 gap-12px`
+- Panel header: `py-5 → py-3.5`, title `17→15px`, subtitle shortened
+- Textarea rows: `4 → 3`
+- Footer: `py-4 → py-3`, added subtle box-shadow upward
+- Bottom spacer: `4px → 16px` for iOS scroll-bounce breathing room
