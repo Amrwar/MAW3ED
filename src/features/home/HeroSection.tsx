@@ -38,7 +38,7 @@ function BookingMockup() {
             <p className="text-blue-300 text-sm mt-0.5">عيادة د. أحمد السيد</p>
           </div>
           <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center overflow-hidden">
-            <Image src="/apple-touch-icon.png" alt="موعد" width={40} height={40} className="rounded-xl object-cover" />
+            <Image src="/icon-nobg.png" alt="موعد" width={40} height={40} className="rounded-xl object-cover" />
           </div>
         </div>
 

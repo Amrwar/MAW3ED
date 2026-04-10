@@ -70,7 +70,7 @@ export default function SignupPage() {
     <div className="card p-7">
       <div className="text-center mb-7">
         <div className="flex justify-center mb-4">
-          <Image src="/apple-touch-icon.png" alt="موعد" width={56} height={56} className="rounded-2xl shadow-md" />
+          <Image src="/icon-nobg.png" alt="موعد" width={56} height={56} className="object-contain" />
         </div>
         <h1 className="text-2xl font-black text-[var(--color-text-primary)] mb-1">{s.title}</h1>
         <p className="text-sm text-[var(--color-text-muted)]">{s.subtitle}</p>
