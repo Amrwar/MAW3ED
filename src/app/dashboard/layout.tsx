@@ -60,11 +60,13 @@ export default async function DashboardLayout({
     // Prisma client not yet regenerated — fall back to FREE badge
   }
 
+  const cityName = business.city?.nameAr ?? "";
+
   return (
     <div className="min-h-screen" style={{ background: "#F8FAFC" }}>
       <DashboardSidebar
         businessName={business.nameAr}
-        cityName={business.city.nameAr}
+        cityName={cityName}
         pendingCount={pendingCount}
         plan={effectivePlan}
         businessType={(business.businessType as string) ?? "GENERAL"}
@@ -73,7 +75,7 @@ export default async function DashboardLayout({
       <div className="md:ms-64">
         <DashboardHeader
           businessName={business.nameAr}
-          cityName={business.city.nameAr}
+          cityName={cityName}
           pendingCount={pendingCount}
           plan={effectivePlan}
           businessType={(business.businessType as string) ?? "GENERAL"}
