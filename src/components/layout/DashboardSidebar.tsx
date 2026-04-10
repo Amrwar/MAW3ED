@@ -304,7 +304,7 @@ export default function DashboardSidebar({
             }}
           >
             <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
-              <Image src="/icon-nobg.png" alt="موعد" width={28} height={28} className="object-contain brightness-0 invert" />
+              <Image src="/icon-nobg.png" alt="موعد" width={28} height={28} className="object-contain" />
             </div>
             <div className="flex-1 min-w-0">
               <p style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF", marginBottom: 2 }}>
