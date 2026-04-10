@@ -633,3 +633,66 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - **Drawer contents** (identical visual language to `DashboardSidebar`): logo + close button header, business profile card, nav groups with dividers, upgrade card (FREE only), logout button
 - Nav item touch targets: `paddingBlock: 13` (vs 10 on desktop) for better mobile usability
 - Desktop layout unchanged: all mobile-only elements use `md:hidden`, desktop uses existing `hidden md:flex` pattern
+
+---
+
+### 2026-04-10 — Business-type-aware architecture (Restaurant / Barbershop / General)
+
+**Files changed:** `prisma/schema.prisma`, `src/lib/business-type.ts` (new), `src/lib/i18n.ts`, `src/app/dashboard/layout.tsx`, `src/components/layout/DashboardSidebar.tsx`, `src/components/dashboard/DashboardHeader.tsx`, `src/app/api/business/tables/route.ts` (new), `src/app/api/business/tables/[id]/route.ts` (new), `src/app/api/business/staff/route.ts` (new), `src/app/api/business/staff/[id]/route.ts` (new), `src/app/api/business/type/route.ts` (new), `src/app/dashboard/tables/` (new), `src/app/dashboard/staff/` (new)
+
+**Problem:** Every business showed the same generic nav and booking UI regardless of type. Restaurants need table management; barbershops need staff/barber management with service-to-staff assignment.
+
+**Solution:** Added a `BusinessType` discriminator (`GENERAL | RESTAURANT | BARBERSHOP`) to the `Business` model. A `getNavConfig(businessType, labels, pendingCount)` factory function in both the sidebar and header returns the correct nav items per type — no duplicated nav arrays.
+
+**Prisma schema additions:**
+- `BusinessType` enum: `GENERAL`, `RESTAURANT`, `BARBERSHOP`
+- `TableType` enum: `CORNER`, `MIDDLE`, `OUTDOOR`, `WINDOW`, `FAMILY`, `PRIVATE`, `BAR`, `BOOTH`
+- `Table` model: `id`, `businessId`, `name`, `tableType`, `capacity`, `notes`, `isActive`, `photo`, timestamps
+- `StaffMember` model: `id`, `businessId`, `nameAr`, `nameEn`, `role`, `photo`, `isActive`, `workingDays` (Int[]), `specialties` (String[]), timestamps
+- `StaffService` join model: `@@id([staffMemberId, serviceId])` — many-to-many between staff and services with `onDelete: Cascade`
+- `Booking` model: added optional `tableId`, `staffMemberId`, `partySize` fields
+
+**`src/lib/business-type.ts`:** Utility module with `BusinessType` type, `BUSINESS_TYPE_META`, `TABLE_TYPE_LABELS`, and `hasTableManagement()`, `hasStaffManagement()`, `isDurationRequired()` helpers.
+
+**Navigation per type:**
+- `RESTAURANT`: Dashboard → Reservations → Tables (`/dashboard/tables`) → Customers → Analytics
+- `BARBERSHOP`: Dashboard → Appointments → Services (Scissors icon) → Staff (`/dashboard/staff`) → Customers → Analytics
+- `GENERAL`: Dashboard → Bookings → Services (Store icon) → Customers → Analytics
+
+**New dashboard pages:**
+- `/dashboard/tables` — Table management for restaurants: add/edit/delete tables, set type/capacity/notes, active toggle, color-coded by table type
+- `/dashboard/staff` — Staff management for barbershops: add/edit/delete staff members, assign services, set working days, active toggle
+
+**API routes:**
+- `PUT /api/business/type` — update `businessType` on the business
+- `GET/POST /api/business/tables` — list and create tables
+- `PUT/DELETE /api/business/tables/[id]` — update and delete a table
+- `GET/POST /api/business/staff` — list staff (with services) and create staff member
+- `PUT/DELETE /api/business/staff/[id]` — update (including service reassignment via `deleteMany` + `create`) and delete
+
+**Database migration:** Applied via `prisma db push` (migration history was out of sync from prior `db push` usage). Prisma client regenerated with `prisma generate`.
+
+**i18n additions (`src/lib/i18n.ts`):** Added `reservations`, `appointments`, `reservationTypes`, `tables`, `staff` keys to both AR and EN sidebar sections.
+
+**Type-safety fix:** Both `DashboardSidebar` and `DashboardHeader` cast `t.dashboard.sidebar` as `unknown as Record<string, string>` to allow dynamic key access for the new nav labels without a union-type conflict from the `planBadge` nested object.
+
+---
+
+### 2026-04-10 — Company page: premium image treatment
+
+**Files changed:** `src/features/company/CompanyHero.tsx`
+
+**Problem:** The cover image used `object-cover fill` which aggressively cropped and zoomed square or portrait images (e.g. logos uploaded as cover photos). The logo/profile image also used `object-cover` which cut off parts of the logo.
+
+**Solution — Cover banner (3-layer approach):**
+1. **Layer 1 (background):** Same image rendered with `fill object-cover` + `filter: blur(28px) brightness(0.45) saturate(1.4)` + `scale(1.12)` — creates an atmospheric colored background without revealing content. Works for any image shape.
+2. **Layer 2 (overlay):** Dark gradient `rgba(10,15,28,0.82→0.35→0.55)` for badge/pill readability.
+3. **Layer 3 (foreground):** The actual image centered in a `clamp(140px, 28vw, 280px)` rounded frame with `object-contain` — never cropped, always fully visible, with `boxShadow` for depth.
+
+**Banner height:** `clamp(220px, 36vw, 380px)` — scales fluidly across mobile, tablet, desktop.
+
+**Solution — Logo/profile image:**
+- Switched from `fill + object-cover` to `width={76} height={76} object-contain` — explicit dimensions let Next.js serve the correct resolution (including 2× for retina) without upscaling or blurring.
+- Container: 88×88px with 6px padding, white background, `borderRadius: 20`, outer ring `0 0 0 1px rgba(226,232,240,0.8)` — acts as a "mount" for the brand mark so logos with transparent backgrounds look polished.
+
+**Why explicit width/height over fill for logo:** `fill` images are `position: absolute` and ignore CSS `padding` on the element itself, causing Next.js to serve a tiny source image that gets upscaled and blurred at display size.

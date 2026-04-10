@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 import type { StaffMember } from "./StaffClient";
 import { useLanguage } from "@/contexts/LanguageContext";
+import ImageUpload from "@/components/shared/ImageUpload";
 
 const DAY_LABELS_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const DAY_LABELS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -239,6 +240,19 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
                 value={form.role}
                 onChange={(e) => set("role", e.target.value)}
                 placeholder={isAr ? "مثال: حلاق أول" : "e.g. Senior Barber"}
+              />
+            </div>
+
+            {/* Photo */}
+            <div>
+              <label style={labelStyle}>{isAr ? "صورة الموظف" : "Staff Photo"}</label>
+              <ImageUpload
+                variant="logo"
+                value={form.photo || null}
+                onChange={(url) => set("photo", url)}
+                onRemove={() => set("photo", "")}
+                folder="maw3ed/staff"
+                label={isAr ? "JPG أو PNG · حتى 5MB" : "JPG or PNG · up to 5MB"}
               />
             </div>
 

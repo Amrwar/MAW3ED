@@ -128,10 +128,9 @@ export default function CompanyHero({ business }: { business: Business }) {
                 <Image
                   src={business.logoImage}
                   alt={business.nameAr}
-                  fill
-                  sizes="88px"
+                  width={76}
+                  height={76}
                   className="object-contain rounded-2xl"
-                  style={{ padding: 6 }}
                 />
               ) : (
                 <div
