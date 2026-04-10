@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { CalendarDays, Check, Clock, ArrowLeft, Zap } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -36,8 +37,8 @@ function BookingMockup() {
             <h3 className="text-white text-lg font-bold leading-tight">احجز موعدك</h3>
             <p className="text-blue-300 text-sm mt-0.5">عيادة د. أحمد السيد</p>
           </div>
-          <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center">
-            <CalendarDays size={20} className="text-white" />
+          <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center overflow-hidden">
+            <Image src="/apple-touch-icon.png" alt="موعد" width={40} height={40} className="rounded-xl object-cover" />
           </div>
         </div>
 

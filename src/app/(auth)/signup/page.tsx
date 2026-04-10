@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, UserPlus } from "lucide-react";
+import Image from "next/image";
 import { z } from "zod";
 import { signUpSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
@@ -68,6 +69,9 @@ export default function SignupPage() {
   return (
     <div className="card p-7">
       <div className="text-center mb-7">
+        <div className="flex justify-center mb-4">
+          <Image src="/apple-touch-icon.png" alt="موعد" width={56} height={56} className="rounded-2xl shadow-md" />
+        </div>
         <h1 className="text-2xl font-black text-[var(--color-text-primary)] mb-1">{s.title}</h1>
         <p className="text-sm text-[var(--color-text-muted)]">{s.subtitle}</p>
       </div>

@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, LogIn } from "lucide-react";
+import Image from "next/image";
 import { loginSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -46,6 +47,9 @@ export default function LoginPage() {
   return (
     <div className="card p-7">
       <div className="text-center mb-7">
+        <div className="flex justify-center mb-4">
+          <Image src="/apple-touch-icon.png" alt="موعد" width={56} height={56} className="rounded-2xl shadow-md" />
+        </div>
         <h1 className="text-2xl font-black text-[var(--color-text-primary)] mb-1">{l.title}</h1>
         <p className="text-sm text-[var(--color-text-muted)]">{l.subtitle}</p>
       </div>
