@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
@@ -13,7 +14,6 @@ import {
   MessageSquare,
   Gift,
   LogOut,
-  Sparkles,
   ArrowUpRight,
 } from "lucide-react";
 import Logo from "@/components/shared/Logo";
@@ -303,11 +303,8 @@ export default function DashboardSidebar({
               (e.currentTarget as HTMLAnchorElement).style.transform = "";
             }}
           >
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: "rgba(255,255,255,0.12)" }}
-            >
-              <Sparkles size={14} style={{ color: "#FCD34D" }} />
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
+              <Image src="/icon-nobg.png" alt="موعد" width={28} height={28} className="object-contain brightness-0 invert" />
             </div>
             <div className="flex-1 min-w-0">
               <p style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF", marginBottom: 2 }}>

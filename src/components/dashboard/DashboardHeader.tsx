@@ -10,6 +10,7 @@ import {
   LogOut, Sparkles, ArrowUpRight,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import Logo from "@/components/shared/Logo";
@@ -669,11 +670,8 @@ export default function DashboardHeader({
               }}
               onClick={() => setMobileOpen(false)}
             >
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "rgba(255,255,255,0.12)" }}
-              >
-                <Sparkles size={14} style={{ color: "#FCD34D" }} />
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
+                <Image src="/icon-nobg.png" alt="موعد" width={28} height={28} className="object-contain brightness-0 invert" />
               </div>
               <div className="flex-1 min-w-0">
                 <p style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF", marginBottom: 2 }}>
@@ -833,11 +831,8 @@ function NotificationDropdown({
       <div className="max-h-[22rem] overflow-y-auto overscroll-contain">
         {notifications.length === 0 ? (
           <div className="py-12 text-center">
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
-              style={{ background: "#F8FAFC" }}
-            >
-              <Bell size={20} style={{ color: "#CBD5E1" }} />
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 overflow-hidden" style={{ background: "#F8FAFC" }}>
+              <Image src="/icon-nobg.png" alt="موعد" width={32} height={32} className="object-contain opacity-25" />
             </div>
             <p style={{ fontSize: 13, color: "#94A3B8" }}>{emptyLabel}</p>
           </div>
