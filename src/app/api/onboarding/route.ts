@@ -46,6 +46,16 @@ export async function POST(req: Request) {
     const slugTaken = await db.business.findUnique({ where: { slug } });
     if (slugTaken) return err("هذا الرابط محجوز، جرّب رابطًا آخر", 409);
 
+    // Determine businessType from category slug
+    const category = await db.category.findUnique({
+      where:  { id: categoryId },
+      select: { slug: true },
+    });
+    const businessType =
+      category?.slug === "restaurants" ? "RESTAURANT"
+      : (category?.slug === "salons" || category?.slug === "beauty-centers") ? "BARBERSHOP"
+      : "GENERAL";
+
     // Resolve referral — read cookie set by /ref/[code]
     const cookieStore  = await cookies();
     const refCode      = cookieStore.get("maw3ed_ref")?.value ?? null;
@@ -70,10 +80,11 @@ export async function POST(req: Request) {
       const biz = await tx.business.create({
         data: {
           slug, nameAr, nameEn, taglineAr, phone, whatsapp, address, about,
-          coverImage:  coverImage  ?? null,
-          logoImage:   logoImage   ?? null,
-          ownerId:     session.user.id,
-          categoryId,  cityId,
+          coverImage:   coverImage  ?? null,
+          logoImage:    logoImage   ?? null,
+          ownerId:      session.user.id,
+          categoryId,   cityId,
+          businessType,
           isPublished: true,
           referralCode,
           referredById: referredById ?? undefined,
