@@ -15,30 +15,75 @@ import {
   Gift,
   LogOut,
   ArrowUpRight,
+  Utensils,
+  Scissors,
+  Users2,
 } from "lucide-react";
 import Logo from "@/components/shared/Logo";
 import type { Plan } from "@/lib/plans";
+import type { BusinessType } from "@/lib/business-type";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-// ─── Navigation structure ─────────────────────────────────────────────────────
+// ─── Nav config per business type ────────────────────────────────────────────
 
-const NAV_ICONS  = [LayoutDashboard, CalendarDays, Store, Users, BarChart3, MessageSquare, Gift, Settings];
-const NAV_HREFS  = [
-  "/dashboard",
-  "/dashboard/bookings",
-  "/dashboard/services",
-  "/dashboard/customers",
-  "/dashboard/analytics",
-  "/dashboard/reviews",
-  "/dashboard/referrals",
-  "/dashboard/settings",
-];
-const NAV_SOON   = [false, false, false, false, false, true, false, false];
+function getNavConfig(businessType: BusinessType, s: Record<string, string>, pendingCount: number) {
+  if (businessType === "RESTAURANT") {
+    return {
+      items: [
+        { icon: LayoutDashboard, href: "/dashboard",            label: s.home,         soon: false, badge: null },
+        { icon: CalendarDays,    href: "/dashboard/bookings",   label: s.reservations, soon: false, badge: pendingCount },
+        { icon: Utensils,        href: "/dashboard/tables",     label: s.tables,       soon: false, badge: null },
+        { icon: Users,           href: "/dashboard/customers",  label: s.customers,    soon: false, badge: null },
+        { icon: BarChart3,       href: "/dashboard/analytics",  label: s.analytics,    soon: false, badge: null },
+      ],
+      secondary: [
+        { icon: MessageSquare, href: "/dashboard/reviews",   label: s.reviews,   soon: true,  badge: null },
+        { icon: Gift,          href: "/dashboard/referrals", label: s.referrals, soon: false, badge: null },
+      ],
+      utility: [
+        { icon: Settings, href: "/dashboard/settings", label: s.settings, soon: false, badge: null },
+      ],
+    };
+  }
 
-// Indices for each group (dividers are placed between groups)
-const GROUP_MAIN       = [0, 1, 2, 3, 4]; // home → analytics
-const GROUP_SECONDARY  = [5, 6];           // reviews, referrals
-const GROUP_UTILITY    = [7];              // settings
+  if (businessType === "BARBERSHOP") {
+    return {
+      items: [
+        { icon: LayoutDashboard, href: "/dashboard",            label: s.home,         soon: false, badge: null },
+        { icon: CalendarDays,    href: "/dashboard/bookings",   label: s.appointments, soon: false, badge: pendingCount },
+        { icon: Scissors,        href: "/dashboard/services",   label: s.services,     soon: false, badge: null },
+        { icon: Users2,          href: "/dashboard/staff",      label: s.staff,        soon: false, badge: null },
+        { icon: Users,           href: "/dashboard/customers",  label: s.customers,    soon: false, badge: null },
+        { icon: BarChart3,       href: "/dashboard/analytics",  label: s.analytics,    soon: false, badge: null },
+      ],
+      secondary: [
+        { icon: MessageSquare, href: "/dashboard/reviews",   label: s.reviews,   soon: true,  badge: null },
+        { icon: Gift,          href: "/dashboard/referrals", label: s.referrals, soon: false, badge: null },
+      ],
+      utility: [
+        { icon: Settings, href: "/dashboard/settings", label: s.settings, soon: false, badge: null },
+      ],
+    };
+  }
+
+  // GENERAL (default)
+  return {
+    items: [
+      { icon: LayoutDashboard, href: "/dashboard",           label: s.home,      soon: false, badge: null },
+      { icon: CalendarDays,    href: "/dashboard/bookings",  label: s.bookings,  soon: false, badge: pendingCount },
+      { icon: Store,           href: "/dashboard/services",  label: s.services,  soon: false, badge: null },
+      { icon: Users,           href: "/dashboard/customers", label: s.customers, soon: false, badge: null },
+      { icon: BarChart3,       href: "/dashboard/analytics", label: s.analytics, soon: false, badge: null },
+    ],
+    secondary: [
+      { icon: MessageSquare, href: "/dashboard/reviews",   label: s.reviews,   soon: true,  badge: null },
+      { icon: Gift,          href: "/dashboard/referrals", label: s.referrals, soon: false, badge: null },
+    ],
+    utility: [
+      { icon: Settings, href: "/dashboard/settings", label: s.settings, soon: false, badge: null },
+    ],
+  };
+}
 
 // ─── Plan badge config ────────────────────────────────────────────────────────
 
@@ -55,6 +100,7 @@ interface DashboardSidebarProps {
   cityName?:     string;
   pendingCount?: number;
   plan?:         Plan;
+  businessType?: string;
 }
 
 // ─── Nav item ─────────────────────────────────────────────────────────────────
@@ -163,33 +209,29 @@ export default function DashboardSidebar({
   cityName     = "",
   pendingCount = 0,
   plan         = "FREE",
+  businessType = "GENERAL",
 }: DashboardSidebarProps) {
-  const pathname    = usePathname();
-  const { t }       = useLanguage();
-  const s           = t.dashboard.sidebar;
-  const navLabels   = [s.home, s.bookings, s.services, s.customers, s.analytics, s.reviews, s.referrals, s.settings];
-  const name        = businessName || s.yourBusiness;
-  const planStyle   = PLAN_STYLES[plan];
+  const pathname  = usePathname();
+  const { t }     = useLanguage();
+  const s         = t.dashboard.sidebar as unknown as Record<string, string>;
+  const name      = businessName || s.yourBusiness;
+  const planStyle = PLAN_STYLES[plan];
+  const navCfg    = getNavConfig(businessType as BusinessType, s, pendingCount);
 
-  function NavGroup({ indices }: { indices: number[] }) {
+  function NavGroup({ items }: { items: ReturnType<typeof getNavConfig>["items"] }) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {indices.map((i) => {
-          const href   = NAV_HREFS[i];
-          const Icon   = NAV_ICONS[i];
-          const label  = navLabels[i];
-          const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-          const badge  = href === "/dashboard/bookings" ? pendingCount : null;
-          const soon   = NAV_SOON[i];
+        {items.map((item) => {
+          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return (
             <NavItem
-              key={href}
-              href={href}
-              Icon={Icon}
-              label={label}
+              key={item.href}
+              href={item.href}
+              Icon={item.icon}
+              label={item.label}
               active={active}
-              badge={badge}
-              soon={soon}
+              badge={item.badge}
+              soon={item.soon}
               comingSoonLabel={s.comingSoon}
             />
           );
@@ -273,11 +315,11 @@ export default function DashboardSidebar({
         className="flex-1 overflow-y-auto"
         style={{ padding: "6px 10px 12px" }}
       >
-        <NavGroup indices={GROUP_MAIN} />
+        <NavGroup items={navCfg.items} />
         <NavDivider />
-        <NavGroup indices={GROUP_SECONDARY} />
+        <NavGroup items={navCfg.secondary} />
         <NavDivider />
-        <NavGroup indices={GROUP_UTILITY} />
+        <NavGroup items={navCfg.utility} />
       </nav>
 
       {/* ── Bottom area ─────────────────────────────────────── */}

@@ -7,10 +7,12 @@ import {
   Menu,
   LayoutDashboard, CalendarDays, Settings, Store,
   BarChart3, Users, MessageSquare, Gift,
-  LogOut, Sparkles, ArrowUpRight,
+  LogOut, ArrowUpRight,
+  Utensils, Scissors, Users2,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import type { BusinessType } from "@/lib/business-type";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import Logo from "@/components/shared/Logo";
@@ -76,21 +78,61 @@ function variantFromStatus(status: string): NotifVariant {
 
 // ── Nav config (mirrors DashboardSidebar) ─────────────────────────────────────
 
-const NAV_ICONS  = [LayoutDashboard, CalendarDays, Store, Users, BarChart3, MessageSquare, Gift, Settings];
-const NAV_HREFS  = [
-  "/dashboard",
-  "/dashboard/bookings",
-  "/dashboard/services",
-  "/dashboard/customers",
-  "/dashboard/analytics",
-  "/dashboard/reviews",
-  "/dashboard/referrals",
-  "/dashboard/settings",
-];
-const NAV_SOON   = [false, false, false, false, false, true, false, false];
-const GROUP_MAIN      = [0, 1, 2, 3, 4];
-const GROUP_SECONDARY = [5, 6];
-const GROUP_UTILITY   = [7];
+function getNavConfig(businessType: BusinessType, labels: Record<string, string>, pendingCount: number) {
+  if (businessType === "RESTAURANT") {
+    return {
+      main: [
+        { icon: LayoutDashboard, href: "/dashboard",           label: labels.home,         soon: false, badge: null },
+        { icon: CalendarDays,    href: "/dashboard/bookings",  label: labels.reservations, soon: false, badge: pendingCount },
+        { icon: Utensils,        href: "/dashboard/tables",    label: labels.tables,       soon: false, badge: null },
+        { icon: Users,           href: "/dashboard/customers", label: labels.customers,    soon: false, badge: null },
+        { icon: BarChart3,       href: "/dashboard/analytics", label: labels.analytics,    soon: false, badge: null },
+      ],
+      secondary: [
+        { icon: MessageSquare, href: "/dashboard/reviews",   label: labels.reviews,   soon: true,  badge: null },
+        { icon: Gift,          href: "/dashboard/referrals", label: labels.referrals, soon: false, badge: null },
+      ],
+      utility: [
+        { icon: Settings, href: "/dashboard/settings", label: labels.settings, soon: false, badge: null },
+      ],
+    };
+  }
+  if (businessType === "BARBERSHOP") {
+    return {
+      main: [
+        { icon: LayoutDashboard, href: "/dashboard",           label: labels.home,         soon: false, badge: null },
+        { icon: CalendarDays,    href: "/dashboard/bookings",  label: labels.appointments, soon: false, badge: pendingCount },
+        { icon: Scissors,        href: "/dashboard/services",  label: labels.services,     soon: false, badge: null },
+        { icon: Users2,          href: "/dashboard/staff",     label: labels.staff,        soon: false, badge: null },
+        { icon: Users,           href: "/dashboard/customers", label: labels.customers,    soon: false, badge: null },
+        { icon: BarChart3,       href: "/dashboard/analytics", label: labels.analytics,    soon: false, badge: null },
+      ],
+      secondary: [
+        { icon: MessageSquare, href: "/dashboard/reviews",   label: labels.reviews,   soon: true,  badge: null },
+        { icon: Gift,          href: "/dashboard/referrals", label: labels.referrals, soon: false, badge: null },
+      ],
+      utility: [
+        { icon: Settings, href: "/dashboard/settings", label: labels.settings, soon: false, badge: null },
+      ],
+    };
+  }
+  return {
+    main: [
+      { icon: LayoutDashboard, href: "/dashboard",           label: labels.home,      soon: false, badge: null },
+      { icon: CalendarDays,    href: "/dashboard/bookings",  label: labels.bookings,  soon: false, badge: pendingCount },
+      { icon: Store,           href: "/dashboard/services",  label: labels.services,  soon: false, badge: null },
+      { icon: Users,           href: "/dashboard/customers", label: labels.customers, soon: false, badge: null },
+      { icon: BarChart3,       href: "/dashboard/analytics", label: labels.analytics, soon: false, badge: null },
+    ],
+    secondary: [
+      { icon: MessageSquare, href: "/dashboard/reviews",   label: labels.reviews,   soon: true,  badge: null },
+      { icon: Gift,          href: "/dashboard/referrals", label: labels.referrals, soon: false, badge: null },
+    ],
+    utility: [
+      { icon: Settings, href: "/dashboard/settings", label: labels.settings, soon: false, badge: null },
+    ],
+  };
+}
 
 const PLAN_STYLES: Record<Plan, { bg: string; text: string; label: string }> = {
   FREE:   { bg: "#F1F5F9", text: "#64748B",  label: "مجاني"    },
@@ -184,20 +226,22 @@ export default function DashboardHeader({
   cityName     = "",
   pendingCount = 0,
   plan         = "FREE",
+  businessType = "GENERAL",
 }: {
-  businessName: string;
-  cityName?:    string;
+  businessName:  string;
+  cityName?:     string;
   pendingCount?: number;
   plan?:         Plan;
+  businessType?: string;
 }) {
   const { t }    = useLanguage();
   const h        = t.dashboard.header;
-  const s        = t.dashboard.sidebar;
+  const s        = t.dashboard.sidebar as unknown as Record<string, string>;
   const pathname = usePathname();
 
-  const navLabels = [s.home, s.bookings, s.services, s.customers, s.analytics, s.reviews, s.referrals, s.settings];
   const name      = businessName || s.yourBusiness;
   const planStyle = PLAN_STYLES[plan];
+  const navCfg    = getNavConfig(businessType as BusinessType, s, pendingCount);
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [toasts,        setToasts]        = useState<ToastItem[]>([]);
@@ -315,16 +359,12 @@ export default function DashboardHeader({
   }, [pushNotification, pushToast, browserNotify, soundEnabled, h.variant]));
 
   // ── Mobile nav helper ────────────────────────────────────────────────────────
-  function MobileNavGroup({ indices }: { indices: number[] }) {
+  function MobileNavGroup({ items }: { items: ReturnType<typeof getNavConfig>["main"] }) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {indices.map((i) => {
-          const href   = NAV_HREFS[i];
-          const Icon   = NAV_ICONS[i];
-          const label  = navLabels[i];
+        {items.map((item) => {
+          const { href, icon: Icon, label, soon, badge } = item;
           const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-          const badge  = href === "/dashboard/bookings" ? pendingCount : null;
-          const soon   = NAV_SOON[i];
 
           if (soon) {
             return (
@@ -647,11 +687,11 @@ export default function DashboardHeader({
           className="flex-1 min-h-0 overflow-y-auto"
           style={{ padding: "6px 10px 12px" }}
         >
-          <MobileNavGroup indices={GROUP_MAIN} />
+          <MobileNavGroup items={navCfg.main} />
           <div style={{ height: 1, background: "#F1F5F9", marginBlock: 6, marginInline: 4 }} />
-          <MobileNavGroup indices={GROUP_SECONDARY} />
+          <MobileNavGroup items={navCfg.secondary} />
           <div style={{ height: 1, background: "#F1F5F9", marginBlock: 6, marginInline: 4 }} />
-          <MobileNavGroup indices={GROUP_UTILITY} />
+          <MobileNavGroup items={navCfg.utility} />
         </nav>
 
         {/* ── Bottom area ───────────────────────────────────── */}

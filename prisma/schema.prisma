@@ -90,6 +90,8 @@ model Business {
   referralCode              String?            @unique // 8-char uppercase code e.g. "A3F7C2D1"
   referredById              String?            // businessId that referred this business
   referralRewardedAt        DateTime?          // set once referrer receives their 30-day bonus
+  // ── Business Type ────────────────────────────────────────────
+  businessType              BusinessType       @default(GENERAL)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -106,6 +108,8 @@ model Business {
   availability AvailabilityRule[]
   bookings     Booking[]
   customers    Customer[]
+  tables       Table[]
+  staffMembers StaffMember[]
 
   referredBy   Business?  @relation("BusinessReferrals", fields: [referredById], references: [id])
   referrals    Business[] @relation("BusinessReferrals")
@@ -148,6 +152,7 @@ model Service {
 
   business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   bookings      Booking[]
+  staff         StaffService[]
 }
 
 model AvailabilityRule {
@@ -197,12 +202,18 @@ model Booking {
   depositAmount           Decimal?  @db.Decimal(10, 2) // deposit amount required (null = no deposit)
   paymobOrderId           String?   // Paymob order ID for payment tracking
   paymobTransactionId     String?   // Paymob transaction ID after successful payment
+  // ── Business-type-specific fields ────────────────────────────
+  tableId       String?   // Restaurant: which table is reserved
+  staffMemberId String?   // Barbershop: which staff member handles the booking
+  partySize     Int?      // Restaurant: number of guests
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
 
   business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   service       Service       @relation(fields: [serviceId], references: [id])
   customer      Customer?     @relation(fields: [customerId], references: [id])
+  table         Table?        @relation(fields: [tableId], references: [id])
+  staffMember   StaffMember?  @relation(fields: [staffMemberId], references: [id])
 }
 
 model PasswordResetToken {
@@ -213,6 +224,69 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@index([email])
+}
+
+// ─── Restaurant Tables ────────────────────────────────────────
+model Table {
+  id         String    @id @default(cuid())
+  businessId String
+  name       String    // e.g. "T-01", "النافذة", "الزاوية"
+  tableType  TableType @default(MIDDLE)
+  capacity   Int       @default(4)
+  notes      String?
+  isActive   Boolean   @default(true)
+  photo      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bookings   Booking[]
+}
+
+// ─── Barbershop Staff ─────────────────────────────────────────
+model StaffMember {
+  id          String    @id @default(cuid())
+  businessId  String
+  nameAr      String
+  nameEn      String?
+  role        String?   // barber, stylist, colorist…
+  photo       String?
+  isActive    Boolean   @default(true)
+  workingDays Int[]     // dayOfWeek 0-6
+  specialties String[]  // free-text tags
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  business    Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  services    StaffService[]
+  bookings    Booking[]
+}
+
+model StaffService {
+  staffMemberId String
+  serviceId     String
+
+  staffMember   StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  service       Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([staffMemberId, serviceId])
+}
+
+enum BusinessType {
+  GENERAL     // default — clinics, gyms, salons, etc.
+  RESTAURANT  // table-based reservations
+  BARBERSHOP  // staff-based appointments
+}
+
+enum TableType {
+  CORNER
+  MIDDLE
+  OUTDOOR
+  WINDOW
+  FAMILY
+  PRIVATE
+  BAR
+  BOOTH
 }
 
 enum BookingStatus {

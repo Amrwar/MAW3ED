@@ -22,11 +22,11 @@ export default async function DashboardLayout({
   const business = tokenBusinessId
     ? await db.business.findUnique({
         where:  { id: tokenBusinessId },
-        select: { id: true, nameAr: true, city: { select: { nameAr: true } } },
+        select: { id: true, nameAr: true, businessType: true, city: { select: { nameAr: true } } },
       })
     : await db.business.findUnique({
         where:  { ownerId: session.user.id },
-        select: { id: true, nameAr: true, city: { select: { nameAr: true } } },
+        select: { id: true, nameAr: true, businessType: true, city: { select: { nameAr: true } } },
       });
 
   if (!business) redirect("/onboarding");
@@ -61,6 +61,7 @@ export default async function DashboardLayout({
         cityName={business.city.nameAr}
         pendingCount={pendingCount}
         plan={effectivePlan}
+        businessType={(business.businessType as string) ?? "GENERAL"}
       />
 
       <div className="md:ms-64">
@@ -69,6 +70,7 @@ export default async function DashboardLayout({
           cityName={business.city.nameAr}
           pendingCount={pendingCount}
           plan={effectivePlan}
+          businessType={(business.businessType as string) ?? "GENERAL"}
         />
         <main className="p-5 md:p-7 max-w-[1400px]">{children}</main>
       </div>
