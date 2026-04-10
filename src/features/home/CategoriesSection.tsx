@@ -52,82 +52,29 @@ function getCategoryMeta(slug: string, lang: "ar" | "en", idx: number) {
 const FEATURED_MOCK = [
   {
     id:          "f1",
-    slug:        "dr-amr-hefny",
-    nameAr:      "عيادة أرتي لطب الأسنان",
-    nameEn:      "Arty Dental Clinic",
-    specialtyAr: "طب الأسنان",
-    specialtyEn: "Dentistry",
-    cityAr:      "القاهرة الجديدة",
-    cityEn:      "New Cairo",
-    rating:      4.9,
-    reviews:     218,
-    services:    6,
-    // Time slots shown on the card
-    slotsAr:     ["اليوم ٥:٠٠ م", "اليوم ٦:٣٠ م", "غدًا ٩:٠٠ ص"],
-    slotsEn:     ["Today 5:00 PM", "Today 6:30 PM", "Tomorrow 9:00 AM"],
-    initial:     "A",
-    badgeAr:     "الأكثر حجزًا",
-    badgeEn:     "Most Booked",
-    headerGrad:  "linear-gradient(150deg, #0B1D3A 0%, #0F3460 45%, #1554A0 75%, #2176CC 100%)",
-    hotspot:     "radial-gradient(ellipse at 82% 18%, rgba(96,165,250,0.32) 0%, transparent 55%)",
-    avatarGrad:  "linear-gradient(140deg, #1E40AF 0%, #3B82F6 100%)",
-    specialtyBg: "#EFF6FF",
-    specialtyFg: "#1D4ED8",
-    slotBg:      "#EFF6FF",
-    slotBorder:  "#BFDBFE",
-    slotFg:      "#1D4ED8",
-  },
-  {
-    id:          "f2",
-    slug:        "dr-amr-hefny",
-    nameAr:      "صالون جلو للتجميل",
-    nameEn:      "Glow Beauty Lounge",
-    specialtyAr: "مركز تجميل",
-    specialtyEn: "Beauty Center",
-    cityAr:      "الشيخ زايد، الجيزة",
-    cityEn:      "Sheikh Zayed, Giza",
-    rating:      4.8,
-    reviews:     156,
-    services:    9,
-    slotsAr:     ["غدًا ١٠:٠٠ ص", "غدًا ١١:٣٠ ص", "الأربعاء ٣:٠٠ م"],
-    slotsEn:     ["Tomorrow 10:00 AM", "Tomorrow 11:30 AM", "Wed 3:00 PM"],
-    initial:     "G",
+    slug:        "berrygum",
+    nameAr:      "BerryGum",
+    nameEn:      "BerryGum",
+    specialtyAr: "تجميل وعناية",
+    specialtyEn: "Beauty & Care",
+    cityAr:      "القاهرة",
+    cityEn:      "Cairo",
+    rating:      5.0,
+    reviews:     1,
+    services:    3,
+    slotsAr:     ["اليوم ١٠:٠٠ ص", "اليوم ١٢:٠٠ م", "غدًا ٩:٠٠ ص"],
+    slotsEn:     ["Today 10:00 AM", "Today 12:00 PM", "Tomorrow 9:00 AM"],
+    initial:     "B",
     badgeAr:     "مميز",
     badgeEn:     "Featured",
-    headerGrad:  "linear-gradient(150deg, #2E0040 0%, #6B21A8 45%, #A21CAF 75%, #C026D3 100%)",
-    hotspot:     "radial-gradient(ellipse at 80% 18%, rgba(232,121,249,0.30) 0%, transparent 55%)",
-    avatarGrad:  "linear-gradient(140deg, #7C3AED 0%, #C026D3 100%)",
-    specialtyBg: "#FAF5FF",
-    specialtyFg: "#7C3AED",
-    slotBg:      "#FAF5FF",
-    slotBorder:  "#E9D5FF",
-    slotFg:      "#7C3AED",
-  },
-  {
-    id:          "f3",
-    slug:        "dr-amr-hefny",
-    nameAr:      "جيم بيك موشن",
-    nameEn:      "Peak Motion Gym",
-    specialtyAr: "لياقة بدنية",
-    specialtyEn: "Fitness Center",
-    cityAr:      "مدينة نصر، القاهرة",
-    cityEn:      "Nasr City, Cairo",
-    rating:      4.7,
-    reviews:     312,
-    services:    11,
-    slotsAr:     ["اليوم ٦:٠٠ ص", "اليوم ٧:٣٠ ص", "اليوم ٥:٠٠ م"],
-    slotsEn:     ["Today 6:00 AM", "Today 7:30 AM", "Today 5:00 PM"],
-    initial:     "P",
-    badgeAr:     null,
-    badgeEn:     null,
-    headerGrad:  "linear-gradient(150deg, #021A0E 0%, #064E3B 45%, #065F46 75%, #047857 100%)",
-    hotspot:     "radial-gradient(ellipse at 80% 15%, rgba(52,211,153,0.30) 0%, transparent 55%)",
-    avatarGrad:  "linear-gradient(140deg, #065F46 0%, #10B981 100%)",
-    specialtyBg: "#F0FDF4",
-    specialtyFg: "#047857",
-    slotBg:      "#F0FDF4",
-    slotBorder:  "#BBF7D0",
-    slotFg:      "#047857",
+    headerGrad:  "linear-gradient(150deg, #1a0533 0%, #6d28d9 45%, #a855f7 75%, #d946ef 100%)",
+    hotspot:     "radial-gradient(ellipse at 82% 18%, rgba(217,70,239,0.32) 0%, transparent 55%)",
+    avatarGrad:  "linear-gradient(140deg, #7c3aed 0%, #d946ef 100%)",
+    specialtyBg: "#fdf4ff",
+    specialtyFg: "#a21caf",
+    slotBg:      "#fdf4ff",
+    slotBorder:  "#f0abfc",
+    slotFg:      "#a21caf",
   },
 ];
 
@@ -620,7 +567,8 @@ export default function CategoriesSection({ categories }: Props) {
           </div>
 
           {/* Cards grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="flex justify-center">
+            <div className="w-full max-w-sm">
             {FEATURED_MOCK.map((biz) => (
               <FeaturedCard
                 key={biz.id}
@@ -628,6 +576,7 @@ export default function CategoriesSection({ categories }: Props) {
                 lang={lang}
               />
             ))}
+            </div>
           </div>
 
           {/* Mobile view-all for businesses */}
