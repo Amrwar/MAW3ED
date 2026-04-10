@@ -81,7 +81,7 @@ export default async function SettingsPage() {
       profile={profile}
       availability={fullWeek}
       cities={cities.map((c) => ({ id: c.id, nameAr: c.nameAr }))}
-      categories={categories.map((c) => ({ id: c.id, nameAr: c.nameAr, icon: c.icon }))}
+      categories={categories.map((c) => ({ id: c.id, nameAr: c.nameAr, nameEn: c.nameEn ?? c.nameAr, icon: c.icon }))}
       services={services}
       depositEnabled={business.depositEnabled}
       depositPercent={business.depositPercent}

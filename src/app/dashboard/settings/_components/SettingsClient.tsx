@@ -37,7 +37,7 @@ export type AvailabilityDay = {
 };
 
 export type City         = { id: string; nameAr: string };
-export type CategoryItem = { id: string; nameAr: string; icon: string };
+export type CategoryItem = { id: string; nameAr: string; nameEn: string; icon: string };
 export type ServicePreview = { nameAr: string; duration: number; price: number; currency: string };
 
 type Props = {

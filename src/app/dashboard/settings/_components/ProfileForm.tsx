@@ -350,7 +350,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
             >
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.icon} {c.nameAr}
+                  {c.icon} {isAr ? c.nameAr : c.nameEn}
                 </option>
               ))}
             </select>
