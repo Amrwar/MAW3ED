@@ -19,15 +19,21 @@ export default async function DashboardLayout({
   const tokenBusinessId = session.user.businessId;
 
   // Core query — only fields that have always existed
-  const business = tokenBusinessId
+  // Try by tokenBusinessId first (fast path), then fall back to ownerId.
+  // The fallback handles stale JWT tokens where businessId points to a deleted business.
+  let business = tokenBusinessId
     ? await db.business.findUnique({
         where:  { id: tokenBusinessId },
         select: { id: true, nameAr: true, businessType: true, city: { select: { nameAr: true } } },
       })
-    : await db.business.findUnique({
-        where:  { ownerId: session.user.id },
-        select: { id: true, nameAr: true, businessType: true, city: { select: { nameAr: true } } },
-      });
+    : null;
+
+  if (!business) {
+    business = await db.business.findUnique({
+      where:  { ownerId: session.user.id },
+      select: { id: true, nameAr: true, businessType: true, city: { select: { nameAr: true } } },
+    });
+  }
 
   if (!business) redirect("/onboarding");
 

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Logo from "@/components/shared/Logo";
+import { db } from "@/lib/db";
 
 export default async function OnboardingLayout({
   children,
@@ -9,9 +10,15 @@ export default async function OnboardingLayout({
 }) {
   const session = await auth();
 
-  // Already onboarded → go to dashboard
-  if (session?.user?.businessId) {
-    redirect("/dashboard");
+  if (session?.user?.id) {
+    // Verify the business actually exists in DB — don't trust the JWT alone.
+    // A stale token with a deleted businessId would otherwise cause an infinite loop
+    // between /onboarding and /dashboard.
+    const existing = await db.business.findUnique({
+      where:  { ownerId: session.user.id },
+      select: { id: true },
+    });
+    if (existing) redirect("/dashboard");
   }
 
   return (
