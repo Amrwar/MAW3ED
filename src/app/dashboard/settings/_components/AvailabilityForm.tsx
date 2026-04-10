@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { Loader2, Check, X, Clock, CalendarDays } from "lucide-react";
 import type { AvailabilityDay } from "./SettingsClient";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const DAY_NAMES = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+const DAY_NAMES_AR = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 // Friday & Saturday are highlighted as typical weekend in EGY/KSA contexts
 const WEEKEND_DAYS = new Set([5, 6]);
@@ -41,6 +43,10 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
   const [success, setSuccess] = useState(false);
   const [error,   setError]   = useState("");
 
+  const { lang } = useLanguage();
+  const isAr = lang === "ar";
+  const DAY_NAMES = isAr ? DAY_NAMES_AR : DAY_NAMES_EN;
+
   function toggleDay(i: number) {
     setDays((prev) =>
       prev.map((d) => d.dayOfWeek === i ? { ...d, isClosed: !d.isClosed } : d)
@@ -58,7 +64,10 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
   function validate(): string | null {
     for (const d of days) {
       if (d.isClosed) continue;
-      if (!d.openTime || !d.closeTime) return `أدخل وقت العمل ليوم ${DAY_NAMES[d.dayOfWeek]}`;
+      if (!d.openTime || !d.closeTime)
+        return isAr
+          ? `أدخل وقت العمل ليوم ${DAY_NAMES_AR[d.dayOfWeek]}`
+          : `Enter working hours for ${DAY_NAMES_EN[d.dayOfWeek]}`;
 
       const [oh, om] = d.openTime.split(":").map(Number);
       const [ch, cm] = d.closeTime.split(":").map(Number);
@@ -66,10 +75,14 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
       const closeMin = ch * 60 + cm;
 
       if (closeMin <= openMin) {
-        return `وقت الإغلاق يجب أن يكون بعد وقت الفتح في يوم ${DAY_NAMES[d.dayOfWeek]}`;
+        return isAr
+          ? `وقت الإغلاق يجب أن يكون بعد وقت الفتح في يوم ${DAY_NAMES_AR[d.dayOfWeek]}`
+          : `Close time must be after open time for ${DAY_NAMES_EN[d.dayOfWeek]}`;
       }
       if (closeMin - openMin < 30) {
-        return `يجب أن يكون وقت العمل 30 دقيقة على الأقل في يوم ${DAY_NAMES[d.dayOfWeek]}`;
+        return isAr
+          ? `يجب أن يكون وقت العمل 30 دقيقة على الأقل في يوم ${DAY_NAMES_AR[d.dayOfWeek]}`
+          : `Working hours must be at least 30 minutes for ${DAY_NAMES_EN[d.dayOfWeek]}`;
       }
     }
     return null;
@@ -91,12 +104,12 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
       });
 
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "حدث خطأ أثناء الحفظ"); return; }
+      if (!res.ok) { setError(data.error || (isAr ? "حدث خطأ أثناء الحفظ" : "An error occurred while saving")); return; }
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch {
-      setError("حدث خطأ في الاتصال");
+      setError(isAr ? "حدث خطأ في الاتصال" : "Connection error");
     } finally {
       setSaving(false);
     }
@@ -126,12 +139,12 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
           <div>
             <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>
               <span style={{ color: "#1D4ED8" }}>{openCount}</span>
-              {" "}أيام عمل ·{" "}
+              {isAr ? ` أيام عمل · ` : ` working day(s) · `}
               <span style={{ color: "#94A3B8" }}>{7 - openCount}</span>
-              {" "}أيام إجازة
+              {isAr ? " أيام إجازة" : " day(s) off"}
             </p>
             <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>
-              التغييرات تؤثر فورًا على الحجوزات الجديدة
+              {isAr ? "التغييرات تؤثر فورًا على الحجوزات الجديدة" : "Changes take effect immediately on new bookings"}
             </p>
           </div>
         </div>
@@ -158,7 +171,9 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
               color:      openCount > 0 ? "#15803D" : "#B91C1C",
             }}
           >
-            {openCount > 0 ? "جدولك نشط" : "لا أيام عمل"}
+            {openCount > 0
+              ? (isAr ? "جدولك نشط" : "Schedule active")
+              : (isAr ? "لا أيام عمل" : "No working days")}
           </span>
         </div>
       </div>
@@ -177,15 +192,15 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
         <div
           className="grid items-center px-5 py-2.5"
           style={{
-            gridTemplateColumns: "48px 72px 1fr",
+            gridTemplateColumns: "48px 100px 1fr",
             gap:                 16,
             background:          "#FAFBFD",
             borderBottom:        "1px solid #F1F5F9",
           }}
         >
-          <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>الحالة</span>
-          <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>اليوم</span>
-          <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>وقت العمل</span>
+          <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>{isAr ? "الحالة" : "Status"}</span>
+          <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>{isAr ? "اليوم" : "Day"}</span>
+          <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>{isAr ? "وقت العمل" : "Working Hours"}</span>
         </div>
 
         {days.map((day, idx) => {
@@ -198,14 +213,12 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
               key={day.dayOfWeek}
               className="grid items-center px-5"
               style={{
-                gridTemplateColumns: "48px 72px 1fr",
+                gridTemplateColumns: "48px 100px 1fr",
                 gap:                 16,
                 paddingTop:          14,
                 paddingBottom:       14,
                 borderBottom:        isLast ? "none" : "1px solid #F8FAFC",
-                background:          isOpen
-                  ? "#FFFFFF"
-                  : "#FAFBFD",
+                background:          isOpen ? "#FFFFFF" : "#FAFBFD",
                 transition:          "background 0.15s",
               }}
             >
@@ -255,10 +268,10 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
                 {DAY_NAMES[day.dayOfWeek]}
                 {isWeekend && (
                   <span
-                    className="me-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                    className="ms-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
                     style={{ background: "#F1F5F9", color: "#64748B" }}
                   >
-                    إجازة
+                    {isAr ? "إجازة" : "Off"}
                   </span>
                 )}
               </span>
@@ -295,10 +308,10 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
                       <span
                         className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
                         style={{ background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE" }}
-                        dir="rtl"
+                        dir="ltr"
                       >
                         <Clock size={10} />
-                        {h > 0 && `${h}س`}{m > 0 && ` ${m}د`}
+                        {h > 0 && `${h}${isAr ? "س" : "h"}`}{m > 0 && ` ${m}${isAr ? "د" : "m"}`}
                       </span>
                     );
                   })()}
@@ -308,7 +321,7 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
                   className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
                   style={{ background: "#F1F5F9", color: "#94A3B8", width: "fit-content" }}
                 >
-                  إجازة
+                  {isAr ? "إجازة" : "Day off"}
                 </span>
               )}
             </div>
@@ -343,7 +356,7 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
             <Check size={10} strokeWidth={2.5} style={{ color: "#16A34A" }} />
           </div>
           <p style={{ fontSize: 13, color: "#15803D", fontWeight: 600 }}>
-            تم حفظ أوقات العمل بنجاح
+            {isAr ? "تم حفظ أوقات العمل بنجاح" : "Working hours saved successfully"}
           </p>
         </div>
       )}
@@ -358,7 +371,7 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
         }}
       >
         <p style={{ fontSize: 12, color: "#94A3B8" }}>
-          التعديلات تؤثر فوراً على الحجوزات الجديدة
+          {isAr ? "التعديلات تؤثر فوراً على الحجوزات الجديدة" : "Changes take effect immediately on new bookings"}
         </p>
         <button
           onClick={handleSave}
@@ -391,12 +404,12 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
           {saving ? (
             <>
               <Loader2 size={14} className="animate-spin" />
-              جاري الحفظ...
+              {isAr ? "جاري الحفظ..." : "Saving..."}
             </>
           ) : (
             <>
               <Check size={14} />
-              حفظ أوقات العمل
+              {isAr ? "حفظ أوقات العمل" : "Save Working Hours"}
             </>
           )}
         </button>

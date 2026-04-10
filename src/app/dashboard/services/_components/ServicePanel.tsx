@@ -6,6 +6,7 @@ import {
   FileText, Languages, CheckCircle2, Sparkles,
 } from "lucide-react";
 import type { Service } from "./ServicesClient";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const DURATIONS = [10, 15, 20, 30, 45, 60, 75, 90, 120, 150, 180, 240];
 
@@ -140,6 +141,9 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState("");
 
+  const { lang } = useLanguage();
+  const isAr = lang === "ar";
+
   useEffect(() => {
     if (!open) return;
     setError("");
@@ -164,9 +168,18 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!form.nameAr.trim()) { setError("أدخل اسم الخدمة بالعربية — هذا الحقل مطلوب"); return; }
-    if (form.duration < 5)   { setError("يجب أن تكون مدة الخدمة 5 دقائق على الأقل"); return; }
-    if (form.price < 0)      { setError("السعر لا يمكن أن يكون سالبًا"); return; }
+    if (!form.nameAr.trim()) {
+      setError(isAr ? "أدخل اسم الخدمة بالعربية — هذا الحقل مطلوب" : "Enter the service name in Arabic — this field is required");
+      return;
+    }
+    if (form.duration < 5) {
+      setError(isAr ? "يجب أن تكون مدة الخدمة 5 دقائق على الأقل" : "Service duration must be at least 5 minutes");
+      return;
+    }
+    if (form.price < 0) {
+      setError(isAr ? "السعر لا يمكن أن يكون سالبًا" : "Price cannot be negative");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -185,7 +198,10 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "حدث خطأ غير متوقع — حاول مجدداً"); return; }
+      if (!res.ok) {
+        setError(data.error || (isAr ? "حدث خطأ غير متوقع — حاول مجدداً" : "An unexpected error occurred — please try again"));
+        return;
+      }
       onSave(
         {
           id:            data.id,
@@ -201,7 +217,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
         !editing,
       );
     } catch {
-      setError("حدث خطأ في الاتصال — تحقق من الإنترنت وحاول مجدداً");
+      setError(isAr ? "حدث خطأ في الاتصال — تحقق من الإنترنت وحاول مجدداً" : "Connection error — check your internet and try again");
     } finally {
       setSaving(false);
     }
@@ -217,19 +233,13 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
         onClick={onClose}
       />
 
-      {/* Panel
-          ─ top-0 + h-[100dvh]: respects the dynamic viewport on mobile browsers
-            (inset-y-0 uses window.innerHeight which may include the browser toolbar)
-          ─ flex flex-col: three-part layout: header | body | footer
-      */}
       <div
         className="fixed top-0 end-0 z-50 w-full max-w-[460px] bg-white flex flex-col"
         style={{ height: "100dvh", boxShadow: "-12px 0 48px rgba(15,23,42,0.14)" }}
       >
 
-        {/* ── HEADER — fixed, never scrolls ───────────────────── */}
+        {/* ── HEADER ───────────────────────────────────────── */}
         <div className="shrink-0" style={{ borderBottom: "1.5px solid #F1F5F9" }}>
-          {/* Accent bar */}
           <div
             style={{
               height:     3,
@@ -249,12 +259,14 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                   className="font-black text-[#0F172A] truncate"
                   style={{ fontSize: 15, letterSpacing: "-0.02em" }}
                 >
-                  {editing ? "تعديل الخدمة" : "إضافة خدمة جديدة"}
+                  {editing
+                    ? (isAr ? "تعديل الخدمة" : "Edit Service")
+                    : (isAr ? "إضافة خدمة جديدة" : "Add New Service")}
                 </h2>
                 <p style={{ fontSize: 11, color: "#94A3B8", lineHeight: 1.4 }}>
                   {editing
-                    ? "عدّل البيانات ثم احفظ التغييرات"
-                    : "أدخل تفاصيل الخدمة التي سيحجزها العملاء"}
+                    ? (isAr ? "عدّل البيانات ثم احفظ التغييرات" : "Update the details and save")
+                    : (isAr ? "أدخل تفاصيل الخدمة التي سيحجزها العملاء" : "Enter the service details customers will book")}
                 </p>
               </div>
             </div>
@@ -280,10 +292,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
           </div>
         </div>
 
-        {/* ── BODY — only this section scrolls ────────────────────
-            min-h-0 is CRITICAL: without it, a flex-1 child will not
-            honour overflow-y-auto and will expand past the footer.
-        */}
+        {/* ── BODY ─────────────────────────────────────────── */}
         <form
           id="service-form"
           onSubmit={handleSubmit}
@@ -293,7 +302,6 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             display:        "flex",
             flexDirection:  "column",
             gap:            14,
-            /* smooth momentum scroll on iOS */
             WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
           }}
         >
@@ -301,21 +309,25 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
           {/* ── Section 1: Service info ── */}
           <FormSection
             step={1}
-            title="معلومات الخدمة"
-            subtitle="اسم الخدمة ووصف يساعد العميل على اختيارها"
+            title={isAr ? "معلومات الخدمة" : "Service Info"}
+            subtitle={isAr ? "اسم الخدمة ووصف يساعد العميل على اختيارها" : "Service name and description to help customers choose"}
             icon={<FileText size={13} strokeWidth={1.75} style={{ color: "#1D4ED8" }} />}
           >
             {/* Arabic name */}
             <div>
-              <FieldLabel htmlFor="nameAr" required hint="يظهر هذا الاسم للعملاء أثناء الحجز">
-                اسم الخدمة بالعربية
+              <FieldLabel
+                htmlFor="nameAr"
+                required
+                hint={isAr ? "يظهر هذا الاسم للعملاء أثناء الحجز" : "This name is shown to customers during booking"}
+              >
+                {isAr ? "اسم الخدمة بالعربية" : "Service Name (Arabic)"}
               </FieldLabel>
               <input
                 id="nameAr"
                 type="text"
                 value={form.nameAr}
                 onChange={(e) => set("nameAr", e.target.value)}
-                placeholder="مثال: كشف عام، قص شعر، تنظيف بشرة..."
+                placeholder={isAr ? "مثال: كشف عام، قص شعر، تنظيف بشرة..." : "e.g. General Checkup, Haircut, Facial..."}
                 style={fieldBase}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
@@ -326,12 +338,12 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             <div>
               <FieldLabel htmlFor="nameEn">
                 <span className="flex items-center gap-1.5">
-                  اسم الخدمة بالإنجليزية
+                  {isAr ? "اسم الخدمة بالإنجليزية" : "Service Name (English)"}
                   <span
                     className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
                     style={{ background: "#F1F5F9", color: "#94A3B8" }}
                   >
-                    اختياري
+                    {isAr ? "اختياري" : "Optional"}
                   </span>
                 </span>
               </FieldLabel>
@@ -353,12 +365,12 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
               <FieldLabel htmlFor="descriptionAr">
                 <span className="flex items-center gap-1.5">
                   <Languages size={11} style={{ color: "#94A3B8" }} />
-                  وصف الخدمة
+                  {isAr ? "وصف الخدمة" : "Service Description"}
                   <span
                     className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
                     style={{ background: "#F1F5F9", color: "#94A3B8" }}
                   >
-                    اختياري
+                    {isAr ? "اختياري" : "Optional"}
                   </span>
                 </span>
               </FieldLabel>
@@ -366,7 +378,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                 id="descriptionAr"
                 value={form.descriptionAr}
                 onChange={(e) => set("descriptionAr", e.target.value)}
-                placeholder="وصف مختصر يشرح ما يحصل عليه العميل..."
+                placeholder={isAr ? "وصف مختصر يشرح ما يحصل عليه العميل..." : "A brief description of what the customer gets..."}
                 rows={3}
                 style={{ ...fieldBase, resize: "none", lineHeight: 1.7 }}
                 onFocus={focusStyle}
@@ -378,8 +390,8 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
           {/* ── Section 2: Price & Duration ── */}
           <FormSection
             step={2}
-            title="السعر والمدة"
-            subtitle="حدد سعر الخدمة والوقت المطلوب لتقديمها"
+            title={isAr ? "السعر والمدة" : "Price & Duration"}
+            subtitle={isAr ? "حدد سعر الخدمة والوقت المطلوب لتقديمها" : "Set the service price and the time required"}
             icon={<DollarSign size={13} strokeWidth={1.75} style={{ color: "#1D4ED8" }} />}
           >
             <div className="grid grid-cols-2 gap-3">
@@ -388,7 +400,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                 <FieldLabel htmlFor="duration" required>
                   <span className="flex items-center gap-1.5">
                     <Clock size={11} style={{ color: "#7C3AED" }} />
-                    مدة الخدمة
+                    {isAr ? "مدة الخدمة" : "Duration"}
                   </span>
                 </FieldLabel>
                 <select
@@ -400,11 +412,11 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                   onBlur={blurStyle}
                 >
                   {DURATIONS.map((d) => (
-                    <option key={d} value={d}>{d} دقيقة</option>
+                    <option key={d} value={d}>{d} {isAr ? "دقيقة" : "min"}</option>
                   ))}
                 </select>
                 <p style={{ fontSize: 10, color: "#94A3B8", marginTop: 3 }}>
-                  لحجز الوقت تلقائياً
+                  {isAr ? "لحجز الوقت تلقائياً" : "For automatic time blocking"}
                 </p>
               </div>
 
@@ -413,7 +425,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                 <FieldLabel htmlFor="price" required>
                   <span className="flex items-center gap-1.5">
                     <DollarSign size={11} style={{ color: "#B45309" }} />
-                    السعر
+                    {isAr ? "السعر" : "Price"}
                   </span>
                 </FieldLabel>
                 <div className="relative">
@@ -433,11 +445,11 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                     className="absolute top-1/2 -translate-y-1/2 text-xs font-semibold pointer-events-none"
                     style={{ insetInlineStart: 10, color: "#94A3B8", fontSize: 11 }}
                   >
-                    ج.م
+                    {isAr ? "ج.م" : "EGP"}
                   </span>
                 </div>
                 <p style={{ fontSize: 10, color: "#94A3B8", marginTop: 3 }}>
-                  اترك 0 للمجانية
+                  {isAr ? "اترك 0 للمجانية" : "Leave 0 for free"}
                 </p>
               </div>
             </div>
@@ -450,7 +462,9 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
               >
                 <CheckCircle2 size={12} style={{ color: "#3B82F6" }} />
                 <span style={{ color: "#1D4ED8", fontWeight: 600, fontSize: 12 }}>
-                  معاينة: {form.price.toLocaleString("ar-EG")} ج.م · {form.duration} دقيقة
+                  {isAr
+                    ? `معاينة: ${form.price.toLocaleString("ar-EG")} ج.م · ${form.duration} دقيقة`
+                    : `Preview: ${form.price.toLocaleString("en-US")} EGP · ${form.duration} min`}
                 </span>
               </div>
             )}
@@ -459,8 +473,8 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
           {/* ── Section 3: Status ── */}
           <FormSection
             step={3}
-            title="حالة الخدمة"
-            subtitle="تحكم في ظهور الخدمة للعملاء"
+            title={isAr ? "حالة الخدمة" : "Service Status"}
+            subtitle={isAr ? "تحكم في ظهور الخدمة للعملاء" : "Control whether the service is visible to customers"}
             icon={<CheckCircle2 size={13} strokeWidth={1.75} style={{ color: "#1D4ED8" }} />}
           >
             <div
@@ -477,12 +491,14 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                   className="font-bold"
                   style={{ fontSize: 13, color: form.isAvailable ? "#15803D" : "#475569" }}
                 >
-                  {form.isAvailable ? "متاحة للحجز" : "غير متاحة"}
+                  {form.isAvailable
+                    ? (isAr ? "متاحة للحجز" : "Available for booking")
+                    : (isAr ? "غير متاحة" : "Not available")}
                 </p>
                 <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>
                   {form.isAvailable
-                    ? "ظاهرة للعملاء ويمكن حجزها الآن"
-                    : "معطّلة مؤقتاً دون حذف"}
+                    ? (isAr ? "ظاهرة للعملاء ويمكن حجزها الآن" : "Visible to customers and can be booked now")
+                    : (isAr ? "معطّلة مؤقتاً دون حذف" : "Temporarily disabled without deleting")}
                 </p>
               </div>
 
@@ -539,12 +555,10 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             </div>
           )}
 
-          {/* Bottom breathing room — ensures last card clears the sticky footer
-              even with iOS scroll-bounce / safe-area insets */}
           <div style={{ height: 16 }} />
         </form>
 
-        {/* ── FOOTER — fixed, never scrolls ────────────────────── */}
+        {/* ── FOOTER ───────────────────────────────────────── */}
         <div
           className="shrink-0 px-5 py-3"
           style={{
@@ -556,8 +570,8 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
           {/* Helper */}
           <p style={{ fontSize: 11, color: "#94A3B8", marginBottom: 10, textAlign: "center" }}>
             {editing
-              ? "سيتم تحديث الخدمة فوراً على صفحة حجزك"
-              : "بعد الإضافة يمكنك تعديل أي بيانات في أي وقت"}
+              ? (isAr ? "سيتم تحديث الخدمة فوراً على صفحة حجزك" : "Service will be updated immediately on your booking page")
+              : (isAr ? "بعد الإضافة يمكنك تعديل أي بيانات في أي وقت" : "After adding, you can edit any details at any time")}
           </p>
 
           <div className="flex gap-3">
@@ -587,7 +601,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                 el.style.color       = "#475569";
               }}
             >
-              إلغاء
+              {isAr ? "إلغاء" : "Cancel"}
             </button>
 
             {/* Submit */}
@@ -624,10 +638,12 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
               {saving ? (
                 <>
                   <Loader2 size={15} className="animate-spin" />
-                  جاري الحفظ...
+                  {isAr ? "جاري الحفظ..." : "Saving..."}
                 </>
               ) : (
-                editing ? "حفظ التعديلات" : "إضافة الخدمة"
+                editing
+                  ? (isAr ? "حفظ التعديلات" : "Save Changes")
+                  : (isAr ? "إضافة الخدمة" : "Add Service")
               )}
             </button>
           </div>

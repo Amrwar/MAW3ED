@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { Profile, City, CategoryItem } from "./SettingsClient";
 import ImageUpload from "@/components/shared/ImageUpload";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
   profile:    Profile;
@@ -147,6 +148,9 @@ function Field({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function ProfileForm({ profile, cities, categories, onSaved }: Props) {
+  const { lang } = useLanguage();
+  const isAr = lang === "ar";
+
   const [form, setForm] = useState({
     nameAr:     profile.nameAr,
     nameEn:     profile.nameEn,
@@ -174,7 +178,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
     setError("");
     setSuccess(false);
 
-    if (!form.nameAr.trim()) { setError("اسم العمل مطلوب"); return; }
+    if (!form.nameAr.trim()) { setError(isAr ? "اسم العمل مطلوب" : "Business name is required"); return; }
 
     setSaving(true);
     try {
@@ -197,13 +201,13 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
       });
 
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "حدث خطأ أثناء الحفظ"); return; }
+      if (!res.ok) { setError(data.error || (isAr ? "حدث خطأ أثناء الحفظ" : "An error occurred while saving")); return; }
 
       setSuccess(true);
       onSaved({ ...form, coverImage, logoImage });
       setTimeout(() => setSuccess(false), 3000);
     } catch {
-      setError("حدث خطأ في الاتصال");
+      setError(isAr ? "حدث خطأ في الاتصال" : "Connection error");
     } finally {
       setSaving(false);
     }
@@ -215,12 +219,12 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
       {/* ── Section 1: Visual Identity ─────────────────────── */}
       <Section
         icon={<Palette size={14} />}
-        title="الهوية البصرية"
-        subtitle="شعار النشاط وصورة الغلاف التي تظهر في صفحة الحجز"
+        title={isAr ? "الهوية البصرية" : "Visual Identity"}
+        subtitle={isAr ? "شعار النشاط وصورة الغلاف التي تظهر في صفحة الحجز" : "Business logo and cover image shown on the booking page"}
       >
         {/* Cover image */}
         <div style={{ marginBottom: 20 }}>
-          <p style={label}>صورة الغلاف</p>
+          <p style={label}>{isAr ? "صورة الغلاف" : "Cover Image"}</p>
           <div
             style={{
               borderRadius: 14,
@@ -235,12 +239,12 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
               onRemove={() => setCoverImage(null)}
             />
           </div>
-          <p style={hint}>JPG أو PNG أو WebP · حتى 5MB · الحجم المقترح: 1200×400px</p>
+          <p style={hint}>{isAr ? "JPG أو PNG أو WebP · حتى 5MB · الحجم المقترح: 1200×400px" : "JPG, PNG or WebP · up to 5MB · recommended size: 1200×400px"}</p>
         </div>
 
         {/* Logo image — side by side with helper text */}
         <div>
-          <p style={label}>شعار النشاط</p>
+          <p style={label}>{isAr ? "شعار النشاط" : "Business Logo"}</p>
           <div className="flex items-start gap-4">
             <div
               style={{
@@ -259,12 +263,22 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
             </div>
             <div style={{ paddingTop: 6 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                شعار مربع عالي الجودة
+                {isAr ? "شعار مربع عالي الجودة" : "High-quality square logo"}
               </p>
               <p style={{ fontSize: 11, color: "#94A3B8", lineHeight: 1.7 }}>
-                PNG أو JPG أو WebP · حتى 5MB
-                <br />الحجم المقترح: 400×400px
-                <br />يظهر على بطاقة الحجز وصفحتك العامة
+                {isAr ? (
+                  <>
+                    PNG أو JPG أو WebP · حتى 5MB
+                    <br />الحجم المقترح: 400×400px
+                    <br />يظهر على بطاقة الحجز وصفحتك العامة
+                  </>
+                ) : (
+                  <>
+                    PNG, JPG or WebP · up to 5MB
+                    <br />Recommended size: 400×400px
+                    <br />Shown on the booking card and your public page
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -274,24 +288,27 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
       {/* ── Section 2: Basic Info ──────────────────────────── */}
       <Section
         icon={<LayoutGrid size={14} />}
-        title="المعلومات الأساسية"
-        subtitle="اسم النشاط والتخصص والمدينة والنبذة التعريفية"
+        title={isAr ? "المعلومات الأساسية" : "Basic Information"}
+        subtitle={isAr ? "اسم النشاط والتخصص والمدينة والنبذة التعريفية" : "Business name, category, city and description"}
         iconBg="#F5F3FF"
         iconColor="#6D28D9"
       >
         {/* Name row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 16 }}>
-          <Field label="اسم العمل بالعربية" required>
+          <Field label={isAr ? "اسم العمل بالعربية" : "Business Name (Arabic)"} required>
             <input
               value={form.nameAr}
               onChange={(e) => set("nameAr", e.target.value)}
               style={fieldBase}
-              placeholder="مثال: عيادة الدكتور أحمد"
+              placeholder={isAr ? "مثال: عيادة الدكتور أحمد" : "e.g. عيادة الدكتور أحمد"}
               onFocus={onFocus}
               onBlur={onBlur}
             />
           </Field>
-          <Field label="اسم العمل بالإنجليزية" hint="اختياري — للعملاء الدوليين">
+          <Field
+            label={isAr ? "اسم العمل بالإنجليزية" : "Business Name (English)"}
+            hint={isAr ? "اختياري — للعملاء الدوليين" : "Optional — for international customers"}
+          >
             <input
               value={form.nameEn}
               onChange={(e) => set("nameEn", e.target.value)}
@@ -307,14 +324,14 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
         {/* Tagline */}
         <div style={{ marginBottom: 16 }}>
           <Field
-            label={`شعار قصير (${form.taglineAr.length}/120)`}
-            hint="جملة قصيرة تصف نشاطك — تظهر تحت الاسم في الصفحة"
+            label={isAr ? `شعار قصير (${form.taglineAr.length}/120)` : `Short Tagline (${form.taglineAr.length}/120)`}
+            hint={isAr ? "جملة قصيرة تصف نشاطك — تظهر تحت الاسم في الصفحة" : "A short sentence describing your business — shown below the name"}
           >
             <input
               value={form.taglineAr}
               onChange={(e) => set("taglineAr", e.target.value.slice(0, 120))}
               style={fieldBase}
-              placeholder="مثال: أفضل خدمات العناية بالبشرة في القاهرة"
+              placeholder={isAr ? "مثال: أفضل خدمات العناية بالبشرة في القاهرة" : "e.g. Best skincare services in Cairo"}
               onFocus={onFocus}
               onBlur={onBlur}
             />
@@ -323,7 +340,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
 
         {/* Category + City row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 16 }}>
-          <Field label="التخصص">
+          <Field label={isAr ? "التخصص" : "Category"}>
             <select
               value={form.categoryId}
               onChange={(e) => set("categoryId", e.target.value)}
@@ -338,7 +355,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
               ))}
             </select>
           </Field>
-          <Field label="المدينة">
+          <Field label={isAr ? "المدينة" : "City"}>
             <select
               value={form.cityId}
               onChange={(e) => set("cityId", e.target.value)}
@@ -357,15 +374,15 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
 
         {/* About */}
         <Field
-          label={`نبذة عن العمل (${form.about.length}/600)`}
-          hint="وصف مختصر يساعد العملاء على معرفة المزيد — تظهر في صفحة الحجز"
+          label={isAr ? `نبذة عن العمل (${form.about.length}/600)` : `About Your Business (${form.about.length}/600)`}
+          hint={isAr ? "وصف مختصر يساعد العملاء على معرفة المزيد — تظهر في صفحة الحجز" : "A brief description to help customers learn more — shown on the booking page"}
         >
           <textarea
             value={form.about}
             onChange={(e) => set("about", e.target.value.slice(0, 600))}
             rows={4}
             style={{ ...fieldBase, resize: "none", lineHeight: 1.7 }}
-            placeholder="اكتب وصفًا مختصرًا يساعد العملاء على معرفة المزيد عن عملك..."
+            placeholder={isAr ? "اكتب وصفًا مختصرًا يساعد العملاء على معرفة المزيد عن عملك..." : "Write a brief description to help customers learn more about your business..."}
             onFocus={onFocus}
             onBlur={onBlur}
           />
@@ -375,14 +392,14 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
       {/* ── Section 3: Contact ──────────────────────────────── */}
       <Section
         icon={<Phone size={14} />}
-        title="بيانات التواصل"
-        subtitle="أرقام الهاتف وواتساب وعنوان النشاط"
+        title={isAr ? "بيانات التواصل" : "Contact Information"}
+        subtitle={isAr ? "أرقام الهاتف وواتساب وعنوان النشاط" : "Phone numbers, WhatsApp and business address"}
         iconBg="#ECFDF5"
         iconColor="#065F46"
       >
         {/* Phone + WhatsApp */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 16 }}>
-          <Field label="رقم الهاتف">
+          <Field label={isAr ? "رقم الهاتف" : "Phone Number"}>
             <div className="relative">
               <input
                 value={form.phone}
@@ -400,7 +417,10 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
               />
             </div>
           </Field>
-          <Field label="رقم واتساب" hint="مع رمز الدولة — مثال: 201XXXXXXXXX+">
+          <Field
+            label={isAr ? "رقم واتساب" : "WhatsApp Number"}
+            hint={isAr ? "مع رمز الدولة — مثال: 201XXXXXXXXX+" : "With country code — e.g. +201XXXXXXXXX"}
+          >
             <div className="relative">
               <input
                 value={form.whatsapp}
@@ -426,13 +446,16 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
         </div>
 
         {/* Address */}
-        <Field label="العنوان" hint="الحي والشارع والمدينة كما تريد أن يظهر للعملاء">
+        <Field
+          label={isAr ? "العنوان" : "Address"}
+          hint={isAr ? "الحي والشارع والمدينة كما تريد أن يظهر للعملاء" : "Neighborhood, street and city as you want it shown to customers"}
+        >
           <div className="relative">
             <input
               value={form.address}
               onChange={(e) => set("address", e.target.value)}
               style={{ ...fieldBase, paddingInlineEnd: 36 }}
-              placeholder="مثال: ٤ شارع التحرير، المعادي، القاهرة"
+              placeholder={isAr ? "مثال: ٤ شارع التحرير، المعادي، القاهرة" : "e.g. 4 Tahrir St., Maadi, Cairo"}
               onFocus={onFocus}
               onBlur={onBlur}
             />
@@ -472,7 +495,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
             <Check size={10} strokeWidth={2.5} style={{ color: "#16A34A" }} />
           </div>
           <p style={{ fontSize: 13, color: "#15803D", fontWeight: 600 }}>
-            تم حفظ التغييرات بنجاح
+            {isAr ? "تم حفظ التغييرات بنجاح" : "Changes saved successfully"}
           </p>
         </div>
       )}
@@ -487,7 +510,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
         }}
       >
         <p style={{ fontSize: 12, color: "#94A3B8" }}>
-          التغييرات ستُحدَّث فوراً على صفحة حجزك العامة
+          {isAr ? "التغييرات ستُحدَّث فوراً على صفحة حجزك العامة" : "Changes will update immediately on your public booking page"}
         </p>
         <button
           type="submit"
@@ -520,12 +543,12 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
           {saving ? (
             <>
               <Loader2 size={14} className="animate-spin" />
-              جاري الحفظ...
+              {isAr ? "جاري الحفظ..." : "Saving..."}
             </>
           ) : (
             <>
               <Check size={14} />
-              حفظ التغييرات
+              {isAr ? "حفظ التغييرات" : "Save Changes"}
             </>
           )}
         </button>

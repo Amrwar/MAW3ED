@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, CreditCard, Info, Lock, Check, X } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DepositSettingsFormProps {
   initialEnabled:  boolean;
@@ -38,6 +39,9 @@ export default function DepositSettingsForm({
   const [saved,    setSaved]    = useState(false);
   const [error,    setError]    = useState<string | null>(null);
 
+  const { lang } = useLanguage();
+  const isAr = lang === "ar";
+
   async function handleSave() {
     setSaving(true);
     setSaved(false);
@@ -51,13 +55,13 @@ export default function DepositSettingsForm({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "حدث خطأ أثناء الحفظ");
+        setError(data.error ?? (isAr ? "حدث خطأ أثناء الحفظ" : "An error occurred while saving"));
         return;
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
-      setError("تعذّر الاتصال بالخادم");
+      setError(isAr ? "تعذّر الاتصال بالخادم" : "Could not connect to server");
     } finally {
       setSaving(false);
     }
@@ -78,9 +82,11 @@ export default function DepositSettingsForm({
             <Lock size={14} style={{ color: "#D97706" }} />
           </div>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>إعدادات العربون</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>
+              {isAr ? "إعدادات العربون" : "Deposit Settings"}
+            </p>
             <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>
-              متاح في خطة الاحترافي فقط
+              {isAr ? "متاح في خطة الاحترافي فقط" : "Available on Pro plan only"}
             </p>
           </div>
         </div>
@@ -92,7 +98,7 @@ export default function DepositSettingsForm({
             <Lock size={26} style={{ color: "#D97706" }} />
           </div>
           <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 8 }}>
-            ميزة حجب العربون
+            {isAr ? "ميزة حجب العربون" : "Deposit Feature"}
           </h2>
           <p
             style={{
@@ -100,9 +106,19 @@ export default function DepositSettingsForm({
               maxWidth: 340, margin: "0 auto 24px",
             }}
           >
-            إعدادات العربون متاحة فقط في خطة{" "}
-            <strong style={{ color: "#D97706" }}>الاحترافي (PRO)</strong>.
-            يمكنك الترقية الآن للبدء في استقبال مدفوعات مسبقة من عملائك.
+            {isAr ? (
+              <>
+                إعدادات العربون متاحة فقط في خطة{" "}
+                <strong style={{ color: "#D97706" }}>الاحترافي (PRO)</strong>.
+                يمكنك الترقية الآن للبدء في استقبال مدفوعات مسبقة من عملائك.
+              </>
+            ) : (
+              <>
+                Deposit settings are available only on the{" "}
+                <strong style={{ color: "#D97706" }}>Pro plan</strong>.
+                Upgrade now to start collecting upfront payments from your customers.
+              </>
+            )}
           </p>
           <Link
             href="/pricing"
@@ -114,7 +130,7 @@ export default function DepositSettingsForm({
               boxShadow:  "0 3px 12px rgba(217,119,6,0.3)",
             }}
           >
-            عرض الخطط والأسعار
+            {isAr ? "عرض الخطط والأسعار" : "View Plans & Pricing"}
           </Link>
         </div>
       </div>
@@ -137,9 +153,11 @@ export default function DepositSettingsForm({
             <CreditCard size={14} style={{ color: "#1D4ED8" }} />
           </div>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>إعدادات العربون</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>
+              {isAr ? "إعدادات العربون" : "Deposit Settings"}
+            </p>
             <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>
-              اطلب من العملاء دفع عربون لتأكيد الحجز
+              {isAr ? "اطلب من العملاء دفع عربون لتأكيد الحجز" : "Require customers to pay a deposit to confirm their booking"}
             </p>
           </div>
         </div>
@@ -165,12 +183,14 @@ export default function DepositSettingsForm({
                   marginBottom: 2,
                 }}
               >
-                {enabled ? "العربون مفعّل" : "العربون معطّل"}
+                {enabled
+                  ? (isAr ? "العربون مفعّل" : "Deposit enabled")
+                  : (isAr ? "العربون معطّل" : "Deposit disabled")}
               </p>
               <p style={{ fontSize: 11, color: "#94A3B8" }}>
                 {enabled
-                  ? "لن يُؤكَّد الحجز إلا بعد دفع العربون"
-                  : "عند التفعيل، سيُطلب من العملاء دفع عربون"}
+                  ? (isAr ? "لن يُؤكَّد الحجز إلا بعد دفع العربون" : "Booking won't be confirmed until deposit is paid")
+                  : (isAr ? "عند التفعيل، سيُطلب من العملاء دفع عربون" : "When enabled, customers will be asked to pay a deposit")}
               </p>
             </div>
             <button
@@ -219,7 +239,7 @@ export default function DepositSettingsForm({
                   marginBottom: 8,
                 }}
               >
-                نسبة العربون من سعر الخدمة
+                {isAr ? "نسبة العربون من سعر الخدمة" : "Deposit percentage of service price"}
               </label>
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -278,7 +298,9 @@ export default function DepositSettingsForm({
                   style={{ background: "#EFF6FF", border: "1px solid #BFDBFE" }}
                 >
                   <span style={{ fontSize: 12, color: "#1D4ED8", fontWeight: 600 }}>
-                    مثال: خدمة 500 ج.م → عربون {Math.ceil(500 * percent / 100)} ج.م
+                    {isAr
+                      ? `مثال: خدمة 500 ج.م → عربون ${Math.ceil(500 * percent / 100)} ج.م`
+                      : `Example: 500 EGP service → deposit ${Math.ceil(500 * percent / 100)} EGP`}
                   </span>
                 </div>
               </div>
@@ -290,7 +312,9 @@ export default function DepositSettingsForm({
               >
                 <Info size={13} style={{ color: "#3B82F6", marginTop: 1, flexShrink: 0 }} />
                 <p style={{ fontSize: 11, color: "#1D4ED8", lineHeight: 1.6 }}>
-                  تأكد من إعداد حساب Paymob وإضافة متغيرات البيئة قبل تفعيل هذا الخيار.
+                  {isAr
+                    ? "تأكد من إعداد حساب Paymob وإضافة متغيرات البيئة قبل تفعيل هذا الخيار."
+                    : "Make sure your Paymob account is set up and environment variables are configured before enabling this option."}
                 </p>
               </div>
             </div>
@@ -325,7 +349,7 @@ export default function DepositSettingsForm({
             <Check size={10} strokeWidth={2.5} style={{ color: "#16A34A" }} />
           </div>
           <p style={{ fontSize: 13, color: "#15803D", fontWeight: 600 }}>
-            تم حفظ الإعدادات بنجاح
+            {isAr ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully"}
           </p>
         </div>
       )}
@@ -340,7 +364,7 @@ export default function DepositSettingsForm({
         }}
       >
         <p style={{ fontSize: 12, color: "#94A3B8" }}>
-          التغييرات تُطبَّق على الحجوزات الجديدة فور الحفظ
+          {isAr ? "التغييرات تُطبَّق على الحجوزات الجديدة فور الحفظ" : "Changes apply to new bookings immediately after saving"}
         </p>
         <button
           onClick={handleSave}
@@ -373,12 +397,12 @@ export default function DepositSettingsForm({
           {saving ? (
             <>
               <Loader2 size={14} className="animate-spin" />
-              جاري الحفظ...
+              {isAr ? "جاري الحفظ..." : "Saving..."}
             </>
           ) : (
             <>
               <Check size={14} />
-              حفظ الإعدادات
+              {isAr ? "حفظ الإعدادات" : "Save Settings"}
             </>
           )}
         </button>
