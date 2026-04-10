@@ -7,42 +7,68 @@ import type { Business } from "@/types/business";
 export default function CompanyHero({ business }: { business: Business }) {
   return (
     <div>
-      {/* ── Cover image ── */}
-      <div className="relative h-64 md:h-80 lg:h-96 w-full overflow-hidden bg-[#1E293B]">
+      {/* ── Cover banner — layered treatment ── */}
+      <div
+        className="relative w-full overflow-hidden"
+        style={{ height: "clamp(220px, 36vw, 380px)", background: "#0F172A" }}
+      >
+        {/* Layer 1: blurred atmospheric background */}
         <Image
           src={business.coverImage}
-          alt={business.nameAr}
+          alt=""
           fill
           sizes="100vw"
           className="object-cover"
           priority
+          style={{
+            filter:    "blur(28px) brightness(0.45) saturate(1.4)",
+            transform: "scale(1.12)",
+          }}
         />
-        {/* Multi-stop dark gradient for readability */}
+
+        {/* Layer 2: dark vignette overlay */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(to top, rgba(15,23,42,0.75) 0%, rgba(15,23,42,0.25) 45%, rgba(15,23,42,0.10) 75%, transparent 100%)",
+              "linear-gradient(to top, rgba(10,15,28,0.82) 0%, rgba(10,15,28,0.35) 50%, rgba(10,15,28,0.55) 100%)",
           }}
         />
 
-        {/* Decorative vignette sides */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 100%, rgba(15,23,42,0.45) 0%, transparent 70%)",
-          }}
-        />
+        {/* Layer 3: centered foreground image — contained, never cropped */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div
+            className="relative"
+            style={{
+              width:     "clamp(140px, 28vw, 280px)",
+              height:    "clamp(140px, 28vw, 280px)",
+              borderRadius: 20,
+              overflow:  "hidden",
+              boxShadow: "0 8px 48px rgba(0,0,0,0.55), 0 2px 12px rgba(0,0,0,0.4)",
+              border:    "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
+            <Image
+              src={business.coverImage}
+              alt={business.nameAr}
+              fill
+              sizes="280px"
+              className="object-contain"
+              priority
+              style={{ background: "rgba(15,23,42,0.6)" }}
+            />
+          </div>
+        </div>
 
-        {/* Top-end action pill */}
+        {/* Top-end share pill */}
         <div className="absolute top-4 end-4 flex gap-2">
           <button
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold text-white"
             style={{
-              background:     "rgba(15,23,42,0.45)",
+              background:     "rgba(15,23,42,0.5)",
               backdropFilter: "blur(12px)",
-              border:         "1px solid rgba(255,255,255,0.18)",
+              WebkitBackdropFilter: "blur(12px)",
+              border:         "1px solid rgba(255,255,255,0.15)",
             }}
           >
             <Share2 size={13} />
@@ -56,12 +82,13 @@ export default function CompanyHero({ business }: { business: Business }) {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
             style={{
               background:     business.isOpen
-                ? "rgba(34,197,94,0.90)"
+                ? "rgba(34,197,94,0.88)"
                 : "rgba(15,23,42,0.72)",
               backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
               color:          business.isOpen ? "#FFFFFF" : "#94A3B8",
               border:         business.isOpen
-                ? "1px solid rgba(255,255,255,0.25)"
+                ? "1px solid rgba(255,255,255,0.22)"
                 : "1px solid rgba(255,255,255,0.08)",
             }}
           >
@@ -83,25 +110,32 @@ export default function CompanyHero({ business }: { business: Business }) {
         <div className="container-app" dir="rtl">
           <div className="relative pb-7 pt-0">
 
-            {/* Avatar — overlaps cover */}
+            {/* Logo — overlaps cover, object-contain so nothing is clipped */}
             <div
-              className="relative -mt-14 mb-5 w-24 h-24 rounded-3xl overflow-hidden shrink-0"
+              className="-mt-12 mb-5 shrink-0 flex items-center justify-center"
               style={{
-                border:    "4px solid #FFFFFF",
-                boxShadow: "0 4px 24px rgba(59,130,246,0.18), 0 0 0 1px rgba(226,232,240,0.9)",
+                width:        88,
+                height:       88,
+                borderRadius: 20,
+                background:   "#FFFFFF",
+                border:       "3px solid #FFFFFF",
+                boxShadow:    "0 4px 24px rgba(15,23,42,0.14), 0 0 0 1px rgba(226,232,240,0.8)",
+                padding:      6,
+                position:     "relative",
               }}
             >
               {business.logoImage ? (
                 <Image
                   src={business.logoImage}
                   alt={business.nameAr}
-                  width={96}
-                  height={96}
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="88px"
+                  className="object-contain rounded-2xl"
+                  style={{ padding: 6 }}
                 />
               ) : (
                 <div
-                  className="w-full h-full flex items-center justify-center text-3xl font-black text-white"
+                  className="w-full h-full flex items-center justify-center text-3xl font-black text-white rounded-2xl"
                   style={{ background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)" }}
                 >
                   {business.nameAr[0]}
