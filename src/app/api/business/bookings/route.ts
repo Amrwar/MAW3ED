@@ -67,8 +67,10 @@ export async function GET(req: Request) {
       db.booking.findMany({
         where,
         include: {
-          service:  { select: { nameAr: true, duration: true } },
-          customer: { select: { notes: true } },
+          service:     { select: { nameAr: true, duration: true } },
+          customer:    { select: { notes: true } },
+          table:       { select: { name: true } },
+          staffMember: { select: { nameAr: true } },
         },
         orderBy: [{ date: "desc" }, { startTime: "asc" }],
         take:    limit,
@@ -93,6 +95,9 @@ export async function GET(req: Request) {
       notes:           b.notes,
       customerNotes:   b.customer?.notes ?? null,
       createdAt:       b.createdAt.toISOString(),
+      tableName:       b.table?.name        ?? null,
+      staffName:       b.staffMember?.nameAr ?? null,
+      partySize:       b.partySize           ?? null,
     }));
 
     return ok({ bookings: serialized, total, page, totalPages: Math.ceil(total / limit), limit });
@@ -223,6 +228,9 @@ export async function POST(req: Request) {
         notes:           booking.notes,
         customerNotes:   null,
         createdAt:       booking.createdAt.toISOString(),
+        tableName:       null,
+        staffName:       null,
+        partySize:       null,
       },
       201
     );

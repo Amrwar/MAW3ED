@@ -36,7 +36,8 @@ export async function POST(req: Request, { params }: Params) {
     const parsed = bookingSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
-    const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes } = parsed.data;
+    const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes,
+            tableId, staffMemberId, partySize } = parsed.data;
 
     const business = await db.business.findUnique({
       where:   { slug, isPublished: true },
@@ -60,7 +61,9 @@ export async function POST(req: Request, { params }: Params) {
     const endTime        = minutesToTime(candidateEnd);
 
     // ── Overlap conflict check ─────────────────────────────────────────────────
-    if (await hasBookingConflict(business.id, dateUTC, candidateStart, candidateEnd)) {
+    // Scope conflict check to the specific resource when provided, so multiple
+    // barbers / tables can accept bookings at the same time.
+    if (await hasBookingConflict(business.id, dateUTC, candidateStart, candidateEnd, { staffMemberId, tableId })) {
       return err("هذا الموعد محجوز بالفعل، اختر وقتًا آخر", 409);
     }
 
@@ -122,6 +125,9 @@ export async function POST(req: Request, { params }: Params) {
         notes:         notes ?? null,
         accessToken,
         depositAmount,
+        tableId:       tableId       ?? null,
+        staffMemberId: staffMemberId ?? null,
+        partySize:     partySize     ?? null,
       },
     });
 

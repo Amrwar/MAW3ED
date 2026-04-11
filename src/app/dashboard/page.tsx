@@ -117,6 +117,9 @@ export default async function DashboardPage() {
     notes:           b.notes ?? null,
     customerNotes:   null,
     createdAt:       b.createdAt.toISOString(),
+    tableName:       null,
+    staffName:       null,
+    partySize:       null,
   }));
 
   const widgetServices = business.services.map((s) => ({

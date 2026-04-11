@@ -160,6 +160,9 @@ export default function BookingDetailPanel({
               value={booking.endTime ? `${booking.startTime} – ${booking.endTime}` : booking.startTime}
               ltr
             />
+            {booking.staffName  && <InfoRow label={lang === "ar" ? "الحلاق"    : "Barber"}      value={booking.staffName}        />}
+            {booking.tableName  && <InfoRow label={lang === "ar" ? "الطاولة"   : "Table"}       value={booking.tableName}        />}
+            {booking.partySize  && <InfoRow label={lang === "ar" ? "الأشخاص"  : "Party size"}  value={String(booking.partySize)} />}
           </Section>
 
           {/* Payment */}

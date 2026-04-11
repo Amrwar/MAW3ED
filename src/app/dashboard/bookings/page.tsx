@@ -27,7 +27,11 @@ export default async function BookingsPage() {
         date:   todayUTC,
         status: { not: "CANCELLED" },
       },
-      include: { service: { select: { nameAr: true, duration: true } } },
+      include: {
+        service:     { select: { nameAr: true, duration: true } },
+        table:       { select: { name: true } },
+        staffMember: { select: { nameAr: true } },
+      },
       orderBy: { startTime: "asc" },
     }),
     // Services for filter dropdown + manual booking
@@ -62,6 +66,9 @@ export default async function BookingsPage() {
     notes:           b.notes,
     customerNotes:   null,
     createdAt:       b.createdAt.toISOString(),
+    tableName:       b.table?.name        ?? null,
+    staffName:       b.staffMember?.nameAr ?? null,
+    partySize:       b.partySize           ?? null,
   }));
 
   const serviceOptions = services.map((s) => ({

@@ -18,6 +18,9 @@ export async function GET(req: Request, { params }: Params) {
     const serviceId = searchParams.get("serviceId");
     const date      = searchParams.get("date");
 
+    const staffMemberId = searchParams.get("staffMemberId") ?? undefined;
+    const tableId       = searchParams.get("tableId") ?? undefined;
+
     if (!serviceId || !date) return err("serviceId و date مطلوبان", 400);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err("تاريخ غير صحيح", 400);
 
@@ -53,12 +56,16 @@ export async function GET(req: Request, { params }: Params) {
     // Generate all candidate slots within open hours
     const allSlots = generateSlots(rule.openTime, rule.closeTime, service.duration);
 
-    // Fetch already-booked ranges for this date (PENDING + CONFIRMED)
+    // Fetch already-booked ranges for this date (PENDING + CONFIRMED).
+    // For barbershop/restaurant: scope conflicts to the specific resource so
+    // multiple barbers / tables can be booked at the same time.
     const booked = await db.booking.findMany({
       where: {
-        businessId: business.id,
-        date:       dateUTC,
-        status:     { in: ["PENDING", "CONFIRMED"] },
+        businessId:    business.id,
+        date:          dateUTC,
+        status:        { in: ["PENDING", "CONFIRMED"] },
+        ...(staffMemberId ? { staffMemberId } : {}),
+        ...(tableId       ? { tableId       } : {}),
       },
       select: {
         startTime: true,

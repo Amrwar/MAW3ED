@@ -23,6 +23,10 @@ export type DashboardBooking = {
   notes:           string | null;
   customerNotes:   string | null;
   createdAt:       string; // ISO datetime
+  // Business-type-specific
+  tableName:       string | null;
+  staffName:       string | null;
+  partySize:       number | null;
 };
 
 export const STATUS_CONFIG: Record<

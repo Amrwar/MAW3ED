@@ -107,7 +107,7 @@ export async function POST(req: Request, { params }: Params) {
       newDateUTC,
       candidateStart,
       candidateEnd,
-      booking.id, // ← exclude self so a booking can move within the same day
+      { excludeBookingId: booking.id }, // ← exclude self so a booking can move within the same day
     );
     if (conflict) return err("هذا الموعد محجوز بالفعل، اختر وقتًا آخر", 409);
 

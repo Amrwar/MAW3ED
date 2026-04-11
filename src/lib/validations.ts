@@ -104,6 +104,11 @@ export const bookingSchema = z.object({
     .optional()
     .or(z.literal("")),
   notes:         z.string().max(500).optional(),
+  // Restaurant
+  tableId:       z.string().optional(),
+  partySize:     z.number().int().min(1).max(50).optional(),
+  // Barbershop
+  staffMemberId: z.string().optional(),
 });
 
 export type SignUpInput     = z.infer<typeof signUpSchema>;

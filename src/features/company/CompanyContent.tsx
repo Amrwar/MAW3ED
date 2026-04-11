@@ -12,12 +12,33 @@ import type { Service } from "@/types/service";
 import type { Business } from "@/types/business";
 import type { PublicBusiness } from "@/lib/data";
 
+export type PublicTable = {
+  id:        string;
+  name:      string;
+  tableType: string;
+  capacity:  number;
+  notes:     string | null;
+  photo:     string | null;
+};
+
+export type PublicStaff = {
+  id:         string;
+  nameAr:     string;
+  nameEn:     string | null;
+  role:       string | null;
+  photo:      string | null;
+  serviceIds: string[];
+};
+
 interface Props {
   business:          Business;
   services:          Service[];
   openDays:          number[];
   slug:              string;
   similarBusinesses: PublicBusiness[];
+  businessType:      "GENERAL" | "RESTAURANT" | "BARBERSHOP";
+  tables:            PublicTable[];
+  staffMembers:      PublicStaff[];
 }
 
 export default function CompanyContent({
@@ -26,6 +47,9 @@ export default function CompanyContent({
   openDays,
   slug,
   similarBusinesses,
+  businessType,
+  tables,
+  staffMembers,
 }: Props) {
   const [preselected, setPreselected] = useState<Service | null>(null);
   const widgetRef = useRef<HTMLDivElement>(null);
@@ -122,6 +146,9 @@ export default function CompanyContent({
                 slug={slug}
                 openDays={openDays}
                 preselectedService={preselected}
+                businessType={businessType}
+                tables={tables}
+                staffMembers={staffMembers}
               />
             </div>
 

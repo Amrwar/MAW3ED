@@ -68,6 +68,24 @@ export default async function CompanyPage({ params }: Params) {
 
   if (!dbBusiness) notFound();
 
+  // Fetch resource data based on businessType
+  const [tablesRaw, staffRaw] = await Promise.all([
+    dbBusiness.businessType === "RESTAURANT"
+      ? db.table.findMany({
+          where:   { businessId: dbBusiness.id, isActive: true },
+          select:  { id: true, name: true, tableType: true, capacity: true, notes: true, photo: true },
+          orderBy: { createdAt: "asc" },
+        })
+      : Promise.resolve([]),
+    dbBusiness.businessType === "BARBERSHOP"
+      ? db.staffMember.findMany({
+          where:   { businessId: dbBusiness.id, isActive: true },
+          select:  { id: true, nameAr: true, nameEn: true, role: true, photo: true, services: { select: { serviceId: true } } },
+          orderBy: { createdAt: "asc" },
+        })
+      : Promise.resolve([]),
+  ]);
+
   const similarRows = await db.business.findMany({
     where: { isPublished: true, slug: { not: slug }, categoryId: dbBusiness.categoryId },
     select: {
@@ -220,6 +238,16 @@ export default async function CompanyPage({ params }: Params) {
           openDays={openDays}
           slug={slug}
           similarBusinesses={similarBusinesses}
+          businessType={dbBusiness.businessType as "GENERAL" | "RESTAURANT" | "BARBERSHOP"}
+          tables={tablesRaw}
+          staffMembers={staffRaw.map((s) => ({
+            id:         s.id,
+            nameAr:     s.nameAr,
+            nameEn:     s.nameEn,
+            role:       s.role,
+            photo:      s.photo,
+            serviceIds: s.services.map((ss) => ss.serviceId),
+          }))}
         />
       </main>
 

@@ -92,6 +92,9 @@ export async function GET(req: Request) {
               notes:           b.notes,
               customerNotes:   null,
               createdAt:       b.createdAt.toISOString(),
+              tableName:       null,
+              staffName:       null,
+              partySize:       null,
             };
 
             sendEvent(isNew ? "BOOKING_CREATED" : "BOOKING_UPDATED", payload);
