@@ -234,9 +234,8 @@ export default function ErrorPage({
 
       {/* ── Footer strip ─────────────────────────────────────────────────────── */}
       <footer
-        className="text-center py-6 text-xs"
+        className="py-6 text-xs text-center"
         style={{ color: "#94A3B8", borderTop: "1px solid #F1F5F9" }}
-        dir="rtl"
       >
         © {new Date().getFullYear()} موعد · MAW3ED — جميع الحقوق محفوظة
       </footer>
