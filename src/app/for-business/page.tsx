@@ -124,7 +124,7 @@ export default function ForBusinessPage() {
             </div>
 
             {/* ── Main: feature cards (start) + dashboard mockup (end) ── */}
-            <div className="grid lg:grid-cols-[1fr_1.1fr] gap-7 mb-7">
+            <div className="grid md:grid-cols-2 lg:grid-cols-[1fr_1.1fr] gap-7 mb-7">
 
               {/* First 3 feature cards — stacked */}
               <div className="flex flex-col gap-5">
@@ -433,7 +433,7 @@ export default function ForBusinessPage() {
         {/* CTA */}
         <section className="section-padding bg-[var(--color-surface-2)]">
           <Container>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               <div>
                 <p className="section-eyebrow mb-2">{fb.ctaEyebrow}</p>
                 <h2 className="section-title mb-4">{fb.ctaTitle}</h2>

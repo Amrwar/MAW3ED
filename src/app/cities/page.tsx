@@ -119,7 +119,7 @@ export default function CitiesPage() {
           <div className="container-app">
             <div className="max-w-lg mx-auto">
               <div
-                className="rounded-3xl p-8 text-center overflow-hidden relative"
+                className="rounded-3xl p-5 sm:p-8 text-center overflow-hidden relative"
                 style={{
                   background: "linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(99,102,241,0.04) 100%)",
                   border:     "1px solid rgba(59,130,246,0.18)",

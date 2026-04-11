@@ -151,7 +151,7 @@ export default function PricingPage() {
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20 relative z-10">
 
             {/* ── Plan cards ──────────────────────────────── */}
-            <div className="grid md:grid-cols-3 gap-5 items-start">
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5 items-start">
               {PLAN_ORDER.map((planId) => {
                 const cfg    = PLANS_CONFIG[planId];
                 const Icon   = cfg.icon;

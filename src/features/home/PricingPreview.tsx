@@ -84,7 +84,7 @@ export default function PricingPreview() {
         </div>
 
         {/* ── Plan cards ── */}
-        <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto items-end">
+        <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto items-end">
           {p.plans.map((plan, i) => {
             const isFeatured = i === 1;
             const meta       = PLAN_META[i];
