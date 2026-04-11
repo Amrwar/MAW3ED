@@ -368,7 +368,7 @@ export const translations = {
         comingSoon:   "قريبًا",
         signOut:      "تسجيل الخروج",
         yourBusiness: "عملك",
-        planBadge: { FREE: "مجاني", GROWTH: "نمو", PRO: "احترافي" },
+        planBadge: { FREE: "مجاني", PRO: "احترافي", PREMIUM: "مميز" },
       },
       header: {
         searchPlaceholder: "ابحث عن حجز أو عميل...",
@@ -940,7 +940,7 @@ export const translations = {
         comingSoon:   "Soon",
         signOut:      "Sign Out",
         yourBusiness: "Your Business",
-        planBadge: { FREE: "Free", GROWTH: "Growth", PRO: "Pro" },
+        planBadge: { FREE: "Free", PRO: "Pro", PREMIUM: "Premium" },
       },
       header: {
         searchPlaceholder: "Search for a booking or customer...",

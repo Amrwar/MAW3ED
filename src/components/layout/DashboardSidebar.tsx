@@ -88,9 +88,9 @@ function getNavConfig(businessType: BusinessType, s: Record<string, string>, pen
 // ─── Plan badge config ────────────────────────────────────────────────────────
 
 const PLAN_STYLES: Record<Plan, { bg: string; text: string; label: string }> = {
-  FREE:   { bg: "#F1F5F9", text: "#64748B",  label: "مجاني"    },
-  GROWTH: { bg: "#DBEAFE", text: "#1D4ED8",  label: "نمو"      },
-  PRO:    { bg: "#FEF3C7", text: "#92400E",  label: "احترافي"  },
+  FREE:    { bg: "#F1F5F9", text: "#64748B",  label: "مجاني"   },
+  PRO:     { bg: "#DBEAFE", text: "#1D4ED8",  label: "احترافي" },
+  PREMIUM: { bg: "#FEF3C7", text: "#92400E",  label: "مميز"    },
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────

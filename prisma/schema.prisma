@@ -301,8 +301,8 @@ enum BookingStatus {
 
 enum Plan {
   FREE
-  GROWTH
   PRO
+  PREMIUM
 }
 
 enum SubscriptionStatus {

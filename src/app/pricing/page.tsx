@@ -9,7 +9,7 @@ import PageHero from "@/components/shared/PageHero";
 import { PLAN_FEATURES, PLAN_PRICES_EGP, PLAN_NAMES_AR, PLAN_NAMES_EN } from "@/lib/plans";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-type PlanId = "FREE" | "GROWTH" | "PRO";
+type PlanId = "FREE" | "PRO" | "PREMIUM";
 
 // ─── Feature list (concise labels for both cards + table) ──────────────────
 
@@ -50,7 +50,7 @@ const PLANS_CONFIG: Record<PlanId, PlanCfg> = {
     descAr:    "للمبتدئين والتجربة",
     descEn:    "For getting started",
   },
-  GROWTH: {
+  PRO: {
     icon:      Zap,
     iconBg:    "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
     iconColor: "#FFFFFF",
@@ -59,7 +59,7 @@ const PLANS_CONFIG: Record<PlanId, PlanCfg> = {
     descAr:    "للأعمال في مرحلة النمو",
     descEn:    "For growing businesses",
   },
-  PRO: {
+  PREMIUM: {
     icon:      Crown,
     iconBg:    "linear-gradient(135deg, #B45309 0%, #F59E0B 100%)",
     iconColor: "#FFFFFF",
@@ -70,7 +70,7 @@ const PLANS_CONFIG: Record<PlanId, PlanCfg> = {
   },
 };
 
-const PLAN_ORDER: PlanId[] = ["FREE", "GROWTH", "PRO"];
+const PLAN_ORDER: PlanId[] = ["FREE", "PRO", "PREMIUM"];
 
 // ─── Feature icon helpers ─────────────────────────────────────────────────
 
@@ -108,9 +108,9 @@ export default function PricingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const planCtas: Record<PlanId, string> = {
-    FREE:   isAr ? "ابدأ مجانًا"       : "Start Free",
-    GROWTH: isAr ? "ابدأ بالنمو"       : "Get Started",
-    PRO:    isAr ? "الترقية للاحترافي" : "Upgrade to Pro",
+    FREE:    isAr ? "ابدأ مجانًا"       : "Start Free",
+    PRO:     isAr ? "ابدأ بالاحترافي"  : "Get Started",
+    PREMIUM: isAr ? "الترقية للمميز"   : "Upgrade to Premium",
   };
 
   const trustItems = isAr
@@ -334,7 +334,7 @@ export default function PricingPage() {
                         </Link>
                       )}
 
-                      {planId === "GROWTH" && (
+                      {planId === "PRO" && (
                         <Link
                           href={cfg.ctaHref}
                           className="block text-center py-3 rounded-2xl text-sm font-bold text-white transition-all duration-150"
@@ -355,7 +355,7 @@ export default function PricingPage() {
                         </Link>
                       )}
 
-                      {planId === "PRO" && (
+                      {planId === "PREMIUM" && (
                         <Link
                           href={cfg.ctaHref}
                           className="block text-center py-3 rounded-2xl text-sm font-bold text-white transition-all duration-150"

@@ -247,7 +247,7 @@ export function calcDepositCents(priceEGP: number, depositPercent: number): numb
  */
 export async function createSubscriptionPaymentSession(params: {
   businessId:   string;
-  plan:         "GROWTH" | "PRO";
+  plan:         "PRO" | "PREMIUM";
   amountCents:  number;
   ownerName:    string;
   ownerPhone:   string;

@@ -1,12 +1,12 @@
 /**
  * Subscription plan definitions.
  *
- * FREE   — 30 bookings/month, no WhatsApp, no deposits, no analytics
- * GROWTH — unlimited bookings + WhatsApp + analytics
- * PRO    — everything + deposits/payments + custom branding
+ * FREE    — 30 bookings/month, no WhatsApp, no deposits, no analytics
+ * PRO     — unlimited bookings + WhatsApp + analytics
+ * PREMIUM — everything + deposits/payments + custom branding
  */
 
-export type Plan               = "FREE" | "GROWTH" | "PRO";
+export type Plan               = "FREE" | "PRO" | "PREMIUM";
 export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "INACTIVE";
 
 // ─── Feature matrix ───────────────────────────────────────────────────────────
@@ -19,14 +19,14 @@ export const PLAN_FEATURES = {
     analytics:       false,
     customBranding:  false,
   },
-  GROWTH: {
+  PRO: {
     monthlyBookings: Infinity,
     whatsapp:        true,
     deposits:        false,
     analytics:       true,
     customBranding:  false,
   },
-  PRO: {
+  PREMIUM: {
     monthlyBookings: Infinity,
     whatsapp:        true,
     deposits:        true,
@@ -40,36 +40,36 @@ export type PlanFeature = keyof typeof PLAN_FEATURES.FREE;
 // ─── Pricing (EGP / month) ────────────────────────────────────────────────────
 
 export const PLAN_PRICES_EGP: Record<Plan, number> = {
-  FREE:   0,
-  GROWTH: 299,
-  PRO:    499,
+  FREE:    0,
+  PRO:     299,
+  PREMIUM: 499,
 };
 
 /** Prices in cents for Paymob (only paid plans) */
-export const PLAN_PRICES_CENTS: Record<"GROWTH" | "PRO", number> = {
-  GROWTH: 29900,
-  PRO:    49900,
+export const PLAN_PRICES_CENTS: Record<"PRO" | "PREMIUM", number> = {
+  PRO:     29900,
+  PREMIUM: 49900,
 };
 
 // ─── Arabic labels ────────────────────────────────────────────────────────────
 
 export const PLAN_NAMES_AR: Record<Plan, string> = {
-  FREE:   "المجاني",
-  GROWTH: "النمو",
-  PRO:    "الاحترافي",
+  FREE:    "المجاني",
+  PRO:     "الاحترافي",
+  PREMIUM: "المميز",
 };
 
 export const PLAN_NAMES_EN: Record<Plan, string> = {
-  FREE:   "Free",
-  GROWTH: "Growth",
-  PRO:    "Pro",
+  FREE:    "Free",
+  PRO:     "Pro",
+  PREMIUM: "Premium",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
  * Resolve the effective plan.
- * - TRIAL with valid trialEndsAt → GROWTH features
+ * - TRIAL with valid trialEndsAt → PRO features
  * - INACTIVE → always FREE
  * - ACTIVE → plan as stored
  */
@@ -79,7 +79,7 @@ export function getEffectivePlan(
   trialEndsAt: Date | null,
 ): Plan {
   if (status === "TRIAL" && trialEndsAt && trialEndsAt > new Date()) {
-    return "GROWTH";
+    return "PRO";
   }
   if (status === "INACTIVE") return "FREE";
   return plan;

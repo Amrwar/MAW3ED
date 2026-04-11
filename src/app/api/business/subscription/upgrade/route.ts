@@ -2,7 +2,7 @@
  * POST /api/business/subscription/upgrade
  *
  * Initiates a Paymob payment session to upgrade the business subscription plan.
- * Body: { plan: "GROWTH" | "PRO" }
+ * Body: { plan: "PRO" | "PREMIUM" }
  *
  * Flow:
  *  1. Validate the requested plan
@@ -20,7 +20,7 @@ import { PLAN_PRICES_CENTS } from "@/lib/plans";
 import { createSubscriptionPaymentSession } from "@/lib/services/paymob";
 
 const upgradeSchema = z.object({
-  plan: z.enum(["GROWTH", "PRO"]),
+  plan: z.enum(["PRO", "PREMIUM"]),
 });
 
 export async function POST(req: Request) {
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     const { plan } = parsed.data;
 
     // Don't allow downgrade via this endpoint
-    if (business.plan === "PRO" && plan === "GROWTH") {
+    if (business.plan === "PREMIUM" && plan === "PRO") {
       return err("لا يمكن الرجوع لخطة أقل من هنا", 400);
     }
 

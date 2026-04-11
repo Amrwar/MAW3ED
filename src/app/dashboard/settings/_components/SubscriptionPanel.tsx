@@ -19,15 +19,15 @@ interface SubscriptionPanelProps {
 }
 
 const PLAN_ICONS = {
-  FREE:   Star,
-  GROWTH: Zap,
-  PRO:    Crown,
+  FREE:    Star,
+  PRO:     Zap,
+  PREMIUM: Crown,
 };
 
 const PLAN_COLORS = {
-  FREE:   "text-gray-500 bg-gray-50",
-  GROWTH: "text-blue-600 bg-blue-50",
-  PRO:    "text-amber-600 bg-amber-50",
+  FREE:    "text-gray-500 bg-gray-50",
+  PRO:     "text-blue-600 bg-blue-50",
+  PREMIUM: "text-amber-600 bg-amber-50",
 };
 
 const FEATURE_LABELS: Record<keyof typeof PLAN_FEATURES.FREE, string> = {
@@ -51,7 +51,7 @@ export default function SubscriptionPanel({
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
   const isInactive     = subscriptionStatus === "INACTIVE" && plan !== "FREE";
 
-  async function handleUpgrade(targetPlan: "GROWTH" | "PRO") {
+  async function handleUpgrade(targetPlan: "PRO" | "PREMIUM") {
     setLoading(targetPlan);
     setError(null);
     try {
@@ -90,7 +90,7 @@ export default function SubscriptionPanel({
               </p>
             </div>
             <button
-              onClick={() => handleUpgrade(plan as "GROWTH" | "PRO")}
+              onClick={() => handleUpgrade(plan as "PRO" | "PREMIUM")}
               disabled={!!loading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors disabled:opacity-50 shrink-0"
             >
@@ -115,7 +115,7 @@ export default function SubscriptionPanel({
               </p>
             </div>
             <button
-              onClick={() => handleUpgrade(plan as "GROWTH" | "PRO")}
+              onClick={() => handleUpgrade(plan as "PRO" | "PREMIUM")}
               disabled={!!loading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-sm font-bold hover:bg-amber-700 transition-colors disabled:opacity-50 shrink-0"
             >
@@ -177,7 +177,7 @@ export default function SubscriptionPanel({
       </div>
 
       {/* Upgrade options */}
-      {effectivePlan !== "PRO" && (
+      {effectivePlan !== "PREMIUM" && (
         <div className="card p-6">
           <div className="flex items-center gap-2 mb-5">
             <Sparkles size={16} className="text-[var(--color-accent)]" />
@@ -191,26 +191,26 @@ export default function SubscriptionPanel({
           )}
 
           <div className="grid gap-4">
-            {(["GROWTH", "PRO"] as const).map((targetPlan) => {
+            {(["PRO", "PREMIUM"] as const).map((targetPlan) => {
               const ep = effectivePlan as string;
-              const isCurrentOrLower = ep === "PRO" || ep === targetPlan;
+              const isCurrentOrLower = ep === "PREMIUM" || ep === targetPlan;
               const PlanIcon = PLAN_ICONS[targetPlan];
               return (
                 <div
                   key={targetPlan}
                   className={`border-2 rounded-xl p-4 transition-all ${
-                    targetPlan === "PRO"
+                    targetPlan === "PREMIUM"
                       ? "border-amber-200 bg-amber-50/30"
                       : "border-blue-200 bg-blue-50/30"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <PlanIcon size={16} className={targetPlan === "PRO" ? "text-amber-600" : "text-blue-600"} />
+                      <PlanIcon size={16} className={targetPlan === "PREMIUM" ? "text-amber-600" : "text-blue-600"} />
                       <span className="font-bold text-[var(--color-text-primary)]">
                         {PLAN_NAMES_AR[targetPlan]}
                       </span>
-                      {targetPlan === "PRO" && (
+                      {targetPlan === "PREMIUM" && (
                         <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">
                           الأفضل
                         </span>
@@ -243,7 +243,7 @@ export default function SubscriptionPanel({
                     onClick={() => handleUpgrade(targetPlan)}
                     disabled={!!loading || isCurrentOrLower}
                     className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
-                      targetPlan === "PRO"
+                      targetPlan === "PREMIUM"
                         ? "bg-amber-500 hover:bg-amber-600 text-white"
                         : "bg-blue-500 hover:bg-blue-600 text-white"
                     }`}
@@ -263,14 +263,14 @@ export default function SubscriptionPanel({
         </div>
       )}
 
-      {effectivePlan === "PRO" && (
+      {effectivePlan === "PREMIUM" && (
         <div className="card p-5 bg-amber-50 border-amber-200">
           <div className="flex items-center gap-3">
             <Crown size={20} className="text-amber-600" />
             <div>
               <p className="font-bold text-amber-800">أنت على أعلى خطة</p>
               <p className="text-xs text-amber-700 mt-0.5">
-                تستمتع بجميع مميزات موعد الاحترافية
+                تستمتع بجميع مميزات موعد المميزة
               </p>
             </div>
           </div>

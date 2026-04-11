@@ -164,7 +164,7 @@ export default function SettingsClient({
         <DepositSettingsForm
           initialEnabled={depositEnabled}
           initialPercent={depositPercent}
-          canUseDeposits={effectivePlan === "PRO"}
+          canUseDeposits={effectivePlan === "PREMIUM"}
         />
       )}
       {tab === "subscription" && (
