@@ -95,10 +95,10 @@ export default function CompanyContent({
         />
 
         <div className="container-app relative z-10 py-8 lg:py-10">
-          <div className="flex flex-col lg:flex-row gap-7 items-start">
+          <div className="flex flex-col lg:flex-row gap-7 lg:items-start">
 
             {/* ── Main content column ── */}
-            <div className="flex-1 min-w-0 space-y-5">
+            <div className="w-full flex-1 min-w-0 space-y-5">
               <AboutSection business={business} />
               <ServicesSection services={services} onBook={handleBookService} />
               <GallerySection />
