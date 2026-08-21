@@ -14,7 +14,10 @@
     "postinstall": "prisma generate",
     "cap:sync": "npx cap sync",
     "cap:android": "npx cap open android",
-    "cap:ios": "npx cap open ios"
+    "cap:ios": "npx cap open ios",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -55,6 +58,7 @@
     "prisma": "^7.7.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }

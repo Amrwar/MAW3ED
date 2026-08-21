@@ -39,7 +39,7 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 **Why:** The file contained raw PostgreSQL credentials (Neon `DATABASE_URL`) that were committed to the public GitHub repo and flagged as Critical by GitGuardian.
 
-**Action taken:** Rotate the Neon database password and update `.env` and Vercel environment variables. The file is removed going forward but remains in git history — rotating the credentials makes the historical exposure harmless.
+**Action taken:** Rotated the Neon database password and updated `.env` and Vercel environment variables. The file has since been purged from the repository history as well, so the credentials are no longer recoverable from it.
 
 ---
 

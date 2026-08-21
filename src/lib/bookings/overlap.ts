@@ -10,32 +10,13 @@
  */
 
 import { db } from "@/lib/db";
+import { minutesToTime, overlaps, timeToMinutes } from "./time";
 
-// ─── Pure helpers (no DB, safe to call anywhere) ──────────────────────────────
+// ─── Pure helpers ────────────────────────────────────────────────────────────
 
-/** Convert "HH:MM" to minutes since midnight. */
-export function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
-
-/** Format minutes since midnight back to "HH:MM". */
-export function minutesToTime(minutes: number): string {
-  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-}
-
-/**
- * Pure overlap check for two half-open intervals [aStart, aEnd) and [bStart, bEnd).
- * Returns true when the intervals share at least one minute.
- */
-export function overlaps(
-  aStart: number,
-  aEnd:   number,
-  bStart: number,
-  bEnd:   number,
-): boolean {
-  return aStart < bEnd && aEnd > bStart;
-}
+// Re-exported from ./time so callers that only need the arithmetic can import
+// it without pulling the Prisma client in through this module.
+export { timeToMinutes, minutesToTime, overlaps };
 
 // ─── Async conflict checker (makes one DB round-trip) ─────────────────────────
 
