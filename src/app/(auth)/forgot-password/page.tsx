@@ -37,11 +37,11 @@ export default function ForgotPasswordPage() {
   if (sent) {
     return (
       <div className="card p-7 text-center space-y-4">
-        <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto">
-          <CheckCircle2 size={28} className="text-green-500" />
+        <div className="w-14 h-14 rounded-full bg-[var(--color-ok-soft)] flex items-center justify-center mx-auto">
+          <CheckCircle2 size={28} className="text-[var(--color-ok)]" />
         </div>
         <div>
-          <h1 className="text-xl font-black text-[var(--color-text-primary)] mb-1">
+          <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-1">
             تحقق من بريدك الإلكتروني
           </h1>
           <p className="text-sm text-[var(--color-text-muted)]">
@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
         <div className="w-12 h-12 rounded-2xl bg-[var(--color-accent-light)] flex items-center justify-center mx-auto mb-4">
           <Mail size={22} className="text-[var(--color-accent)]" />
         </div>
-        <h1 className="text-2xl font-black text-[var(--color-text-primary)] mb-1">
+        <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)] mb-1">
           نسيت كلمة المرور؟
         </h1>
         <p className="text-sm text-[var(--color-text-muted)]">
@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
+          <label className="field-label">
             البريد الإلكتروني
           </label>
           <input
@@ -95,7 +95,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
+          <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
             {error}
           </div>
         )}

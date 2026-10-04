@@ -50,10 +50,10 @@ export default async function SubscriptionReturnPage() {
         {/* ── Active / success ── */}
         {isActive && (
           <div className="card text-center p-8">
-            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-5">
-              <CheckCircle size={44} className="text-green-500" />
+            <div className="w-20 h-20 bg-[var(--color-ok-soft)] rounded-full flex items-center justify-center mx-auto mb-5">
+              <CheckCircle size={44} className="text-[var(--color-ok)]" />
             </div>
-            <h1 className="text-xl font-black text-[var(--color-text-primary)] mb-2">
+            <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
               تم تفعيل الاشتراك!
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
@@ -80,10 +80,10 @@ export default async function SubscriptionReturnPage() {
         {/* ── Still pending (webhook not fired yet) ── */}
         {isPending && (
           <div className="card text-center p-8">
-            <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-5">
-              <Clock size={44} className="text-amber-500" />
+            <div className="w-20 h-20 bg-[var(--color-warn-soft)] rounded-full flex items-center justify-center mx-auto mb-5">
+              <Clock size={44} className="text-[var(--color-star)]" />
             </div>
-            <h1 className="text-xl font-black text-[var(--color-text-primary)] mb-2">
+            <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
               جارٍ التحقق من الدفع…
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
@@ -101,10 +101,10 @@ export default async function SubscriptionReturnPage() {
         {/* ── Failed ── */}
         {isFailed && (
           <div className="card text-center p-8">
-            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5">
-              <XCircle size={44} className="text-red-500" />
+            <div className="w-20 h-20 bg-[var(--color-danger-soft)] rounded-full flex items-center justify-center mx-auto mb-5">
+              <XCircle size={44} className="text-[var(--color-danger)]" />
             </div>
-            <h1 className="text-xl font-black text-[var(--color-text-primary)] mb-2">
+            <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
               فشلت عملية الدفع
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">

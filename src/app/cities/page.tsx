@@ -24,12 +24,12 @@ const staticCitiesEn = [
 ];
 
 const cityColors = [
-  "#F0F9FF","#F0FDF4","#F5F3FF","#FFF7ED","#FDF2F8",
-  "#ECFEFF","#FFFBEB","#FEF2F2","#EEF2FF","#ECFDF5",
+  "var(--color-info-soft)","var(--color-ok-soft)","var(--color-jade-tint)","var(--color-warn-soft)","var(--color-jade-tint)",
+  "var(--color-info-soft)","var(--color-warn-soft)","var(--color-danger-soft)","var(--color-jade-tint)","var(--color-ok-soft)",
 ];
 const cityIconColors = [
-  "#0369A1","#15803D","#7C3AED","#EA580C","#9D174D",
-  "#0E7490","#B45309","#991B1B","#4338CA","#065F46",
+  "var(--color-info)","var(--color-ok)","var(--color-jade)","var(--color-warn)","var(--color-jade-hover)",
+  "var(--color-info)","var(--color-warn)","var(--color-danger)","var(--color-jade-hover)","var(--color-ok)",
 ];
 
 export default function CitiesPage() {
@@ -63,11 +63,7 @@ export default function CitiesPage() {
   return (
     <>
       <Navbar />
-      <main
-        className="min-h-screen"
-        style={{ background: "#F8FAFC" }}
-        dir={isAr ? "rtl" : "ltr"}
-      >
+      <main className="bg-[var(--color-ground)]">
         <PageHero
           badge={c.eyebrow}
           title={c.title}
@@ -75,43 +71,28 @@ export default function CitiesPage() {
           dir={isAr ? "rtl" : "ltr"}
         />
 
-        <section className="py-12 lg:py-16">
+        <section className="py-14">
           <div className="container-app">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {displayCities.map(({ key, href, name, bg, color }) => (
-                <Link
-                  key={key}
-                  href={href}
-                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-[#E2E8F0] bg-white text-center"
-                  style={{
-                    boxShadow:  "0 1px 4px rgba(15,23,42,0.04)",
-                    transition: "box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    const el = e.currentTarget as HTMLAnchorElement;
-                    el.style.boxShadow   = "0 8px 28px rgba(59,130,246,0.12), 0 2px 8px rgba(15,23,42,0.06)";
-                    el.style.transform   = "translateY(-4px)";
-                    el.style.borderColor = "rgba(147,197,253,0.70)";
-                  }}
-                  onMouseLeave={(e) => {
-                    const el = e.currentTarget as HTMLAnchorElement;
-                    el.style.boxShadow   = "0 1px 4px rgba(15,23,42,0.04)";
-                    el.style.transform   = "translateY(0)";
-                    el.style.borderColor = "#E2E8F0";
-                  }}
-                >
-                  <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110 shrink-0"
-                    style={{ background: bg }}
+            <ul className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
+              {displayCities.map(({ key, href, name }) => (
+                <li key={key} className="min-w-0">
+                  <Link
+                    href={href}
+                    className="card card-hover flex min-h-[4.5rem] items-center gap-3.5 px-5"
                   >
-                    <MapPin size={22} style={{ color }} strokeWidth={1.75} />
-                  </div>
-                  <span className="text-sm font-bold text-[#0F172A] group-hover:text-[#2563EB] transition-colors duration-150 leading-snug">
-                    {name}
-                  </span>
-                </Link>
+                    <span
+                      aria-hidden="true"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-jade-soft)]"
+                    >
+                      <MapPin size={19} strokeWidth={1.8} className="text-[var(--color-jade)]" />
+                    </span>
+                    <span className="truncate text-[0.9375rem] font-bold text-[var(--color-ink)]">
+                      {name}
+                    </span>
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </section>
 
@@ -121,16 +102,16 @@ export default function CitiesPage() {
               <div
                 className="rounded-3xl p-5 sm:p-8 text-center overflow-hidden relative"
                 style={{
-                  background: "linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(99,102,241,0.04) 100%)",
-                  border:     "1px solid rgba(59,130,246,0.18)",
-                  boxShadow:  "0 2px 16px rgba(59,130,246,0.07)",
+                  background: "linear-gradient(135deg, rgba(14,127,94,0.06) 0%, rgba(14,127,94,0.04) 100%)",
+                  border:     "1px solid rgba(14,127,94,0.18)",
+                  boxShadow:  "0 2px 16px rgba(14,127,94,0.07)",
                 }}
               >
                 <div
                   aria-hidden
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    backgroundImage: "radial-gradient(circle, rgba(59,130,246,0.07) 1px, transparent 1px)",
+                    backgroundImage: "radial-gradient(circle, rgba(14,127,94,0.07) 1px, transparent 1px)",
                     backgroundSize:  "20px 20px",
                   }}
                 />
@@ -138,30 +119,20 @@ export default function CitiesPage() {
                   <div
                     className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
                     style={{
-                      background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-                      boxShadow:  "0 4px 14px rgba(59,130,246,0.35)",
+                      background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
+                      boxShadow:  "0 4px 14px rgba(14,127,94,0.35)",
                     }}
                   >
                     <MapPin size={20} className="text-white" strokeWidth={1.75} />
                   </div>
-                  <p className="text-base font-bold text-[#0F172A] mb-1.5">{c.notFoundTitle}</p>
-                  <p className="text-sm text-[#475569] mb-6" style={{ lineHeight: 1.7 }}>{c.notFoundSub}</p>
+                  <p className="text-base font-bold text-[var(--color-ink)] mb-1.5">{c.notFoundTitle}</p>
+                  <p className="text-sm text-[var(--color-muted)] mb-6" style={{ lineHeight: 1.7 }}>{c.notFoundSub}</p>
                   <Link
                     href="/businesses"
-                    className="inline-flex items-center gap-2 px-7 py-3 rounded-2xl text-sm font-bold text-white transition-all duration-200"
+                    className="inline-flex items-center gap-2 px-7 py-3 rounded-2xl text-sm font-bold text-white transition-all duration-200 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                     style={{
-                      background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-                      boxShadow:  "0 4px 16px rgba(59,130,246,0.40)",
-                    }}
-                    onMouseEnter={(e) => {
-                      const el = e.currentTarget as HTMLAnchorElement;
-                      el.style.boxShadow = "0 6px 22px rgba(59,130,246,0.52)";
-                      el.style.filter    = "brightness(1.06)";
-                    }}
-                    onMouseLeave={(e) => {
-                      const el = e.currentTarget as HTMLAnchorElement;
-                      el.style.boxShadow = "0 4px 16px rgba(59,130,246,0.40)";
-                      el.style.filter    = "";
+                      background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
+                      boxShadow:  "0 4px 16px rgba(14,127,94,0.40)",
                     }}
                   >
                     {c.viewAll}

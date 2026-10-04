@@ -55,18 +55,18 @@ const VARIANT_VISUAL: Record<
   },
   confirmed: {
     Icon:       CheckCircle2,
-    iconClass:  "bg-green-50 text-green-600",
-    toastClass: "border-green-200 bg-white",
+    iconClass:  "bg-[var(--color-ok-soft)] text-[var(--color-ok)]",
+    toastClass: "border-[var(--color-ok-line)] bg-white",
   },
   cancelled: {
     Icon:       Ban,
-    iconClass:  "bg-red-50 text-red-500",
-    toastClass: "border-red-200 bg-white",
+    iconClass:  "bg-[var(--color-danger-soft)] text-[var(--color-danger)]",
+    toastClass: "border-[var(--color-danger-line)] bg-white",
   },
   updated: {
     Icon:       RefreshCw,
-    iconClass:  "bg-blue-50 text-blue-500",
-    toastClass: "border-blue-100 bg-white",
+    iconClass:  "bg-[var(--color-jade-soft)] text-[var(--color-jade)]",
+    toastClass: "border-[var(--color-jade-line)] bg-white",
   },
 };
 
@@ -135,9 +135,9 @@ function getNavConfig(businessType: BusinessType, labels: Record<string, string>
 }
 
 const PLAN_STYLES: Record<Plan, { bg: string; text: string; label: string }> = {
-  FREE:    { bg: "#F1F5F9", text: "#64748B",  label: "مجاني"   },
-  PRO:     { bg: "#DBEAFE", text: "#1D4ED8",  label: "احترافي" },
-  PREMIUM: { bg: "#FEF3C7", text: "#92400E",  label: "مميز"    },
+  FREE:    { bg: "var(--color-surface-3)", text: "var(--color-muted)",  label: "مجاني"   },
+  PRO:     { bg: "var(--color-jade-soft)", text: "var(--color-jade)",  label: "احترافي" },
+  PREMIUM: { bg: "var(--color-warn-soft)", text: "var(--color-warn)",  label: "مميز"    },
 };
 
 // ── Time-ago ──────────────────────────────────────────────────────────────────
@@ -187,31 +187,15 @@ function IconBtn({
     <button
       onClick={onClick}
       title={title}
-      className="flex items-center justify-center transition-all duration-150 shrink-0"
+      className="flex items-center justify-center transition-all duration-150 shrink-0 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
       style={{
         width:        36,
         height:       36,
         borderRadius: 10,
-        background:   active ? "#EFF6FF" : "#F8FAFC",
-        border:       `1.5px solid ${active ? "#BFDBFE" : "#E2E8F0"}`,
-        color:        active ? "#1D4ED8" : "#64748B",
+        background:   active ? "var(--color-jade-tint)" : "var(--color-surface-2)",
+        border:       `1.5px solid ${active ? "var(--color-jade-line)" : "var(--color-line)"}`,
+        color:        active ? "var(--color-jade)" : "var(--color-muted)",
         cursor:       "pointer",
-      }}
-      onMouseEnter={(e) => {
-        if (!active) {
-          const el = e.currentTarget as HTMLButtonElement;
-          el.style.background   = "#F1F5F9";
-          el.style.borderColor  = "#CBD5E1";
-          el.style.color        = "#0F172A";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          const el = e.currentTarget as HTMLButtonElement;
-          el.style.background   = "#F8FAFC";
-          el.style.borderColor  = "#E2E8F0";
-          el.style.color        = "#64748B";
-        }
       }}
     >
       {children}
@@ -220,6 +204,73 @@ function IconBtn({
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+
+/** Hoisted out of the component body: defining a component during
+ *  render remounts the whole group on every parent render. */
+function MobileNavGroup({
+  items,
+  pathname,
+  comingSoonLabel,
+  onNavigate,
+}: {
+  items: ReturnType<typeof getNavConfig>["main"];
+  pathname: string;
+  comingSoonLabel: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      {items.map((item) => {
+        const { href, icon: Icon, label, soon, badge } = item;
+        const active =
+          pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+
+        if (soon) {
+          return (
+            <div
+              key={href}
+              className="flex min-h-12 cursor-not-allowed select-none items-center gap-3 rounded-[var(--radius-sm)] px-4 text-[0.875rem] text-[var(--color-night-subtle)]/60"
+            >
+              <Icon size={17} strokeWidth={1.75} aria-hidden="true" />
+              <span className="flex-1">{label}</span>
+              <span className="rounded-full bg-[var(--color-night-line)] px-2 py-0.5 text-[0.625rem] font-bold text-[var(--color-night-subtle)]">
+                {comingSoonLabel}
+              </span>
+            </div>
+          );
+        }
+
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={active ? "page" : undefined}
+            onClick={onNavigate}
+            className={cn(
+              "flex min-h-12 items-center gap-3 rounded-[var(--radius-sm)] px-4 text-[0.875rem] transition-colors",
+              active
+                ? "bg-[var(--color-jade)] font-bold text-white"
+                : "text-[#BACBC4] hover:bg-[var(--color-night-2)] hover:text-white",
+            )}
+          >
+            <Icon size={17} strokeWidth={active ? 2.1 : 1.75} aria-hidden="true" />
+            <span className="flex-1 truncate">{label}</span>
+            {badge != null && badge > 0 && (
+              <span
+                className={cn(
+                  "num rounded-full px-2 py-0.5 text-[0.6875rem] font-bold",
+                  active ? "bg-white/22 text-white" : "bg-[var(--color-night-line)] text-white",
+                )}
+              >
+                {badge}
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function DashboardHeader({
   businessName,
@@ -263,10 +314,13 @@ export default function DashboardHeader({
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
 
-  // Close mobile menu on route change
-  useEffect(() => {
+  // Close the mobile menu on navigation. Derived from the pathname
+  // rather than set from an effect, which cost an extra render pass.
+  const [menuPath, setMenuPath] = useState(pathname);
+  if (menuPath !== pathname) {
+    setMenuPath(pathname);
     setMobileOpen(false);
-  }, [pathname]);
+  }
 
   // ── Notification dropdown outside click ─────────────────────────────────────
   useEffect(() => {
@@ -280,11 +334,6 @@ export default function DashboardHeader({
     return () => document.removeEventListener("mousedown", onOutside);
   }, [notifOpen]);
 
-  useEffect(() => {
-    if (notifOpen) {
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    }
-  }, [notifOpen]);
 
   // ── Toast helpers ────────────────────────────────────────────────────────────
   const pushToast = useCallback((toast: Omit<ToastItem, "id">) => {
@@ -358,73 +407,6 @@ export default function DashboardHeader({
     }
   }, [pushNotification, pushToast, browserNotify, soundEnabled, h.variant]));
 
-  // ── Mobile nav helper ────────────────────────────────────────────────────────
-  function MobileNavGroup({ items }: { items: ReturnType<typeof getNavConfig>["main"] }) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {items.map((item) => {
-          const { href, icon: Icon, label, soon, badge } = item;
-          const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-
-          if (soon) {
-            return (
-              <div
-                key={href}
-                className="flex items-center gap-3 px-4 rounded-xl cursor-not-allowed select-none"
-                style={{ paddingBlock: 12, color: "#CBD5E1" }}
-              >
-                <Icon size={17} strokeWidth={1.75} />
-                <span style={{ fontSize: 14, fontWeight: 500, flex: 1 }}>{label}</span>
-                <span
-                  style={{
-                    fontSize: 9, fontWeight: 700,
-                    padding: "2px 7px", borderRadius: 100,
-                    background: "#F1F5F9", color: "#94A3B8",
-                  }}
-                >
-                  {s.comingSoon}
-                </span>
-              </div>
-            );
-          }
-
-          return (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 px-4 rounded-xl transition-all duration-150"
-              style={{
-                paddingBlock: 13,
-                background:   active ? "#0F172A" : "transparent",
-                color:        active ? "#FFFFFF" : "#475569",
-                boxShadow:    active ? "0 2px 8px rgba(15,23,42,0.14)" : "none",
-                fontSize:     14,
-                fontWeight:   active ? 600 : 500,
-              }}
-              onClick={() => setMobileOpen(false)}
-            >
-              <Icon size={17} strokeWidth={active ? 2.25 : 1.75} />
-              <span style={{ flex: 1 }}>{label}</span>
-              {badge != null && badge > 0 && (
-                <span
-                  style={{
-                    fontSize: 11, fontWeight: 700,
-                    padding: "2px 8px", borderRadius: 100,
-                    background: active ? "rgba(255,255,255,0.18)" : "#DBEAFE",
-                    color:      active ? "#FFFFFF" : "#1D4ED8",
-                    border:     active ? "1px solid rgba(255,255,255,0.12)" : "none",
-                  }}
-                >
-                  {badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </div>
-    );
-  }
-
   return (
     <>
       {/* ── Top navbar ──────────────────────────────────────── */}
@@ -432,9 +414,9 @@ export default function DashboardHeader({
         className="sticky top-0 z-30 flex items-center gap-3 px-4 md:px-5"
         style={{
           height:       68,
-          background:   "#FFFFFF",
-          borderBottom: "1.5px solid #F1F5F9",
-          boxShadow:    "0 1px 8px rgba(15,23,42,0.05)",
+          background:   "var(--color-surface)",
+          borderBottom: "1.5px solid var(--color-surface-3)",
+          boxShadow:    "0 1px 8px rgba(17,32,28,0.05)",
         }}
       >
         {/* Mobile hamburger — only on small screens */}
@@ -444,9 +426,9 @@ export default function DashboardHeader({
             width:        36,
             height:       36,
             borderRadius: 10,
-            background:   mobileOpen ? "#F1F5F9" : "#F8FAFC",
-            border:       "1.5px solid #E2E8F0",
-            color:        "#0F172A",
+            background:   mobileOpen ? "var(--color-surface-3)" : "var(--color-surface-2)",
+            border:       "1.5px solid var(--color-line)",
+            color:        "var(--color-ink)",
             cursor:       "pointer",
           }}
           onClick={() => setMobileOpen(true)}
@@ -464,29 +446,29 @@ export default function DashboardHeader({
         <div
           className="hidden md:flex flex-1 max-w-sm items-center gap-2.5 transition-all duration-150"
           style={{
-            background:   "#F8FAFC",
-            border:       "1.5px solid #E2E8F0",
+            background:   "var(--color-surface-2)",
+            border:       "1.5px solid var(--color-line)",
             borderRadius: 12,
             padding:      "0 14px",
             height:       38,
           }}
         >
-          <Search size={14} style={{ color: "#94A3B8", flexShrink: 0 }} />
+          <Search size={14} style={{ color: "var(--color-subtle)", flexShrink: 0 }} />
           <input
             type="text"
             placeholder={h.searchPlaceholder}
             className="bg-transparent outline-none flex-1 min-w-0"
-            style={{ fontSize: 13, color: "#0F172A", lineHeight: 1 }}
+            style={{ fontSize: 13, color: "var(--color-ink)", lineHeight: 1 }}
             onFocus={(e) => {
               const parent = e.currentTarget.parentElement as HTMLDivElement;
-              parent.style.borderColor = "#1D4ED8";
-              parent.style.background  = "#FFFFFF";
-              parent.style.boxShadow   = "0 0 0 3px rgba(29,78,216,0.09)";
+              parent.style.borderColor = "var(--color-jade)";
+              parent.style.background  = "var(--color-surface)";
+              parent.style.boxShadow   = "0 0 0 3px rgba(10,95,71,0.09)";
             }}
             onBlur={(e) => {
               const parent = e.currentTarget.parentElement as HTMLDivElement;
-              parent.style.borderColor = "#E2E8F0";
-              parent.style.background  = "#F8FAFC";
+              parent.style.borderColor = "var(--color-line)";
+              parent.style.background  = "var(--color-surface-2)";
               parent.style.boxShadow   = "none";
             }}
           />
@@ -507,7 +489,17 @@ export default function DashboardHeader({
 
           <div className="relative" ref={dropdownRef}>
             <div className="relative">
-              <IconBtn onClick={() => setNotifOpen((v) => !v)} active={notifOpen}>
+              <IconBtn
+                onClick={() => {
+                  setNotifOpen((open) => {
+                    if (!open) {
+                      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+                    }
+                    return !open;
+                  });
+                }}
+                active={notifOpen}
+              >
                 <Bell size={14} />
               </IconBtn>
               {unreadCount > 0 && (
@@ -519,12 +511,12 @@ export default function DashboardHeader({
                     minWidth:         16,
                     height:           16,
                     borderRadius:     8,
-                    background:       "#EF4444",
-                    color:            "#FFFFFF",
+                    background:       "var(--color-danger)",
+                    color:            "var(--color-surface)",
                     fontSize:         9,
                     fontWeight:       700,
                     paddingInline:    3,
-                    border:           "2px solid #FFFFFF",
+                    border:           "2px solid var(--color-surface)",
                     lineHeight:       1,
                   }}
                 >
@@ -548,20 +540,18 @@ export default function DashboardHeader({
           <div
             style={{
               width: 1, height: 22,
-              background: "#E2E8F0", flexShrink: 0, marginInline: 2,
+              background: "var(--color-line)", flexShrink: 0, marginInline: 2,
             }}
           />
 
           <div
-            className="hidden md:flex items-center gap-2.5 cursor-pointer select-none rounded-xl px-2 py-1.5 transition-all duration-150"
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#F8FAFC"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+            className="hidden md:flex items-center gap-2.5 cursor-pointer select-none rounded-xl px-2 py-1.5 transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
           >
             <div
               className="flex items-center justify-center text-white shrink-0"
               style={{
                 width: 34, height: 34, borderRadius: 10,
-                background: "linear-gradient(135deg, #0F172A 0%, #334155 100%)",
+                background: "linear-gradient(135deg, var(--color-ink) 0%, var(--color-ink-2) 100%)",
                 fontSize: 13, fontWeight: 900, letterSpacing: "-0.01em",
               }}
             >
@@ -569,7 +559,7 @@ export default function DashboardHeader({
             </div>
             <span
               className="hidden lg:block max-w-[120px] truncate"
-              style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}
+              style={{ fontSize: 13, fontWeight: 600, color: "var(--color-ink)" }}
             >
               {name}
             </span>
@@ -580,7 +570,7 @@ export default function DashboardHeader({
             className="md:hidden flex items-center justify-center text-white shrink-0"
             style={{
               width: 34, height: 34, borderRadius: 10,
-              background: "linear-gradient(135deg, #0F172A 0%, #334155 100%)",
+              background: "linear-gradient(135deg, var(--color-ink) 0%, var(--color-ink-2) 100%)",
               fontSize: 13, fontWeight: 900,
             }}
           >
@@ -593,7 +583,7 @@ export default function DashboardHeader({
       <div
         className="fixed inset-0 z-[60] md:hidden"
         style={{
-          background:    "rgba(15,23,42,0.45)",
+          background:    "rgba(17,32,28,0.45)",
           backdropFilter: "blur(3px)",
           WebkitBackdropFilter: "blur(3px)",
           opacity:       mobileOpen ? 1 : 0,
@@ -613,8 +603,8 @@ export default function DashboardHeader({
         className="fixed top-0 start-0 z-[70] h-full flex flex-col md:hidden"
         style={{
           width:      280,
-          background: "#FFFFFF",
-          boxShadow:  mobileOpen ? "-8px 0 40px rgba(15,23,42,0.18)" : "none",
+          background: "var(--color-surface)",
+          boxShadow:  mobileOpen ? "-8px 0 40px rgba(17,32,28,0.18)" : "none",
           transform:  mobileOpen ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
@@ -625,7 +615,7 @@ export default function DashboardHeader({
           className="flex items-center justify-between px-4 shrink-0"
           style={{
             height:       68,
-            borderBottom: "1.5px solid #F1F5F9",
+            borderBottom: "1.5px solid var(--color-surface-3)",
             flexShrink:   0,
           }}
         >
@@ -635,8 +625,8 @@ export default function DashboardHeader({
             className="flex items-center justify-center transition-all duration-150"
             style={{
               width: 32, height: 32, borderRadius: 8,
-              background: "#F8FAFC", border: "1.5px solid #E2E8F0",
-              color: "#64748B", cursor: "pointer",
+              background: "var(--color-surface-2)", border: "1.5px solid var(--color-line)",
+              color: "var(--color-muted)", cursor: "pointer",
             }}
             aria-label="إغلاق القائمة"
           >
@@ -648,23 +638,23 @@ export default function DashboardHeader({
         <div className="px-3 pt-3 pb-2.5 shrink-0">
           <div
             className="flex items-center gap-3 rounded-2xl px-3.5 py-3"
-            style={{ background: "#F8FAFC", border: "1.5px solid #F1F5F9" }}
+            style={{ background: "var(--color-surface-2)", border: "1.5px solid var(--color-surface-3)" }}
           >
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-black text-white shrink-0"
-              style={{ background: "linear-gradient(135deg, #0F172A 0%, #334155 100%)" }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-extrabold text-white shrink-0"
+              style={{ background: "linear-gradient(135deg, var(--color-ink) 0%, var(--color-ink-2) 100%)" }}
             >
               {name[0]}
             </div>
             <div className="min-w-0 flex-1">
               <p
                 className="truncate"
-                style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", lineHeight: 1.3 }}
+                style={{ fontSize: 13, fontWeight: 700, color: "var(--color-ink)", lineHeight: 1.3 }}
               >
                 {name}
               </p>
               {cityName && (
-                <p className="truncate" style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
+                <p className="truncate" style={{ fontSize: 11, color: "var(--color-subtle)", marginTop: 2 }}>
                   {cityName}
                 </p>
               )}
@@ -687,17 +677,17 @@ export default function DashboardHeader({
           className="flex-1 min-h-0 overflow-y-auto"
           style={{ padding: "6px 10px 12px" }}
         >
-          <MobileNavGroup items={navCfg.main} />
-          <div style={{ height: 1, background: "#F1F5F9", marginBlock: 6, marginInline: 4 }} />
-          <MobileNavGroup items={navCfg.secondary} />
-          <div style={{ height: 1, background: "#F1F5F9", marginBlock: 6, marginInline: 4 }} />
-          <MobileNavGroup items={navCfg.utility} />
+          <MobileNavGroup items={navCfg.main} pathname={pathname} comingSoonLabel={s.comingSoon} onNavigate={() => setMobileOpen(false)} />
+          <div style={{ height: 1, background: "var(--color-surface-3)", marginBlock: 6, marginInline: 4 }} />
+          <MobileNavGroup items={navCfg.secondary} pathname={pathname} comingSoonLabel={s.comingSoon} onNavigate={() => setMobileOpen(false)} />
+          <div style={{ height: 1, background: "var(--color-surface-3)", marginBlock: 6, marginInline: 4 }} />
+          <MobileNavGroup items={navCfg.utility} pathname={pathname} comingSoonLabel={s.comingSoon} onNavigate={() => setMobileOpen(false)} />
         </nav>
 
         {/* ── Bottom area ───────────────────────────────────── */}
         <div
           className="shrink-0 px-3 pb-5 pt-3"
-          style={{ borderTop: "1.5px solid #F1F5F9" }}
+          style={{ borderTop: "1.5px solid var(--color-surface-3)" }}
         >
           {/* Upgrade card — FREE plan only */}
           {plan === "FREE" && (
@@ -705,8 +695,8 @@ export default function DashboardHeader({
               href="/dashboard/settings?tab=subscription"
               className="flex items-start gap-3 rounded-2xl p-3.5 mb-3 transition-all duration-150"
               style={{
-                background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
-                boxShadow:  "0 4px 16px rgba(15,23,42,0.2)",
+                background: "linear-gradient(135deg, var(--color-ink) 0%, var(--color-night-2) 100%)",
+                boxShadow:  "0 4px 16px rgba(17,32,28,0.2)",
               }}
               onClick={() => setMobileOpen(false)}
             >
@@ -714,7 +704,7 @@ export default function DashboardHeader({
                 <Image src="/icon-nobg.png" alt="موعد" width={28} height={28} className="object-contain" />
               </div>
               <div className="flex-1 min-w-0">
-                <p style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF", marginBottom: 2 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: "var(--color-surface)", marginBottom: 2 }}>
                   ترقية الخطة
                 </p>
                 <p style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>
@@ -733,17 +723,9 @@ export default function DashboardHeader({
             onClick={() => signOut({ callbackUrl: "/" })}
             className="w-full flex items-center gap-3 px-4 rounded-xl transition-all duration-150"
             style={{
-              paddingBlock: 12, color: "#94A3B8",
+              paddingBlock: 12, color: "var(--color-subtle)",
               background: "transparent", fontSize: 14, fontWeight: 500,
               cursor: "pointer",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "#FEF2F2";
-              (e.currentTarget as HTMLButtonElement).style.color      = "#EF4444";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-              (e.currentTarget as HTMLButtonElement).style.color      = "#94A3B8";
             }}
           >
             <LogOut size={16} strokeWidth={1.75} />
@@ -832,24 +814,24 @@ function NotificationDropdown({
     <div
       className="animate-dropdown-in absolute top-full mt-2 end-0 w-80 bg-white rounded-2xl overflow-hidden z-50"
       style={{
-        border:    "1.5px solid #E2E8F0",
-        boxShadow: "0 8px 32px rgba(15,23,42,0.12)",
+        border:    "1.5px solid var(--color-line)",
+        boxShadow: "0 8px 32px rgba(17,32,28,0.12)",
       }}
       dir="rtl"
     >
       <div
         className="flex items-center justify-between px-4 py-3"
-        style={{ borderBottom: "1.5px solid #F1F5F9" }}
+        style={{ borderBottom: "1.5px solid var(--color-surface-3)" }}
       >
         <div className="flex items-center gap-2">
-          <Bell size={14} style={{ color: "#0F172A" }} />
-          <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{title}</p>
+          <Bell size={14} style={{ color: "var(--color-ink)" }} />
+          <p style={{ fontSize: 13, fontWeight: 700, color: "var(--color-ink)" }}>{title}</p>
           {notifications.filter((n) => !n.read).length > 0 && (
             <span
               style={{
                 fontSize: 10, fontWeight: 700,
                 padding: "1px 6px", borderRadius: 100,
-                background: "#DBEAFE", color: "#1D4ED8",
+                background: "var(--color-jade-soft)", color: "var(--color-jade)",
               }}
             >
               {notifications.filter((n) => !n.read).length}
@@ -859,9 +841,7 @@ function NotificationDropdown({
         {notifications.length > 0 && (
           <button
             onClick={onClear}
-            style={{ fontSize: 11, color: "#94A3B8" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#EF4444")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#94A3B8")}
+            style={{ fontSize: 11, color: "var(--color-subtle)" }}
           >
             {clearLabel}
           </button>
@@ -874,7 +854,7 @@ function NotificationDropdown({
             <div className="w-12 h-12 flex items-center justify-center mx-auto mb-3">
               <Image src="/icon-nobg.png" alt="موعد" width={40} height={40} className="object-contain opacity-40" />
             </div>
-            <p style={{ fontSize: 13, color: "#94A3B8" }}>{emptyLabel}</p>
+            <p style={{ fontSize: 13, color: "var(--color-subtle)" }}>{emptyLabel}</p>
           </div>
         ) : (
           notifications.map((n) => {
@@ -884,23 +864,23 @@ function NotificationDropdown({
                 key={n.id}
                 className={cn(
                   "flex items-start gap-3 px-4 py-3",
-                  n.read ? "bg-white" : "bg-[#DBEAFE]/30",
+                  n.read ? "bg-white" : "bg-[var(--color-jade-soft)]/30",
                 )}
-                style={{ borderBottom: "1px solid #F8FAFC" }}
+                style={{ borderBottom: "1px solid var(--color-surface-2)" }}
               >
                 <span className={cn("mt-0.5 shrink-0 w-7 h-7 rounded-full flex items-center justify-center", iconClass)}>
                   <Icon size={14} />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#0F172A", lineHeight: 1.3 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--color-ink)", lineHeight: 1.3 }}>
                     {n.title}
                   </p>
                   {n.body && (
-                    <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }} className="truncate">
+                    <p style={{ fontSize: 11, color: "var(--color-subtle)", marginTop: 2 }} className="truncate">
                       {n.body}
                     </p>
                   )}
-                  <p style={{ fontSize: 10, color: "#CBD5E1", marginTop: 3 }}>
+                  <p style={{ fontSize: 10, color: "var(--color-line-2)", marginTop: 3 }}>
                     {timeAgo(n.timestamp, timeAgoUnits)}
                   </p>
                 </div>
@@ -909,7 +889,7 @@ function NotificationDropdown({
                     className="shrink-0 mt-2"
                     style={{
                       width: 7, height: 7, borderRadius: "50%",
-                      background: "#3B82F6", flexShrink: 0,
+                      background: "var(--color-jade)", flexShrink: 0,
                     }}
                   />
                 )}

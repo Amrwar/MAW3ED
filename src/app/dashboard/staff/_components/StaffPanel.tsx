@@ -137,10 +137,10 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
     width:        "100%",
     padding:      "10px 14px",
     borderRadius: 10,
-    border:       "1.5px solid #E2E8F0",
+    border:       "1.5px solid var(--color-line)",
     fontSize:     13,
-    color:        "#0F172A",
-    background:   "#FFFFFF",
+    color:        "var(--color-ink)",
+    background:   "var(--color-surface)",
     outline:      "none",
     boxSizing:    "border-box",
   };
@@ -149,7 +149,7 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
     display:      "block",
     fontSize:     12,
     fontWeight:   600,
-    color:        "#475569",
+    color:        "var(--color-muted)",
     marginBottom: 6,
   };
 
@@ -161,7 +161,7 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
       <div
         className="fixed inset-0 z-[80]"
         style={{
-          background:     "rgba(15,23,42,0.45)",
+          background:     "rgba(17,32,28,0.45)",
           backdropFilter: "blur(3px)",
           opacity:        open ? 1 : 0,
           pointerEvents:  open ? "auto" : "none",
@@ -176,8 +176,8 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
         style={{
           width:      400,
           maxWidth:   "100vw",
-          background: "#FFFFFF",
-          boxShadow:  open ? "0 0 40px rgba(15,23,42,0.18)" : "none",
+          background: "var(--color-surface)",
+          boxShadow:  open ? "0 0 40px rgba(17,32,28,0.18)" : "none",
           transform:  open ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.28s cubic-bezier(0.4,0,0.2,1)",
         }}
@@ -186,9 +186,9 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
         {/* Header */}
         <div
           className="flex items-center justify-between px-5 shrink-0"
-          style={{ height: 64, borderBottom: "1.5px solid #F1F5F9" }}
+          style={{ height: 64, borderBottom: "1.5px solid var(--color-surface-3)" }}
         >
-          <p style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: "var(--color-ink)" }}>
             {editing
               ? (isAr ? "تعديل بيانات الموظف" : "Edit Staff Member")
               : (isAr ? "إضافة موظف جديد"     : "Add Staff Member")}
@@ -197,8 +197,8 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
             onClick={onClose}
             style={{
               width: 32, height: 32, borderRadius: 8,
-              background: "#F8FAFC", border: "1.5px solid #E2E8F0",
-              color: "#64748B", cursor: "pointer",
+              background: "var(--color-surface-2)", border: "1.5px solid var(--color-line)",
+              color: "var(--color-muted)", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
@@ -270,12 +270,12 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
                         gap:          10,
                         padding:      "9px 12px",
                         borderRadius: 8,
-                        border:       `1.5px solid ${form.serviceIds.includes(svc.id) ? "#1D4ED8" : "#E2E8F0"}`,
-                        background:   form.serviceIds.includes(svc.id) ? "#EFF6FF" : "#FFFFFF",
+                        border:       `1.5px solid ${form.serviceIds.includes(svc.id) ? "var(--color-jade)" : "var(--color-line)"}`,
+                        background:   form.serviceIds.includes(svc.id) ? "var(--color-jade-tint)" : "var(--color-surface)",
                         cursor:       "pointer",
                         fontSize:     13,
                         fontWeight:   500,
-                        color:        form.serviceIds.includes(svc.id) ? "#1D4ED8" : "#475569",
+                        color:        form.serviceIds.includes(svc.id) ? "var(--color-jade)" : "var(--color-muted)",
                         transition:   "all 0.15s",
                       }}
                     >
@@ -290,7 +290,7 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
                         <div
                           style={{
                             width: 16, height: 16, borderRadius: "50%",
-                            background: "#1D4ED8",
+                            background: "var(--color-jade)",
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}
                         >
@@ -317,9 +317,9 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
                     style={{
                       padding:      "6px 10px",
                       borderRadius: 8,
-                      border:       `1.5px solid ${form.workingDays.includes(i) ? "#0F172A" : "#E2E8F0"}`,
-                      background:   form.workingDays.includes(i) ? "#0F172A" : "#F8FAFC",
-                      color:        form.workingDays.includes(i) ? "#FFFFFF"  : "#64748B",
+                      border:       `1.5px solid ${form.workingDays.includes(i) ? "var(--color-ink)" : "var(--color-line)"}`,
+                      background:   form.workingDays.includes(i) ? "var(--color-ink)" : "var(--color-surface-2)",
+                      color:        form.workingDays.includes(i) ? "var(--color-surface)"  : "var(--color-muted)",
                       fontSize:     12,
                       fontWeight:   600,
                       cursor:       "pointer",
@@ -334,7 +334,7 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
 
             {/* Active toggle */}
             <div className="flex items-center justify-between">
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-ink)" }}>
                 {isAr ? "الموظف نشط" : "Staff member is active"}
               </span>
               <button
@@ -344,7 +344,7 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
                   width:      44,
                   height:     24,
                   borderRadius: 100,
-                  background: form.isActive ? "#0F172A" : "#E2E8F0",
+                  background: form.isActive ? "var(--color-ink)" : "var(--color-line)",
                   border:     "none",
                   cursor:     "pointer",
                   position:   "relative",
@@ -359,7 +359,7 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
                     width:            18,
                     height:           18,
                     borderRadius:     100,
-                    background:       "#FFFFFF",
+                    background:       "var(--color-surface)",
                     transition:       "inset-inline-start 0.2s",
                     boxShadow:        "0 1px 3px rgba(0,0,0,0.2)",
                   }}
@@ -368,7 +368,7 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
             </div>
 
             {error && (
-              <p style={{ fontSize: 12, color: "#EF4444", fontWeight: 500 }}>{error}</p>
+              <p style={{ fontSize: 12, color: "var(--color-danger)", fontWeight: 500 }}>{error}</p>
             )}
           </div>
         </form>
@@ -376,7 +376,7 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
         {/* Footer */}
         <div
           className="shrink-0 flex gap-3 px-5 pb-6 pt-4"
-          style={{ borderTop: "1.5px solid #F1F5F9" }}
+          style={{ borderTop: "1.5px solid var(--color-surface-3)" }}
         >
           <button
             type="button"
@@ -385,9 +385,9 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
               flex:         1,
               padding:      "11px 0",
               borderRadius: 10,
-              background:   "#F8FAFC",
-              border:       "1.5px solid #E2E8F0",
-              color:        "#475569",
+              background:   "var(--color-surface-2)",
+              border:       "1.5px solid var(--color-line)",
+              color:        "var(--color-muted)",
               fontSize:     13,
               fontWeight:   600,
               cursor:       "pointer",
@@ -402,9 +402,9 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
               flex:           2,
               padding:        "11px 0",
               borderRadius:   10,
-              background:     "#0F172A",
+              background:     "var(--color-ink)",
               border:         "none",
-              color:          "#FFFFFF",
+              color:          "var(--color-surface)",
               fontSize:       13,
               fontWeight:     600,
               cursor:         saving ? "not-allowed" : "pointer",

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Star } from "lucide-react";
+import { rating as fmtRating } from "@/lib/fmt";
 
 interface StarRatingProps {
   rating: number;
@@ -9,11 +10,7 @@ interface StarRatingProps {
   showCount?: boolean;
 }
 
-const sizeMap = {
-  sm: 12,
-  md: 14,
-  lg: 16,
-};
+const sizeMap = { sm: 12, md: 14, lg: 16 };
 
 export default function StarRating({
   rating,
@@ -23,46 +20,43 @@ export default function StarRating({
   showCount = true,
 }: StarRatingProps) {
   const starSize = sizeMap[size];
-  const fullStars = Math.floor(rating);
+  const full = Math.floor(rating);
   const hasHalf = rating % 1 >= 0.5;
 
+  const textSize =
+    size === "sm" ? "text-xs" : size === "md" ? "text-sm" : "text-base";
+
   return (
-    <div className={cn("flex items-center gap-1", className)}>
-      <div className="flex items-center gap-0.5">
+    <div
+      className={cn("flex items-center gap-1.5", className)}
+      role="img"
+      aria-label={`${fmtRating(rating)} / 5`}
+    >
+      <span className="flex items-center gap-0.5" aria-hidden="true">
         {Array.from({ length: 5 }).map((_, i) => (
           <Star
             key={i}
             size={starSize}
             className={cn(
-              i < fullStars
-                ? "fill-amber-400 text-amber-400"
-                : i === fullStars && hasHalf
-                ? "fill-amber-200 text-amber-400"
-                : "fill-gray-200 text-gray-200"
+              i < full
+                ? "fill-[var(--color-star)] text-[var(--color-star)]"
+                : i === full && hasHalf
+                  ? "fill-[var(--color-star)]/40 text-[var(--color-star)]"
+                  : "fill-[var(--color-line)] text-[var(--color-line)]",
             )}
           />
         ))}
-      </div>
-      <span
-        className={cn(
-          "font-semibold text-[var(--color-text-primary)]",
-          size === "sm" && "text-xs",
-          size === "md" && "text-sm",
-          size === "lg" && "text-base"
-        )}
-      >
-        {rating.toFixed(1)}
       </span>
-      {showCount && reviewCount !== undefined && (
-        <span
-          className={cn(
-            "text-[var(--color-text-muted)]",
-            size === "sm" && "text-xs",
-            size === "md" && "text-sm",
-            size === "lg" && "text-sm"
-          )}
-        >
-          ({reviewCount.toLocaleString("ar-EG")})
+
+      <span className={cn("num font-bold text-[var(--color-ink)]", textSize)}>
+        {fmtRating(rating)}
+      </span>
+
+      {/* A count of zero is hidden rather than rendered as an empty
+          bracket, which is what the old card did. */}
+      {showCount && !!reviewCount && (
+        <span className={cn("num text-[var(--color-subtle)]", textSize)}>
+          ({reviewCount})
         </span>
       )}
     </div>

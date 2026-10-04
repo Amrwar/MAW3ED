@@ -7,7 +7,7 @@ import { Mail, Phone, MessageCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const channelIcons = [Mail, Phone, MessageCircle];
-const channelColors = ["bg-blue-50 text-blue-600","bg-green-50 text-green-600","bg-purple-50 text-purple-600"];
+const channelColors = ["bg-[var(--color-jade-soft)] text-[var(--color-jade)]","bg-[var(--color-ok-soft)] text-[var(--color-ok)]","bg-[var(--color-jade-soft)] text-[var(--color-jade)]"];
 
 export default function ContactPage() {
   const { t } = useLanguage();

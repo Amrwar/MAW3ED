@@ -43,8 +43,8 @@ type PlanCfg = {
 const PLANS_CONFIG: Record<PlanId, PlanCfg> = {
   FREE: {
     icon:      Sparkles,
-    iconBg:    "linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)",
-    iconColor: "#64748B",
+    iconBg:    "linear-gradient(135deg, var(--color-surface-3) 0%, var(--color-line) 100%)",
+    iconColor: "var(--color-muted)",
     featured:  false,
     ctaHref:   "/signup",
     descAr:    "للمبتدئين والتجربة",
@@ -52,8 +52,8 @@ const PLANS_CONFIG: Record<PlanId, PlanCfg> = {
   },
   PRO: {
     icon:      Zap,
-    iconBg:    "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-    iconColor: "#FFFFFF",
+    iconBg:    "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
+    iconColor: "var(--color-surface)",
     featured:  true,
     ctaHref:   "/dashboard/settings?tab=subscription",
     descAr:    "للأعمال في مرحلة النمو",
@@ -61,8 +61,8 @@ const PLANS_CONFIG: Record<PlanId, PlanCfg> = {
   },
   PREMIUM: {
     icon:      Crown,
-    iconBg:    "linear-gradient(135deg, #B45309 0%, #F59E0B 100%)",
-    iconColor: "#FFFFFF",
+    iconBg:    "var(--color-night)",
+    iconColor: "var(--color-surface)",
     featured:  false,
     ctaHref:   "/dashboard/settings?tab=subscription",
     descAr:    "للأعمال الاحترافية",
@@ -78,9 +78,9 @@ function CheckCircle() {
   return (
     <div
       className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-      style={{ background: "#DCFCE7" }}
+      style={{ background: "var(--color-ok-soft)" }}
     >
-      <Check size={11} strokeWidth={2.5} style={{ color: "#16A34A" }} />
+      <Check size={11} strokeWidth={2.5} style={{ color: "var(--color-ok)" }} />
     </div>
   );
 }
@@ -89,9 +89,9 @@ function MinusCircle() {
   return (
     <div
       className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-      style={{ background: "#F1F5F9" }}
+      style={{ background: "var(--color-surface-3)" }}
     >
-      <Minus size={11} strokeWidth={2} style={{ color: "#CBD5E1" }} />
+      <Minus size={11} strokeWidth={2} style={{ color: "var(--color-line-2)" }} />
     </div>
   );
 }
@@ -114,13 +114,13 @@ export default function PricingPage() {
   };
 
   const trustItems = isAr
-    ? ["بدون بطاقة ائتمان", "إلغاء في أي وقت", "إعداد في ٥ دقائق"]
+    ? ["بدون بطاقة ائتمان", "إلغاء في أي وقت", "إعداد في 5 دقائق"]
     : ["No credit card required", "Cancel anytime", "5-minute setup"];
 
   return (
     <>
       <Navbar />
-      <main className="min-h-screen" style={{ background: "#F8FAFC" }}>
+      <main className="min-h-screen" style={{ background: "var(--color-surface-2)" }}>
 
         <PageHero
           badge={p.eyebrow}
@@ -144,7 +144,7 @@ export default function PricingPage() {
             style={{
               height: 500,
               background:
-                "radial-gradient(ellipse 70% 55% at 50% 0%, rgba(59,130,246,0.07) 0%, transparent 100%)",
+                "radial-gradient(ellipse 70% 55% at 50% 0%, rgba(14,127,94,0.07) 0%, transparent 100%)",
             }}
           />
 
@@ -162,30 +162,16 @@ export default function PricingPage() {
                 return (
                   <div
                     key={planId}
-                    className="relative flex flex-col rounded-3xl bg-white overflow-hidden"
+                    className="relative flex flex-col rounded-3xl bg-white overflow-hidden transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                     style={{
                       border: featured
-                        ? "1px solid rgba(59,130,246,0.38)"
-                        : "1px solid #E2E8F0",
+                        ? "1px solid rgba(14,127,94,0.38)"
+                        : "1px solid var(--color-line)",
                       boxShadow: featured
-                        ? "0 0 0 4px rgba(59,130,246,0.08), 0 24px 64px rgba(59,130,246,0.14), 0 8px 24px rgba(15,23,42,0.06)"
-                        : "0 1px 4px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.04)",
+                        ? "0 0 0 4px rgba(14,127,94,0.08), 0 24px 64px rgba(14,127,94,0.14), 0 8px 24px rgba(17,32,28,0.06)"
+                        : "0 1px 4px rgba(17,32,28,0.04), 0 4px 16px rgba(17,32,28,0.04)",
                       transform: featured ? "translateY(-10px)" : "translateY(0)",
                       transition: "box-shadow 0.25s ease, transform 0.25s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!featured) {
-                        (e.currentTarget as HTMLDivElement).style.boxShadow =
-                          "0 8px 32px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.04)";
-                        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-4px)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!featured) {
-                        (e.currentTarget as HTMLDivElement).style.boxShadow =
-                          "0 1px 4px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.04)";
-                        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-                      }
                     }}
                   >
 
@@ -195,7 +181,7 @@ export default function PricingPage() {
                         className="h-1 w-full shrink-0"
                         style={{
                           background:
-                            "linear-gradient(90deg, #1D4ED8 0%, #3B82F6 50%, #60A5FA 100%)",
+                            "linear-gradient(90deg, var(--color-jade) 0%, var(--color-jade) 50%, var(--color-jade) 100%)",
                         }}
                       />
                     )}
@@ -208,15 +194,15 @@ export default function PricingPage() {
                           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full mb-5 self-start"
                           style={{
                             background:
-                              "linear-gradient(135deg, rgba(29,78,216,0.10) 0%, rgba(59,130,246,0.10) 100%)",
-                            border: "1px solid rgba(59,130,246,0.25)",
+                              "linear-gradient(135deg, rgba(10,95,71,0.10) 0%, rgba(14,127,94,0.10) 100%)",
+                            border: "1px solid rgba(14,127,94,0.25)",
                           }}
                         >
-                          <Zap size={10} style={{ color: "#3B82F6" }} />
+                          <Zap size={10} style={{ color: "var(--color-jade)" }} />
                           <span
                             className="font-bold uppercase"
                             style={{
-                              color: "#2563EB",
+                              color: "var(--color-jade-hover)",
                               fontSize: 10,
                               letterSpacing: "0.06em",
                             }}
@@ -240,12 +226,12 @@ export default function PricingPage() {
                         </div>
                         <div>
                           <h2
-                            className="text-base font-black text-[#0F172A]"
+                            className="text-base font-extrabold text-[var(--color-ink)]"
                             style={{ letterSpacing: "-0.015em" }}
                           >
                             {planNames[planId]}
                           </h2>
-                          <p className="text-xs text-[#94A3B8] mt-0.5">
+                          <p className="text-xs text-[var(--color-subtle)] mt-0.5">
                             {isAr ? cfg.descAr : cfg.descEn}
                           </p>
                         </div>
@@ -255,8 +241,8 @@ export default function PricingPage() {
                       <div className="mb-7">
                         {isFree ? (
                           <p
-                            className="text-4xl font-black"
-                            style={{ color: "#0F172A", letterSpacing: "-0.03em" }}
+                            className="text-4xl font-extrabold"
+                            style={{ color: "var(--color-ink)", letterSpacing: "-0.03em" }}
                           >
                             {isAr ? "مجاني" : "Free"}
                           </p>
@@ -264,19 +250,19 @@ export default function PricingPage() {
                           <>
                             <div className="flex items-baseline gap-1.5">
                               <span
-                                className="text-4xl font-black"
+                                className="text-4xl font-extrabold"
                                 style={{
-                                  color: featured ? "#1D4ED8" : "#0F172A",
+                                  color: featured ? "var(--color-jade)" : "var(--color-ink)",
                                   letterSpacing: "-0.03em",
                                 }}
                               >
-                                {price.toLocaleString(isAr ? "ar-EG" : "en-US")}
+                                {price.toLocaleString(isAr ? "ar-EG-u-nu-latn" : "en-US")}
                               </span>
-                              <span className="text-sm font-semibold text-[#94A3B8]">
+                              <span className="text-sm font-semibold text-[var(--color-subtle)]">
                                 {isAr ? "ج.م" : "EGP"}
                               </span>
                             </div>
-                            <p className="text-xs text-[#94A3B8] mt-1">
+                            <p className="text-xs text-[var(--color-subtle)] mt-1">
                               {isAr ? "شهريًا · يُجدَّد تلقائيًا" : "per month · auto-renewed"}
                             </p>
                           </>
@@ -284,7 +270,7 @@ export default function PricingPage() {
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px mb-7" style={{ background: "#F1F5F9" }} />
+                      <div className="h-px mb-7" style={{ background: "var(--color-surface-3)" }} />
 
                       {/* Feature list */}
                       <ul className="space-y-3.5 mb-8 flex-1">
@@ -300,7 +286,7 @@ export default function PricingPage() {
                               {enabled ? <CheckCircle /> : <MinusCircle />}
                               <span
                                 className="text-sm"
-                                style={{ color: enabled ? "#334155" : "#94A3B8" }}
+                                style={{ color: enabled ? "var(--color-ink-2)" : "var(--color-subtle)" }}
                               >
                                 {display}
                               </span>
@@ -313,21 +299,11 @@ export default function PricingPage() {
                       {planId === "FREE" && (
                         <Link
                           href={cfg.ctaHref}
-                          className="block text-center py-3 rounded-2xl text-sm font-bold transition-all duration-150"
+                          className="block text-center py-3 rounded-2xl text-sm font-bold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                           style={{
-                            background:  "#F8FAFC",
-                            border:      "1.5px solid #E2E8F0",
-                            color:       "#475569",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background    = "#F1F5F9";
-                            e.currentTarget.style.borderColor   = "#CBD5E1";
-                            e.currentTarget.style.color         = "#0F172A";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background    = "#F8FAFC";
-                            e.currentTarget.style.borderColor   = "#E2E8F0";
-                            e.currentTarget.style.color         = "#475569";
+                            background:  "var(--color-surface-2)",
+                            border:      "1.5px solid var(--color-line)",
+                            color:       "var(--color-muted)",
                           }}
                         >
                           {planCtas[planId]}
@@ -337,18 +313,10 @@ export default function PricingPage() {
                       {planId === "PRO" && (
                         <Link
                           href={cfg.ctaHref}
-                          className="block text-center py-3 rounded-2xl text-sm font-bold text-white transition-all duration-150"
+                          className="block text-center py-3 rounded-2xl text-sm font-bold text-white transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                           style={{
-                            background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-                            boxShadow:  "0 4px 16px rgba(59,130,246,0.40)",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.boxShadow = "0 6px 22px rgba(59,130,246,0.52)";
-                            e.currentTarget.style.filter    = "brightness(1.06)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.boxShadow = "0 4px 16px rgba(59,130,246,0.40)";
-                            e.currentTarget.style.filter    = "";
+                            background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
+                            boxShadow:  "0 4px 16px rgba(14,127,94,0.40)",
                           }}
                         >
                           {planCtas[planId]}
@@ -356,22 +324,7 @@ export default function PricingPage() {
                       )}
 
                       {planId === "PREMIUM" && (
-                        <Link
-                          href={cfg.ctaHref}
-                          className="block text-center py-3 rounded-2xl text-sm font-bold text-white transition-all duration-150"
-                          style={{
-                            background: "linear-gradient(135deg, #B45309 0%, #F59E0B 100%)",
-                            boxShadow:  "0 4px 16px rgba(245,158,11,0.28)",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.boxShadow = "0 6px 22px rgba(245,158,11,0.44)";
-                            e.currentTarget.style.filter    = "brightness(1.04)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.boxShadow = "0 4px 16px rgba(245,158,11,0.28)";
-                            e.currentTarget.style.filter    = "";
-                          }}
-                        >
+                        <Link href={cfg.ctaHref} className="btn btn-night w-full">
                           {planCtas[planId]}
                         </Link>
                       )}
@@ -386,8 +339,8 @@ export default function PricingPage() {
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 mt-8">
               {trustItems.map((item) => (
                 <div key={item} className="flex items-center gap-1.5">
-                  <Check size={13} strokeWidth={2.5} style={{ color: "#22C55E" }} />
-                  <span className="text-xs font-medium text-[#475569]">{item}</span>
+                  <Check size={13} strokeWidth={2.5} style={{ color: "var(--color-ok)" }} />
+                  <span className="text-xs font-medium text-[var(--color-muted)]">{item}</span>
                 </div>
               ))}
             </div>
@@ -400,7 +353,7 @@ export default function PricingPage() {
               {/* Section heading */}
               <div className="text-center mb-10">
                 <h2
-                  className="text-2xl font-black text-[#0F172A]"
+                  className="text-2xl font-extrabold text-[var(--color-ink)]"
                   style={{ letterSpacing: "-0.025em" }}
                 >
                   {p.comparison}
@@ -411,8 +364,8 @@ export default function PricingPage() {
               <div
                 className="overflow-hidden rounded-3xl"
                 style={{
-                  border:     "1px solid #E2E8F0",
-                  boxShadow:  "0 4px 24px rgba(15,23,42,0.06), 0 1px 4px rgba(15,23,42,0.03)",
+                  border:     "1px solid var(--color-line)",
+                  boxShadow:  "0 4px 24px rgba(17,32,28,0.06), 0 1px 4px rgba(17,32,28,0.03)",
                 }}
               >
                 {/* Horizontal scroll wrapper for mobile */}
@@ -421,10 +374,10 @@ export default function PricingPage() {
 
                     {/* Dark navy header */}
                     <thead>
-                      <tr style={{ background: "#0F172A" }}>
+                      <tr style={{ background: "var(--color-ink)" }}>
                         <th
                           className="text-start px-6 py-5 font-semibold"
-                          style={{ color: "#64748B", width: "42%" }}
+                          style={{ color: "var(--color-muted)", width: "42%" }}
                         >
                           {p.feature}
                         </th>
@@ -436,7 +389,7 @@ export default function PricingPage() {
                               key={planId}
                               className="text-center px-4 py-5"
                               style={{
-                                background: cfg.featured ? "#1D4ED8" : "transparent",
+                                background: cfg.featured ? "var(--color-jade)" : "transparent",
                                 borderInlineStart: cfg.featured ? "none" : "none",
                               }}
                             >
@@ -452,7 +405,7 @@ export default function PricingPage() {
                                   <Icon
                                     size={14}
                                     strokeWidth={1.75}
-                                    style={{ color: "#FFFFFF" }}
+                                    style={{ color: "var(--color-surface)" }}
                                   />
                                 </div>
                                 <span className="text-sm font-bold text-white">
@@ -471,10 +424,10 @@ export default function PricingPage() {
                         <tr key={key}>
                           {/* Feature label */}
                           <td
-                            className="px-6 py-4 font-medium text-[#0F172A]"
+                            className="px-6 py-4 font-medium text-[var(--color-ink)]"
                             style={{
-                              background:   i % 2 === 0 ? "#FFFFFF" : "#F8FAFC",
-                              borderBottom: "1px solid #F1F5F9",
+                              background:   i % 2 === 0 ? "var(--color-surface)" : "var(--color-surface-2)",
+                              borderBottom: "1px solid var(--color-surface-3)",
                             }}
                           >
                             {label}
@@ -485,11 +438,11 @@ export default function PricingPage() {
                             const cfg = PLANS_CONFIG[planId];
                             const val = PLAN_FEATURES[planId][key];
 
-                            const rowBg = i % 2 === 0 ? "#FFFFFF" : "#F8FAFC";
+                            const rowBg = i % 2 === 0 ? "var(--color-surface)" : "var(--color-surface-2)";
                             const cellBg = cfg.featured
                               ? i % 2 === 0
-                                ? "rgba(59,130,246,0.05)"
-                                : "rgba(59,130,246,0.03)"
+                                ? "rgba(14,127,94,0.05)"
+                                : "rgba(14,127,94,0.03)"
                               : rowBg;
 
                             let content: React.ReactNode;
@@ -497,7 +450,7 @@ export default function PricingPage() {
                               content = (
                                 <span
                                   className="font-bold"
-                                  style={{ color: cfg.featured ? "#1D4ED8" : "#0F172A" }}
+                                  style={{ color: cfg.featured ? "var(--color-jade)" : "var(--color-ink)" }}
                                 >
                                   {val === Infinity ? p.unlimited : `${val} ${p.bookings}`}
                                 </span>
@@ -506,18 +459,18 @@ export default function PricingPage() {
                               content = (
                                 <div
                                   className="w-6 h-6 rounded-full flex items-center justify-center mx-auto"
-                                  style={{ background: "#DCFCE7" }}
+                                  style={{ background: "var(--color-ok-soft)" }}
                                 >
-                                  <Check size={12} strokeWidth={2.5} style={{ color: "#16A34A" }} />
+                                  <Check size={12} strokeWidth={2.5} style={{ color: "var(--color-ok)" }} />
                                 </div>
                               );
                             } else {
                               content = (
                                 <div
                                   className="w-6 h-6 rounded-full flex items-center justify-center mx-auto"
-                                  style={{ background: "#F1F5F9" }}
+                                  style={{ background: "var(--color-surface-3)" }}
                                 >
-                                  <Minus size={12} strokeWidth={2} style={{ color: "#CBD5E1" }} />
+                                  <Minus size={12} strokeWidth={2} style={{ color: "var(--color-line-2)" }} />
                                 </div>
                               );
                             }
@@ -528,7 +481,7 @@ export default function PricingPage() {
                                 className="px-4 py-4 text-center"
                                 style={{
                                   background:   cellBg,
-                                  borderBottom: "1px solid #F1F5F9",
+                                  borderBottom: "1px solid var(--color-surface-3)",
                                 }}
                               >
                                 {content}
@@ -552,9 +505,9 @@ export default function PricingPage() {
               <div
                 className="relative overflow-hidden rounded-3xl"
                 style={{
-                  background: "linear-gradient(135deg, rgba(59,130,246,0.04) 0%, rgba(99,102,241,0.025) 100%)",
-                  border:     "1px solid rgba(59,130,246,0.13)",
-                  boxShadow:  "0 2px 20px rgba(59,130,246,0.06), 0 1px 4px rgba(15,23,42,0.03)",
+                  background: "linear-gradient(135deg, rgba(14,127,94,0.04) 0%, rgba(14,127,94,0.025) 100%)",
+                  border:     "1px solid rgba(14,127,94,0.13)",
+                  boxShadow:  "0 2px 20px rgba(14,127,94,0.06), 0 1px 4px rgba(17,32,28,0.03)",
                 }}
               >
                 {/* Dot-grid texture */}
@@ -562,7 +515,7 @@ export default function PricingPage() {
                   aria-hidden
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    backgroundImage: "radial-gradient(circle, rgba(59,130,246,0.055) 1px, transparent 1px)",
+                    backgroundImage: "radial-gradient(circle, rgba(14,127,94,0.055) 1px, transparent 1px)",
                     backgroundSize:  "22px 22px",
                   }}
                 />
@@ -575,11 +528,11 @@ export default function PricingPage() {
                     <div>
 
                       {/* Eyebrow badge */}
-                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#3B82F6]/25 bg-[#3B82F6]/10 mb-5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[var(--color-jade)]/25 bg-[var(--color-jade)]/10 mb-5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-jade)]" />
                         <span
                           className="font-semibold uppercase"
-                          style={{ color: "#2563EB", fontSize: 11, letterSpacing: "0.07em" }}
+                          style={{ color: "var(--color-jade-hover)", fontSize: 11, letterSpacing: "0.07em" }}
                         >
                           {isAr ? "أسئلة شائعة" : "FAQ"}
                         </span>
@@ -587,14 +540,14 @@ export default function PricingPage() {
 
                       {/* Heading */}
                       <h2
-                        className="text-2xl lg:text-3xl font-black text-[#0F172A] mb-3"
+                        className="text-2xl lg:text-3xl font-extrabold text-[var(--color-ink)] mb-3"
                         style={{ letterSpacing: "-0.025em", lineHeight: 1.15 }}
                       >
                         {p.faqTitle}
                       </h2>
 
                       {/* Subtitle */}
-                      <p className="text-sm text-[#475569] leading-relaxed mb-8">
+                      <p className="text-sm text-[var(--color-muted)] leading-relaxed mb-8">
                         {isAr
                           ? "إجابات على الأسئلة الأكثر شيوعًا حول خطط وأسعار موعد."
                           : "Answers to the most common questions about Maw3ed plans and pricing."}
@@ -604,29 +557,29 @@ export default function PricingPage() {
                       <div
                         className="rounded-2xl p-5"
                         style={{
-                          background: "#FFFFFF",
-                          border:     "1px solid #E2E8F0",
-                          boxShadow:  "0 1px 4px rgba(15,23,42,0.05)",
+                          background: "var(--color-surface)",
+                          border:     "1px solid var(--color-line)",
+                          boxShadow:  "0 1px 4px rgba(17,32,28,0.05)",
                         }}
                       >
                         {/* Icon */}
                         <div
                           className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
                           style={{
-                            background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-                            boxShadow:  "0 4px 12px rgba(59,130,246,0.30)",
+                            background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
+                            boxShadow:  "0 4px 12px rgba(14,127,94,0.30)",
                           }}
                         >
                           <MessageCircle size={18} className="text-white" strokeWidth={1.75} />
                         </div>
 
                         <p
-                          className="text-sm font-bold text-[#0F172A] mb-1"
+                          className="text-sm font-bold text-[var(--color-ink)] mb-1"
                           style={{ letterSpacing: "-0.01em" }}
                         >
                           {isAr ? "لم تجد ما تبحث عنه؟" : "Still have questions?"}
                         </p>
-                        <p className="text-xs text-[#94A3B8] mb-4" style={{ lineHeight: 1.6 }}>
+                        <p className="text-xs text-[var(--color-subtle)] mb-4" style={{ lineHeight: 1.6 }}>
                           {isAr
                             ? "فريق الدعم جاهز لمساعدتك في اختيار الخطة المناسبة."
                             : "Our support team is ready to help you choose the right plan."}
@@ -634,10 +587,8 @@ export default function PricingPage() {
 
                         <Link
                           href="/contact"
-                          className="inline-flex items-center gap-1.5 text-xs font-bold transition-colors duration-150"
-                          style={{ color: "#3B82F6" }}
-                          onMouseEnter={(e) => { e.currentTarget.style.color = "#1D4ED8"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.color = "#3B82F6"; }}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold transition-colors duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+                          style={{ color: "var(--color-jade)" }}
                         >
                           {isAr ? "تواصل مع الدعم" : "Contact support"}
                           {isAr
@@ -657,13 +608,13 @@ export default function PricingPage() {
                             className="rounded-3xl bg-white overflow-hidden"
                             style={{
                               border:     isOpen
-                                ? "1.5px solid rgba(59,130,246,0.32)"
-                                : "1px solid #E2E8F0",
+                                ? "1.5px solid rgba(14,127,94,0.32)"
+                                : "1px solid var(--color-line)",
                               boxShadow:  isOpen
-                                ? "0 4px 20px rgba(59,130,246,0.10), 0 1px 4px rgba(15,23,42,0.04)"
-                                : "0 1px 3px rgba(15,23,42,0.04)",
+                                ? "0 4px 20px rgba(14,127,94,0.10), 0 1px 4px rgba(17,32,28,0.04)"
+                                : "0 1px 3px rgba(17,32,28,0.04)",
                               borderInlineStart: isOpen
-                                ? "3px solid #3B82F6"
+                                ? "3px solid var(--color-jade)"
                                 : undefined,
                               transition: "border-color 0.2s ease, box-shadow 0.2s ease",
                             }}
@@ -676,7 +627,7 @@ export default function PricingPage() {
                             >
                               <span
                                 className="text-[15px] font-bold leading-snug"
-                                style={{ color: isOpen ? "#1D4ED8" : "#0F172A" }}
+                                style={{ color: isOpen ? "var(--color-jade)" : "var(--color-ink)" }}
                               >
                                 {q}
                               </span>
@@ -685,7 +636,7 @@ export default function PricingPage() {
                               <div
                                 className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
                                 style={{
-                                  background:  isOpen ? "#DBEAFE" : "#F1F5F9",
+                                  background:  isOpen ? "var(--color-jade-soft)" : "var(--color-surface-3)",
                                   transition:  "background 0.2s ease",
                                   flexShrink:  0,
                                 }}
@@ -693,7 +644,7 @@ export default function PricingPage() {
                                 <ChevronDown
                                   size={14}
                                   style={{
-                                    color:      isOpen ? "#2563EB" : "#94A3B8",
+                                    color:      isOpen ? "var(--color-jade-hover)" : "var(--color-subtle)",
                                     transform:  isOpen ? "rotate(180deg)" : "rotate(0deg)",
                                     transition: "transform 0.25s ease, color 0.2s ease",
                                   }}
@@ -712,11 +663,11 @@ export default function PricingPage() {
                               <div style={{ overflow: "hidden" }}>
                                 <div
                                   className="px-6 pb-6"
-                                  style={{ borderTop: "1px solid rgba(59,130,246,0.08)" }}
+                                  style={{ borderTop: "1px solid rgba(14,127,94,0.08)" }}
                                 >
                                   <p
                                     className="text-sm pt-4"
-                                    style={{ color: "#475569", lineHeight: 1.75 }}
+                                    style={{ color: "var(--color-muted)", lineHeight: 1.75 }}
                                   >
                                     {a}
                                   </p>

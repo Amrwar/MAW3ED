@@ -95,14 +95,14 @@ export default function SettingsClient({
             style={{
               fontSize:      26,
               fontWeight:    900,
-              color:         "#0F172A",
+              color:         "var(--color-ink)",
               letterSpacing: "-0.03em",
               lineHeight:    1.2,
             }}
           >
             {st.title}
           </h1>
-          <p style={{ fontSize: 13, color: "#94A3B8", marginTop: 5, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: "var(--color-subtle)", marginTop: 5, lineHeight: 1.5 }}>
             إدارة بيانات النشاط التجاري ومعلومات التواصل والهوية
           </p>
         </div>
@@ -113,10 +113,10 @@ export default function SettingsClient({
         <div
           className="flex gap-1 p-1 rounded-2xl"
           style={{
-            background:   "#F1F5F9",
+            background:   "var(--color-surface-3)",
             width:        "fit-content",
             minWidth:     "max-content",
-            border:       "1.5px solid #E2E8F0",
+            border:       "1.5px solid var(--color-line)",
           }}
         >
           {TABS.map(({ id, label, Icon }) => (
@@ -129,14 +129,14 @@ export default function SettingsClient({
                   ? {
                       padding:     "9px 18px",
                       fontSize:    13,
-                      background:  "#0F172A",
-                      color:       "#FFFFFF",
-                      boxShadow:   "0 2px 8px rgba(15,23,42,0.18)",
+                      background:  "var(--color-ink)",
+                      color:       "var(--color-surface)",
+                      boxShadow:   "0 2px 8px rgba(17,32,28,0.18)",
                     }
                   : {
                       padding:     "9px 18px",
                       fontSize:    13,
-                      color:       "#64748B",
+                      color:       "var(--color-muted)",
                       background:  "transparent",
                     }
               }

@@ -101,7 +101,7 @@ export default function ImageUpload({
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
-              className="text-xs bg-white text-[var(--color-text-primary)] px-2 py-1 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+              className="text-xs bg-white text-[var(--color-text-primary)] px-2 py-1 rounded-lg font-medium hover:bg-[var(--color-surface-3)] transition-colors"
             >
               {uploading ? <Loader2 size={14} className="animate-spin" /> : "تغيير"}
             </button>
@@ -109,7 +109,7 @@ export default function ImageUpload({
               <button
                 type="button"
                 onClick={onRemove}
-                className="text-xs bg-red-500 text-white px-2 py-1 rounded-lg font-medium hover:bg-red-600 transition-colors"
+                className="text-xs bg-[var(--color-danger)] text-white px-2 py-1 rounded-lg font-medium hover:bg-[var(--color-danger)] transition-colors"
               >
                 <X size={14} />
               </button>
@@ -146,7 +146,7 @@ export default function ImageUpload({
 
       {/* Error */}
       {error && (
-        <p className="text-xs text-red-500">{error}</p>
+        <p className="text-xs text-[var(--color-danger)]">{error}</p>
       )}
     </div>
   );

@@ -42,7 +42,7 @@ export default function Step4Availability({ data, onNext, onBack }: Props) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-black text-[var(--color-text-primary)] mb-1">
+        <h2 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-1">
           أوقات عملك
         </h2>
         <p className="text-sm text-[var(--color-text-muted)]">
@@ -113,7 +113,7 @@ export default function Step4Availability({ data, onNext, onBack }: Props) {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
           {error}
         </div>
       )}

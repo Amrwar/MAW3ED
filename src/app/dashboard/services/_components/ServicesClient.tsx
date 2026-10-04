@@ -24,14 +24,14 @@ type Props = { initialServices: Service[] };
 
 // Deterministic gradient per service name initial
 const GRADIENTS = [
-  "linear-gradient(135deg,#1D4ED8,#3B82F6)",
-  "linear-gradient(135deg,#7C3AED,#A78BFA)",
-  "linear-gradient(135deg,#059669,#34D399)",
-  "linear-gradient(135deg,#B45309,#F59E0B)",
-  "linear-gradient(135deg,#0E7490,#22D3EE)",
-  "linear-gradient(135deg,#9D174D,#F472B6)",
-  "linear-gradient(135deg,#DC2626,#F87171)",
-  "linear-gradient(135deg,#4338CA,#818CF8)",
+  "linear-gradient(135deg,var(--color-jade),var(--color-jade))",
+  "linear-gradient(135deg,var(--color-jade),var(--color-jade-line))",
+  "linear-gradient(135deg,var(--color-ok),var(--color-jade))",
+  "linear-gradient(135deg,var(--color-warn),var(--color-star))",
+  "linear-gradient(135deg,var(--color-info),var(--color-info))",
+  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
+  "linear-gradient(135deg,var(--color-danger),var(--color-danger))",
+  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
 ];
 function svcGrad(name: string) {
   return GRADIENTS[(name.charCodeAt(0) || 0) % GRADIENTS.length];
@@ -46,7 +46,7 @@ export default function ServicesClient({ initialServices }: Props) {
 
   const { t, lang } = useLanguage();
   const sv     = t.dashboard.services;
-  const locale = lang === "ar" ? "ar-EG" : "en-US";
+  const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
   function openAdd()          { setEditing(null); setPanelOpen(true); }
   function openEdit(s: Service) { setEditing(s);   setPanelOpen(true); }
@@ -103,37 +103,29 @@ export default function ServicesClient({ initialServices }: Props) {
       {/* ── Premium page header ── */}
       <div
         className="rounded-2xl border bg-white px-6 py-5"
-        style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
+        style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1
-              className="font-black text-[#0F172A] leading-tight"
+              className="font-extrabold text-[var(--color-ink)] leading-tight"
               style={{ fontSize: 22, letterSpacing: "-0.02em" }}
             >
               {sv.title}
             </h1>
-            <p className="text-sm text-[#94A3B8] mt-1">
+            <p className="text-sm text-[var(--color-subtle)] mt-1">
               إدارة الخدمات والأسعار ومدة الحجز ·{" "}
-              <span className="font-semibold text-[#475569]">
+              <span className="font-semibold text-[var(--color-muted)]">
                 {services.length} {services.length === 1 ? "خدمة" : "خدمات"}
               </span>
             </p>
           </div>
           <button
             onClick={openAdd}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200 shrink-0"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200 shrink-0 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
             style={{
-              background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-              boxShadow:  "0 4px 14px rgba(59,130,246,0.28)",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.06)";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 20px rgba(59,130,246,0.38)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.filter = "";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 14px rgba(59,130,246,0.28)";
+              background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
+              boxShadow:  "0 4px 14px rgba(14,127,94,0.28)",
             }}
           >
             <Plus size={15} strokeWidth={2.5} />
@@ -145,15 +137,15 @@ export default function ServicesClient({ initialServices }: Props) {
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
-          icon={<Layers size={16} strokeWidth={1.75} style={{ color: "#1D4ED8" }} />}
-          iconBg="#EFF6FF"
+          icon={<Layers size={16} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />}
+          iconBg="var(--color-jade-tint)"
           value={services.length.toLocaleString(locale)}
           label="إجمالي الخدمات"
           sub={`${active} نشطة · ${inactive} موقوفة`}
         />
         <SummaryCard
-          icon={<CheckCircle2 size={16} strokeWidth={1.75} style={{ color: "#059669" }} />}
-          iconBg="#F0FDF4"
+          icon={<CheckCircle2 size={16} strokeWidth={1.75} style={{ color: "var(--color-ok)" }} />}
+          iconBg="var(--color-ok-soft)"
           value={active.toLocaleString(locale)}
           label="الخدمات النشطة"
           sub={
@@ -163,15 +155,15 @@ export default function ServicesClient({ initialServices }: Props) {
           }
         />
         <SummaryCard
-          icon={<Clock size={16} strokeWidth={1.75} style={{ color: "#7C3AED" }} />}
-          iconBg="#F5F3FF"
+          icon={<Clock size={16} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />}
+          iconBg="var(--color-jade-tint)"
           value={services.length > 0 ? `${avgDur} د` : "—"}
           label="متوسط المدة"
           sub="بالدقائق"
         />
         <SummaryCard
-          icon={<DollarSign size={16} strokeWidth={1.75} style={{ color: "#B45309" }} />}
-          iconBg="#FFFBEB"
+          icon={<DollarSign size={16} strokeWidth={1.75} style={{ color: "var(--color-warn)" }} />}
+          iconBg="var(--color-warn-soft)"
           value={services.length > 0 ? avgPrice.toLocaleString(locale) : "—"}
           label="متوسط السعر"
           sub={currency}
@@ -184,31 +176,31 @@ export default function ServicesClient({ initialServices }: Props) {
       ) : (
         <div
           className="rounded-2xl border bg-white overflow-hidden"
-          style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
+          style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
         >
           {/* Section header */}
           <div
             className="flex items-center justify-between px-6 py-4"
-            style={{ borderBottom: "1px solid #F1F5F9" }}
+            style={{ borderBottom: "1px solid var(--color-surface-3)" }}
           >
             <div className="flex items-center gap-3">
-              <h2 className="text-sm font-bold text-[#0F172A]">كل الخدمات</h2>
+              <h2 className="text-sm font-bold text-[var(--color-ink)]">كل الخدمات</h2>
               <span
                 className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: "#F1F5F9", color: "#64748B" }}
+                style={{ background: "var(--color-surface-3)", color: "var(--color-muted)" }}
               >
                 {services.length}
               </span>
               {active > 0 && (
                 <span
                   className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                  style={{ background: "#DCFCE7", color: "#15803D" }}
+                  style={{ background: "var(--color-ok-soft)", color: "var(--color-ok)" }}
                 >
                   {active} نشطة
                 </span>
               )}
             </div>
-            <TrendingUp size={14} strokeWidth={1.75} style={{ color: "#CBD5E1" }} />
+            <TrendingUp size={14} strokeWidth={1.75} style={{ color: "var(--color-line-2)" }} />
           </div>
 
           {/* Service rows */}
@@ -234,19 +226,19 @@ export default function ServicesClient({ initialServices }: Props) {
         <div
           className="rounded-2xl border px-5 py-4 flex items-start gap-4"
           style={{
-            background:  "rgba(59,130,246,0.03)",
-            borderColor: "rgba(59,130,246,0.15)",
+            background:  "rgba(14,127,94,0.03)",
+            borderColor: "rgba(14,127,94,0.15)",
           }}
         >
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-            style={{ background: "#EFF6FF" }}
+            style={{ background: "var(--color-jade-tint)" }}
           >
-            <TrendingUp size={14} strokeWidth={1.75} style={{ color: "#3B82F6" }} />
+            <TrendingUp size={14} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#1D4ED8] mb-0.5">نصيحة لتحسين الأداء</p>
-            <p className="text-xs text-[#475569] leading-relaxed">
+            <p className="text-sm font-bold text-[var(--color-jade)] mb-0.5">نصيحة لتحسين الأداء</p>
+            <p className="text-xs text-[var(--color-muted)] leading-relaxed">
               الخدمات التي تحتوي على وصف واضح تحصل على حجوزات أكثر بنسبة تصل إلى 40%.
               تأكد من إضافة وصف مفصل لكل خدمة لزيادة معدل الحجز.
             </p>
@@ -278,7 +270,7 @@ function SummaryCard({
   return (
     <div
       className="rounded-2xl border bg-white p-5"
-      style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
+      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
     >
       <div
         className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
@@ -287,13 +279,13 @@ function SummaryCard({
         {icon}
       </div>
       <p
-        className="font-black text-[#0F172A] leading-none"
+        className="font-extrabold text-[var(--color-ink)] leading-none"
         style={{ fontSize: 24, letterSpacing: "-0.02em" }}
       >
         {value}
       </p>
-      <p className="text-xs font-semibold text-[#475569] mt-1">{label}</p>
-      {sub && <p className="text-[11px] text-[#94A3B8] mt-0.5">{sub}</p>}
+      <p className="text-xs font-semibold text-[var(--color-muted)] mt-1">{label}</p>
+      {sub && <p className="text-[11px] text-[var(--color-subtle)] mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -328,24 +320,18 @@ function ServiceRow({
     <div
       className="flex items-center gap-4 px-6 py-4 transition-colors"
       style={{
-        borderTop:         idx > 0 ? "1px solid #F8FAFC" : "none",
+        borderTop:         idx > 0 ? "1px solid var(--color-surface-2)" : "none",
         opacity:           isDeleting ? 0.5 : 1,
-        borderInlineStart: `3px solid ${s.isAvailable ? "#3B82F6" : "#E2E8F0"}`,
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.background = "#FAFBFD";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.background = "transparent";
+        borderInlineStart: `3px solid ${s.isAvailable ? "var(--color-jade)" : "var(--color-line)"}`,
       }}
     >
       {/* Gradient avatar */}
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black text-white shrink-0"
+        className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-extrabold text-white shrink-0"
         style={{
           background: s.isAvailable
             ? svcGrad(s.nameAr)
-            : "linear-gradient(135deg,#CBD5E1,#94A3B8)",
+            : "linear-gradient(135deg,var(--color-line-2),var(--color-subtle))",
         }}
       >
         {s.nameAr[0]}
@@ -356,19 +342,19 @@ function ServiceRow({
         <div className="flex items-center gap-2 flex-wrap">
           <span
             className="text-sm font-bold leading-snug"
-            style={{ color: s.isAvailable ? "#0F172A" : "#94A3B8" }}
+            style={{ color: s.isAvailable ? "var(--color-ink)" : "var(--color-subtle)" }}
           >
             {s.nameAr}
           </span>
           {s.nameEn && (
-            <span className="text-xs text-[#94A3B8]" dir="ltr">{s.nameEn}</span>
+            <span className="text-xs text-[var(--color-subtle)]" dir="ltr">{s.nameEn}</span>
           )}
           <span
             className="text-[10px] font-bold px-2 py-0.5 rounded-full"
             style={
               s.isAvailable
-                ? { background: "#DCFCE7", color: "#15803D" }
-                : { background: "#F1F5F9", color: "#94A3B8" }
+                ? { background: "var(--color-ok-soft)", color: "var(--color-ok)" }
+                : { background: "var(--color-surface-3)", color: "var(--color-subtle)" }
             }
           >
             {s.isAvailable ? "نشطة" : "موقوفة"}
@@ -376,7 +362,7 @@ function ServiceRow({
         </div>
 
         {s.descriptionAr && (
-          <p className="text-xs text-[#94A3B8] truncate mt-0.5" style={{ maxWidth: 340 }}>
+          <p className="text-xs text-[var(--color-subtle)] truncate mt-0.5" style={{ maxWidth: 340 }}>
             {s.descriptionAr}
           </p>
         )}
@@ -384,17 +370,17 @@ function ServiceRow({
         <div className="flex items-center gap-3 mt-1.5">
           <span
             className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-lg"
-            style={{ background: "#F8FAFC", color: "#64748B", border: "1px solid #E2E8F0" }}
+            style={{ background: "var(--color-surface-2)", color: "var(--color-muted)", border: "1px solid var(--color-line)" }}
           >
             <Clock size={10} strokeWidth={1.75} />
             {s.duration} {sv.minutes}
           </span>
           <span
-            className="text-sm font-black"
-            style={{ color: s.isAvailable ? "#1D4ED8" : "#94A3B8" }}
+            className="text-sm font-extrabold"
+            style={{ color: s.isAvailable ? "var(--color-jade)" : "var(--color-subtle)" }}
           >
             {s.price.toLocaleString(locale)}
-            <span className="text-xs font-medium text-[#94A3B8] ms-1">{s.currency}</span>
+            <span className="text-xs font-medium text-[var(--color-subtle)] ms-1">{s.currency}</span>
           </span>
         </div>
       </div>
@@ -408,14 +394,14 @@ function ServiceRow({
         className="shrink-0 transition-opacity disabled:opacity-40"
       >
         {isToggling ? (
-          <Loader2 size={20} className="animate-spin" style={{ color: "#94A3B8" }} />
+          <Loader2 size={20} className="animate-spin" style={{ color: "var(--color-subtle)" }} />
         ) : (
           <div
             style={{
               width:        44,
               height:       24,
               borderRadius: 12,
-              background:   s.isAvailable ? "#1D4ED8" : "#E2E8F0",
+              background:   s.isAvailable ? "var(--color-jade)" : "var(--color-line)",
               transition:   "background 0.2s",
               position:     "relative",
               flexShrink:   0,
@@ -427,8 +413,8 @@ function ServiceRow({
                 width:           18,
                 height:          18,
                 borderRadius:    "50%",
-                background:      "#FFFFFF",
-                boxShadow:       "0 1px 4px rgba(15,23,42,0.15)",
+                background:      "var(--color-surface)",
+                boxShadow:       "0 1px 4px rgba(17,32,28,0.15)",
                 top:             3,
                 insetInlineStart: s.isAvailable ? "unset" : 3,
                 insetInlineEnd:   s.isAvailable ? 3 : "unset",
@@ -444,20 +430,8 @@ function ServiceRow({
         <button
           onClick={() => onEdit(s)}
           className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150"
-          style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#475569" }}
+          style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-muted)" }}
           title={sv.edit}
-          onMouseEnter={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.background  = "#EFF6FF";
-            el.style.borderColor = "#BFDBFE";
-            el.style.color       = "#1D4ED8";
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.background  = "#F8FAFC";
-            el.style.borderColor = "#E2E8F0";
-            el.style.color       = "#475569";
-          }}
         >
           <Pencil size={13} strokeWidth={1.75} />
         </button>
@@ -466,20 +440,8 @@ function ServiceRow({
           onClick={() => onDelete(s.id)}
           disabled={isDeleting}
           className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150 disabled:opacity-40"
-          style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#94A3B8" }}
+          style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-subtle)" }}
           title={sv.delete}
-          onMouseEnter={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.background  = "#FEF2F2";
-            el.style.borderColor = "#FECACA";
-            el.style.color       = "#EF4444";
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.background  = "#F8FAFC";
-            el.style.borderColor = "#E2E8F0";
-            el.style.color       = "#94A3B8";
-          }}
         >
           {isDeleting
             ? <Loader2 size={13} className="animate-spin" />
@@ -497,38 +459,32 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div
       className="rounded-2xl border bg-white py-20 px-8 text-center"
-      style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
+      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
     >
       <div
         className="w-20 h-20 rounded-3xl mx-auto mb-6 flex items-center justify-center"
         style={{
-          background: "linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)",
-          border:     "1px solid #BFDBFE",
+          background: "linear-gradient(135deg, var(--color-jade-tint) 0%, var(--color-jade-soft) 100%)",
+          border:     "1px solid var(--color-jade-line)",
         }}
       >
-        <Layers size={32} strokeWidth={1.5} style={{ color: "#3B82F6" }} />
+        <Layers size={32} strokeWidth={1.5} style={{ color: "var(--color-jade)" }} />
       </div>
       <h3
-        className="font-black text-[#0F172A] mb-2"
+        className="font-extrabold text-[var(--color-ink)] mb-2"
         style={{ fontSize: 18, letterSpacing: "-0.01em" }}
       >
         لا توجد خدمات بعد
       </h3>
-      <p className="text-sm text-[#94A3B8] mb-7 max-w-xs mx-auto leading-relaxed">
+      <p className="text-sm text-[var(--color-subtle)] mb-7 max-w-xs mx-auto leading-relaxed">
         أضف أول خدمة لتبدأ في استقبال الحجوزات من عملائك
       </p>
       <button
         onClick={onAdd}
-        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white"
+        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
         style={{
-          background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-          boxShadow:  "0 4px 14px rgba(59,130,246,0.28)",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.06)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.filter = "";
+          background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
+          boxShadow:  "0 4px 14px rgba(14,127,94,0.28)",
         }}
       >
         <Plus size={15} strokeWidth={2.5} />

@@ -23,9 +23,13 @@ export type RealtimeBookingEvent =
 export function useRealtimeBookings(
   onEvent: (event: RealtimeBookingEvent) => void,
 ): void {
-  // Keep a stable ref to the callback so reconnects don't require re-subscribing
+  // Keep a stable ref to the callback so reconnects don't require
+  // re-subscribing. Writing it during render makes the component
+  // non-idempotent, so the assignment lives in its own effect.
   const onEventRef = useRef(onEvent);
-  onEventRef.current = onEvent;
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   useEffect(() => {
     // Guard against StrictMode double-invocation and cleanup after unmount

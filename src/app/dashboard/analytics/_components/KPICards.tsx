@@ -5,35 +5,35 @@ export default function KPICards({ kpis }: { kpis: AnalyticsPayload["kpis"] }) {
   const cards = [
     {
       label:   "إجمالي الحجوزات",
-      value:   kpis.totalBookings.toLocaleString("ar-EG"),
+      value:   kpis.totalBookings.toLocaleString("ar-EG-u-nu-latn"),
       sub:     "حجز غير ملغي",
       icon:    Calendar,
-      bg:      "bg-blue-50",
-      iconCls: "text-blue-500",
+      bg:      "bg-[var(--color-jade-soft)]",
+      iconCls: "text-[var(--color-jade)]",
     },
     {
       label:   "الإيرادات المحققة",
-      value:   kpis.completedRevenue.toLocaleString("ar-EG"),
+      value:   kpis.completedRevenue.toLocaleString("ar-EG-u-nu-latn"),
       sub:     kpis.currency,
       icon:    DollarSign,
-      bg:      "bg-green-50",
-      iconCls: "text-green-500",
+      bg:      "bg-[var(--color-ok-soft)]",
+      iconCls: "text-[var(--color-ok)]",
     },
     {
       label:   "متوسط قيمة الحجز",
-      value:   Math.round(kpis.avgBookingValue).toLocaleString("ar-EG"),
+      value:   Math.round(kpis.avgBookingValue).toLocaleString("ar-EG-u-nu-latn"),
       sub:     kpis.currency,
       icon:    TrendingUp,
-      bg:      "bg-purple-50",
-      iconCls: "text-purple-500",
+      bg:      "bg-[var(--color-jade-soft)]",
+      iconCls: "text-[var(--color-jade)]",
     },
     {
       label:   "معدل العملاء المتكررين",
-      value:   `${Math.round(kpis.repeatCustomerRate * 100).toLocaleString("ar-EG")}٪`,
+      value:   `${Math.round(kpis.repeatCustomerRate * 100).toLocaleString("ar-EG-u-nu-latn")}%`,
       sub:     "عملاء بأكثر من حجز",
       icon:    Users,
-      bg:      "bg-amber-50",
-      iconCls: "text-amber-500",
+      bg:      "bg-[var(--color-warn-soft)]",
+      iconCls: "text-[var(--color-star)]",
     },
   ];
 
@@ -46,7 +46,7 @@ export default function KPICards({ kpis }: { kpis: AnalyticsPayload["kpis"] }) {
             <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center mb-4`}>
               <Icon size={18} className={c.iconCls} />
             </div>
-            <p className="text-2xl font-black text-[var(--color-text-primary)] leading-none">
+            <p className="text-2xl font-extrabold text-[var(--color-text-primary)] leading-none">
               {c.value}
             </p>
             <p className="text-sm font-medium text-[var(--color-text-secondary)] mt-1">{c.label}</p>

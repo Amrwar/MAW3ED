@@ -42,7 +42,7 @@ export default function Step1BasicInfo({ data, categories, cities, onNext }: Pro
   return (
     <form onSubmit={handleSubmit(onNext)} className="space-y-5">
       <div>
-        <h2 className="text-xl font-black text-[var(--color-text-primary)] mb-1">
+        <h2 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-1">
           مرحبًا! لنبدأ بمعلوماتك الأساسية
         </h2>
         <p className="text-sm text-[var(--color-text-muted)]">
@@ -52,8 +52,8 @@ export default function Step1BasicInfo({ data, categories, cities, onNext }: Pro
 
       {/* Arabic name */}
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-          اسم العمل بالعربية <span className="text-red-500">*</span>
+        <label className="field-label">
+          اسم العمل بالعربية <span className="text-[var(--color-danger)]">*</span>
         </label>
         <input
           type="text"
@@ -62,13 +62,13 @@ export default function Step1BasicInfo({ data, categories, cities, onNext }: Pro
           {...register("nameAr")}
         />
         {errors.nameAr && (
-          <p className="mt-1 text-xs text-red-500">{errors.nameAr.message}</p>
+          <p className="field-error">{errors.nameAr.message}</p>
         )}
       </div>
 
       {/* English name */}
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
+        <label className="field-label">
           اسم العمل بالإنجليزية{" "}
           <span className="text-[var(--color-text-muted)] text-xs">(اختياري — يُستخدم لتوليد الرابط)</span>
         </label>
@@ -84,10 +84,10 @@ export default function Step1BasicInfo({ data, categories, cities, onNext }: Pro
       {/* Category + City */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-            التخصص <span className="text-red-500">*</span>
+          <label className="field-label">
+            التخصص <span className="text-[var(--color-danger)]">*</span>
           </label>
-          <select className="input w-full" {...register("categoryId")}>
+          <select className="select w-full" {...register("categoryId")}>
             <option value="">-- اختر التخصص --</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -96,15 +96,15 @@ export default function Step1BasicInfo({ data, categories, cities, onNext }: Pro
             ))}
           </select>
           {errors.categoryId && (
-            <p className="mt-1 text-xs text-red-500">{errors.categoryId.message}</p>
+            <p className="field-error">{errors.categoryId.message}</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-            المدينة <span className="text-red-500">*</span>
+          <label className="field-label">
+            المدينة <span className="text-[var(--color-danger)]">*</span>
           </label>
-          <select className="input w-full" {...register("cityId")}>
+          <select className="select w-full" {...register("cityId")}>
             <option value="">-- اختر المدينة --</option>
             {cities.map((c) => (
               <option key={c.id} value={c.id}>
@@ -113,7 +113,7 @@ export default function Step1BasicInfo({ data, categories, cities, onNext }: Pro
             ))}
           </select>
           {errors.cityId && (
-            <p className="mt-1 text-xs text-red-500">{errors.cityId.message}</p>
+            <p className="field-error">{errors.cityId.message}</p>
           )}
         </div>
       </div>
@@ -121,8 +121,8 @@ export default function Step1BasicInfo({ data, categories, cities, onNext }: Pro
       {/* Phone + WhatsApp */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-            رقم الهاتف <span className="text-red-500">*</span>
+          <label className="field-label">
+            رقم الهاتف <span className="text-[var(--color-danger)]">*</span>
           </label>
           <input
             type="tel"
@@ -132,12 +132,12 @@ export default function Step1BasicInfo({ data, categories, cities, onNext }: Pro
             {...register("phone")}
           />
           {errors.phone && (
-            <p className="mt-1 text-xs text-red-500">{errors.phone.message}</p>
+            <p className="field-error">{errors.phone.message}</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
+          <label className="field-label">
             واتساب{" "}
             <span className="text-[var(--color-text-muted)] text-xs">(اختياري)</span>
           </label>

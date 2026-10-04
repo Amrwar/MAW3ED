@@ -67,7 +67,7 @@ export default function HeatmapChart({ data }: { data: HeatCell[] }) {
                         title={count > 0 ? `${dayLabel} ${String(hour).padStart(2,"0")}:00 — ${count} حجز` : undefined}
                         className="flex-1 aspect-square rounded-sm transition-all cursor-default"
                         style={{
-                          backgroundColor: count > 0 ? "#6366f1" : "var(--color-border)",
+                          backgroundColor: count > 0 ? "var(--color-jade)" : "var(--color-border)",
                           opacity:         count > 0 ? Number(opacity(count, max)) + 0.15 : 0.35,
                         }}
                       />
@@ -84,7 +84,7 @@ export default function HeatmapChart({ data }: { data: HeatCell[] }) {
                 <div
                   key={op}
                   className="w-3.5 h-3.5 rounded-sm"
-                  style={{ backgroundColor: "#6366f1", opacity: op * 0.85 + 0.15 }}
+                  style={{ backgroundColor: "var(--color-jade)", opacity: op * 0.85 + 0.15 }}
                 />
               ))}
               <span className="text-[10px] text-[var(--color-text-muted)]">أكثر</span>

@@ -12,8 +12,8 @@ import { getEffectivePlan, canUseFeature, type Plan, type SubscriptionStatus } f
 export const metadata: Metadata = { title: "الإحصائيات | موعد" };
 
 const SERVICE_COLORS = [
-  "#6366f1","#f59e0b","#10b981","#ef4444","#3b82f6",
-  "#ec4899","#8b5cf6","#14b8a6","#f97316","#84cc16",
+  "var(--color-jade)","var(--color-star)","var(--color-ok)","var(--color-danger)","var(--color-jade)",
+  "var(--color-jade)","var(--color-jade)","var(--color-info)","var(--color-warn)","var(--color-ok)",
 ];
 
 const AR_MONTHS = [
@@ -44,17 +44,17 @@ export default async function AnalyticsPage() {
     if (!canUseFeature(effectivePlan, "analytics")) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-          <div className="w-20 h-20 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-5">
+          <div className="w-20 h-20 rounded-2xl bg-[var(--color-jade-soft)] flex items-center justify-center mx-auto mb-5">
             <span className="text-3xl">📊</span>
           </div>
-          <h1 className="text-xl font-black text-[var(--color-text-primary)] mb-2">
+          <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
             {an.upsell.title}
           </h1>
           <p className="text-sm text-[var(--color-text-muted)] mb-6 max-w-sm leading-relaxed">
             {an.upsell.sub.split(an.upsell.growth)[0]}
-            <strong className="text-blue-600">{an.upsell.growth}</strong>
+            <strong className="text-[var(--color-jade)]">{an.upsell.growth}</strong>
             {an.upsell.sub.split(an.upsell.growth)[1]?.split(an.upsell.pro)[0]}
-            <strong className="text-amber-600">{an.upsell.pro}</strong>
+            <strong className="text-[var(--color-warn)]">{an.upsell.pro}</strong>
             {an.upsell.sub.split(an.upsell.pro)[1]}
           </p>
           <Link

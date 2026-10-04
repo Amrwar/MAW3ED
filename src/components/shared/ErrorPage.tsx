@@ -29,7 +29,7 @@ export default function ErrorPage({
   return (
     <div
       className="min-h-screen overflow-hidden"
-      style={{ background: "#F8FAFC", fontFamily: "var(--font-cairo, Cairo, sans-serif)" }}
+      style={{ background: "var(--color-surface-2)", fontFamily: "var(--font-cairo, Cairo, sans-serif)" }}
     >
       {/* ── Keyframe animations ───────────────────────────────────────────────── */}
       <style>{`
@@ -42,8 +42,8 @@ export default function ErrorPage({
           50%       { transform: rotate(5deg) translateY(-6px); }
         }
         @keyframes maw3ed-badge-pulse {
-          0%, 100% { box-shadow: 0 0 0 0   rgba(59,130,246,0.25), 0 4px 16px rgba(59,130,246,0.15); }
-          50%       { box-shadow: 0 0 0 8px rgba(59,130,246,0),   0 4px 24px rgba(59,130,246,0.30); }
+          0%, 100% { box-shadow: 0 0 0 0   rgba(14,127,94,0.25), 0 4px 16px rgba(14,127,94,0.15); }
+          50%       { box-shadow: 0 0 0 8px rgba(14,127,94,0),   0 4px 24px rgba(14,127,94,0.30); }
         }
         @keyframes maw3ed-chip-float {
           0%, 100% { transform: translateY(0px);  }
@@ -60,17 +60,17 @@ export default function ErrorPage({
         <div style={{
           position: "absolute", top: "0%", left: "-5%",
           width: 700, height: 700, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(59,130,246,0.065) 0%, transparent 65%)",
+          background: "radial-gradient(circle, rgba(14,127,94,0.065) 0%, transparent 65%)",
         }} />
         <div style={{
           position: "absolute", bottom: "-10%", right: "-5%",
           width: 500, height: 500, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(99,102,241,0.055) 0%, transparent 65%)",
+          background: "radial-gradient(circle, rgba(14,127,94,0.055) 0%, transparent 65%)",
         }} />
         <div style={{
           position: "absolute", top: "40%", left: "40%",
           width: 400, height: 400, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(59,130,246,0.035) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(14,127,94,0.035) 0%, transparent 70%)",
         }} />
       </div>
 
@@ -78,8 +78,8 @@ export default function ErrorPage({
       <header
         className="sticky top-0 z-50"
         style={{
-          borderBottom:    "1px solid #E2E8F0",
-          background:      "rgba(248,250,252,0.97)",
+          borderBottom:    "1px solid var(--color-line)",
+          background:      "rgba(244,245,241,0.97)",
           backdropFilter:  "blur(20px)",
         }}
       >
@@ -90,7 +90,7 @@ export default function ErrorPage({
           <Link
             href="/"
             className="text-sm font-semibold transition-colors"
-            style={{ color: "#475569" }}
+            style={{ color: "var(--color-muted)" }}
             dir="rtl"
           >
             العودة للرئيسية
@@ -109,21 +109,21 @@ export default function ErrorPage({
             <div
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-6 text-xs font-bold"
               style={{
-                background: "#DBEAFE",
-                color:       "#1D4ED8",
-                border:      "1px solid rgba(59,130,246,0.22)",
+                background: "var(--color-jade-soft)",
+                color:       "var(--color-jade)",
+                border:      "1px solid rgba(14,127,94,0.22)",
               }}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-jade)] animate-pulse" />
               رمز الخطأ {code}
             </div>
 
             {/* Headline */}
             <h1
-              className="font-black leading-tight mb-4"
+              className="font-extrabold leading-tight mb-4"
               style={{
                 fontSize:      "clamp(30px, 5vw, 46px)",
-                color:         "#0F172A",
+                color:         "var(--color-ink)",
                 letterSpacing: "-0.03em",
                 lineHeight:    1.18,
               }}
@@ -134,7 +134,7 @@ export default function ErrorPage({
             {/* Subtitle */}
             <p
               className="text-base leading-relaxed mb-8"
-              style={{ color: "#475569", lineHeight: 1.75, maxWidth: 400 }}
+              style={{ color: "var(--color-muted)", lineHeight: 1.75, maxWidth: 400 }}
             >
               {subtitle ?? defaultSubtitle}
             </p>
@@ -145,8 +145,8 @@ export default function ErrorPage({
                 href="/"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-bold text-white transition-all duration-200"
                 style={{
-                  background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-                  boxShadow:  "0 4px 16px rgba(59,130,246,0.35), 0 1px 4px rgba(15,23,42,0.12)",
+                  background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
+                  boxShadow:  "0 4px 16px rgba(14,127,94,0.35), 0 1px 4px rgba(17,32,28,0.12)",
                 }}
               >
                 <Home size={15} />
@@ -157,10 +157,10 @@ export default function ErrorPage({
                 href="/businesses"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200"
                 style={{
-                  background: "#FFFFFF",
-                  border:     "1.5px solid #E2E8F0",
-                  color:      "#0F172A",
-                  boxShadow:  "0 2px 8px rgba(15,23,42,0.05)",
+                  background: "var(--color-surface)",
+                  border:     "1.5px solid var(--color-line)",
+                  color:      "var(--color-ink)",
+                  boxShadow:  "0 2px 8px rgba(17,32,28,0.05)",
                 }}
               >
                 <Search size={15} />
@@ -172,9 +172,9 @@ export default function ErrorPage({
                   onClick={onReset}
                   className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200"
                   style={{
-                    background: "#FFFFFF",
-                    border:     "1.5px solid #E2E8F0",
-                    color:      "#475569",
+                    background: "var(--color-surface)",
+                    border:     "1.5px solid var(--color-line)",
+                    color:      "var(--color-muted)",
                   }}
                 >
                   ↺ إعادة المحاولة
@@ -186,14 +186,14 @@ export default function ErrorPage({
             <div
               className="w-full rounded-2xl p-5"
               style={{
-                background: "#FFFFFF",
-                border:     "1.5px solid #E2E8F0",
-                boxShadow:  "0 2px 12px rgba(15,23,42,0.04)",
+                background: "var(--color-surface)",
+                border:     "1.5px solid var(--color-line)",
+                boxShadow:  "0 2px 12px rgba(17,32,28,0.04)",
               }}
             >
               <p
-                className="text-xs font-black mb-4 uppercase tracking-widest"
-                style={{ color: "#94A3B8" }}
+                className="text-xs font-extrabold mb-4 uppercase tracking-widest"
+                style={{ color: "var(--color-subtle)" }}
               >
                 قد يهمك أيضًا
               </p>
@@ -210,14 +210,14 @@ export default function ErrorPage({
                     key={link.href}
                     href={link.href}
                     className="group flex items-center gap-2 py-2.5 text-sm font-semibold transition-colors"
-                    style={{ color: "#475569" }}
+                    style={{ color: "var(--color-muted)" }}
                   >
                     <ArrowLeft
                       size={12}
-                      style={{ color: "#CBD5E1", transition: "color 0.15s, transform 0.15s" }}
-                      className="group-hover:text-[#3B82F6]"
+                      style={{ color: "var(--color-line-2)", transition: "color 0.15s, transform 0.15s" }}
+                      className="group-hover:text-[var(--color-jade)]"
                     />
-                    <span className="group-hover:text-[#1D4ED8] transition-colors">{link.label}</span>
+                    <span className="group-hover:text-[var(--color-jade)] transition-colors">{link.label}</span>
                   </Link>
                 ))}
               </div>
@@ -235,7 +235,7 @@ export default function ErrorPage({
       {/* ── Footer strip ─────────────────────────────────────────────────────── */}
       <footer
         className="py-6 text-xs text-center"
-        style={{ color: "#94A3B8", borderTop: "1px solid #F1F5F9" }}
+        style={{ color: "var(--color-subtle)", borderTop: "1px solid var(--color-surface-3)" }}
       >
         © {new Date().getFullYear()} موعد · MAW3ED — جميع الحقوق محفوظة
       </footer>
@@ -260,7 +260,7 @@ function ErrorIllustration({ code }: { code: string }) {
           width:        340,
           height:       340,
           borderRadius: "50%",
-          background:   "radial-gradient(circle, rgba(59,130,246,0.11) 0%, rgba(99,102,241,0.06) 45%, transparent 70%)",
+          background:   "radial-gradient(circle, rgba(14,127,94,0.11) 0%, rgba(14,127,94,0.06) 45%, transparent 70%)",
           pointerEvents: "none",
           zIndex: 0,
         }}
@@ -279,7 +279,7 @@ function ErrorIllustration({ code }: { code: string }) {
           fontWeight:        900,
           letterSpacing:     "-0.06em",
           color:             "transparent",
-          WebkitTextStroke:  "2px #E2E8F0",
+          WebkitTextStroke:  "2px var(--color-line)",
           lineHeight:        1,
           whiteSpace:        "nowrap",
           zIndex:            1,
@@ -304,9 +304,9 @@ function ErrorIllustration({ code }: { code: string }) {
           style={{
             width:        210,
             borderRadius: 16,
-            background:   "linear-gradient(145deg, #F8FAFC, #F1F5F9)",
-            border:       "1.5px solid #E2E8F0",
-            boxShadow:    "0 8px 28px rgba(15,23,42,0.07)",
+            background:   "linear-gradient(145deg, var(--color-surface-2), var(--color-surface-3))",
+            border:       "1.5px solid var(--color-line)",
+            boxShadow:    "0 8px 28px rgba(17,32,28,0.07)",
             padding:      "13px 15px",
             opacity:      0.55,
             display:      "flex",
@@ -315,26 +315,26 @@ function ErrorIllustration({ code }: { code: string }) {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 22, height: 22, borderRadius: 7, background: "#E2E8F0" }} />
-            <div style={{ flex: 1, height: 7, borderRadius: 4, background: "#E2E8F0" }} />
+            <div style={{ width: 22, height: 22, borderRadius: 7, background: "var(--color-line)" }} />
+            <div style={{ flex: 1, height: 7, borderRadius: 4, background: "var(--color-line)" }} />
           </div>
-          <div style={{ height: 7, borderRadius: 4, background: "#EAEFF5" }} />
-          <div style={{ width: "78%", height: 7, borderRadius: 4, background: "#EAEFF5" }} />
-          <div style={{ width: "60%", height: 7, borderRadius: 4, background: "#EAEFF5" }} />
-          <div style={{ borderTop: "1px dashed #E2E8F0", marginTop: 2 }} />
+          <div style={{ height: 7, borderRadius: 4, background: "var(--color-surface-2)" }} />
+          <div style={{ width: "78%", height: 7, borderRadius: 4, background: "var(--color-surface-2)" }} />
+          <div style={{ width: "60%", height: 7, borderRadius: 4, background: "var(--color-surface-2)" }} />
+          <div style={{ borderTop: "1px dashed var(--color-line)", marginTop: 2 }} />
           <div
             style={{
               height:       24,
               borderRadius: 8,
-              background:   "linear-gradient(90deg, #FEE2E2, #FEF2F2)",
+              background:   "linear-gradient(90deg, var(--color-danger-soft), var(--color-danger-soft))",
               display:      "flex",
               alignItems:   "center",
               paddingInline: 8,
               gap:          6,
             }}
           >
-            <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#FCA5A5" }} />
-            <div style={{ flex: 1, height: 5, borderRadius: 3, background: "#FECACA" }} />
+            <div style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--color-danger-line)" }} />
+            <div style={{ flex: 1, height: 5, borderRadius: 3, background: "var(--color-danger-line)" }} />
           </div>
         </div>
       </div>
@@ -355,9 +355,9 @@ function ErrorIllustration({ code }: { code: string }) {
           style={{
             width:        250,
             borderRadius: 20,
-            background:   "#FFFFFF",
-            border:       "1.5px solid #E2E8F0",
-            boxShadow:    "0 24px 64px rgba(15,23,42,0.14), 0 6px 20px rgba(15,23,42,0.07)",
+            background:   "var(--color-surface)",
+            border:       "1.5px solid var(--color-line)",
+            boxShadow:    "0 24px 64px rgba(17,32,28,0.14), 0 6px 20px rgba(17,32,28,0.07)",
             overflow:     "hidden",
           }}
         >
@@ -365,7 +365,7 @@ function ErrorIllustration({ code }: { code: string }) {
           <div
             style={{
               padding:    "13px 15px",
-              background: "linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)",
+              background: "linear-gradient(135deg, var(--color-jade-hover) 0%, var(--color-jade) 100%)",
               display:    "flex",
               alignItems: "center",
               gap:        10,
@@ -394,7 +394,7 @@ function ErrorIllustration({ code }: { code: string }) {
               />
             </div>
             <div>
-              <p style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700, lineHeight: 1.25 }}>
+              <p style={{ color: "var(--color-surface)", fontSize: 12, fontWeight: 700, lineHeight: 1.25 }}>
                 احجز موعدك
               </p>
               <p style={{ color: "rgba(255,255,255,0.62)", fontSize: 10, marginTop: 2 }}>
@@ -435,24 +435,24 @@ function ErrorIllustration({ code }: { code: string }) {
                   width:          30,
                   height:         30,
                   borderRadius:   9,
-                  background:     "#DBEAFE",
+                  background:     "var(--color-jade-soft)",
                   display:        "flex",
                   alignItems:     "center",
                   justifyContent: "center",
                   flexShrink:     0,
                 }}
               >
-                <Calendar size={13} color="#3B82F6" />
+                <Calendar size={13} color="var(--color-jade)" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 10, color: "#94A3B8", marginBottom: 5, fontWeight: 600 }}>
+                <p style={{ fontSize: 10, color: "var(--color-subtle)", marginBottom: 5, fontWeight: 600 }}>
                   الخدمة المطلوبة
                 </p>
                 <div style={{ display: "flex", gap: 4 }}>
                   {[42, 30, 22].map((w, i) => (
                     <div
                       key={i}
-                      style={{ width: w, height: 7, borderRadius: 3, background: "#F1F5F9" }}
+                      style={{ width: w, height: 7, borderRadius: 3, background: "var(--color-surface-3)" }}
                     />
                   ))}
                 </div>
@@ -466,25 +466,25 @@ function ErrorIllustration({ code }: { code: string }) {
                   width:          30,
                   height:         30,
                   borderRadius:   9,
-                  background:     "#F8FAFC",
-                  border:         "1px solid #E2E8F0",
+                  background:     "var(--color-surface-2)",
+                  border:         "1px solid var(--color-line)",
                   display:        "flex",
                   alignItems:     "center",
                   justifyContent: "center",
                   flexShrink:     0,
                 }}
               >
-                <Clock size={13} color="#94A3B8" />
+                <Clock size={13} color="var(--color-subtle)" />
               </div>
               <div>
-                <p style={{ fontSize: 10, color: "#94A3B8", marginBottom: 4, fontWeight: 600 }}>
+                <p style={{ fontSize: 10, color: "var(--color-subtle)", marginBottom: 4, fontWeight: 600 }}>
                   التاريخ والوقت
                 </p>
                 <p
                   style={{
                     fontSize:           11,
                     fontWeight:         800,
-                    color:              "#CBD5E1",
+                    color:              "var(--color-line-2)",
                     letterSpacing:      "0.06em",
                     fontVariantNumeric: "tabular-nums",
                   }}
@@ -495,15 +495,15 @@ function ErrorIllustration({ code }: { code: string }) {
             </div>
 
             {/* Divider */}
-            <div style={{ borderTop: "1px dashed #E2E8F0" }} />
+            <div style={{ borderTop: "1px dashed var(--color-line)" }} />
 
             {/* 404 status badge */}
             <div
               style={{
                 padding:        "9px 12px",
                 borderRadius:   11,
-                background:     "linear-gradient(135deg, #FFF1F2 0%, #FEF2F2 100%)",
-                border:         "1px solid #FECACA",
+                background:     "linear-gradient(135deg, var(--color-danger-soft) 0%, var(--color-danger-soft) 100%)",
+                border:         "1px solid var(--color-danger-line)",
                 display:        "flex",
                 alignItems:     "center",
                 gap:            8,
@@ -514,12 +514,12 @@ function ErrorIllustration({ code }: { code: string }) {
                   width:        7,
                   height:       7,
                   borderRadius: "50%",
-                  background:   "#EF4444",
+                  background:   "var(--color-danger)",
                   flexShrink:   0,
-                  boxShadow:    "0 0 0 3px rgba(239,68,68,0.18)",
+                  boxShadow:    "0 0 0 3px rgba(158,59,46,0.18)",
                 }}
               />
-              <p style={{ fontSize: 11, fontWeight: 800, color: "#DC2626" }}>
+              <p style={{ fontSize: 11, fontWeight: 800, color: "var(--color-danger)" }}>
                 {code} · الصفحة غير موجودة
               </p>
             </div>
@@ -537,8 +537,8 @@ function ErrorIllustration({ code }: { code: string }) {
           width:          50,
           height:         50,
           borderRadius:   "50%",
-          background:     "#FFFFFF",
-          border:         "2px solid #E2E8F0",
+          background:     "var(--color-surface)",
+          border:         "2px solid var(--color-line)",
           display:        "flex",
           alignItems:     "center",
           justifyContent: "center",
@@ -563,17 +563,17 @@ function ErrorIllustration({ code }: { code: string }) {
           zIndex:     5,
           padding:    "7px 12px",
           borderRadius: 14,
-          background: "#FFFFFF",
-          border:     "1.5px solid #E2E8F0",
-          boxShadow:  "0 4px 16px rgba(15,23,42,0.08)",
+          background: "var(--color-surface)",
+          border:     "1.5px solid var(--color-line)",
+          boxShadow:  "0 4px 16px rgba(17,32,28,0.08)",
           display:    "flex",
           alignItems: "center",
           gap:        7,
           opacity:    0.88,
         }}
       >
-        <Calendar size={11} color="#3B82F6" />
-        <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8" }}>؟ موعد</p>
+        <Calendar size={11} color="var(--color-jade)" />
+        <p style={{ fontSize: 10, fontWeight: 700, color: "var(--color-subtle)" }}>؟ موعد</p>
       </div>
 
       {/* ── "route not found" dark pill (bottom-center) ── */}
@@ -586,9 +586,9 @@ function ErrorIllustration({ code }: { code: string }) {
           zIndex:         5,
           padding:        "7px 16px",
           borderRadius:   100,
-          background:     "#0F172A",
-          border:         "1px solid #1E293B",
-          boxShadow:      "0 4px 16px rgba(15,23,42,0.22)",
+          background:     "var(--color-ink)",
+          border:         "1px solid var(--color-night-2)",
+          boxShadow:      "0 4px 16px rgba(17,32,28,0.22)",
           display:        "flex",
           alignItems:     "center",
           gap:            7,
@@ -600,11 +600,11 @@ function ErrorIllustration({ code }: { code: string }) {
             width:        6,
             height:       6,
             borderRadius: "50%",
-            background:   "#EF4444",
-            boxShadow:    "0 0 0 3px rgba(239,68,68,0.22)",
+            background:   "var(--color-danger)",
+            boxShadow:    "0 0 0 3px rgba(158,59,46,0.22)",
           }}
         />
-        <p style={{ fontSize: 10, fontWeight: 700, color: "#64748B", letterSpacing: "0.07em" }}>
+        <p style={{ fontSize: 10, fontWeight: 700, color: "var(--color-muted)", letterSpacing: "0.07em" }}>
           route · not · found
         </p>
         <div
@@ -612,7 +612,7 @@ function ErrorIllustration({ code }: { code: string }) {
             width:        6,
             height:       6,
             borderRadius: "50%",
-            background:   "#334155",
+            background:   "var(--color-ink-2)",
           }}
         />
       </div>
@@ -637,7 +637,7 @@ function ErrorIllustration({ code }: { code: string }) {
                   width:        size as number,
                   height:       size as number,
                   borderRadius: "50%",
-                  background:   "#BFDBFE",
+                  background:   "var(--color-jade-line)",
                   opacity:      opacity as number,
                 }}
               />
@@ -666,7 +666,7 @@ function ErrorIllustration({ code }: { code: string }) {
               width:        i === 2 ? 5 : 4,
               height:       i === 2 ? 5 : 4,
               borderRadius: "50%",
-              background:   "#93C5FD",
+              background:   "var(--color-jade-line)",
               opacity:      op,
             }}
           />
@@ -682,9 +682,9 @@ function ErrorIllustration({ code }: { code: string }) {
           zIndex:      5,
           padding:     "6px 10px",
           borderRadius: 12,
-          background:  "#FFFFFF",
-          border:      "1.5px solid #E2E8F0",
-          boxShadow:   "0 3px 10px rgba(15,23,42,0.07)",
+          background:  "var(--color-surface)",
+          border:      "1.5px solid var(--color-line)",
+          boxShadow:   "0 3px 10px rgba(17,32,28,0.07)",
           display:     "flex",
           alignItems:  "center",
           gap:         5,
@@ -696,10 +696,10 @@ function ErrorIllustration({ code }: { code: string }) {
             width:        5,
             height:       5,
             borderRadius: "50%",
-            background:   "#CBD5E1",
+            background:   "var(--color-line-2)",
           }}
         />
-        <div style={{ width: 40, height: 5, borderRadius: 3, background: "#F1F5F9" }} />
+        <div style={{ width: 40, height: 5, borderRadius: 3, background: "var(--color-surface-3)" }} />
       </div>
 
     </div>

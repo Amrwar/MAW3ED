@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Search, ChevronDown, ChevronUp, Users,
-  UsersRound, TrendingUp, CalendarDays, Wallet,
+  UsersRound, CalendarDays, Wallet,
   Eye, ChevronLeft,
 } from "lucide-react";
 import CustomerDetailPanel from "./CustomerDetailPanel";
@@ -15,30 +15,30 @@ type SortKey = "createdAt" | "bookingCount" | "totalSpend" | "lastVisit" | "name
 
 // Deterministic avatar gradient
 const GRADIENTS = [
-  "linear-gradient(135deg,#1D4ED8,#3B82F6)",
-  "linear-gradient(135deg,#7C3AED,#A78BFA)",
-  "linear-gradient(135deg,#059669,#34D399)",
-  "linear-gradient(135deg,#B45309,#F59E0B)",
-  "linear-gradient(135deg,#0E7490,#22D3EE)",
-  "linear-gradient(135deg,#9D174D,#F472B6)",
-  "linear-gradient(135deg,#DC2626,#F87171)",
-  "linear-gradient(135deg,#4338CA,#818CF8)",
+  "linear-gradient(135deg,var(--color-jade),var(--color-jade))",
+  "linear-gradient(135deg,var(--color-jade),var(--color-jade-line))",
+  "linear-gradient(135deg,var(--color-ok),var(--color-jade))",
+  "linear-gradient(135deg,var(--color-warn),var(--color-star))",
+  "linear-gradient(135deg,var(--color-info),var(--color-info))",
+  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
+  "linear-gradient(135deg,var(--color-danger),var(--color-danger))",
+  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
 ];
 function custGrad(name: string) {
   return GRADIENTS[(name.charCodeAt(0) || 0) % GRADIENTS.length];
 }
 
 function customerLabel(c: CustomerRow): { text: string; bg: string; color: string } {
-  if (c.bookingCount === 0)  return { text: "جديد",         bg: "#F1F5F9", color: "#64748B" };
-  if (c.bookingCount >= 5)   return { text: "عميل مميز ⭐", bg: "#FEF3C7", color: "#92400E" };
-  return { text: "عميل دائم", bg: "#DCFCE7", color: "#15803D" };
+  if (c.bookingCount === 0)  return { text: "جديد",         bg: "var(--color-surface-3)", color: "var(--color-muted)" };
+  if (c.bookingCount >= 5)   return { text: "عميل مميز ⭐", bg: "var(--color-warn-soft)", color: "var(--color-warn)" };
+  return { text: "عميل دائم", bg: "var(--color-ok-soft)", color: "var(--color-ok)" };
 }
 
 function customerStatus(c: CustomerRow): { text: string; bg: string; color: string } {
-  if (!c.lastBookingDate)    return { text: "غير نشط", bg: "#F1F5F9", color: "#94A3B8" };
+  if (!c.lastBookingDate)    return { text: "غير نشط", bg: "var(--color-surface-3)", color: "var(--color-subtle)" };
   const diffDays = (Date.now() - new Date(c.lastBookingDate).getTime()) / 86_400_000;
-  if (diffDays <= 90)        return { text: "نشط",     bg: "#DCFCE7", color: "#15803D" };
-  return { text: "غير نشط", bg: "#F1F5F9", color: "#94A3B8" };
+  if (diffDays <= 90)        return { text: "نشط",     bg: "var(--color-ok-soft)", color: "var(--color-ok)" };
+  return { text: "غير نشط", bg: "var(--color-surface-3)", color: "var(--color-subtle)" };
 }
 
 interface Props {
@@ -64,7 +64,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
 
   const { t, lang } = useLanguage();
   const cu     = t.dashboard.customers;
-  const locale = lang === "ar" ? "ar-EG" : "en-US";
+  const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
   // Debounce search
   useEffect(() => {
@@ -123,10 +123,10 @@ export default function CustomersClient({ initialCustomers }: Props) {
   const currency         = customers[0]?.currency ?? "EGP";
 
   const SortIcon = ({ k }: { k: SortKey }) => {
-    if (sortKey !== k)     return <ChevronDown size={11} style={{ color: "#CBD5E1" }} />;
+    if (sortKey !== k)     return <ChevronDown size={11} style={{ color: "var(--color-line-2)" }} />;
     return sortOrder === "asc"
-      ? <ChevronUp   size={11} style={{ color: "#3B82F6" }} />
-      : <ChevronDown size={11} style={{ color: "#3B82F6" }} />;
+      ? <ChevronUp   size={11} style={{ color: "var(--color-jade)" }} />
+      : <ChevronDown size={11} style={{ color: "var(--color-jade)" }} />;
   };
 
   return (
@@ -135,19 +135,19 @@ export default function CustomersClient({ initialCustomers }: Props) {
       {/* ── Page header ── */}
       <div
         className="rounded-2xl border bg-white px-6 py-5"
-        style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
+        style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1
-              className="font-black text-[#0F172A] leading-tight"
+              className="font-extrabold text-[var(--color-ink)] leading-tight"
               style={{ fontSize: 22, letterSpacing: "-0.02em" }}
             >
               {cu.title}
             </h1>
-            <p className="text-sm text-[#94A3B8] mt-1">
+            <p className="text-sm text-[var(--color-subtle)] mt-1">
               إدارة العملاء وسجل الحجوزات والتفاعل ·{" "}
-              <span className="font-semibold text-[#475569]">
+              <span className="font-semibold text-[var(--color-muted)]">
                 {customers.length.toLocaleString(locale)} {cu.countSuffix}
               </span>
             </p>
@@ -158,29 +158,29 @@ export default function CustomersClient({ initialCustomers }: Props) {
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
-          icon={<Users size={16} strokeWidth={1.75} style={{ color: "#1D4ED8" }} />}
-          iconBg="#EFF6FF"
+          icon={<Users size={16} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />}
+          iconBg="var(--color-jade-tint)"
           value={customers.length.toLocaleString(locale)}
           label="إجمالي العملاء"
           sub="مسجلون في النظام"
         />
         <SummaryCard
-          icon={<UsersRound size={16} strokeWidth={1.75} style={{ color: "#059669" }} />}
-          iconBg="#F0FDF4"
+          icon={<UsersRound size={16} strokeWidth={1.75} style={{ color: "var(--color-ok)" }} />}
+          iconBg="var(--color-ok-soft)"
           value={activeCount.toLocaleString(locale)}
           label="العملاء النشطون"
           sub="آخر 90 يوماً"
         />
         <SummaryCard
-          icon={<CalendarDays size={16} strokeWidth={1.75} style={{ color: "#7C3AED" }} />}
-          iconBg="#F5F3FF"
+          icon={<CalendarDays size={16} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />}
+          iconBg="var(--color-jade-tint)"
           value={newThisMonth.toLocaleString(locale)}
           label="جدد هذا الشهر"
           sub="عميل جديد"
         />
         <SummaryCard
-          icon={<Wallet size={16} strokeWidth={1.75} style={{ color: "#B45309" }} />}
-          iconBg="#FFFBEB"
+          icon={<Wallet size={16} strokeWidth={1.75} style={{ color: "var(--color-warn)" }} />}
+          iconBg="var(--color-warn-soft)"
           value={customers.length > 0 ? avgSpend.toLocaleString(locale) : "—"}
           label="متوسط الإنفاق"
           sub={currency}
@@ -190,7 +190,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
       {/* ── Search + sort chips ── */}
       <div
         className="rounded-2xl border bg-white px-5 py-4"
-        style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
+        style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
       >
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           {/* Search */}
@@ -198,7 +198,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
             <Search
               size={14}
               className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ insetInlineEnd: 12, color: "#94A3B8" }}
+              style={{ insetInlineEnd: 12, color: "var(--color-subtle)" }}
             />
             <input
               type="text"
@@ -207,20 +207,20 @@ export default function CustomersClient({ initialCustomers }: Props) {
               placeholder={cu.searchPlaceholder}
               className="w-full rounded-xl border text-sm outline-none transition-all"
               style={{
-                borderColor:   "#E2E8F0",
-                background:    "#F8FAFC",
-                color:         "#0F172A",
+                borderColor:   "var(--color-line)",
+                background:    "var(--color-surface-2)",
+                color:         "var(--color-ink)",
                 paddingBlock:  9,
                 paddingInline: "12px 38px",
               }}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = "#3B82F6";
-                e.currentTarget.style.background  = "#FFFFFF";
-                e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(59,130,246,0.1)";
+                e.currentTarget.style.borderColor = "var(--color-jade)";
+                e.currentTarget.style.background  = "var(--color-surface)";
+                e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(14,127,94,0.1)";
               }}
               onBlur={(e) => {
-                e.currentTarget.style.borderColor = "#E2E8F0";
-                e.currentTarget.style.background  = "#F8FAFC";
+                e.currentTarget.style.borderColor = "var(--color-line)";
+                e.currentTarget.style.background  = "var(--color-surface-2)";
                 e.currentTarget.style.boxShadow   = "none";
               }}
             />
@@ -236,11 +236,11 @@ export default function CustomersClient({ initialCustomers }: Props) {
                   onClick={() => applyChip(idx)}
                   className="text-xs font-medium px-3.5 py-2 rounded-xl border transition-all duration-150"
                   style={{
-                    background:  isActive ? "#0F172A"  : "#F8FAFC",
-                    color:       isActive ? "#FFFFFF"   : "#64748B",
-                    borderColor: isActive ? "#0F172A"   : "#E2E8F0",
+                    background:  isActive ? "var(--color-ink)"  : "var(--color-surface-2)",
+                    color:       isActive ? "var(--color-surface)"   : "var(--color-muted)",
+                    borderColor: isActive ? "var(--color-ink)"   : "var(--color-line)",
                     fontWeight:  isActive ? 700 : 500,
-                    boxShadow:   isActive ? "0 2px 8px rgba(15,23,42,0.15)" : "none",
+                    boxShadow:   isActive ? "0 2px 8px rgba(17,32,28,0.15)" : "none",
                   }}
                 >
                   {chip.label}
@@ -254,27 +254,27 @@ export default function CustomersClient({ initialCustomers }: Props) {
       {/* ── Customers table ── */}
       <div
         className="rounded-2xl border bg-white overflow-hidden"
-        style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
+        style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
       >
         {/* Table header */}
         <div
           className="flex items-center justify-between px-6 py-4"
-          style={{ borderBottom: "1px solid #F1F5F9" }}
+          style={{ borderBottom: "1px solid var(--color-surface-3)" }}
         >
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-bold text-[#0F172A]">قائمة العملاء</h2>
+            <h2 className="text-sm font-bold text-[var(--color-ink)]">قائمة العملاء</h2>
             {!loading && (
               <span
                 className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: "#F1F5F9", color: "#64748B" }}
+                style={{ background: "var(--color-surface-3)", color: "var(--color-muted)" }}
               >
                 {customers.length}
               </span>
             )}
           </div>
           {loading && (
-            <div className="flex items-center gap-2 text-xs text-[#94A3B8]">
-              <div className="w-3 h-3 rounded-full border-2 border-[#3B82F6] border-t-transparent animate-spin" />
+            <div className="flex items-center gap-2 text-xs text-[var(--color-subtle)]">
+              <div className="w-3 h-3 rounded-full border-2 border-[var(--color-jade)] border-t-transparent animate-spin" />
               جاري التحديث
             </div>
           )}
@@ -283,13 +283,13 @@ export default function CustomersClient({ initialCustomers }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full" style={{ minWidth: 740 }}>
             <thead>
-              <tr style={{ background: "#FAFBFD", borderBottom: "1px solid #F1F5F9" }}>
+              <tr style={{ background: "var(--color-ground)", borderBottom: "1px solid var(--color-surface-3)" }}>
                 {/* Customer */}
                 <th className="text-start px-6 py-3">
                   <button
                     onClick={() => toggleSort("name")}
                     className="flex items-center gap-1 text-xs font-semibold transition-colors"
-                    style={{ color: sortKey === "name" ? "#1D4ED8" : "#94A3B8", letterSpacing: "0.02em" }}
+                    style={{ color: sortKey === "name" ? "var(--color-jade)" : "var(--color-subtle)", letterSpacing: "0.02em" }}
                   >
                     {cu.columns.customer}
                     <SortIcon k="name" />
@@ -298,7 +298,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                 {/* Phone */}
                 <th
                   className="text-start px-5 py-3 text-xs font-semibold"
-                  style={{ color: "#94A3B8", letterSpacing: "0.02em" }}
+                  style={{ color: "var(--color-subtle)", letterSpacing: "0.02em" }}
                 >
                   {cu.columns.phone}
                 </th>
@@ -307,7 +307,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                   <button
                     onClick={() => toggleSort("bookingCount")}
                     className="flex items-center gap-1 text-xs font-semibold transition-colors"
-                    style={{ color: sortKey === "bookingCount" ? "#1D4ED8" : "#94A3B8", letterSpacing: "0.02em" }}
+                    style={{ color: sortKey === "bookingCount" ? "var(--color-jade)" : "var(--color-subtle)", letterSpacing: "0.02em" }}
                   >
                     {cu.columns.bookings}
                     <SortIcon k="bookingCount" />
@@ -318,7 +318,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                   <button
                     onClick={() => toggleSort("lastVisit")}
                     className="flex items-center gap-1 text-xs font-semibold transition-colors"
-                    style={{ color: sortKey === "lastVisit" ? "#1D4ED8" : "#94A3B8", letterSpacing: "0.02em" }}
+                    style={{ color: sortKey === "lastVisit" ? "var(--color-jade)" : "var(--color-subtle)", letterSpacing: "0.02em" }}
                   >
                     {cu.columns.lastVisit}
                     <SortIcon k="lastVisit" />
@@ -329,7 +329,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                   <button
                     onClick={() => toggleSort("totalSpend")}
                     className="flex items-center gap-1 text-xs font-semibold transition-colors"
-                    style={{ color: sortKey === "totalSpend" ? "#1D4ED8" : "#94A3B8", letterSpacing: "0.02em" }}
+                    style={{ color: sortKey === "totalSpend" ? "var(--color-jade)" : "var(--color-subtle)", letterSpacing: "0.02em" }}
                   >
                     {cu.columns.spend}
                     <SortIcon k="totalSpend" />
@@ -338,7 +338,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                 {/* Status */}
                 <th
                   className="text-start px-5 py-3 text-xs font-semibold"
-                  style={{ color: "#94A3B8", letterSpacing: "0.02em" }}
+                  style={{ color: "var(--color-subtle)", letterSpacing: "0.02em" }}
                 >
                   الحالة
                 </th>
@@ -351,14 +351,14 @@ export default function CustomersClient({ initialCustomers }: Props) {
               {/* Loading skeleton */}
               {loading && customers.length === 0
                 ? Array.from({ length: 6 }).map((_, i) => (
-                    <tr key={i} style={{ borderBottom: "1px solid #F8FAFC" }}>
+                    <tr key={i} style={{ borderBottom: "1px solid var(--color-surface-2)" }}>
                       {Array.from({ length: 7 }).map((_, j) => (
                         <td key={j} className="px-5 py-4">
                           <div
                             className="rounded-lg animate-pulse"
                             style={{
                               height:     14,
-                              background: "#F1F5F9",
+                              background: "var(--color-surface-3)",
                               width:      j === 0 ? 140 : j === 6 ? 40 : 80,
                             }}
                           />
@@ -373,15 +373,15 @@ export default function CustomersClient({ initialCustomers }: Props) {
                     <td colSpan={7} className="px-5 py-20 text-center">
                       <div
                         className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center"
-                        style={{ background: "#F8FAFC" }}
+                        style={{ background: "var(--color-surface-2)" }}
                       >
-                        <Users size={26} strokeWidth={1.5} style={{ color: "#94A3B8" }} />
+                        <Users size={26} strokeWidth={1.5} style={{ color: "var(--color-subtle)" }} />
                       </div>
-                      <p className="text-sm font-semibold text-[#475569]">
+                      <p className="text-sm font-semibold text-[var(--color-muted)]">
                         {search ? cu.emptySearch : cu.emptyTitle}
                       </p>
                       {!search && (
-                        <p className="text-xs text-[#94A3B8] mt-1">{cu.emptySub}</p>
+                        <p className="text-xs text-[var(--color-subtle)] mt-1">{cu.emptySub}</p>
                       )}
                     </td>
                   </tr>
@@ -399,30 +399,22 @@ export default function CustomersClient({ initialCustomers }: Props) {
                         onClick={() => setSelected(c)}
                         className="cursor-pointer transition-colors"
                         style={{
-                          borderBottom: "1px solid #F8FAFC",
+                          borderBottom: "1px solid var(--color-surface-2)",
                           opacity:      loading ? 0.6 : 1,
-                          background:   isSelected ? "rgba(59,130,246,0.04)" : "transparent",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected)
-                            (e.currentTarget as HTMLTableRowElement).style.background = "#FAFBFD";
-                        }}
-                        onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLTableRowElement).style.background =
-                            isSelected ? "rgba(59,130,246,0.04)" : "transparent";
+                          background:   isSelected ? "rgba(14,127,94,0.04)" : "transparent",
                         }}
                       >
                         {/* Customer */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div
-                              className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black text-white shrink-0"
+                              className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold text-white shrink-0"
                               style={{ background: custGrad(c.name) }}
                             >
                               {c.name[0]}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm font-bold text-[#0F172A] leading-snug truncate">{c.name}</p>
+                              <p className="text-sm font-bold text-[var(--color-ink)] leading-snug truncate">{c.name}</p>
                               <span
                                 className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5"
                                 style={{ background: label.bg, color: label.color }}
@@ -435,7 +427,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
 
                         {/* Phone */}
                         <td className="px-5 py-4">
-                          <p className="text-sm text-[#475569]" dir="ltr">{c.phone}</p>
+                          <p className="text-sm text-[var(--color-muted)]" dir="ltr">{c.phone}</p>
                         </td>
 
                         {/* Booking count */}
@@ -443,28 +435,28 @@ export default function CustomersClient({ initialCustomers }: Props) {
                           <div className="flex items-center gap-1.5">
                             <span
                               className="text-sm font-bold"
-                              style={{ color: c.bookingCount > 0 ? "#0F172A" : "#94A3B8" }}
+                              style={{ color: c.bookingCount > 0 ? "var(--color-ink)" : "var(--color-subtle)" }}
                             >
                               {c.bookingCount.toLocaleString(locale)}
                             </span>
-                            <span className="text-xs text-[#94A3B8]">{cu.bookingCount}</span>
+                            <span className="text-xs text-[var(--color-subtle)]">{cu.bookingCount}</span>
                           </div>
                         </td>
 
                         {/* Last visit */}
                         <td className="px-5 py-4">
-                          <p className="text-sm text-[#475569] whitespace-nowrap">
+                          <p className="text-sm text-[var(--color-muted)] whitespace-nowrap">
                             {c.lastBookingDate ? formatDateAr(c.lastBookingDate) : (
-                              <span className="text-[#CBD5E1]">—</span>
+                              <span className="text-[var(--color-line-2)]">—</span>
                             )}
                           </p>
                         </td>
 
                         {/* Total spend */}
                         <td className="px-5 py-4">
-                          <p className="text-sm font-black whitespace-nowrap" style={{ color: c.totalSpend > 0 ? "#1D4ED8" : "#94A3B8" }}>
+                          <p className="text-sm font-extrabold whitespace-nowrap" style={{ color: c.totalSpend > 0 ? "var(--color-jade)" : "var(--color-subtle)" }}>
                             {c.totalSpend.toLocaleString(locale)}
-                            <span className="text-xs font-normal text-[#94A3B8] ms-1">{c.currency}</span>
+                            <span className="text-xs font-normal text-[var(--color-subtle)] ms-1">{c.currency}</span>
                           </p>
                         </td>
 
@@ -483,19 +475,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                           <button
                             onClick={(e) => { e.stopPropagation(); setSelected(c); }}
                             className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150"
-                            style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#475569" }}
-                            onMouseEnter={(e) => {
-                              const el = e.currentTarget as HTMLButtonElement;
-                              el.style.background  = "#EFF6FF";
-                              el.style.borderColor = "#BFDBFE";
-                              el.style.color       = "#1D4ED8";
-                            }}
-                            onMouseLeave={(e) => {
-                              const el = e.currentTarget as HTMLButtonElement;
-                              el.style.background  = "#F8FAFC";
-                              el.style.borderColor = "#E2E8F0";
-                              el.style.color       = "#475569";
-                            }}
+                            style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-muted)" }}
                           >
                             <Eye size={13} strokeWidth={1.75} />
                           </button>
@@ -512,14 +492,14 @@ export default function CustomersClient({ initialCustomers }: Props) {
         {customers.length > 0 && !loading && (
           <div
             className="px-6 py-3 flex items-center justify-between"
-            style={{ borderTop: "1px solid #F1F5F9" }}
+            style={{ borderTop: "1px solid var(--color-surface-3)" }}
           >
-            <p className="text-xs text-[#94A3B8]">
+            <p className="text-xs text-[var(--color-subtle)]">
               عرض{" "}
-              <span className="font-bold text-[#475569]">{customers.length}</span>{" "}
+              <span className="font-bold text-[var(--color-muted)]">{customers.length}</span>{" "}
               عميل
             </p>
-            <p className="text-xs text-[#94A3B8] flex items-center gap-1">
+            <p className="text-xs text-[var(--color-subtle)] flex items-center gap-1">
               اضغط على أي صف لعرض التفاصيل
               <ChevronLeft size={12} />
             </p>
@@ -553,7 +533,7 @@ function SummaryCard({
   return (
     <div
       className="rounded-2xl border bg-white p-5"
-      style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
+      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
     >
       <div
         className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
@@ -562,13 +542,13 @@ function SummaryCard({
         {icon}
       </div>
       <p
-        className="font-black text-[#0F172A] leading-none"
+        className="font-extrabold text-[var(--color-ink)] leading-none"
         style={{ fontSize: 24, letterSpacing: "-0.02em" }}
       >
         {value}
       </p>
-      <p className="text-xs font-semibold text-[#475569] mt-1">{label}</p>
-      {sub && <p className="text-[11px] text-[#94A3B8] mt-0.5">{sub}</p>}
+      <p className="text-xs font-semibold text-[var(--color-muted)] mt-1">{label}</p>
+      {sub && <p className="text-[11px] text-[var(--color-subtle)] mt-0.5">{sub}</p>}
     </div>
   );
 }

@@ -26,12 +26,12 @@ function CustomTooltip({ active, payload, label, currency }: {
   return (
     <div className="bg-white border border-[var(--color-border)] rounded-xl shadow-lg px-4 py-3 text-sm">
       <p className="font-semibold text-[var(--color-text-primary)] mb-2">{label}</p>
-      <p className="text-green-600 font-bold">
-        {payload[0].value.toLocaleString("ar-EG")} {currency}
+      <p className="text-[var(--color-ok)] font-bold">
+        {payload[0].value.toLocaleString("ar-EG-u-nu-latn")} {currency}
       </p>
       {payload[1] && (
         <p className="text-[var(--color-text-muted)] text-xs mt-1">
-          {payload[1].value.toLocaleString("ar-EG")} حجز
+          {payload[1].value.toLocaleString("ar-EG-u-nu-latn")} حجز
         </p>
       )}
     </div>
@@ -59,8 +59,8 @@ export default function RevenueChart({ data, currency }: Props) {
           <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.18} />
-                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                <stop offset="5%"  stopColor="var(--color-jade)" stopOpacity={0.18} />
+                <stop offset="95%" stopColor="var(--color-jade)" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
@@ -75,18 +75,18 @@ export default function RevenueChart({ data, currency }: Props) {
               tick={{ fontSize: 11, fill: "var(--color-text-muted)" }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v: number) => v.toLocaleString("ar-EG")}
+              tickFormatter={(v: number) => v.toLocaleString("ar-EG-u-nu-latn")}
               width={55}
             />
             <Tooltip content={<CustomTooltip currency={currency} />} />
             <Area
               type="monotone"
               dataKey="revenue"
-              stroke="#6366f1"
+              stroke="var(--color-jade)"
               strokeWidth={2.5}
               fill="url(#revenueGrad)"
               dot={false}
-              activeDot={{ r: 4, fill: "#6366f1" }}
+              activeDot={{ r: 4, fill: "var(--color-jade)" }}
             />
           </AreaChart>
         </ResponsiveContainer>

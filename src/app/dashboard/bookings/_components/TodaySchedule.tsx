@@ -11,19 +11,19 @@ interface TodayScheduleProps {
 }
 
 const STATUS_DOT: Record<string, { border: string; bg: string }> = {
-  CONFIRMED: { border: "#22C55E", bg: "#DCFCE7" },
-  PENDING:   { border: "#F59E0B", bg: "#FEF3C7" },
-  COMPLETED: { border: "#3B82F6", bg: "#DBEAFE" },
-  NO_SHOW:   { border: "#94A3B8", bg: "#F1F5F9" },
+  CONFIRMED: { border: "var(--color-ok)", bg: "var(--color-ok-soft)" },
+  PENDING:   { border: "var(--color-star)", bg: "var(--color-warn-soft)" },
+  COMPLETED: { border: "var(--color-jade)", bg: "var(--color-jade-soft)" },
+  NO_SHOW:   { border: "var(--color-subtle)", bg: "var(--color-surface-3)" },
 };
 
 const AVATAR_GRADIENTS = [
-  "linear-gradient(135deg,#1D4ED8,#3B82F6)",
-  "linear-gradient(135deg,#7C3AED,#A78BFA)",
-  "linear-gradient(135deg,#059669,#34D399)",
-  "linear-gradient(135deg,#B45309,#F59E0B)",
-  "linear-gradient(135deg,#0E7490,#22D3EE)",
-  "linear-gradient(135deg,#9D174D,#F472B6)",
+  "linear-gradient(135deg,var(--color-jade),var(--color-jade))",
+  "linear-gradient(135deg,var(--color-jade),var(--color-jade-line))",
+  "linear-gradient(135deg,var(--color-ok),var(--color-jade))",
+  "linear-gradient(135deg,var(--color-warn),var(--color-star))",
+  "linear-gradient(135deg,var(--color-info),var(--color-info))",
+  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
 ];
 function avatarGrad(name: string) {
   return AVATAR_GRADIENTS[(name.charCodeAt(0) || 0) % AVATAR_GRADIENTS.length];
@@ -33,7 +33,7 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
   const { t, lang } = useLanguage();
   const bs     = t.dashboard.bookingStatus;
   const b2     = t.dashboard.bookings;
-  const locale = lang === "ar" ? "ar-EG" : "en-US";
+  const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
   if (bookings.length === 0) return null;
 
@@ -43,42 +43,42 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
   return (
     <div
       className="rounded-2xl border bg-white overflow-hidden"
-      style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
+      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
     >
       {/* Header */}
       <div
         className="flex items-center justify-between px-5 py-4"
-        style={{ borderBottom: "1px solid #F1F5F9" }}
+        style={{ borderBottom: "1px solid var(--color-surface-3)" }}
       >
         <div className="flex items-center gap-3">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "#EFF6FF" }}
+            style={{ background: "var(--color-jade-tint)" }}
           >
-            <Clock size={15} strokeWidth={1.75} style={{ color: "#3B82F6" }} />
+            <Clock size={15} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-[#0F172A] leading-none">
+            <h3 className="text-sm font-bold text-[var(--color-ink)] leading-none">
               {lang === "ar" ? "مواعيد اليوم" : "Today's Schedule"}
             </h3>
             <div className="flex items-center gap-3 mt-1">
               {pending > 0 && (
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-[#92400E]">
-                  <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: "#F59E0B" }} />
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--color-warn)]">
+                  <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: "var(--color-star)" }} />
                   {pending} {bs.PENDING}
                 </span>
               )}
               {confirmed > 0 && (
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-[#15803D]">
-                  <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: "#22C55E" }} />
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--color-ok)]">
+                  <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: "var(--color-ok)" }} />
                   {confirmed} {bs.CONFIRMED}
                 </span>
               )}
             </div>
           </div>
           <span
-            className="text-xs font-black px-2.5 py-0.5 rounded-full"
-            style={{ background: "#0F172A", color: "#FFFFFF" }}
+            className="text-xs font-extrabold px-2.5 py-0.5 rounded-full"
+            style={{ background: "var(--color-ink)", color: "var(--color-surface)" }}
           >
             {bookings.length}
           </span>
@@ -87,23 +87,11 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
         {onNewBooking && (
           <button
             onClick={onNewBooking}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-all duration-150"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
             style={{
-              background:  "#F8FAFC",
-              border:      "1px solid #E2E8F0",
-              color:       "#475569",
-            }}
-            onMouseEnter={(e) => {
-              const el = e.currentTarget as HTMLButtonElement;
-              el.style.borderColor = "#BFDBFE";
-              el.style.color       = "#1D4ED8";
-              el.style.background  = "#EFF6FF";
-            }}
-            onMouseLeave={(e) => {
-              const el = e.currentTarget as HTMLButtonElement;
-              el.style.borderColor = "#E2E8F0";
-              el.style.color       = "#475569";
-              el.style.background  = "#F8FAFC";
+              background:  "var(--color-surface-2)",
+              border:      "1px solid var(--color-line)",
+              color:       "var(--color-muted)",
             }}
           >
             <Plus size={13} strokeWidth={2.5} />
@@ -121,19 +109,13 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
               key={b.id}
               onClick={() => onSelect(b)}
               className="w-full text-start flex items-center gap-4 px-5 py-3.5 transition-colors"
-              style={{ borderTop: idx > 0 ? "1px solid #F8FAFC" : "none" }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "#FAFBFD";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-              }}
+              style={{ borderTop: idx > 0 ? "1px solid var(--color-surface-2)" : "none" }}
             >
               {/* Time */}
               <div className="text-center shrink-0" style={{ minWidth: 52 }}>
-                <p className="text-sm font-black text-[#0F172A]" dir="ltr">{b.startTime}</p>
+                <p className="text-sm font-extrabold text-[var(--color-ink)]" dir="ltr">{b.startTime}</p>
                 {b.endTime && (
-                  <p className="text-[10px] text-[#94A3B8] mt-0.5" dir="ltr">{b.endTime}</p>
+                  <p className="text-[10px] text-[var(--color-subtle)] mt-0.5" dir="ltr">{b.endTime}</p>
                 )}
               </div>
 
@@ -146,24 +128,24 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
               {/* Avatar + info */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold text-white shrink-0"
                   style={{ background: avatarGrad(b.customerName) }}
                 >
                   {b.customerName[0]}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[#0F172A] truncate leading-snug">
+                  <p className="text-sm font-semibold text-[var(--color-ink)] truncate leading-snug">
                     {b.customerName}
                   </p>
-                  <p className="text-xs text-[#94A3B8] truncate">{b.serviceName}</p>
+                  <p className="text-xs text-[var(--color-subtle)] truncate">{b.serviceName}</p>
                 </div>
               </div>
 
               {/* Price */}
               <div className="shrink-0 text-end">
-                <p className="text-sm font-bold text-[#0F172A]">
+                <p className="text-sm font-bold text-[var(--color-ink)]">
                   {b.totalPrice.toLocaleString(locale)}
-                  <span className="text-xs font-normal text-[#94A3B8] ms-1">{b.currency}</span>
+                  <span className="text-xs font-normal text-[var(--color-subtle)] ms-1">{b.currency}</span>
                 </p>
               </div>
             </button>

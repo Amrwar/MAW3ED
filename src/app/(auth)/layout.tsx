@@ -2,6 +2,7 @@
 
 import Logo from "@/components/shared/Logo";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -9,22 +10,23 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   const a = t.auth;
 
   return (
-    <div className="min-h-screen bg-[var(--color-surface-2)] flex flex-col">
-      <header className="h-14 flex items-center px-5 border-b border-[var(--color-border)] bg-white">
+    <div className="flex min-h-screen flex-col bg-[var(--color-ground)]">
+      <header className="flex h-20 shrink-0 items-center gap-4 border-b border-[var(--color-line)] px-6">
         <Logo size="sm" />
         <Link
           href="/"
-          className="ms-auto text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+          className="ms-auto flex items-center gap-2 text-[0.84375rem] text-[var(--color-muted)] transition-colors hover:text-[var(--color-ink)]"
         >
           {a.backToHome}
+          <ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />
         </Link>
       </header>
 
-      <main className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-sm">{children}</div>
+      <main className="flex flex-1 items-center justify-center px-5 py-14">
+        <div className="w-full max-w-[26rem]">{children}</div>
       </main>
 
-      <footer className="py-4 text-center text-xs text-[var(--color-text-muted)]">
+      <footer className="py-6 text-center text-xs text-[var(--color-subtle)]">
         {a.copyright}
       </footer>
     </div>

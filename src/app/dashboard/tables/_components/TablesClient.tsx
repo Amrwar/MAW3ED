@@ -18,14 +18,14 @@ export type Table = {
 type Props = { initialTables: Table[] };
 
 const TYPE_COLORS: Record<string, string> = {
-  CORNER:  "linear-gradient(135deg,#0E7490,#22D3EE)",
-  MIDDLE:  "linear-gradient(135deg,#1D4ED8,#3B82F6)",
-  OUTDOOR: "linear-gradient(135deg,#059669,#34D399)",
-  WINDOW:  "linear-gradient(135deg,#7C3AED,#A78BFA)",
-  FAMILY:  "linear-gradient(135deg,#B45309,#F59E0B)",
-  PRIVATE: "linear-gradient(135deg,#9D174D,#F472B6)",
-  BAR:     "linear-gradient(135deg,#DC2626,#F87171)",
-  BOOTH:   "linear-gradient(135deg,#4338CA,#818CF8)",
+  CORNER:  "linear-gradient(135deg,var(--color-info),var(--color-info))",
+  MIDDLE:  "linear-gradient(135deg,var(--color-jade),var(--color-jade))",
+  OUTDOOR: "linear-gradient(135deg,var(--color-ok),var(--color-jade))",
+  WINDOW:  "linear-gradient(135deg,var(--color-jade),var(--color-jade-line))",
+  FAMILY:  "linear-gradient(135deg,var(--color-warn),var(--color-star))",
+  PRIVATE: "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
+  BAR:     "linear-gradient(135deg,var(--color-danger),var(--color-danger))",
+  BOOTH:   "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
 };
 
 export default function TablesClient({ initialTables }: Props) {
@@ -69,10 +69,10 @@ export default function TablesClient({ initialTables }: Props) {
       {/* ── Page header ───────────────────────────────── */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0F172A", marginBottom: 4 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--color-ink)", marginBottom: 4 }}>
             {isAr ? "إدارة الطاولات" : "Table Management"}
           </h1>
-          <p style={{ fontSize: 13, color: "#64748B" }}>
+          <p style={{ fontSize: 13, color: "var(--color-muted)" }}>
             {isAr
               ? `${tables.length} طاولة · ${active.length} نشطة · ${totalCap} مقعد إجمالي`
               : `${tables.length} tables · ${active.length} active · ${totalCap} total seats`}
@@ -80,10 +80,10 @@ export default function TablesClient({ initialTables }: Props) {
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-2 transition-all duration-150"
+          className="flex items-center gap-2 transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
           style={{
-            background:   "#0F172A",
-            color:        "#FFFFFF",
+            background:   "var(--color-ink)",
+            color:        "var(--color-surface)",
             border:       "none",
             borderRadius: 12,
             padding:      "10px 18px",
@@ -91,8 +91,6 @@ export default function TablesClient({ initialTables }: Props) {
             fontWeight:   600,
             cursor:       "pointer",
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#1E293B"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#0F172A"; }}
         >
           <Plus size={15} strokeWidth={2.5} />
           {isAr ? "إضافة طاولة" : "Add Table"}
@@ -109,10 +107,10 @@ export default function TablesClient({ initialTables }: Props) {
           <div
             key={stat.label}
             className="rounded-2xl p-4"
-            style={{ background: "#FFFFFF", border: "1.5px solid #F1F5F9" }}
+            style={{ background: "var(--color-surface)", border: "1.5px solid var(--color-surface-3)" }}
           >
-            <p style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500, marginBottom: 6 }}>{stat.label}</p>
-            <p style={{ fontSize: 26, fontWeight: 800, color: "#0F172A", lineHeight: 1 }}>{stat.value}</p>
+            <p style={{ fontSize: 11, color: "var(--color-subtle)", fontWeight: 500, marginBottom: 6 }}>{stat.label}</p>
+            <p style={{ fontSize: 26, fontWeight: 800, color: "var(--color-ink)", lineHeight: 1 }}>{stat.value}</p>
           </div>
         ))}
       </div>
@@ -123,24 +121,24 @@ export default function TablesClient({ initialTables }: Props) {
           className="flex flex-col items-center justify-center rounded-2xl"
           style={{
             minHeight: 280,
-            border:    "2px dashed #E2E8F0",
+            border:    "2px dashed var(--color-line)",
             gap:       16,
           }}
         >
-          <Utensils size={40} style={{ color: "#CBD5E1" }} />
+          <Utensils size={40} style={{ color: "var(--color-line-2)" }} />
           <div className="text-center">
-            <p style={{ fontSize: 15, fontWeight: 700, color: "#64748B", marginBottom: 6 }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: "var(--color-muted)", marginBottom: 6 }}>
               {isAr ? "لا توجد طاولات بعد" : "No tables yet"}
             </p>
-            <p style={{ fontSize: 13, color: "#94A3B8" }}>
+            <p style={{ fontSize: 13, color: "var(--color-subtle)" }}>
               {isAr ? "أضف طاولاتك لتنظيم الحجوزات" : "Add tables to manage reservations"}
             </p>
           </div>
           <button
             onClick={openAdd}
             style={{
-              background:   "#0F172A",
-              color:        "#FFFFFF",
+              background:   "var(--color-ink)",
+              color:        "var(--color-surface)",
               border:       "none",
               borderRadius: 10,
               padding:      "9px 18px",
@@ -164,8 +162,8 @@ export default function TablesClient({ initialTables }: Props) {
                 key={table.id}
                 className="rounded-2xl overflow-hidden transition-all duration-150"
                 style={{
-                  background: "#FFFFFF",
-                  border:     "1.5px solid #F1F5F9",
+                  background: "var(--color-surface)",
+                  border:     "1.5px solid var(--color-surface-3)",
                   opacity:    table.isActive ? 1 : 0.6,
                 }}
               >
@@ -175,7 +173,7 @@ export default function TablesClient({ initialTables }: Props) {
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <p style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", marginBottom: 3 }}>
+                      <p style={{ fontSize: 15, fontWeight: 700, color: "var(--color-ink)", marginBottom: 3 }}>
                         {table.name}
                       </p>
                       <span
@@ -185,8 +183,8 @@ export default function TablesClient({ initialTables }: Props) {
                           fontWeight:   600,
                           padding:      "2px 8px",
                           borderRadius: 100,
-                          background:   "#F1F5F9",
-                          color:        "#475569",
+                          background:   "var(--color-surface-3)",
+                          color:        "var(--color-muted)",
                         }}
                       >
                         {isAr ? typeLabel?.ar : typeLabel?.en}
@@ -199,8 +197,8 @@ export default function TablesClient({ initialTables }: Props) {
                           fontWeight:   700,
                           padding:      "2px 8px",
                           borderRadius: 100,
-                          background:   "#FEF2F2",
-                          color:        "#EF4444",
+                          background:   "var(--color-danger-soft)",
+                          color:        "var(--color-danger)",
                         }}
                       >
                         {isAr ? "غير نشطة" : "Inactive"}
@@ -208,7 +206,7 @@ export default function TablesClient({ initialTables }: Props) {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 mb-4" style={{ color: "#64748B" }}>
+                  <div className="flex items-center gap-1.5 mb-4" style={{ color: "var(--color-muted)" }}>
                     <Users size={13} />
                     <span style={{ fontSize: 13, fontWeight: 500 }}>
                       {table.capacity} {isAr ? "مقعد" : "seats"}
@@ -220,7 +218,7 @@ export default function TablesClient({ initialTables }: Props) {
                       className="mb-4"
                       style={{
                         fontSize:     12,
-                        color:        "#94A3B8",
+                        color:        "var(--color-subtle)",
                         lineHeight:   1.5,
                         overflow:     "hidden",
                         display:      "-webkit-box",
@@ -241,9 +239,9 @@ export default function TablesClient({ initialTables }: Props) {
                         justifyContent: "center",
                         padding:      "7px 0",
                         borderRadius: 8,
-                        background:   "#F8FAFC",
-                        border:       "1.5px solid #E2E8F0",
-                        color:        "#475569",
+                        background:   "var(--color-surface-2)",
+                        border:       "1.5px solid var(--color-line)",
+                        color:        "var(--color-muted)",
                         fontSize:     12,
                         fontWeight:   500,
                         cursor:       "pointer",
@@ -260,9 +258,9 @@ export default function TablesClient({ initialTables }: Props) {
                         width:        34,
                         height:       34,
                         borderRadius: 8,
-                        background:   "#FEF2F2",
-                        border:       "1.5px solid #FECACA",
-                        color:        "#EF4444",
+                        background:   "var(--color-danger-soft)",
+                        border:       "1.5px solid var(--color-danger-line)",
+                        color:        "var(--color-danger)",
                         cursor:       isDeleting ? "not-allowed" : "pointer",
                       }}
                     >

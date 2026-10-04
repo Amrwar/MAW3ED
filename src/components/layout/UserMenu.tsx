@@ -56,7 +56,7 @@ export function UserAvatar({
         "rounded-full flex items-center justify-center font-bold text-white shrink-0 select-none",
         dims[size],
       )}
-      style={{ background: "linear-gradient(140deg, #1D4ED8 0%, #3B82F6 100%)" }}
+      style={{ background: "linear-gradient(140deg, var(--color-jade) 0%, var(--color-jade) 100%)" }}
     >
       {getInitials(name, email)}
     </div>
@@ -74,7 +74,7 @@ export function NotificationBell() {
     <button
       type="button"
       aria-label={label}
-      className="relative p-2 rounded-xl text-[#94A3B8] hover:text-[#475569] hover:bg-[#F8FAFC] transition-all duration-150"
+      className="relative p-2 rounded-xl text-[var(--color-subtle)] hover:text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] transition-all duration-150"
     >
       <Bell size={17} strokeWidth={1.8} />
     </button>
@@ -96,15 +96,15 @@ function DropdownItem({ icon: Icon, label, href, onClick, danger = false }: Drop
     "group flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium",
     "transition-all duration-150 text-start",
     danger
-      ? "text-red-500 hover:bg-red-50 hover:text-red-600"
-      : "text-[#475569] hover:text-[#0F172A] hover:bg-[#F8FAFC]",
+      ? "text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)] hover:text-[var(--color-danger)]"
+      : "text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-2)]",
   );
 
   const iconClass = cn(
     "shrink-0 transition-colors duration-150",
     danger
-      ? "text-red-400 group-hover:text-red-500"
-      : "text-[#94A3B8] group-hover:text-[#64748B]",
+      ? "text-[var(--color-danger)] group-hover:text-[var(--color-danger)]"
+      : "text-[var(--color-subtle)] group-hover:text-[var(--color-muted)]",
   );
 
   if (href) {
@@ -184,8 +184,8 @@ export function UserMenu({ user }: UserMenuProps) {
         aria-expanded={open}
         className={cn(
           "flex items-center gap-1.5 px-1.5 py-1.5 rounded-xl transition-all duration-150 outline-none",
-          "focus-visible:ring-2 focus-visible:ring-[#3B82F6] focus-visible:ring-offset-1",
-          open ? "bg-[#F1F5F9]" : "hover:bg-[#F8FAFC]",
+          "focus-visible:ring-2 focus-visible:ring-[var(--color-jade)] focus-visible:ring-offset-1",
+          open ? "bg-[var(--color-surface-3)]" : "hover:bg-[var(--color-surface-2)]",
         )}
       >
         <UserAvatar name={user.name} email={user.email} size="md" />
@@ -193,7 +193,7 @@ export function UserMenu({ user }: UserMenuProps) {
           size={14}
           strokeWidth={2.5}
           className={cn(
-            "text-[#94A3B8] transition-transform duration-200",
+            "text-[var(--color-subtle)] transition-transform duration-200",
             open && "rotate-180",
           )}
         />
@@ -203,9 +203,9 @@ export function UserMenu({ user }: UserMenuProps) {
       <div
         role="menu"
         aria-label={lang === "ar" ? "قائمة المستخدم" : "User menu"}
-        className="absolute z-50 end-0 mt-2 w-56 rounded-2xl bg-white border border-[#E2E8F0] py-1.5 overflow-hidden"
+        className="absolute z-50 end-0 mt-2 w-56 rounded-2xl bg-white border border-[var(--color-line)] py-1.5 overflow-hidden"
         style={{
-          boxShadow:    "0 8px 32px rgba(15,23,42,0.11), 0 2px 8px rgba(15,23,42,0.06)",
+          boxShadow:    "0 8px 32px rgba(17,32,28,0.11), 0 2px 8px rgba(17,32,28,0.06)",
           opacity:      open ? 1 : 0,
           transform:    open ? "translateY(0px)" : "translateY(-8px)",
           transition:   "opacity 0.18s ease, transform 0.18s ease",
@@ -214,15 +214,15 @@ export function UserMenu({ user }: UserMenuProps) {
       >
 
         {/* User header */}
-        <div className="flex items-center gap-3 px-4 py-3 mb-1 border-b border-[#F1F5F9]">
+        <div className="flex items-center gap-3 px-4 py-3 mb-1 border-b border-[var(--color-surface-3)]">
           <UserAvatar name={user.name} email={user.email} size="md" />
           <div className="min-w-0 flex-1">
             {user.name && (
-              <p className="text-[13px] font-semibold text-[#0F172A] truncate leading-tight">
+              <p className="text-[13px] font-semibold text-[var(--color-ink)] truncate leading-tight">
                 {user.name}
               </p>
             )}
-            <p className="text-[11px] text-[#94A3B8] truncate leading-tight mt-0.5">
+            <p className="text-[11px] text-[var(--color-subtle)] truncate leading-tight mt-0.5">
               {user.email}
             </p>
           </div>
@@ -239,7 +239,7 @@ export function UserMenu({ user }: UserMenuProps) {
         </div>
 
         {/* Divider */}
-        <div className="mx-3 my-1.5 border-t border-[#F1F5F9]" />
+        <div className="mx-3 my-1.5 border-t border-[var(--color-surface-3)]" />
 
         {/* Logout */}
         <div className="px-1.5 pb-0.5">

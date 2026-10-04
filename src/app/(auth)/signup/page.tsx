@@ -7,7 +7,6 @@ import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, UserPlus } from "lucide-react";
-import Image from "next/image";
 import { z } from "zod";
 import { signUpSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
@@ -67,119 +66,114 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="card p-7">
-      <div className="text-center mb-7">
-        <div className="flex justify-center mb-4">
-          <Image src="/icon-nobg.png" alt="موعد" width={56} height={56} className="object-contain" />
-        </div>
-        <h1 className="text-2xl font-black text-[var(--color-text-primary)] mb-1">{s.title}</h1>
-        <p className="text-sm text-[var(--color-text-muted)]">{s.subtitle}</p>
+    <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-raised)]">
+
+      <div className="mb-8">
+        <h1 className="m-0 text-[1.75rem] font-light tracking-tight text-[var(--color-ink)]">
+          {s.title}
+        </h1>
+        <p className="m-0 mt-2 text-[0.875rem] text-[var(--color-subtle)]">{s.subtitle}</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {/* Name */}
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-            {s.fullName}
-          </label>
+          <label htmlFor="su-name" className="field-label">{s.fullName}</label>
           <input
+            id="su-name"
             type="text"
             autoComplete="name"
             placeholder={s.namePlaceholder}
-            className="input"
+            aria-invalid={errors.name ? true : undefined}
+            aria-describedby={errors.name ? "su-name-error" : undefined}
+            className={`input${errors.name ? " input-error" : ""}`}
             {...register("name")}
           />
-          {errors.name && (
-            <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>
-          )}
+          {errors.name && <p id="su-name-error" className="field-error">{errors.name.message}</p>}
         </div>
 
-        {/* Email */}
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-            {s.email}
-          </label>
+          <label htmlFor="su-email" className="field-label">{s.email}</label>
           <input
+            id="su-email"
             type="email"
             autoComplete="email"
             placeholder="example@email.com"
             dir="ltr"
-            className="input"
+            aria-invalid={errors.email ? true : undefined}
+            aria-describedby={errors.email ? "su-email-error" : undefined}
+            className={`input text-start${errors.email ? " input-error" : ""}`}
             {...register("email")}
           />
-          {errors.email && (
-            <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
-          )}
+          {errors.email && <p id="su-email-error" className="field-error">{errors.email.message}</p>}
         </div>
 
-        {/* Password */}
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-            {s.password}
-          </label>
+          <label htmlFor="su-password" className="field-label">{s.password}</label>
           <div className="relative">
             <input
+              id="su-password"
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               placeholder={s.passwordHint}
-              className="input pe-10"
+              aria-invalid={errors.password ? true : undefined}
+              aria-describedby={errors.password ? "su-password-error" : undefined}
+              className={`input pe-12${errors.password ? " input-error" : ""}`}
               {...register("password")}
             />
             <button
               type="button"
-              className="absolute inset-y-0 end-3 flex items-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+              aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+              className="absolute inset-y-0 end-4 flex items-center text-[var(--color-subtle)] transition-colors hover:text-[var(--color-ink)]"
               onClick={() => setShowPassword(!showPassword)}
             >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              {showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
             </button>
           </div>
-          {errors.password && (
-            <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
-          )}
+          {errors.password && <p id="su-password-error" className="field-error">{errors.password.message}</p>}
         </div>
 
-        {/* Confirm Password */}
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-            {s.confirmPassword}
-          </label>
+          <label htmlFor="su-confirm" className="field-label">{s.confirmPassword}</label>
           <input
+            id="su-confirm"
             type={showPassword ? "text" : "password"}
             autoComplete="new-password"
-            placeholder="••••••••"
-            className="input"
+            aria-invalid={errors.confirmPassword ? true : undefined}
+            aria-describedby={errors.confirmPassword ? "su-confirm-error" : undefined}
+            className={`input${errors.confirmPassword ? " input-error" : ""}`}
             {...register("confirmPassword")}
           />
           {errors.confirmPassword && (
-            <p className="mt-1 text-xs text-red-500">{errors.confirmPassword.message}</p>
+            <p id="su-confirm-error" className="field-error">{errors.confirmPassword.message}</p>
           )}
         </div>
 
         {serverError && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
+          <div
+            role="alert"
+            className="rounded-[var(--radius-md)] border border-[var(--color-danger-line)] bg-[var(--color-danger-soft)] px-4 py-3 text-[0.84375rem] text-[var(--color-danger)]"
+          >
             {serverError}
           </div>
         )}
 
-        <Button type="submit" variant="accent" fullWidth isLoading={isSubmitting} className="mt-2">
-          <UserPlus size={15} />
+        <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting} className="mt-1">
+          <UserPlus size={16} aria-hidden="true" />
           {s.submit}
         </Button>
 
-        <p className="text-center text-xs text-[var(--color-text-muted)]">
+        <p className="m-0 text-center text-xs leading-relaxed text-[var(--color-subtle)]">
           {s.termsPrefix}{" "}
-          <Link href="/terms" className="underline">{s.termsLink}</Link>
-          {" "}&{" "}
-          <Link href="/privacy" className="underline">{s.privacyLink}</Link>
+          <Link href="/terms" className="font-bold text-[var(--color-jade)]">{s.termsLink}</Link>
+          {" · "}
+          <Link href="/privacy" className="font-bold text-[var(--color-jade)]">{s.privacyLink}</Link>
         </p>
       </form>
 
-      <p className="text-center text-sm text-[var(--color-text-muted)] mt-5">
+      <p className="m-0 mt-7 text-center text-[0.84375rem] text-[var(--color-subtle)]">
         {s.hasAccount}{" "}
-        <Link
-          href="/login"
-          className="font-semibold text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors"
-        >
+        <Link href="/login" className="font-bold text-[var(--color-jade)]">
           {s.loginLink}
         </Link>
       </p>

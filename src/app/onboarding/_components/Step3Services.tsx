@@ -1,18 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Clock } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import type { OnboardingData, ServiceItem } from "./OnboardingForm";
 
 const DURATION_OPTIONS = [
-  { value: 15,  label: "١٥ دقيقة" },
-  { value: 30,  label: "٣٠ دقيقة" },
-  { value: 45,  label: "٤٥ دقيقة" },
+  { value: 15,  label: "15 دقيقة" },
+  { value: 30,  label: "30 دقيقة" },
+  { value: 45,  label: "45 دقيقة" },
   { value: 60,  label: "ساعة" },
   { value: 90,  label: "ساعة ونص" },
   { value: 120, label: "ساعتان" },
-  { value: 180, label: "٣ ساعات" },
+  { value: 180, label: "3 ساعات" },
 ];
 
 const EMPTY_SERVICE: ServiceItem = { nameAr: "", duration: 30, price: 0 };
@@ -59,7 +59,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-black text-[var(--color-text-primary)] mb-1">
+        <h2 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-1">
           خدماتك
         </h2>
         <p className="text-sm text-[var(--color-text-muted)]">
@@ -82,7 +82,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
                 <button
                   type="button"
                   onClick={() => removeService(i)}
-                  className="text-red-400 hover:text-red-500 transition-colors p-1"
+                  className="text-[var(--color-danger)] hover:text-[var(--color-danger)] transition-colors p-1"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -92,7 +92,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
             {/* Service name */}
             <div>
               <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
-                اسم الخدمة <span className="text-red-500">*</span>
+                اسم الخدمة <span className="text-[var(--color-danger)]">*</span>
               </label>
               <input
                 type="text"
@@ -131,7 +131,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
                   type="number"
                   min="0"
                   step="50"
-                  placeholder="٢٥٠"
+                  placeholder="250"
                   value={service.price || ""}
                   onChange={(e) => updateService(i, "price", Number(e.target.value))}
                   className="input text-sm"
@@ -156,7 +156,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
           {error}
         </div>
       )}

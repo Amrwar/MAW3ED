@@ -23,7 +23,13 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => { setIsOpen(false); }, [pathname]);
+  // Close the mobile menu on navigation. Derived from the pathname
+  // rather than set from an effect, which cost an extra render pass.
+  const [menuPath, setMenuPath] = useState(pathname);
+  if (menuPath !== pathname) {
+    setMenuPath(pathname);
+    setIsOpen(false);
+  }
 
   const user        = session?.user;
   const isLoggedIn  = !!user;
@@ -46,11 +52,6 @@ export default function Navbar() {
     { label: t.nav.forBusiness, href: "/for-business" },
   ];
 
-  const navBase = scrolled
-    ? "bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] shadow-sm"
-    : "bg-white/90 backdrop-blur-sm";
-
-  // ── Translated mobile menu labels ─────────────────────────
   const ML = {
     profile:   lang === "ar" ? "الملف الشخصي" : "Profile",
     dashboard: lang === "ar" ? "لوحة التحكم"  : "Dashboard",
@@ -60,24 +61,29 @@ export default function Navbar() {
   };
 
   return (
-    <header className={cn("fixed top-0 inset-x-0 z-50 transition-all duration-300", navBase)}>
+    <header
+      className={cn(
+        "fixed top-0 inset-x-0 z-50 transition-colors duration-300",
+        "bg-[var(--color-ground)]/92 backdrop-blur-md",
+        scrolled && "border-b border-[var(--color-line)]",
+      )}
+    >
       <div className="container-app">
-        <div className="flex items-center justify-between h-16 gap-6">
+        <div className="flex items-center justify-between h-20 gap-8">
 
-          {/* Logo */}
           <Logo size="sm" href="/" />
 
           {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-7 flex-1">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "px-3.5 py-2 text-sm font-medium rounded-lg transition-all duration-150",
+                  "text-[0.90625rem] transition-colors",
                   isActive(link.href)
-                    ? "text-[#3B82F6] bg-[#DBEAFE]"
-                    : "text-[#475569] hover:text-[#0F172A] hover:bg-[#F8FAFC]",
+                    ? "font-bold text-[var(--color-jade)]"
+                    : "text-[var(--color-muted)] hover:text-[var(--color-ink)]",
                 )}
               >
                 {link.label}
@@ -85,50 +91,55 @@ export default function Navbar() {
             ))}
           </nav>
 
-          {/* ── Desktop actions ── */}
-          <div className="hidden lg:flex items-center gap-2 shrink-0">
-
-            {/* Language toggle */}
+          {/* Desktop actions */}
+          <div className="hidden lg:flex items-center gap-3.5 shrink-0">
             <button
+              type="button"
               onClick={toggleLang}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#E2E8F0] text-[#475569] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-all"
+              className="flex items-center gap-2 h-10 px-3.5 text-[0.8125rem] rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors"
             >
-              <Globe size={13} />
+              <Globe size={15} strokeWidth={1.6} aria-hidden="true" />
               {t.nav.langToggle}
             </button>
 
             {isLoggedIn && user ? (
-              /* Logged-in: bell + user menu */
               <>
                 <NotificationBell />
                 <UserMenu user={user} />
               </>
             ) : (
-              /* Logged-out: login + signup */
               <>
-                <Link href="/login" className="btn btn-ghost btn-sm text-[#475569]">
+                <Link
+                  href="/login"
+                  className="text-[0.90625rem] font-bold text-[var(--color-ink)] hover:text-[var(--color-jade)] transition-colors"
+                >
                   {t.nav.login}
                 </Link>
-                <Link href="/signup?type=business" className="btn btn-accent btn-sm">
+                <Link
+                  href="/signup?type=business"
+                  className="btn btn-primary btn-sm btn-pill"
+                >
                   {t.nav.addBusiness}
                 </Link>
               </>
             )}
           </div>
 
-          {/* ── Mobile: lang toggle + hamburger ── */}
+          {/* Mobile */}
           <div className="lg:hidden flex items-center gap-2">
             <button
+              type="button"
               onClick={toggleLang}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-[#E2E8F0] text-[#475569] hover:bg-[#F8FAFC] transition-colors"
+              className="flex items-center gap-1.5 h-10 px-3 text-xs rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-muted)] transition-colors"
             >
-              <Globe size={12} />
+              <Globe size={13} strokeWidth={1.6} aria-hidden="true" />
               {t.nav.langToggle}
             </button>
             <button
-              className="p-2 rounded-lg text-[#475569] hover:bg-[#F8FAFC] transition-colors"
+              type="button"
+              className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-ink)] hover:bg-[var(--color-surface-3)] transition-colors"
               onClick={() => setIsOpen(!isOpen)}
-              aria-label="Menu"
+              aria-label={lang === "ar" ? "القائمة" : "Menu"}
               aria-expanded={isOpen}
             >
               {isOpen ? <X size={20} /> : <Menu size={20} />}
@@ -136,19 +147,18 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* ── Mobile menu ── */}
+        {/* Mobile menu */}
         {isOpen && (
-          <div className="lg:hidden border-t border-[#E2E8F0] bg-white py-3 animate-dropdown-in">
+          <div className="lg:hidden border-t border-[var(--color-line)] bg-[var(--color-surface)] py-3 animate-dropdown-in">
 
-            {/* Nav links */}
-            <div className="space-y-0.5 px-2">
+            <div className="space-y-1 px-2">
               <Link
                 href="/"
                 className={cn(
-                  "flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-colors",
+                  "flex items-center min-h-12 px-4 text-[0.9375rem] rounded-[var(--radius-md)] transition-colors",
                   isActive("/")
-                    ? "text-[#3B82F6] bg-[#DBEAFE]"
-                    : "text-[#475569] hover:text-[#0F172A] hover:bg-[#F8FAFC]",
+                    ? "font-bold text-[var(--color-jade)] bg-[var(--color-jade-soft)]"
+                    : "text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-2)]",
                 )}
               >
                 {t.nav.home}
@@ -158,10 +168,10 @@ export default function Navbar() {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-colors",
+                    "flex items-center min-h-12 px-4 text-[0.9375rem] rounded-[var(--radius-md)] transition-colors",
                     isActive(link.href)
-                      ? "text-[#3B82F6] bg-[#DBEAFE]"
-                      : "text-[#475569] hover:text-[#0F172A] hover:bg-[#F8FAFC]",
+                      ? "font-bold text-[var(--color-jade)] bg-[var(--color-jade-soft)]"
+                      : "text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-2)]",
                   )}
                 >
                   {link.label}
@@ -169,73 +179,45 @@ export default function Navbar() {
               ))}
             </div>
 
-            {/* Auth section */}
             {isLoggedIn && user ? (
-              /* ── Logged-in mobile section ── */
-              <div className="mt-2 pt-3 border-t border-[#E2E8F0] px-2">
-
-                {/* User identity card */}
-                <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+              <div className="mt-3 pt-3 border-t border-[var(--color-line)] px-2">
+                <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-[var(--radius-md)] bg-[var(--color-surface-2)] border border-[var(--color-line)]">
                   <UserAvatar name={user.name} email={user.email} size="lg" />
                   <div className="min-w-0 flex-1">
                     {user.name && (
-                      <p className="text-sm font-bold text-[#0F172A] truncate">{user.name}</p>
+                      <p className="text-sm font-bold text-[var(--color-ink)] truncate">{user.name}</p>
                     )}
-                    <p className="text-xs text-[#94A3B8] truncate mt-0.5">{user.email}</p>
+                    <p className="text-xs text-[var(--color-subtle)] truncate mt-0.5">{user.email}</p>
                   </div>
                 </div>
 
-                {/* Menu items */}
-                <div className="space-y-0.5">
-                  <MobileMenuItem
-                    icon={User2}
-                    label={ML.profile}
-                    href="/profile"
-                  />
+                <div className="space-y-1">
+                  <MobileMenuItem icon={User2} label={ML.profile} href="/profile" />
                   {hasBusiness ? (
-                    <MobileMenuItem
-                      icon={LayoutDashboard}
-                      label={ML.dashboard}
-                      href="/dashboard"
-                    />
+                    <MobileMenuItem icon={LayoutDashboard} label={ML.dashboard} href="/dashboard" />
                   ) : (
-                    <MobileMenuItem
-                      icon={Store}
-                      label={ML.business}
-                      href="/onboarding"
-                    />
+                    <MobileMenuItem icon={Store} label={ML.business} href="/onboarding" />
                   )}
-                  <MobileMenuItem
-                    icon={Settings2}
-                    label={ML.settings}
-                    href="/dashboard/settings"
-                  />
+                  <MobileMenuItem icon={Settings2} label={ML.settings} href="/dashboard/settings" />
                 </div>
 
-                {/* Logout — visually separated at the bottom */}
-                <div className="mt-2 pt-2 border-t border-[#F1F5F9]">
+                <div className="mt-2 pt-2 border-t border-[var(--color-line)]">
                   <button
                     type="button"
                     onClick={handleMobileLogout}
-                    className="group flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-all duration-150"
+                    className="group flex items-center gap-3 w-full min-h-12 px-4 rounded-[var(--radius-md)] text-[0.9375rem] font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)] transition-colors"
                   >
-                    <LogOut
-                      size={16}
-                      strokeWidth={1.8}
-                      className="shrink-0 text-red-400 group-hover:text-red-500 transition-colors"
-                    />
+                    <LogOut size={17} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />
                     {ML.logout}
                   </button>
                 </div>
               </div>
-
             ) : (
-              /* ── Logged-out mobile section ── */
-              <div className="mt-3 pt-3 border-t border-[#E2E8F0] px-4 flex flex-col gap-2">
+              <div className="mt-3 pt-3 border-t border-[var(--color-line)] px-4 flex flex-col gap-2.5">
                 <Link href="/login" className="btn btn-outline w-full">
                   {t.nav.login}
                 </Link>
-                <Link href="/signup?type=business" className="btn btn-accent w-full">
+                <Link href="/signup?type=business" className="btn btn-primary w-full">
                   {t.nav.addBusiness}
                 </Link>
               </div>
@@ -246,8 +228,6 @@ export default function Navbar() {
     </header>
   );
 }
-
-// ─── MobileMenuItem helper ─────────────────────────────────
 
 function MobileMenuItem({
   icon: Icon,
@@ -261,12 +241,13 @@ function MobileMenuItem({
   return (
     <Link
       href={href}
-      className="group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[#475569] hover:text-[#0F172A] hover:bg-[#F8FAFC] transition-all duration-150"
+      className="group flex items-center gap-3 min-h-12 px-4 rounded-[var(--radius-md)] text-[0.9375rem] text-[var(--color-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-2)] transition-colors"
     >
       <Icon
-        size={16}
+        size={17}
         strokeWidth={1.8}
-        className="shrink-0 text-[#94A3B8] group-hover:text-[#64748B] transition-colors"
+        aria-hidden="true"
+        className="shrink-0 text-[var(--color-subtle)] group-hover:text-[var(--color-muted)] transition-colors"
       />
       {label}
     </Link>

@@ -26,11 +26,11 @@ function formatDateAr(date: Date): string {
 }
 
 const STATUS_CONFIG = {
-  PENDING:   { label: "في الانتظار",  icon: Clock,        color: "text-amber-500",  bg: "bg-amber-50",  border: "border-amber-200" },
-  CONFIRMED: { label: "مؤكد",         icon: CheckCircle,  color: "text-green-600",  bg: "bg-green-50",  border: "border-green-200" },
-  COMPLETED: { label: "مكتمل",        icon: CheckCircle,  color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-200"  },
-  CANCELLED: { label: "ملغي",         icon: XCircle,      color: "text-red-500",    bg: "bg-red-50",    border: "border-red-200"   },
-  NO_SHOW:   { label: "لم يحضر",      icon: AlertCircle,  color: "text-gray-500",   bg: "bg-gray-50",   border: "border-gray-200"  },
+  PENDING:   { label: "في الانتظار",  icon: Clock,        color: "text-[var(--color-star)]",  bg: "bg-[var(--color-warn-soft)]",  border: "border-[var(--color-warn-line)]" },
+  CONFIRMED: { label: "مؤكد",         icon: CheckCircle,  color: "text-[var(--color-ok)]",  bg: "bg-[var(--color-ok-soft)]",  border: "border-[var(--color-ok-line)]" },
+  COMPLETED: { label: "مكتمل",        icon: CheckCircle,  color: "text-[var(--color-jade)]",   bg: "bg-[var(--color-jade-soft)]",   border: "border-[var(--color-jade-line)]"  },
+  CANCELLED: { label: "ملغي",         icon: XCircle,      color: "text-[var(--color-danger)]",    bg: "bg-[var(--color-danger-soft)]",    border: "border-[var(--color-danger-line)]"   },
+  NO_SHOW:   { label: "لم يحضر",      icon: AlertCircle,  color: "text-[var(--color-subtle)]",   bg: "bg-[var(--color-surface-2)]",   border: "border-[var(--color-line)]"  },
 } as const;
 
 const CUTOFF_HOURS = 2;
@@ -77,7 +77,7 @@ export default async function BookingPage({ params }: Params) {
         <div className={`rounded-2xl border p-5 flex items-center gap-4 ${status.bg} ${status.border}`}>
           <StatusIcon size={28} className={status.color} />
           <div>
-            <p className={`font-black text-lg ${status.color}`}>{status.label}</p>
+            <p className={`font-extrabold text-lg ${status.color}`}>{status.label}</p>
             <p className="text-sm text-[var(--color-text-muted)]">
               {booking.status === "PENDING"   && "حجزك قيد المراجعة، سيتواصل معك الفريق قريبًا"}
               {booking.status === "CONFIRMED" && "حجزك مؤكد، نراك قريبًا!"}

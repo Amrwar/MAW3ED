@@ -15,14 +15,13 @@ import { db } from "@/lib/db";
 import { err } from "@/lib/api";
 import { verifyWebhookHmac, type PaymobTransactionObj } from "@/lib/services/paymob";
 import { bookingPageUrl } from "@/lib/url";
-import { type Plan, PLAN_NAMES_AR } from "@/lib/plans";
+import { type Plan } from "@/lib/plans";
 import {
   sendBusinessBookingTemplate,
   sendCustomerConfirmationTemplate,
 } from "@/lib/services/whatsapp";
 import type { BookingNotificationData } from "@/lib/services/whatsapp-messages";
 import {
-  sendBookingConfirmationToCustomer,
   sendNewBookingAlertToBusiness,
   type BookingEmailData,
 } from "@/lib/services/email";

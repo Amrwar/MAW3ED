@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, CheckCircle, Clock } from "lucide-react";
+import { MapPin, CheckCircle } from "lucide-react";
 import type { Business } from "@/types/business";
 import StarRating from "./StarRating";
 import Badge from "@/components/ui/Badge";
@@ -38,7 +38,7 @@ export default function BusinessCard({
         <div className="absolute top-3 start-3 flex flex-wrap gap-1.5">
           {business.isVerified && (
             <span className="flex items-center gap-1 text-xs font-semibold bg-white/95 text-[var(--color-brand)] px-2 py-0.5 rounded-full shadow-sm">
-              <CheckCircle size={11} className="text-green-500" />
+              <CheckCircle size={11} className="text-[var(--color-ok)]" />
               موثّق
             </span>
           )}
@@ -54,14 +54,14 @@ export default function BusinessCard({
             className={cn(
               "flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full shadow-sm",
               business.isOpen
-                ? "bg-green-50 text-green-600"
-                : "bg-gray-100 text-gray-500"
+                ? "bg-[var(--color-ok-soft)] text-[var(--color-ok)]"
+                : "bg-[var(--color-surface-3)] text-[var(--color-subtle)]"
             )}
           >
             <span
               className={cn(
                 "w-1.5 h-1.5 rounded-full",
-                business.isOpen ? "bg-green-500" : "bg-gray-400"
+                business.isOpen ? "bg-[var(--color-jade)]" : "bg-[var(--color-faint)]"
               )}
             />
             {business.isOpen ? "مفتوح" : "مغلق"}

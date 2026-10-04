@@ -12,6 +12,7 @@ import NewBookingButton from "@/features/dashboard/NewBookingButton";
 import DashboardTodayWidget from "@/features/dashboard/DashboardTodayWidget";
 import { type DashboardBooking } from "@/features/dashboard/bookings/types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { dateLong, num, money, clock, duration as fmtDuration } from "@/lib/fmt";
 
 interface ServicePreview {
   id:       string;
@@ -40,42 +41,41 @@ interface Props {
   isProfileIncomplete: boolean;
 }
 
-// Gradient icon boxes consistent with brand
+/** A single snapshot figure. Hoisted so it is not rebuilt per render. */
 function InfoCard({
   icon: Icon,
-  iconBg,
-  iconColor,
   value,
   label,
   sub,
+  tone = "neutral",
 }: {
-  icon:       React.ElementType;
-  iconBg:     string;
-  iconColor:  string;
-  value:      React.ReactNode;
-  label:      string;
-  sub?:       React.ReactNode;
+  icon:  React.ElementType;
+  value: React.ReactNode;
+  label: string;
+  sub?:  React.ReactNode;
+  tone?: "neutral" | "jade" | "muted";
 }) {
+  const iconCls =
+    tone === "jade"
+      ? "bg-[var(--color-jade-soft)] text-[var(--color-jade)]"
+      : tone === "muted"
+        ? "bg-[var(--color-surface-3)] text-[var(--color-subtle)]"
+        : "bg-[var(--color-surface-3)] text-[var(--color-muted)]";
+
   return (
-    <div
-      className="rounded-2xl border bg-white p-5 flex items-center gap-4"
-      style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
-    >
-      <div
-        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-        style={{ background: iconBg }}
+    <div className="flex items-center gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
+      <span
+        aria-hidden="true"
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] ${iconCls}`}
       >
-        <Icon size={18} strokeWidth={1.75} style={{ color: iconColor }} />
-      </div>
+        <Icon size={18} strokeWidth={1.8} />
+      </span>
       <div className="min-w-0">
-        <p
-          className="font-black text-[#0F172A] leading-none mb-1"
-          style={{ fontSize: 24, letterSpacing: "-0.02em" }}
-        >
+        <p className="m-0 text-[1.5rem] font-bold leading-none tracking-tight text-[var(--color-ink)]">
           {value}
         </p>
-        <p className="text-sm text-[#475569] font-medium">{label}</p>
-        {sub && <div className="mt-0.5">{sub}</div>}
+        <p className="m-0 mt-1.5 text-[0.84375rem] text-[var(--color-muted)]">{label}</p>
+        {sub && <div className="mt-1">{sub}</div>}
       </div>
     </div>
   );
@@ -94,151 +94,109 @@ export default function DashboardHomeClient({
   isProfileIncomplete,
 }: Props) {
   const { t, lang } = useLanguage();
-  const h           = t.dashboard.home;
-  const locale      = lang === "ar" ? "ar-EG" : "en-US";
-
-  const todayStr = new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
-    weekday: "long",
-    year:    "numeric",
-    month:   "long",
-    day:     "numeric",
-  });
+  const h = t.dashboard.home;
 
   const openStatus = !!isOpenToday;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
 
-      {/* ── Top header ── */}
-      <div
-        className="rounded-2xl border bg-white px-6 py-5"
-        style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-widest mb-1">
-              {todayStr}
-            </p>
-            <h1
-              className="font-black text-[#0F172A] leading-tight"
-              style={{ fontSize: 22, letterSpacing: "-0.02em" }}
-            >
-              {h.welcome}،{" "}
-              <span style={{ color: "#1D4ED8" }}>{businessNameAr}</span>{" "}
-              👋
-            </h1>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href={`/company/${slug}`}
-              target="_blank"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
-              style={{
-                background:  "#F8FAFC",
-                border:      "1px solid #E2E8F0",
-                color:       "#475569",
-              }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget as HTMLAnchorElement;
-                el.style.borderColor = "#BFDBFE";
-                el.style.color = "#1D4ED8";
-                el.style.background = "#EFF6FF";
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLAnchorElement;
-                el.style.borderColor = "#E2E8F0";
-                el.style.color = "#475569";
-                el.style.background = "#F8FAFC";
-              }}
-            >
-              <ExternalLink size={14} strokeWidth={1.75} />
-              {h.viewPage}
-            </Link>
-            <NewBookingButton
-              slug={slug}
-              services={services}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white"
-              style={{
-                background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-                boxShadow:  "0 4px 14px rgba(59,130,246,0.28)",
-              }}
-              label={h.newBooking}
-            />
-          </div>
+      {/* ── Greeting ── */}
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div className="min-w-0">
+          <h1 className="m-0 text-[1.75rem] font-light tracking-tight text-[var(--color-ink)]">
+            {h.welcome}، {businessNameAr}
+          </h1>
+          <p className="m-0 mt-2 text-[0.84375rem] text-[var(--color-subtle)]">
+            {dateLong(new Date(), lang)}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-3">
+          <Link
+            href={`/company/${slug}`}
+            target="_blank"
+            className="btn btn-outline btn-sm"
+          >
+            <ExternalLink size={15} strokeWidth={1.8} aria-hidden="true" />
+            {h.viewPage}
+          </Link>
+          <NewBookingButton
+            slug={slug}
+            services={services}
+            className="btn btn-primary"
+            label={h.newBooking}
+          />
         </div>
       </div>
 
-      {/* ── Profile incomplete alert ── */}
+      {/* ── Setup prompt ── */}
       {isProfileIncomplete && (
-        <div
-          className="rounded-2xl px-5 py-4 flex items-start justify-between gap-4"
-          style={{
-            background:  "rgba(234,179,8,0.07)",
-            border:      "1px solid rgba(234,179,8,0.25)",
-          }}
-        >
-          <div className="flex items-start gap-3">
-            <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" strokeWidth={1.75} />
-            <div>
-              <p className="text-sm font-bold text-amber-800 mb-0.5">{h.completeProfileTitle}</p>
-              <p className="text-xs text-amber-700">{h.completeProfileSub}</p>
+        <div className="flex flex-wrap items-start justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-warn-line)] bg-[var(--color-warn-soft)] px-5 py-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <AlertTriangle
+              size={18}
+              strokeWidth={1.8}
+              aria-hidden="true"
+              className="mt-0.5 shrink-0 text-[var(--color-warn)]"
+            />
+            <div className="min-w-0">
+              <p className="m-0 text-[0.875rem] font-bold text-[var(--color-warn)]">
+                {h.completeProfileTitle}
+              </p>
+              <p className="m-0 mt-1 text-[0.78125rem] leading-relaxed text-[var(--color-warn)]/85">
+                {h.completeProfileSub}
+              </p>
             </div>
           </div>
           <Link
             href="/dashboard/settings"
-            className="inline-flex items-center gap-1 text-xs font-bold whitespace-nowrap px-3 py-1.5 rounded-lg shrink-0 transition-colors"
-            style={{ background: "rgba(234,179,8,0.15)", color: "#92400E" }}
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-[var(--radius-sm)] bg-[var(--color-warn)] px-3.5 py-2 text-[0.75rem] font-bold text-white"
           >
             {h.completeNow}
-            <ChevronLeft size={12} />
+            <ChevronLeft size={13} aria-hidden="true" />
           </Link>
         </div>
       )}
 
-      {/* ── Business snapshot cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* ── Snapshot ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <InfoCard
           icon={Store}
-          iconBg="#EFF6FF"
-          iconColor="#1D4ED8"
-          value={services.length}
+          tone="jade"
+          value={<span className="num">{num(services.length, lang)}</span>}
           label={h.publishedServices}
         />
         <InfoCard
           icon={Clock}
-          iconBg="#F0FDF4"
-          iconColor="#059669"
-          value={openDaysCount}
+          value={<span className="num">{num(openDaysCount, lang)}</span>}
           label={h.workingDays}
         />
         <InfoCard
           icon={CheckCircle2}
-          iconBg={openStatus ? "#F0FDF4" : "#F8FAFC"}
-          iconColor={openStatus ? "#22C55E" : "#94A3B8"}
+          tone={openStatus ? "jade" : "muted"}
           value={
-            <span style={{ color: openStatus ? "#22C55E" : "#94A3B8", fontSize: 18 }}>
+            <span className={openStatus ? "text-[1.125rem] text-[var(--color-ok)]" : "text-[1.125rem] text-[var(--color-subtle)]"}>
               {openStatus ? h.openToday : h.closedToday}
             </span>
           }
           label={openStatus ? "مفتوح حاليًا" : "مغلق حاليًا"}
           sub={
             openStatus && todayHours ? (
-              <p className="text-xs text-[#94A3B8]" dir="ltr">
-                {todayHours.openTime} – {todayHours.closeTime}
+              <p className="num m-0 text-xs text-[var(--color-subtle)]">
+                {clock(todayHours.openTime)} — {clock(todayHours.closeTime)}
               </p>
             ) : null
           }
         />
       </div>
 
-      {/* ── KPI stats ── */}
+      {/* ── KPIs ── */}
       <StatsCards stats={stats} />
 
-      {/* ── Main two-column grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_320px] gap-6 items-start">
-
-        {/* Left: today + recent bookings */}
-        <div className="space-y-6 min-w-0">
+      {/* ── Today + side column ── */}
+      <div className="flex flex-wrap items-start gap-6">
+        <div className="flex min-w-0 flex-[999_1_32rem] flex-col gap-6">
           <DashboardTodayWidget
             initialBookings={todayBookings}
             slug={slug}
@@ -247,77 +205,49 @@ export default function DashboardHomeClient({
           <RecentBookings bookings={recentBookings} />
         </div>
 
-        {/* Right sidebar: quick actions + services */}
-        <div className="space-y-5">
+        <div className="flex flex-[0_1_19rem] min-w-[16rem] flex-col gap-5">
           <QuickActions slug={slug} />
 
-          {/* Services performance card */}
           {services.length > 0 && (
-            <div
-              className="rounded-2xl border bg-white overflow-hidden"
-              style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
-            >
-              <div
-                className="flex items-center justify-between px-5 py-4"
-                style={{ borderBottom: "1px solid #F1F5F9" }}
-              >
-                <div className="flex items-center gap-2">
-                  <TrendingUp size={15} strokeWidth={1.75} style={{ color: "#3B82F6" }} />
-                  <h3 className="text-sm font-bold text-[#0F172A]">{h.yourServices}</h3>
-                </div>
+            <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]">
+              <div className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4">
+                <h2 className="m-0 flex items-center gap-2 text-[0.9375rem] font-bold text-[var(--color-ink)]">
+                  <TrendingUp size={16} strokeWidth={1.8} className="text-[var(--color-jade)]" aria-hidden="true" />
+                  {h.yourServices}
+                </h2>
                 <Link
                   href="/dashboard/services"
-                  className="inline-flex items-center gap-1 text-xs font-semibold transition-colors"
-                  style={{ color: "#3B82F6" }}
+                  className="flex shrink-0 items-center gap-1 text-[0.75rem] font-bold text-[var(--color-jade)]"
                 >
                   {h.manageServices}
-                  <ArrowLeft size={11} />
+                  <ArrowLeft size={12} aria-hidden="true" />
                 </Link>
               </div>
 
-              <div className="p-3">
-                {services.slice(0, 5).map((svc, i) => (
-                  <div
+              <ul className="flex flex-col">
+                {services.slice(0, 5).map((svc) => (
+                  <li
                     key={svc.id}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors"
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLDivElement).style.background = "#F8FAFC";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLDivElement).style.background = "transparent";
-                    }}
+                    className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-3.5 last:border-b-0"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {/* Rank number */}
-                      <span
-                        className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0"
-                        style={{
-                          background: i === 0 ? "#FEF3C7" : "#F1F5F9",
-                          color:      i === 0 ? "#92400E" : "#64748B",
-                        }}
-                      >
-                        {i + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[#0F172A] truncate">{svc.nameAr}</p>
-                        <p className="text-xs text-[#94A3B8]">{svc.duration} {h.minutes}</p>
-                      </div>
+                    <div className="min-w-0">
+                      <p className="m-0 truncate text-[0.875rem] font-bold text-[var(--color-ink)]">
+                        {svc.nameAr}
+                      </p>
+                      <p className="m-0 mt-1 text-xs text-[var(--color-subtle)]">
+                        {fmtDuration(svc.duration, lang)}
+                      </p>
                     </div>
-                    <span
-                      className="text-sm font-bold shrink-0 ms-3"
-                      style={{ color: "#1D4ED8" }}
-                    >
-                      {svc.price.toLocaleString(locale)}
-                      <span className="text-xs font-medium text-[#94A3B8] ms-1">{svc.currency}</span>
+                    <span className="num shrink-0 text-[0.875rem] font-bold text-[var(--color-ink)]">
+                      {money(svc.price, lang, svc.currency)}
                     </span>
-                  </div>
+                  </li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </section>
           )}
         </div>
       </div>
-
     </div>
   );
 }

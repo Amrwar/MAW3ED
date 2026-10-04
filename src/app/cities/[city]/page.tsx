@@ -64,7 +64,7 @@ export default async function CityPage({ params }: Props) {
                 <MapPin size={26} className="text-[var(--color-brand)]" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-[var(--color-text-primary)]">
+                <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)]">
                   أعمال في {city.nameAr}
                 </h1>
                 <p className="text-sm text-[var(--color-text-muted)] mt-0.5">

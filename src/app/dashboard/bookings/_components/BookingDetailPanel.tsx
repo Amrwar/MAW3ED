@@ -11,29 +11,29 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
-  PENDING:         { bg: "#FEF3C7", color: "#92400E" },
-  CONFIRMED:       { bg: "#DCFCE7", color: "#15803D" },
-  COMPLETED:       { bg: "#DBEAFE", color: "#1D4ED8" },
-  CANCELLED:       { bg: "#FEE2E2", color: "#B91C1C" },
-  NO_SHOW:         { bg: "#F1F5F9", color: "#475569" },
-  PENDING_PAYMENT: { bg: "#FED7AA", color: "#9A3412" },
-  FAILED_PAYMENT:  { bg: "#FEE2E2", color: "#B91C1C" },
+  PENDING:         { bg: "var(--color-warn-soft)", color: "var(--color-warn)" },
+  CONFIRMED:       { bg: "var(--color-ok-soft)", color: "var(--color-ok)" },
+  COMPLETED:       { bg: "var(--color-jade-soft)", color: "var(--color-jade)" },
+  CANCELLED:       { bg: "var(--color-danger-soft)", color: "var(--color-danger)" },
+  NO_SHOW:         { bg: "var(--color-surface-3)", color: "var(--color-muted)" },
+  PENDING_PAYMENT: { bg: "var(--color-warn-line)", color: "var(--color-warn)" },
+  FAILED_PAYMENT:  { bg: "var(--color-danger-soft)", color: "var(--color-danger)" },
 };
 
 const ACTION_STYLE: Record<string, { bg: string; color: string; hoverBg: string }> = {
-  CONFIRMED: { bg: "#DCFCE7", color: "#15803D", hoverBg: "#BBF7D0" },
-  COMPLETED: { bg: "#DBEAFE", color: "#1D4ED8", hoverBg: "#BFDBFE" },
-  CANCELLED: { bg: "#FEE2E2", color: "#B91C1C", hoverBg: "#FECACA" },
-  NO_SHOW:   { bg: "#F1F5F9", color: "#475569", hoverBg: "#E2E8F0" },
+  CONFIRMED: { bg: "var(--color-ok-soft)", color: "var(--color-ok)", hoverBg: "var(--color-ok-line)" },
+  COMPLETED: { bg: "var(--color-jade-soft)", color: "var(--color-jade)", hoverBg: "var(--color-jade-line)" },
+  CANCELLED: { bg: "var(--color-danger-soft)", color: "var(--color-danger)", hoverBg: "var(--color-danger-line)" },
+  NO_SHOW:   { bg: "var(--color-surface-3)", color: "var(--color-muted)", hoverBg: "var(--color-line)" },
 };
 
 const AVATAR_GRADIENTS = [
-  "linear-gradient(135deg,#1D4ED8,#3B82F6)",
-  "linear-gradient(135deg,#7C3AED,#A78BFA)",
-  "linear-gradient(135deg,#059669,#34D399)",
-  "linear-gradient(135deg,#B45309,#F59E0B)",
-  "linear-gradient(135deg,#0E7490,#22D3EE)",
-  "linear-gradient(135deg,#9D174D,#F472B6)",
+  "linear-gradient(135deg,var(--color-jade),var(--color-jade))",
+  "linear-gradient(135deg,var(--color-jade),var(--color-jade-line))",
+  "linear-gradient(135deg,var(--color-ok),var(--color-jade))",
+  "linear-gradient(135deg,var(--color-warn),var(--color-star))",
+  "linear-gradient(135deg,var(--color-info),var(--color-info))",
+  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
 ];
 function avatarGrad(name: string) {
   return AVATAR_GRADIENTS[(name.charCodeAt(0) || 0) % AVATAR_GRADIENTS.length];
@@ -57,7 +57,7 @@ export default function BookingDetailPanel({
   const bd     = t.dashboard.bookingDetail;
   const ba     = t.dashboard.bookingActions;
   const bs     = t.dashboard.bookingStatus;
-  const locale = lang === "ar" ? "ar-EG" : "en-US";
+  const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
   const allowedNext  = ALLOWED_TRANSITIONS[booking.status] ?? [];
   const badge        = STATUS_BADGE[booking.status] ?? STATUS_BADGE.NO_SHOW;
@@ -89,31 +89,25 @@ export default function BookingDetailPanel({
       {/* Panel */}
       <div
         className="fixed inset-y-0 end-0 z-50 w-full max-w-md bg-white flex flex-col"
-        style={{ boxShadow: "-8px 0 40px rgba(15,23,42,0.12)" }}
+        style={{ boxShadow: "-8px 0 40px rgba(17,32,28,0.12)" }}
       >
         {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-5"
-          style={{ borderBottom: "1px solid #F1F5F9" }}
+          style={{ borderBottom: "1px solid var(--color-surface-3)" }}
         >
           <div>
-            <h2 className="font-black text-[#0F172A]" style={{ fontSize: 16 }}>
+            <h2 className="font-extrabold text-[var(--color-ink)]" style={{ fontSize: 16 }}>
               {bd.title}
             </h2>
-            <p className="text-xs text-[#94A3B8] mt-0.5 font-mono" dir="ltr">
+            <p className="text-xs text-[var(--color-subtle)] mt-0.5 font-mono" dir="ltr">
               #{booking.id.slice(-8).toUpperCase()}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150"
-            style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#475569" }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "#F1F5F9";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "#F8FAFC";
-            }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+            style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-muted)" }}
           >
             <X size={16} />
           </button>
@@ -125,20 +119,20 @@ export default function BookingDetailPanel({
           {/* Customer card */}
           <div
             className="rounded-2xl p-4 flex items-center gap-4"
-            style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}
+            style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)" }}
           >
             <div
-              className="w-12 h-12 rounded-full flex items-center justify-center text-base font-black text-white shrink-0"
+              className="w-12 h-12 rounded-full flex items-center justify-center text-base font-extrabold text-white shrink-0"
               style={{ background: avatarGrad(booking.customerName) }}
             >
               {booking.customerName[0]}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-[#0F172A] text-base leading-snug truncate">
+              <p className="font-bold text-[var(--color-ink)] text-base leading-snug truncate">
                 {booking.customerName}
               </p>
-              <p className="text-sm text-[#94A3B8] mt-0.5 flex items-center gap-1.5" dir="ltr">
-                <Phone size={11} style={{ color: "#3B82F6" }} />
+              <p className="text-sm text-[var(--color-subtle)] mt-0.5 flex items-center gap-1.5" dir="ltr">
+                <Phone size={11} style={{ color: "var(--color-jade)" }} />
                 {booking.customerPhone}
               </p>
             </div>
@@ -151,7 +145,7 @@ export default function BookingDetailPanel({
           </div>
 
           {/* Booking details */}
-          <Section icon={<Calendar size={14} style={{ color: "#3B82F6" }} />} title={lang === "ar" ? "تفاصيل الموعد" : "Booking Details"}>
+          <Section icon={<Calendar size={14} style={{ color: "var(--color-jade)" }} />} title={lang === "ar" ? "تفاصيل الموعد" : "Booking Details"}>
             <InfoRow label={bd.service}  value={booking.serviceName} />
             <InfoRow label={bd.duration} value={`${booking.serviceDuration} ${bd.minutes}`} />
             <InfoRow label={bd.date}     value={formatDateAr(booking.date)} />
@@ -166,7 +160,7 @@ export default function BookingDetailPanel({
           </Section>
 
           {/* Payment */}
-          <Section icon={<CreditCard size={14} style={{ color: "#3B82F6" }} />} title={lang === "ar" ? "الدفع" : "Payment"}>
+          <Section icon={<CreditCard size={14} style={{ color: "var(--color-jade)" }} />} title={lang === "ar" ? "الدفع" : "Payment"}>
             <InfoRow
               label={bd.price}
               value={`${booking.totalPrice.toLocaleString(locale)} ${booking.currency}`}
@@ -182,19 +176,19 @@ export default function BookingDetailPanel({
 
           {/* Notes */}
           {(booking.notes || booking.customerNotes) && (
-            <Section icon={<User size={14} style={{ color: "#3B82F6" }} />} title={bd.notes}>
+            <Section icon={<User size={14} style={{ color: "var(--color-jade)" }} />} title={bd.notes}>
               {booking.customerNotes && (
                 <p
-                  className="text-sm text-[#475569] leading-relaxed rounded-xl px-4 py-3"
-                  style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}
+                  className="text-sm text-[var(--color-muted)] leading-relaxed rounded-xl px-4 py-3"
+                  style={{ background: "var(--color-surface)", border: "1px solid var(--color-line)" }}
                 >
                   {booking.customerNotes}
                 </p>
               )}
               {booking.notes && (
                 <p
-                  className="text-sm text-[#475569] leading-relaxed rounded-xl px-4 py-3"
-                  style={{ background: "#FFFFFF", border: "1px solid #E2E8F0" }}
+                  className="text-sm text-[var(--color-muted)] leading-relaxed rounded-xl px-4 py-3"
+                  style={{ background: "var(--color-surface)", border: "1px solid var(--color-line)" }}
                 >
                   {booking.notes}
                 </p>
@@ -203,7 +197,7 @@ export default function BookingDetailPanel({
           )}
 
           {/* Meta */}
-          <Section icon={<Clock size={14} style={{ color: "#3B82F6" }} />} title={lang === "ar" ? "معلومات إضافية" : "Additional Info"}>
+          <Section icon={<Clock size={14} style={{ color: "var(--color-jade)" }} />} title={lang === "ar" ? "معلومات إضافية" : "Additional Info"}>
             <InfoRow
               label={lang === "ar" ? "تاريخ الحجز" : "Booked On"}
               value={new Date(booking.createdAt).toLocaleDateString(locale, {
@@ -216,12 +210,12 @@ export default function BookingDetailPanel({
         {/* Footer actions */}
         <div
           className="p-5 space-y-3"
-          style={{ borderTop: "1px solid #F1F5F9" }}
+          style={{ borderTop: "1px solid var(--color-surface-3)" }}
         >
           {actionError && (
             <div
               className="text-sm rounded-xl px-4 py-2.5"
-              style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C" }}
+              style={{ background: "var(--color-danger-soft)", border: "1px solid var(--color-danger-line)", color: "var(--color-danger)" }}
             >
               {actionError}
             </div>
@@ -229,7 +223,7 @@ export default function BookingDetailPanel({
           {actionSuccess && (
             <div
               className="text-sm rounded-xl px-4 py-2.5"
-              style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#15803D" }}
+              style={{ background: "var(--color-ok-soft)", border: "1px solid var(--color-ok-line)", color: "var(--color-ok)" }}
             >
               {actionSuccess}
             </div>
@@ -237,12 +231,12 @@ export default function BookingDetailPanel({
 
           {allowedNext.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+              <p className="text-xs font-semibold text-[var(--color-subtle)] uppercase tracking-wide">
                 {bd.actions}
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {allowedNext.map((nextStatus) => {
-                  const style = ACTION_STYLE[nextStatus] ?? { bg: "#F1F5F9", color: "#475569", hoverBg: "#E2E8F0" };
+                  const style = ACTION_STYLE[nextStatus] ?? { bg: "var(--color-surface-3)", color: "var(--color-muted)", hoverBg: "var(--color-line)" };
                   return (
                     <button
                       key={nextStatus}
@@ -250,12 +244,6 @@ export default function BookingDetailPanel({
                       disabled={loading}
                       className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
                       style={{ background: style.bg, color: style.color }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = style.hoverBg;
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = style.bg;
-                      }}
                     >
                       {loading && <Loader2 size={14} className="animate-spin" />}
                       {(ba as Record<string, string>)[nextStatus] ?? nextStatus}
@@ -267,9 +255,9 @@ export default function BookingDetailPanel({
           ) : (
             <div
               className="text-center py-3 rounded-xl"
-              style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}
+              style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)" }}
             >
-              <p className="text-xs text-[#94A3B8]">
+              <p className="text-xs text-[var(--color-subtle)]">
                 {lang === "ar" ? "الحجز في حالة نهائية — لا يمكن تغييرها" : "Booking is in a final state"}
               </p>
             </div>
@@ -295,11 +283,11 @@ function Section({
     <div>
       <div className="flex items-center gap-2 mb-2.5">
         {icon}
-        <p className="text-xs font-bold text-[#64748B] uppercase tracking-wide">{title}</p>
+        <p className="text-xs font-bold text-[var(--color-muted)] uppercase tracking-wide">{title}</p>
       </div>
       <div
         className="rounded-2xl p-4 space-y-2.5"
-        style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}
+        style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-surface-3)" }}
       >
         {children}
       </div>
@@ -320,12 +308,12 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-start justify-between gap-4 text-sm">
-      <span className="text-[#94A3B8] shrink-0">{label}</span>
+      <span className="text-[var(--color-subtle)] shrink-0">{label}</span>
       <span
         dir={ltr ? "ltr" : undefined}
         className="text-end"
         style={{
-          color:      bold ? "#1D4ED8" : "#0F172A",
+          color:      bold ? "var(--color-jade)" : "var(--color-ink)",
           fontWeight: bold ? 800 : 500,
         }}
       >

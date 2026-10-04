@@ -5,7 +5,7 @@ import Logo from "@/components/shared/Logo";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Footer() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const f = t.footer;
 
   const columns = [
@@ -39,35 +39,32 @@ export default function Footer() {
     },
   ];
 
-  return (
-    <footer style={{ background: "#0F172A" }}>
-      <div className="container-app pt-16 pb-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+  const madeIn = lang === "ar" ? "صُنع في القاهرة" : "Made in Cairo";
 
-          {/* Brand column */}
+  return (
+    <footer className="bg-[var(--color-surface)] border-t border-[var(--color-line)]">
+      <div className="container-app pt-14 pb-10">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr] gap-10 mb-11">
+
           <div className="sm:col-span-2 lg:col-span-1">
-            <Logo variant="white" size="sm" className="mb-5" />
-            <p className="text-[#94A3B8] text-sm leading-relaxed max-w-xs">
+            <Logo size="sm" className="mb-4" />
+            <p className="max-w-[34ch] text-[0.84375rem] leading-[1.8] text-[var(--color-subtle)]">
               {f.tagline}
             </p>
-            <div className="flex items-center gap-3 mt-6">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#3B82F6]/15 text-[#93C5FD] border border-[#3B82F6]/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] animate-pulse" />
-                متاح على مدار الساعة
-              </span>
-            </div>
           </div>
 
-          {/* Link columns */}
           {columns.map((col) => (
             <div key={col.title}>
-              <h4 className="text-sm font-semibold text-white mb-5">{col.title}</h4>
-              <ul className="space-y-3">
+              <h4 className="mb-4 text-[0.8125rem] font-bold text-[var(--color-ink)]">
+                {col.title}
+              </h4>
+              <ul className="flex flex-col gap-2.5">
                 {col.links.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-[#94A3B8] hover:text-white transition-colors duration-150"
+                      className="text-[0.84375rem] text-[var(--color-muted)] hover:text-[var(--color-jade)] transition-colors"
                     >
                       {link.label}
                     </Link>
@@ -78,20 +75,9 @@ export default function Footer() {
           ))}
         </div>
 
-        {/* Divider */}
-        <div className="h-px bg-white/10 mb-8" />
-
-        {/* Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-[#475569]">{f.copyright}</p>
-          <div className="flex items-center gap-6">
-            <Link href="/privacy" className="text-xs text-[#475569] hover:text-[#94A3B8] transition-colors">
-              {f.links.privacy}
-            </Link>
-            <Link href="/terms" className="text-xs text-[#475569] hover:text-[#94A3B8] transition-colors">
-              {f.links.terms}
-            </Link>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-5 border-t border-[var(--color-line)] pt-6">
+          <p className="text-[0.78125rem] text-[var(--color-subtle)]">{f.copyright}</p>
+          <p className="text-[0.78125rem] text-[var(--color-subtle)]">{madeIn}</p>
         </div>
       </div>
     </footer>

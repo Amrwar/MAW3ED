@@ -63,7 +63,7 @@ export default async function DashboardLayout({
   const cityName = business.city?.nameAr ?? "";
 
   return (
-    <div className="min-h-screen" style={{ background: "#F8FAFC" }}>
+    <div className="min-h-screen" style={{ background: "var(--color-surface-2)" }}>
       <DashboardSidebar
         businessName={business.nameAr}
         cityName={cityName}

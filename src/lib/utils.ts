@@ -1,20 +1,19 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { money, duration as fmtDuration } from "@/lib/fmt";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** @deprecated use `money()` from "@/lib/fmt" — it takes the language. */
 export function formatPrice(amount: number, currency = "EGP"): string {
-  return `${amount.toLocaleString("ar-EG")} ${currency}`;
+  return money(amount, "ar", currency);
 }
 
+/** @deprecated use `duration()` from "@/lib/fmt" — it takes the language. */
 export function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} دقيقة`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (mins === 0) return `${hours} ساعة`;
-  return `${hours} ساعة و ${mins} دقيقة`;
+  return fmtDuration(minutes, "ar");
 }
 
 export function formatRating(rating: number): string {

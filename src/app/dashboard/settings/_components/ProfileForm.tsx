@@ -4,8 +4,7 @@ import { useState } from "react";
 import {
   Loader2, Check, X,
   Palette, LayoutGrid, Phone,
-  AlignLeft, Tag, MapPin, Globe,
-} from "lucide-react";
+  MapPin, } from "lucide-react";
 import type { Profile, City, CategoryItem } from "./SettingsClient";
 import ImageUpload from "@/components/shared/ImageUpload";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -19,10 +18,10 @@ type Props = {
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const card: React.CSSProperties = {
-  background:   "#FFFFFF",
-  border:       "1.5px solid #E2E8F0",
+  background:   "var(--color-surface)",
+  border:       "1.5px solid var(--color-line)",
   borderRadius: 20,
-  boxShadow:    "0 1px 6px rgba(15,23,42,0.05)",
+  boxShadow:    "0 1px 6px rgba(17,32,28,0.05)",
   overflow:     "hidden",
 };
 
@@ -31,8 +30,8 @@ const cardHead: React.CSSProperties = {
   alignItems:     "center",
   gap:            12,
   padding:        "14px 22px",
-  background:     "#FAFBFD",
-  borderBottom:   "1px solid #F1F5F9",
+  background:     "var(--color-ground)",
+  borderBottom:   "1px solid var(--color-surface-3)",
 };
 
 const cardBody: React.CSSProperties = {
@@ -42,23 +41,23 @@ const cardBody: React.CSSProperties = {
 const label: React.CSSProperties = {
   fontSize:    12,
   fontWeight:  600,
-  color:       "#374151",
+  color:       "var(--color-ink-2)",
   display:     "block",
   marginBottom: 6,
 };
 
 const hint: React.CSSProperties = {
   fontSize:   11,
-  color:      "#94A3B8",
+  color:      "var(--color-subtle)",
   marginTop:  3,
 };
 
 const fieldBase: React.CSSProperties = {
   width:         "100%",
   borderRadius:  10,
-  border:        "1.5px solid #E2E8F0",
-  background:    "#F8FAFC",
-  color:         "#0F172A",
+  border:        "1.5px solid var(--color-line)",
+  background:    "var(--color-surface-2)",
+  color:         "var(--color-ink)",
   fontSize:      14,
   paddingBlock:  10,
   paddingInline: 12,
@@ -68,13 +67,13 @@ const fieldBase: React.CSSProperties = {
 };
 
 function onFocus(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-  e.currentTarget.style.borderColor = "#1D4ED8";
-  e.currentTarget.style.background  = "#FFFFFF";
-  e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(29,78,216,0.1)";
+  e.currentTarget.style.borderColor = "var(--color-jade)";
+  e.currentTarget.style.background  = "var(--color-surface)";
+  e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(10,95,71,0.1)";
 }
 function onBlur(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-  e.currentTarget.style.borderColor = "#E2E8F0";
-  e.currentTarget.style.background  = "#F8FAFC";
+  e.currentTarget.style.borderColor = "var(--color-line)";
+  e.currentTarget.style.background  = "var(--color-surface-2)";
   e.currentTarget.style.boxShadow   = "none";
 }
 
@@ -83,8 +82,8 @@ function Section({
   icon,
   title,
   subtitle,
-  iconBg = "#EFF6FF",
-  iconColor = "#1D4ED8",
+  iconBg = "var(--color-jade-tint)",
+  iconColor = "var(--color-jade)",
   children,
 }: {
   icon:       React.ReactNode;
@@ -113,8 +112,8 @@ function Section({
           {icon}
         </div>
         <div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{title}</p>
-          <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>{subtitle}</p>
+          <p style={{ fontSize: 13, fontWeight: 700, color: "var(--color-ink)" }}>{title}</p>
+          <p style={{ fontSize: 11, color: "var(--color-subtle)", marginTop: 1 }}>{subtitle}</p>
         </div>
       </div>
       <div style={cardBody}>{children}</div>
@@ -138,7 +137,7 @@ function Field({
     <div>
       <label style={label}>
         {labelText}
-        {required && <span style={{ color: "#EF4444", marginInlineStart: 3 }}>*</span>}
+        {required && <span style={{ color: "var(--color-danger)", marginInlineStart: 3 }}>*</span>}
       </label>
       {children}
       {hintText && <p style={hint}>{hintText}</p>}
@@ -229,7 +228,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
             style={{
               borderRadius: 14,
               overflow:     "hidden",
-              border:       "1.5px solid #E2E8F0",
+              border:       "1.5px solid var(--color-line)",
             }}
           >
             <ImageUpload
@@ -250,7 +249,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
               style={{
                 borderRadius: 14,
                 overflow:     "hidden",
-                border:       "1.5px solid #E2E8F0",
+                border:       "1.5px solid var(--color-line)",
                 flexShrink:   0,
               }}
             >
@@ -262,10 +261,10 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
               />
             </div>
             <div style={{ paddingTop: 6 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--color-ink-2)", marginBottom: 6 }}>
                 {isAr ? "شعار مربع عالي الجودة" : "High-quality square logo"}
               </p>
-              <p style={{ fontSize: 11, color: "#94A3B8", lineHeight: 1.7 }}>
+              <p style={{ fontSize: 11, color: "var(--color-subtle)", lineHeight: 1.7 }}>
                 {isAr ? (
                   <>
                     PNG أو JPG أو WebP · حتى 5MB
@@ -290,8 +289,8 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
         icon={<LayoutGrid size={14} />}
         title={isAr ? "المعلومات الأساسية" : "Basic Information"}
         subtitle={isAr ? "اسم النشاط والتخصص والمدينة والنبذة التعريفية" : "Business name, category, city and description"}
-        iconBg="#F5F3FF"
-        iconColor="#6D28D9"
+        iconBg="var(--color-jade-tint)"
+        iconColor="var(--color-jade)"
       >
         {/* Name row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 16 }}>
@@ -394,8 +393,8 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
         icon={<Phone size={14} />}
         title={isAr ? "بيانات التواصل" : "Contact Information"}
         subtitle={isAr ? "أرقام الهاتف وواتساب وعنوان النشاط" : "Phone numbers, WhatsApp and business address"}
-        iconBg="#ECFDF5"
-        iconColor="#065F46"
+        iconBg="var(--color-ok-soft)"
+        iconColor="var(--color-ok)"
       >
         {/* Phone + WhatsApp */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 16 }}>
@@ -413,7 +412,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
               <Phone
                 size={13}
                 className="absolute top-1/2 -translate-y-1/2"
-                style={{ insetInlineEnd: 12, color: "#94A3B8", pointerEvents: "none" }}
+                style={{ insetInlineEnd: 12, color: "var(--color-subtle)", pointerEvents: "none" }}
               />
             </div>
           </Field>
@@ -434,7 +433,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
               {/* WhatsApp icon as SVG */}
               <svg
                 className="absolute top-1/2 -translate-y-1/2"
-                style={{ insetInlineEnd: 12, color: "#94A3B8", pointerEvents: "none", width: 13, height: 13 }}
+                style={{ insetInlineEnd: 12, color: "var(--color-subtle)", pointerEvents: "none", width: 13, height: 13 }}
                 viewBox="0 0 24 24"
                 fill="currentColor"
               >
@@ -455,14 +454,14 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
               value={form.address}
               onChange={(e) => set("address", e.target.value)}
               style={{ ...fieldBase, paddingInlineEnd: 36 }}
-              placeholder={isAr ? "مثال: ٤ شارع التحرير، المعادي، القاهرة" : "e.g. 4 Tahrir St., Maadi, Cairo"}
+              placeholder={isAr ? "مثال: 4 شارع التحرير، المعادي، القاهرة" : "e.g. 4 Tahrir St., Maadi, Cairo"}
               onFocus={onFocus}
               onBlur={onBlur}
             />
             <MapPin
               size={13}
               className="absolute top-1/2 -translate-y-1/2"
-              style={{ insetInlineEnd: 12, color: "#94A3B8", pointerEvents: "none" }}
+              style={{ insetInlineEnd: 12, color: "var(--color-subtle)", pointerEvents: "none" }}
             />
           </div>
         </Field>
@@ -472,29 +471,29 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
       {error && (
         <div
           className="flex items-start gap-3 rounded-2xl px-4 py-3.5"
-          style={{ background: "#FEF2F2", border: "1.5px solid #FECACA" }}
+          style={{ background: "var(--color-danger-soft)", border: "1.5px solid var(--color-danger-line)" }}
         >
           <div
             className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-            style={{ background: "#FEE2E2" }}
+            style={{ background: "var(--color-danger-soft)" }}
           >
-            <X size={10} strokeWidth={2.5} style={{ color: "#EF4444" }} />
+            <X size={10} strokeWidth={2.5} style={{ color: "var(--color-danger)" }} />
           </div>
-          <p style={{ fontSize: 13, color: "#B91C1C", lineHeight: 1.5 }}>{error}</p>
+          <p style={{ fontSize: 13, color: "var(--color-danger)", lineHeight: 1.5 }}>{error}</p>
         </div>
       )}
       {success && (
         <div
           className="flex items-center gap-3 rounded-2xl px-4 py-3.5"
-          style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0" }}
+          style={{ background: "var(--color-ok-soft)", border: "1.5px solid var(--color-ok-line)" }}
         >
           <div
             className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-            style={{ background: "#DCFCE7" }}
+            style={{ background: "var(--color-ok-soft)" }}
           >
-            <Check size={10} strokeWidth={2.5} style={{ color: "#16A34A" }} />
+            <Check size={10} strokeWidth={2.5} style={{ color: "var(--color-ok)" }} />
           </div>
-          <p style={{ fontSize: 13, color: "#15803D", fontWeight: 600 }}>
+          <p style={{ fontSize: 13, color: "var(--color-ok)", fontWeight: 600 }}>
             {isAr ? "تم حفظ التغييرات بنجاح" : "Changes saved successfully"}
           </p>
         </div>
@@ -504,40 +503,26 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
       <div
         className="flex items-center justify-between rounded-2xl px-5 py-4"
         style={{
-          background: "#FAFBFD",
-          border:     "1.5px solid #E2E8F0",
+          background: "var(--color-ground)",
+          border:     "1.5px solid var(--color-line)",
           marginBottom: 16,
         }}
       >
-        <p style={{ fontSize: 12, color: "#94A3B8" }}>
+        <p style={{ fontSize: 12, color: "var(--color-subtle)" }}>
           {isAr ? "التغييرات ستُحدَّث فوراً على صفحة حجزك العامة" : "Changes will update immediately on your public booking page"}
         </p>
         <button
           type="submit"
           disabled={saving}
-          className="flex items-center gap-2 rounded-xl font-black text-white transition-all duration-150 disabled:opacity-60"
+          className="flex items-center gap-2 rounded-xl font-extrabold text-white transition-all duration-150 disabled:opacity-60 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
           style={{
             padding:       "10px 22px",
             fontSize:      13,
-            background:    "linear-gradient(135deg, #1D4ED8 0%, #2563EB 60%, #3B82F6 100%)",
-            boxShadow:     "0 3px 12px rgba(29,78,216,0.28)",
+            background:    "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade-hover) 60%, var(--color-jade) 100%)",
+            boxShadow:     "0 3px 12px rgba(10,95,71,0.28)",
             border:        "none",
             cursor:        saving ? "not-allowed" : "pointer",
             letterSpacing: "-0.01em",
-          }}
-          onMouseEnter={(e) => {
-            if (!saving) {
-              const el = e.currentTarget as HTMLButtonElement;
-              el.style.filter    = "brightness(1.08)";
-              el.style.boxShadow = "0 5px 18px rgba(29,78,216,0.38)";
-              el.style.transform = "translateY(-1px)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.filter    = "";
-            el.style.boxShadow = "0 3px 12px rgba(29,78,216,0.28)";
-            el.style.transform = "";
           }}
         >
           {saving ? (

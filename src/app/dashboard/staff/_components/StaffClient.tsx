@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Scissors, Loader2, CheckCircle2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Scissors, Loader2 } from "lucide-react";
 import StaffPanel from "./StaffPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -29,14 +29,14 @@ const DAY_LABELS_AR = ["الأحد", "الاثنين", "الثلاثاء", "ال
 const DAY_LABELS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const GRADIENTS = [
-  "linear-gradient(135deg,#1D4ED8,#3B82F6)",
-  "linear-gradient(135deg,#7C3AED,#A78BFA)",
-  "linear-gradient(135deg,#059669,#34D399)",
-  "linear-gradient(135deg,#B45309,#F59E0B)",
-  "linear-gradient(135deg,#0E7490,#22D3EE)",
-  "linear-gradient(135deg,#9D174D,#F472B6)",
-  "linear-gradient(135deg,#DC2626,#F87171)",
-  "linear-gradient(135deg,#4338CA,#818CF8)",
+  "linear-gradient(135deg,var(--color-jade),var(--color-jade))",
+  "linear-gradient(135deg,var(--color-jade),var(--color-jade-line))",
+  "linear-gradient(135deg,var(--color-ok),var(--color-jade))",
+  "linear-gradient(135deg,var(--color-warn),var(--color-star))",
+  "linear-gradient(135deg,var(--color-info),var(--color-info))",
+  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
+  "linear-gradient(135deg,var(--color-danger),var(--color-danger))",
+  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
 ];
 function memberGrad(name: string) {
   return GRADIENTS[(name.charCodeAt(0) || 0) % GRADIENTS.length];
@@ -81,10 +81,10 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
       {/* ── Page header ─────────────────────────────── */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0F172A", marginBottom: 4 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--color-ink)", marginBottom: 4 }}>
             {isAr ? "إدارة الفريق" : "Staff Management"}
           </h1>
-          <p style={{ fontSize: 13, color: "#64748B" }}>
+          <p style={{ fontSize: 13, color: "var(--color-muted)" }}>
             {isAr
               ? `${staff.length} موظف · ${active.length} نشط`
               : `${staff.length} members · ${active.length} active`}
@@ -92,10 +92,10 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-2 transition-all duration-150"
+          className="flex items-center gap-2 transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
           style={{
-            background:   "#0F172A",
-            color:        "#FFFFFF",
+            background:   "var(--color-ink)",
+            color:        "var(--color-surface)",
             border:       "none",
             borderRadius: 12,
             padding:      "10px 18px",
@@ -103,8 +103,6 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
             fontWeight:   600,
             cursor:       "pointer",
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#1E293B"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#0F172A"; }}
         >
           <Plus size={15} strokeWidth={2.5} />
           {isAr ? "إضافة موظف" : "Add Staff"}
@@ -115,22 +113,22 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
       {staff.length === 0 ? (
         <div
           className="flex flex-col items-center justify-center rounded-2xl"
-          style={{ minHeight: 280, border: "2px dashed #E2E8F0", gap: 16 }}
+          style={{ minHeight: 280, border: "2px dashed var(--color-line)", gap: 16 }}
         >
-          <Scissors size={40} style={{ color: "#CBD5E1" }} />
+          <Scissors size={40} style={{ color: "var(--color-line-2)" }} />
           <div className="text-center">
-            <p style={{ fontSize: 15, fontWeight: 700, color: "#64748B", marginBottom: 6 }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: "var(--color-muted)", marginBottom: 6 }}>
               {isAr ? "لا يوجد موظفون بعد" : "No staff members yet"}
             </p>
-            <p style={{ fontSize: 13, color: "#94A3B8" }}>
+            <p style={{ fontSize: 13, color: "var(--color-subtle)" }}>
               {isAr ? "أضف فريقك لتنظيم المواعيد" : "Add your team to manage appointments"}
             </p>
           </div>
           <button
             onClick={openAdd}
             style={{
-              background:   "#0F172A",
-              color:        "#FFFFFF",
+              background:   "var(--color-ink)",
+              color:        "var(--color-surface)",
               border:       "none",
               borderRadius: 10,
               padding:      "9px 18px",
@@ -153,8 +151,8 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
                 key={member.id}
                 className="rounded-2xl p-4 transition-all duration-150"
                 style={{
-                  background: "#FFFFFF",
-                  border:     "1.5px solid #F1F5F9",
+                  background: "var(--color-surface)",
+                  border:     "1.5px solid var(--color-surface-3)",
                   opacity:    member.isActive ? 1 : 0.6,
                 }}
               >
@@ -182,11 +180,11 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 2 }}>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: "var(--color-ink)", marginBottom: 2 }}>
                       {member.nameAr}
                     </p>
                     {member.role && (
-                      <p style={{ fontSize: 12, color: "#64748B" }}>{member.role}</p>
+                      <p style={{ fontSize: 12, color: "var(--color-muted)" }}>{member.role}</p>
                     )}
                   </div>
                   {!member.isActive && (
@@ -196,8 +194,8 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
                         fontWeight: 700,
                         padding:    "2px 7px",
                         borderRadius: 100,
-                        background: "#FEF2F2",
-                        color:      "#EF4444",
+                        background: "var(--color-danger-soft)",
+                        color:      "var(--color-danger)",
                       }}
                     >
                       {isAr ? "غير نشط" : "Inactive"}
@@ -216,8 +214,8 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
                           fontWeight:   500,
                           padding:      "2px 8px",
                           borderRadius: 100,
-                          background:   "#EFF6FF",
-                          color:        "#1D4ED8",
+                          background:   "var(--color-jade-tint)",
+                          color:        "var(--color-jade)",
                         }}
                       >
                         {name}
@@ -237,8 +235,8 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
                           fontWeight:   600,
                           padding:      "2px 5px",
                           borderRadius: 6,
-                          background:   member.workingDays.includes(day) ? "#0F172A" : "#F1F5F9",
-                          color:        member.workingDays.includes(day) ? "#FFFFFF"  : "#CBD5E1",
+                          background:   member.workingDays.includes(day) ? "var(--color-ink)" : "var(--color-surface-3)",
+                          color:        member.workingDays.includes(day) ? "var(--color-surface)"  : "var(--color-line-2)",
                         }}
                       >
                         {dayLabels[day]}
@@ -257,9 +255,9 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
                       justifyContent: "center",
                       padding:        "7px 0",
                       borderRadius:   8,
-                      background:     "#F8FAFC",
-                      border:         "1.5px solid #E2E8F0",
-                      color:          "#475569",
+                      background:     "var(--color-surface-2)",
+                      border:         "1.5px solid var(--color-line)",
+                      color:          "var(--color-muted)",
                       fontSize:       12,
                       fontWeight:     500,
                       cursor:         "pointer",
@@ -276,9 +274,9 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
                       width:        34,
                       height:       34,
                       borderRadius: 8,
-                      background:   "#FEF2F2",
-                      border:       "1.5px solid #FECACA",
-                      color:        "#EF4444",
+                      background:   "var(--color-danger-soft)",
+                      border:       "1.5px solid var(--color-danger-line)",
+                      color:        "var(--color-danger)",
                       cursor:       isDeleting ? "not-allowed" : "pointer",
                     }}
                   >

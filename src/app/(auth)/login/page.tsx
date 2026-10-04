@@ -7,7 +7,6 @@ import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, LogIn } from "lucide-react";
-import Image from "next/image";
 import { loginSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -45,83 +44,84 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="card p-7">
-      <div className="text-center mb-7">
-        <div className="flex justify-center mb-4">
-          <Image src="/icon-nobg.png" alt="موعد" width={56} height={56} className="object-contain" />
-        </div>
-        <h1 className="text-2xl font-black text-[var(--color-text-primary)] mb-1">{l.title}</h1>
-        <p className="text-sm text-[var(--color-text-muted)]">{l.subtitle}</p>
+    <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-raised)]">
+
+      <div className="mb-8">
+        <h1 className="m-0 text-[1.75rem] font-light tracking-tight text-[var(--color-ink)]">
+          {l.title}
+        </h1>
+        <p className="m-0 mt-2 text-[0.875rem] text-[var(--color-subtle)]">{l.subtitle}</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {/* Email */}
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-            {l.email}
-          </label>
+          <label htmlFor="login-email" className="field-label">{l.email}</label>
           <input
+            id="login-email"
             type="email"
             autoComplete="email"
             placeholder="example@email.com"
             dir="ltr"
-            className="input"
+            aria-invalid={errors.email ? true : undefined}
+            aria-describedby={errors.email ? "login-email-error" : undefined}
+            className={`input text-start${errors.email ? " input-error" : ""}`}
             {...register("email")}
           />
           {errors.email && (
-            <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
+            <p id="login-email-error" className="field-error">{errors.email.message}</p>
           )}
         </div>
 
-        {/* Password */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm font-medium text-[var(--color-text-secondary)]">
-              {l.password}
-            </label>
-            <Link href="/forgot-password" className="text-xs text-[var(--color-accent)] hover:underline">
+          <div className="mb-[0.4375rem] flex items-baseline justify-between gap-3">
+            <label htmlFor="login-password" className="field-label mb-0">{l.password}</label>
+            <Link href="/forgot-password" className="text-xs font-bold text-[var(--color-jade)]">
               {l.forgotPassword}
             </Link>
           </div>
           <div className="relative">
             <input
+              id="login-password"
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               placeholder="••••••••"
-              className="input pe-10"
+              aria-invalid={errors.password ? true : undefined}
+              aria-describedby={errors.password ? "login-password-error" : undefined}
+              className={`input pe-12${errors.password ? " input-error" : ""}`}
               {...register("password")}
             />
             <button
               type="button"
-              className="absolute inset-y-0 end-3 flex items-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+              aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+              className="absolute inset-y-0 end-4 flex items-center text-[var(--color-subtle)] transition-colors hover:text-[var(--color-ink)]"
               onClick={() => setShowPassword(!showPassword)}
             >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              {showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
             </button>
           </div>
           {errors.password && (
-            <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
+            <p id="login-password-error" className="field-error">{errors.password.message}</p>
           )}
         </div>
 
         {serverError && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
+          <div
+            role="alert"
+            className="rounded-[var(--radius-md)] border border-[var(--color-danger-line)] bg-[var(--color-danger-soft)] px-4 py-3 text-[0.84375rem] text-[var(--color-danger)]"
+          >
             {serverError}
           </div>
         )}
 
-        <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting} className="mt-2">
-          <LogIn size={15} />
+        <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting} className="mt-1">
+          <LogIn size={16} aria-hidden="true" />
           {l.submit}
         </Button>
       </form>
 
-      <p className="text-center text-sm text-[var(--color-text-muted)] mt-5">
+      <p className="m-0 mt-7 text-center text-[0.84375rem] text-[var(--color-subtle)]">
         {l.noAccount}{" "}
-        <Link
-          href="/signup"
-          className="font-semibold text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors"
-        >
+        <Link href="/signup" className="font-bold text-[var(--color-jade)]">
           {l.createAccount}
         </Link>
       </p>

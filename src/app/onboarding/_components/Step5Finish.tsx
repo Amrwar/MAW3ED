@@ -25,9 +25,14 @@ export default function Step5Finish({
   data, categories, cities,
   onBack, onSubmit, isSubmitting, submitError,
 }: Props) {
-  const suggested = makeSlug(data.nameEn || "") || `business-${Math.random().toString(36).slice(2, 7)}`;
-
-  const [slug,   setSlug]   = useState(data.slug || suggested);
+  // Lazily computed once. Calling Math.random() during render would
+  // hand back a different suggestion on every re-render.
+  const [slug, setSlug] = useState(
+    () =>
+      data.slug ||
+      makeSlug(data.nameEn || "") ||
+      `business-${Math.random().toString(36).slice(2, 7)}`,
+  );
   const [status, setStatus] = useState<SlugStatus>("idle");
 
   const check = useCallback(async (value: string) => {
@@ -52,8 +57,6 @@ export default function Step5Finish({
     return () => clearTimeout(t);
   }, [slug, check]);
 
-  useEffect(() => { check(suggested); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const category  = categories.find((c) => c.id === data.categoryId);
   const city      = cities.find((c) => c.id === data.cityId);
   const openDays  = data.availability.filter((d) => !d.isClosed);
@@ -61,9 +64,9 @@ export default function Step5Finish({
 
   const statusIcon = {
     checking:  <Loader2 size={15} className="animate-spin text-[var(--color-text-muted)]" />,
-    available: <CheckCircle size={15} className="text-green-500" />,
-    taken:     <XCircle size={15} className="text-red-500" />,
-    invalid:   <XCircle size={15} className="text-red-400" />,
+    available: <CheckCircle size={15} className="text-[var(--color-ok)]" />,
+    taken:     <XCircle size={15} className="text-[var(--color-danger)]" />,
+    invalid:   <XCircle size={15} className="text-[var(--color-danger)]" />,
     idle:      null,
   }[status];
 
@@ -78,7 +81,7 @@ export default function Step5Finish({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-black text-[var(--color-text-primary)] mb-1">
+        <h2 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-1">
           اختر رابطك وأطلق صفحتك
         </h2>
         <p className="text-sm text-[var(--color-text-muted)]">
@@ -88,8 +91,8 @@ export default function Step5Finish({
 
       {/* Slug input */}
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-          رابطك المخصص <span className="text-red-500">*</span>
+        <label className="field-label">
+          رابطك المخصص <span className="text-[var(--color-danger)]">*</span>
         </label>
         <div className="flex items-center border border-[var(--color-border)] rounded-xl overflow-hidden focus-within:border-[var(--color-brand)] focus-within:ring-1 focus-within:ring-[var(--color-brand)]/20 transition-all">
           <span className="bg-[var(--color-surface-2)] px-3 py-2.5 text-sm text-[var(--color-text-muted)] border-e border-[var(--color-border)] shrink-0 select-none whitespace-nowrap">
@@ -109,9 +112,9 @@ export default function Step5Finish({
         {statusMsg && (
           <p className={`mt-1.5 text-xs ${
             status === "available"
-              ? "text-green-600"
+              ? "text-[var(--color-ok)]"
               : status === "taken" || status === "invalid"
-              ? "text-red-500"
+              ? "text-[var(--color-danger)]"
               : "text-[var(--color-text-muted)]"
           }`}>
             {statusMsg}
@@ -127,7 +130,7 @@ export default function Step5Finish({
             صورة الغلاف
           </div>
           {/* Logo */}
-          <div className="absolute -bottom-6 start-4 w-14 h-14 rounded-xl bg-white border-2 border-white shadow-md flex items-center justify-center text-xl font-black text-[var(--color-brand)]">
+          <div className="absolute -bottom-6 start-4 w-14 h-14 rounded-xl bg-white border-2 border-white shadow-md flex items-center justify-center text-xl font-extrabold text-[var(--color-brand)]">
             {data.nameAr[0] || "؟"}
           </div>
         </div>
@@ -140,7 +143,7 @@ export default function Step5Finish({
               </span>
             )}
           </div>
-          <h3 className="text-base font-black text-[var(--color-text-primary)]">
+          <h3 className="text-base font-extrabold text-[var(--color-text-primary)]">
             {data.nameAr || "اسم العمل"}
           </h3>
           {data.taglineAr && (
@@ -202,7 +205,7 @@ export default function Step5Finish({
           <div key={item.label} className="flex items-center gap-1.5 text-xs">
             <CheckCircle
               size={13}
-              className={item.done ? "text-green-500 shrink-0" : "text-[var(--color-border)] shrink-0"}
+              className={item.done ? "text-[var(--color-ok)] shrink-0" : "text-[var(--color-border)] shrink-0"}
             />
             <span className={item.done ? "text-[var(--color-text-primary)]" : "text-[var(--color-text-muted)]"}>
               {item.label}
@@ -212,7 +215,7 @@ export default function Step5Finish({
       </div>
 
       {submitError && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
           {submitError}
         </div>
       )}

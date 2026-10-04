@@ -15,9 +15,14 @@ interface Props {
 type SlugStatus = "idle" | "checking" | "available" | "taken" | "invalid";
 
 export default function Step5Slug({ data, onNext, onBack }: Props) {
-  const suggested = makeSlug(data.nameEn || "") || `business-${Math.random().toString(36).slice(2, 7)}`;
-
-  const [slug, setSlug]     = useState(data.slug || suggested);
+  // Lazily computed once. Calling Math.random() during render would
+  // hand back a different suggestion on every re-render.
+  const [slug, setSlug] = useState(
+    () =>
+      data.slug ||
+      makeSlug(data.nameEn || "") ||
+      `business-${Math.random().toString(36).slice(2, 7)}`,
+  );
   const [status, setStatus] = useState<SlugStatus>("idle");
 
   const check = useCallback(async (value: string) => {
@@ -45,11 +50,6 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
     return () => clearTimeout(timer);
   }, [slug, check]);
 
-  // Check suggestion on mount
-  useEffect(() => {
-    check(suggested);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   function handleNext() {
     if (status !== "available") return;
     onNext({ slug });
@@ -57,9 +57,9 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
 
   const statusIcon = {
     checking:  <Loader2 size={15} className="animate-spin text-[var(--color-text-muted)]" />,
-    available: <CheckCircle size={15} className="text-green-500" />,
-    taken:     <XCircle size={15} className="text-red-500" />,
-    invalid:   <XCircle size={15} className="text-red-400" />,
+    available: <CheckCircle size={15} className="text-[var(--color-ok)]" />,
+    taken:     <XCircle size={15} className="text-[var(--color-danger)]" />,
+    invalid:   <XCircle size={15} className="text-[var(--color-danger)]" />,
     idle:      null,
   }[status];
 
@@ -74,7 +74,7 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-black text-[var(--color-text-primary)] mb-1">
+        <h2 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-1">
           رابط صفحتك
         </h2>
         <p className="text-sm text-[var(--color-text-muted)]">
@@ -84,7 +84,7 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
 
       {/* Slug input */}
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
+        <label className="field-label">
           الرابط المخصص
         </label>
 
@@ -109,9 +109,9 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
           <p
             className={`mt-1.5 text-xs ${
               status === "available"
-                ? "text-green-600"
+                ? "text-[var(--color-ok)]"
                 : status === "taken" || status === "invalid"
-                ? "text-red-500"
+                ? "text-[var(--color-danger)]"
                 : "text-[var(--color-text-muted)]"
             }`}
           >
@@ -139,9 +139,9 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
 
       {/* Full URL preview */}
       {status === "available" && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-          <p className="text-xs text-green-600 mb-1">صفحتك ستكون على:</p>
-          <p className="text-sm font-semibold text-green-700" dir="ltr">
+        <div className="bg-[var(--color-ok-soft)] border border-[var(--color-ok-line)] rounded-xl p-4 text-center">
+          <p className="text-xs text-[var(--color-ok)] mb-1">صفحتك ستكون على:</p>
+          <p className="text-sm font-semibold text-[var(--color-ok)]" dir="ltr">
             maw3ed.com/company/{slug}
           </p>
         </div>

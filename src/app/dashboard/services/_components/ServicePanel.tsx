@@ -28,13 +28,13 @@ const DEFAULT = {
 
 // ─── Shared focus/blur handlers ───────────────────────────────────────────────
 const focusStyle = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-  e.currentTarget.style.borderColor = "#1D4ED8";
-  e.currentTarget.style.background  = "#FFFFFF";
-  e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(29,78,216,0.1)";
+  e.currentTarget.style.borderColor = "var(--color-jade)";
+  e.currentTarget.style.background  = "var(--color-surface)";
+  e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(10,95,71,0.1)";
 };
 const blurStyle = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-  e.currentTarget.style.borderColor = "#E2E8F0";
-  e.currentTarget.style.background  = "#F8FAFC";
+  e.currentTarget.style.borderColor = "var(--color-line)";
+  e.currentTarget.style.background  = "var(--color-surface-2)";
   e.currentTarget.style.boxShadow   = "none";
 };
 
@@ -42,9 +42,9 @@ const blurStyle = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | 
 const fieldBase: React.CSSProperties = {
   width:         "100%",
   borderRadius:  9,
-  border:        "1.5px solid #E2E8F0",
-  background:    "#F8FAFC",
-  color:         "#0F172A",
+  border:        "1.5px solid var(--color-line)",
+  background:    "var(--color-surface-2)",
+  color:         "var(--color-ink)",
   fontSize:      14,
   paddingBlock:  10,
   paddingInline: 12,
@@ -70,15 +70,15 @@ function FieldLabel({
       <label
         htmlFor={htmlFor}
         className="flex items-center gap-1"
-        style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}
+        style={{ fontSize: 12, fontWeight: 600, color: "var(--color-ink-2)" }}
       >
         {children}
         {required && (
-          <span style={{ color: "#EF4444", fontSize: 11, lineHeight: 1 }}>*</span>
+          <span style={{ color: "var(--color-danger)", fontSize: 11, lineHeight: 1 }}>*</span>
         )}
       </label>
       {hint && (
-        <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{hint}</p>
+        <p style={{ fontSize: 11, color: "var(--color-subtle)", marginTop: 2 }}>{hint}</p>
       )}
     </div>
   );
@@ -101,30 +101,30 @@ function FormSection({
   return (
     <div
       className="rounded-xl overflow-hidden"
-      style={{ border: "1.5px solid #E2E8F0" }}
+      style={{ border: "1.5px solid var(--color-line)" }}
     >
       {/* Section header — compact */}
       <div
         className="flex items-center gap-2.5 px-4 py-2.5"
-        style={{ background: "#FAFBFD", borderBottom: "1px solid #F1F5F9" }}
+        style={{ background: "var(--color-ground)", borderBottom: "1px solid var(--color-surface-3)" }}
       >
         <div
           className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: "#EFF6FF" }}
+          style={{ background: "var(--color-jade-tint)" }}
         >
           {icon}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span
-              className="text-[10px] font-black rounded-full px-1.5 py-0.5"
-              style={{ background: "#1D4ED8", color: "#FFFFFF" }}
+              className="text-[10px] font-extrabold rounded-full px-1.5 py-0.5"
+              style={{ background: "var(--color-jade)", color: "var(--color-surface)" }}
             >
               {step}
             </span>
-            <h3 style={{ fontSize: 12, fontWeight: 700, color: "#0F172A" }}>{title}</h3>
+            <h3 style={{ fontSize: 12, fontWeight: 700, color: "var(--color-ink)" }}>{title}</h3>
           </div>
-          <p style={{ fontSize: 10, color: "#94A3B8", marginTop: 1 }}>{subtitle}</p>
+          <p style={{ fontSize: 10, color: "var(--color-subtle)", marginTop: 1 }}>{subtitle}</p>
         </div>
       </div>
       {/* Section body — tighter */}
@@ -235,35 +235,35 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
 
       <div
         className="fixed top-0 end-0 z-50 w-full max-w-[460px] bg-white flex flex-col"
-        style={{ height: "100dvh", boxShadow: "-12px 0 48px rgba(15,23,42,0.14)" }}
+        style={{ height: "100dvh", boxShadow: "-12px 0 48px rgba(17,32,28,0.14)" }}
       >
 
         {/* ── HEADER ───────────────────────────────────────── */}
-        <div className="shrink-0" style={{ borderBottom: "1.5px solid #F1F5F9" }}>
+        <div className="shrink-0" style={{ borderBottom: "1.5px solid var(--color-surface-3)" }}>
           <div
             style={{
               height:     3,
-              background: "linear-gradient(90deg, #1D4ED8 0%, #3B82F6 50%, #60A5FA 100%)",
+              background: "linear-gradient(90deg, var(--color-jade) 0%, var(--color-jade) 50%, var(--color-jade) 100%)",
             }}
           />
           <div className="flex items-center justify-between px-5 py-3.5">
             <div className="flex items-center gap-2.5 min-w-0">
               <div
                 className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)" }}
+                style={{ background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)" }}
               >
-                <Sparkles size={14} strokeWidth={2} style={{ color: "#FFFFFF" }} />
+                <Sparkles size={14} strokeWidth={2} style={{ color: "var(--color-surface)" }} />
               </div>
               <div className="min-w-0">
                 <h2
-                  className="font-black text-[#0F172A] truncate"
+                  className="font-extrabold text-[var(--color-ink)] truncate"
                   style={{ fontSize: 15, letterSpacing: "-0.02em" }}
                 >
                   {editing
                     ? (isAr ? "تعديل الخدمة" : "Edit Service")
                     : (isAr ? "إضافة خدمة جديدة" : "Add New Service")}
                 </h2>
-                <p style={{ fontSize: 11, color: "#94A3B8", lineHeight: 1.4 }}>
+                <p style={{ fontSize: 11, color: "var(--color-subtle)", lineHeight: 1.4 }}>
                   {editing
                     ? (isAr ? "عدّل البيانات ثم احفظ التغييرات" : "Update the details and save")
                     : (isAr ? "أدخل تفاصيل الخدمة التي سيحجزها العملاء" : "Enter the service details customers will book")}
@@ -272,20 +272,8 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150 shrink-0"
-              style={{ background: "#F8FAFC", border: "1.5px solid #E2E8F0", color: "#64748B" }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.background  = "#F1F5F9";
-                el.style.borderColor = "#CBD5E1";
-                el.style.color       = "#0F172A";
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.background  = "#F8FAFC";
-                el.style.borderColor = "#E2E8F0";
-                el.style.color       = "#64748B";
-              }}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150 shrink-0 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+              style={{ background: "var(--color-surface-2)", border: "1.5px solid var(--color-line)", color: "var(--color-muted)" }}
             >
               <X size={14} strokeWidth={2} />
             </button>
@@ -311,7 +299,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             step={1}
             title={isAr ? "معلومات الخدمة" : "Service Info"}
             subtitle={isAr ? "اسم الخدمة ووصف يساعد العميل على اختيارها" : "Service name and description to help customers choose"}
-            icon={<FileText size={13} strokeWidth={1.75} style={{ color: "#1D4ED8" }} />}
+            icon={<FileText size={13} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />}
           >
             {/* Arabic name */}
             <div>
@@ -341,7 +329,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                   {isAr ? "اسم الخدمة بالإنجليزية" : "Service Name (English)"}
                   <span
                     className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-                    style={{ background: "#F1F5F9", color: "#94A3B8" }}
+                    style={{ background: "var(--color-surface-3)", color: "var(--color-subtle)" }}
                   >
                     {isAr ? "اختياري" : "Optional"}
                   </span>
@@ -364,11 +352,11 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             <div>
               <FieldLabel htmlFor="descriptionAr">
                 <span className="flex items-center gap-1.5">
-                  <Languages size={11} style={{ color: "#94A3B8" }} />
+                  <Languages size={11} style={{ color: "var(--color-subtle)" }} />
                   {isAr ? "وصف الخدمة" : "Service Description"}
                   <span
                     className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-                    style={{ background: "#F1F5F9", color: "#94A3B8" }}
+                    style={{ background: "var(--color-surface-3)", color: "var(--color-subtle)" }}
                   >
                     {isAr ? "اختياري" : "Optional"}
                   </span>
@@ -392,14 +380,14 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             step={2}
             title={isAr ? "السعر والمدة" : "Price & Duration"}
             subtitle={isAr ? "حدد سعر الخدمة والوقت المطلوب لتقديمها" : "Set the service price and the time required"}
-            icon={<DollarSign size={13} strokeWidth={1.75} style={{ color: "#1D4ED8" }} />}
+            icon={<DollarSign size={13} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />}
           >
             <div className="grid grid-cols-2 gap-3">
               {/* Duration */}
               <div>
                 <FieldLabel htmlFor="duration" required>
                   <span className="flex items-center gap-1.5">
-                    <Clock size={11} style={{ color: "#7C3AED" }} />
+                    <Clock size={11} style={{ color: "var(--color-jade)" }} />
                     {isAr ? "مدة الخدمة" : "Duration"}
                   </span>
                 </FieldLabel>
@@ -415,7 +403,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                     <option key={d} value={d}>{d} {isAr ? "دقيقة" : "min"}</option>
                   ))}
                 </select>
-                <p style={{ fontSize: 10, color: "#94A3B8", marginTop: 3 }}>
+                <p style={{ fontSize: 10, color: "var(--color-subtle)", marginTop: 3 }}>
                   {isAr ? "لحجز الوقت تلقائياً" : "For automatic time blocking"}
                 </p>
               </div>
@@ -424,7 +412,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
               <div>
                 <FieldLabel htmlFor="price" required>
                   <span className="flex items-center gap-1.5">
-                    <DollarSign size={11} style={{ color: "#B45309" }} />
+                    <DollarSign size={11} style={{ color: "var(--color-warn)" }} />
                     {isAr ? "السعر" : "Price"}
                   </span>
                 </FieldLabel>
@@ -443,12 +431,12 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                   />
                   <span
                     className="absolute top-1/2 -translate-y-1/2 text-xs font-semibold pointer-events-none"
-                    style={{ insetInlineStart: 10, color: "#94A3B8", fontSize: 11 }}
+                    style={{ insetInlineStart: 10, color: "var(--color-subtle)", fontSize: 11 }}
                   >
                     {isAr ? "ج.م" : "EGP"}
                   </span>
                 </div>
-                <p style={{ fontSize: 10, color: "#94A3B8", marginTop: 3 }}>
+                <p style={{ fontSize: 10, color: "var(--color-subtle)", marginTop: 3 }}>
                   {isAr ? "اترك 0 للمجانية" : "Leave 0 for free"}
                 </p>
               </div>
@@ -458,12 +446,12 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             {form.price > 0 && form.duration > 0 && (
               <div
                 className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs"
-                style={{ background: "#EFF6FF", border: "1px solid #BFDBFE" }}
+                style={{ background: "var(--color-jade-tint)", border: "1px solid var(--color-jade-line)" }}
               >
-                <CheckCircle2 size={12} style={{ color: "#3B82F6" }} />
-                <span style={{ color: "#1D4ED8", fontWeight: 600, fontSize: 12 }}>
+                <CheckCircle2 size={12} style={{ color: "var(--color-jade)" }} />
+                <span style={{ color: "var(--color-jade)", fontWeight: 600, fontSize: 12 }}>
                   {isAr
-                    ? `معاينة: ${form.price.toLocaleString("ar-EG")} ج.م · ${form.duration} دقيقة`
+                    ? `معاينة: ${form.price.toLocaleString("ar-EG-u-nu-latn")} ج.م · ${form.duration} دقيقة`
                     : `Preview: ${form.price.toLocaleString("en-US")} EGP · ${form.duration} min`}
                 </span>
               </div>
@@ -475,13 +463,13 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             step={3}
             title={isAr ? "حالة الخدمة" : "Service Status"}
             subtitle={isAr ? "تحكم في ظهور الخدمة للعملاء" : "Control whether the service is visible to customers"}
-            icon={<CheckCircle2 size={13} strokeWidth={1.75} style={{ color: "#1D4ED8" }} />}
+            icon={<CheckCircle2 size={13} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />}
           >
             <div
               className="flex items-center justify-between rounded-xl px-3.5 py-3 cursor-pointer"
               style={{
-                background: form.isAvailable ? "#F0FDF4" : "#F8FAFC",
-                border:     `1.5px solid ${form.isAvailable ? "#BBF7D0" : "#E2E8F0"}`,
+                background: form.isAvailable ? "var(--color-ok-soft)" : "var(--color-surface-2)",
+                border:     `1.5px solid ${form.isAvailable ? "var(--color-ok-line)" : "var(--color-line)"}`,
                 transition: "background 0.2s, border-color 0.2s",
               }}
               onClick={() => set("isAvailable", !form.isAvailable)}
@@ -489,13 +477,13 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
               <div className="flex-1 min-w-0">
                 <p
                   className="font-bold"
-                  style={{ fontSize: 13, color: form.isAvailable ? "#15803D" : "#475569" }}
+                  style={{ fontSize: 13, color: form.isAvailable ? "var(--color-ok)" : "var(--color-muted)" }}
                 >
                   {form.isAvailable
                     ? (isAr ? "متاحة للحجز" : "Available for booking")
                     : (isAr ? "غير متاحة" : "Not available")}
                 </p>
-                <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>
+                <p style={{ fontSize: 11, color: "var(--color-subtle)", marginTop: 1 }}>
                   {form.isAvailable
                     ? (isAr ? "ظاهرة للعملاء ويمكن حجزها الآن" : "Visible to customers and can be booked now")
                     : (isAr ? "معطّلة مؤقتاً دون حذف" : "Temporarily disabled without deleting")}
@@ -512,7 +500,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                   width:             44,
                   height:            24,
                   borderRadius:      12,
-                  background:        form.isAvailable ? "#16A34A" : "#D1D5DB",
+                  background:        form.isAvailable ? "var(--color-ok)" : "var(--color-line-2)",
                   position:          "relative",
                   flexShrink:        0,
                   transition:        "background 0.2s",
@@ -527,8 +515,8 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                     width:            18,
                     height:           18,
                     borderRadius:     "50%",
-                    background:       "#FFFFFF",
-                    boxShadow:        "0 2px 6px rgba(15,23,42,0.2)",
+                    background:       "var(--color-surface)",
+                    boxShadow:        "0 2px 6px rgba(17,32,28,0.2)",
                     top:              3,
                     insetInlineStart: form.isAvailable ? "unset" : 3,
                     insetInlineEnd:   form.isAvailable ? 3 : "unset",
@@ -543,15 +531,15 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
           {error && (
             <div
               className="flex items-start gap-2.5 rounded-xl px-3.5 py-3"
-              style={{ background: "#FEF2F2", border: "1.5px solid #FECACA" }}
+              style={{ background: "var(--color-danger-soft)", border: "1.5px solid var(--color-danger-line)" }}
             >
               <div
                 className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                style={{ background: "#FEE2E2" }}
+                style={{ background: "var(--color-danger-soft)" }}
               >
-                <X size={10} strokeWidth={2.5} style={{ color: "#EF4444" }} />
+                <X size={10} strokeWidth={2.5} style={{ color: "var(--color-danger)" }} />
               </div>
-              <p style={{ fontSize: 13, color: "#B91C1C", lineHeight: 1.5 }}>{error}</p>
+              <p style={{ fontSize: 13, color: "var(--color-danger)", lineHeight: 1.5 }}>{error}</p>
             </div>
           )}
 
@@ -562,13 +550,13 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
         <div
           className="shrink-0 px-5 py-3"
           style={{
-            borderTop:  "1.5px solid #F1F5F9",
-            background: "#FFFFFF",
-            boxShadow:  "0 -4px 16px rgba(15,23,42,0.06)",
+            borderTop:  "1.5px solid var(--color-surface-3)",
+            background: "var(--color-surface)",
+            boxShadow:  "0 -4px 16px rgba(17,32,28,0.06)",
           }}
         >
           {/* Helper */}
-          <p style={{ fontSize: 11, color: "#94A3B8", marginBottom: 10, textAlign: "center" }}>
+          <p style={{ fontSize: 11, color: "var(--color-subtle)", marginBottom: 10, textAlign: "center" }}>
             {editing
               ? (isAr ? "سيتم تحديث الخدمة فوراً على صفحة حجزك" : "Service will be updated immediately on your booking page")
               : (isAr ? "بعد الإضافة يمكنك تعديل أي بيانات في أي وقت" : "After adding, you can edit any details at any time")}
@@ -579,26 +567,14 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl font-semibold transition-all duration-150"
+              className="flex-1 rounded-xl font-semibold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
               style={{
                 paddingBlock: 11,
                 fontSize:     14,
-                background:   "#F8FAFC",
-                border:       "1.5px solid #E2E8F0",
-                color:        "#475569",
+                background:   "var(--color-surface-2)",
+                border:       "1.5px solid var(--color-line)",
+                color:        "var(--color-muted)",
                 cursor:       "pointer",
-              }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.background  = "#F1F5F9";
-                el.style.borderColor = "#CBD5E1";
-                el.style.color       = "#0F172A";
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.background  = "#F8FAFC";
-                el.style.borderColor = "#E2E8F0";
-                el.style.color       = "#475569";
               }}
             >
               {isAr ? "إلغاء" : "Cancel"}
@@ -609,30 +585,16 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
               type="submit"
               form="service-form"
               disabled={saving}
-              className="flex items-center justify-center gap-2 rounded-xl font-black text-white transition-all duration-200 disabled:opacity-60"
+              className="flex items-center justify-center gap-2 rounded-xl font-extrabold text-white transition-all duration-200 disabled:opacity-60 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
               style={{
                 flex:          2,
                 paddingBlock:  11,
                 fontSize:      14,
-                background:    "linear-gradient(135deg, #1D4ED8 0%, #2563EB 60%, #3B82F6 100%)",
-                boxShadow:     "0 4px 16px rgba(29,78,216,0.3)",
+                background:    "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade-hover) 60%, var(--color-jade) 100%)",
+                boxShadow:     "0 4px 16px rgba(10,95,71,0.3)",
                 border:        "none",
                 cursor:        saving ? "not-allowed" : "pointer",
                 letterSpacing: "-0.01em",
-              }}
-              onMouseEnter={(e) => {
-                if (!saving) {
-                  const el = e.currentTarget as HTMLButtonElement;
-                  el.style.filter    = "brightness(1.08)";
-                  el.style.boxShadow = "0 6px 22px rgba(29,78,216,0.4)";
-                  el.style.transform = "translateY(-1px)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.filter    = "";
-                el.style.boxShadow = "0 4px 16px rgba(29,78,216,0.3)";
-                el.style.transform = "";
               }}
             >
               {saving ? (

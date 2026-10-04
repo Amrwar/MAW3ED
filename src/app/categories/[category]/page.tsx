@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Layers } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
@@ -67,7 +67,7 @@ export default async function CategoryPage({ params }: Props) {
                 {category.icon}
               </div>
               <div>
-                <h1 className="text-2xl font-black text-[var(--color-text-primary)]">
+                <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)]">
                   {category.nameAr}
                 </h1>
                 <p className="text-sm text-[var(--color-text-muted)] mt-0.5">

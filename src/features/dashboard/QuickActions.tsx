@@ -6,78 +6,60 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props { slug: string }
 
-const ACTION_ICONS   = [CalendarPlus, Eye, BarChart3, Settings];
-const ACTION_HREFS   = ["/dashboard/bookings", "", "/dashboard/analytics", "/dashboard/settings"];
-
-const ACTION_ICON_BG    = ["#EFF6FF", "#F5F3FF", "#FFF7ED", "#F8FAFC"];
-const ACTION_ICON_COLOR = ["#1D4ED8",  "#7C3AED",  "#EA580C",  "#475569"];
-const ACTION_ACCENT     = ["#1D4ED8",  "#7C3AED",  "#EA580C",  "#475569"];
+const ACTION_ICONS = [CalendarPlus, Eye, BarChart3, Settings];
+const ACTION_HREFS = ["/dashboard/bookings", "", "/dashboard/analytics", "/dashboard/settings"];
 
 export default function QuickActions({ slug }: Props) {
   const { t } = useLanguage();
-  const qa    = t.dashboard.quickActions;
+  const qa = t.dashboard.quickActions;
 
   return (
-    <div
-      className="rounded-2xl border bg-white overflow-hidden"
-      style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
-    >
-      {/* Header */}
-      <div className="px-5 py-4" style={{ borderBottom: "1px solid #F1F5F9" }}>
-        <h3 className="text-sm font-bold text-[#0F172A]">{qa.title}</h3>
+    <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]">
+      <div className="border-b border-[var(--color-line)] px-5 py-4">
+        <h2 className="m-0 text-[0.9375rem] font-bold text-[var(--color-ink)]">{qa.title}</h2>
       </div>
 
-      {/* Action list */}
-      <div className="p-3 space-y-1">
+      <ul className="flex flex-col">
         {qa.actions.map((action, i) => {
-          const href  = i === 1 ? `/company/${slug}` : ACTION_HREFS[i];
-          const Icon  = ACTION_ICONS[i];
-          const isExt = i === 1;
+          const isExternal = i === 1;
+          const href = isExternal ? `/company/${slug}` : ACTION_HREFS[i];
+          const Icon = ACTION_ICONS[i];
 
           return (
-            <Link
-              key={i}
-              href={href}
-              target={isExt ? "_blank" : undefined}
-              rel={isExt ? "noopener noreferrer" : undefined}
-              className="flex items-center gap-3 p-3 rounded-xl transition-all duration-150 group"
-              style={{ color: "#0F172A" }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget as HTMLAnchorElement;
-                el.style.background = ACTION_ICON_BG[i];
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLAnchorElement;
-                el.style.background = "transparent";
-              }}
-            >
-              {/* Icon box */}
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-150 group-hover:scale-105"
-                style={{ background: ACTION_ICON_BG[i] }}
+            <li key={action.label} className="border-b border-[var(--color-line)] last:border-b-0">
+              <Link
+                href={href}
+                target={isExternal ? "_blank" : undefined}
+                rel={isExternal ? "noopener noreferrer" : undefined}
+                className="group flex items-center gap-3.5 px-5 py-3.5 text-[var(--color-ink)] transition-colors hover:bg-[var(--color-surface-2)]"
               >
-                <Icon size={16} strokeWidth={1.75} style={{ color: ACTION_ICON_COLOR[i] }} />
-              </div>
+                <span
+                  aria-hidden="true"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-jade-soft)] text-[var(--color-jade)]"
+                >
+                  <Icon size={16} strokeWidth={1.8} />
+                </span>
 
-              {/* Text */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#0F172A] leading-snug">
-                  {action.label}
-                </p>
-                <p className="text-xs text-[#94A3B8] mt-0.5 truncate">{action.desc}</p>
-              </div>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[0.875rem] font-bold leading-snug text-[var(--color-ink)]">
+                    {action.label}
+                  </span>
+                  <span className="mt-0.5 block truncate text-xs text-[var(--color-subtle)]">
+                    {action.desc}
+                  </span>
+                </span>
 
-              {/* Arrow */}
-              <ChevronLeft
-                size={14}
-                strokeWidth={2}
-                style={{ color: ACTION_ACCENT[i], opacity: 0.6 }}
-                className="shrink-0 transition-transform duration-150 group-hover:-translate-x-0.5"
-              />
-            </Link>
+                <ChevronLeft
+                  size={15}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                  className="shrink-0 text-[var(--color-faint)] transition-transform group-hover:-translate-x-0.5"
+                />
+              </Link>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ul>
+    </section>
   );
 }

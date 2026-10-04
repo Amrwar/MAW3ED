@@ -88,7 +88,7 @@ export default function AnalyticsClient({ initial }: Props) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-[var(--color-text-primary)]">{an.title}</h1>
+          <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)]">{an.title}</h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
             {an.subtitle}
           </p>

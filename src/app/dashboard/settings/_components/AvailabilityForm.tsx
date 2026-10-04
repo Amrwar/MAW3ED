@@ -15,9 +15,9 @@ type Props = { initialAvailability: AvailabilityDay[] };
 
 const timeInput: React.CSSProperties = {
   borderRadius:  8,
-  border:        "1.5px solid #E2E8F0",
-  background:    "#F8FAFC",
-  color:         "#0F172A",
+  border:        "1.5px solid var(--color-line)",
+  background:    "var(--color-surface-2)",
+  color:         "var(--color-ink)",
   fontSize:      13,
   paddingBlock:  7,
   paddingInline: 10,
@@ -27,13 +27,13 @@ const timeInput: React.CSSProperties = {
 };
 
 function onFocus(e: React.FocusEvent<HTMLInputElement>) {
-  e.currentTarget.style.borderColor = "#1D4ED8";
-  e.currentTarget.style.background  = "#FFFFFF";
-  e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(29,78,216,0.1)";
+  e.currentTarget.style.borderColor = "var(--color-jade)";
+  e.currentTarget.style.background  = "var(--color-surface)";
+  e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(10,95,71,0.1)";
 }
 function onBlur(e: React.FocusEvent<HTMLInputElement>) {
-  e.currentTarget.style.borderColor = "#E2E8F0";
-  e.currentTarget.style.background  = "#F8FAFC";
+  e.currentTarget.style.borderColor = "var(--color-line)";
+  e.currentTarget.style.background  = "var(--color-surface-2)";
   e.currentTarget.style.boxShadow   = "none";
 }
 
@@ -124,26 +124,26 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
       <div
         className="flex items-center justify-between rounded-2xl px-5 py-4"
         style={{
-          background: "#FAFBFD",
-          border:     "1.5px solid #E2E8F0",
-          boxShadow:  "0 1px 4px rgba(15,23,42,0.04)",
+          background: "var(--color-ground)",
+          border:     "1.5px solid var(--color-line)",
+          boxShadow:  "0 1px 4px rgba(17,32,28,0.04)",
         }}
       >
         <div className="flex items-center gap-3">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)" }}
+            style={{ background: "linear-gradient(135deg, var(--color-ink) 0%, var(--color-night-2) 100%)" }}
           >
-            <CalendarDays size={16} style={{ color: "#FFFFFF" }} />
+            <CalendarDays size={16} style={{ color: "var(--color-surface)" }} />
           </div>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>
-              <span style={{ color: "#1D4ED8" }}>{openCount}</span>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "var(--color-ink)" }}>
+              <span style={{ color: "var(--color-jade)" }}>{openCount}</span>
               {isAr ? ` أيام عمل · ` : ` working day(s) · `}
-              <span style={{ color: "#94A3B8" }}>{7 - openCount}</span>
+              <span style={{ color: "var(--color-subtle)" }}>{7 - openCount}</span>
               {isAr ? " أيام إجازة" : " day(s) off"}
             </p>
-            <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>
+            <p style={{ fontSize: 11, color: "var(--color-subtle)", marginTop: 1 }}>
               {isAr ? "التغييرات تؤثر فورًا على الحجوزات الجديدة" : "Changes take effect immediately on new bookings"}
             </p>
           </div>
@@ -151,8 +151,8 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
         <div
           className="flex items-center gap-1.5 rounded-full px-3 py-1"
           style={{
-            background: openCount > 0 ? "#F0FDF4" : "#FEF2F2",
-            border:     `1px solid ${openCount > 0 ? "#BBF7D0" : "#FECACA"}`,
+            background: openCount > 0 ? "var(--color-ok-soft)" : "var(--color-danger-soft)",
+            border:     `1px solid ${openCount > 0 ? "var(--color-ok-line)" : "var(--color-danger-line)"}`,
           }}
         >
           <div
@@ -160,7 +160,7 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
               width:        6,
               height:       6,
               borderRadius: "50%",
-              background:   openCount > 0 ? "#16A34A" : "#EF4444",
+              background:   openCount > 0 ? "var(--color-ok)" : "var(--color-danger)",
               flexShrink:   0,
             }}
           />
@@ -168,7 +168,7 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
             style={{
               fontSize:   11,
               fontWeight: 600,
-              color:      openCount > 0 ? "#15803D" : "#B91C1C",
+              color:      openCount > 0 ? "var(--color-ok)" : "var(--color-danger)",
             }}
           >
             {openCount > 0
@@ -181,11 +181,11 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
       {/* ── Day rows ────────────────────────────────────────── */}
       <div
         style={{
-          background:   "#FFFFFF",
-          border:       "1.5px solid #E2E8F0",
+          background:   "var(--color-surface)",
+          border:       "1.5px solid var(--color-line)",
           borderRadius: 20,
           overflow:     "hidden",
-          boxShadow:    "0 1px 6px rgba(15,23,42,0.05)",
+          boxShadow:    "0 1px 6px rgba(17,32,28,0.05)",
         }}
       >
         {/* Column header */}
@@ -194,13 +194,13 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
           style={{
             gridTemplateColumns: "48px 100px 1fr",
             gap:                 16,
-            background:          "#FAFBFD",
-            borderBottom:        "1px solid #F1F5F9",
+            background:          "var(--color-ground)",
+            borderBottom:        "1px solid var(--color-surface-3)",
           }}
         >
-          <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>{isAr ? "الحالة" : "Status"}</span>
-          <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>{isAr ? "اليوم" : "Day"}</span>
-          <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>{isAr ? "وقت العمل" : "Working Hours"}</span>
+          <span style={{ fontSize: 11, color: "var(--color-subtle)", fontWeight: 600 }}>{isAr ? "الحالة" : "Status"}</span>
+          <span style={{ fontSize: 11, color: "var(--color-subtle)", fontWeight: 600 }}>{isAr ? "اليوم" : "Day"}</span>
+          <span style={{ fontSize: 11, color: "var(--color-subtle)", fontWeight: 600 }}>{isAr ? "وقت العمل" : "Working Hours"}</span>
         </div>
 
         {days.map((day, idx) => {
@@ -217,8 +217,8 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
                 gap:                 16,
                 paddingTop:          14,
                 paddingBottom:       14,
-                borderBottom:        isLast ? "none" : "1px solid #F8FAFC",
-                background:          isOpen ? "#FFFFFF" : "#FAFBFD",
+                borderBottom:        isLast ? "none" : "1px solid var(--color-surface-2)",
+                background:          isOpen ? "var(--color-surface)" : "var(--color-ground)",
                 transition:          "background 0.15s",
               }}
             >
@@ -233,7 +233,7 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
                   width:        40,
                   height:       22,
                   borderRadius: 11,
-                  background:   isOpen ? "#0F172A" : "#D1D5DB",
+                  background:   isOpen ? "var(--color-ink)" : "var(--color-line-2)",
                   position:     "relative",
                   flexShrink:   0,
                   transition:   "background 0.2s",
@@ -247,8 +247,8 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
                     width:      16,
                     height:     16,
                     borderRadius: "50%",
-                    background: "#FFFFFF",
-                    boxShadow:  "0 1px 4px rgba(15,23,42,0.2)",
+                    background: "var(--color-surface)",
+                    boxShadow:  "0 1px 4px rgba(17,32,28,0.2)",
                     top:        3,
                     left:       isOpen ? 21 : 3,
                     transition: "left 0.2s",
@@ -261,7 +261,7 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
                 style={{
                   fontSize:   13,
                   fontWeight: isOpen ? 700 : 500,
-                  color:      isOpen ? "#0F172A" : "#94A3B8",
+                  color:      isOpen ? "var(--color-ink)" : "var(--color-subtle)",
                   transition: "color 0.15s",
                 }}
               >
@@ -269,7 +269,7 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
                 {isWeekend && (
                   <span
                     className="ms-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                    style={{ background: "#F1F5F9", color: "#64748B" }}
+                    style={{ background: "var(--color-surface-3)", color: "var(--color-muted)" }}
                   >
                     {isAr ? "إجازة" : "Off"}
                   </span>
@@ -287,7 +287,7 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
                     onFocus={onFocus}
                     onBlur={onBlur}
                   />
-                  <span style={{ color: "#CBD5E1", fontSize: 14, fontWeight: 300 }}>—</span>
+                  <span style={{ color: "var(--color-line-2)", fontSize: 14, fontWeight: 300 }}>—</span>
                   <input
                     type="time"
                     value={day.closeTime}
@@ -307,7 +307,7 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
                     return (
                       <span
                         className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        style={{ background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE" }}
+                        style={{ background: "var(--color-jade-tint)", color: "var(--color-jade)", border: "1px solid var(--color-jade-line)" }}
                         dir="ltr"
                       >
                         <Clock size={10} />
@@ -319,7 +319,7 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
               ) : (
                 <span
                   className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-                  style={{ background: "#F1F5F9", color: "#94A3B8", width: "fit-content" }}
+                  style={{ background: "var(--color-surface-3)", color: "var(--color-subtle)", width: "fit-content" }}
                 >
                   {isAr ? "إجازة" : "Day off"}
                 </span>
@@ -333,29 +333,29 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
       {error && (
         <div
           className="flex items-start gap-3 rounded-2xl px-4 py-3.5"
-          style={{ background: "#FEF2F2", border: "1.5px solid #FECACA" }}
+          style={{ background: "var(--color-danger-soft)", border: "1.5px solid var(--color-danger-line)" }}
         >
           <div
             className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-            style={{ background: "#FEE2E2" }}
+            style={{ background: "var(--color-danger-soft)" }}
           >
-            <X size={10} strokeWidth={2.5} style={{ color: "#EF4444" }} />
+            <X size={10} strokeWidth={2.5} style={{ color: "var(--color-danger)" }} />
           </div>
-          <p style={{ fontSize: 13, color: "#B91C1C", lineHeight: 1.5 }}>{error}</p>
+          <p style={{ fontSize: 13, color: "var(--color-danger)", lineHeight: 1.5 }}>{error}</p>
         </div>
       )}
       {success && (
         <div
           className="flex items-center gap-3 rounded-2xl px-4 py-3.5"
-          style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0" }}
+          style={{ background: "var(--color-ok-soft)", border: "1.5px solid var(--color-ok-line)" }}
         >
           <div
             className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-            style={{ background: "#DCFCE7" }}
+            style={{ background: "var(--color-ok-soft)" }}
           >
-            <Check size={10} strokeWidth={2.5} style={{ color: "#16A34A" }} />
+            <Check size={10} strokeWidth={2.5} style={{ color: "var(--color-ok)" }} />
           </div>
-          <p style={{ fontSize: 13, color: "#15803D", fontWeight: 600 }}>
+          <p style={{ fontSize: 13, color: "var(--color-ok)", fontWeight: 600 }}>
             {isAr ? "تم حفظ أوقات العمل بنجاح" : "Working hours saved successfully"}
           </p>
         </div>
@@ -365,40 +365,26 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
       <div
         className="flex items-center justify-between rounded-2xl px-5 py-4"
         style={{
-          background: "#FAFBFD",
-          border:     "1.5px solid #E2E8F0",
+          background: "var(--color-ground)",
+          border:     "1.5px solid var(--color-line)",
           marginBottom: 16,
         }}
       >
-        <p style={{ fontSize: 12, color: "#94A3B8" }}>
+        <p style={{ fontSize: 12, color: "var(--color-subtle)" }}>
           {isAr ? "التعديلات تؤثر فوراً على الحجوزات الجديدة" : "Changes take effect immediately on new bookings"}
         </p>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 rounded-xl font-black text-white transition-all duration-150 disabled:opacity-60"
+          className="flex items-center gap-2 rounded-xl font-extrabold text-white transition-all duration-150 disabled:opacity-60 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
           style={{
             padding:       "10px 22px",
             fontSize:      13,
-            background:    "linear-gradient(135deg, #1D4ED8 0%, #2563EB 60%, #3B82F6 100%)",
-            boxShadow:     "0 3px 12px rgba(29,78,216,0.28)",
+            background:    "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade-hover) 60%, var(--color-jade) 100%)",
+            boxShadow:     "0 3px 12px rgba(10,95,71,0.28)",
             border:        "none",
             cursor:        saving ? "not-allowed" : "pointer",
             letterSpacing: "-0.01em",
-          }}
-          onMouseEnter={(e) => {
-            if (!saving) {
-              const el = e.currentTarget as HTMLButtonElement;
-              el.style.filter    = "brightness(1.08)";
-              el.style.boxShadow = "0 5px 18px rgba(29,78,216,0.38)";
-              el.style.transform = "translateY(-1px)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.filter    = "";
-            el.style.boxShadow = "0 3px 12px rgba(29,78,216,0.28)";
-            el.style.transform = "";
           }}
         >
           {saving ? (

@@ -135,13 +135,13 @@ export default function RescheduleFlow({
   // ── Render: success ──────────────────────────────────────────
   if (step === "done") {
     return (
-      <div className="rounded-2xl bg-green-50 border border-green-200 p-5 text-center space-y-2">
-        <CheckCircle2 size={32} className="mx-auto text-green-500" />
-        <p className="font-bold text-green-700">تم إعادة الجدولة بنجاح</p>
-        <p className="text-sm text-green-600">
+      <div className="rounded-2xl bg-[var(--color-ok-soft)] border border-[var(--color-ok-line)] p-5 text-center space-y-2">
+        <CheckCircle2 size={32} className="mx-auto text-[var(--color-ok)]" />
+        <p className="font-bold text-[var(--color-ok)]">تم إعادة الجدولة بنجاح</p>
+        <p className="text-sm text-[var(--color-ok)]">
           {formatDateAr(newDate)} · {newStart}
         </p>
-        <p className="text-xs text-green-500">جاري تحديث الصفحة...</p>
+        <p className="text-xs text-[var(--color-ok)]">جاري تحديث الصفحة...</p>
       </div>
     );
   }
@@ -191,7 +191,7 @@ export default function RescheduleFlow({
               dir="ltr"
             />
             {slotsError && (
-              <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">
+              <p className="text-sm text-[var(--color-danger)] bg-[var(--color-danger-soft)] rounded-xl px-4 py-2">
                 {slotsError}
               </p>
             )}
@@ -244,30 +244,30 @@ export default function RescheduleFlow({
           <div className="space-y-4">
             {/* Old → New comparison */}
             <div className="rounded-xl border border-[var(--color-border)] divide-y divide-[var(--color-border)] text-sm overflow-hidden">
-              <div className="px-4 py-3 bg-red-50">
-                <p className="text-xs text-red-400 mb-0.5">الموعد الحالي</p>
-                <p className="font-semibold text-red-600 line-through">
+              <div className="px-4 py-3 bg-[var(--color-danger-soft)]">
+                <p className="text-xs text-[var(--color-danger)] mb-0.5">الموعد الحالي</p>
+                <p className="font-semibold text-[var(--color-danger)] line-through">
                   {formatDateAr(currentDate)}
                 </p>
-                <p className="text-red-500 line-through" dir="ltr">
+                <p className="text-[var(--color-danger)] line-through" dir="ltr">
                   {currentStart} – {currentEnd}
                 </p>
               </div>
-              <div className="px-4 py-3 bg-green-50">
-                <p className="text-xs text-green-500 mb-0.5">الموعد الجديد</p>
-                <p className="font-semibold text-green-700">
+              <div className="px-4 py-3 bg-[var(--color-ok-soft)]">
+                <p className="text-xs text-[var(--color-ok)] mb-0.5">الموعد الجديد</p>
+                <p className="font-semibold text-[var(--color-ok)]">
                   {formatDateAr(newDate)}
                 </p>
-                <p className="text-green-600" dir="ltr">{newStart}</p>
+                <p className="text-[var(--color-ok)]" dir="ltr">{newStart}</p>
               </div>
             </div>
 
             <p className="text-xs text-[var(--color-text-muted)] text-center">
-              بعد إعادة الجدولة سيعود الحجز إلى حالة "في الانتظار" للمراجعة
+              بعد إعادة الجدولة سيعود الحجز إلى حالة &quot;في الانتظار&quot; للمراجعة
             </p>
 
             {apiError && (
-              <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2 text-center">
+              <p className="text-sm text-[var(--color-danger)] bg-[var(--color-danger-soft)] rounded-xl px-4 py-2 text-center">
                 {apiError}
               </p>
             )}

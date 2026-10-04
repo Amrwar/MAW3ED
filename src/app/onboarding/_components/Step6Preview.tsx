@@ -26,7 +26,7 @@ export default function Step6Preview({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-black text-[var(--color-text-primary)] mb-1">
+        <h2 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-1">
           معاينة صفحتك
         </h2>
         <p className="text-sm text-[var(--color-text-muted)]">
@@ -38,7 +38,7 @@ export default function Step6Preview({
       <div className="border-2 border-[var(--color-border)] rounded-2xl overflow-hidden">
         {/* Cover */}
         <div className="h-28 bg-gradient-to-br from-gray-200 to-gray-300 relative">
-          <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+          <div className="absolute inset-0 flex items-center justify-center text-[var(--color-faint)] text-sm">
             صورة الغلاف
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function Step6Preview({
         {/* Business info */}
         <div className="p-5">
           <div className="flex items-start gap-4 -mt-10 mb-4">
-            <div className="w-16 h-16 rounded-xl bg-white border-2 border-white shadow flex items-center justify-center text-2xl font-black text-[var(--color-brand)] shrink-0">
+            <div className="w-16 h-16 rounded-xl bg-white border-2 border-white shadow flex items-center justify-center text-2xl font-extrabold text-[var(--color-brand)] shrink-0">
               {data.nameAr[0] || "؟"}
             </div>
             <div className="pt-4">
@@ -55,7 +55,7 @@ export default function Step6Preview({
                   {category.icon} {category.nameAr}
                 </span>
               )}
-              <h3 className="text-lg font-black text-[var(--color-text-primary)]">
+              <h3 className="text-lg font-extrabold text-[var(--color-text-primary)]">
                 {data.nameAr || "اسم العمل"}
               </h3>
               {data.taglineAr && (
@@ -145,7 +145,7 @@ export default function Step6Preview({
           <div key={item.label} className="flex items-center gap-2 text-sm">
             <CheckCircle
               size={14}
-              className={item.done ? "text-green-500" : "text-[var(--color-border-2)]"}
+              className={item.done ? "text-[var(--color-ok)]" : "text-[var(--color-border-2)]"}
             />
             <span
               className={
@@ -161,7 +161,7 @@ export default function Step6Preview({
       </div>
 
       {submitError && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
           {submitError}
         </div>
       )}

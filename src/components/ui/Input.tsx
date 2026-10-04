@@ -1,57 +1,72 @@
 import { cn } from "@/lib/utils";
-import { type InputHTMLAttributes, forwardRef } from "react";
+import { type InputHTMLAttributes, forwardRef, useId } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  hint?: string;
   icon?: React.ReactNode;
-  iconPosition?: "start" | "end";
+  /** Phone numbers, emails and codes read left-to-right inside RTL copy. */
+  ltr?: boolean;
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, icon, iconPosition = "start", id, ...props }, ref) => {
-    return (
-      <div className="w-full">
-        {label && (
-          <label
-            htmlFor={id}
-            className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5"
-          >
-            {label}
-          </label>
-        )}
-        <div className="relative">
-          {icon && iconPosition === "start" && (
-            <span className="absolute inset-y-0 end-3 flex items-center text-[var(--color-text-muted)] pointer-events-none">
-              {icon}
-            </span>
-          )}
-          <input
-            ref={ref}
-            id={id}
-            className={cn(
-              "input",
-              icon && iconPosition === "start" && "pe-10",
-              icon && iconPosition === "end" && "ps-10",
-              error && "border-red-400 focus:border-red-500",
-              className
-            )}
-            {...props}
-          />
-          {icon && iconPosition === "end" && (
-            <span className="absolute inset-y-0 start-3 flex items-center text-[var(--color-text-muted)] pointer-events-none">
-              {icon}
-            </span>
-          )}
-        </div>
-        {error && (
-          <p className="mt-1 text-sm text-red-500">{error}</p>
-        )}
-      </div>
-    );
-  }
-);
+const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { className, label, error, hint, icon, ltr = false, id, ...props },
+  ref,
+) {
+  const autoId = useId();
+  const inputId = id ?? autoId;
+  const describedBy = error
+    ? `${inputId}-error`
+    : hint
+      ? `${inputId}-hint`
+      : undefined;
 
-Input.displayName = "Input";
+  return (
+    <div className="w-full">
+      {label && (
+        <label htmlFor={inputId} className="field-label">
+          {label}
+        </label>
+      )}
+
+      <div className="relative">
+        {icon && (
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0 start-4 flex items-center text-[var(--color-subtle)] pointer-events-none"
+          >
+            {icon}
+          </span>
+        )}
+        <input
+          ref={ref}
+          id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          className={cn(
+            "input",
+            icon && "ps-11",
+            ltr && "text-start",
+            error && "input-error",
+            className,
+          )}
+          style={ltr ? { direction: "ltr" } : undefined}
+          {...props}
+        />
+      </div>
+
+      {error ? (
+        <p id={`${inputId}-error`} className="field-error">
+          {error}
+        </p>
+      ) : hint ? (
+        <p id={`${inputId}-hint`} className="field-hint">
+          {hint}
+        </p>
+      ) : null}
+    </div>
+  );
+});
 
 export default Input;

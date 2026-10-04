@@ -25,7 +25,7 @@ export const testimonials: BilingualTestimonial[] = [
     businessName: "صالون أوركيد",
     avatarInitials: "أ س",
     rating: 5,
-    text: "منذ انضممنا لموعد، زادت حجوزاتنا بنسبة ٤٠٪. الداشبورد سهل الاستخدام، والعملاء دايما راضيين.",
+    text: "منذ انضممنا لموعد، زادت حجوزاتنا بنسبة 40%. الداشبورد سهل الاستخدام، والعملاء دايما راضيين.",
     textEn: "Since joining Maw3ed, our bookings have increased by 40%. The dashboard is easy to use and customers are always satisfied.",
     type: "business",
   },

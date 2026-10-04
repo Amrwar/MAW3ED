@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Search, X, MapPin, Sparkles } from "lucide-react";
+import { Search, X, MapPin, SlidersHorizontal, Store } from "lucide-react";
 import PublicBusinessCard from "@/components/shared/PublicBusinessCard";
 import PageHero from "@/components/shared/PageHero";
+import EmptyState from "@/components/ui/EmptyState";
 import type { PublicBusiness } from "@/lib/data";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
+import { num } from "@/lib/fmt";
 
 type Category = { id: string; slug: string; nameAr: string; nameEn: string; icon: string };
 type City     = { id: string; slug: string; nameAr: string; nameEn: string };
@@ -22,36 +23,34 @@ interface Props {
   initialCategory: string;
 }
 
-// ─── Sidebar filter item ──────────────────────────────────
-
-function SidebarItem({
+/** One filter row in the sidebar. */
+function FilterItem({
   active,
   onClick,
-  icon,
   label,
 }: {
-  active:  boolean;
+  active: boolean;
   onClick: () => void;
-  icon:    React.ReactNode;
-  label:   string;
+  label: string;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 text-start",
-        active
-          ? "bg-[#DBEAFE] text-[#1D4ED8]"
-          : "text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A]",
-      )}
-    >
-      <span className={cn("shrink-0", active ? "opacity-100" : "opacity-50")}>{icon}</span>
-      {label}
-    </button>
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={active}
+        className={cn(
+          "flex min-h-11 w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-3 text-start text-[0.875rem] transition-colors",
+          active
+            ? "bg-[var(--color-jade-soft)] font-bold text-[var(--color-ok)]"
+            : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]",
+        )}
+      >
+        {label}
+      </button>
+    </li>
   );
 }
-
-// ─── Main component ───────────────────────────────────────
 
 export default function BusinessesClient({
   businesses,
@@ -62,455 +61,234 @@ export default function BusinessesClient({
   initialCategory,
 }: Props) {
   const { t, lang } = useLanguage();
-  const b    = t.businesses;
+  const b = t.businesses;
   const isAr = lang === "ar";
 
-  const router               = useRouter();
+  const router = useRouter();
   const [isPending, startTx] = useTransition();
-  const [q,        setQ]        = useState(initialQ);
-  const [city,     setCity]     = useState(initialCity);
+  const [q, setQ] = useState(initialQ);
+  const [city, setCity] = useState(initialCity);
   const [category, setCategory] = useState(initialCategory);
-  const [sidebarTab, setSidebarTab] = useState<"cities" | "categories">("cities");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   function apply(nQ: string, nCity: string, nCat: string) {
     const p = new URLSearchParams();
-    if (nQ)    p.set("q",        nQ);
-    if (nCity) p.set("city",     nCity);
-    if (nCat)  p.set("category", nCat);
+    if (nQ) p.set("q", nQ);
+    if (nCity) p.set("city", nCity);
+    if (nCat) p.set("category", nCat);
     startTx(() => router.push(`/businesses${p.size ? `?${p}` : ""}`));
   }
 
   function clearAll() {
-    setQ(""); setCity(""); setCategory("");
+    setQ("");
+    setCity("");
+    setCategory("");
     apply("", "", "");
   }
 
-  const selectedCat  = categories.find((c) => c.slug === category);
-  const selectedCity = cities.find((c) => c.id === city);
-  const hasFilters   = !!(q || city || category);
-
   const getName = (item: Category | City) =>
-    lang === "en" ? (item.nameEn || item.nameAr) : item.nameAr;
+    lang === "en" ? item.nameEn || item.nameAr : item.nameAr;
 
-  const catName  = selectedCat  ? getName(selectedCat)  : null;
-  const cityName = selectedCity ? getName(selectedCity) : null;
+  const selectedCat = categories.find((c) => c.slug === category);
+  const selectedCity = cities.find((c) => c.id === city);
+  const hasFilters = !!(q || city || category);
 
-  // Featured = first 2 businesses (only when no active filters and enough results)
-  const showFeatured  = !hasFilters && businesses.length >= 3;
-  const featuredBizs  = showFeatured ? businesses.slice(0, 2)  : [];
-  const regularBizs   = showFeatured ? businesses.slice(2)     : businesses;
+  const copy = {
+    filters:   isAr ? "الفلاتر"        : "Filters",
+    cities:    isAr ? "المدينة"        : "City",
+    cats:      isAr ? "الفئة"          : "Category",
+    allCities: b.allCities,
+    allCats:   b.allCategories,
+    heroSub:   isAr
+      ? "ابحث وأحجز من أفضل الأنشطة والخدمات في منطقتك"
+      : "Search and book from the best businesses near you",
+  };
 
-  const heroSubtitle = isAr
-    ? "ابحث وأحجز من أفضل الأعمال والخدمات في منطقتك"
-    : "Search and book from the best businesses and services near you";
+  /** Chips for the filters currently applied. */
+  const appliedChips = [
+    q && { key: "q", label: q, clear: () => { setQ(""); apply("", city, category); } },
+    selectedCity && {
+      key: "city",
+      label: getName(selectedCity),
+      clear: () => { setCity(""); apply(q, "", category); },
+    },
+    selectedCat && {
+      key: "cat",
+      label: getName(selectedCat),
+      clear: () => { setCategory(""); apply(q, city, ""); },
+    },
+  ].filter(Boolean) as { key: string; label: string; clear: () => void }[];
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: "#F8FAFC" }}
-      dir={isAr ? "rtl" : "ltr"}
-    >
+    <div className="bg-[var(--color-ground)]">
 
-      {/* ── Page hero ── */}
-      <PageHero
-        badge={isAr ? "اكتشف" : "Discover"}
-        title={b.pageTitle}
-        subtitle={heroSubtitle}
-        dir={isAr ? "rtl" : "ltr"}
-      />
+      <PageHero badge={isAr ? "اكتشف" : "Discover"} title={b.pageTitle} subtitle={copy.heroSub} />
 
-      {/* ── Sticky search bar ── */}
-      <div
-        className="sticky top-16 z-30"
-        style={{
-          background:    "rgba(255,255,255,0.97)",
-          backdropFilter:"blur(12px)",
-          borderBottom:  "1px solid #E2E8F0",
-          boxShadow:     "0 2px 12px rgba(15,23,42,0.05)",
-        }}
-      >
-        <div className="container-app py-3">
-
-          {/* Search row */}
+      {/* ── Search bar ── */}
+      <div className="border-b border-[var(--color-line)] bg-[var(--color-surface)]">
+        <div className="container-app py-5">
           <form
             onSubmit={(e) => { e.preventDefault(); apply(q, city, category); }}
-            className="flex flex-col sm:flex-row gap-2.5"
+            className="flex flex-wrap items-center gap-3"
           >
-            {/* Search input */}
-            <div
-              className="flex items-center gap-2.5 flex-1 rounded-2xl px-4 py-2.5 transition-all duration-150"
-              style={{
-                background: "#F8FAFC",
-                border:     "1.5px solid #E2E8F0",
-              }}
-            >
-              <Search size={15} className="text-[#94A3B8] shrink-0" />
+            <div className="flex flex-[1_1_16rem] min-w-0 items-center gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-line-2)] bg-[var(--color-ground)] px-4 h-13 min-h-12">
+              <Search size={18} strokeWidth={1.8} className="shrink-0 text-[var(--color-subtle)]" aria-hidden="true" />
+              <label htmlFor="browse-q" className="sr-only-label">{b.searchPlaceholder}</label>
               <input
+                id="browse-q"
+                type="text"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder={b.searchPlaceholder}
-                dir={isAr ? "rtl" : "ltr"}
-                className="flex-1 text-sm bg-transparent outline-none text-[#0F172A] placeholder:text-[#94A3B8]"
+                className="w-full min-w-0 border-0 bg-transparent text-[0.9375rem] font-bold text-[var(--color-ink)] outline-none placeholder:font-normal placeholder:text-[var(--color-faint)]"
               />
-              {q && (
-                <button
-                  type="button"
-                  onClick={() => { setQ(""); apply("", city, category); }}
-                  className="shrink-0"
-                >
-                  <X size={13} className="text-[#94A3B8] hover:text-[#475569] transition-colors" />
-                </button>
-              )}
             </div>
 
-            {/* City dropdown */}
-            <select
-              value={city}
-              onChange={(e) => { setCity(e.target.value); apply(q, e.target.value, category); }}
-              className="rounded-2xl px-4 py-2.5 text-sm text-[#475569] outline-none sm:w-44 cursor-pointer"
-              style={{
-                background: "#F8FAFC",
-                border:     "1.5px solid #E2E8F0",
-              }}
-            >
-              <option value="">{b.allCities}</option>
-              {cities.map((c) => (
-                <option key={c.id} value={c.id}>{getName(c)}</option>
-              ))}
-            </select>
+            <div className="flex flex-[0_1_13rem] min-w-0 items-center gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-line-2)] bg-[var(--color-ground)] px-4 min-h-12">
+              <MapPin size={17} strokeWidth={1.8} className="shrink-0 text-[var(--color-subtle)]" aria-hidden="true" />
+              <label htmlFor="browse-city" className="sr-only-label">{copy.cities}</label>
+              <select
+                id="browse-city"
+                value={city}
+                onChange={(e) => { setCity(e.target.value); apply(q, e.target.value, category); }}
+                className="w-full min-w-0 border-0 bg-transparent text-[0.9375rem] text-[var(--color-ink)] outline-none"
+              >
+                <option value="">{copy.allCities}</option>
+                {cities.map((c) => (
+                  <option key={c.id} value={c.id}>{getName(c)}</option>
+                ))}
+              </select>
+            </div>
 
-            {/* Search button */}
+            <button type="submit" className="btn btn-primary shrink-0" disabled={isPending}>
+              {isPending ? b.searching : b.searchBtn}
+            </button>
+
             <button
-              type="submit"
-              className="px-6 py-2.5 rounded-2xl text-sm font-bold text-white transition-all duration-150"
-              style={{
-                background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-                boxShadow:  "0 2px 10px rgba(59,130,246,0.35)",
-              }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.boxShadow = "0 4px 18px rgba(59,130,246,0.50)";
-                el.style.filter    = "brightness(1.06)";
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.boxShadow = "0 2px 10px rgba(59,130,246,0.35)";
-                el.style.filter    = "";
-              }}
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              className="btn btn-outline shrink-0 lg:hidden"
             >
-              {b.searchBtn}
+              <SlidersHorizontal size={16} strokeWidth={1.8} aria-hidden="true" />
+              {copy.filters}
             </button>
           </form>
-
-          {/* Category chips — visible on mobile/tablet only */}
-          <div
-            className="lg:hidden flex gap-2 mt-2.5 overflow-x-auto pb-1"
-            style={{ scrollbarWidth: "none" }}
-          >
-            <button
-              onClick={() => { setCategory(""); apply(q, city, ""); }}
-              className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all"
-              style={
-                !category
-                  ? { background: "#3B82F6", color: "#fff", border: "1.5px solid #3B82F6" }
-                  : { background: "#fff",    color: "#475569", border: "1.5px solid #E2E8F0" }
-              }
-            >
-              {b.allCategories}
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => { setCategory(cat.slug); apply(q, city, cat.slug); }}
-                className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all"
-                style={
-                  category === cat.slug
-                    ? { background: "#3B82F6", color: "#fff", border: "1.5px solid #3B82F6" }
-                    : { background: "#fff",    color: "#475569", border: "1.5px solid #E2E8F0" }
-                }
-              >
-                <span>{cat.icon}</span>
-                {getName(cat)}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
-      {/* ── Page body ── */}
-      <div className="container-app py-8 relative z-10">
-        <div className="flex gap-7">
+      {/* ── Results ── */}
+      <div className="container-app flex flex-wrap items-start gap-8 py-10">
 
-          {/* ════════════════════════════════════
-              Sidebar (desktop only)
-          ════════════════════════════════════ */}
-          <aside className="hidden lg:block w-56 shrink-0">
-            <div className="sticky top-36 space-y-4">
-
-              {/* Active filters */}
-              {hasFilters && (
-                <div
-                  className="rounded-2xl p-4"
-                  style={{
-                    background: "rgba(59,130,246,0.05)",
-                    border:     "1px solid rgba(59,130,246,0.20)",
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-bold text-[#1D4ED8] uppercase tracking-widest">
-                      {isAr ? "الفلاتر" : "Active Filters"}
-                    </span>
-                    <button
-                      onClick={clearAll}
-                      className="text-xs text-[#3B82F6] hover:text-[#2563EB] font-semibold transition-colors"
-                    >
-                      {b.clearFilters}
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {catName && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#DBEAFE] text-[#1D4ED8] text-xs font-semibold">
-                        <span>{selectedCat?.icon}</span>
-                        {catName}
-                        <button
-                          onClick={() => { setCategory(""); apply(q, city, ""); }}
-                          className="hover:opacity-70 transition-opacity"
-                        >
-                          <X size={10} strokeWidth={2.5} />
-                        </button>
-                      </span>
-                    )}
-                    {cityName && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#DBEAFE] text-[#1D4ED8] text-xs font-semibold">
-                        {cityName}
-                        <button
-                          onClick={() => { setCity(""); apply(q, "", category); }}
-                          className="hover:opacity-70 transition-opacity"
-                        >
-                          <X size={10} strokeWidth={2.5} />
-                        </button>
-                      </span>
-                    )}
-                    {q && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#DBEAFE] text-[#1D4ED8] text-xs font-semibold">
-                        &ldquo;{q}&rdquo;
-                        <button
-                          onClick={() => { setQ(""); apply("", city, category); }}
-                          className="hover:opacity-70 transition-opacity"
-                        >
-                          <X size={10} strokeWidth={2.5} />
-                        </button>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Cities | Categories — horizontal tabs, Cities left of Categories */}
-              <div
-                className="rounded-2xl overflow-hidden"
-                style={{
-                  background: "#FFFFFF",
-                  border:     "1px solid #E2E8F0",
-                  boxShadow:  "0 1px 4px rgba(15,23,42,0.04)",
-                }}
+        {/* Filters */}
+        <aside
+          className={cn(
+            "flex-[0_1_17rem] min-w-[15rem] rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-6",
+            !filtersOpen && "hidden lg:block",
+          )}
+        >
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h2 className="m-0 text-base font-bold text-[var(--color-ink)]">{copy.filters}</h2>
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-[0.78125rem] font-bold text-[var(--color-jade)]"
               >
-                {/* Tab row */}
-                <div className="flex" style={{ borderBottom: "1px solid #F1F5F9" }}>
-                  {(["cities", "categories"] as const).map((tab) => {
-                    const label = tab === "cities"
-                      ? (isAr ? "المدن"        : "Cities")
-                      : (isAr ? "التصنيفات"    : "Categories");
-                    const isActive = sidebarTab === tab;
-                    return (
-                      <button
-                        key={tab}
-                        onClick={() => setSidebarTab(tab)}
-                        className="flex-1 py-2.5 text-xs font-bold transition-all duration-150"
-                        style={{
-                          color:       isActive ? "#1D4ED8"  : "#94A3B8",
-                          background:  isActive ? "#FFFFFF"  : "#F8FAFC",
-                          borderBottom: isActive
-                            ? "2px solid #3B82F6"
-                            : "2px solid transparent",
-                        }}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Tab content */}
-                <div className="p-2">
-                  {sidebarTab === "cities" ? (
-                    <>
-                      <SidebarItem
-                        active={!city}
-                        onClick={() => { setCity(""); apply(q, "", category); }}
-                        icon={<MapPin size={13} />}
-                        label={b.allCities}
-                      />
-                      {cities.map((c) => (
-                        <SidebarItem
-                          key={c.id}
-                          active={city === c.id}
-                          onClick={() => { setCity(c.id); apply(q, c.id, category); }}
-                          icon={<MapPin size={13} />}
-                          label={getName(c)}
-                        />
-                      ))}
-                    </>
-                  ) : (
-                    <>
-                      <SidebarItem
-                        active={!category}
-                        onClick={() => { setCategory(""); apply(q, city, ""); }}
-                        icon={<span className="text-base">🔍</span>}
-                        label={b.allCategories}
-                      />
-                      {categories.map((cat) => (
-                        <SidebarItem
-                          key={cat.id}
-                          active={category === cat.slug}
-                          onClick={() => { setCategory(cat.slug); apply(q, city, cat.slug); }}
-                          icon={<span className="text-base">{cat.icon}</span>}
-                          label={getName(cat)}
-                        />
-                      ))}
-                    </>
-                  )}
-                </div>
-              </div>
-
-            </div>
-          </aside>
-
-          {/* ════════════════════════════════════
-              Results area
-          ════════════════════════════════════ */}
-          <div className="flex-1 min-w-0">
-
-            {/* Results header */}
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1
-                  className="text-xl font-black text-[#0F172A]"
-                  style={{ letterSpacing: "-0.02em" }}
-                >
-                  {catName
-                    ? `${selectedCat?.icon} ${catName}`
-                    : b.browseBusiness}
-                  {cityName ? ` · ${cityName}` : ""}
-                </h1>
-                <p className="text-sm text-[#94A3B8] mt-0.5">
-                  {isPending
-                    ? b.searching
-                    : `${businesses.length} ${b.results}`}
-                </p>
-              </div>
-
-              {hasFilters && (
-                <button
-                  onClick={clearAll}
-                  className="lg:hidden flex items-center gap-1.5 text-sm font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors"
-                >
-                  <X size={13} strokeWidth={2.5} />
-                  {b.clearFilters}
-                </button>
-              )}
-            </div>
-
-            {businesses.length > 0 ? (
-              <div
-                className={cn(
-                  "transition-opacity duration-200",
-                  isPending && "opacity-50 pointer-events-none",
-                )}
-              >
-
-                {/* Featured row (no filters, ≥3 results) */}
-                {showFeatured && (
-                  <div className="mb-8">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Sparkles size={13} className="text-[#3B82F6]" />
-                      <span className="text-xs font-bold text-[#3B82F6] uppercase tracking-widest">
-                        {isAr ? "أبرز الأعمال" : "Top Picks"}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      {featuredBizs.map((biz) => (
-                        <PublicBusinessCard key={biz.id} business={biz} featured />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Divider between featured and rest */}
-                {showFeatured && regularBizs.length > 0 && (
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="flex-1 h-px bg-[#E2E8F0]" />
-                    <span className="text-xs font-semibold text-[#94A3B8] uppercase tracking-widest">
-                      {isAr ? "جميع الأعمال" : "All Businesses"}
-                    </span>
-                    <div className="flex-1 h-px bg-[#E2E8F0]" />
-                  </div>
-                )}
-
-                {/* Main grid */}
-                {regularBizs.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {regularBizs.map((biz) => (
-                      <PublicBusinessCard key={biz.id} business={biz} />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-            ) : (
-              /* ── Empty state ── */
-              <div
-                className="text-center py-20 rounded-3xl"
-                style={{
-                  background: "#FFFFFF",
-                  border:     "1px solid #E2E8F0",
-                  boxShadow:  "0 2px 12px rgba(15,23,42,0.05)",
-                }}
-              >
-                <div
-                  className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
-                  style={{ background: "#F1F5F9" }}
-                >
-                  <Search size={22} className="text-[#94A3B8]" />
-                </div>
-                <h2
-                  className="text-lg font-bold text-[#0F172A] mb-2"
-                  style={{ letterSpacing: "-0.01em" }}
-                >
-                  {b.noResultsTitle}
-                </h2>
-                <p className="text-sm text-[#94A3B8] mb-7 max-w-xs mx-auto">
-                  {b.noResultsSub}
-                </p>
-                <button
-                  onClick={clearAll}
-                  className="px-6 py-2.5 rounded-2xl text-sm font-bold text-[#3B82F6] transition-all duration-150"
-                  style={{ border: "1.5px solid #3B82F6" }}
-                  onMouseEnter={(e) => {
-                    const el = e.currentTarget as HTMLButtonElement;
-                    el.style.background = "rgba(59,130,246,0.05)";
-                  }}
-                  onMouseLeave={(e) => {
-                    const el = e.currentTarget as HTMLButtonElement;
-                    el.style.background = "transparent";
-                  }}
-                >
-                  {b.showAll}
-                </button>
-              </div>
+                {b.clearFilters}
+              </button>
             )}
-
           </div>
+
+          <div className="mb-6">
+            <h3 className="section-eyebrow mb-3 block">{copy.cats}</h3>
+            <ul className="flex flex-col gap-0.5">
+              <FilterItem
+                active={!category}
+                label={copy.allCats}
+                onClick={() => { setCategory(""); apply(q, city, ""); }}
+              />
+              {categories.map((c) => (
+                <FilterItem
+                  key={c.id}
+                  active={category === c.slug}
+                  label={getName(c)}
+                  onClick={() => { setCategory(c.slug); apply(q, city, c.slug); }}
+                />
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="section-eyebrow mb-3 block">{copy.cities}</h3>
+            <ul className="flex max-h-[18rem] flex-col gap-0.5 overflow-y-auto">
+              <FilterItem
+                active={!city}
+                label={copy.allCities}
+                onClick={() => { setCity(""); apply(q, "", category); }}
+              />
+              {cities.map((c) => (
+                <FilterItem
+                  key={c.id}
+                  active={city === c.id}
+                  label={getName(c)}
+                  onClick={() => { setCity(c.id); apply(q, c.id, category); }}
+                />
+              ))}
+            </ul>
+          </div>
+        </aside>
+
+        {/* Grid */}
+        <div className="flex-[999_1_34rem] min-w-0">
+
+          <div className="mb-5 flex flex-wrap items-center gap-4">
+            <p className="m-0 text-sm text-[var(--color-subtle)]">
+              <strong className="num text-[var(--color-ink)]">{num(businesses.length, lang)}</strong>{" "}
+              {b.results}
+            </p>
+            {appliedChips.length > 0 && (
+              <ul className="flex flex-wrap gap-2">
+                {appliedChips.map((chip) => (
+                  <li key={chip.key}>
+                    <button type="button" onClick={chip.clear} className="chip chip-jade">
+                      {chip.label}
+                      <X size={12} strokeWidth={2.4} aria-hidden="true" />
+                      <span className="sr-only-label">{b.clearFilters}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {businesses.length === 0 ? (
+            <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)]">
+              <EmptyState
+                icon={<Store size={24} strokeWidth={1.7} />}
+                title={b.noResultsTitle}
+                body={b.noResultsSub}
+                action={
+                  <button type="button" onClick={clearAll} className="btn btn-primary btn-sm">
+                    {b.showAll}
+                  </button>
+                }
+              />
+            </div>
+          ) : (
+            <ul
+              className={cn(
+                "grid gap-5 sm:grid-cols-2 xl:grid-cols-3",
+                isPending && "opacity-60 transition-opacity",
+              )}
+            >
+              {businesses.map((biz) => (
+                <li key={biz.id} className="min-w-0">
+                  <PublicBusinessCard business={biz} />
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

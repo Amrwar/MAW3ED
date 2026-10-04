@@ -29,12 +29,12 @@ function yesterdayISO() {
 type DatePreset = "all" | "today" | "upcoming" | "past" | "custom";
 
 const STATUS_PILL: Record<string, { bg: string; color: string; activeBg: string; activeColor: string }> = {
-  ALL:       { bg: "#F8FAFC", color: "#64748B", activeBg: "#0F172A",  activeColor: "#FFFFFF" },
-  PENDING:   { bg: "#FEF3C7", color: "#92400E", activeBg: "#D97706",  activeColor: "#FFFFFF" },
-  CONFIRMED: { bg: "#DCFCE7", color: "#15803D", activeBg: "#16A34A",  activeColor: "#FFFFFF" },
-  COMPLETED: { bg: "#DBEAFE", color: "#1D4ED8", activeBg: "#1D4ED8",  activeColor: "#FFFFFF" },
-  CANCELLED: { bg: "#FEE2E2", color: "#B91C1C", activeBg: "#DC2626",  activeColor: "#FFFFFF" },
-  NO_SHOW:   { bg: "#F1F5F9", color: "#475569", activeBg: "#475569",  activeColor: "#FFFFFF" },
+  ALL:       { bg: "var(--color-surface-2)", color: "var(--color-muted)", activeBg: "var(--color-ink)",  activeColor: "var(--color-surface)" },
+  PENDING:   { bg: "var(--color-warn-soft)", color: "var(--color-warn)", activeBg: "var(--color-warn)",  activeColor: "var(--color-surface)" },
+  CONFIRMED: { bg: "var(--color-ok-soft)", color: "var(--color-ok)", activeBg: "var(--color-ok)",  activeColor: "var(--color-surface)" },
+  COMPLETED: { bg: "var(--color-jade-soft)", color: "var(--color-jade)", activeBg: "var(--color-jade)",  activeColor: "var(--color-surface)" },
+  CANCELLED: { bg: "var(--color-danger-soft)", color: "var(--color-danger)", activeBg: "var(--color-danger)",  activeColor: "var(--color-surface)" },
+  NO_SHOW:   { bg: "var(--color-surface-3)", color: "var(--color-muted)", activeBg: "var(--color-muted)",  activeColor: "var(--color-surface)" },
 };
 
 interface BookingFiltersProps {
@@ -72,7 +72,7 @@ export default function BookingFilters({
   const { t, lang } = useLanguage();
   const bf     = t.dashboard.bookingFilters;
   const bs     = t.dashboard.bookingStatus;
-  const locale = lang === "ar" ? "ar-EG" : "en-US";
+  const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
   const ALL_STATUSES = [
     { value: "ALL",       label: bs.ALL },
@@ -125,17 +125,17 @@ export default function BookingFilters({
   return (
     <div
       className="rounded-2xl border bg-white p-5 space-y-4"
-      style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
+      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
     >
       {/* Row 1 — section label + clear */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal size={14} strokeWidth={1.75} style={{ color: "#3B82F6" }} />
-          <span className="text-sm font-bold text-[#0F172A]">تصفية الحجوزات</span>
+          <SlidersHorizontal size={14} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />
+          <span className="text-sm font-bold text-[var(--color-ink)]">تصفية الحجوزات</span>
           {hasActiveFilters && (
             <span
               className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background: "#DBEAFE", color: "#1D4ED8" }}
+              style={{ background: "var(--color-jade-soft)", color: "var(--color-jade)" }}
             >
               نشط
             </span>
@@ -144,10 +144,8 @@ export default function BookingFilters({
         {hasActiveFilters && (
           <button
             onClick={clearAll}
-            className="inline-flex items-center gap-1 text-xs font-semibold transition-colors"
-            style={{ color: "#EF4444" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#DC2626"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#EF4444"; }}
+            className="inline-flex items-center gap-1 text-xs font-semibold transition-colors transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+            style={{ color: "var(--color-danger)" }}
           >
             <X size={12} />
             {bf.clearFilters}
@@ -168,8 +166,8 @@ export default function BookingFilters({
               style={{
                 background:   isActive ? pill.activeBg   : pill.bg,
                 color:        isActive ? pill.activeColor : pill.color,
-                borderColor:  isActive ? pill.activeBg   : "#E2E8F0",
-                boxShadow:    isActive ? "0 2px 8px rgba(15,23,42,0.12)" : "none",
+                borderColor:  isActive ? pill.activeBg   : "var(--color-line)",
+                boxShadow:    isActive ? "0 2px 8px rgba(17,32,28,0.12)" : "none",
               }}
             >
               {s.label}
@@ -185,7 +183,7 @@ export default function BookingFilters({
           <Search
             size={14}
             className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ insetInlineEnd: 12, color: "#94A3B8" }}
+            style={{ insetInlineEnd: 12, color: "var(--color-subtle)" }}
           />
           <input
             type="text"
@@ -194,20 +192,20 @@ export default function BookingFilters({
             onChange={(e) => setLocalSearch(e.target.value)}
             className="w-full rounded-xl border text-sm outline-none transition-all duration-150"
             style={{
-              borderColor: "#E2E8F0",
-              background:  "#F8FAFC",
-              color:       "#0F172A",
+              borderColor: "var(--color-line)",
+              background:  "var(--color-surface-2)",
+              color:       "var(--color-ink)",
               paddingBlock: 9,
               paddingInline: "12px 38px",
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = "#3B82F6";
-              e.currentTarget.style.background   = "#FFFFFF";
-              e.currentTarget.style.boxShadow    = "0 0 0 3px rgba(59,130,246,0.1)";
+              e.currentTarget.style.borderColor = "var(--color-jade)";
+              e.currentTarget.style.background   = "var(--color-surface)";
+              e.currentTarget.style.boxShadow    = "0 0 0 3px rgba(14,127,94,0.1)";
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = "#E2E8F0";
-              e.currentTarget.style.background   = "#F8FAFC";
+              e.currentTarget.style.borderColor = "var(--color-line)";
+              e.currentTarget.style.background   = "var(--color-surface-2)";
               e.currentTarget.style.boxShadow    = "none";
             }}
           />
@@ -220,20 +218,20 @@ export default function BookingFilters({
             onChange={(e) => onServiceChange(e.target.value)}
             className="rounded-xl border text-sm outline-none transition-all duration-150"
             style={{
-              borderColor:  "#E2E8F0",
-              background:   "#F8FAFC",
-              color:        "#475569",
+              borderColor:  "var(--color-line)",
+              background:   "var(--color-surface-2)",
+              color:        "var(--color-muted)",
               paddingBlock: 9,
               paddingInline: 12,
               minWidth:     160,
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = "#3B82F6";
-              e.currentTarget.style.background   = "#FFFFFF";
+              e.currentTarget.style.borderColor = "var(--color-jade)";
+              e.currentTarget.style.background   = "var(--color-surface)";
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = "#E2E8F0";
-              e.currentTarget.style.background   = "#F8FAFC";
+              e.currentTarget.style.borderColor = "var(--color-line)";
+              e.currentTarget.style.background   = "var(--color-surface-2)";
             }}
           >
             <option value="">{bf.allServices}</option>
@@ -254,9 +252,9 @@ export default function BookingFilters({
               onClick={() => applyPreset(p.key)}
               className="text-xs font-medium px-3 py-1.5 rounded-xl border transition-all duration-150"
               style={{
-                background:  isActive ? "#EFF6FF" : "#F8FAFC",
-                color:       isActive ? "#1D4ED8"  : "#64748B",
-                borderColor: isActive ? "#BFDBFE"  : "#E2E8F0",
+                background:  isActive ? "var(--color-jade-tint)" : "var(--color-surface-2)",
+                color:       isActive ? "var(--color-jade)"  : "var(--color-muted)",
+                borderColor: isActive ? "var(--color-jade-line)"  : "var(--color-line)",
                 fontWeight:  isActive ? 600 : 500,
               }}
             >
@@ -275,23 +273,23 @@ export default function BookingFilters({
             onChange={(e) => onDateFromChange(e.target.value)}
             className="flex-1 rounded-xl border text-sm outline-none"
             style={{
-              borderColor:  "#E2E8F0",
-              background:   "#F8FAFC",
-              color:        "#0F172A",
+              borderColor:  "var(--color-line)",
+              background:   "var(--color-surface-2)",
+              color:        "var(--color-ink)",
               paddingBlock: 9,
               paddingInline: 12,
             }}
           />
-          <span className="text-sm font-bold text-[#CBD5E1]">—</span>
+          <span className="text-sm font-bold text-[var(--color-line-2)]">—</span>
           <input
             type="date"
             value={dateTo}
             onChange={(e) => onDateToChange(e.target.value)}
             className="flex-1 rounded-xl border text-sm outline-none"
             style={{
-              borderColor:  "#E2E8F0",
-              background:   "#F8FAFC",
-              color:        "#0F172A",
+              borderColor:  "var(--color-line)",
+              background:   "var(--color-surface-2)",
+              color:        "var(--color-ink)",
               paddingBlock: 9,
               paddingInline: 12,
             }}
@@ -303,13 +301,13 @@ export default function BookingFilters({
       {hasActiveFilters && (
         <div
           className="flex items-center gap-2 px-3 py-2 rounded-xl"
-          style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}
+          style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)" }}
         >
-          <span className="text-xs text-[#94A3B8]">{bf.results}:</span>
-          <span className="text-xs font-bold text-[#0F172A]">
+          <span className="text-xs text-[var(--color-subtle)]">{bf.results}:</span>
+          <span className="text-xs font-bold text-[var(--color-ink)]">
             {total.toLocaleString(locale)}
           </span>
-          <span className="text-xs text-[#94A3B8]">حجز</span>
+          <span className="text-xs text-[var(--color-subtle)]">حجز</span>
         </div>
       )}
     </div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { Category, City } from "@prisma/client";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Store, ClipboardList, Settings2, Clock, Rocket } from "lucide-react";
 import Step1BasicInfo from "./Step1BasicInfo";
 import Step2Details from "./Step2Details";
 import Step3Services from "./Step3Services";
@@ -62,11 +62,11 @@ const DEFAULT_DATA: OnboardingData = {
 };
 
 const STEPS = [
-  { num: 1, label: "بياناتك",     icon: "🏢" },
-  { num: 2, label: "التفاصيل",    icon: "📋" },
-  { num: 3, label: "الخدمات",     icon: "⚙️" },
-  { num: 4, label: "أوقات العمل", icon: "🕐" },
-  { num: 5, label: "الإطلاق",     icon: "🚀" },
+  { num: 1, label: "بياناتك",     Icon: Store },
+  { num: 2, label: "التفاصيل",    Icon: ClipboardList },
+  { num: 3, label: "الخدمات",     Icon: Settings2 },
+  { num: 4, label: "أوقات العمل", Icon: Clock },
+  { num: 5, label: "الإطلاق",     Icon: Rocket },
 ] as const;
 
 const STORAGE_KEY = "maw3ed_onboarding";
@@ -171,47 +171,55 @@ export default function OnboardingForm({ categories, cities }: Props) {
   // ── Step content ───────────────────────────────────────────
   return (
     <div>
-      {/* Progress stepper */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between relative">
-          <div className="absolute top-4 start-0 end-0 h-0.5 bg-[var(--color-border)] -z-10" />
-          <div
-            className="absolute top-4 start-0 h-0.5 bg-[var(--color-brand)] -z-10 transition-all duration-500"
+      {/* ── Progress stepper ── */}
+      <div className="mb-9">
+        <ol className="relative flex items-start justify-between">
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-0 top-[1.125rem] -z-10 h-0.5 bg-[var(--color-line)]"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute start-0 top-[1.125rem] -z-10 h-0.5 bg-[var(--color-jade)] transition-all duration-500"
             style={{ width: `${((step - 1) / (STEPS.length - 1)) * 100}%` }}
           />
-          {STEPS.map((s) => (
-            <div key={s.num} className="flex flex-col items-center gap-1.5">
-              <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm transition-all duration-300 ${
-                  step > s.num
-                    ? "bg-[var(--color-brand)] text-white shadow-sm"
-                    : step === s.num
-                    ? "bg-[var(--color-brand)] text-white ring-4 ring-[var(--color-brand)]/20 shadow-md scale-110"
-                    : "bg-white border-2 border-[var(--color-border)] text-[var(--color-text-muted)]"
-                }`}
-              >
-                {step > s.num ? <CheckCircle size={15} /> : s.icon}
-              </div>
-              <span
-                className={`text-[10px] font-medium hidden sm:block transition-colors ${
-                  step >= s.num
-                    ? "text-[var(--color-text-primary)]"
-                    : "text-[var(--color-text-muted)]"
-                }`}
-              >
-                {s.label}
-              </span>
-            </div>
-          ))}
-        </div>
-        {/* Step counter */}
-        <p className="text-center text-xs text-[var(--color-text-muted)] mt-4">
-          الخطوة {step} من {STEPS.length}
+
+          {STEPS.map((s) => {
+            const done = step > s.num;
+            const current = step === s.num;
+            return (
+              <li key={s.num} className="flex flex-col items-center gap-2">
+                <span
+                  aria-current={current ? "step" : undefined}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[0.8125rem] font-bold transition-colors ${
+                    done || current
+                      ? "bg-[var(--color-jade)] text-white"
+                      : "border-[1.5px] border-[var(--color-line-2)] bg-[var(--color-surface)] text-[var(--color-faint)]"
+                  }`}
+                >
+                  {done ? <CheckCircle size={16} aria-hidden="true" /> : <s.Icon size={16} strokeWidth={1.9} aria-hidden="true" />}
+                </span>
+                <span
+                  className={`hidden text-[0.6875rem] sm:block ${
+                    step >= s.num
+                      ? "font-bold text-[var(--color-ink)]"
+                      : "text-[var(--color-faint)]"
+                  }`}
+                >
+                  {s.label}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+
+        <p className="m-0 mt-5 text-center text-xs text-[var(--color-subtle)]">
+          الخطوة <span className="num">{step}</span> من <span className="num">{STEPS.length}</span>
         </p>
       </div>
 
       {/* Card */}
-      <div className="card p-6 md:p-8">
+      <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-6 md:p-9">
         {step === 1 && (
           <Step1BasicInfo
             data={data}

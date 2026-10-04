@@ -37,7 +37,7 @@ export async function PUT(req: Request) {
     const parsed = businessUpdateSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
-    let extraData: Record<string, string> = {};
+    const extraData: Record<string, string> = {};
     if (parsed.data.categoryId) {
       const cat = await db.category.findUnique({
         where:  { id: parsed.data.categoryId },

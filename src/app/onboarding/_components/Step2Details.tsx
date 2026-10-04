@@ -42,7 +42,7 @@ export default function Step2Details({ data, onNext, onBack }: Props) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div>
-        <h2 className="text-xl font-black text-[var(--color-text-primary)] mb-1">
+        <h2 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-1">
           تفاصيل عملك
         </h2>
         <p className="text-sm text-[var(--color-text-muted)]">
@@ -84,7 +84,7 @@ export default function Step2Details({ data, onNext, onBack }: Props) {
       {/* Tagline */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="text-sm font-medium text-[var(--color-text-secondary)]">
+          <label className="field-label mb-0">
             جملة تعريفية قصيرة{" "}
             <span className="text-[var(--color-text-muted)] text-xs">(اختياري)</span>
           </label>
@@ -102,7 +102,7 @@ export default function Step2Details({ data, onNext, onBack }: Props) {
       {/* About */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="text-sm font-medium text-[var(--color-text-secondary)]">
+          <label className="field-label mb-0">
             نبذة عن عملك{" "}
             <span className="text-[var(--color-text-muted)] text-xs">(اختياري)</span>
           </label>
@@ -119,13 +119,13 @@ export default function Step2Details({ data, onNext, onBack }: Props) {
 
       {/* Address */}
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
+        <label className="field-label">
           العنوان التفصيلي{" "}
           <span className="text-[var(--color-text-muted)] text-xs">(اختياري)</span>
         </label>
         <input
           type="text"
-          placeholder="مثال: ٥ شارع التحرير، المعادي، القاهرة"
+          placeholder="مثال: 5 شارع التحرير، المعادي، القاهرة"
           className="input w-full"
           {...register("address")}
         />

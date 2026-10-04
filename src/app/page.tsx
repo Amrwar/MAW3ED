@@ -3,21 +3,25 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import HeroSection from "@/features/home/HeroSection";
 import TrustStats from "@/features/home/TrustStats";
-import WhyJoin from "@/features/home/WhyJoin";
 import CategoriesSection from "@/features/home/CategoriesSection";
 import HowItWorks from "@/features/home/HowItWorks";
-import DemoSection from "@/features/home/DemoSection";
+import WhyJoin from "@/features/home/WhyJoin";
 import PricingPreview from "@/features/home/PricingPreview";
 import Testimonials from "@/features/home/Testimonials";
 import FAQ from "@/features/home/FAQ";
 import FinalCTA from "@/features/home/FinalCTA";
-import { SectionDivider } from "@/components/ui/SectionDivider";
 import { getCategories } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "موعد | MAW3ED — احجز موعدك في ثوانٍ",
 };
 
+/**
+ * One continuous light page with a single dark band near the end.
+ * The old build alternated dark and light every section and needed
+ * SVG dividers to bridge them; the page reads as one surface now, so
+ * those dividers are gone.
+ */
 export default async function HomePage() {
   const categories = await getCategories();
 
@@ -25,52 +29,32 @@ export default async function HomePage() {
     <>
       <Navbar />
       <main>
-
-        {/* 1 ─ Hero (dark #0F172A) */}
+        {/* 1 — Search and the next free slots */}
         <HeroSection />
 
-        {/* ▼ dark → light */}
-        <SectionDivider variant="curve" from="#0F172A" to="#F8FAFC" />
-
-        {/* 2 ─ Trust stats (light #F8FAFC) */}
+        {/* 2 — Who already uses it */}
         <TrustStats />
 
-        {/* 3 ─ Why Maw3ed (light #F8FAFC) — same bg, no divider needed */}
-        <WhyJoin />
-
-        {/* 4 ─ Browse by Category (light #F8FAFC) — same bg, no divider */}
+        {/* 3 — Browse by category */}
         <CategoriesSection categories={categories} />
 
-        {/* ▼ light → dark */}
-        <SectionDivider variant="curve" from="#F8FAFC" to="#0B1628" />
-
-        {/* 5 ─ How It Works (dark #0B1628) */}
+        {/* 4 — Three steps to a booking */}
         <HowItWorks />
 
-        {/* ▼ dark → dark (subtle blend between two close navy tones) */}
-        <SectionDivider variant="glow" from="#0B1628" to="#0F172A" height={56} />
+        {/* 5 — The one dark band: the pitch to business owners */}
+        <WhyJoin />
 
-        {/* 6 ─ Demo / Booking preview (dark #0F172A) */}
-        <DemoSection />
-
-        {/* ▼ dark → light */}
-        <SectionDivider variant="curve" from="#0F172A" to="#F8FAFC" />
-
-        {/* 7 ─ Pricing preview (light #F8FAFC) */}
+        {/* 6 — Plans */}
         <PricingPreview />
 
-        {/* 8 ─ Testimonials (#FFFFFF) — very close to F8FAFC, no divider */}
+        {/* 7 — Proof */}
         <Testimonials />
 
-        {/* 9 ─ FAQ (light #F8FAFC) — same family, no divider */}
+        {/* 8 — Objections */}
         <FAQ />
 
-        {/* ▼ light → dark */}
-        <SectionDivider variant="curve" from="#F8FAFC" to="#0F172A" />
-
-        {/* 10 ─ Final CTA (dark #0F172A) */}
+        {/* 9 — Close */}
         <FinalCTA />
-
       </main>
       <Footer />
     </>

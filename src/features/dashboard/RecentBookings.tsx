@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CalendarRange } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-
-type BookingStatus =
-  | "PENDING" | "CONFIRMED" | "COMPLETED"
-  | "CANCELLED" | "NO_SHOW" | "PENDING_PAYMENT" | "FAILED_PAYMENT";
+import Avatar from "@/components/ui/Avatar";
+import StatusBadge, { type BookingStatusKey } from "@/components/ui/StatusBadge";
+import EmptyState from "@/components/ui/EmptyState";
+import { money, clock, num } from "@/lib/fmt";
 
 export type RecentBooking = {
   id:            string;
@@ -15,177 +15,119 @@ export type RecentBooking = {
   serviceName:   string;
   date:          Date;
   startTime:     string;
-  status:        BookingStatus;
+  status:        BookingStatusKey;
   totalPrice:    number;
   currency:      string;
-};
-
-const STATUS_STYLE: Record<BookingStatus, { bg: string; color: string }> = {
-  CONFIRMED:       { bg: "#DCFCE7", color: "#15803D" },
-  PENDING:         { bg: "#FEF3C7", color: "#92400E" },
-  COMPLETED:       { bg: "#DBEAFE", color: "#1D4ED8" },
-  CANCELLED:       { bg: "#FEE2E2", color: "#B91C1C" },
-  NO_SHOW:         { bg: "#F1F5F9", color: "#475569" },
-  PENDING_PAYMENT: { bg: "#FED7AA", color: "#9A3412" },
-  FAILED_PAYMENT:  { bg: "#FEE2E2", color: "#B91C1C" },
 };
 
 const AR_MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 const EN_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-// Deterministic avatar gradient per customer name initial
-const AVATAR_GRADIENTS = [
-  "linear-gradient(135deg,#1D4ED8,#3B82F6)",
-  "linear-gradient(135deg,#7C3AED,#A78BFA)",
-  "linear-gradient(135deg,#059669,#34D399)",
-  "linear-gradient(135deg,#B45309,#F59E0B)",
-  "linear-gradient(135deg,#0E7490,#22D3EE)",
-  "linear-gradient(135deg,#9D174D,#F472B6)",
-];
-function avatarGrad(name: string) {
-  return AVATAR_GRADIENTS[(name.charCodeAt(0) || 0) % AVATAR_GRADIENTS.length];
-}
-
 export default function RecentBookings({ bookings }: { bookings: RecentBooking[] }) {
   const { t, lang } = useLanguage();
-  const rb      = t.dashboard.recentBookings;
-  const bs      = t.dashboard.bookingStatus;
-  const months  = lang === "ar" ? AR_MONTHS : EN_MONTHS;
-  const locale  = lang === "ar" ? "ar-EG" : "en-US";
+  const rb = t.dashboard.recentBookings;
+  const months = lang === "ar" ? AR_MONTHS : EN_MONTHS;
 
-  function fmtDate(date: Date, startTime: string) {
+  /** Dates come back as UTC midnight, so read the UTC parts. */
+  function fmtDate(date: Date) {
     const d = new Date(date);
-    return `${d.getUTCDate()} ${months[d.getUTCMonth()]} · ${startTime}`;
+    return `${d.getUTCDate()} ${months[d.getUTCMonth()]}`;
   }
 
+  const th =
+    "px-5 py-3 text-start text-[0.71875rem] font-bold text-[var(--color-subtle)]";
+  const td = "px-5 py-3.5";
+
   return (
-    <div
-      className="rounded-2xl border bg-white overflow-hidden"
-      style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
-    >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between px-5 py-4"
-        style={{ borderBottom: "1px solid #F1F5F9" }}
-      >
-        <div className="flex items-center gap-2.5">
-          <h3 className="text-sm font-bold text-[#0F172A]">{rb.title}</h3>
+    <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]">
+
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4">
+        <h2 className="m-0 flex items-center gap-2.5 text-[0.9375rem] font-bold text-[var(--color-ink)]">
+          {rb.title}
           {bookings.length > 0 && (
-            <span
-              className="text-xs font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: "#F1F5F9", color: "#64748B" }}
-            >
-              {bookings.length}
+            <span className="num rounded-full bg-[var(--color-surface-3)] px-2 py-0.5 text-[0.71875rem] font-bold text-[var(--color-muted)]">
+              {num(bookings.length, lang)}
             </span>
           )}
-        </div>
+        </h2>
         <Link
           href="/dashboard/bookings"
-          className="inline-flex items-center gap-1 text-xs font-semibold transition-colors"
-          style={{ color: "#3B82F6" }}
+          className="flex shrink-0 items-center gap-1 text-[0.75rem] font-bold text-[var(--color-jade)]"
         >
-          {"عرض الكل"}
-          <ArrowLeft size={12} />
+          {lang === "ar" ? "عرض الكل" : "View all"}
+          <ArrowLeft size={12} aria-hidden="true" />
         </Link>
       </div>
 
       {bookings.length === 0 ? (
-        <div className="py-16 text-center">
-          <div
-            className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center"
-            style={{ background: "#F8FAFC" }}
-          >
-            <span className="text-2xl">📋</span>
-          </div>
-          <p className="text-sm font-medium text-[#475569]">{rb.empty}</p>
-          <p className="text-xs text-[#94A3B8] mt-1">لا توجد حجوزات حتى الآن</p>
-        </div>
+        <EmptyState
+          icon={<CalendarRange size={24} strokeWidth={1.7} />}
+          title={rb.empty}
+          body={
+            lang === "ar"
+              ? "أول حجز هيظهر هنا بمجرد ما عميل يحجز من صفحتك."
+              : "The first booking will appear here as soon as someone books."
+          }
+        />
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full" style={{ minWidth: 560 }}>
+          <table className="w-full min-w-[36rem] border-collapse">
             <thead>
-              <tr style={{ background: "#FAFBFD", borderBottom: "1px solid #F1F5F9" }}>
-                {[rb.columns.customer, rb.columns.service, rb.columns.date, rb.columns.price, rb.columns.status].map((col) => (
-                  <th
-                    key={col}
-                    className="text-start px-5 py-3 text-xs font-semibold"
-                    style={{ color: "#94A3B8", letterSpacing: "0.02em" }}
-                  >
-                    {col}
-                  </th>
-                ))}
+              <tr className="border-b border-[var(--color-line)] bg-[var(--color-ground)]">
+                <th scope="col" className={th}>{rb.columns.customer}</th>
+                <th scope="col" className={th}>{rb.columns.service}</th>
+                <th scope="col" className={th}>{rb.columns.date}</th>
+                <th scope="col" className={th}>{rb.columns.price}</th>
+                <th scope="col" className={th}>{rb.columns.status}</th>
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => {
-                const statusStyle = STATUS_STYLE[b.status];
-                const statusLabel = (bs as Record<string, string>)[b.status] ?? b.status;
-                return (
-                  <tr
-                    key={b.id}
-                    className="transition-colors"
-                    style={{ borderBottom: "1px solid #F8FAFC" }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLTableRowElement).style.background = "#FAFBFD";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLTableRowElement).style.background = "transparent";
-                    }}
-                  >
-                    {/* Customer + avatar */}
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0"
-                          style={{ background: avatarGrad(b.customerName) }}
-                        >
-                          {b.customerName[0]}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-[#0F172A] leading-snug">
-                            {b.customerName}
-                          </p>
-                          <p className="text-xs text-[#94A3B8]" dir="ltr">{b.customerPhone}</p>
-                        </div>
+              {bookings.map((b) => (
+                <tr
+                  key={b.id}
+                  className="border-b border-[var(--color-line)] transition-colors last:border-b-0 hover:bg-[var(--color-surface-2)]"
+                >
+                  <td className={td}>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar name={b.customerName} size="sm" />
+                      <div className="min-w-0">
+                        <p className="m-0 truncate text-[0.875rem] font-bold text-[var(--color-ink)]">
+                          {b.customerName}
+                        </p>
+                        <p className="num m-0 mt-0.5 text-xs text-[var(--color-subtle)]">
+                          {b.customerPhone}
+                        </p>
                       </div>
-                    </td>
+                    </div>
+                  </td>
 
-                    {/* Service */}
-                    <td className="px-5 py-3.5">
-                      <p className="text-sm text-[#475569] max-w-[140px] truncate">{b.serviceName}</p>
-                    </td>
+                  <td className={td}>
+                    <p className="m-0 max-w-[10rem] truncate text-[0.875rem] text-[var(--color-muted)]">
+                      {b.serviceName}
+                    </p>
+                  </td>
 
-                    {/* Date + time */}
-                    <td className="px-5 py-3.5">
-                      <p className="text-sm text-[#475569] whitespace-nowrap">
-                        {fmtDate(b.date, b.startTime)}
-                      </p>
-                    </td>
+                  <td className={td}>
+                    <p className="m-0 whitespace-nowrap text-[0.875rem] text-[var(--color-muted)]">
+                      {fmtDate(b.date)} · <span className="num">{clock(b.startTime)}</span>
+                    </p>
+                  </td>
 
-                    {/* Price */}
-                    <td className="px-5 py-3.5">
-                      <p className="text-sm font-bold text-[#0F172A] whitespace-nowrap">
-                        {b.totalPrice.toLocaleString(locale)}{" "}
-                        <span className="font-normal text-[#94A3B8] text-xs">{b.currency}</span>
-                      </p>
-                    </td>
+                  <td className={td}>
+                    <p className="num m-0 whitespace-nowrap text-[0.875rem] font-bold text-[var(--color-ink)]">
+                      {money(b.totalPrice, lang, b.currency)}
+                    </p>
+                  </td>
 
-                    {/* Status badge */}
-                    <td className="px-5 py-3.5">
-                      <span
-                        className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
-                        style={{ background: statusStyle.bg, color: statusStyle.color }}
-                      >
-                        {statusLabel}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+                  <td className={td}>
+                    <StatusBadge status={b.status} lang={lang} />
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       )}
-    </div>
+    </section>
   );
 }

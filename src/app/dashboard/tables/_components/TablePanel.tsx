@@ -75,10 +75,10 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
     width:        "100%",
     padding:      "10px 14px",
     borderRadius: 10,
-    border:       "1.5px solid #E2E8F0",
+    border:       "1.5px solid var(--color-line)",
     fontSize:     13,
-    color:        "#0F172A",
-    background:   "#FFFFFF",
+    color:        "var(--color-ink)",
+    background:   "var(--color-surface)",
     outline:      "none",
     boxSizing:    "border-box",
   };
@@ -87,7 +87,7 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
     display:      "block",
     fontSize:     12,
     fontWeight:   600,
-    color:        "#475569",
+    color:        "var(--color-muted)",
     marginBottom: 6,
   };
 
@@ -97,7 +97,7 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
       <div
         className="fixed inset-0 z-[80] md:hidden"
         style={{
-          background:    "rgba(15,23,42,0.45)",
+          background:    "rgba(17,32,28,0.45)",
           backdropFilter: "blur(3px)",
           opacity:       open ? 1 : 0,
           pointerEvents: open ? "auto" : "none",
@@ -112,8 +112,8 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
         style={{
           width:      360,
           maxWidth:   "100vw",
-          background: "#FFFFFF",
-          boxShadow:  open ? "0 0 40px rgba(15,23,42,0.18)" : "none",
+          background: "var(--color-surface)",
+          boxShadow:  open ? "0 0 40px rgba(17,32,28,0.18)" : "none",
           transform:  open ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.28s cubic-bezier(0.4,0,0.2,1)",
         }}
@@ -122,9 +122,9 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
         {/* Header */}
         <div
           className="flex items-center justify-between px-5 shrink-0"
-          style={{ height: 64, borderBottom: "1.5px solid #F1F5F9" }}
+          style={{ height: 64, borderBottom: "1.5px solid var(--color-surface-3)" }}
         >
-          <p style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: "var(--color-ink)" }}>
             {editing
               ? (isAr ? "تعديل الطاولة" : "Edit Table")
               : (isAr ? "إضافة طاولة"  : "Add Table")}
@@ -133,8 +133,8 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
             onClick={onClose}
             style={{
               width: 32, height: 32, borderRadius: 8,
-              background: "#F8FAFC", border: "1.5px solid #E2E8F0",
-              color: "#64748B", cursor: "pointer",
+              background: "var(--color-surface-2)", border: "1.5px solid var(--color-line)",
+              color: "var(--color-muted)", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
@@ -208,7 +208,7 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
 
             {/* Active toggle */}
             <div className="flex items-center justify-between">
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-ink)" }}>
                 {isAr ? "الطاولة نشطة" : "Table is active"}
               </span>
               <button
@@ -218,7 +218,7 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
                   width:        44,
                   height:       24,
                   borderRadius: 100,
-                  background:   form.isActive ? "#0F172A" : "#E2E8F0",
+                  background:   form.isActive ? "var(--color-ink)" : "var(--color-line)",
                   border:       "none",
                   cursor:       "pointer",
                   position:     "relative",
@@ -233,7 +233,7 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
                     width:      18,
                     height:     18,
                     borderRadius: 100,
-                    background: "#FFFFFF",
+                    background: "var(--color-surface)",
                     transition: "inset-inline-start 0.2s",
                     boxShadow:  "0 1px 3px rgba(0,0,0,0.2)",
                   }}
@@ -242,7 +242,7 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
             </div>
 
             {error && (
-              <p style={{ fontSize: 12, color: "#EF4444", fontWeight: 500 }}>{error}</p>
+              <p style={{ fontSize: 12, color: "var(--color-danger)", fontWeight: 500 }}>{error}</p>
             )}
           </div>
         </form>
@@ -250,7 +250,7 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
         {/* Footer */}
         <div
           className="shrink-0 flex gap-3 px-5 pb-6 pt-4"
-          style={{ borderTop: "1.5px solid #F1F5F9" }}
+          style={{ borderTop: "1.5px solid var(--color-surface-3)" }}
         >
           <button
             type="button"
@@ -259,9 +259,9 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
               flex:         1,
               padding:      "11px 0",
               borderRadius: 10,
-              background:   "#F8FAFC",
-              border:       "1.5px solid #E2E8F0",
-              color:        "#475569",
+              background:   "var(--color-surface-2)",
+              border:       "1.5px solid var(--color-line)",
+              color:        "var(--color-muted)",
               fontSize:     13,
               fontWeight:   600,
               cursor:       "pointer",
@@ -276,9 +276,9 @@ export default function TablePanel({ open, onClose, onSaved, editing }: Props) {
               flex:         2,
               padding:      "11px 0",
               borderRadius: 10,
-              background:   "#0F172A",
+              background:   "var(--color-ink)",
               border:       "none",
-              color:        "#FFFFFF",
+              color:        "var(--color-surface)",
               fontSize:     13,
               fontWeight:   600,
               cursor:       saving ? "not-allowed" : "pointer",

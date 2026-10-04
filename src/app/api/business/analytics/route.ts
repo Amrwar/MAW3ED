@@ -20,8 +20,8 @@ export type AnalyticsPayload = {
 };
 
 const SERVICE_COLORS = [
-  "#6366f1","#f59e0b","#10b981","#ef4444","#3b82f6",
-  "#ec4899","#8b5cf6","#14b8a6","#f97316","#84cc16",
+  "#6366f1","#f59e0b","var(--color-ok)","#ef4444","#3b82f6",
+  "var(--color-jade)","var(--color-jade)","var(--color-info)","var(--color-warn)","var(--color-ok)",
 ];
 
 const AR_MONTHS = [

@@ -64,10 +64,10 @@ export default async function PaymentReturnPage({
         {/* ── Confirmed ── */}
         {isConfirmed && booking && (
           <div className="card text-center p-8">
-            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-5">
-              <CheckCircle size={44} className="text-green-500" />
+            <div className="w-20 h-20 bg-[var(--color-ok-soft)] rounded-full flex items-center justify-center mx-auto mb-5">
+              <CheckCircle size={44} className="text-[var(--color-ok)]" />
             </div>
-            <h1 className="text-xl font-black text-[var(--color-text-primary)] mb-2">
+            <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
               تم الدفع وتأكيد الحجز!
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
@@ -82,7 +82,7 @@ export default async function PaymentReturnPage({
               {booking.depositAmount !== null && (
                 <Row
                   label="العربون المدفوع"
-                  value={`${Number(booking.depositAmount).toLocaleString("ar-EG")} ${booking.currency}`}
+                  value={`${Number(booking.depositAmount).toLocaleString("ar-EG-u-nu-latn")} ${booking.currency}`}
                   bold
                 />
               )}
@@ -108,10 +108,10 @@ export default async function PaymentReturnPage({
         {/* ── Failed ── */}
         {isFailed && booking && (
           <div className="card text-center p-8">
-            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5">
-              <XCircle size={44} className="text-red-500" />
+            <div className="w-20 h-20 bg-[var(--color-danger-soft)] rounded-full flex items-center justify-center mx-auto mb-5">
+              <XCircle size={44} className="text-[var(--color-danger)]" />
             </div>
-            <h1 className="text-xl font-black text-[var(--color-text-primary)] mb-2">
+            <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
               فشلت عملية الدفع
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
@@ -132,10 +132,10 @@ export default async function PaymentReturnPage({
         {/* ── Still pending (webhook not fired yet) ── */}
         {isPending && booking && (
           <div className="card text-center p-8">
-            <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-5">
-              <Clock size={44} className="text-amber-500" />
+            <div className="w-20 h-20 bg-[var(--color-warn-soft)] rounded-full flex items-center justify-center mx-auto mb-5">
+              <Clock size={44} className="text-[var(--color-star)]" />
             </div>
-            <h1 className="text-xl font-black text-[var(--color-text-primary)] mb-2">
+            <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
               جارٍ التحقق من الدفع…
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
@@ -157,10 +157,10 @@ export default async function PaymentReturnPage({
         {/* ── No booking found ── */}
         {!booking && (
           <div className="card text-center p-8">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-5">
-              <XCircle size={44} className="text-gray-400" />
+            <div className="w-20 h-20 bg-[var(--color-surface-3)] rounded-full flex items-center justify-center mx-auto mb-5">
+              <XCircle size={44} className="text-[var(--color-faint)]" />
             </div>
-            <h1 className="text-xl font-black text-[var(--color-text-primary)] mb-2">
+            <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
               الحجز غير موجود
             </h1>
             <p className="text-sm text-[var(--color-text-muted)]">
@@ -192,7 +192,7 @@ function Row({
       <span className="text-[var(--color-text-muted)] shrink-0">{label}</span>
       <span
         dir={ltr ? "ltr" : undefined}
-        className={`text-end ${bold ? "font-black text-[var(--color-accent)]" : "font-medium text-[var(--color-text-primary)]"}`}
+        className={`text-end ${bold ? "font-extrabold text-[var(--color-accent)]" : "font-medium text-[var(--color-text-primary)]"}`}
       >
         {value}
       </span>

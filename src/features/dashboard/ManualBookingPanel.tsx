@@ -144,11 +144,11 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
         {/* Success state */}
         {created ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-5">
-            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-              <Check size={32} className="text-green-600" />
+            <div className="w-16 h-16 rounded-full bg-[var(--color-ok-soft)] flex items-center justify-center">
+              <Check size={32} className="text-[var(--color-ok)]" />
             </div>
             <div>
-              <p className="text-xl font-black text-[var(--color-text-primary)]">تم إنشاء الموعد</p>
+              <p className="text-xl font-extrabold text-[var(--color-text-primary)]">تم إنشاء الموعد</p>
               <p className="text-sm text-[var(--color-text-muted)] mt-1">
                 تم تأكيد الموعد لـ {created.customerName}
               </p>
@@ -179,7 +179,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
               {/* Service */}
               <div>
                 <label className="form-label mb-1.5 block">
-                  الخدمة <span className="text-red-500">*</span>
+                  الخدمة <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <select
                   value={serviceId}
@@ -197,7 +197,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
               {/* Date */}
               <div>
                 <label className="form-label mb-1.5 block">
-                  التاريخ <span className="text-red-500">*</span>
+                  التاريخ <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <input
                   type="date"
@@ -213,7 +213,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
               {/* Time slots */}
               <div>
                 <label className="form-label mb-1.5 block">
-                  الوقت <span className="text-red-500">*</span>
+                  الوقت <span className="text-[var(--color-danger)]">*</span>
                 </label>
 
                 {loadingSlots ? (
@@ -259,7 +259,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="form-label mb-1.5 block">
-                    الاسم <span className="text-red-500">*</span>
+                    الاسم <span className="text-[var(--color-danger)]">*</span>
                   </label>
                   <input
                     value={customerName}
@@ -270,7 +270,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                 </div>
                 <div>
                   <label className="form-label mb-1.5 block">
-                    الهاتف <span className="text-red-500">*</span>
+                    الهاتف <span className="text-[var(--color-danger)]">*</span>
                   </label>
                   <input
                     value={customerPhone}
@@ -295,7 +295,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
               </div>
 
               {error && (
-                <p className="text-sm text-red-500 bg-red-50 px-4 py-3 rounded-xl">{error}</p>
+                <p className="text-sm text-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 rounded-xl">{error}</p>
               )}
             </form>
 
@@ -331,7 +331,7 @@ function calcEndTime(startTime: string, duration: number) {
 
 function formatDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("ar-EG", {
+  return new Date(y, m - 1, d).toLocaleDateString("ar-EG-u-nu-latn", {
     weekday: "short",
     day:     "numeric",
     month:   "long",

@@ -18,9 +18,9 @@ function CustomTooltip({ active, payload, currency }: {
   return (
     <div className="bg-white border border-[var(--color-border)] rounded-xl shadow-lg px-4 py-3 text-sm min-w-[160px]">
       <p className="font-semibold text-[var(--color-text-primary)] mb-2">{s.serviceName}</p>
-      <p className="text-[var(--color-text-secondary)]">{s.bookings.toLocaleString("ar-EG")} حجز</p>
+      <p className="text-[var(--color-text-secondary)]">{s.bookings.toLocaleString("ar-EG-u-nu-latn")} حجز</p>
       <p className="font-bold mt-1" style={{ color: s.color }}>
-        {s.revenue.toLocaleString("ar-EG")} {currency}
+        {s.revenue.toLocaleString("ar-EG-u-nu-latn")} {currency}
       </p>
     </div>
   );
@@ -82,7 +82,7 @@ export default function ServiceBreakdown({ data, currency }: Props) {
                         {s.serviceName}
                       </p>
                       <span className="text-xs text-[var(--color-text-muted)] shrink-0">
-                        {pct}٪
+                        {pct}%
                       </span>
                     </div>
                     <div className="mt-0.5 h-1 rounded-full bg-[var(--color-border)] overflow-hidden">

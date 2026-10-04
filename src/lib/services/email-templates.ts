@@ -84,7 +84,7 @@ export function customerConfirmationHtml(d: BookingEmailData): string {
       ${row("الخدمة",   d.serviceName)}
       ${row("التاريخ",  formatDateAr(d.date))}
       ${row("الوقت",    `${d.startTime} – ${d.endTime}`, true)}
-      ${row("الإجمالي", `${d.totalPrice.toLocaleString("ar-EG")} ${d.currency}`)}
+      ${row("الإجمالي", `${d.totalPrice.toLocaleString("ar-EG-u-nu-latn")} ${d.currency}`)}
     </table>
 
     ${d.notes ? `
@@ -135,7 +135,7 @@ export function customerReminderHtml(d: BookingEmailData): string {
       ${row("الخدمة",   d.serviceName)}
       ${row("التاريخ",  formatDateAr(d.date))}
       ${row("الوقت",    `${d.startTime} – ${d.endTime}`, true)}
-      ${row("الإجمالي", `${d.totalPrice.toLocaleString("ar-EG")} ${d.currency}`)}
+      ${row("الإجمالي", `${d.totalPrice.toLocaleString("ar-EG-u-nu-latn")} ${d.currency}`)}
     </table>
 
     <!-- Reminder note -->
@@ -178,12 +178,12 @@ export function businessAlertHtml(d: BookingEmailData): string {
       ${row("الخدمة",     d.serviceName)}
       ${row("التاريخ",    formatDateAr(d.date))}
       ${row("الوقت",      `${d.startTime} – ${d.endTime}`, true)}
-      ${row("الإجمالي",   `${d.totalPrice.toLocaleString("ar-EG")} ${d.currency}`)}
+      ${row("الإجمالي",   `${d.totalPrice.toLocaleString("ar-EG-u-nu-latn")} ${d.currency}`)}
     </table>
 
     ${d.notes ? `
     <!-- Customer notes -->
-    <div style="background:#fff7ed;border-right:3px solid #f97316;border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:24px;">
+    <div style="background:#fff7ed;border-right:3px solid var(--color-warn);border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:24px;">
       <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;font-weight:600;">ملاحظات العميل</p>
       <p style="margin:0;font-size:14px;color:#374151;">${d.notes}</p>
     </div>` : ""}

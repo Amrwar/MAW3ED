@@ -7,7 +7,8 @@ import {
 } from "lucide-react";
 import type { Service } from "@/types/service";
 import type { PublicTable, PublicStaff } from "./CompanyContent";
-import { formatPrice, formatDuration } from "@/lib/utils";
+import { money, duration as fmtDuration } from "@/lib/fmt";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { TABLE_TYPE_LABELS } from "@/lib/business-type";
 
 // ─── Types ────────────────────────────────────────────────
@@ -88,10 +89,10 @@ function SummaryRow({
 }: { label: string; value: string; ltr?: boolean; bold?: boolean }) {
   return (
     <div className="flex items-center justify-between text-sm gap-4">
-      <span className="text-[#94A3B8] shrink-0">{label}</span>
+      <span className="text-[var(--color-subtle)] shrink-0">{label}</span>
       <span
         dir={ltr ? "ltr" : undefined}
-        className={`text-end ${bold ? "font-black text-[#1D4ED8]" : "font-semibold text-[#0F172A]"}`}
+        className={`text-end ${bold ? "font-extrabold text-[var(--color-jade)]" : "font-semibold text-[var(--color-ink)]"}`}
       >
         {value}
       </span>
@@ -102,8 +103,8 @@ function SummaryRow({
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 mb-4" dir="rtl">
-      <div className="w-1 h-5 bg-[#1D4ED8] rounded-full" />
-      <h4 className="text-base font-bold text-[#1D4ED8]">{children}</h4>
+      <div className="w-1 h-5 bg-[var(--color-jade)] rounded-full" />
+      <h4 className="text-base font-bold text-[var(--color-jade)]">{children}</h4>
     </div>
   );
 }
@@ -113,7 +114,7 @@ function ServiceIcon({ service }: { service: Service }) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={service.image} alt={service.nameAr} className="w-10 h-10 object-contain" />;
   }
-  return <span className="text-xl font-bold text-[#3B82F6]">{service.nameAr.charAt(0)}</span>;
+  return <span className="text-xl font-bold text-[var(--color-jade)]">{service.nameAr.charAt(0)}</span>;
 }
 
 // ─── Main Component ───────────────────────────────────────
@@ -128,6 +129,7 @@ export default function BookingWidget({
   tables,
   staffMembers,
 }: BookingWidgetProps) {
+  const { lang } = useLanguage();
   const hasResource = businessType === "RESTAURANT" || businessType === "BARBERSHOP";
 
   // Steps
@@ -304,21 +306,21 @@ export default function BookingWidget({
       className="overflow-hidden rounded-3xl bg-white"
       dir="rtl"
       style={{
-        boxShadow:  "0 4px 32px rgba(15,23,42,0.10), 0 1px 8px rgba(15,23,42,0.06)",
-        border:     "1px solid #E2E8F0",
+        boxShadow:  "0 4px 32px rgba(17,32,28,0.10), 0 1px 8px rgba(17,32,28,0.06)",
+        border:     "1px solid var(--color-line)",
         fontFamily: "var(--font-cairo, Cairo, sans-serif)",
       }}
     >
       {/* ── Header ── */}
       <div
         className="px-5 py-5 flex items-center justify-between"
-        style={{ background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)" }}
+        style={{ background: "var(--color-night)" }}
       >
         <div>
           <h2 className="text-white text-xl font-bold leading-tight">احجز موعدك</h2>
-          <p className="text-blue-200 text-sm mt-0.5">{businessName}</p>
+          <p className="text-[var(--color-jade-line)] text-sm mt-0.5">{businessName}</p>
         </div>
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-white/20 shrink-0">
+        <div className="w-11 h-11 rounded-[var(--radius-md)] flex items-center justify-center bg-white/20 shrink-0">
           <CalendarDays size={22} className="text-white" />
         </div>
       </div>
@@ -327,7 +329,7 @@ export default function BookingWidget({
       {step !== "done" && (
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-start justify-between relative">
-            <div className="absolute top-4 right-4 left-4 h-0.5 bg-gray-200" style={{ zIndex: 0 }} />
+            <div className="absolute top-4 right-4 left-4 h-0.5 bg-[var(--color-line)]" style={{ zIndex: 0 }} />
             {stepperSteps.map((s) => {
               const done   = currentStepN > s.n;
               const active = currentStepN === s.n;
@@ -335,14 +337,14 @@ export default function BookingWidget({
                 <div key={s.id} className="flex flex-col items-center gap-1.5 relative z-10">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                      active ? "bg-[#1D4ED8] text-white shadow-md"
-                             : done  ? "bg-[#1D4ED8] text-white"
-                             : "bg-gray-200 text-gray-400"
+                      active ? "bg-[var(--color-jade)] text-white"
+                             : done  ? "bg-[var(--color-jade)] text-white"
+                             : "bg-[var(--color-line)] text-[var(--color-faint)]"
                     }`}
                   >
                     {done ? <Check size={14} strokeWidth={3} /> : s.n}
                   </div>
-                  <span className={`text-[11px] font-semibold ${active ? "text-[#1D4ED8]" : "text-gray-400"}`}>
+                  <span className={`text-[11px] font-semibold ${active ? "text-[var(--color-jade)]" : "text-[var(--color-faint)]"}`}>
                     {s.label}
                   </span>
                 </div>
@@ -362,7 +364,7 @@ export default function BookingWidget({
             </SectionTitle>
 
             {services.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">لا توجد خدمات متاحة حاليًا</p>
+              <p className="text-sm text-[var(--color-faint)] text-center py-6">لا توجد خدمات متاحة حاليًا</p>
             ) : (
               <div className="space-y-3">
                 {services.map((service) => {
@@ -371,36 +373,36 @@ export default function BookingWidget({
                     <button
                       key={service.id}
                       onClick={() => setSelectedService(service)}
-                      className={`w-full text-start rounded-2xl border-2 p-3.5 transition-all relative ${
+                      className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
                         selected
-                          ? "border-[#1D4ED8] bg-blue-50/50"
-                          : "border-gray-200 bg-white hover:border-[#1D4ED8]/40"
+                          ? "border-[var(--color-jade)] bg-[var(--color-jade-tint)]"
+                          : "border-[var(--color-line-2)] bg-white hover:border-[var(--color-jade)]/40"
                       }`}
                     >
                       {selected && (
-                        <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[#1D4ED8] flex items-center justify-center">
+                        <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
                           <Check size={13} strokeWidth={3} className="text-white" />
                         </span>
                       )}
                       <div className="flex items-center gap-3">
-                        <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                        <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-jade-soft)] flex items-center justify-center shrink-0">
                           {service.image
                             // eslint-disable-next-line @next/next/no-img-element
                             ? <img src={service.image} alt={service.nameAr} className="w-10 h-10 object-contain" />
-                            : <span className="text-xl font-bold text-[#3B82F6]">{service.nameAr.charAt(0)}</span>
+                            : <span className="text-xl font-bold text-[var(--color-jade)]">{service.nameAr.charAt(0)}</span>
                           }
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[15px] font-bold text-gray-800 leading-snug">{service.nameAr}</p>
+                          <p className="text-[15px] font-bold text-[var(--color-ink)] leading-snug">{service.nameAr}</p>
                           {service.duration > 0 && (
-                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                            <p className="text-xs text-[var(--color-faint)] mt-1 flex items-center gap-1">
                               <Clock size={11} />
-                              {formatDuration(service.duration)}
+                              {fmtDuration(service.duration, lang)}
                             </p>
                           )}
                         </div>
-                        <p className="text-base font-black text-[#1D4ED8] shrink-0">
-                          {formatPrice(service.price, service.currency)}
+                        <p className="text-base font-extrabold text-[var(--color-jade)] shrink-0">
+                          {money(service.price, lang, service.currency)}
                         </p>
                       </div>
                     </button>
@@ -412,8 +414,8 @@ export default function BookingWidget({
             <button
               disabled={!selectedService}
               onClick={goNext}
-              className={`mt-5 w-full py-3.5 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 transition-all ${
-                selectedService ? "bg-[#1D4ED8] hover:bg-[#1E40AF] shadow-md" : "bg-gray-300 cursor-not-allowed"
+              className={`mt-5 w-full py-3.5 rounded-[var(--radius-lg)] text-white font-bold text-base flex items-center justify-center gap-2 transition-all ${
+                selectedService ? "bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)]" : "bg-[var(--color-surface-3)] text-[var(--color-faint)] cursor-not-allowed"
               }`}
             >
               التالي <span className="text-lg leading-none">←</span>
@@ -430,30 +432,30 @@ export default function BookingWidget({
                 <SectionTitle>اختر الحلاق</SectionTitle>
 
                 {availableStaff.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-6">لا يوجد موظفون متاحون</p>
+                  <p className="text-sm text-[var(--color-faint)] text-center py-6">لا يوجد موظفون متاحون</p>
                 ) : (
                   <div className="space-y-3">
                     {/* "Any barber" option */}
                     <button
                       onClick={() => setSelectedStaff(null)}
-                      className={`w-full text-start rounded-2xl border-2 p-3.5 transition-all relative ${
+                      className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
                         selectedStaff === null
-                          ? "border-[#1D4ED8] bg-blue-50/50"
-                          : "border-gray-200 bg-white hover:border-[#1D4ED8]/40"
+                          ? "border-[var(--color-jade)] bg-[var(--color-jade-tint)]"
+                          : "border-[var(--color-line-2)] bg-white hover:border-[var(--color-jade)]/40"
                       }`}
                     >
                       {selectedStaff === null && (
-                        <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[#1D4ED8] flex items-center justify-center">
+                        <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
                           <Check size={13} strokeWidth={3} className="text-white" />
                         </span>
                       )}
                       <div className="flex items-center gap-3">
-                        <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                          <Scissors size={22} className="text-gray-400" />
+                        <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-surface-3)] flex items-center justify-center shrink-0">
+                          <Scissors size={22} className="text-[var(--color-faint)]" />
                         </div>
                         <div>
-                          <p className="text-[15px] font-bold text-gray-800">أي حلاق متاح</p>
-                          <p className="text-xs text-gray-400 mt-0.5">سيتم تخصيص أقرب موعد</p>
+                          <p className="text-[15px] font-bold text-[var(--color-ink)]">أي حلاق متاح</p>
+                          <p className="text-xs text-[var(--color-faint)] mt-0.5">سيتم تخصيص أقرب موعد</p>
                         </div>
                       </div>
                     </button>
@@ -464,28 +466,28 @@ export default function BookingWidget({
                         <button
                           key={staff.id}
                           onClick={() => setSelectedStaff(staff)}
-                          className={`w-full text-start rounded-2xl border-2 p-3.5 transition-all relative ${
+                          className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
                             selected
-                              ? "border-[#1D4ED8] bg-blue-50/50"
-                              : "border-gray-200 bg-white hover:border-[#1D4ED8]/40"
+                              ? "border-[var(--color-jade)] bg-[var(--color-jade-tint)]"
+                              : "border-[var(--color-line-2)] bg-white hover:border-[var(--color-jade)]/40"
                           }`}
                         >
                           {selected && (
-                            <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[#1D4ED8] flex items-center justify-center">
+                            <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
                               <Check size={13} strokeWidth={3} className="text-white" />
                             </span>
                           )}
                           <div className="flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 overflow-hidden">
+                            <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-jade-soft)] flex items-center justify-center shrink-0 overflow-hidden">
                               {staff.photo
                                 // eslint-disable-next-line @next/next/no-img-element
                                 ? <img src={staff.photo} alt={staff.nameAr} className="w-full h-full object-cover" />
-                                : <span className="text-xl font-bold text-[#3B82F6]">{staff.nameAr.charAt(0)}</span>
+                                : <span className="text-xl font-bold text-[var(--color-jade)]">{staff.nameAr.charAt(0)}</span>
                               }
                             </div>
                             <div>
-                              <p className="text-[15px] font-bold text-gray-800">{staff.nameAr}</p>
-                              {staff.role && <p className="text-xs text-gray-400 mt-0.5">{staff.role}</p>}
+                              <p className="text-[15px] font-bold text-[var(--color-ink)]">{staff.nameAr}</p>
+                              {staff.role && <p className="text-xs text-[var(--color-faint)] mt-0.5">{staff.role}</p>}
                             </div>
                           </div>
                         </button>
@@ -502,28 +504,28 @@ export default function BookingWidget({
                 <SectionTitle>اختر الطاولة</SectionTitle>
 
                 {/* Party size */}
-                <div className="mb-4 flex items-center justify-between rounded-2xl border border-gray-200 px-4 py-3 bg-gray-50">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <Users size={15} className="text-[#1D4ED8]" />
+                <div className="mb-4 flex items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-line-2)] px-4 py-3 bg-[var(--color-surface-2)]">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink-2)]">
+                    <Users size={15} className="text-[var(--color-jade)]" />
                     عدد الأشخاص
                   </div>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setPartySize((n) => Math.max(1, n - 1))}
-                      className="w-7 h-7 rounded-full bg-white border border-gray-200 text-gray-600 font-bold flex items-center justify-center hover:border-[#1D4ED8] transition-all text-lg leading-none"
+                      className="w-7 h-7 rounded-full bg-white border border-[var(--color-line-2)] text-[var(--color-muted)] font-bold flex items-center justify-center hover:border-[var(--color-jade)] transition-all text-lg leading-none"
                     >−</button>
-                    <span className="text-base font-black text-[#0F172A] w-5 text-center">{partySize}</span>
+                    <span className="text-base font-extrabold text-[var(--color-ink)] w-5 text-center">{partySize}</span>
                     <button
                       type="button"
                       onClick={() => setPartySize((n) => Math.min(50, n + 1))}
-                      className="w-7 h-7 rounded-full bg-white border border-gray-200 text-gray-600 font-bold flex items-center justify-center hover:border-[#1D4ED8] transition-all text-lg leading-none"
+                      className="w-7 h-7 rounded-full bg-white border border-[var(--color-line-2)] text-[var(--color-muted)] font-bold flex items-center justify-center hover:border-[var(--color-jade)] transition-all text-lg leading-none"
                     >+</button>
                   </div>
                 </div>
 
                 {tables.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-6">لا توجد طاولات متاحة حاليًا</p>
+                  <p className="text-sm text-[var(--color-faint)] text-center py-6">لا توجد طاولات متاحة حاليًا</p>
                 ) : (
                   <div className="space-y-3">
                     {tables.map((table) => {
@@ -535,21 +537,21 @@ export default function BookingWidget({
                           key={table.id}
                           onClick={() => !tooSmall && setSelectedTable(table)}
                           disabled={tooSmall}
-                          className={`w-full text-start rounded-2xl border-2 p-3.5 transition-all relative ${
+                          className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
                             tooSmall
-                              ? "opacity-40 cursor-not-allowed border-gray-200"
+                              ? "opacity-40 cursor-not-allowed border-[var(--color-line-2)]"
                               : selected
-                              ? "border-[#1D4ED8] bg-blue-50/50"
-                              : "border-gray-200 bg-white hover:border-[#1D4ED8]/40"
+                              ? "border-[var(--color-jade)] bg-[var(--color-jade-tint)]"
+                              : "border-[var(--color-line-2)] bg-white hover:border-[var(--color-jade)]/40"
                           }`}
                         >
                           {selected && (
-                            <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[#1D4ED8] flex items-center justify-center">
+                            <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
                               <Check size={13} strokeWidth={3} className="text-white" />
                             </span>
                           )}
                           <div className="flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-xl bg-amber-50 flex items-center justify-center shrink-0 overflow-hidden">
+                            <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-warn-soft)] flex items-center justify-center shrink-0 overflow-hidden">
                               {table.photo
                                 // eslint-disable-next-line @next/next/no-img-element
                                 ? <img src={table.photo} alt={table.name} className="w-full h-full object-cover" />
@@ -557,20 +559,20 @@ export default function BookingWidget({
                               }
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-[15px] font-bold text-gray-800">{table.name}</p>
-                              <p className="text-xs text-gray-400 mt-0.5">{typeLabel}</p>
+                              <p className="text-[15px] font-bold text-[var(--color-ink)]">{table.name}</p>
+                              <p className="text-xs text-[var(--color-faint)] mt-0.5">{typeLabel}</p>
                             </div>
                             <div className="text-end shrink-0">
-                              <p className="text-sm font-black text-[#0F172A] flex items-center gap-1">
+                              <p className="text-sm font-extrabold text-[var(--color-ink)] flex items-center gap-1">
                                 <Users size={12} /> {table.capacity}
                               </p>
                               {tooSmall && (
-                                <p className="text-[10px] text-red-400 mt-0.5">صغيرة</p>
+                                <p className="text-[10px] text-[var(--color-danger)] mt-0.5">صغيرة</p>
                               )}
                             </div>
                           </div>
                           {table.notes && (
-                            <p className="text-xs text-gray-400 mt-2 pe-2">{table.notes}</p>
+                            <p className="text-xs text-[var(--color-faint)] mt-2 pe-2">{table.notes}</p>
                           )}
                         </button>
                       );
@@ -583,17 +585,17 @@ export default function BookingWidget({
             <div className="flex gap-2 mt-5">
               <button
                 onClick={() => goToStep("service")}
-                className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold text-sm flex items-center justify-center gap-1 hover:border-gray-300 transition-all"
+                className="flex-1 py-3.5 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-muted)] font-bold text-sm flex items-center justify-center gap-1 hover:border-[var(--color-line-2)] transition-all"
               >
                 <ChevronRight size={15} /> رجوع
               </button>
               <button
                 disabled={businessType === "RESTAURANT" && !selectedTable}
                 onClick={goNext}
-                className={`flex-1 py-3.5 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                className={`flex-1 py-3.5 rounded-[var(--radius-lg)] text-white font-bold text-sm flex items-center justify-center gap-2 transition-all ${
                   businessType === "RESTAURANT" && !selectedTable
-                    ? "bg-gray-300 cursor-not-allowed"
-                    : "bg-[#1D4ED8] hover:bg-[#1E40AF] shadow-md"
+                    ? "bg-[var(--color-surface-3)] text-[var(--color-faint)] cursor-not-allowed"
+                    : "bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)]"
                 }`}
               >
                 التالي <span className="text-base leading-none">←</span>
@@ -620,12 +622,12 @@ export default function BookingWidget({
                     key={d.iso}
                     disabled={disabled}
                     onClick={() => setSelectedDate(d.iso)}
-                    className={`flex flex-col items-center py-2.5 px-2.5 rounded-xl text-xs shrink-0 min-w-[44px] transition-all ${
+                    className={`flex flex-col items-center py-2.5 px-2.5 rounded-[var(--radius-md)] text-xs shrink-0 min-w-[44px] transition-all ${
                       disabled
-                        ? "opacity-30 cursor-not-allowed bg-gray-100 text-gray-400"
+                        ? "opacity-30 cursor-not-allowed bg-[var(--color-surface-3)] text-[var(--color-faint)]"
                         : selected
-                        ? "bg-[#1D4ED8] text-white shadow-md"
-                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                        ? "bg-[var(--color-jade)] text-white"
+                        : "bg-[var(--color-surface-3)] hover:bg-[var(--color-line)] text-[var(--color-ink-2)]"
                     }`}
                   >
                     <span className="text-[9px] opacity-70">{d.dayAr.slice(0, 3)}</span>
@@ -642,18 +644,18 @@ export default function BookingWidget({
 
                 {slotsLoading && (
                   <div className="flex items-center justify-center py-8 gap-2">
-                    <Loader2 size={20} className="animate-spin text-[#1D4ED8]" />
-                    <span className="text-sm text-gray-400">جارٍ التحميل…</span>
+                    <Loader2 size={20} className="animate-spin text-[var(--color-jade)]" />
+                    <span className="text-sm text-[var(--color-faint)]">جارٍ التحميل…</span>
                   </div>
                 )}
                 {!slotsLoading && slotsError && (
-                  <p className="text-sm text-red-500 text-center py-4">{slotsError}</p>
+                  <p className="text-sm text-[var(--color-danger)] text-center py-4">{slotsError}</p>
                 )}
                 {!slotsLoading && !slotsError && slots.length === 0 && (
                   <div className="text-center py-6">
-                    <CalendarDays size={28} className="mx-auto text-gray-300 mb-2" />
-                    <p className="text-sm text-gray-400">لا توجد مواعيد متاحة</p>
-                    <p className="text-xs text-gray-300 mt-1">اختر يومًا آخر</p>
+                    <CalendarDays size={28} className="mx-auto text-[var(--color-faint)] mb-2" />
+                    <p className="text-sm text-[var(--color-faint)]">لا توجد مواعيد متاحة</p>
+                    <p className="text-xs text-[var(--color-faint)] mt-1">اختر يومًا آخر</p>
                   </div>
                 )}
                 {!slotsLoading && !slotsError && slots.length > 0 && (
@@ -663,10 +665,10 @@ export default function BookingWidget({
                         key={slot}
                         dir="ltr"
                         onClick={() => setSelectedTime(slot)}
-                        className={`py-2.5 rounded-xl text-xs font-semibold border-2 transition-all ${
+                        className={`py-2.5 rounded-[var(--radius-md)] text-xs font-semibold border-2 transition-all ${
                           selectedTime === slot
-                            ? "bg-[#1D4ED8] text-white border-[#1D4ED8] shadow-md"
-                            : "bg-white border-gray-200 hover:border-[#1D4ED8]/50 text-gray-700"
+                            ? "bg-[var(--color-jade)] text-white border-[var(--color-jade)]"
+                            : "bg-white border-[var(--color-line-2)] hover:border-[var(--color-jade)]/50 text-[var(--color-ink-2)]"
                         }`}
                       >
                         {slot}
@@ -676,23 +678,23 @@ export default function BookingWidget({
                 )}
               </div>
             ) : (
-              <p className="text-xs text-gray-400 mt-4 text-center">اختر يومًا لعرض المواعيد المتاحة</p>
+              <p className="text-xs text-[var(--color-faint)] mt-4 text-center">اختر يومًا لعرض المواعيد المتاحة</p>
             )}
 
             <div className="flex gap-2 mt-5">
               <button
                 onClick={goBack}
-                className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold text-sm flex items-center justify-center gap-1 hover:border-gray-300 transition-all"
+                className="flex-1 py-3.5 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-muted)] font-bold text-sm flex items-center justify-center gap-1 hover:border-[var(--color-line-2)] transition-all"
               >
                 <ChevronRight size={15} /> رجوع
               </button>
               <button
                 disabled={!selectedDate || !selectedTime}
                 onClick={goNext}
-                className={`flex-1 py-3.5 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                className={`flex-1 py-3.5 rounded-[var(--radius-lg)] text-white font-bold text-sm flex items-center justify-center gap-2 transition-all ${
                   selectedDate && selectedTime
-                    ? "bg-[#1D4ED8] hover:bg-[#1E40AF] shadow-md"
-                    : "bg-gray-300 cursor-not-allowed"
+                    ? "bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)]"
+                    : "bg-[var(--color-surface-3)] text-[var(--color-faint)] cursor-not-allowed"
                 }`}
               >
                 التالي <span className="text-base leading-none">←</span>
@@ -705,7 +707,7 @@ export default function BookingWidget({
         {step === "details" && (
           <div>
             {/* Mini summary */}
-            <div className="rounded-2xl px-4 py-3 mb-5 space-y-1.5" style={{ background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.14)" }}>
+            <div className="rounded-[var(--radius-lg)] px-4 py-3 mb-5 space-y-1.5" style={{ background: "rgba(14,127,94,0.06)", border: "1px solid rgba(14,127,94,0.14)" }}>
               <SummaryRow label={businessType === "RESTAURANT" ? "الجلسة" : "الخدمة"} value={selectedService?.nameAr ?? ""} />
               {selectedStaff && <SummaryRow label="الحلاق"  value={selectedStaff.nameAr} />}
               {selectedTable && <SummaryRow label="الطاولة" value={selectedTable.name} />}
@@ -720,22 +722,22 @@ export default function BookingWidget({
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                  الاسم الكامل <span className="text-red-400">*</span>
+                <label className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5">
+                  الاسم الكامل <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <input
                   type="text"
                   placeholder="محمد أحمد"
                   value={name}
                   onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: undefined })); }}
-                  className={`w-full rounded-xl border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.name ? "border-red-400" : "border-gray-200 focus:border-[#1D4ED8]"}`}
+                  className={`w-full rounded-[var(--radius-md)] border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.name ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
                 />
-                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+                {errors.name && <p className="field-error">{errors.name}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                  رقم الهاتف <span className="text-red-400">*</span>
+                <label className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5">
+                  رقم الهاتف <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <input
                   type="tel"
@@ -743,14 +745,14 @@ export default function BookingWidget({
                   value={phone}
                   dir="ltr"
                   onChange={(e) => { setPhone(e.target.value); setErrors((p) => ({ ...p, phone: undefined })); }}
-                  className={`w-full rounded-xl border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.phone ? "border-red-400" : "border-gray-200 focus:border-[#1D4ED8]"}`}
+                  className={`w-full rounded-[var(--radius-md)] border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.phone ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
                 />
-                {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                {errors.phone && <p className="field-error">{errors.phone}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                  البريد الإلكتروني <span className="text-gray-400 font-normal">(اختياري)</span>
+                <label className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5">
+                  البريد الإلكتروني <span className="text-[var(--color-faint)] font-normal">(اختياري)</span>
                 </label>
                 <input
                   type="email"
@@ -758,27 +760,27 @@ export default function BookingWidget({
                   value={email}
                   dir="ltr"
                   onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); }}
-                  className={`w-full rounded-xl border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.email ? "border-red-400" : "border-gray-200 focus:border-[#1D4ED8]"}`}
+                  className={`w-full rounded-[var(--radius-md)] border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.email ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
                 />
-                {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                {errors.email && <p className="field-error">{errors.email}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                  ملاحظات <span className="text-gray-400 font-normal">(اختياري)</span>
+                <label className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5">
+                  ملاحظات <span className="text-[var(--color-faint)] font-normal">(اختياري)</span>
                 </label>
                 <textarea
                   placeholder="أي معلومات إضافية…"
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded-xl border-2 border-gray-200 px-3.5 py-2.5 text-sm outline-none focus:border-[#1D4ED8] transition-all resize-none"
+                  className="w-full rounded-[var(--radius-md)] border-2 border-[var(--color-line-2)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-jade)] transition-all resize-none"
                 />
               </div>
             </div>
 
             {submitError && (
-              <div className="mt-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3 leading-relaxed">
+              <div className="mt-4 bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-[var(--radius-md)] px-4 py-3 leading-relaxed">
                 {submitError}
               </div>
             )}
@@ -787,14 +789,14 @@ export default function BookingWidget({
               <button
                 onClick={goBack}
                 disabled={submitting}
-                className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold text-sm flex items-center justify-center gap-1 hover:border-gray-300 transition-all disabled:opacity-50"
+                className="flex-1 py-3.5 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-muted)] font-bold text-sm flex items-center justify-center gap-1 hover:border-[var(--color-line-2)] transition-all disabled:opacity-50"
               >
                 <ChevronRight size={15} /> رجوع
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 py-3.5 rounded-2xl bg-[#1D4ED8] hover:bg-[#1E40AF] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
+                className="flex-1 py-3.5 rounded-[var(--radius-lg)] bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
               >
                 {submitting ? <><Loader2 size={14} className="animate-spin" /> جارٍ الحجز…</> : "تأكيد الحجز"}
               </button>
@@ -805,20 +807,20 @@ export default function BookingWidget({
         {/* ═══ STEP: done ═══ */}
         {step === "done" && confirmation && (
           <div className="text-center">
-            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mt-2 mb-4">
-              <CheckCircle size={40} className="text-green-500" />
+            <div className="w-20 h-20 bg-[var(--color-ok-soft)] rounded-full flex items-center justify-center mx-auto mt-2 mb-4">
+              <CheckCircle size={40} className="text-[var(--color-ok)]" />
             </div>
-            <h3 className="font-black text-xl text-gray-800 mb-1">تم حجز موعدك!</h3>
-            <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+            <h3 className="font-extrabold text-xl text-[var(--color-ink)] mb-1">تم حجز موعدك!</h3>
+            <p className="text-sm text-[var(--color-faint)] mb-6 leading-relaxed">
               يسعدنا استقبالك. سيتواصل معك الفريق قريبًا.
               <br />
               تم إرسال تفاصيل الحجز ورابط الإدارة إلى بريدك الإلكتروني.
             </p>
 
-            <div className="text-start rounded-2xl p-4 space-y-3 mb-5" style={{ background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.14)" }}>
-              <div className="flex items-center justify-between pb-3 border-b border-[rgba(59,130,246,0.14)]">
-                <p className="text-xs font-medium text-gray-400">رقم الحجز</p>
-                <p className="text-xs font-mono text-gray-600" dir="ltr">#{confirmation.id.slice(-8).toUpperCase()}</p>
+            <div className="text-start rounded-[var(--radius-lg)] p-4 space-y-3 mb-5" style={{ background: "rgba(14,127,94,0.06)", border: "1px solid rgba(14,127,94,0.14)" }}>
+              <div className="flex items-center justify-between pb-3 border-b border-[rgba(14,127,94,0.14)]">
+                <p className="text-xs font-medium text-[var(--color-faint)]">رقم الحجز</p>
+                <p className="text-xs font-mono text-[var(--color-muted)]" dir="ltr">#{confirmation.id.slice(-8).toUpperCase()}</p>
               </div>
               <SummaryRow label="العميل"  value={confirmation.customerName} />
               <SummaryRow label="الخدمة"  value={confirmation.serviceName} />
@@ -826,10 +828,10 @@ export default function BookingWidget({
               <SummaryRow label="الوقت"   value={`${confirmation.startTime} – ${confirmation.endTime}`} ltr />
               {selectedTable && <SummaryRow label="الطاولة" value={selectedTable.name} />}
               {selectedStaff && <SummaryRow label="الحلاق"  value={selectedStaff.nameAr} />}
-              <div className="pt-3 border-t border-[rgba(59,130,246,0.14)]">
+              <div className="pt-3 border-t border-[rgba(14,127,94,0.14)]">
                 <SummaryRow
                   label="الإجمالي"
-                  value={`${confirmation.totalPrice.toLocaleString("ar-EG")} ${confirmation.currency}`}
+                  value={`${confirmation.totalPrice.toLocaleString("ar-EG-u-nu-latn")} ${confirmation.currency}`}
                   bold
                 />
               </div>
@@ -840,7 +842,7 @@ export default function BookingWidget({
                 href={`/booking/${confirmation.accessToken}`}
                 target="_blank"
                 rel="noreferrer"
-                className="block w-full text-center py-3 rounded-2xl border-2 border-[#1D4ED8] text-[#1D4ED8] text-sm font-bold hover:bg-blue-50 transition-colors mb-3"
+                className="block w-full text-center py-3 rounded-[var(--radius-lg)] border-2 border-[var(--color-jade)] text-[var(--color-jade)] text-sm font-bold hover:bg-[var(--color-jade-soft)] transition-colors mb-3"
               >
                 عرض تفاصيل الحجز
               </a>
@@ -848,7 +850,7 @@ export default function BookingWidget({
 
             <button
               onClick={reset}
-              className="w-full py-3 rounded-2xl border-2 border-gray-200 text-gray-500 font-bold text-sm hover:border-gray-300 transition-all"
+              className="w-full py-3 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-subtle)] font-bold text-sm hover:border-[var(--color-line-2)] transition-all"
             >
               حجز موعد آخر
             </button>

@@ -44,7 +44,7 @@ export function formatBusinessNotification(d: BookingNotificationData): string {
     `✂️ الخدمة: ${d.serviceName}`,
     `📅 التاريخ: ${formatDateAr(d.date)}`,
     `⏰ الوقت: ${d.startTime} – ${d.endTime}`,
-    `💰 الإجمالي: ${d.totalPrice.toLocaleString("ar-EG")} ${d.currency}`,
+    `💰 الإجمالي: ${d.totalPrice.toLocaleString("ar-EG-u-nu-latn")} ${d.currency}`,
     ``,
     `⏳ الحجز قيد الانتظار — يمكنك تأكيده أو إلغائه من لوحة التحكم.`,
   ].join("\n");

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
@@ -23,6 +22,7 @@ import Logo from "@/components/shared/Logo";
 import type { Plan } from "@/lib/plans";
 import type { BusinessType } from "@/lib/business-type";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { cn } from "@/lib/utils";
 
 // ─── Nav config per business type ────────────────────────────────────────────
 
@@ -87,10 +87,10 @@ function getNavConfig(businessType: BusinessType, s: Record<string, string>, pen
 
 // ─── Plan badge config ────────────────────────────────────────────────────────
 
-const PLAN_STYLES: Record<Plan, { bg: string; text: string; label: string }> = {
-  FREE:    { bg: "#F1F5F9", text: "#64748B",  label: "مجاني"   },
-  PRO:     { bg: "#DBEAFE", text: "#1D4ED8",  label: "احترافي" },
-  PREMIUM: { bg: "#FEF3C7", text: "#92400E",  label: "مميز"    },
+const PLAN_STYLES: Record<Plan, { cls: string; label: string }> = {
+  FREE:    { cls: "bg-[var(--color-night-line)] text-[#BACBC4]", label: "مجاني"   },
+  PRO:     { cls: "bg-[var(--color-jade)] text-white",           label: "احترافي" },
+  PREMIUM: { cls: "bg-[var(--color-star)] text-[var(--color-night)]", label: "مميز" },
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -124,23 +124,10 @@ function NavItem({
 }) {
   if (soon) {
     return (
-      <div
-        className="flex items-center gap-3 px-3.5 rounded-xl cursor-not-allowed select-none"
-        style={{ paddingBlock: 10, color: "#CBD5E1" }}
-      >
-        <Icon size={16} strokeWidth={1.75} />
-        <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{label}</span>
-        <span
-          style={{
-            fontSize:     9,
-            fontWeight:   700,
-            padding:      "2px 7px",
-            borderRadius: 100,
-            background:   "#F1F5F9",
-            color:        "#94A3B8",
-            letterSpacing: "0.03em",
-          }}
-        >
+      <div className="flex min-h-11 cursor-not-allowed select-none items-center gap-3 rounded-[var(--radius-sm)] px-3 text-[0.84375rem] text-[var(--color-night-subtle)]/60">
+        <Icon size={17} strokeWidth={1.75} aria-hidden="true" />
+        <span className="flex-1">{label}</span>
+        <span className="rounded-full bg-[var(--color-night-line)] px-2 py-0.5 text-[0.625rem] font-bold text-[var(--color-night-subtle)]">
           {comingSoonLabel}
         </span>
       </div>
@@ -150,44 +137,22 @@ function NavItem({
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 px-3.5 rounded-xl transition-all duration-150 group"
-      style={{
-        paddingBlock: 10,
-        background:   active ? "#0F172A" : "transparent",
-        color:        active ? "#FFFFFF" : "#64748B",
-        boxShadow:    active ? "0 2px 8px rgba(15,23,42,0.16)" : "none",
-        fontSize:     13,
-        fontWeight:   active ? 600 : 500,
-      }}
-      onMouseEnter={(e) => {
-        if (!active) {
-          (e.currentTarget as HTMLAnchorElement).style.background = "#F1F5F9";
-          (e.currentTarget as HTMLAnchorElement).style.color      = "#0F172A";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-          (e.currentTarget as HTMLAnchorElement).style.color      = "#64748B";
-        }
-      }}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex min-h-11 items-center gap-3 rounded-[var(--radius-sm)] px-3 text-[0.84375rem] transition-colors",
+        active
+          ? "bg-[var(--color-jade)] font-bold text-white"
+          : "text-[#BACBC4] hover:bg-[var(--color-night-2)] hover:text-white",
+      )}
     >
-      <Icon
-        size={16}
-        strokeWidth={active ? 2.25 : 1.75}
-      />
-      <span style={{ flex: 1 }}>{label}</span>
+      <Icon size={17} strokeWidth={active ? 2.1 : 1.75} aria-hidden="true" />
+      <span className="flex-1 truncate">{label}</span>
       {badge != null && badge > 0 && (
         <span
-          style={{
-            fontSize:     11,
-            fontWeight:   700,
-            padding:      "1px 7px",
-            borderRadius: 100,
-            background:   active ? "rgba(255,255,255,0.18)" : "#DBEAFE",
-            color:        active ? "#FFFFFF" : "#1D4ED8",
-            border:       active ? "1px solid rgba(255,255,255,0.12)" : "none",
-          }}
+          className={cn(
+            "num rounded-full px-2 py-0.5 text-[0.6875rem] font-bold",
+            active ? "bg-white/22 text-white" : "bg-[var(--color-night-line)] text-white",
+          )}
         >
           {badge}
         </span>
@@ -199,7 +164,39 @@ function NavItem({
 // ─── Divider ──────────────────────────────────────────────────────────────────
 
 function NavDivider() {
-  return <div style={{ height: 1, background: "#F1F5F9", marginBlock: 6, marginInline: 4 }} />;
+  return <div aria-hidden="true" className="my-2 mx-1 h-px bg-[var(--color-night-line)]" />;
+}
+
+function NavGroup({
+  items,
+  pathname,
+  comingSoonLabel,
+}: {
+  items: ReturnType<typeof getNavConfig>["items"];
+  pathname: string;
+  comingSoonLabel: string;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      {items.map((item) => {
+        const active =
+          pathname === item.href ||
+          (item.href !== "/dashboard" && pathname.startsWith(item.href));
+        return (
+          <NavItem
+            key={item.href}
+            href={item.href}
+            Icon={item.icon}
+            label={item.label}
+            active={active}
+            badge={item.badge}
+            soon={item.soon}
+            comingSoonLabel={comingSoonLabel}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -218,172 +215,76 @@ export default function DashboardSidebar({
   const planStyle = PLAN_STYLES[plan];
   const navCfg    = getNavConfig(businessType as BusinessType, s, pendingCount);
 
-  function NavGroup({ items }: { items: ReturnType<typeof getNavConfig>["items"] }) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {items.map((item) => {
-          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-          return (
-            <NavItem
-              key={item.href}
-              href={item.href}
-              Icon={item.icon}
-              label={item.label}
-              active={active}
-              badge={item.badge}
-              soon={item.soon}
-              comingSoonLabel={s.comingSoon}
-            />
-          );
-        })}
-      </div>
-    );
-  }
-
   return (
-    <aside
-      className="hidden md:flex flex-col w-64 min-h-screen fixed top-0 bottom-0 start-0 z-40"
-      style={{
-        background:       "#FFFFFF",
-        borderInlineEnd:  "1.5px solid #F1F5F9",
-        boxShadow:        "4px 0 24px rgba(15,23,42,0.04)",
-      }}
-    >
-      {/* ── Logo ────────────────────────────────────────────── */}
-      <div
-        className="h-16 flex items-center px-5 shrink-0"
-        style={{ borderBottom: "1.5px solid #F1F5F9" }}
-      >
-        <Logo size="sm" />
+    <aside className="fixed inset-y-0 start-0 z-40 hidden w-64 flex-col bg-[var(--color-night)] md:flex">
+
+      {/* ── Logo ── */}
+      <div className="flex h-20 shrink-0 items-center px-5">
+        <Logo size="sm" variant="white" />
       </div>
 
-      {/* ── Business profile card ────────────────────────────── */}
-      <div className="px-3 pt-3 pb-2.5 shrink-0">
-        <div
-          className="flex items-center gap-3 rounded-2xl px-3.5 py-3"
-          style={{
-            background: "#F8FAFC",
-            border:     "1.5px solid #F1F5F9",
-          }}
-        >
-          {/* Avatar */}
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-black text-white shrink-0"
-            style={{ background: "linear-gradient(135deg, #0F172A 0%, #334155 100%)" }}
+      {/* ── Business switcher ── */}
+      <div className="shrink-0 px-4 pb-4">
+        <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-night-line)] bg-[var(--color-night-2)] px-3 py-2.5">
+          <span
+            aria-hidden="true"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-jade)] text-sm font-extrabold text-white"
           >
             {name[0]}
-          </div>
+          </span>
 
-          {/* Info */}
           <div className="min-w-0 flex-1">
-            <p
-              className="truncate"
-              style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", lineHeight: 1.3 }}
-            >
-              {name}
-            </p>
+            <p className="m-0 truncate text-[0.8125rem] font-bold leading-tight text-white">{name}</p>
             {cityName && (
-              <p
-                className="truncate"
-                style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}
-              >
+              <p className="m-0 mt-0.5 truncate text-[0.6875rem] text-[var(--color-night-subtle)]">
                 {cityName}
               </p>
             )}
           </div>
 
-          {/* Plan badge */}
-          <span
-            className="shrink-0"
-            style={{
-              fontSize:     10,
-              fontWeight:   700,
-              padding:      "3px 8px",
-              borderRadius: 100,
-              background:   planStyle.bg,
-              color:        planStyle.text,
-              letterSpacing: "0.01em",
-            }}
-          >
+          <span className={cn("shrink-0 rounded-full px-2 py-1 text-[0.625rem] font-bold", planStyle.cls)}>
             {planStyle.label}
           </span>
         </div>
       </div>
 
-      {/* ── Navigation ──────────────────────────────────────── */}
-      <nav
-        className="flex-1 overflow-y-auto"
-        style={{ padding: "6px 10px 12px" }}
-      >
-        <NavGroup items={navCfg.items} />
+      {/* ── Navigation ── */}
+      <nav className="flex-1 overflow-y-auto px-3 pb-3">
+        <NavGroup items={navCfg.items} pathname={pathname} comingSoonLabel={s.comingSoon} />
         <NavDivider />
-        <NavGroup items={navCfg.secondary} />
+        <NavGroup items={navCfg.secondary} pathname={pathname} comingSoonLabel={s.comingSoon} />
         <NavDivider />
-        <NavGroup items={navCfg.utility} />
+        <NavGroup items={navCfg.utility} pathname={pathname} comingSoonLabel={s.comingSoon} />
       </nav>
 
-      {/* ── Bottom area ─────────────────────────────────────── */}
-      <div
-        className="shrink-0 px-3 pb-4 pt-3"
-        style={{ borderTop: "1.5px solid #F1F5F9" }}
-      >
-        {/* Upgrade card — only for FREE plan */}
+      {/* ── Bottom ── */}
+      <div className="shrink-0 border-t border-[var(--color-night-line)] px-3 py-4">
         {plan === "FREE" && (
           <Link
             href="/dashboard/settings?tab=subscription"
-            className="flex items-start gap-3 rounded-2xl p-3.5 mb-3 transition-all duration-150 group"
-            style={{
-              background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
-              boxShadow:  "0 4px 16px rgba(15,23,42,0.2)",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 6px 22px rgba(15,23,42,0.32)";
-              (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-1px)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 4px 16px rgba(15,23,42,0.2)";
-              (e.currentTarget as HTMLAnchorElement).style.transform = "";
-            }}
+            className="mb-3 flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--color-night-line)] bg-[var(--color-night-2)] p-3.5 transition-colors hover:border-[var(--color-jade)]"
           >
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
-              <Image src="/icon-nobg.png" alt="موعد" width={28} height={28} className="object-contain" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF", marginBottom: 2 }}>
-                ترقية الخطة
-              </p>
-              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>
+            <span
+              aria-hidden="true"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-jade)]"
+            >
+              <ArrowUpRight size={16} strokeWidth={2.2} className="text-white" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[0.75rem] font-bold text-white">ترقية الخطة</span>
+              <span className="mt-1 block text-[0.6875rem] leading-relaxed text-[var(--color-night-subtle)]">
                 حجوزات غير محدودة ومميزات احترافية
-              </p>
-            </div>
-            <ArrowUpRight
-              size={14}
-              style={{ color: "rgba(255,255,255,0.4)", flexShrink: 0, marginTop: 2 }}
-            />
+              </span>
+            </span>
           </Link>
         )}
 
-        {/* Logout */}
         <button
+          type="button"
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="w-full flex items-center gap-3 px-3.5 rounded-xl transition-all duration-150"
-          style={{
-            paddingBlock: 10,
-            color:        "#94A3B8",
-            background:   "transparent",
-            fontSize:     13,
-            fontWeight:   500,
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "#FEF2F2";
-            (e.currentTarget as HTMLButtonElement).style.color      = "#EF4444";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-            (e.currentTarget as HTMLButtonElement).style.color      = "#94A3B8";
-          }}
+          className="flex min-h-11 w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 text-[0.84375rem] text-[var(--color-night-subtle)] transition-colors hover:bg-[var(--color-night-2)] hover:text-[#E0705E]"
         >
-          <LogOut size={15} strokeWidth={1.75} />
+          <LogOut size={16} strokeWidth={1.75} aria-hidden="true" />
           {s.signOut}
         </button>
       </div>

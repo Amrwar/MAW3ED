@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCategories, getCities } from "@/lib/data";
 import SettingsClient from "./_components/SettingsClient";
 import { getEffectivePlan, type Plan, type SubscriptionStatus } from "@/lib/plans";
+import { daysUntil } from "@/lib/fmt";
 
 export const metadata: Metadata = { title: "الإعدادات | موعد" };
 
@@ -66,6 +67,11 @@ export default async function SettingsPage() {
     currency: s.currency,
   }));
 
+  // One clock read per request. This is a server component, so there is
+  // no re-render for the value to drift across.
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now();
+
   const effectivePlan = getEffectivePlan(
     business.plan as Plan,
     business.subscriptionStatus as SubscriptionStatus,
@@ -73,7 +79,7 @@ export default async function SettingsPage() {
   );
 
   const daysUntilExpiry = business.currentPeriodEnd
-    ? Math.ceil((business.currentPeriodEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    ? daysUntil(business.currentPeriodEnd, now)
     : null;
 
   return (

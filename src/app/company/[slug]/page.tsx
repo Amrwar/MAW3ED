@@ -183,53 +183,39 @@ export default async function CompanyPage({ params }: Params) {
       />
 
       {/* ── Sticky top navbar ── */}
-      <header
-        className="sticky top-0 z-50 border-b"
-        style={{
-          background:   "rgba(255,255,255,0.97)",
-          backdropFilter: "blur(16px)",
-          borderColor:  "#E2E8F0",
-          boxShadow:    "0 1px 8px rgba(15,23,42,0.06)",
-        }}
-      >
-        <div className="container-app h-16 flex items-center justify-between gap-4">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-2 min-w-0">
-            <Link href="/" className="shrink-0 hover:opacity-80 transition-opacity">
+      <header className="sticky top-0 z-50 border-b border-[var(--color-line)] bg-[var(--color-ground)]/95 backdrop-blur-md">
+        <div className="container-app flex h-16 items-center justify-between gap-5">
+          <nav aria-label="مسار التصفح" className="flex min-w-0 items-center gap-2.5">
+            <Link href="/" className="shrink-0">
               <Logo size="sm" />
             </Link>
-            <ChevronRight size={14} className="text-[#CBD5E1] shrink-0" style={{ transform: "scaleX(-1)" }} />
+            <ChevronRight
+              size={14}
+              aria-hidden="true"
+              className="shrink-0 text-[var(--color-faint)]"
+              style={{ transform: "scaleX(-1)" }}
+            />
             <span
-              className="text-sm font-semibold text-[#0F172A] truncate max-w-[180px] md:max-w-xs"
+              className="truncate text-sm font-bold text-[var(--color-ink)] max-w-[180px] md:max-w-xs"
               title={business.nameAr}
             >
               {business.nameAr}
             </span>
-          </div>
+          </nav>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            <button
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold text-[#475569] border border-[#E2E8F0] bg-white hover:border-[#BFDBFE] hover:text-[#1D4ED8] transition-all duration-200"
-            >
-              <Share2 size={14} />
+          <div className="flex shrink-0 items-center gap-2.5">
+            <button type="button" className="btn btn-outline btn-sm hidden sm:inline-flex">
+              <Share2 size={14} strokeWidth={1.8} aria-hidden="true" />
               مشاركة
             </button>
-            <a
-              href="#booking"
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all duration-200"
-              style={{
-                background:  "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-                boxShadow:   "0 2px 12px rgba(59,130,246,0.35)",
-              }}
-            >
+            <a href="#booking" className="btn btn-primary btn-sm btn-pill">
               احجز الآن
             </a>
           </div>
         </div>
       </header>
 
-      <main style={{ background: "#F8FAFC" }}>
+      <main className="bg-[var(--color-ground)]">
         <CompanyHero business={business} />
         <BusinessInfoRow business={business} />
         <CompanyContent
@@ -252,32 +238,17 @@ export default async function CompanyPage({ params }: Params) {
       </main>
 
       {/* ── Mobile sticky bottom CTA ── */}
-      <div
-        className="fixed bottom-0 inset-x-0 z-50 lg:hidden"
-        style={{
-          background:  "rgba(255,255,255,0.98)",
-          backdropFilter: "blur(16px)",
-          borderTop:   "1px solid #E2E8F0",
-          boxShadow:   "0 -4px 24px rgba(15,23,42,0.08)",
-        }}
-      >
-        <div className="container-app py-3 flex items-center gap-3">
-          {minPrice !== null && (
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-[#94A3B8] leading-none mb-1">يبدأ من</p>
-              <p className="text-lg font-black text-[#0F172A] leading-none">
-                {minPrice.toLocaleString("ar-EG")} ج.م
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-line)] bg-[var(--color-surface)]/98 backdrop-blur-md lg:hidden">
+        <div className="container-app flex items-center gap-4 py-3">
+          {!!minPrice && (
+            <div className="min-w-0 flex-1">
+              <p className="m-0 text-xs leading-none text-[var(--color-subtle)]">يبدأ من</p>
+              <p className="num m-0 mt-1.5 text-lg font-extrabold leading-none text-[var(--color-ink)]">
+                {minPrice.toLocaleString("ar-EG-u-nu-latn")} ج.م
               </p>
             </div>
           )}
-          <a
-            href="#booking"
-            className="flex-1 flex items-center justify-center py-3 rounded-2xl text-sm font-bold text-white"
-            style={{
-              background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-              boxShadow:  "0 4px 16px rgba(59,130,246,0.35)",
-            }}
-          >
+          <a href="#booking" className="btn btn-primary flex-1">
             احجز موعدك الآن
           </a>
         </div>

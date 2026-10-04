@@ -51,7 +51,7 @@ export default function PublicPagePreview({ profile, services }: Props) {
             onClick={handleCopy}
             className={`btn gap-2 shrink-0 transition-all ${
               copied
-                ? "bg-green-50 text-green-600 border border-green-200"
+                ? "bg-[var(--color-ok-soft)] text-[var(--color-ok)] border border-[var(--color-ok-line)]"
                 : "btn-outline"
             }`}
           >
@@ -125,7 +125,7 @@ export default function PublicPagePreview({ profile, services }: Props) {
                       </p>
                     </div>
                     <span className="text-xs font-bold text-[var(--color-accent)]">
-                      {s.price.toLocaleString("ar-EG")} {s.currency}
+                      {s.price.toLocaleString("ar-EG-u-nu-latn")} {s.currency}
                     </span>
                   </div>
                 ))}

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { CalendarDays, Plus } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { CalendarDays, Plus, List } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import BookingFilters from "./BookingFilters";
-import TodaySchedule from "./TodaySchedule";
+import DayCalendar from "./DayCalendar";
 import BookingsTable from "./BookingsTable";
 import BookingDetailPanel from "./BookingDetailPanel";
 import ManualBookingPanel, { type ServiceOption } from "@/features/dashboard/ManualBookingPanel";
@@ -14,6 +14,7 @@ import {
   getTodayISO,
 } from "@/features/dashboard/bookings/types";
 import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
+import { cn } from "@/lib/utils";
 
 interface BookingsClientProps {
   initialTodayBookings: DashboardBooking[];
@@ -32,7 +33,7 @@ export default function BookingsClient({
 }: BookingsClientProps) {
   const { t, lang } = useLanguage();
   const b      = t.dashboard.bookings;
-  const locale = lang === "ar" ? "ar-EG" : "en-US";
+  const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
   // ── Data state ────────────────────────────────────────────
   const [bookings,        setBookings]        = useState<DashboardBooking[]>([]);
@@ -43,9 +44,15 @@ export default function BookingsClient({
   const [selectedBooking, setSelectedBooking] = useState<DashboardBooking | null>(null);
   const [newBookingOpen,  setNewBookingOpen]  = useState(false);
 
-  const [todayBookings, setTodayBookings] = useState<DashboardBooking[]>(
-    initialTodayBookings.sort((a, bk) => a.startTime.localeCompare(bk.startTime)),
+  // The calendar is the default surface: this is an appointments
+  // product, so the day view answers "what does today look like"
+  // before the table answers "find me one booking".
+  const [view,         setView]         = useState<"calendar" | "list">("calendar");
+  const [calendarDate, setCalendarDate] = useState(getTodayISO());
+  const [dayBookings,  setDayBookings]  = useState<DashboardBooking[]>(
+    () => [...initialTodayBookings].sort((a, bk) => a.startTime.localeCompare(bk.startTime)),
   );
+  const [dayLoading,   setDayLoading]   = useState(false);
 
   // ── Filter state ──────────────────────────────────────────
   const [statusFilter,  setStatusFilter]  = useState("ALL");
@@ -81,10 +88,34 @@ export default function BookingsClient({
 
   useEffect(() => { fetchBookings(1); }, [fetchBookings]);
 
+  const fetchDay = useCallback(async (iso: string) => {
+    setDayLoading(true);
+    try {
+      const params = new URLSearchParams({ dateFrom: iso, dateTo: iso, page: "1" });
+      const res  = await fetch(`/api/business/bookings?${params}`);
+      const data = await res.json();
+      setDayBookings(data.bookings ?? []);
+    } catch {
+      // keep the previous day's data on error
+    } finally {
+      setDayLoading(false);
+    }
+  }, []);
+
+  // Today's bookings arrive from the server, so the first calendar
+  // render needs no fetch; every other day does.
+  const loadedDay = useRef(getTodayISO());
+  useEffect(() => {
+    if (view !== "calendar") return;
+    if (loadedDay.current === calendarDate) return;
+    loadedDay.current = calendarDate;
+    fetchDay(calendarDate);
+  }, [view, calendarDate, fetchDay]);
+
   // ── Manual booking created ────────────────────────────────
   function handleNewBooking(booking: DashboardBooking) {
-    if (booking.date === getTodayISO()) {
-      setTodayBookings((prev) =>
+    if (booking.date === calendarDate) {
+      setDayBookings((prev) =>
         [...prev, booking].sort((a, bk) => a.startTime.localeCompare(bk.startTime)),
       );
     }
@@ -104,7 +135,7 @@ export default function BookingsClient({
 
     const update = (bk: DashboardBooking) => bk.id === id ? { ...bk, status } : bk;
     setBookings((prev)        => prev.map(update));
-    setTodayBookings((prev)   => prev.map(update));
+    setDayBookings((prev)     => prev.map(update));
     setSelectedBooking((prev) => (prev?.id === id ? { ...prev, status } : prev));
   }
 
@@ -114,13 +145,13 @@ export default function BookingsClient({
       const { id, status } = event;
       const s = status as DashboardBookingStatus;
       setBookings((prev)        => prev.map((bk) => bk.id === id ? { ...bk, status: s } : bk));
-      setTodayBookings((prev)   => prev.map((bk) => bk.id === id ? { ...bk, status: s } : bk));
+      setDayBookings((prev)     => prev.map((bk) => bk.id === id ? { ...bk, status: s } : bk));
       setSelectedBooking((prev) => prev?.id === id ? { ...prev, status: s } : prev);
     } else {
       fetchBookings(page);
       const bk = event.booking;
-      if (bk.date === getTodayISO() && bk.status !== "CANCELLED") {
-        setTodayBookings((prev) => {
+      if (bk.date === calendarDate && bk.status !== "CANCELLED") {
+        setDayBookings((prev) => {
           if (prev.some((x) => x.id === bk.id)) return prev;
           return [...prev, bk].sort((a, x) => a.startTime.localeCompare(x.startTime));
         });
@@ -128,100 +159,107 @@ export default function BookingsClient({
     }
   });
 
-  const todayISO = getTodayISO();
-  const activeTodayBookings = todayBookings.filter((bk) => bk.status !== "CANCELLED");
-  const showTodaySchedule   = (!dateFrom && !dateTo) || (dateFrom <= todayISO && (!dateTo || dateTo >= todayISO));
-
   const todayLabel = new Date().toLocaleDateString(locale, {
     weekday: "long", month: "long", day: "numeric",
   });
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5">
 
-      {/* ── Premium page header ── */}
-      <div
-        className="rounded-2xl border bg-white px-6 py-5"
-        style={{ borderColor: "#E2E8F0", boxShadow: "0 1px 8px rgba(15,23,42,0.05)" }}
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1
-              className="font-black text-[#0F172A] leading-tight"
-              style={{ fontSize: 22, letterSpacing: "-0.02em" }}
-            >
-              {b.title}
-            </h1>
-            <p className="text-sm text-[#94A3B8] mt-1">
-              إدارة ومتابعة جميع الحجوزات ·{" "}
-              <span className="font-semibold text-[#475569]">
-                {total.toLocaleString(locale)} {b.count}
-              </span>
-            </p>
-          </div>
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl"
-              style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#475569" }}
-            >
-              <CalendarDays size={13} strokeWidth={1.75} style={{ color: "#3B82F6" }} />
-              {todayLabel}
-            </span>
+      {/* ── Page header ── */}
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div className="min-w-0">
+          <h1 className="m-0 text-[1.75rem] font-light tracking-tight text-[var(--color-ink)]">
+            {b.title}
+          </h1>
+          <p className="m-0 mt-2 text-[0.84375rem] text-[var(--color-subtle)]">
+            <span className="num font-bold text-[var(--color-ink)]">
+              {total.toLocaleString(locale)}
+            </span>{" "}
+            {b.count} · {todayLabel}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-3">
+          <div
+            role="tablist"
+            aria-label={b.title}
+            className="flex gap-1 rounded-full bg-[var(--color-surface-3)] p-1"
+          >
             <button
-              onClick={() => setNewBookingOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200"
-              style={{
-                background: "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)",
-                boxShadow:  "0 4px 14px rgba(59,130,246,0.28)",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.06)";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 20px rgba(59,130,246,0.38)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.filter = "";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 14px rgba(59,130,246,0.28)";
-              }}
+              type="button"
+              role="tab"
+              aria-selected={view === "calendar"}
+              onClick={() => setView("calendar")}
+              className={cn(
+                "flex h-9 items-center gap-2 rounded-full px-4 text-[0.8125rem] transition-colors",
+                view === "calendar"
+                  ? "bg-[var(--color-surface)] font-bold text-[var(--color-ink)] shadow-[0_1px_2px_rgb(17_32_28/0.08)]"
+                  : "text-[var(--color-muted)]",
+              )}
             >
-              <Plus size={15} strokeWidth={2.5} />
-              {b.newBtn}
+              <CalendarDays size={15} strokeWidth={1.8} aria-hidden="true" />
+              {lang === "ar" ? "الجدول" : "Calendar"}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === "list"}
+              onClick={() => setView("list")}
+              className={cn(
+                "flex h-9 items-center gap-2 rounded-full px-4 text-[0.8125rem] transition-colors",
+                view === "list"
+                  ? "bg-[var(--color-surface)] font-bold text-[var(--color-ink)] shadow-[0_1px_2px_rgb(17_32_28/0.08)]"
+                  : "text-[var(--color-muted)]",
+              )}
+            >
+              <List size={15} strokeWidth={1.8} aria-hidden="true" />
+              {lang === "ar" ? "قائمة" : "List"}
             </button>
           </div>
+
+          <button type="button" onClick={() => setNewBookingOpen(true)} className="btn btn-primary">
+            <Plus size={16} strokeWidth={2.4} aria-hidden="true" />
+            {b.newBtn}
+          </button>
         </div>
       </div>
 
-      {/* ── Filters card ── */}
-      <BookingFilters
-        statusFilter={statusFilter}    onStatusChange={setStatusFilter}
-        search={search}                onSearchChange={setSearch}
-        dateFrom={dateFrom}            onDateFromChange={setDateFrom}
-        dateTo={dateTo}                onDateToChange={setDateTo}
-        serviceFilter={serviceFilter}  onServiceChange={setServiceFilter}
-        services={services}
-        total={total}
-      />
-
-      {/* ── Today's schedule ── */}
-      {showTodaySchedule && activeTodayBookings.length > 0 && (
-        <TodaySchedule
-          bookings={activeTodayBookings}
+      {view === "calendar" ? (
+        <DayCalendar
+          date={calendarDate}
+          bookings={dayBookings}
+          loading={dayLoading}
+          isToday={calendarDate === getTodayISO()}
+          onDateChange={setCalendarDate}
           onSelect={setSelectedBooking}
           onNewBooking={() => setNewBookingOpen(true)}
         />
-      )}
+      ) : (
+        <>
+          <BookingFilters
+            statusFilter={statusFilter}    onStatusChange={setStatusFilter}
+            search={search}                onSearchChange={setSearch}
+            dateFrom={dateFrom}            onDateFromChange={setDateFrom}
+            dateTo={dateTo}                onDateToChange={setDateTo}
+            serviceFilter={serviceFilter}  onServiceChange={setServiceFilter}
+            services={services}
+            total={total}
+          />
 
-      {/* ── Bookings table ── */}
-      <BookingsTable
-        bookings={bookings}
-        loading={loading}
-        selected={selectedBooking?.id ?? null}
-        onSelect={setSelectedBooking}
-        onStatusChange={handleStatusChange}
-        page={page}
-        totalPages={totalPages}
-        total={total}
-        onPageChange={(p) => fetchBookings(p)}
-      />
+          <BookingsTable
+            bookings={bookings}
+            loading={loading}
+            selected={selectedBooking?.id ?? null}
+            onSelect={setSelectedBooking}
+            onStatusChange={handleStatusChange}
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            onPageChange={(p) => fetchBookings(p)}
+          />
+        </>
+      )}
 
       {/* ── Detail panel ── */}
       {selectedBooking && (

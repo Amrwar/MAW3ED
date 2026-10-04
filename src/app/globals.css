@@ -1,66 +1,128 @@
-/* ─── Brand Fonts ─────────────────────────────────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap");
+/* ═══════════════════════════════════════════════════════════
+   MAW3ED — "Nasma" design system
+   Premium marketplace treatment: warm off-white ground, jade
+   accent, deep green-black ink, editorial Arabic typography.
+
+   Every colour, radius and shadow in the app comes from here.
+   Nothing should hardcode a hex value in a component again.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── Fonts ──────────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&family=Instrument+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300&display=swap");
 
 @import "tailwindcss";
 
-/* ─── Design Tokens ──────────────────────────────────────── */
+/* ─── Design tokens ──────────────────────────────────────── */
 @theme inline {
-  /* Colors */
-  --color-brand:           #0F172A;
-  --color-brand-light:     #1E293B;
-  --color-brand-soft:      #334155;
-  --color-brand-gray:      #64748B;
-  --color-accent:          #3B82F6;
-  --color-accent-hover:    #2563EB;
-  --color-accent-light:    #DBEAFE;
 
-  --color-primary:         #0F172A;
-  --color-primary-hover:   #1E293B;
+  /* Ground & surfaces ---------------------------------- */
+  --color-ground:          #FAFAF7;   /* page background        */
+  --color-surface:         #FFFFFF;   /* cards, sheets          */
+  --color-surface-2:       #F4F5F1;   /* dashboard canvas       */
+  --color-surface-3:       #EFF1EC;   /* inset wells, tracks    */
 
-  --color-surface:         #FFFFFF;
-  --color-surface-2:       #F8FAFC;
-  --color-surface-3:       #F1F5F9;
+  /* Ink ------------------------------------------------ */
+  --color-ink:             #11201C;   /* headings, primary text */
+  --color-ink-2:           #2C3B36;   /* body on light surfaces */
+  --color-muted:           #566761;   /* secondary text         */
+  --color-subtle:          #8B968F;   /* captions, meta         */
+  --color-faint:           #B6BEB9;   /* disabled, placeholders */
+  --color-inverse:         #FFFFFF;   /* text on dark           */
 
-  --color-border:          #E2E8F0;
-  --color-border-2:        #CBD5E1;
+  /* Lines ---------------------------------------------- */
+  --color-line:            #E7E8E2;
+  --color-line-2:          #D8DCD6;
 
-  --color-text-primary:    #0F172A;
-  --color-text-secondary:  #475569;
-  --color-text-muted:      #94A3B8;
+  /* Jade — the single brand accent ---------------------- */
+  --color-jade:            #0E7F5E;
+  --color-jade-hover:      #0A5F47;
+  --color-jade-soft:       #E9F2EE;
+  --color-jade-line:       #CFE3DB;
+  --color-jade-tint:       #F4F9F7;
+
+  /* Dark band (footer, CTA, sidebar) ------------------- */
+  --color-night:           #11201C;
+  --color-night-2:         #19302A;
+  --color-night-line:      #27403A;
+  --color-night-text:      #A9BAB3;
+  --color-night-subtle:    #7F9C92;
+
+  /* Status — independent of the brand hue -------------- */
+  --color-ok:              #0A5F47;
+  --color-ok-soft:         #E9F2EE;
+  --color-ok-line:         #CFE3DB;
+
+  --color-warn:            #8A6514;
+  --color-warn-soft:       #FDF3E0;
+  --color-warn-line:       #F0E3C6;
+
+  --color-info:            #1B4E7A;
+  --color-info-soft:       #E6EFF7;
+  --color-info-line:       #CFDEEC;
+
+  --color-danger:          #9E3B2E;
+  --color-danger-soft:     #FBEDEA;
+  --color-danger-line:     #E8D5D1;
+
+  --color-star:            #D9A441;
+
+  /* ── Legacy aliases ──────────────────────────────────
+     The old token names remain so every component that
+     already reads them picks up the new palette for free.
+     New code should use the Nasma names above.          */
+  --color-brand:           #11201C;
+  --color-brand-light:     #19302A;
+  --color-brand-soft:      #2C3B36;
+  --color-brand-gray:      #566761;
+  --color-accent:          #0E7F5E;
+  --color-accent-hover:    #0A5F47;
+  --color-accent-light:    #E9F2EE;
+  --color-primary:         #11201C;
+  --color-primary-hover:   #19302A;
+  --color-border:          #E7E8E2;
+  --color-border-2:        #D8DCD6;
+  --color-text-primary:    #11201C;
+  --color-text-secondary:  #566761;
+  --color-text-muted:      #8B968F;
   --color-text-inverse:    #FFFFFF;
+  --color-success:         #0A5F47;
+  --color-success-light:   #E9F2EE;
+  --color-warning:         #8A6514;
+  --color-warning-light:   #FDF3E0;
 
-  --color-success:         #10B981;
-  --color-success-light:   #ECFDF5;
-  --color-warning:         #F59E0B;
-  --color-warning-light:   #FFFBEB;
-
-  /* Typography */
-  --font-arabic:   "Cairo", "Segoe UI", sans-serif;
-  --font-latin:    "Inter", "Helvetica Neue", sans-serif;
+  /* Typography ----------------------------------------- */
+  --font-arabic:   "Almarai", "Segoe UI", system-ui, sans-serif;
+  --font-latin:    "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-display:  "Newsreader", Georgia, serif;
   --font-sans:     var(--font-arabic);
 
-  /* Spacing scale */
+  /* Radii ---------------------------------------------- */
+  --radius-xs:    0.375rem;  /*  6px  chips, inline tags   */
+  --radius-sm:    0.5rem;    /*  8px  small controls       */
+  --radius-md:    0.8125rem; /* 13px  buttons, inputs      */
+  --radius-lg:    1.125rem;  /* 18px  cards                */
+  --radius-xl:    1.5rem;    /* 24px  panels, sheets       */
+  --radius-2xl:   1.75rem;   /* 28px  hero blocks          */
+  --radius-full:  9999px;
+
+  /* Elevation ------------------------------------------ */
+  --shadow-raised: 0 1px 2px rgb(17 32 28 / 0.04), 0 10px 24px -18px rgb(17 32 28 / 0.40);
+  --shadow-float:  0 2px 4px rgb(17 32 28 / 0.06), 0 28px 56px -28px rgb(17 32 28 / 0.50);
+  --shadow-sheet:  0 -8px 30px -14px rgb(17 32 28 / 0.30);
+  --shadow-jade:   0 1px 2px rgb(10 95 71 / 0.20), 0 10px 22px -14px rgb(10 95 71 / 0.80);
+
+  /* legacy shadow aliases */
+  --shadow-card:        0 1px 2px rgb(17 32 28 / 0.04);
+  --shadow-card-hover:  0 1px 2px rgb(17 32 28 / 0.04), 0 10px 24px -18px rgb(17 32 28 / 0.40);
+  --shadow-dropdown:    0 2px 4px rgb(17 32 28 / 0.06), 0 28px 56px -28px rgb(17 32 28 / 0.50);
+  --shadow-modal:       0 4px 10px rgb(17 32 28 / 0.10), 0 32px 60px -34px rgb(17 32 28 / 0.75);
+
+  /* Layout --------------------------------------------- */
   --spacing-section: 5rem;
-
-  /* Border radius */
-  --radius-sm:   0.375rem;
-  --radius-md:   0.75rem;
-  --radius-lg:   1rem;
-  --radius-xl:   1.5rem;
-  --radius-2xl:  2rem;
-  --radius-full: 9999px;
-
-  /* Shadows */
-  --shadow-card:     0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-  --shadow-card-hover: 0 4px 16px 0 rgb(0 0 0 / 0.10), 0 2px 6px -1px rgb(0 0 0 / 0.06);
-  --shadow-dropdown:  0 10px 40px -4px rgb(0 0 0 / 0.12);
-  --shadow-modal:     0 20px 60px -10px rgb(0 0 0 / 0.18);
 }
 
-/* ─── Global Resets ──────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+/* ─── Reset & base ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
 
 html {
   scroll-behavior: smooth;
@@ -70,300 +132,454 @@ html {
 
 body {
   font-family: var(--font-arabic);
-  background-color: var(--color-surface);
-  color: var(--color-text-primary);
-  line-height: 1.65;
+  background-color: var(--color-ground);
+  color: var(--color-ink);
+  line-height: 1.8;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
 }
 
-/* ─── RTL Utilities ──────────────────────────────────────── */
-[dir="rtl"] {
-  text-align: right;
+/* Arabic needs more vertical room than Latin; headings pull it
+   back in so large type doesn't drift apart. */
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
-/* ─── Scrollbar Styling ──────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Latin runs inside Arabic copy (names, URLs, codes) */
+:lang(en) { font-family: var(--font-latin); }
+
+[dir="rtl"] { text-align: right; }
+
+/* Numerals, times, prices and codes always read left-to-right
+   even inside an RTL paragraph. */
+.num {
+  direction: ltr;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
 }
-::-webkit-scrollbar-track {
-  background: var(--color-surface-2);
+
+.font-display { font-family: var(--font-display); }
+.font-latin   { font-family: var(--font-latin); }
+
+/* ─── Focus ──────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-jade);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
+
+/* ─── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-2);
+  background: var(--color-line-2);
   border-radius: var(--radius-full);
+  border: 3px solid var(--color-ground);
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
-}
+::-webkit-scrollbar-thumb:hover { background: var(--color-subtle); }
 
-/* ─── Reusable Layout Classes ────────────────────────────── */
+/* ─── Layout helpers ─────────────────────────────────────── */
 .container-app {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1240px;
   margin-inline: auto;
   padding-inline: 1.25rem;
 }
+@media (min-width: 768px)  { .container-app { padding-inline: 2rem; } }
+@media (min-width: 1280px) { .container-app { padding-inline: 2.5rem; } }
 
-@media (min-width: 768px) {
-  .container-app {
-    padding-inline: 2rem;
-  }
-}
+.section-padding { padding-block: var(--spacing-section); }
 
-@media (min-width: 1280px) {
-  .container-app {
-    padding-inline: 2.5rem;
-  }
-}
-
-.section-padding {
-  padding-block: var(--spacing-section);
-}
-
-/* ─── Card Styles ────────────────────────────────────────── */
+/* ─── Card ───────────────────────────────────────────────── */
 .card {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
-
-.card:hover {
-  box-shadow: var(--shadow-card-hover);
-}
-
+.card:hover { box-shadow: var(--shadow-raised); }
 .card-hover:hover {
   transform: translateY(-2px);
+  border-color: var(--color-line-2);
 }
 
-/* ─── Button Base Styles ─────────────────────────────────── */
+/* ─── Buttons ────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   font-family: var(--font-arabic);
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.18s ease;
-  border: none;
+  border: 1.5px solid transparent;
   text-decoration: none;
   white-space: nowrap;
-  outline: none;
-}
-
-.btn:focus-visible {
-  ring: 2px solid var(--color-accent);
-  ring-offset: 2px;
+  transition: background 0.16s ease, border-color 0.16s ease,
+              color 0.16s ease, box-shadow 0.16s ease;
+  /* 48px keeps every control above the 44px touch minimum */
+  min-height: 3rem;
+  padding-inline: 1.625rem;
+  font-size: 0.9375rem;
 }
 
 .btn-primary {
-  background: var(--color-brand);
-  color: var(--color-text-inverse);
-  padding: 0.625rem 1.5rem;
-  font-size: 0.9375rem;
+  background: var(--color-jade);
+  color: var(--color-inverse);
+  box-shadow: var(--shadow-jade);
 }
+.btn-primary:hover:not(:disabled) { background: var(--color-jade-hover); }
 
-.btn-primary:hover {
-  background: var(--color-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
-}
-
+/* `accent` was the old orange/blue CTA — it is the same jade
+   button now, kept so existing call sites keep working. */
 .btn-accent {
-  background: var(--color-accent);
-  color: var(--color-text-inverse);
-  padding: 0.625rem 1.5rem;
-  font-size: 0.9375rem;
+  background: var(--color-jade);
+  color: var(--color-inverse);
+  box-shadow: var(--shadow-jade);
 }
+.btn-accent:hover:not(:disabled) { background: var(--color-jade-hover); }
 
-.btn-accent:hover {
-  background: var(--color-accent-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgb(59 130 246 / 0.35);
+.btn-night {
+  background: var(--color-night);
+  color: var(--color-inverse);
 }
+.btn-night:hover:not(:disabled) { background: var(--color-night-2); }
 
 .btn-outline {
-  background: transparent;
-  color: var(--color-text-primary);
-  border: 1.5px solid var(--color-border-2);
-  padding: 0.625rem 1.5rem;
-  font-size: 0.9375rem;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border-color: var(--color-line-2);
+}
+.btn-outline:hover:not(:disabled) {
+  border-color: var(--color-ink);
+  background: var(--color-surface);
 }
 
-.btn-outline:hover {
-  border-color: var(--color-text-primary);
-  background: var(--color-surface-2);
+.btn-jade-outline {
+  background: transparent;
+  color: var(--color-jade);
+  border-color: var(--color-jade);
+  border-radius: var(--radius-full);
+}
+.btn-jade-outline:hover:not(:disabled) {
+  background: var(--color-jade-soft);
 }
 
 .btn-ghost {
   background: transparent;
-  color: var(--color-text-secondary);
-  padding: 0.5rem 1rem;
+  color: var(--color-muted);
+  border-color: transparent;
+  padding-inline: 1rem;
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-surface-3);
+  color: var(--color-ink);
 }
 
-.btn-ghost:hover {
-  background: var(--color-surface-2);
-  color: var(--color-text-primary);
+.btn-danger {
+  background: var(--color-surface);
+  color: var(--color-danger);
+  border-color: var(--color-danger-line);
+}
+.btn-danger:hover:not(:disabled) { background: var(--color-danger-soft); }
+
+.btn-sm  { min-height: 2.5rem; padding-inline: 1.125rem; font-size: 0.8125rem; }
+.btn-lg  { min-height: 3.375rem; padding-inline: 2rem;   font-size: 1rem; }
+.btn-pill { border-radius: var(--radius-full); }
+
+.btn:disabled {
+  background: var(--color-surface-3);
+  color: var(--color-faint);
+  border-color: transparent;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
-.btn-sm {
-  padding: 0.375rem 1rem;
-  font-size: 0.875rem;
-}
-
-.btn-lg {
-  padding: 0.875rem 2rem;
-  font-size: 1.0625rem;
-}
-
-/* ─── Input Styles ───────────────────────────────────────── */
-.input {
+/* ─── Inputs ─────────────────────────────────────────────── */
+.input,
+.select,
+.textarea {
   width: 100%;
   font-family: var(--font-arabic);
   font-size: 0.9375rem;
-  padding: 0.625rem 1rem;
-  background: var(--color-surface);
-  border: 1.5px solid var(--color-border);
+  color: var(--color-ink);
+  background: var(--color-ground);
+  border: 1px solid var(--color-line-2);
   border-radius: var(--radius-md);
-  color: var(--color-text-primary);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   outline: none;
 }
 
-.input::placeholder {
-  color: var(--color-text-muted);
+.input, .select { height: 3rem; padding-inline: 0.9375rem; }
+.textarea       { padding: 0.8125rem 0.9375rem; line-height: 1.7; resize: vertical; }
+
+.input::placeholder,
+.textarea::placeholder { color: var(--color-faint); }
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--color-jade);
+  border-width: 1.5px;
+  background: var(--color-surface);
+  box-shadow: 0 0 0 3px rgb(14 127 94 / 0.10);
 }
 
-.input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.12);
+.input-error,
+.textarea-error {
+  border-color: var(--color-danger);
+  border-width: 1.5px;
+  background: var(--color-surface);
+}
+.input-error:focus,
+.textarea-error:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px rgb(158 59 46 / 0.10);
 }
 
-/* ─── Badge Styles ───────────────────────────────────────── */
+.field-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-bottom: 0.4375rem;
+}
+.field-hint  { margin-top: 0.4375rem; font-size: 0.75rem; color: var(--color-subtle); }
+.field-error { margin-top: 0.4375rem; font-size: 0.75rem; color: var(--color-danger); }
+
+/* ─── Badges & chips ─────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3125rem;
+  font-size: 0.71875rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.3125rem 0.6875rem;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.badge-default { background: var(--color-surface-2); color: var(--color-muted); }
+.badge-brand   { background: var(--color-night);     color: var(--color-inverse); }
+.badge-accent  { background: var(--color-jade-soft); color: var(--color-ok); }
+.badge-success { background: var(--color-ok-soft);   color: var(--color-ok); }
+.badge-warning { background: var(--color-warn-soft); color: var(--color-warn); }
+.badge-info    { background: var(--color-info-soft); color: var(--color-info); }
+.badge-danger  { background: var(--color-danger-soft); color: var(--color-danger); }
+.badge-outline { background: transparent; color: var(--color-muted); border: 1px solid var(--color-line-2); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
   font-size: 0.8125rem;
   font-weight: 500;
-  padding: 0.25rem 0.75rem;
+  padding: 0.5rem 0.9375rem;
   border-radius: var(--radius-full);
-  line-height: 1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line-2);
+  color: var(--color-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.chip:hover { border-color: var(--color-line-2); color: var(--color-ink); }
+
+.chip-active {
+  background: var(--color-night);
+  border-color: var(--color-night);
+  color: var(--color-inverse);
+  font-weight: 700;
+}
+.chip-jade {
+  background: var(--color-jade-soft);
+  border-color: var(--color-jade-line);
+  color: var(--color-ok);
+  font-weight: 700;
 }
 
-.badge-default {
-  background: var(--color-surface-3);
-  color: var(--color-text-secondary);
-}
-
-.badge-brand {
-  background: var(--color-brand);
-  color: var(--color-text-inverse);
-}
-
-.badge-accent {
-  background: var(--color-accent-light);
-  color: var(--color-accent);
-}
-
-.badge-success {
-  background: var(--color-success-light);
-  color: var(--color-success);
-}
-
-.badge-outline {
-  background: transparent;
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border-2);
-}
-
-/* ─── Section Title Styles ───────────────────────────────── */
-.section-eyebrow {
+/* ─── Time slots ─────────────────────────────────────────── */
+.slot {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding-block: 0.6875rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-line-2);
+  background: var(--color-surface);
+  color: var(--color-muted);
   font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  direction: ltr;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.slot:hover:not(:disabled) { border-color: var(--color-jade); color: var(--color-ink); }
+
+.slot-selected {
+  background: var(--color-jade);
+  border-color: var(--color-jade);
+  color: var(--color-inverse);
+  font-weight: 700;
+  box-shadow: var(--shadow-jade);
+}
+
+.slot:disabled,
+.slot-disabled {
+  border-style: dashed;
+  border-color: var(--color-line);
+  color: var(--color-faint);
+  background: transparent;
+  cursor: not-allowed;
+}
+
+/* ─── Section headings ───────────────────────────────────── */
+.section-eyebrow {
+  font-family: var(--font-latin);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-accent);
+  color: var(--color-subtle);
+}
+
+/* Arabic has no letter case, and tracking pulls the joined letterforms
+   apart — so the Arabic eyebrow is simply a small bold label. */
+[dir="rtl"] .section-eyebrow {
+  font-family: var(--font-arabic);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .section-title {
-  font-size: clamp(1.625rem, 3vw, 2.25rem);
-  font-weight: 800;
-  line-height: 1.25;
-  color: var(--color-text-primary);
+  font-size: clamp(1.75rem, 3.4vw, 2.5rem);
+  font-weight: 300;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
 }
 
 .section-subtitle {
   font-size: 1.0625rem;
-  color: var(--color-text-secondary);
-  line-height: 1.7;
-  max-width: 600px;
+  line-height: 1.75;
+  color: var(--color-muted);
+  max-width: 52ch;
 }
 
-/* ─── Gradient Text ──────────────────────────────────────── */
-.gradient-text {
-  background: linear-gradient(135deg, #FFFFFF 0%, #93C5FD 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* Hero-scale display heading */
+.display-title {
+  font-size: clamp(2.5rem, 6vw, 4.625rem);
+  font-weight: 300;
+  line-height: 1.07;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
 }
 
+/* ─── Misc ───────────────────────────────────────────────── */
+.divider { height: 1px; background: var(--color-line); }
+
+/* Kept for call sites that still reference it — the Nasma
+   system has no gradient text, so this is a flat jade. */
+.gradient-text,
 .gradient-text-dark {
-  background: linear-gradient(135deg, #0F172A 0%, #3B82F6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-jade);
+  -webkit-text-fill-color: currentColor;
 }
 
-/* ─── Divider ────────────────────────────────────────────── */
-.divider {
-  height: 1px;
-  background: var(--color-border);
+/* Visually hidden but readable by screen readers */
+.sr-only-label {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Soft out-of-focus imagery used behind covers and category
+   tiles until a real photo is uploaded. */
+.photo-warm {
+  background:
+    radial-gradient(115% 85% at 22% 12%, rgb(255 252 246 / 0.60), transparent 58%),
+    radial-gradient(85% 70% at 82% 26%, rgb(226 201 172 / 0.90), transparent 62%),
+    radial-gradient(75% 65% at 55% 100%, rgb(40 30 22 / 0.45), transparent 72%),
+    linear-gradient(158deg, #D7C4A8, #B49C7E 46%, #6A5A48);
+}
+.photo-cool {
+  background:
+    radial-gradient(110% 80% at 26% 14%, rgb(255 255 255 / 0.70), transparent 56%),
+    radial-gradient(82% 70% at 80% 28%, rgb(176 214 201 / 0.90), transparent 62%),
+    radial-gradient(70% 70% at 48% 100%, rgb(8 48 38 / 0.42), transparent 72%),
+    linear-gradient(152deg, #CFE2DA, #86AFA1 50%, #2C4941);
+}
+.photo-green {
+  background:
+    radial-gradient(105% 80% at 30% 10%, rgb(244 248 245 / 0.55), transparent 55%),
+    radial-gradient(80% 70% at 78% 32%, rgb(150 178 160 / 0.80), transparent 60%),
+    radial-gradient(75% 70% at 52% 100%, rgb(12 34 27 / 0.52), transparent 70%),
+    linear-gradient(160deg, #B6C7B9, #728D7C 48%, #23382F);
+}
+.photo-stone {
+  background:
+    radial-gradient(110% 85% at 24% 12%, rgb(255 250 240 / 0.50), transparent 56%),
+    radial-gradient(85% 70% at 84% 28%, rgb(206 166 106 / 0.72), transparent 60%),
+    radial-gradient(70% 70% at 50% 100%, rgb(20 24 28 / 0.55), transparent 72%),
+    linear-gradient(155deg, #A9A396, #7E7A6E 48%, #2A2E31);
 }
 
 /* ─── Animations ─────────────────────────────────────────── */
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.5s ease forwards;
-}
+.animate-fade-in-up { animation: fadeInUp 0.5s ease forwards; }
 
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  50%      { opacity: 0.6; }
 }
-
-.animate-pulse-soft {
-  animation: pulse-soft 2s ease-in-out infinite;
-}
+.animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(10px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.animate-toast-in {
-  animation: toast-in 0.2s ease forwards;
-}
+.animate-toast-in { animation: toast-in 0.2s ease forwards; }
 
 @keyframes dropdown-in {
   from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  to   { opacity: 1; transform: translateY(0); }
 }
-.animate-dropdown-in {
-  animation: dropdown-in 0.15s ease forwards;
+.animate-dropdown-in { animation: dropdown-in 0.15s ease forwards; }
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-3) 25%,
+    var(--color-surface-2) 50%,
+    var(--color-surface-3) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
