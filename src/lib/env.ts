@@ -6,13 +6,14 @@ import { z } from "zod";
  * The app reads 22 environment variables across ~12 files, mostly as
  * `process.env.X ?? "some-fallback"`. That meant a missing or
  * misspelled variable surfaced as a confusing runtime failure deep in
- * a request — a booking that silently didn't send, a payment that
- * couldn't verify — rather than as a clear error at boot.
+ * a request rather than as a clear error.
  *
- * Required variables are checked eagerly. Optional integrations
- * (WhatsApp, Paymob, Cloudinary, Resend) are grouped, and each group
- * reports whether it is fully configured, so a half-configured
- * integration is caught instead of failing on first use.
+ * Validation is LAZY, and that is deliberate. Next's build imports
+ * every route module to collect page data, so validating at module
+ * scope made the production build depend on runtime secrets being
+ * present at build time — a missing AUTH_SECRET failed the build
+ * rather than the request. Nothing here throws until something
+ * actually reads a required value, which only happens at runtime.
  *
  * Server only. Never import this from a client component — it would
  * pull secrets into the browser bundle. Client code should read
@@ -68,39 +69,90 @@ const schema = required.merge(optional);
 
 export type Env = z.infer<typeof schema>;
 
-function parseEnv(): Env {
-  const result = schema.safeParse(process.env);
+let cached: Env | null = null;
 
+/**
+ * Validates and returns the environment. Throws on the first call if a
+ * required variable is missing, naming every problem at once.
+ */
+export function getEnv(): Env {
+  if (cached) return cached;
+
+  const result = schema.safeParse(process.env);
   if (!result.success) {
     const lines = result.error.issues
       .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
       .join("\n");
-    // Thrown at import time so a misconfigured deploy fails fast and
-    // loudly, rather than at the first request that happens to need it.
     throw new Error(`Invalid environment configuration:\n${lines}`);
   }
 
-  return result.data;
+  cached = result.data;
+  return cached;
 }
 
-export const env: Env = parseEnv();
+/**
+ * Reads like a plain object but validates on first property access, so
+ * importing this module is free and a build never touches secrets.
+ */
+export const env: Env = new Proxy({} as Env, {
+  get(_target, key: string) {
+    return getEnv()[key as keyof Env];
+  },
+  has(_target, key: string) {
+    return key in getEnv();
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getEnv());
+  },
+  getOwnPropertyDescriptor(_target, key) {
+    return { value: getEnv()[key as keyof Env], enumerable: true, configurable: true };
+  },
+});
+
+/**
+ * Explicit startup check. Call from somewhere that runs at request
+ * time if you want to fail loudly and early; nothing calls it during
+ * the build.
+ */
+export function assertEnv(): void {
+  getEnv();
+}
 
 /* ─── Integration readiness ──────────────────────────────── */
 
-/** True only when every variable the integration needs is present. */
-export const integrations = {
-  email: Boolean(env.RESEND_API_KEY && env.EMAIL_FROM),
-  payments: Boolean(
-    env.PAYMOB_API_KEY &&
-      env.PAYMOB_HMAC_SECRET &&
-      env.PAYMOB_IFRAME_ID &&
-      env.PAYMOB_INTEGRATION_ID,
-  ),
-  whatsapp: Boolean(env.WHATSAPP_ACCESS_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID),
-  uploads: Boolean(
-    env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET,
-  ),
-} as const;
+export interface Integrations {
+  email: boolean;
+  payments: boolean;
+  whatsapp: boolean;
+  uploads: boolean;
+}
+
+/**
+ * True only when every variable the integration needs is present, so a
+ * half-configured integration is caught before it fails on first use.
+ *
+ * Reads process.env directly rather than the validated object: whether
+ * an optional integration is wired is a question worth answering even
+ * when a required variable is missing.
+ */
+export function getIntegrations(): Integrations {
+  const has = (k: string) => Boolean(process.env[k]);
+  return {
+    email: has("RESEND_API_KEY") && has("EMAIL_FROM"),
+    payments:
+      has("PAYMOB_API_KEY") &&
+      has("PAYMOB_HMAC_SECRET") &&
+      has("PAYMOB_IFRAME_ID") &&
+      has("PAYMOB_INTEGRATION_ID"),
+    whatsapp: has("WHATSAPP_ACCESS_TOKEN") && has("WHATSAPP_PHONE_NUMBER_ID"),
+    uploads:
+      has("CLOUDINARY_CLOUD_NAME") &&
+      has("CLOUDINARY_API_KEY") &&
+      has("CLOUDINARY_API_SECRET"),
+  };
+}
+
+/* ─── Public origin ──────────────────────────────────────── */
 
 /**
  * The public origin, without a trailing slash.
@@ -108,13 +160,25 @@ export const integrations = {
  * Canonical URLs, the sitemap, robots.txt, JSON-LD, referral links and
  * password-reset emails all derive from this, so one resolution order
  * is defined here instead of each caller inventing its own fallback.
+ *
+ * Deliberately reads process.env directly and never validates: it is
+ * needed at build time to generate the sitemap and canonical tags, and
+ * must not drag secret validation into the build.
  */
-export const siteUrl: string = (
-  env.AUTH_URL ??
-  env.NEXTAUTH_URL ??
-  env.NEXT_PUBLIC_SITE_URL ??
-  "https://maw3ed.net"
-).replace(/\/+$/, "");
+export function getSiteUrl(): string {
+  const raw =
+    process.env.AUTH_URL ??
+    process.env.NEXTAUTH_URL ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "https://maw3ed.net";
+  return raw.replace(/\/+$/, "");
+}
 
-export const isProduction = env.NODE_ENV === "production";
-export const isTest = env.NODE_ENV === "test";
+/**
+ * Convenience binding for the common case. Evaluated at module load,
+ * which is safe because it touches no secrets.
+ */
+export const siteUrl: string = getSiteUrl();
+
+export const isProduction = process.env.NODE_ENV === "production";
+export const isTest = process.env.NODE_ENV === "test";
