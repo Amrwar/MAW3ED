@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 export type CustomerRow = {
   id:              string;
@@ -95,7 +96,7 @@ export async function GET(req: Request) {
     return ok({ customers: rows, total: rows.length });
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[customers GET]", e);
+    log.error("[customers GET]", e);
     return err("حدث خطأ", 500);
   }
 }

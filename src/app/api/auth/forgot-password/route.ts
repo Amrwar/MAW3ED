@@ -2,6 +2,8 @@ import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { sendPasswordResetEmail } from "@/lib/services/email";
+import { log } from "@/lib/logger";
+import { siteUrl } from "@/lib/env";
 
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -37,14 +39,14 @@ export async function POST(req: Request) {
       data: { email: normalised, token, expiresAt },
     });
 
-    const base     = (process.env.AUTH_URL ?? "https://maw3ed.net").replace(/\/$/, "");
+    const base     = siteUrl;
     const resetUrl = `${base}/reset-password?token=${token}`;
 
     await sendPasswordResetEmail(normalised, resetUrl);
 
     return ok({ sent: true });
   } catch (e) {
-    console.error("[forgot-password]", e);
+    log.error("[forgot-password]", e);
     return err("حدث خطأ، حاول مرة أخرى", 500);
   }
 }

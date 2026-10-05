@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { businessUpdateSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 /** GET /api/business — current user's business with relations */
 export async function GET() {
@@ -24,7 +25,7 @@ export async function GET() {
     return ok(full);
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[business GET]", e);
+    log.error("[business GET]", e);
     return err("حدث خطأ", 500);
   }
 }
@@ -57,7 +58,7 @@ export async function PUT(req: Request) {
     return ok(updated);
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[business PUT]", e);
+    log.error("[business PUT]", e);
     return err("حدث خطأ أثناء التحديث", 500);
   }
 }

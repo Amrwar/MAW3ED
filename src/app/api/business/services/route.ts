@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { serviceSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 /** GET /api/business/services */
 export async function GET() {
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
     return ok(service, 201);
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[services POST]", e);
+    log.error("[services POST]", e);
     return err("حدث خطأ أثناء إضافة الخدمة", 500);
   }
 }

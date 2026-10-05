@@ -3,6 +3,7 @@ import { sendCustomerReminderTemplate } from "@/lib/services/whatsapp";
 import { sendBookingReminderToCustomer, type BookingEmailData } from "@/lib/services/email";
 import type { BookingNotificationData } from "@/lib/services/whatsapp-messages";
 import { bookingPageUrl } from "@/lib/url";
+import { log } from "@/lib/logger";
 
 /**
  * GET /api/cron/reminders
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
   if (cronSecret) {
     const authHeader = req.headers.get("Authorization");
     if (authHeader !== `Bearer ${cronSecret}`) {
-      console.warn("[Reminders] Rejected unauthorized request");
+      log.warn("[Reminders] Rejected unauthorized request");
       return new Response("Unauthorized", { status: 401 });
     }
   }
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
   );
   const tomorrowLabel = tomorrowUTC.toISOString().split("T")[0];
 
-  console.log(`[Reminders] Running for date: ${tomorrowLabel}`);
+  log.info(`[Reminders] Running for date: ${tomorrowLabel}`);
 
   // ── Fetch unreminded confirmed bookings for tomorrow ──────────
   const bookings = await db.booking.findMany({
@@ -62,7 +63,7 @@ export async function GET(req: Request) {
     },
   });
 
-  console.log(`[Reminders] ${bookings.length} booking(s) to remind`);
+  log.info(`[Reminders] ${bookings.length} booking(s) to remind`);
 
   let sent   = 0;
   let failed = 0;
@@ -104,19 +105,19 @@ export async function GET(req: Request) {
         data:  { customerReminderSentAt: new Date() },
       });
 
-      console.log(
+      log.info(
         `[Reminders] ✓ ${booking.id} — ${booking.customerName} (${booking.customerPhone})`,
       );
       sent++;
     } catch (e) {
       // DB update failing is the main risk here — WhatsApp/email never throw.
       // Log and continue so one failure doesn't abort remaining reminders.
-      console.error(`[Reminders] ✗ Failed for booking ${booking.id}:`, e);
+      log.error(`[Reminders] ✗ Failed for booking ${booking.id}:`, e);
       failed++;
     }
   }
 
-  console.log(`[Reminders] Complete — sent: ${sent}, failed: ${failed}`);
+  log.info(`[Reminders] Complete — sent: ${sent}, failed: ${failed}`);
 
   return Response.json({
     ok:        true,

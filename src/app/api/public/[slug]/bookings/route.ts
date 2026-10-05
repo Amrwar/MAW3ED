@@ -16,6 +16,7 @@ import {
 } from "@/lib/services/email";
 import { createPaymentSession, calcDepositCents } from "@/lib/services/paymob";
 import { getEffectivePlan, getMonthlyBookingLimit, canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
+import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -183,7 +184,7 @@ export async function POST(req: Request, { params }: Params) {
           where: { id: booking.id },
           data:  { status: "FAILED_PAYMENT" },
         });
-        console.error("[booking POST] Paymob session failed:", paymobError);
+        log.error("[booking POST] Paymob session failed:", paymobError);
         return err("تعذّر بدء عملية الدفع، حاول مرة أخرى", 502);
       }
     }
@@ -238,7 +239,7 @@ export async function POST(req: Request, { params }: Params) {
       201,
     );
   } catch (e) {
-    console.error("[booking POST]", e);
+    log.error("[booking POST]", e);
     return err("حدث خطأ أثناء الحجز، حاول مرة أخرى", 500);
   }
 }

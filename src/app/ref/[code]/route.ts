@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { siteUrl } from "@/lib/env";
 
 export async function GET(
   _req: Request,
@@ -15,7 +16,7 @@ export async function GET(
   const { code } = await params;
   const upperCode = code.toUpperCase();
 
-  const base = process.env.NEXTAUTH_URL ?? "https://www.maw3ed.net";
+  const base = siteUrl;
 
   // Validate code exists
   const referrer = await db.business.findUnique({

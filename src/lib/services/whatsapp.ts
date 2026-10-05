@@ -33,6 +33,7 @@
  */
 
 import type { BookingNotificationData } from "./whatsapp-messages";
+import { log } from "@/lib/logger";
 
 // ─── Config ───────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ export async function sendWhatsAppTemplate({
   headerParams = [],
 }: WhatsAppTemplateSendOptions): Promise<void> {
   if (!TOKEN || !PHONE_ID) {
-    console.warn(
+    log.warn(
       "[WhatsApp] Template send disabled — set WHATSAPP_ACCESS_TOKEN and " +
       "WHATSAPP_PHONE_NUMBER_ID to enable notifications.",
     );
@@ -94,7 +95,7 @@ export async function sendWhatsAppTemplate({
 
   const phone = normalisePhone(to);
   if (!phone) {
-    console.warn("[WhatsApp] Skipping template — invalid phone number:", to);
+    log.warn("WhatsApp: skipping template, invalid phone number", { to });
     return;
   }
 
@@ -120,7 +121,7 @@ export async function sendWhatsAppTemplate({
 
   const url = `${BASE_URL}/${VERSION}/${PHONE_ID}/messages`;
 
-  console.log(
+  log.info(
     `[WhatsApp] Sending template "${templateName}" (${languageCode}) to ${phone}`,
   );
 
@@ -137,21 +138,18 @@ export async function sendWhatsAppTemplate({
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
       const msgId = (data as { messages?: { id: string }[] })?.messages?.[0]?.id ?? "unknown";
-      console.log(
+      log.info(
         `[WhatsApp] Template "${templateName}" sent to ${phone}. Message ID: ${msgId}`,
       );
     } else {
       const detail = await res.text().catch(() => "(no body)");
-      console.error(
+      log.error(
         `[WhatsApp] API error ${res.status} sending template "${templateName}" to ${phone}:`,
         detail,
       );
     }
   } catch (err) {
-    console.error(
-      `[WhatsApp] Network error sending template "${templateName}" to`,
-      phone, ":", err,
-    );
+    log.error("WhatsApp: network error sending template", err, { templateName, phone });
   }
 }
 
@@ -256,7 +254,7 @@ export async function sendCustomerReminderTemplate(
  */
 export async function sendWhatsAppMessage({ to, message }: WhatsAppTextPayload): Promise<void> {
   if (!TOKEN || !PHONE_ID) {
-    console.warn(
+    log.warn(
       "[WhatsApp] Freeform send disabled — set WHATSAPP_ACCESS_TOKEN and " +
       "WHATSAPP_PHONE_NUMBER_ID in your environment.",
     );
@@ -265,13 +263,13 @@ export async function sendWhatsAppMessage({ to, message }: WhatsAppTextPayload):
 
   const phone = normalisePhone(to);
   if (!phone) {
-    console.warn("[WhatsApp] Skipping freeform — invalid phone number:", to);
+    log.warn("WhatsApp: skipping freeform, invalid phone number", { to });
     return;
   }
 
   const url = `${BASE_URL}/${VERSION}/${PHONE_ID}/messages`;
 
-  console.log(`[WhatsApp] Sending freeform text to ${phone} (dev/test path)`);
+  log.info(`[WhatsApp] Sending freeform text to ${phone} (dev/test path)`);
 
   try {
     const res = await fetch(url, {
@@ -291,13 +289,13 @@ export async function sendWhatsAppMessage({ to, message }: WhatsAppTextPayload):
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
       const msgId = (data as { messages?: { id: string }[] })?.messages?.[0]?.id ?? "unknown";
-      console.log(`[WhatsApp] Freeform sent to ${phone}. Message ID: ${msgId}`);
+      log.info(`[WhatsApp] Freeform sent to ${phone}. Message ID: ${msgId}`);
     } else {
       const detail = await res.text().catch(() => "(no body)");
-      console.error(`[WhatsApp] API error ${res.status} (freeform) sending to ${phone}:`, detail);
+      log.error(`[WhatsApp] API error ${res.status} (freeform) sending to ${phone}:`, detail);
     }
   } catch (err) {
-    console.error("[WhatsApp] Network error (freeform) sending to", phone, ":", err);
+    log.error("WhatsApp: network error sending freeform message", err, { phone });
   }
 }
 

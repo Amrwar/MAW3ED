@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 export type RevenuePoint = { period: string; revenue: number; bookings: number };
 export type ServiceSlice  = { serviceName: string; bookings: number; revenue: number; color: string };
@@ -206,7 +207,7 @@ export async function GET(req: Request) {
     } satisfies AnalyticsPayload);
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[analytics GET]", e);
+    log.error("[analytics GET]", e);
     return err("حدث خطأ", 500);
   }
 }

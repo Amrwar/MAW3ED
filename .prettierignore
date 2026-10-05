@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+build
+coverage
+android
+ios
+public
+prisma/migrations
+package-lock.json
+tsconfig.tsbuildinfo
+*.png
+*.jpg
+*.svg
+*.ico

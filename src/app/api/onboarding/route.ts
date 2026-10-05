@@ -3,6 +3,7 @@ import { onboardingSchema } from "@/lib/validations";
 import { ok, err, requireSession } from "@/lib/api";
 import { cookies } from "next/headers";
 import crypto from "crypto";
+import { log } from "@/lib/logger";
 
 /** Generate a unique 8-char uppercase hex referral code. */
 async function generateReferralCode(): Promise<string> {
@@ -125,7 +126,7 @@ export async function POST(req: Request) {
 
     return ok({ business: { id: business.id, slug: business.slug } }, 201);
   } catch (e) {
-    console.error("[onboarding]", e);
+    log.error("[onboarding]", e);
     return err("حدث خطأ أثناء حفظ البيانات", 500);
   }
 }

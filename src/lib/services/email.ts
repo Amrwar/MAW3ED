@@ -18,6 +18,7 @@ import {
   subscriptionRenewalReminderHtml,
   subscriptionExpiredHtml,
 } from "./email-templates";
+import { log } from "@/lib/logger";
 
 const client  = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM    = process.env.EMAIL_FROM ?? "Maw3ed <noreply@maw3ed.net>";
@@ -33,7 +34,7 @@ export interface EmailPayload {
  */
 export async function sendEmail(payload: EmailPayload): Promise<void> {
   if (!client) {
-    console.warn("[Email] Disabled — set RESEND_API_KEY to enable.");
+    log.warn("[Email] Disabled — set RESEND_API_KEY to enable.");
     return;
   }
 
@@ -45,7 +46,7 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
   });
 
   if (error) {
-    console.error("[Email] Resend error:", error);
+    log.error("[Email] Resend error:", error);
   }
 }
 

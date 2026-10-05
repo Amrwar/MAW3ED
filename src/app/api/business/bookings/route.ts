@@ -5,6 +5,7 @@ import { ok, err, requireBusiness } from "@/lib/api";
 import { hasBookingConflict, timeToMinutes, minutesToTime } from "@/lib/bookings/overlap";
 import { sendNewBookingAlertToBusiness, type BookingEmailData } from "@/lib/services/email";
 import { getEffectivePlan, getMonthlyBookingLimit, type Plan, type SubscriptionStatus } from "@/lib/plans";
+import { log } from "@/lib/logger";
 
 /**
  * GET /api/business/bookings
@@ -103,7 +104,7 @@ export async function GET(req: Request) {
     return ok({ bookings: serialized, total, page, totalPages: Math.ceil(total / limit), limit });
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[bookings GET]", e);
+    log.error("[bookings GET]", e);
     return err("حدث خطأ", 500);
   }
 }
@@ -236,7 +237,7 @@ export async function POST(req: Request) {
     );
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[bookings POST]", e);
+    log.error("[bookings POST]", e);
     return err("حدث خطأ أثناء إنشاء الحجز", 500);
   }
 }

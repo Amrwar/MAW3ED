@@ -28,27 +28,38 @@ describe("cn", () => {
 });
 
 describe("formatPrice", () => {
-  it("defaults to Egyptian pounds", () => {
-    expect(formatPrice(100)).toContain("EGP");
+  // formatPrice is a deprecated wrapper pinned to Arabic. Arabic output
+  // carries the Arabic currency label; the ISO code is what the English
+  // path returns. See money() in lib/fmt.ts.
+  it("labels Egyptian pounds in Arabic", () => {
+    expect(formatPrice(100)).toBe("100 ج.م");
   });
 
   it("takes another currency", () => {
-    expect(formatPrice(100, "USD")).toContain("USD");
+    expect(formatPrice(100, "USD")).toBe("100 دولار");
+  });
+
+  it("falls back to the raw code for a currency it has no label for", () => {
+    expect(formatPrice(100, "GBP")).toBe("100 GBP");
   });
 
   it("puts the figure before the currency", () => {
-    const formatted = formatPrice(100);
-    expect(formatted.indexOf("EGP")).toBeGreaterThan(0);
+    expect(formatPrice(100).indexOf("100")).toBe(0);
   });
 
   it("renders zero rather than an empty string", () => {
     expect(formatPrice(0).trim().length).toBeGreaterThan(3);
   });
 
-  it("groups a large figure", () => {
-    // Arabic-Indic digits with separators; the point is that it is not the
-    // bare Latin digit run.
-    expect(formatPrice(1000000)).not.toBe("1000000 EGP");
+  it("groups a large figure with separators", () => {
+    expect(formatPrice(1000000)).toBe("1,000,000 ج.م");
+  });
+
+  it("uses Western digits, not Arabic-Indic ones", () => {
+    // The point of lib/fmt: ar-EG alone renders ٣٠٠, which Egyptian
+    // users do not read in an app.
+    expect(formatPrice(300)).toContain("300");
+    expect(formatPrice(300)).not.toMatch(/[٠-٩]/);
   });
 });
 
@@ -57,20 +68,28 @@ describe("formatDuration", () => {
     expect(formatDuration(30)).toBe("30 دقيقة");
   });
 
-  it("gives whole hours without a minutes part", () => {
-    expect(formatDuration(120)).toBe("2 ساعة");
-  });
-
-  it("gives hours and minutes together", () => {
-    expect(formatDuration(90)).toBe("1 ساعة و 30 دقيقة");
-  });
-
   it("treats fifty-nine minutes as minutes", () => {
     expect(formatDuration(59)).toBe("59 دقيقة");
   });
 
-  it("treats sixty as one hour", () => {
-    expect(formatDuration(60)).toBe("1 ساعة");
+  // Arabic does not count to one or two the way English does: a single
+  // hour is "ساعة" with no numeral, and two is the dual "ساعتين". Writing
+  // "1 ساعة" or "2 ساعة", as this helper used to, is not Arabic.
+  it("writes a single hour without a numeral", () => {
+    expect(formatDuration(60)).toBe("ساعة");
+  });
+
+  it("uses the dual form for two hours", () => {
+    expect(formatDuration(120)).toBe("ساعتين");
+  });
+
+  it("numbers three hours and above", () => {
+    expect(formatDuration(180)).toBe("3 ساعات");
+  });
+
+  // The conjunction و binds to the word after it, with no space.
+  it("joins hours and minutes with a bound conjunction", () => {
+    expect(formatDuration(90)).toBe("ساعة و30 دقيقة");
   });
 
   it("is written in Arabic", () => {

@@ -1,6 +1,7 @@
 import { requireSession } from "@/lib/api";
 import { uploadImageToCloudinary } from "@/lib/services/cloudinary";
 import { ok, err } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 const MAX_BYTES     = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
     return ok({ url });
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[upload/image]", e);
+    log.error("[upload/image]", e);
     return err("حدث خطأ أثناء رفع الصورة، حاول مرة أخرى", 500);
   }
 }

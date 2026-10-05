@@ -1,10 +1,11 @@
+import { siteUrl } from "@/lib/env";
 /**
  * JSON-LD structured data builders for public Maw3ed pages.
  * Returns a plain object — the caller serialises it with JSON.stringify
  * and injects it via <script type="application/ld+json">.
  */
 
-const BASE_URL = (process.env.AUTH_URL ?? "https://maw3ed.net").replace(/\/$/, "");
+const BASE_URL = siteUrl;
 
 // Schema.org two-letter day codes indexed by JS getDay() (0 = Sunday)
 const SCHEMA_DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;

@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 const depositSettingsSchema = z.object({
   depositEnabled: z.boolean(),
@@ -35,7 +36,7 @@ export async function PATCH(req: Request) {
     return ok(updated);
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[deposit settings PATCH]", e);
+    log.error("[deposit settings PATCH]", e);
     return err("حدث خطأ أثناء حفظ الإعدادات", 500);
   }
 }

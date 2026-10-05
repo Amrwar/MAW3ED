@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 
 /**
  * GET /api/realtime/bookings
@@ -101,7 +102,7 @@ export async function GET(req: Request) {
           }
         } catch {
           // DB errors are transient — log and continue rather than closing the stream
-          console.error("[realtime/bookings] poll error");
+          log.error("[realtime/bookings] poll error");
         }
       }, 3000);
 

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -61,7 +62,7 @@ export async function GET(_req: Request, { params }: Params) {
 
     return ok({ ...safe, tables, staffMembers });
   } catch (e) {
-    console.error("[public slug]", e);
+    log.error("[public slug]", e);
     return err("حدث خطأ", 500);
   }
 }

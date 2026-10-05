@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import crypto from "crypto";
 import ReferralsClient from "./_components/ReferralsClient";
+import { siteUrl } from "@/lib/env";
 
 export const metadata: Metadata = { title: "الإحالات | موعد" };
 
@@ -53,7 +54,7 @@ export default async function ReferralsPage() {
     });
   }
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.maw3ed.net";
+  const baseUrl = siteUrl;
   const referralLink = `${baseUrl}/ref/${referralCode}`;
 
   const referrals = business.referrals.map((r) => ({

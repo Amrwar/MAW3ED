@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { timeToMinutes, overlaps } from "@/lib/bookings/overlap";
+import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -105,7 +106,7 @@ export async function GET(req: Request, { params }: Params) {
 
     return ok({ slots: available });
   } catch (e) {
-    console.error("[slots GET]", e);
+    log.error("[slots GET]", e);
     return err("حدث خطأ", 500);
   }
 }

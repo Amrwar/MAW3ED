@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -43,7 +44,7 @@ export async function POST(_req: Request, { params }: Params) {
 
     return ok({ cancelled: true });
   } catch (e) {
-    console.error("[booking cancel]", e);
+    log.error("[booking cancel]", e);
     return err("حدث خطأ أثناء الإلغاء", 500);
   }
 }

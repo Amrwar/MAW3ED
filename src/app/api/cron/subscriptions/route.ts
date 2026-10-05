@@ -25,8 +25,10 @@ import {
   sendSubscriptionRenewalReminder,
   sendSubscriptionExpiredEmail,
 } from "@/lib/services/email";
+import { log } from "@/lib/logger";
+import { siteUrl } from "@/lib/env";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.maw3ed.net";
+const SITE_URL = siteUrl;
 
 function authorize(req: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
@@ -36,7 +38,7 @@ function authorize(req: Request): boolean {
 
 export async function GET(req: Request) {
   if (!authorize(req)) {
-    console.warn("[subscriptions cron] Rejected unauthorized request");
+    log.warn("[subscriptions cron] Rejected unauthorized request");
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -57,7 +59,7 @@ export async function GET(req: Request) {
     include: { owner: { select: { email: true } } },
   });
 
-  console.log(`[subscriptions cron] ${overdueBusinesses.length} subscription(s) to expire`);
+  log.info(`[subscriptions cron] ${overdueBusinesses.length} subscription(s) to expire`);
 
   for (const biz of overdueBusinesses) {
     try {
@@ -74,10 +76,10 @@ export async function GET(req: Request) {
         });
       }
 
-      console.log(`[subscriptions cron] ✓ Expired: ${biz.id} (${biz.nameAr})`);
+      log.info(`[subscriptions cron] ✓ Expired: ${biz.id} (${biz.nameAr})`);
       expired++;
     } catch (e) {
-      console.error(`[subscriptions cron] ✗ Failed to expire ${biz.id}:`, e);
+      log.error(`[subscriptions cron] ✗ Failed to expire ${biz.id}:`, e);
       failed++;
     }
   }
@@ -98,7 +100,7 @@ export async function GET(req: Request) {
     include: { owner: { select: { email: true } } },
   });
 
-  console.log(`[subscriptions cron] ${upcomingExpiryBusinesses.length} renewal reminder(s) to send`);
+  log.info(`[subscriptions cron] ${upcomingExpiryBusinesses.length} renewal reminder(s) to send`);
 
   for (const biz of upcomingExpiryBusinesses) {
     try {
@@ -121,15 +123,15 @@ export async function GET(req: Request) {
         data:  { subscriptionReminderSentAt: now },
       });
 
-      console.log(`[subscriptions cron] ✓ Reminded: ${biz.id} (${biz.nameAr}), ${daysLeft} days left`);
+      log.info(`[subscriptions cron] ✓ Reminded: ${biz.id} (${biz.nameAr}), ${daysLeft} days left`);
       reminded++;
     } catch (e) {
-      console.error(`[subscriptions cron] ✗ Failed to remind ${biz.id}:`, e);
+      log.error(`[subscriptions cron] ✗ Failed to remind ${biz.id}:`, e);
       failed++;
     }
   }
 
-  console.log(`[subscriptions cron] Complete — expired: ${expired}, reminded: ${reminded}, failed: ${failed}`);
+  log.info(`[subscriptions cron] Complete — expired: ${expired}, reminded: ${reminded}, failed: ${failed}`);
 
   return Response.json({ ok: true, expired, reminded, failed });
 }

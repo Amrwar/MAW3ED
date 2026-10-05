@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { z } from "zod";
+import { log } from "@/lib/logger";
 
 const schema = z.object({
   token:    z.string().min(1),
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
 
     return ok({ reset: true });
   } catch (e) {
-    console.error("[reset-password]", e);
+    log.error("[reset-password]", e);
     return err("حدث خطأ، حاول مرة أخرى", 500);
   }
 }

@@ -25,6 +25,7 @@ import {
   sendNewBookingAlertToBusiness,
   type BookingEmailData,
 } from "@/lib/services/email";
+import { log } from "@/lib/logger";
 
 interface PaymobWebhookBody {
   type?: string;
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
 
   // ── 1. Verify HMAC ────────────────────────────────────────────────────────
   if (!verifyWebhookHmac(obj, hmac)) {
-    console.warn("[paymob webhook] HMAC verification failed");
+    log.warn("[paymob webhook] HMAC verification failed");
     return err("invalid signature", 403);
   }
 
@@ -89,7 +90,7 @@ export async function POST(req: Request) {
   }
 
   // Unknown order — log and ack
-  console.warn("[paymob webhook] no booking or subscription for order", paymobOrderId);
+  log.warn("paymob webhook: no booking or subscription for order", { paymobOrderId });
   return Response.json({ received: true }, { status: 200 });
 }
 
@@ -171,7 +172,7 @@ async function handleSubscriptionPayment(
   if (obj.success && !obj.pending && !obj.error_occured) {
     const plan = business.pendingPlan as Plan | null;
     if (!plan || plan === "FREE") {
-      console.warn("[paymob webhook] subscription payment with no pendingPlan", business.id);
+      log.warn("paymob webhook: subscription payment with no pendingPlan", { businessId: business.id });
       return Response.json({ received: true }, { status: 200 });
     }
 
@@ -191,7 +192,7 @@ async function handleSubscriptionPayment(
       },
     });
 
-    console.info(
+    log.info(
       `[paymob webhook] subscription activated: business=${business.id} plan=${plan} until=${currentPeriodEnd.toISOString()}`,
     );
 
@@ -221,13 +222,13 @@ async function handleSubscriptionPayment(
             }),
           ]);
 
-          console.info(
+          log.info(
             `[referral reward] referrer=${referrer.id} +30 days → ${newEnd.toISOString()}`,
           );
         }
       } catch (e) {
         // Non-fatal — log but don't fail the webhook response
-        console.error("[referral reward]", e);
+        log.error("[referral reward]", e);
       }
     }
   } else {

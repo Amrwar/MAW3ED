@@ -13,6 +13,7 @@ import {
   sendBusinessBookingTemplate,
 } from "@/lib/services/whatsapp";
 import type { BookingNotificationData } from "@/lib/services/whatsapp-messages";
+import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -169,7 +170,7 @@ export async function POST(req: Request, { params }: Params) {
       status:    updated.status,
     });
   } catch (e) {
-    console.error("[booking reschedule]", e);
+    log.error("[booking reschedule]", e);
     return err("حدث خطأ أثناء إعادة الجدولة", 500);
   }
 }

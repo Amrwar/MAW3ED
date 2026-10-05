@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { z } from "zod";
+import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -56,7 +57,7 @@ export async function GET(_req: Request, { params }: Params) {
     });
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[customer GET]", e);
+    log.error("[customer GET]", e);
     return err("حدث خطأ", 500);
   }
 }
@@ -92,7 +93,7 @@ export async function PATCH(req: Request, { params }: Params) {
     return ok({ id: updated.id, notes: updated.notes });
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[customer PATCH]", e);
+    log.error("[customer PATCH]", e);
     return err("حدث خطأ أثناء الحفظ", 500);
   }
 }

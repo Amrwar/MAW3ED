@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 /** GET /api/business/check-slug?slug=bella-salon */
 export async function GET(req: Request) {
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
     const existing = await db.business.findUnique({ where: { slug } });
     return ok({ available: !existing });
   } catch (e) {
-    console.error("[check-slug]", e);
+    log.error("[check-slug]", e);
     return err("حدث خطأ", 500);
   }
 }

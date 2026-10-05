@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { bookingStatusSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -83,7 +84,7 @@ export async function PATCH(req: Request, { params }: Params) {
     return ok({ id: updated.id, status: updated.status });
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[bookings PATCH]", e);
+    log.error("[bookings PATCH]", e);
     return err("حدث خطأ أثناء تحديث الحالة", 500);
   }
 }

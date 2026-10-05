@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { signUpSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import bcrypt from "bcryptjs";
+import { log } from "@/lib/logger";
 
 export async function POST(req: Request) {
   try {
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
 
     return ok({ user }, 201);
   } catch (e) {
-    console.error("[signup]", e);
+    log.error("[signup]", e);
     return err("حدث خطأ أثناء إنشاء الحساب", 500);
   }
 }

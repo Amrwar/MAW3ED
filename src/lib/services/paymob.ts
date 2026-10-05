@@ -16,6 +16,7 @@
  */
 
 import { createHmac } from "crypto";
+import { log } from "@/lib/logger";
 
 const PAYMOB_BASE = "https://accept.paymob.com/api";
 
@@ -199,7 +200,7 @@ export function verifyWebhookHmac(
 ): boolean {
   const secret = process.env.PAYMOB_HMAC_SECRET;
   if (!secret) {
-    console.error("[paymob] PAYMOB_HMAC_SECRET not set — rejecting webhook");
+    log.error("[paymob] PAYMOB_HMAC_SECRET not set — rejecting webhook");
     return false;
   }
 

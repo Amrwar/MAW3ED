@@ -18,6 +18,7 @@ import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { PLAN_PRICES_CENTS } from "@/lib/plans";
 import { createSubscriptionPaymentSession } from "@/lib/services/paymob";
+import { log } from "@/lib/logger";
 
 const upgradeSchema = z.object({
   plan: z.enum(["PRO", "PREMIUM"]),
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
     return ok({ paymentUrl });
   } catch (e) {
     if (e instanceof Response) return e;
-    console.error("[subscription upgrade]", e);
+    log.error("[subscription upgrade]", e);
     return err("تعذّر بدء عملية الدفع، حاول مرة أخرى", 502);
   }
 }

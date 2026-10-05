@@ -11,6 +11,7 @@ import type { Business } from "@/types/business";
 import type { Service } from "@/types/service";
 import type { PublicBusiness } from "@/lib/data";
 import { buildLocalBusinessJsonLd } from "@/lib/jsonld";
+import { siteUrl } from "@/lib/env";
 
 interface Params { params: Promise<{ slug: string }> }
 
@@ -31,7 +32,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   if (!biz) return { title: "غير موجود | موعد" };
 
-  const baseUrl   = (process.env.AUTH_URL ?? "https://maw3ed.net").replace(/\/$/, "");
+  const baseUrl   = siteUrl;
   const pageUrl   = `${baseUrl}/company/${slug}`;
   const title     = `${biz.nameAr} | حجز موعد في ${biz.city.nameAr} | موعد`;
   const description =
