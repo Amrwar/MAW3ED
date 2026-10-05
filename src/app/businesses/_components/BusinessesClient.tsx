@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, MapPin, SlidersHorizontal, Store } from "lucide-react";
+import { Search, X, MapPin, CalendarDays, SlidersHorizontal, Store } from "lucide-react";
 import PublicBusinessCard from "@/components/shared/PublicBusinessCard";
 import PageHero from "@/components/shared/PageHero";
 import EmptyState from "@/components/ui/EmptyState";
@@ -21,6 +21,8 @@ interface Props {
   initialQ:        string;
   initialCity:     string;
   initialCategory: string;
+  /** "today" | "tomorrow" | "" — carried over from the hero. */
+  initialWhen:     string;
 }
 
 /** One filter row in the sidebar. */
@@ -59,6 +61,7 @@ export default function BusinessesClient({
   initialQ,
   initialCity,
   initialCategory,
+  initialWhen,
 }: Props) {
   const { t, lang } = useLanguage();
   const b = t.businesses;
@@ -69,13 +72,15 @@ export default function BusinessesClient({
   const [q, setQ] = useState(initialQ);
   const [city, setCity] = useState(initialCity);
   const [category, setCategory] = useState(initialCategory);
+  const [when, setWhen] = useState(initialWhen);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  function apply(nQ: string, nCity: string, nCat: string) {
+  function apply(nQ: string, nCity: string, nCat: string, nWhen: string = when) {
     const p = new URLSearchParams();
     if (nQ) p.set("q", nQ);
     if (nCity) p.set("city", nCity);
     if (nCat) p.set("category", nCat);
+    if (nWhen) p.set("when", nWhen);
     startTx(() => router.push(`/businesses${p.size ? `?${p}` : ""}`));
   }
 
@@ -83,7 +88,8 @@ export default function BusinessesClient({
     setQ("");
     setCity("");
     setCategory("");
-    apply("", "", "");
+    setWhen("");
+    apply("", "", "", "");
   }
 
   const getName = (item: Category | City) =>
@@ -91,7 +97,7 @@ export default function BusinessesClient({
 
   const selectedCat = categories.find((c) => c.slug === category);
   const selectedCity = cities.find((c) => c.id === city);
-  const hasFilters = !!(q || city || category);
+  const hasFilters = !!(q || city || category || when);
 
   const copy = {
     filters:   isAr ? "الفلاتر"        : "Filters",
@@ -102,7 +108,14 @@ export default function BusinessesClient({
     heroSub:   isAr
       ? "ابحث وأحجز من أفضل الأنشطة والخدمات في منطقتك"
       : "Search and book from the best businesses near you",
+    when:      isAr ? "اليوم"    : "Day",
+    whenAny:   isAr ? "أي وقت"   : "Any time",
+    whenToday: isAr ? "النهارده" : "Today",
+    whenTomorrow: isAr ? "بكرة"  : "Tomorrow",
   };
+
+  const whenLabel =
+    when === "today" ? copy.whenToday : when === "tomorrow" ? copy.whenTomorrow : "";
 
   /** Chips for the filters currently applied. */
   const appliedChips = [
@@ -116,6 +129,11 @@ export default function BusinessesClient({
       key: "cat",
       label: getName(selectedCat),
       clear: () => { setCategory(""); apply(q, city, ""); },
+    },
+    whenLabel && {
+      key: "when",
+      label: whenLabel,
+      clear: () => { setWhen(""); apply(q, city, category, ""); },
     },
   ].filter(Boolean) as { key: string; label: string; clear: () => void }[];
 
@@ -157,6 +175,23 @@ export default function BusinessesClient({
                 {cities.map((c) => (
                   <option key={c.id} value={c.id}>{getName(c)}</option>
                 ))}
+              </select>
+            </div>
+
+            {/* Carried over from the hero, and adjustable here so the
+                filter is never applied invisibly. */}
+            <div className="flex flex-[0_1_11rem] min-w-0 items-center gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-line-2)] bg-[var(--color-ground)] px-4 min-h-12">
+              <CalendarDays size={17} strokeWidth={1.8} className="shrink-0 text-[var(--color-subtle)]" aria-hidden="true" />
+              <label htmlFor="browse-when" className="sr-only-label">{copy.when}</label>
+              <select
+                id="browse-when"
+                value={when}
+                onChange={(e) => { setWhen(e.target.value); apply(q, city, category, e.target.value); }}
+                className="field-fill w-full min-w-0 border-0 bg-transparent text-[0.9375rem] text-[var(--color-ink)] outline-none"
+              >
+                <option value="">{copy.whenAny}</option>
+                <option value="today">{copy.whenToday}</option>
+                <option value="tomorrow">{copy.whenTomorrow}</option>
               </select>
             </div>
 

@@ -46,6 +46,9 @@
   --color-night-line:      #27403A;
   --color-night-text:      #A9BAB3;
   --color-night-subtle:    #7F9C92;
+  /* Jade lifted to read against the dark band; the page jade is too
+     deep to carry on #11201C. */
+  --color-night-accent:    #4FA98B;
 
   /* Status — independent of the brand hue -------------- */
   --color-ok:              #0A5F47;
@@ -408,6 +411,10 @@ h1, h2, h3, h4, h5, h6 {
 .chip {
   display: inline-flex;
   align-items: center;
+  /* A chip is something you tap, so it gets the touch minimum like
+     every other control rather than the height its text happens to
+     need. */
+  min-height: var(--control-sm);
   gap: 0.4375rem;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -420,7 +427,11 @@ h1, h2, h3, h4, h5, h6 {
   white-space: nowrap;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
-.chip:hover { border-color: var(--color-line-2); color: var(--color-ink); }
+.chip:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-line-2);
+  color: var(--color-ink);
+}
 
 .chip-active {
   background: var(--color-night);
