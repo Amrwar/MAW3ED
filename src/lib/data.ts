@@ -1,21 +1,9 @@
 import { db } from "@/lib/db";
+import { EMPTY_QUERY } from "@/lib/discovery/params";
+import { searchBusinesses, type DiscoveryBusiness } from "@/lib/discovery/search";
 
-export type PublicBusiness = {
-  id:          string;
-  slug:        string;
-  nameAr:      string;
-  nameEn:      string | null;
-  taglineAr:   string | null;
-  coverImage:  string | null;
-  logoImage:   string | null;
-  isVerified:  boolean;
-  category:    { nameAr: string; icon: string; color: string; bgColor: string; slug: string };
-  city:        { nameAr: string };
-  minPrice:    number | null;
-  currency:    string;
-  /** Only populated when ordering by mostBooked; otherwise undefined. */
-  bookingCount?: number;
-};
+/** The listing shape. Kept as an alias so existing imports still read.*/
+export type PublicBusiness = DiscoveryBusiness;
 
 /** All categories ordered by Arabic name */
 export async function getCategories() {
@@ -37,87 +25,28 @@ export async function getCityBySlug(slug: string) {
   return db.city.findUnique({ where: { slug } });
 }
 
-/** Published businesses with optional search/filter */
+/**
+ * Published businesses for the simple listings — a category page, a
+ * city page, a row on the homepage.
+ *
+ * Delegates to the discovery search so there is one definition of what
+ * a published business looks like, one place that decides a price of
+ * zero means "not set", and one card that can render the result.
+ */
 export async function getPublishedBusinesses(opts?: {
-  search?:       string;
-  cityId?:       string;
-  citySlug?:     string;
+  citySlug?: string;
   categorySlug?: string;
-  /**
-   * 0 = Sunday … 6 = Saturday. Narrows to businesses that keep hours
-   * that day. Availability is the only time signal in the schema, so
-   * this answers "open then", not "has a free slot then".
-   */
-  dayOfWeek?:    number;
-  take?:         number;
-  /** Most-booked first. Falls back to newest where bookings tie. */
-  orderBy?:      "newest" | "mostBooked";
-}): Promise<PublicBusiness[]> {
-  const rows = await db.business.findMany({
-    where: {
-      isPublished: true,
-      ...(opts?.search
-        ? {
-            OR: [
-              { nameAr:    { contains: opts.search, mode: "insensitive" } },
-              { nameEn:    { contains: opts.search, mode: "insensitive" } },
-              { taglineAr: { contains: opts.search, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-      ...(opts?.cityId       ? { cityId:              opts.cityId }              : {}),
-      ...(opts?.citySlug     ? { city:     { slug:    opts.citySlug } }          : {}),
-      ...(opts?.categorySlug ? { category: { slug:    opts.categorySlug } }      : {}),
-      ...(opts?.dayOfWeek !== undefined
-        ? { availability: { some: { dayOfWeek: opts.dayOfWeek, isClosed: false } } }
-        : {}),
-    },
-    select: {
-      id:         true,
-      slug:       true,
-      nameAr:     true,
-      nameEn:     true,
-      taglineAr:  true,
-      coverImage: true,
-      logoImage:  true,
-      isVerified: true,
-      category:   { select: { nameAr: true, icon: true, color: true, bgColor: true, slug: true } },
-      city:       { select: { nameAr: true } },
-      services:   {
-        where:   { isAvailable: true },
-        orderBy: { price: "asc" },
-        take:    1,
-        select:  { price: true, currency: true },
-      },
-      ...(opts?.orderBy === "mostBooked"
-        ? { _count: { select: { bookings: true } } }
-        : {}),
-    },
-    orderBy:
-      opts?.orderBy === "mostBooked"
-        ? [{ bookings: { _count: "desc" } }, { createdAt: "desc" }]
-        : { createdAt: "desc" },
-    take:    opts?.take ?? 50,
+  take?: number;
+  orderBy?: "newest" | "mostBooked";
+}): Promise<DiscoveryBusiness[]> {
+  const result = await searchBusinesses({
+    ...EMPTY_QUERY,
+    city: opts?.citySlug ?? "",
+    category: opts?.categorySlug ?? "",
+    sort: opts?.orderBy === "mostBooked" ? "most-booked" : "recommended",
   });
 
-  // services and _count are both unwrapped here rather than spread.
-  // Prisma hands back price as a Decimal, and a Decimal cannot cross
-  // into a client component — React bails out of hydration and
-  // re-renders the whole tree on the client, stranding the server
-  // HTML in a hidden div. Everything below this line is a plain
-  // string, number or null.
-  return rows.map((row) => {
-    const { services, ...b } = row as typeof row & {
-      _count?: { bookings: number };
-    };
-    return {
-      ...b,
-      _count: undefined,
-      minPrice: services[0] ? Number(services[0].price) : null,
-      currency: services[0]?.currency ?? "EGP",
-      bookingCount: row._count?.bookings,
-    };
-  }) as PublicBusiness[];
+  return opts?.take ? result.businesses.slice(0, opts.take) : result.businesses;
 }
 
 /* ─── Platform figures ───────────────────────────────────────

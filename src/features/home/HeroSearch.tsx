@@ -153,7 +153,9 @@ export default function HeroSearch({ cities, suggestions, initialCity = "" }: Pr
                 >
                   <option value="">{h.whereAny}</option>
                   {cities.map((c) => (
-                    <option key={c.id} value={c.id}>
+                    // The slug, not the id: /businesses reads slugs, and
+                    // a cuid in the URL would quietly match nothing.
+                    <option key={c.id} value={c.slug}>
                       {isAr ? c.nameAr : c.nameEn}
                     </option>
                   ))}

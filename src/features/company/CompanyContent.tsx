@@ -7,7 +7,7 @@ import GallerySection from "./GallerySection";
 import ReviewsSection from "./ReviewsSection";
 import FAQSection from "./FAQSection";
 import BookingWidget from "./BookingWidget";
-import PublicBusinessCard from "@/components/shared/PublicBusinessCard";
+import BusinessCard from "@/components/shared/BusinessCard";
 import type { Service } from "@/types/service";
 import type { Business } from "@/types/business";
 import type { PublicBusiness } from "@/lib/data";
@@ -84,7 +84,7 @@ export default function CompanyContent({
                   <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     {similarBusinesses.map((b) => (
                       <li key={b.id} className="min-w-0">
-                        <PublicBusinessCard business={b} />
+                        <BusinessCard business={b} />
                       </li>
                     ))}
                   </ul>

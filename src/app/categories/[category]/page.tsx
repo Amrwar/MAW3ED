@@ -5,7 +5,7 @@ import { ArrowRight } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
-import PublicBusinessCard from "@/components/shared/PublicBusinessCard";
+import BusinessCard from "@/components/shared/BusinessCard";
 import { getCategories, getCategoryBySlug, getPublishedBusinesses } from "@/lib/data";
 
 type Props = { params: Promise<{ category: string }> };
@@ -86,7 +86,7 @@ export default async function CategoryPage({ params }: Props) {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {businesses.map((b) => (
-                  <PublicBusinessCard key={b.id} business={b} />
+                  <BusinessCard key={b.id} business={b} />
                 ))}
               </div>
 

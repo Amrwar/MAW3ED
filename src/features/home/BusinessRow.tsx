@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Store } from "lucide-react";
-import PublicBusinessCard from "@/components/shared/PublicBusinessCard";
+import BusinessCard from "@/components/shared/BusinessCard";
 import EmptyState from "@/components/ui/EmptyState";
 import Skeleton from "@/components/ui/Skeleton";
 import type { PublicBusiness } from "@/lib/data";
@@ -78,7 +78,7 @@ export default function BusinessRow({
           <ul className="grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 lg:grid-cols-3">
             {businesses.map((b) => (
               <li key={b.id} className="min-w-0">
-                <PublicBusinessCard business={b} />
+                <BusinessCard business={b} />
               </li>
             ))}
           </ul>

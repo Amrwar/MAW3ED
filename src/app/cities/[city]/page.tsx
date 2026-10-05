@@ -5,7 +5,7 @@ import { MapPin, ArrowRight, Building2 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
-import PublicBusinessCard from "@/components/shared/PublicBusinessCard";
+import BusinessCard from "@/components/shared/BusinessCard";
 import { getCities, getCityBySlug, getPublishedBusinesses } from "@/lib/data";
 
 type Props = { params: Promise<{ city: string }> };
@@ -83,7 +83,7 @@ export default async function CityPage({ params }: Props) {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {businesses.map((b) => (
-                  <PublicBusinessCard key={b.id} business={b} />
+                  <BusinessCard key={b.id} business={b} />
                 ))}
               </div>
 

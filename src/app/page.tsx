@@ -42,6 +42,8 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const cookieStore = await cookies();
   const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  // The hero stores a city slug; /businesses and the data layer both
+  // read slugs, so nothing has to translate an id along the way.
   const savedCity = cookieStore.get("maw3ed-city")?.value ?? "";
 
   // The hero paints from these; everything heavier streams in behind
@@ -82,7 +84,7 @@ export default async function HomePage() {
         {savedCity && (
           <SectionBoundary {...e}>
             <Suspense fallback={<BusinessRowSkeleton count={3} />}>
-              <NearbyRow cityId={savedCity} />
+              <NearbyRow citySlug={savedCity} />
             </Suspense>
           </SectionBoundary>
         )}
@@ -141,20 +143,20 @@ async function PopularRow() {
   );
 }
 
-async function NearbyRow({ cityId }: { cityId: string }) {
+async function NearbyRow({ citySlug }: { citySlug: string }) {
   const [businesses, cities] = await Promise.all([
-    getPublishedBusinesses({ cityId, take: 3 }),
+    getPublishedBusinesses({ citySlug, take: 3 }),
     getCitiesWithListings(),
   ]);
 
-  const city = cities.find((c) => c.id === cityId);
+  const city = cities.find((c) => c.slug === citySlug);
 
   return (
     <BusinessRowServer
       kind="nearby"
       businesses={businesses}
       cityName={city?.nameAr}
-      viewAllHref={`/businesses?city=${cityId}`}
+      viewAllHref={`/businesses?city=${citySlug}`}
     />
   );
 }

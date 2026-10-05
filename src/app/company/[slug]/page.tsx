@@ -9,9 +9,9 @@ import BusinessInfoRow from "@/features/company/BusinessInfoRow";
 import CompanyContent from "@/features/company/CompanyContent";
 import type { Business } from "@/types/business";
 import type { Service } from "@/types/service";
-import type { PublicBusiness } from "@/lib/data";
 import { buildLocalBusinessJsonLd } from "@/lib/jsonld";
 import { siteUrl } from "@/lib/env";
+import { getPublishedBusinesses } from "@/lib/data";
 
 interface Params { params: Promise<{ slug: string }> }
 
@@ -87,30 +87,13 @@ export default async function CompanyPage({ params }: Params) {
       : Promise.resolve([]),
   ]);
 
-  const similarRows = await db.business.findMany({
-    where: { isPublished: true, slug: { not: slug }, categoryId: dbBusiness.categoryId },
-    select: {
-      id:         true,
-      slug:       true,
-      nameAr:     true,
-      nameEn:     true,
-      taglineAr:  true,
-      coverImage: true,
-      logoImage:  true,
-      isVerified: true,
-      category:   { select: { nameAr: true, icon: true, color: true, bgColor: true, slug: true } },
-      city:       { select: { nameAr: true } },
-      services:   { where: { isAvailable: true }, orderBy: { price: "asc" }, take: 1, select: { price: true, currency: true } },
-    },
-    take: 3,
-    orderBy: { createdAt: "desc" },
-  });
-
-  const similarBusinesses: PublicBusiness[] = similarRows.map((b) => ({
-    ...b,
-    minPrice: b.services[0] ? Number(b.services[0].price) : null,
-    currency: b.services[0]?.currency ?? "EGP",
-  }));
+  // Same category, same listing shape as everywhere else, so the card
+  // gets its rating, hours and next free slot rather than a thinner row.
+  const similarBusinesses = (
+    await getPublishedBusinesses({ categorySlug: dbBusiness.category.slug, take: 4 })
+  )
+    .filter((b) => b.slug !== slug)
+    .slice(0, 3);
 
   const business: Business = {
     id:           dbBusiness.id,

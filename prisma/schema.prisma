@@ -77,6 +77,15 @@ model Business {
   logoImage                  String?
   isVerified                 Boolean            @default(false) // earned, not self-set: see lib/verification.ts
   isPublished                Boolean            @default(false) // held back until the owner verifies their email
+  /// When true a public booking is created CONFIRMED rather than PENDING.
+  /// Off by default, so no existing business changes behaviour until its
+  /// owner opts in. Surfaced in discovery as the "instant booking" filter.
+  autoConfirm                Boolean            @default(false)
+  /// Denormalised from Review so the listing can sort and filter on a
+  /// plain indexed column instead of aggregating a join per row.
+  /// Kept in sync by recomputeBusinessRating(); null means never rated.
+  ratingAvg                  Float?
+  ratingCount                Int                @default(0)
   phoneVerifiedAt            DateTime? // set once a WhatsApp OTP is confirmed
   depositEnabled             Boolean            @default(false)
   depositPercent             Int                @default(20)
@@ -103,6 +112,10 @@ model Business {
   cityId String
   city   City   @relation(fields: [cityId], references: [id])
 
+  /// Optional, and narrower than the city. Null means "somewhere in the city".
+  neighborhoodId String?
+  neighborhood   Neighborhood? @relation(fields: [neighborhoodId], references: [id])
+
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
@@ -117,6 +130,16 @@ model Business {
   referrals  Business[] @relation("BusinessReferrals")
 
   phoneVerifications PhoneVerification[]
+  reviews            Review[]
+
+  /// The discovery listing always filters on isPublished first, then on
+  /// one of city / neighbourhood / category, and sorts on rating,
+  /// bookings or price. These cover that shape.
+  @@index([isPublished, cityId])
+  @@index([isPublished, categoryId])
+  @@index([isPublished, neighborhoodId])
+  @@index([isPublished, ratingAvg])
+  @@index([isPublished, createdAt])
 }
 
 model Category {
@@ -128,7 +151,15 @@ model Category {
   color   String @default("#6B7280")
   bgColor String @default("#F3F4F6")
 
+  /// Null for a top-level category. One level deep is deliberate: a
+  /// subcategory of a subcategory is a taxonomy nobody navigates.
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+
   businesses Business[]
+
+  @@index([parentId])
 }
 
 model City {
@@ -137,7 +168,27 @@ model City {
   nameAr String
   nameEn String
 
+  businesses    Business[]
+  neighborhoods Neighborhood[]
+}
+
+/// A district inside a city — Maadi, Zamalek, Sheikh Zayed. Optional on a
+/// business, because most owners will only ever pick a city.
+model Neighborhood {
+  id     String @id @default(cuid())
+  slug   String
+  nameAr String
+  nameEn String
+
+  cityId String
+  city   City   @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
   businesses Business[]
+
+  /// Slugs only have to be unique inside their city: two governorates may
+  /// each have a "wasat el balad".
+  @@unique([cityId, slug])
+  @@index([cityId])
 }
 
 model Service {
@@ -157,6 +208,33 @@ model Service {
   business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   bookings Booking[]
   staff    StaffService[]
+
+  /// The price-range filter and the cheapest-service lookup both read
+  /// this ordering directly.
+  @@index([businessId, isAvailable, price])
+}
+
+/// A rating left against one completed booking.
+///
+/// Tied to the booking rather than to the customer, so a review can only
+/// exist where a real appointment happened, and nobody can leave two for
+/// the same visit. The write path is not built yet — this table stays
+/// empty until it is, and the listing reports zero rather than inventing
+/// a number.
+model Review {
+  id         String   @id @default(cuid())
+  businessId String
+  /// One review per booking, enforced by the database, not by app code.
+  bookingId  String   @unique
+  rating     Int /// 1..5, range-checked in app code
+  comment    String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
 }
 
 model AvailabilityRule {
@@ -170,6 +248,8 @@ model AvailabilityRule {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@unique([businessId, dayOfWeek])
+  /// "open now" and "available today" both start from the day column.
+  @@index([dayOfWeek, isClosed])
 }
 
 model Customer {
@@ -218,6 +298,16 @@ model Booking {
   customer    Customer?    @relation(fields: [customerId], references: [id])
   table       Table?       @relation(fields: [tableId], references: [id])
   staffMember StaffMember? @relation(fields: [staffMemberId], references: [id])
+  review      Review?
+
+  /// This table had no indexes at all. Every slot lookup, every dashboard
+  /// list and the most-booked sort scanned it.
+  @@index([businessId, date])
+  @@index([businessId, status])
+  @@index([serviceId])
+  @@index([customerId])
+  @@index([staffMemberId])
+  @@index([tableId])
 }
 
 /// Proves the person signing up controls the email address they gave.
@@ -298,6 +388,8 @@ model StaffMember {
   business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   services StaffService[]
   bookings Booking[]
+
+  @@index([businessId, isActive])
 }
 
 model StaffService {
