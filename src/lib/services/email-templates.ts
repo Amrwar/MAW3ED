@@ -319,3 +319,41 @@ export function passwordResetHtml(resetUrl: string): string {
   `;
   return layout(body);
 }
+
+/**
+ * Sent once at signup to prove the person controls the address. Until
+ * the link is followed the account exists but its business stays
+ * unpublished, so this email is the gate on the public marketplace.
+ */
+export function emailVerificationHtml(verifyUrl: string, name?: string | null): string {
+  const greeting = name ? `أهلًا ${name}،` : "أهلًا بك،";
+  const body = `
+    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">${greeting}</p>
+    <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
+      فضلًا أكّد بريدك الإلكتروني عشان نقدر ننشر صفحة نشاطك على
+      <strong>موعد</strong> وتبدأ تستقبل حجوزات.
+    </p>
+
+    <div style="margin-bottom:24px;">
+      <a href="${verifyUrl}"
+         style="display:inline-block;background:#0E7F5E;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
+        أكّد بريدي ←
+      </a>
+    </div>
+
+    <div style="background:#E9F2EE;border-radius:10px;padding:12px 16px;margin-bottom:24px;">
+      <p style="margin:0;font-size:13px;color:#0A5F47;">
+        الرابط صالح لمدة <strong>24 ساعة</strong>.
+      </p>
+    </div>
+
+    <p style="margin:0 0 16px;font-size:13px;color:#9ca3af;">
+      لو مش إنت اللي أنشأت الحساب، تجاهل البريد ده — مفيش حاجة هتحصل.
+    </p>
+
+    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
+
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0E7F5E;">موعد</strong></p>
+  `;
+  return layout(body);
+}

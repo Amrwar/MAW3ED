@@ -76,6 +76,14 @@ export async function POST(req: Request) {
     // Pre-generate a unique referral code for the new business
     const referralCode = await generateReferralCode();
 
+    // A listing only goes in front of customers once the owner has
+    // proved the email address on the account.
+    const owner = await db.user.findUnique({
+      where:  { id: session.user.id },
+      select: { emailVerified: true },
+    });
+    const emailVerified = owner?.emailVerified !== null && owner?.emailVerified !== undefined;
+
     // Create business + services + availability in a single transaction
     const business = await db.$transaction(async (tx) => {
       const biz = await tx.business.create({
@@ -86,7 +94,10 @@ export async function POST(req: Request) {
           ownerId:      session.user.id,
           categoryId,   cityId,
           businessType,
-          isPublished: true,
+          // Held back until the owner verifies their email. An
+          // unverified account must not be able to put a listing in
+          // front of customers.
+          isPublished: emailVerified,
           referralCode,
           referredById: referredById ?? undefined,
         },

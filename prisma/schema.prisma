@@ -20,9 +20,10 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  business      Business?
+  accounts    Account[]
+  sessions    Session[]
+  business    Business?
+  emailTokens EmailVerificationToken[]
 }
 
 model Account {
@@ -39,7 +40,7 @@ model Account {
   id_token          String? @db.Text
   session_state     String?
 
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -50,7 +51,7 @@ model Session {
   userId       String
   expires      DateTime
 
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -63,46 +64,47 @@ model VerificationToken {
 
 // ─── Core Business Models ──────────────────────────────────
 model Business {
-  id             String    @id @default(cuid())
-  slug           String    @unique
-  nameAr         String
-  nameEn         String?
-  taglineAr      String?
-  phone          String?
-  whatsapp       String?
-  address        String?
-  about          String?   @db.Text
-  coverImage     String?
-  logoImage      String?
-  isVerified     Boolean   @default(false)
-  isPublished    Boolean   @default(true)
-  depositEnabled Boolean   @default(false)
-  depositPercent Int       @default(20)
+  id                         String             @id @default(cuid())
+  slug                       String             @unique
+  nameAr                     String
+  nameEn                     String?
+  taglineAr                  String?
+  phone                      String?
+  whatsapp                   String?
+  address                    String?
+  about                      String?            @db.Text
+  coverImage                 String?
+  logoImage                  String?
+  isVerified                 Boolean            @default(false) // earned, not self-set: see lib/verification.ts
+  isPublished                Boolean            @default(false) // held back until the owner verifies their email
+  phoneVerifiedAt            DateTime? // set once a WhatsApp OTP is confirmed
+  depositEnabled             Boolean            @default(false)
+  depositPercent             Int                @default(20)
   // ── Subscription ──────────────────────────────────────────
-  plan                      Plan               @default(FREE)
-  subscriptionStatus        SubscriptionStatus @default(ACTIVE)
-  trialEndsAt               DateTime?
-  currentPeriodEnd          DateTime?
-  pendingPlan               Plan?
-  subscriptionPaymobOrderId String?            // Paymob order ID for subscription payment
-  subscriptionReminderSentAt DateTime?         // prevents duplicate renewal reminder emails
+  plan                       Plan               @default(FREE)
+  subscriptionStatus         SubscriptionStatus @default(ACTIVE)
+  trialEndsAt                DateTime?
+  currentPeriodEnd           DateTime?
+  pendingPlan                Plan?
+  subscriptionPaymobOrderId  String? // Paymob order ID for subscription payment
+  subscriptionReminderSentAt DateTime? // prevents duplicate renewal reminder emails
   // ── Referrals ─────────────────────────────────────────────
-  referralCode              String?            @unique // 8-char uppercase code e.g. "A3F7C2D1"
-  referredById              String?            // businessId that referred this business
-  referralRewardedAt        DateTime?          // set once referrer receives their 30-day bonus
+  referralCode               String?            @unique // 8-char uppercase code e.g. "A3F7C2D1"
+  referredById               String? // businessId that referred this business
+  referralRewardedAt         DateTime? // set once referrer receives their 30-day bonus
   // ── Business Type ────────────────────────────────────────────
-  businessType              BusinessType       @default(GENERAL)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  businessType               BusinessType       @default(GENERAL)
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
 
-  ownerId     String    @unique
-  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String @unique
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
-  cityId      String
-  city        City      @relation(fields: [cityId], references: [id])
+  cityId String
+  city   City   @relation(fields: [cityId], references: [id])
 
-  categoryId  String
-  category    Category  @relation(fields: [categoryId], references: [id])
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
 
   services     Service[]
   availability AvailabilityRule[]
@@ -111,109 +113,145 @@ model Business {
   tables       Table[]
   staffMembers StaffMember[]
 
-  referredBy   Business?  @relation("BusinessReferrals", fields: [referredById], references: [id])
-  referrals    Business[] @relation("BusinessReferrals")
+  referredBy Business?  @relation("BusinessReferrals", fields: [referredById], references: [id])
+  referrals  Business[] @relation("BusinessReferrals")
+
+  phoneVerifications PhoneVerification[]
 }
 
 model Category {
-  id         String     @id @default(cuid())
-  slug       String     @unique
-  nameAr     String
-  nameEn     String
-  icon       String     @default("🏢")
-  color      String     @default("#6B7280")
-  bgColor    String     @default("#F3F4F6")
+  id      String @id @default(cuid())
+  slug    String @unique
+  nameAr  String
+  nameEn  String
+  icon    String @default("🏢")
+  color   String @default("#6B7280")
+  bgColor String @default("#F3F4F6")
 
   businesses Business[]
 }
 
 model City {
-  id         String     @id @default(cuid())
-  slug       String     @unique
-  nameAr     String
-  nameEn     String
+  id     String @id @default(cuid())
+  slug   String @unique
+  nameAr String
+  nameEn String
 
   businesses Business[]
 }
 
 model Service {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   businessId    String
   nameAr        String
   nameEn        String?
   descriptionAr String?
-  duration      Int       // minutes
-  price         Decimal   @db.Decimal(10, 2)
-  currency      String    @default("EGP")
-  isAvailable   Boolean   @default(true)
-  sortOrder     Int       @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  duration      Int // minutes
+  price         Decimal  @db.Decimal(10, 2)
+  currency      String   @default("EGP")
+  isAvailable   Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  bookings      Booking[]
-  staff         StaffService[]
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+  staff    StaffService[]
 }
 
 model AvailabilityRule {
-  id          String   @id @default(cuid())
-  businessId  String
-  dayOfWeek   Int      // 0=Sunday … 6=Saturday
-  openTime    String   // "09:00"
-  closeTime   String   // "21:00"
-  isClosed    Boolean  @default(false)
+  id         String  @id @default(cuid())
+  businessId String
+  dayOfWeek  Int // 0=Sunday … 6=Saturday
+  openTime   String // "09:00"
+  closeTime  String // "21:00"
+  isClosed   Boolean @default(false)
 
-  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@unique([businessId, dayOfWeek])
 }
 
 model Customer {
-  id          String    @id @default(cuid())
-  businessId  String
-  name        String
-  phone       String
-  email       String?
-  notes       String?
-  createdAt   DateTime  @default(now())
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  phone      String
+  email      String?
+  notes      String?
+  createdAt  DateTime @default(now())
 
-  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  bookings    Booking[]
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bookings Booking[]
 
   @@unique([businessId, phone])
 }
 
 model Booking {
-  id            String        @id @default(cuid())
-  businessId    String
-  serviceId     String
-  customerId    String?
-  customerName  String
-  customerPhone String
-  date          DateTime
-  startTime     String
-  endTime       String?
-  status        BookingStatus @default(PENDING)
-  totalPrice    Decimal       @db.Decimal(10, 2)
-  currency      String        @default("EGP")
-  notes                   String?
-  accessToken             String?   @unique // secure random token for customer self-service URL
-  customerReminderSentAt  DateTime? // set after reminder is sent — prevents duplicate sends
-  depositAmount           Decimal?  @db.Decimal(10, 2) // deposit amount required (null = no deposit)
-  paymobOrderId           String?   // Paymob order ID for payment tracking
-  paymobTransactionId     String?   // Paymob transaction ID after successful payment
+  id                     String        @id @default(cuid())
+  businessId             String
+  serviceId              String
+  customerId             String?
+  customerName           String
+  customerPhone          String
+  date                   DateTime
+  startTime              String
+  endTime                String?
+  status                 BookingStatus @default(PENDING)
+  totalPrice             Decimal       @db.Decimal(10, 2)
+  currency               String        @default("EGP")
+  notes                  String?
+  accessToken            String?       @unique // secure random token for customer self-service URL
+  customerReminderSentAt DateTime? // set after reminder is sent — prevents duplicate sends
+  depositAmount          Decimal?      @db.Decimal(10, 2) // deposit amount required (null = no deposit)
+  paymobOrderId          String? // Paymob order ID for payment tracking
+  paymobTransactionId    String? // Paymob transaction ID after successful payment
   // ── Business-type-specific fields ────────────────────────────
-  tableId       String?   // Restaurant: which table is reserved
-  staffMemberId String?   // Barbershop: which staff member handles the booking
-  partySize     Int?      // Restaurant: number of guests
-  createdAt               DateTime      @default(now())
-  updatedAt               DateTime      @updatedAt
+  tableId                String? // Restaurant: which table is reserved
+  staffMemberId          String? // Barbershop: which staff member handles the booking
+  partySize              Int? // Restaurant: number of guests
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 
-  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  service       Service       @relation(fields: [serviceId], references: [id])
-  customer      Customer?     @relation(fields: [customerId], references: [id])
-  table         Table?        @relation(fields: [tableId], references: [id])
-  staffMember   StaffMember?  @relation(fields: [staffMemberId], references: [id])
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  service     Service      @relation(fields: [serviceId], references: [id])
+  customer    Customer?    @relation(fields: [customerId], references: [id])
+  table       Table?       @relation(fields: [tableId], references: [id])
+  staffMember StaffMember? @relation(fields: [staffMemberId], references: [id])
+}
+
+/// Proves the person signing up controls the email address they gave.
+/// Only the hash is stored: a read of this table must not let anyone
+/// verify an account they do not own.
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// One-time code sent over WhatsApp to prove a business owns the number
+/// every booking notification will be sent to. Hashed, attempt-capped
+/// and short-lived.
+model PhoneVerification {
+  id         String   @id @default(cuid())
+  businessId String
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  lastSentAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([phone])
 }
 
 model PasswordResetToken {
@@ -230,7 +268,7 @@ model PasswordResetToken {
 model Table {
   id         String    @id @default(cuid())
   businessId String
-  name       String    // e.g. "T-01", "النافذة", "الزاوية"
+  name       String // e.g. "T-01", "النافذة", "الزاوية"
   tableType  TableType @default(MIDDLE)
   capacity   Int       @default(4)
   notes      String?
@@ -239,43 +277,43 @@ model Table {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  bookings   Booking[]
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bookings Booking[]
 }
 
 // ─── Barbershop Staff ─────────────────────────────────────────
 model StaffMember {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   businessId  String
   nameAr      String
   nameEn      String?
-  role        String?   // barber, stylist, colorist…
+  role        String? // barber, stylist, colorist…
   photo       String?
-  isActive    Boolean   @default(true)
-  workingDays Int[]     // dayOfWeek 0-6
-  specialties String[]  // free-text tags
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isActive    Boolean  @default(true)
+  workingDays Int[] // dayOfWeek 0-6
+  specialties String[] // free-text tags
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  business    Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  services    StaffService[]
-  bookings    Booking[]
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  services StaffService[]
+  bookings Booking[]
 }
 
 model StaffService {
   staffMemberId String
   serviceId     String
 
-  staffMember   StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
-  service       Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  staffMember StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  service     Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@id([staffMemberId, serviceId])
 }
 
 enum BusinessType {
-  GENERAL     // default — clinics, gyms, salons, etc.
-  RESTAURANT  // table-based reservations
-  BARBERSHOP  // staff-based appointments
+  GENERAL // default — clinics, gyms, salons, etc.
+  RESTAURANT // table-based reservations
+  BARBERSHOP // staff-based appointments
 }
 
 enum TableType {
@@ -290,13 +328,13 @@ enum TableType {
 }
 
 enum BookingStatus {
-  PENDING_PAYMENT  // awaiting customer deposit payment
-  PENDING          // payment done (or no deposit required) — awaiting owner confirmation
-  CONFIRMED        // owner confirmed or auto-confirmed after payment
-  COMPLETED        // appointment finished
-  CANCELLED        // owner or customer cancelled
-  NO_SHOW          // customer didn't show up
-  FAILED_PAYMENT   // payment failed or expired
+  PENDING_PAYMENT // awaiting customer deposit payment
+  PENDING // payment done (or no deposit required) — awaiting owner confirmation
+  CONFIRMED // owner confirmed or auto-confirmed after payment
+  COMPLETED // appointment finished
+  CANCELLED // owner or customer cancelled
+  NO_SHOW // customer didn't show up
+  FAILED_PAYMENT // payment failed or expired
 }
 
 enum Plan {

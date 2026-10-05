@@ -3,6 +3,13 @@ import { signUpSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import bcrypt from "bcryptjs";
 import { log } from "@/lib/logger";
+import { siteUrl } from "@/lib/env";
+import { sendEmailVerification } from "@/lib/services/email";
+import {
+  generateEmailToken,
+  hashSecret,
+  EMAIL_TOKEN_TTL_MS,
+} from "@/lib/verification";
 
 export async function POST(req: Request) {
   try {
@@ -27,7 +34,24 @@ export async function POST(req: Request) {
       select: { id: true, email: true, name: true },
     });
 
-    return ok({ user }, 201);
+    // Prove the address is theirs before the account can publish a
+    // business. Sending is fire-and-forget: a mail outage must not
+    // block signup, and the link can always be re-requested.
+    const token = generateEmailToken();
+    await db.emailVerificationToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashSecret(token),
+        expiresAt: new Date(Date.now() + EMAIL_TOKEN_TTL_MS),
+      },
+    });
+    await sendEmailVerification(
+      user.email,
+      `${siteUrl}/api/auth/verify-email/confirm?token=${token}`,
+      user.name,
+    );
+
+    return ok({ user, verificationSent: true }, 201);
   } catch (e) {
     log.error("[signup]", e);
     return err("حدث خطأ أثناء إنشاء الحساب", 500);

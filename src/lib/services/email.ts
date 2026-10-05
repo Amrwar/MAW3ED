@@ -17,6 +17,7 @@ import {
   passwordResetHtml,
   subscriptionRenewalReminderHtml,
   subscriptionExpiredHtml,
+  emailVerificationHtml,
 } from "./email-templates";
 import { log } from "@/lib/logger";
 
@@ -201,5 +202,21 @@ export async function sendNewBookingAlertToBusiness(
     to:      ownerEmail.trim(),
     subject: `🗓️ موعد جديد من ${data.customerName}`,
     html:    businessAlertHtml(data),
+  });
+}
+
+/**
+ * Send the signup verification link.
+ */
+export async function sendEmailVerification(
+  to: string,
+  verifyUrl: string,
+  name?: string | null,
+): Promise<void> {
+  if (!to?.trim()) return;
+  await sendEmail({
+    to:      to.trim(),
+    subject: "أكّد بريدك الإلكتروني — موعد",
+    html:    emailVerificationHtml(verifyUrl, name),
   });
 }
