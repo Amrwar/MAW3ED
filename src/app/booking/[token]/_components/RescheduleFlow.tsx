@@ -179,7 +179,7 @@ export default function RescheduleFlow({
         {(step === "date") && (
           <div className="space-y-3">
             <label className="block text-sm font-semibold text-[var(--color-text-primary)]">
-              <CalendarDays size={14} className="inline ml-1" />
+              <CalendarDays size={14} className="inline ms-1" />
               اختر تاريخًا جديدًا
             </label>
             <input
@@ -213,7 +213,7 @@ export default function RescheduleFlow({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                <Clock size={14} className="inline ml-1" />
+                <Clock size={14} className="inline ms-1" />
                 {formatDateAr(newDate)}
               </p>
               <button

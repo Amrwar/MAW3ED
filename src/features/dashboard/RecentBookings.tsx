@@ -6,6 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import Avatar from "@/components/ui/Avatar";
 import StatusBadge, { type BookingStatusKey } from "@/components/ui/StatusBadge";
 import EmptyState from "@/components/ui/EmptyState";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
 import { money, clock, num } from "@/lib/fmt";
 
 export type RecentBooking = {
@@ -34,9 +35,6 @@ export default function RecentBookings({ bookings }: { bookings: RecentBooking[]
     return `${d.getUTCDate()} ${months[d.getUTCMonth()]}`;
   }
 
-  const th =
-    "px-5 py-3 text-start text-[0.71875rem] font-bold text-[var(--color-subtle)]";
-  const td = "px-5 py-3.5";
 
   return (
     <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]">
@@ -70,63 +68,58 @@ export default function RecentBookings({ bookings }: { bookings: RecentBooking[]
           }
         />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[36rem] border-collapse">
-            <thead>
-              <tr className="border-b border-[var(--color-line)] bg-[var(--color-ground)]">
-                <th scope="col" className={th}>{rb.columns.customer}</th>
-                <th scope="col" className={th}>{rb.columns.service}</th>
-                <th scope="col" className={th}>{rb.columns.date}</th>
-                <th scope="col" className={th}>{rb.columns.price}</th>
-                <th scope="col" className={th}>{rb.columns.status}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map((b) => (
-                <tr
-                  key={b.id}
-                  className="border-b border-[var(--color-line)] transition-colors last:border-b-0 hover:bg-[var(--color-surface-2)]"
-                >
-                  <td className={td}>
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Avatar name={b.customerName} size="sm" />
-                      <div className="min-w-0">
-                        <p className="m-0 truncate text-[0.875rem] font-bold text-[var(--color-ink)]">
-                          {b.customerName}
-                        </p>
-                        <p className="num m-0 mt-0.5 text-xs text-[var(--color-subtle)]">
-                          {b.customerPhone}
-                        </p>
-                      </div>
+        <Table minWidth="36rem">
+          <THead>
+            <TR>
+              <TH>{rb.columns.customer}</TH>
+              <TH>{rb.columns.service}</TH>
+              <TH>{rb.columns.date}</TH>
+              <TH>{rb.columns.price}</TH>
+              <TH>{rb.columns.status}</TH>
+            </TR>
+          </THead>
+          <TBody>
+            {bookings.map((b) => (
+              <TR key={b.id}>
+                <TD>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar name={b.customerName} size="sm" />
+                    <div className="min-w-0">
+                      <p className="m-0 truncate text-[0.875rem] font-bold text-[var(--color-ink)]">
+                        {b.customerName}
+                      </p>
+                      <p className="num m-0 mt-0.5 text-xs text-[var(--color-subtle)]">
+                        {b.customerPhone}
+                      </p>
                     </div>
-                  </td>
+                  </div>
+                </TD>
 
-                  <td className={td}>
-                    <p className="m-0 max-w-[10rem] truncate text-[0.875rem] text-[var(--color-muted)]">
-                      {b.serviceName}
-                    </p>
-                  </td>
+                <TD>
+                  <p className="m-0 max-w-[10rem] truncate text-[0.875rem] text-[var(--color-muted)]">
+                    {b.serviceName}
+                  </p>
+                </TD>
 
-                  <td className={td}>
-                    <p className="m-0 whitespace-nowrap text-[0.875rem] text-[var(--color-muted)]">
-                      {fmtDate(b.date)} · <span className="num">{clock(b.startTime)}</span>
-                    </p>
-                  </td>
+                <TD>
+                  <p className="m-0 whitespace-nowrap text-[0.875rem] text-[var(--color-muted)]">
+                    {fmtDate(b.date)} · <span className="num">{clock(b.startTime)}</span>
+                  </p>
+                </TD>
 
-                  <td className={td}>
-                    <p className="num m-0 whitespace-nowrap text-[0.875rem] font-bold text-[var(--color-ink)]">
-                      {money(b.totalPrice, lang, b.currency)}
-                    </p>
-                  </td>
+                <TD>
+                  <p className="num m-0 whitespace-nowrap text-[0.875rem] font-bold text-[var(--color-ink)]">
+                    {money(b.totalPrice, lang, b.currency)}
+                  </p>
+                </TD>
 
-                  <td className={td}>
-                    <StatusBadge status={b.status} lang={lang} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                <TD>
+                  <StatusBadge status={b.status} lang={lang} />
+                </TD>
+              </TR>
+            ))}
+          </TBody>
+        </Table>
       )}
     </section>
   );

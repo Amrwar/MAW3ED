@@ -10,6 +10,7 @@ import { Eye, EyeOff, LogIn } from "lucide-react";
 import { loginSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/contexts/LanguageContext";
+import Alert from "@/components/ui/Alert";
 
 type LoginForm = { email: string; password: string };
 
@@ -75,7 +76,7 @@ export default function LoginPage() {
         <div>
           <div className="mb-[0.4375rem] flex items-baseline justify-between gap-3">
             <label htmlFor="login-password" className="field-label mb-0">{l.password}</label>
-            <Link href="/forgot-password" className="text-xs font-bold text-[var(--color-jade)]">
+            <Link href="/forgot-password" className="inline-flex min-h-11 items-center text-xs font-bold text-[var(--color-jade)]">
               {l.forgotPassword}
             </Link>
           </div>
@@ -93,7 +94,7 @@ export default function LoginPage() {
             <button
               type="button"
               aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
-              className="absolute inset-y-0 end-4 flex items-center text-[var(--color-subtle)] transition-colors hover:text-[var(--color-ink)]"
+              className="absolute inset-y-0 end-1 flex w-11 items-center justify-center text-[var(--color-subtle)] transition-colors hover:text-[var(--color-ink)]"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
@@ -104,14 +105,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        {serverError && (
-          <div
-            role="alert"
-            className="rounded-[var(--radius-md)] border border-[var(--color-danger-line)] bg-[var(--color-danger-soft)] px-4 py-3 text-[0.84375rem] text-[var(--color-danger)]"
-          >
-            {serverError}
-          </div>
-        )}
+        {serverError && <Alert tone="danger">{serverError}</Alert>}
 
         <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting} className="mt-1">
           <LogIn size={16} aria-hidden="true" />

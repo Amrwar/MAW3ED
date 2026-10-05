@@ -15,7 +15,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <Logo size="sm" />
         <Link
           href="/"
-          className="ms-auto flex items-center gap-2 text-[0.84375rem] text-[var(--color-muted)] transition-colors hover:text-[var(--color-ink)]"
+          className="ms-auto flex min-h-11 items-center gap-2 text-[0.84375rem] text-[var(--color-muted)] transition-colors hover:text-[var(--color-ink)]"
         >
           {a.backToHome}
           <ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />

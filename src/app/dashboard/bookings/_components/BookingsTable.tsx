@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, ChevronRight, ChevronLeft } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   type DashboardBooking,
   type DashboardBookingStatus,
@@ -9,6 +9,7 @@ import {
   formatDateAr,
 } from "@/features/dashboard/bookings/types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import Pagination from "@/components/ui/Pagination";
 
 const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
   PENDING:         { bg: "var(--color-warn-soft)", color: "var(--color-warn)" },
@@ -255,75 +256,12 @@ export default function BookingsTable({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div
-          className="px-6 py-4 flex items-center justify-between"
-          style={{ borderTop: "1px solid var(--color-surface-3)" }}
-        >
-          <p className="text-xs text-[var(--color-subtle)]">
-            {bk.page} <span className="font-bold text-[var(--color-muted)]">{page}</span>{" "}
-            {bk.of}{" "}
-            <span className="font-bold text-[var(--color-muted)]">{totalPages}</span>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--color-line)] px-6 py-4">
+          <p className="m-0 text-xs text-[var(--color-subtle)]">
+            {bk.page} <span className="num font-bold text-[var(--color-muted)]">{page}</span>{" "}
+            {bk.of} <span className="num font-bold text-[var(--color-muted)]">{totalPages}</span>
           </p>
-          <div className="flex items-center gap-1">
-            {/* Prev */}
-            <button
-              onClick={() => onPageChange(page - 1)}
-              disabled={page <= 1 || loading}
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{ border: "1px solid var(--color-line)", color: "var(--color-muted)", background: "var(--color-surface)" }}
-            >
-              <ChevronRight size={15} />
-            </button>
-
-            {/* Page numbers */}
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-              .reduce<(number | "…")[]>((acc, p, idx, arr) => {
-                if (idx > 0 && (arr[idx - 1] as number) + 1 < p) acc.push("…");
-                acc.push(p);
-                return acc;
-              }, [])
-              .map((p, i) =>
-                p === "…" ? (
-                  <span key={`ellipsis-${i}`} className="w-8 text-center text-xs text-[var(--color-subtle)]">
-                    …
-                  </span>
-                ) : (
-                  <button
-                    key={p}
-                    onClick={() => onPageChange(p as number)}
-                    disabled={loading}
-                    className="w-8 h-8 rounded-lg text-xs font-semibold transition-all duration-150 disabled:opacity-50"
-                    style={
-                      p === page
-                        ? {
-                            background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
-                            color: "var(--color-surface)",
-                            border: "none",
-                            boxShadow: "0 2px 8px rgba(14,127,94,0.3)",
-                          }
-                        : {
-                            background: "var(--color-surface)",
-                            color: "var(--color-muted)",
-                            border: "1px solid var(--color-line)",
-                          }
-                    }
-                  >
-                    {p}
-                  </button>
-                )
-              )}
-
-            {/* Next */}
-            <button
-              onClick={() => onPageChange(page + 1)}
-              disabled={page >= totalPages || loading}
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{ border: "1px solid var(--color-line)", color: "var(--color-muted)", background: "var(--color-surface)" }}
-            >
-              <ChevronLeft size={15} />
-            </button>
-          </div>
+          <Pagination page={page} totalPages={totalPages} onPageChange={onPageChange} />
         </div>
       )}
     </div>

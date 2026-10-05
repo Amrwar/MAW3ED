@@ -118,7 +118,38 @@
   --shadow-modal:       0 4px 10px rgb(17 32 28 / 0.10), 0 32px 60px -34px rgb(17 32 28 / 0.75);
 
   /* Layout --------------------------------------------- */
-  --spacing-section: 5rem;
+  /* Spacing scale -------------------------------------
+     One 4px-based ladder. Every gap, pad and margin picks a
+     rung; nothing invents 17px or 23px along the way. */
+  --space-1:   0.25rem;  /*  4px */
+  --space-2:   0.5rem;   /*  8px */
+  --space-3:   0.75rem;  /* 12px */
+  --space-4:   1rem;     /* 16px */
+  --space-5:   1.25rem;  /* 20px */
+  --space-6:   1.5rem;   /* 24px */
+  --space-8:   2rem;     /* 32px */
+  --space-10:  2.5rem;   /* 40px */
+  --space-12:  3rem;     /* 48px */
+  --space-16:  4rem;     /* 64px */
+  --space-20:  5rem;     /* 80px */
+
+  /* Control heights -----------------------------------
+     Every interactive control lands on one of these, so a
+     button, input and select line up in a row. All clear the
+     44px touch minimum except `sm`, which is desktop-only. */
+  --control-sm: 2.75rem;  /* 44px — the touch minimum, not 40 */
+  --control-md: 3rem;     /* 48px */
+  --control-lg: 3.375rem; /* 54px */
+
+  /* Icon sizes ----------------------------------------
+     Paired with the control they sit in. */
+  --icon-xs: 0.75rem;   /* 12px — inline with caption text */
+  --icon-sm: 0.9375rem; /* 15px — sm controls, meta rows */
+  --icon-md: 1.0625rem; /* 17px — default UI icon */
+  --icon-lg: 1.25rem;   /* 20px — section headers */
+  --icon-xl: 1.5rem;    /* 24px — empty states */
+
+  --spacing-section: var(--space-20);
 }
 
 /* ─── Reset & base ───────────────────────────────────────── */
@@ -223,7 +254,7 @@ h1, h2, h3, h4, h5, h6 {
   transition: background 0.16s ease, border-color 0.16s ease,
               color 0.16s ease, box-shadow 0.16s ease;
   /* 48px keeps every control above the 44px touch minimum */
-  min-height: 3rem;
+  min-height: var(--control-md);
   padding-inline: 1.625rem;
   font-size: 0.9375rem;
 }
@@ -288,8 +319,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 .btn-danger:hover:not(:disabled) { background: var(--color-danger-soft); }
 
-.btn-sm  { min-height: 2.5rem; padding-inline: 1.125rem; font-size: 0.8125rem; }
-.btn-lg  { min-height: 3.375rem; padding-inline: 2rem;   font-size: 1rem; }
+.btn-sm  { min-height: var(--control-sm); padding-inline: 1.125rem; font-size: 0.8125rem; }
+.btn-lg  { min-height: var(--control-lg); padding-inline: 2rem; font-size: 1rem; }
 .btn-pill { border-radius: var(--radius-full); }
 
 .btn:disabled {
@@ -315,7 +346,7 @@ h1, h2, h3, h4, h5, h6 {
   outline: none;
 }
 
-.input, .select { height: 3rem; padding-inline: 0.9375rem; }
+.input, .select { height: var(--control-md); padding-inline: 0.9375rem; }
 .textarea       { padding: 0.8125rem 0.9375rem; line-height: 1.7; resize: vertical; }
 
 .input::placeholder,
@@ -740,3 +771,19 @@ h1, h2, h3, h4, h5, h6 {
   background-size: cover, cover, cover;
   background-repeat: no-repeat;
 }
+
+/* ─── Touch targets ──────────────────────────────────────────
+   A link sitting in a navigation list is a pointer target, not a
+   word inside a sentence, so it gets a full row to be tapped.
+   Links inside running text are left alone. */
+.link-list a {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+/* An input that fills a padded wrapper: the wrapper is what the
+   eye and the thumb both see, so the control should fill it.
+   `align-self: stretch` only stretches an item whose height is
+   auto, so setting height: 100% here would defeat it. */
+.field-fill { align-self: stretch; height: auto; }

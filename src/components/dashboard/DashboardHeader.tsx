@@ -18,6 +18,7 @@ import { signOut } from "next-auth/react";
 import Logo from "@/components/shared/Logo";
 import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
 import type { RealtimeBookingEvent } from "@/hooks/useRealtimeBookings";
+import Dropdown from "@/components/ui/Dropdown";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { Plan } from "@/lib/plans";
@@ -296,11 +297,9 @@ export default function DashboardHeader({
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [toasts,        setToasts]        = useState<ToastItem[]>([]);
-  const [notifOpen,     setNotifOpen]     = useState(false);
   const [soundEnabled,  setSoundEnabled]  = useState(false);
   const [mobileOpen,    setMobileOpen]    = useState(false);
 
-  const dropdownRef  = useRef<HTMLDivElement>(null);
   const audioCtxRef  = useRef<AudioContext | null>(null);
   const unreadCount  = notifications.filter((n) => !n.read).length;
 
@@ -321,18 +320,6 @@ export default function DashboardHeader({
     setMenuPath(pathname);
     setMobileOpen(false);
   }
-
-  // ── Notification dropdown outside click ─────────────────────────────────────
-  useEffect(() => {
-    if (!notifOpen) return;
-    function onOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setNotifOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onOutside);
-    return () => document.removeEventListener("mousedown", onOutside);
-  }, [notifOpen]);
 
 
   // ── Toast helpers ────────────────────────────────────────────────────────────
@@ -487,55 +474,51 @@ export default function DashboardHeader({
             }
           </IconBtn>
 
-          <div className="relative" ref={dropdownRef}>
-            <div className="relative">
-              <IconBtn
-                onClick={() => {
-                  setNotifOpen((open) => {
+          <Dropdown
+            label={h.notifications}
+            role="group"
+            closeOnClick={false}
+            align="end"
+            width="20rem"
+            trigger={({ open, toggle }) => (
+              <div className="relative">
+                <IconBtn
+                  onClick={() => {
+                    // Opening the panel is what marks the batch as seen.
                     if (!open) {
                       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
                     }
-                    return !open;
-                  });
-                }}
-                active={notifOpen}
-              >
-                <Bell size={14} />
-              </IconBtn>
-              {unreadCount > 0 && (
-                <span
-                  className="absolute flex items-center justify-center pointer-events-none"
-                  style={{
-                    top:              -4,
-                    insetInlineEnd:   -4,
-                    minWidth:         16,
-                    height:           16,
-                    borderRadius:     8,
-                    background:       "var(--color-danger)",
-                    color:            "var(--color-surface)",
-                    fontSize:         9,
-                    fontWeight:       700,
-                    paddingInline:    3,
-                    border:           "2px solid var(--color-surface)",
-                    lineHeight:       1,
+                    toggle();
                   }}
+                  active={open}
                 >
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </div>
+                  <Bell size={14} aria-hidden="true" />
+                </IconBtn>
 
-            {notifOpen && (
-              <NotificationDropdown
-                notifications={notifications}
-                onClear={() => setNotifications([])}
-                title={h.notifications}
-                clearLabel={h.clearAll}
-                emptyLabel={h.noNotifications}
-                timeAgoUnits={h.timeAgo}
-              />
+                {unreadCount > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "pointer-events-none absolute -top-1 -end-1 flex h-4 min-w-4 items-center justify-center",
+                      "rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-danger)]",
+                      "px-[3px] text-[0.5625rem] font-bold leading-none text-[var(--color-surface)]",
+                    )}
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </div>
             )}
-          </div>
+          >
+            <NotificationList
+              notifications={notifications}
+              onClear={() => setNotifications([])}
+              title={h.notifications}
+              clearLabel={h.clearAll}
+              emptyLabel={h.noNotifications}
+              timeAgoUnits={h.timeAgo}
+            />
+          </Dropdown>
 
           <div
             style={{
@@ -579,7 +562,7 @@ export default function DashboardHeader({
       <div
         className="fixed inset-0 z-[60] md:hidden"
         style={{
-          background:    "rgba(17,32,28,0.45)",
+          background:    "rgb(17 32 28 / 0.45)",
           backdropFilter: "blur(3px)",
           WebkitBackdropFilter: "blur(3px)",
           opacity:       mobileOpen ? 1 : 0,
@@ -729,7 +712,7 @@ export default function DashboardHeader({
       </div>
 
       {/* ── Toast stack ─────────────────────────────────────── */}
-      <div className="fixed bottom-6 left-6 z-50 flex flex-col gap-2.5 pointer-events-none" dir="rtl">
+      <div className="fixed bottom-6 start-6 z-50 flex flex-col gap-2.5 pointer-events-none">
         {toasts.map((t) => (
           <Toast key={t.id} toast={t} onDismiss={dismissToast} />
         ))}
@@ -781,9 +764,11 @@ function Toast({
   );
 }
 
-// ── Notification Dropdown ─────────────────────────────────────────────────────
+// ── Notification list ─────────────────────────────────────────────────────────
+// The panel's contents only. Positioning, shadow, outside-click and
+// Escape all belong to the Dropdown primitive that wraps it.
 
-function NotificationDropdown({
+function NotificationList({
   notifications,
   onClear,
   title,
@@ -798,44 +783,33 @@ function NotificationDropdown({
   emptyLabel:    string;
   timeAgoUnits:  { now: string; seconds: string; minutes: string; hours: string; days: string };
 }) {
+  // Re-render twice a minute so "منذ 3 دقائق" stays true while open.
   const [, tick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 30_000);
     return () => clearInterval(id);
   }, []);
 
+  const unread = notifications.filter((n) => !n.read).length;
+
   return (
-    <div
-      className="animate-dropdown-in absolute top-full mt-2 end-0 w-80 bg-white rounded-[var(--radius-lg)] overflow-hidden z-50"
-      style={{
-        border:    "1.5px solid var(--color-line)",
-        boxShadow: "0 8px 32px rgba(17,32,28,0.12)",
-      }}
-      dir="rtl"
-    >
-      <div
-        className="flex items-center justify-between px-4 py-3"
-        style={{ borderBottom: "1.5px solid var(--color-surface-3)" }}
-      >
-        <div className="flex items-center gap-2">
-          <Bell size={14} style={{ color: "var(--color-ink)" }} />
-          <p style={{ fontSize: 13, fontWeight: 700, color: "var(--color-ink)" }}>{title}</p>
-          {notifications.filter((n) => !n.read).length > 0 && (
-            <span
-              style={{
-                fontSize: 10, fontWeight: 700,
-                padding: "1px 6px", borderRadius: 100,
-                background: "var(--color-jade-soft)", color: "var(--color-jade)",
-              }}
-            >
-              {notifications.filter((n) => !n.read).length}
+    <>
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Bell size={14} aria-hidden="true" className="shrink-0 text-[var(--color-ink)]" />
+          <p className="m-0 truncate text-[0.8125rem] font-bold text-[var(--color-ink)]">{title}</p>
+          {unread > 0 && (
+            <span className="shrink-0 rounded-full bg-[var(--color-jade-soft)] px-1.5 py-px text-[0.625rem] font-bold text-[var(--color-jade)]">
+              {unread}
             </span>
           )}
         </div>
+
         {notifications.length > 0 && (
           <button
+            type="button"
             onClick={onClear}
-            style={{ fontSize: 11, color: "var(--color-subtle)" }}
+            className="shrink-0 text-[0.6875rem] text-[var(--color-subtle)] transition-colors hover:text-[var(--color-ink)]"
           >
             {clearLabel}
           </button>
@@ -844,11 +818,15 @@ function NotificationDropdown({
 
       <div className="max-h-[22rem] overflow-y-auto overscroll-contain">
         {notifications.length === 0 ? (
-          <div className="py-12 text-center">
-            <div className="w-12 h-12 flex items-center justify-center mx-auto mb-3">
-              <Image src="/icon-nobg.png" alt="موعد" width={40} height={40} className="object-contain opacity-40" />
-            </div>
-            <p style={{ fontSize: 13, color: "var(--color-subtle)" }}>{emptyLabel}</p>
+          <div className="px-4 py-12 text-center">
+            <Image
+              src="/icon-nobg.png"
+              alt=""
+              width={40}
+              height={40}
+              className="mx-auto mb-3 object-contain opacity-40"
+            />
+            <p className="m-0 text-[0.8125rem] text-[var(--color-subtle)]">{emptyLabel}</p>
           </div>
         ) : (
           notifications.map((n) => {
@@ -857,34 +835,38 @@ function NotificationDropdown({
               <div
                 key={n.id}
                 className={cn(
-                  "flex items-start gap-3 px-4 py-3",
-                  n.read ? "bg-white" : "bg-[var(--color-jade-soft)]/30",
+                  "flex items-start gap-3 border-b border-[var(--color-surface-2)] px-4 py-3 last:border-b-0",
+                  n.read ? "bg-[var(--color-surface)]" : "bg-[var(--color-jade-tint)]",
                 )}
-                style={{ borderBottom: "1px solid var(--color-surface-2)" }}
               >
-                <span className={cn("mt-0.5 shrink-0 w-7 h-7 rounded-full flex items-center justify-center", iconClass)}>
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                    iconClass,
+                  )}
+                >
                   <Icon size={14} />
                 </span>
-                <div className="flex-1 min-w-0">
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--color-ink)", lineHeight: 1.3 }}>
+
+                <div className="min-w-0 flex-1">
+                  <p className="m-0 text-[0.8125rem] font-bold leading-snug text-[var(--color-ink)]">
                     {n.title}
                   </p>
                   {n.body && (
-                    <p style={{ color: "var(--color-subtle)", marginTop: 2 }} className="truncate text-[0.6875rem]">
+                    <p className="m-0 mt-0.5 truncate text-[0.6875rem] text-[var(--color-subtle)]">
                       {n.body}
                     </p>
                   )}
-                  <p style={{ fontSize: 10, color: "var(--color-line-2)", marginTop: 3 }}>
+                  <p className="m-0 mt-1 text-[0.625rem] text-[var(--color-line-2)]">
                     {timeAgo(n.timestamp, timeAgoUnits)}
                   </p>
                 </div>
+
                 {!n.read && (
                   <span
-                    className="shrink-0 mt-2"
-                    style={{
-                      width: 7, height: 7, borderRadius: "50%",
-                      background: "var(--color-jade)", flexShrink: 0,
-                    }}
+                    aria-hidden="true"
+                    className="mt-2 h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--color-jade)]"
                   />
                 )}
               </div>
@@ -892,6 +874,6 @@ function NotificationDropdown({
           })
         )}
       </div>
-    </div>
+    </>
   );
 }

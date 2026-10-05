@@ -140,7 +140,7 @@ export default function BusinessesClient({
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder={b.searchPlaceholder}
-                className="w-full min-w-0 border-0 bg-transparent text-[0.9375rem] font-bold text-[var(--color-ink)] outline-none placeholder:font-normal placeholder:text-[var(--color-faint)]"
+                className="field-fill w-full min-w-0 border-0 bg-transparent text-[0.9375rem] font-bold text-[var(--color-ink)] outline-none placeholder:font-normal placeholder:text-[var(--color-faint)]"
               />
             </div>
 
@@ -151,7 +151,7 @@ export default function BusinessesClient({
                 id="browse-city"
                 value={city}
                 onChange={(e) => { setCity(e.target.value); apply(q, e.target.value, category); }}
-                className="w-full min-w-0 border-0 bg-transparent text-[0.9375rem] text-[var(--color-ink)] outline-none"
+                className="field-fill w-full min-w-0 border-0 bg-transparent text-[0.9375rem] text-[var(--color-ink)] outline-none"
               >
                 <option value="">{copy.allCities}</option>
                 {cities.map((c) => (

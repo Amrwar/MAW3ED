@@ -62,7 +62,7 @@ export default function PublicBusinessCard({ business, className, featured = fal
 
         <div className="min-w-0">
           <h3 className="truncate text-[1.0625rem] font-bold text-[var(--color-ink)]">
-            <Link href={href} className="text-inherit hover:text-[var(--color-jade)] transition-colors">
+            <Link href={href} className="inline-flex min-h-6 items-center text-inherit transition-colors hover:text-[var(--color-jade)]">
               {name}
             </Link>
           </h3>

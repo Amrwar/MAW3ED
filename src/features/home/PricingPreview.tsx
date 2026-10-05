@@ -102,7 +102,7 @@ export default function PricingPreview() {
         </div>
 
         <div className="mt-9 text-center">
-          <Link href="/pricing" className="text-sm font-bold text-[var(--color-jade)]">
+          <Link href="/pricing" className="inline-flex min-h-11 items-center text-sm font-bold text-[var(--color-jade)]">
             {p.viewAll}
           </Link>
         </div>

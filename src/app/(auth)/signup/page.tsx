@@ -11,6 +11,7 @@ import { z } from "zod";
 import { signUpSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/contexts/LanguageContext";
+import Alert from "@/components/ui/Alert";
 
 const formSchema = signUpSchema.extend({
   confirmPassword: z.string(),
@@ -124,7 +125,7 @@ export default function SignupPage() {
             <button
               type="button"
               aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
-              className="absolute inset-y-0 end-4 flex items-center text-[var(--color-subtle)] transition-colors hover:text-[var(--color-ink)]"
+              className="absolute inset-y-0 end-1 flex w-11 items-center justify-center text-[var(--color-subtle)] transition-colors hover:text-[var(--color-ink)]"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
@@ -149,14 +150,7 @@ export default function SignupPage() {
           )}
         </div>
 
-        {serverError && (
-          <div
-            role="alert"
-            className="rounded-[var(--radius-md)] border border-[var(--color-danger-line)] bg-[var(--color-danger-soft)] px-4 py-3 text-[0.84375rem] text-[var(--color-danger)]"
-          >
-            {serverError}
-          </div>
-        )}
+        {serverError && <Alert tone="danger">{serverError}</Alert>}
 
         <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting} className="mt-1">
           <UserPlus size={16} aria-hidden="true" />

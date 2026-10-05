@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Loader2 } from "lucide-react";
 import type { StaffMember } from "./StaffClient";
 import { useLanguage } from "@/contexts/LanguageContext";
+import Modal from "@/components/ui/Modal";
+import Button from "@/components/ui/Button";
+import Alert from "@/components/ui/Alert";
 import ImageUpload from "@/components/shared/ImageUpload";
 
 const DAY_LABELS_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
@@ -156,59 +158,36 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
   const dayLabels = isAr ? DAY_LABELS_AR : DAY_LABELS_EN;
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-[80]"
-        style={{
-          background:     "rgba(17,32,28,0.45)",
-          backdropFilter: "blur(3px)",
-          opacity:        open ? 1 : 0,
-          pointerEvents:  open ? "auto" : "none",
-          transition:     "opacity 0.25s ease",
-        }}
-        onClick={onClose}
-      />
-
-      {/* Panel */}
-      <div
-        className="fixed top-0 end-0 z-[90] h-full flex flex-col"
-        style={{
-          width:      400,
-          maxWidth:   "100vw",
-          background: "var(--color-surface)",
-          boxShadow:  open ? "0 0 40px rgba(17,32,28,0.18)" : "none",
-          transform:  open ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.28s cubic-bezier(0.4,0,0.2,1)",
-        }}
-        dir={isAr ? "rtl" : "ltr"}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-5 shrink-0"
-          style={{ height: 64, borderBottom: "1.5px solid var(--color-surface-3)" }}
-        >
-          <p style={{ fontSize: 15, fontWeight: 700, color: "var(--color-ink)" }}>
-            {editing
-              ? (isAr ? "تعديل بيانات الموظف" : "Edit Staff Member")
-              : (isAr ? "إضافة موظف جديد"     : "Add Staff Member")}
-          </p>
-          <button
-            onClick={onClose}
-            style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: "var(--color-surface-2)", border: "1.5px solid var(--color-line)",
-              color: "var(--color-muted)", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
+    <Modal
+      open={open}
+      onClose={onClose}
+      variant="sheet"
+      title={
+        editing
+          ? (isAr ? "تعديل بيانات الموظف" : "Edit Staff Member")
+          : (isAr ? "إضافة موظف جديد" : "Add Staff Member")
+      }
+      footer={
+        <div className="flex gap-3">
+          <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+            {isAr ? "إلغاء" : "Cancel"}
+          </Button>
+          <Button
+            type="submit"
+            form="staff-form"
+            variant="primary"
+            isLoading={saving}
+            className="flex-[2]"
           >
-            <X size={14} />
-          </button>
+            {editing
+              ? (isAr ? "حفظ التعديلات" : "Save Changes")
+              : (isAr ? "إضافة الموظف" : "Add Member")}
+          </Button>
         </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto" style={{ padding: "24px 20px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      }
+    >
+      <form id="staff-form" onSubmit={handleSubmit}>
+        <div className="flex flex-col gap-[var(--space-5)]">
 
             {/* Name AR */}
             <div>
@@ -367,60 +346,9 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
               </button>
             </div>
 
-            {error && (
-              <p style={{ fontSize: 12, color: "var(--color-danger)", fontWeight: 500 }}>{error}</p>
-            )}
-          </div>
-        </form>
-
-        {/* Footer */}
-        <div
-          className="shrink-0 flex gap-3 px-5 pb-6 pt-4"
-          style={{ borderTop: "1.5px solid var(--color-surface-3)" }}
-        >
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              flex:         1,
-              padding:      "11px 0",
-              borderRadius: 10,
-              background:   "var(--color-surface-2)",
-              border:       "1.5px solid var(--color-line)",
-              color:        "var(--color-muted)",
-              fontSize:     13,
-              fontWeight:   600,
-              cursor:       "pointer",
-            }}
-          >
-            {isAr ? "إلغاء" : "Cancel"}
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={saving}
-            style={{
-              flex:           2,
-              padding:        "11px 0",
-              borderRadius:   10,
-              background:     "var(--color-ink)",
-              border:         "none",
-              color:          "var(--color-surface)",
-              fontSize:       13,
-              fontWeight:     600,
-              cursor:         saving ? "not-allowed" : "pointer",
-              display:        "flex",
-              alignItems:     "center",
-              justifyContent: "center",
-              gap:            6,
-            }}
-          >
-            {saving && <Loader2 size={13} className="animate-spin" />}
-            {saving
-              ? (isAr ? "جاري الحفظ..." : "Saving...")
-              : (editing ? (isAr ? "حفظ التعديلات" : "Save Changes") : (isAr ? "إضافة الموظف" : "Add Member"))}
-          </button>
+          {error && <Alert tone="danger">{error}</Alert>}
         </div>
-      </div>
-    </>
+      </form>
+    </Modal>
   );
 }

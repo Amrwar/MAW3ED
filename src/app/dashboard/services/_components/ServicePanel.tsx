@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  X, Loader2, Clock, DollarSign,
-  FileText, Languages, CheckCircle2, Sparkles,
-} from "lucide-react";
+import { Clock, DollarSign, FileText, Languages, CheckCircle2 } from "lucide-react";
 import type { Service } from "./ServicesClient";
 import { useLanguage } from "@/contexts/LanguageContext";
+import Modal from "@/components/ui/Modal";
+import Button from "@/components/ui/Button";
+import Alert from "@/components/ui/Alert";
 
 const DURATIONS = [10, 15, 20, 30, 45, 60, 75, 90, 120, 150, 180, 240];
 
@@ -223,76 +223,49 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
     }
   }
 
-  if (!open) return null;
+  const title = editing
+    ? (isAr ? "تعديل الخدمة" : "Edit Service")
+    : (isAr ? "إضافة خدمة جديدة" : "Add New Service");
+
+  const description = editing
+    ? (isAr ? "عدّل البيانات ثم احفظ التغييرات" : "Update the details and save")
+    : (isAr ? "أدخل تفاصيل الخدمة التي سيحجزها العملاء" : "Enter the service details customers will book");
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[3px]"
-        onClick={onClose}
-      />
+    <Modal
+      open={open}
+      onClose={onClose}
+      variant="sheet"
+      title={title}
+      description={description}
+      footer={
+        <div className="flex flex-col gap-2.5">
+          <p className="m-0 text-center text-[0.6875rem] text-[var(--color-subtle)]">
+            {editing
+              ? (isAr ? "سيتم تحديث الخدمة فوراً على صفحة حجزك" : "Service will be updated immediately on your booking page")
+              : (isAr ? "بعد الإضافة يمكنك تعديل أي بيانات في أي وقت" : "After adding, you can edit any details at any time")}
+          </p>
 
-      <div
-        className="fixed top-0 end-0 z-50 w-full max-w-[460px] bg-white flex flex-col"
-        style={{ height: "100dvh", boxShadow: "-12px 0 48px rgba(17,32,28,0.14)" }}
-      >
-
-        {/* ── HEADER ───────────────────────────────────────── */}
-        <div className="shrink-0" style={{ borderBottom: "1.5px solid var(--color-surface-3)" }}>
-          <div
-            style={{
-              height:     3,
-              background: "linear-gradient(90deg, var(--color-jade) 0%, var(--color-jade) 50%, var(--color-jade) 100%)",
-            }}
-          />
-          <div className="flex items-center justify-between px-5 py-3.5">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div
-                className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center shrink-0"
-                style={{ background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)" }}
-              >
-                <Sparkles size={14} strokeWidth={2} style={{ color: "var(--color-surface)" }} />
-              </div>
-              <div className="min-w-0">
-                <h2
-                  className="font-extrabold text-[var(--color-ink)] truncate text-[0.9375rem]"
-                  style={{ letterSpacing: "-0.02em" }}
-                >
-                  {editing
-                    ? (isAr ? "تعديل الخدمة" : "Edit Service")
-                    : (isAr ? "إضافة خدمة جديدة" : "Add New Service")}
-                </h2>
-                <p style={{ fontSize: 11, color: "var(--color-subtle)", lineHeight: 1.4 }}>
-                  {editing
-                    ? (isAr ? "عدّل البيانات ثم احفظ التغييرات" : "Update the details and save")
-                    : (isAr ? "أدخل تفاصيل الخدمة التي سيحجزها العملاء" : "Enter the service details customers will book")}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-150 shrink-0 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
-              style={{ background: "var(--color-surface-2)", border: "1.5px solid var(--color-line)", color: "var(--color-muted)" }}
+          <div className="flex gap-3">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              {isAr ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button
+              type="submit"
+              form="service-form"
+              variant="primary"
+              isLoading={saving}
+              className="flex-[2]"
             >
-              <X size={14} strokeWidth={2} />
-            </button>
+              {editing
+                ? (isAr ? "حفظ التعديلات" : "Save Changes")
+                : (isAr ? "إضافة الخدمة" : "Add Service")}
+            </Button>
           </div>
         </div>
-
-        {/* ── BODY ─────────────────────────────────────────── */}
-        <form
-          id="service-form"
-          onSubmit={handleSubmit}
-          className="flex-1 min-h-0 overflow-y-auto"
-          style={{
-            padding:        "16px 20px",
-            display:        "flex",
-            flexDirection:  "column",
-            gap:            14,
-            WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
-          }}
-        >
+      }
+    >
+      <form id="service-form" onSubmit={handleSubmit} className="flex flex-col gap-3.5">
 
           {/* ── Section 1: Service info ── */}
           <FormSection
@@ -528,85 +501,9 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
           </FormSection>
 
           {/* ── Error message ── */}
-          {error && (
-            <div
-              className="flex items-start gap-2.5 rounded-[var(--radius-md)] px-3.5 py-3"
-              style={{ background: "var(--color-danger-soft)", border: "1.5px solid var(--color-danger-line)" }}
-            >
-              <div
-                className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                style={{ background: "var(--color-danger-soft)" }}
-              >
-                <X size={10} strokeWidth={2.5} style={{ color: "var(--color-danger)" }} />
-              </div>
-              <p style={{ fontSize: 13, color: "var(--color-danger)", lineHeight: 1.5 }}>{error}</p>
-            </div>
-          )}
+          {error && <Alert tone="danger">{error}</Alert>}
 
-          <div style={{ height: 16 }} />
-        </form>
-
-        {/* ── FOOTER ───────────────────────────────────────── */}
-        <div
-          className="shrink-0 px-5 py-3"
-          style={{
-            borderTop:  "1.5px solid var(--color-surface-3)",
-            background: "var(--color-surface)",
-            boxShadow:  "0 -4px 16px rgba(17,32,28,0.06)",
-          }}
-        >
-          {/* Helper */}
-          <p style={{ fontSize: 11, color: "var(--color-subtle)", marginBottom: 10, textAlign: "center" }}>
-            {editing
-              ? (isAr ? "سيتم تحديث الخدمة فوراً على صفحة حجزك" : "Service will be updated immediately on your booking page")
-              : (isAr ? "بعد الإضافة يمكنك تعديل أي بيانات في أي وقت" : "After adding, you can edit any details at any time")}
-          </p>
-
-          <div className="flex gap-3">
-            {/* Cancel */}
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-[var(--radius-md)] font-semibold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)] text-[0.875rem]"
-              style={{
-                paddingBlock: 11,
-                background:   "var(--color-surface-2)",
-                border:       "1.5px solid var(--color-line)",
-                color:        "var(--color-muted)",
-                cursor:       "pointer" }}
-            >
-              {isAr ? "إلغاء" : "Cancel"}
-            </button>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              form="service-form"
-              disabled={saving}
-              className="flex items-center justify-center gap-2 rounded-[var(--radius-md)] font-extrabold text-white transition-all duration-200 disabled:opacity-60 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)] text-[0.875rem]"
-              style={{
-                flex:          2,
-                paddingBlock:  11,
-                background:    "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade-hover) 60%, var(--color-jade) 100%)",
-                boxShadow:     "0 4px 16px rgba(10,95,71,0.3)",
-                border:        "none",
-                cursor:        saving ? "not-allowed" : "pointer",
-                letterSpacing: "-0.01em" }}
-            >
-              {saving ? (
-                <>
-                  <Loader2 size={15} className="animate-spin" />
-                  {isAr ? "جاري الحفظ..." : "Saving..."}
-                </>
-              ) : (
-                editing
-                  ? (isAr ? "حفظ التعديلات" : "Save Changes")
-                  : (isAr ? "إضافة الخدمة" : "Add Service")
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
+      </form>
+    </Modal>
   );
 }

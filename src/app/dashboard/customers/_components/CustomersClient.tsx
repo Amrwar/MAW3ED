@@ -6,6 +6,8 @@ import {
   UsersRound, CalendarDays, Wallet,
   Eye, ChevronLeft,
 } from "lucide-react";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
+import { cn } from "@/lib/utils";
 import CustomerDetailPanel from "./CustomerDetailPanel";
 import type { CustomerRow } from "@/app/api/business/customers/route";
 import { formatDateAr } from "@/features/dashboard/bookings/types";
@@ -122,11 +124,32 @@ export default function CustomersClient({ initialCustomers }: Props) {
     : 0;
   const currency         = customers[0]?.currency ?? "EGP";
 
-  const SortIcon = ({ k }: { k: SortKey }) => {
-    if (sortKey !== k)     return <ChevronDown size={11} style={{ color: "var(--color-line-2)" }} />;
-    return sortOrder === "asc"
-      ? <ChevronUp   size={11} style={{ color: "var(--color-jade)" }} />
-      : <ChevronDown size={11} style={{ color: "var(--color-jade)" }} />;
+  /**
+   * A sortable column. aria-sort belongs on the header cell, not the
+   * button inside it, so the cell and its control are one component.
+   */
+  const SortTH = ({ k, children }: { k: SortKey; children: React.ReactNode }) => {
+    const active = sortKey === k;
+    const Icon = active && sortOrder === "asc" ? ChevronUp : ChevronDown;
+    return (
+      <TH aria-sort={active ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}>
+        <button
+          type="button"
+          onClick={() => toggleSort(k)}
+          className={cn(
+            "-mx-2 flex min-h-11 items-center gap-1 rounded-[var(--radius-sm)] px-2 transition-colors",
+            active ? "text-[var(--color-jade)]" : "hover:text-[var(--color-muted)]",
+          )}
+        >
+          {children}
+          <Icon
+            size={11}
+            aria-hidden="true"
+            className={active ? "text-[var(--color-jade)]" : "text-[var(--color-line-2)]"}
+          />
+        </button>
+      </TH>
+    );
   };
 
   return (
@@ -276,97 +299,42 @@ export default function CustomersClient({ initialCustomers }: Props) {
           )}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full" style={{ minWidth: 740 }}>
-            <thead>
-              <tr style={{ background: "var(--color-ground)", borderBottom: "1px solid var(--color-surface-3)" }}>
-                {/* Customer */}
-                <th className="text-start px-6 py-3">
-                  <button
-                    onClick={() => toggleSort("name")}
-                    className="flex items-center gap-1 text-xs font-semibold transition-colors"
-                    style={{ color: sortKey === "name" ? "var(--color-jade)" : "var(--color-subtle)", letterSpacing: "0.02em" }}
-                  >
-                    {cu.columns.customer}
-                    <SortIcon k="name" />
-                  </button>
-                </th>
-                {/* Phone */}
-                <th
-                  className="text-start px-5 py-3 text-xs font-semibold"
-                  style={{ color: "var(--color-subtle)", letterSpacing: "0.02em" }}
-                >
-                  {cu.columns.phone}
-                </th>
-                {/* Bookings */}
-                <th className="text-start px-5 py-3">
-                  <button
-                    onClick={() => toggleSort("bookingCount")}
-                    className="flex items-center gap-1 text-xs font-semibold transition-colors"
-                    style={{ color: sortKey === "bookingCount" ? "var(--color-jade)" : "var(--color-subtle)", letterSpacing: "0.02em" }}
-                  >
-                    {cu.columns.bookings}
-                    <SortIcon k="bookingCount" />
-                  </button>
-                </th>
-                {/* Last visit */}
-                <th className="text-start px-5 py-3">
-                  <button
-                    onClick={() => toggleSort("lastVisit")}
-                    className="flex items-center gap-1 text-xs font-semibold transition-colors"
-                    style={{ color: sortKey === "lastVisit" ? "var(--color-jade)" : "var(--color-subtle)", letterSpacing: "0.02em" }}
-                  >
-                    {cu.columns.lastVisit}
-                    <SortIcon k="lastVisit" />
-                  </button>
-                </th>
-                {/* Spend */}
-                <th className="text-start px-5 py-3">
-                  <button
-                    onClick={() => toggleSort("totalSpend")}
-                    className="flex items-center gap-1 text-xs font-semibold transition-colors"
-                    style={{ color: sortKey === "totalSpend" ? "var(--color-jade)" : "var(--color-subtle)", letterSpacing: "0.02em" }}
-                  >
-                    {cu.columns.spend}
-                    <SortIcon k="totalSpend" />
-                  </button>
-                </th>
-                {/* Status */}
-                <th
-                  className="text-start px-5 py-3 text-xs font-semibold"
-                  style={{ color: "var(--color-subtle)", letterSpacing: "0.02em" }}
-                >
-                  الحالة
-                </th>
-                {/* Actions */}
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
+        <Table minWidth="46.25rem">
 
-            <tbody>
+          <THead>
+            <TR>
+              <SortTH k="name">{cu.columns.customer}</SortTH>
+              <TH>{cu.columns.phone}</TH>
+              <SortTH k="bookingCount">{cu.columns.bookings}</SortTH>
+              <SortTH k="lastVisit">{cu.columns.lastVisit}</SortTH>
+              <SortTH k="totalSpend">{cu.columns.spend}</SortTH>
+              <TH>الحالة</TH>
+              <TH>
+                <span className="sr-only">تفاصيل</span>
+              </TH>
+            </TR>
+          </THead>
+
+          <TBody>
               {/* Loading skeleton */}
               {loading && customers.length === 0
                 ? Array.from({ length: 6 }).map((_, i) => (
-                    <tr key={i} style={{ borderBottom: "1px solid var(--color-surface-2)" }}>
+                    <TR key={i}>
                       {Array.from({ length: 7 }).map((_, j) => (
-                        <td key={j} className="px-5 py-4">
+                        <TD key={j}>
                           <div
-                            className="rounded-lg animate-pulse"
-                            style={{
-                              height:     14,
-                              background: "var(--color-surface-3)",
-                              width:      j === 0 ? 140 : j === 6 ? 40 : 80,
-                            }}
+                            className="h-3.5 animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-surface-3)]"
+                            style={{ width: j === 0 ? 140 : j === 6 ? 40 : 80 }}
                           />
-                        </td>
+                        </TD>
                       ))}
-                    </tr>
+                    </TR>
                   ))
 
                 /* Empty */
                 : customers.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-5 py-20 text-center">
+                  <TR>
+                    <TD colSpan={7} className="px-5 py-20 text-center">
                       <div
                         className="w-16 h-16 rounded-[var(--radius-lg)] mx-auto mb-4 flex items-center justify-center"
                         style={{ background: "var(--color-surface-2)" }}
@@ -379,8 +347,8 @@ export default function CustomersClient({ initialCustomers }: Props) {
                       {!search && (
                         <p className="text-xs text-[var(--color-subtle)] mt-1">{cu.emptySub}</p>
                       )}
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
 
                 /* Rows */
                 ) : (
@@ -390,18 +358,14 @@ export default function CustomersClient({ initialCustomers }: Props) {
                     const isSelected = selected?.id === c.id;
 
                     return (
-                      <tr
+                      <TR
                         key={c.id}
+                        selected={isSelected}
                         onClick={() => setSelected(c)}
-                        className="cursor-pointer transition-colors"
-                        style={{
-                          borderBottom: "1px solid var(--color-surface-2)",
-                          opacity:      loading ? 0.6 : 1,
-                          background:   isSelected ? "rgba(14,127,94,0.04)" : "transparent",
-                        }}
+                        className={loading ? "opacity-60" : undefined}
                       >
                         {/* Customer */}
-                        <td className="px-6 py-4">
+                        <TD>
                           <div className="flex items-center gap-3">
                             <div
                               className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold text-white shrink-0"
@@ -419,15 +383,15 @@ export default function CustomersClient({ initialCustomers }: Props) {
                               </span>
                             </div>
                           </div>
-                        </td>
+                        </TD>
 
                         {/* Phone */}
-                        <td className="px-5 py-4">
+                        <TD>
                           <p className="text-sm text-[var(--color-muted)]" dir="ltr">{c.phone}</p>
-                        </td>
+                        </TD>
 
                         {/* Booking count */}
-                        <td className="px-5 py-4">
+                        <TD>
                           <div className="flex items-center gap-1.5">
                             <span
                               className="text-sm font-bold"
@@ -437,37 +401,37 @@ export default function CustomersClient({ initialCustomers }: Props) {
                             </span>
                             <span className="text-xs text-[var(--color-subtle)]">{cu.bookingCount}</span>
                           </div>
-                        </td>
+                        </TD>
 
                         {/* Last visit */}
-                        <td className="px-5 py-4">
+                        <TD>
                           <p className="text-sm text-[var(--color-muted)] whitespace-nowrap">
                             {c.lastBookingDate ? formatDateAr(c.lastBookingDate) : (
                               <span className="text-[var(--color-line-2)]">—</span>
                             )}
                           </p>
-                        </td>
+                        </TD>
 
                         {/* Total spend */}
-                        <td className="px-5 py-4">
+                        <TD>
                           <p className="text-sm font-extrabold whitespace-nowrap" style={{ color: c.totalSpend > 0 ? "var(--color-jade)" : "var(--color-subtle)" }}>
                             {c.totalSpend.toLocaleString(locale)}
                             <span className="text-xs font-normal text-[var(--color-subtle)] ms-1">{c.currency}</span>
                           </p>
-                        </td>
+                        </TD>
 
                         {/* Status */}
-                        <td className="px-5 py-4">
+                        <TD>
                           <span
                             className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
                             style={{ background: status.bg, color: status.color }}
                           >
                             {status.text}
                           </span>
-                        </td>
+                        </TD>
 
                         {/* Action */}
-                        <td className="px-5 py-4">
+                        <TD>
                           <button
                             onClick={(e) => { e.stopPropagation(); setSelected(c); }}
                             className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-150"
@@ -475,14 +439,13 @@ export default function CustomersClient({ initialCustomers }: Props) {
                           >
                             <Eye size={13} strokeWidth={1.75} />
                           </button>
-                        </td>
-                      </tr>
+                        </TD>
+                      </TR>
                     );
                   })
                 )}
-            </tbody>
-          </table>
-        </div>
+          </TBody>
+        </Table>
 
         {/* Table footer */}
         {customers.length > 0 && !loading && (

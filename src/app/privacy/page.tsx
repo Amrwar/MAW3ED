@@ -62,8 +62,8 @@ export default function PrivacyPage() {
             </section>
           </div>
 
-          <div className="mt-10 pt-6 border-t border-[var(--color-border)]">
-            <Link href="/" className="text-sm text-[var(--color-accent)] hover:underline">
+          <div className="mt-10 pt-6 border-t border-[var(--color-line)]">
+            <Link href="/" className="inline-flex min-h-11 items-center text-sm text-[var(--color-jade)] hover:underline">
               ← العودة للرئيسية
             </Link>
           </div>

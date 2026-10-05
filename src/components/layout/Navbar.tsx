@@ -80,7 +80,7 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-[0.90625rem] transition-colors",
+                  "flex min-h-11 items-center text-[0.90625rem] transition-colors",
                   isActive(link.href)
                     ? "font-bold text-[var(--color-jade)]"
                     : "text-[var(--color-muted)] hover:text-[var(--color-ink)]",
@@ -96,7 +96,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={toggleLang}
-              className="flex items-center gap-2 h-10 px-3.5 text-[0.8125rem] rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors"
+              className="flex items-center gap-2 h-11 px-3.5 text-[0.8125rem] rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors"
             >
               <Globe size={15} strokeWidth={1.6} aria-hidden="true" />
               {t.nav.langToggle}
@@ -111,7 +111,7 @@ export default function Navbar() {
               <>
                 <Link
                   href="/login"
-                  className="text-[0.90625rem] font-bold text-[var(--color-ink)] hover:text-[var(--color-jade)] transition-colors"
+                  className="flex min-h-11 items-center text-[0.90625rem] font-bold text-[var(--color-ink)] transition-colors hover:text-[var(--color-jade)]"
                 >
                   {t.nav.login}
                 </Link>
@@ -130,7 +130,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={toggleLang}
-              className="flex items-center gap-1.5 h-10 px-3 text-xs rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-muted)] transition-colors"
+              className="flex items-center gap-1.5 h-11 px-3 text-xs rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-muted)] transition-colors"
             >
               <Globe size={13} strokeWidth={1.6} aria-hidden="true" />
               {t.nav.langToggle}

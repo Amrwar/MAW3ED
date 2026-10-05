@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Mail, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import Alert from "@/components/ui/Alert";
 
 export default function ForgotPasswordPage() {
   const [email,       setEmail]       = useState("");
@@ -94,11 +95,7 @@ export default function ForgotPasswordPage() {
           />
         </div>
 
-        {error && (
-          <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-[var(--radius-md)] px-4 py-3">
-            {error}
-          </div>
-        )}
+        {error && <Alert tone="danger">{error}</Alert>}
 
         <button
           type="submit"

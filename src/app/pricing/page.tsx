@@ -6,6 +6,7 @@ import { Check, Minus, Zap, Crown, Sparkles, ChevronDown, MessageCircle, ArrowRi
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PageHero from "@/components/shared/PageHero";
+import { Table } from "@/components/ui/Table";
 import { PLAN_FEATURES, PLAN_PRICES_EGP, PLAN_NAMES_AR, PLAN_NAMES_EN } from "@/lib/plans";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -366,9 +367,10 @@ export default function PricingPage() {
                   boxShadow:  "0 4px 24px rgba(17,32,28,0.06), 0 1px 4px rgba(17,32,28,0.03)",
                 }}
               >
-                {/* Horizontal scroll wrapper for mobile */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm" style={{ minWidth: 520 }}>
+                {/* The matrix keeps its own header and banding — it is a
+                    comparison grid, not a data table — but scrolls inside
+                    its own box like every other table. */}
+                <Table minWidth="32.5rem" className="text-sm">
 
                     {/* Dark navy header */}
                     <thead>
@@ -396,8 +398,8 @@ export default function PricingPage() {
                                   className="w-7 h-7 rounded-lg flex items-center justify-center"
                                   style={{
                                     background: cfg.featured
-                                      ? "rgba(255,255,255,0.18)"
-                                      : "rgba(255,255,255,0.07)",
+                                      ? "rgb(255 255 255 / 0.18)"
+                                      : "rgb(255 255 255 / 0.07)",
                                   }}
                                 >
                                   <Icon
@@ -406,7 +408,7 @@ export default function PricingPage() {
                                     style={{ color: "var(--color-surface)" }}
                                   />
                                 </div>
-                                <span className="text-sm font-bold text-white">
+                                <span className="text-sm font-bold text-[var(--color-inverse)]">
                                   {planNames[planId]}
                                 </span>
                               </div>
@@ -437,10 +439,12 @@ export default function PricingPage() {
                             const val = PLAN_FEATURES[planId][key];
 
                             const rowBg = i % 2 === 0 ? "var(--color-surface)" : "var(--color-surface-2)";
+                            // The featured column keeps a jade wash through
+                            // both bands of the stripe.
                             const cellBg = cfg.featured
                               ? i % 2 === 0
-                                ? "rgba(14,127,94,0.05)"
-                                : "rgba(14,127,94,0.03)"
+                                ? "var(--color-jade-tint)"
+                                : "var(--color-jade-soft)"
                               : rowBg;
 
                             let content: React.ReactNode;
@@ -489,8 +493,7 @@ export default function PricingPage() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
-                </div>
+                </Table>
               </div>
             </div>
 
@@ -585,8 +588,7 @@ export default function PricingPage() {
 
                         <Link
                           href="/contact"
-                          className="inline-flex items-center gap-1.5 text-xs font-bold transition-colors duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
-                          style={{ color: "var(--color-jade)" }}
+                          className="inline-flex min-h-11 items-center gap-1.5 text-xs font-bold text-[var(--color-jade)] transition-colors"
                         >
                           {isAr ? "تواصل مع الدعم" : "Contact support"}
                           {isAr

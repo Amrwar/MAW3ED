@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Phone, Loader2, User, Calendar, Clock, CreditCard } from "lucide-react";
+import { Phone, Loader2, User, Calendar, Clock, CreditCard } from "lucide-react";
 import {
   type DashboardBooking,
   type DashboardBookingStatus,
@@ -9,6 +9,8 @@ import {
   formatDateAr,
 } from "@/features/dashboard/bookings/types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import Modal from "@/components/ui/Modal";
+import Alert from "@/components/ui/Alert";
 
 const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
   PENDING:         { bg: "var(--color-warn-soft)", color: "var(--color-warn)" },
@@ -78,43 +80,58 @@ export default function BookingDetailPanel({
     }
   }
 
+  // The booking reference reads left-to-right even in Arabic.
+  const reference = `#${booking.id.slice(-8).toUpperCase()}`;
+
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
+    <Modal
+      open
+      onClose={onClose}
+      variant="sheet"
+      title={bd.title}
+      description={reference}
+      footer={
+        <div className="space-y-3">
+          {actionError && <Alert tone="danger">{actionError}</Alert>}
+          {actionSuccess && <Alert tone="success">{actionSuccess}</Alert>}
 
-      {/* Panel */}
-      <div
-        className="fixed inset-y-0 end-0 z-50 w-full max-w-md bg-white flex flex-col"
-        style={{ boxShadow: "-8px 0 40px rgba(17,32,28,0.12)" }}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-6 py-5"
-          style={{ borderBottom: "1px solid var(--color-surface-3)" }}
-        >
-          <div>
-            <h2 className="font-extrabold text-[var(--color-ink)] text-base" >
-              {bd.title}
-            </h2>
-            <p className="text-xs text-[var(--color-subtle)] mt-0.5 font-mono" dir="ltr">
-              #{booking.id.slice(-8).toUpperCase()}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
-            style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-muted)" }}
-          >
-            <X size={16} />
-          </button>
+          {allowedNext.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-[var(--color-subtle)]">
+                {bd.actions}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {allowedNext.map((nextStatus) => {
+                  const style = ACTION_STYLE[nextStatus] ?? { bg: "var(--color-surface-3)", color: "var(--color-muted)", hoverBg: "var(--color-line)" };
+                  return (
+                    <button
+                      key={nextStatus}
+                      onClick={() => handleAction(nextStatus)}
+                      disabled={loading}
+                      className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] px-4 text-sm font-semibold transition-colors disabled:opacity-50"
+                      style={{ background: style.bg, color: style.color }}
+                    >
+                      {loading && <Loader2 size={14} className="animate-spin" />}
+                      {(ba as Record<string, string>)[nextStatus] ?? nextStatus}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div
+              className="text-center py-3 rounded-[var(--radius-md)]"
+              style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)" }}
+            >
+              <p className="text-xs text-[var(--color-subtle)]">
+                {lang === "ar" ? "الحجز في حالة نهائية — لا يمكن تغييرها" : "Booking is in a final state"}
+              </p>
+            </div>
+          )}
         </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      }
+    >
+      <div className="space-y-5">
 
           {/* Customer card */}
           <div
@@ -205,66 +222,8 @@ export default function BookingDetailPanel({
               })}
             />
           </Section>
-        </div>
-
-        {/* Footer actions */}
-        <div
-          className="p-5 space-y-3"
-          style={{ borderTop: "1px solid var(--color-surface-3)" }}
-        >
-          {actionError && (
-            <div
-              className="text-sm rounded-[var(--radius-md)] px-4 py-2.5"
-              style={{ background: "var(--color-danger-soft)", border: "1px solid var(--color-danger-line)", color: "var(--color-danger)" }}
-            >
-              {actionError}
-            </div>
-          )}
-          {actionSuccess && (
-            <div
-              className="text-sm rounded-[var(--radius-md)] px-4 py-2.5"
-              style={{ background: "var(--color-ok-soft)", border: "1px solid var(--color-ok-line)", color: "var(--color-ok)" }}
-            >
-              {actionSuccess}
-            </div>
-          )}
-
-          {allowedNext.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-[var(--color-subtle)] uppercase tracking-wide">
-                {bd.actions}
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {allowedNext.map((nextStatus) => {
-                  const style = ACTION_STYLE[nextStatus] ?? { bg: "var(--color-surface-3)", color: "var(--color-muted)", hoverBg: "var(--color-line)" };
-                  return (
-                    <button
-                      key={nextStatus}
-                      onClick={() => handleAction(nextStatus)}
-                      disabled={loading}
-                      className="px-4 py-2.5 rounded-[var(--radius-md)] text-sm font-semibold transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
-                      style={{ background: style.bg, color: style.color }}
-                    >
-                      {loading && <Loader2 size={14} className="animate-spin" />}
-                      {(ba as Record<string, string>)[nextStatus] ?? nextStatus}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div
-              className="text-center py-3 rounded-[var(--radius-md)]"
-              style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)" }}
-            >
-              <p className="text-xs text-[var(--color-subtle)]">
-                {lang === "ar" ? "الحجز في حالة نهائية — لا يمكن تغييرها" : "Booking is in a final state"}
-              </p>
-            </div>
-          )}
-        </div>
       </div>
-    </>
+    </Modal>
   );
 }
 
@@ -283,7 +242,7 @@ function Section({
     <div>
       <div className="flex items-center gap-2 mb-2.5">
         {icon}
-        <p className="text-xs font-bold text-[var(--color-muted)] uppercase tracking-wide">{title}</p>
+        <p className="text-xs font-bold text-[var(--color-muted)]">{title}</p>
       </div>
       <div
         className="rounded-[var(--radius-lg)] p-4 space-y-2.5"

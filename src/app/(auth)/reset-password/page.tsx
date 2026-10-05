@@ -3,7 +3,8 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, Lock, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, CheckCircle2, Loader2 } from "lucide-react";
+import Alert from "@/components/ui/Alert";
 
 // useSearchParams must be wrapped in Suspense (Next.js requirement)
 function ResetPasswordForm() {
@@ -138,13 +139,7 @@ function ResetPasswordForm() {
           )}
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="flex items-start gap-2 bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-[var(--radius-md)] px-4 py-3">
-            <AlertCircle size={15} className="shrink-0 mt-0.5" />
-            {error}
-          </div>
-        )}
+        {error && <Alert tone="danger">{error}</Alert>}
 
         <button
           type="submit"

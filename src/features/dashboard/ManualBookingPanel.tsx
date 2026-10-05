@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, Loader2, Check, CalendarDays, Clock, User, Phone } from "lucide-react";
+import { Check, Loader2, CalendarDays, Clock, User, Phone } from "lucide-react";
 import type { DashboardBooking } from "@/features/dashboard/bookings/types";
+import Modal from "@/components/ui/Modal";
+import Button from "@/components/ui/Button";
+import Alert from "@/components/ui/Alert";
 
 export type ServiceOption = {
   id:       string;
@@ -118,38 +121,44 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
     }
   }
 
-  if (!open) return null;
-
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={!saving ? onClose : undefined} />
-
-      {/* Panel */}
-      <div className="fixed inset-y-0 end-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-[var(--color-border)] shrink-0">
-          <div className="flex items-center gap-2">
-            <CalendarDays size={18} className="text-[var(--color-brand)]" />
-            <h2 className="font-bold text-[var(--color-text-primary)]">موعد جديد</h2>
+    <Modal
+      open={open}
+      onClose={onClose}
+      variant="sheet"
+      title="موعد جديد"
+      footer={
+        created ? (
+          <Button type="button" variant="primary" fullWidth onClick={onClose}>
+            تم، إغلاق
+          </Button>
+        ) : (
+          <div className="flex gap-3">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              إلغاء
+            </Button>
+            <Button
+              type="submit"
+              form="manual-booking-form"
+              variant="primary"
+              isLoading={saving}
+              className="flex-1"
+            >
+              تأكيد الموعد
+            </Button>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--color-surface-2)] transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Success state */}
-        {created ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-5">
+        )
+      }
+    >
+      {/* Success state */}
+      {created ? (
+        <div className="flex flex-col items-center gap-5 py-8 text-center">
             <div className="w-16 h-16 rounded-full bg-[var(--color-ok-soft)] flex items-center justify-center">
               <Check size={32} className="text-[var(--color-ok)]" />
             </div>
             <div>
-              <p className="text-xl font-extrabold text-[var(--color-text-primary)]">تم إنشاء الموعد</p>
-              <p className="text-sm text-[var(--color-text-muted)] mt-1">
+              <p className="text-xl font-extrabold text-[var(--color-ink)]">تم إنشاء الموعد</p>
+              <p className="text-sm text-[var(--color-muted)] mt-1">
                 تم تأكيد الموعد لـ {created.customerName}
               </p>
             </div>
@@ -164,18 +173,9 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                 ltr
               />
             </div>
-            <button onClick={onClose} className="btn btn-primary w-full">
-              تم، إغلاق
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* Form body */}
-            <form
-              id="manual-booking-form"
-              onSubmit={handleSubmit}
-              className="flex-1 overflow-y-auto p-6 space-y-5"
-            >
+        </div>
+      ) : (
+        <form id="manual-booking-form" onSubmit={handleSubmit} className="space-y-5">
               {/* Service */}
               <div>
                 <label className="form-label mb-1.5 block">
@@ -217,12 +217,12 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                 </label>
 
                 {loadingSlots ? (
-                  <div className="flex items-center gap-2 py-4 text-sm text-[var(--color-text-muted)]">
+                  <div className="flex items-center gap-2 py-4 text-sm text-[var(--color-muted)]">
                     <Loader2 size={16} className="animate-spin" />
                     جاري تحميل المواعيد...
                   </div>
                 ) : slots.length === 0 ? (
-                  <p className="py-4 text-sm text-[var(--color-text-muted)] bg-[var(--color-surface-2)] rounded-[var(--radius-md)] text-center">
+                  <p className="py-4 text-sm text-[var(--color-muted)] bg-[var(--color-surface-2)] rounded-[var(--radius-md)] text-center">
                     لا توجد مواعيد متاحة في هذا اليوم
                   </p>
                 ) : (
@@ -234,8 +234,8 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                         onClick={() => setStartTime(slot)}
                         className={`py-2 text-sm rounded-[var(--radius-md)] border transition-all font-medium ${
                           startTime === slot
-                            ? "bg-[var(--color-brand)] text-white border-[var(--color-brand)] shadow-sm"
-                            : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
+                            ? "bg-[var(--color-jade)] text-white border-[var(--color-jade)] shadow-sm"
+                            : "border-[var(--color-line)] text-[var(--color-text-secondary)] hover:border-[var(--color-jade)] hover:text-[var(--color-jade)]"
                         }`}
                         dir="ltr"
                       >
@@ -247,7 +247,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
 
                 {/* Show end time hint */}
                 {startTime && selectedService && (
-                  <p className="text-xs text-[var(--color-text-muted)] mt-2 flex items-center gap-1">
+                  <p className="text-xs text-[var(--color-muted)] mt-2 flex items-center gap-1">
                     <Clock size={11} />
                     المدة {selectedService.duration} دقيقة · ينتهي الساعة{" "}
                     {calcEndTime(startTime, selectedService.duration)}
@@ -294,30 +294,10 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                 />
               </div>
 
-              {error && (
-                <p className="text-sm text-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 rounded-[var(--radius-md)]">{error}</p>
-              )}
-            </form>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-[var(--color-border)] flex gap-3 shrink-0">
-              <button type="button" onClick={onClose} className="btn btn-outline flex-1">
-                إلغاء
-              </button>
-              <button
-                type="submit"
-                form="manual-booking-form"
-                disabled={saving}
-                className="btn btn-primary flex-1 gap-2"
-              >
-                {saving && <Loader2 size={16} className="animate-spin" />}
-                {saving ? "جاري الحفظ..." : "تأكيد الموعد"}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </>
+          {error && <Alert tone="danger">{error}</Alert>}
+        </form>
+      )}
+    </Modal>
   );
 }
 
@@ -351,12 +331,12 @@ function Row({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] shrink-0">
+      <span className="flex items-center gap-1.5 text-xs text-[var(--color-muted)] shrink-0">
         {icon}
         {label}
       </span>
       <span
-        className="text-xs font-medium text-[var(--color-text-primary)] text-end"
+        className="text-xs font-medium text-[var(--color-ink)] text-end"
         dir={ltr ? "ltr" : undefined}
       >
         {value}

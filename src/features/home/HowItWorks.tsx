@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { cn } from "@/lib/utils";
+import Tabs from "@/components/ui/Tabs";
 import {
   Search, CalendarDays, CheckCircle2,
   Store, Share2, TrendingUp,
@@ -36,32 +36,16 @@ export default function HowItWorks() {
               <p className="section-subtitle mt-4">{h.subtitle}</p>
             </div>
 
-            <div
-              role="tablist"
-              aria-label={h.eyebrow}
-              className="flex shrink-0 gap-1 rounded-full bg-[var(--color-surface-3)] p-1"
-            >
-              {([
-                ["customer", h.forCustomers],
-                ["business", h.forBusinesses],
-              ] as const).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === key}
-                  onClick={() => setTab(key)}
-                  className={cn(
-                    "h-10 rounded-full px-5 text-[0.84375rem] transition-colors",
-                    tab === key
-                      ? "bg-[var(--color-surface)] font-bold text-[var(--color-ink)] shadow-[0_1px_2px_rgb(17_32_28/0.08)]"
-                      : "text-[var(--color-muted)] hover:text-[var(--color-ink)]",
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <Tabs
+              label={h.eyebrow}
+              value={tab}
+              onChange={setTab}
+              items={[
+                { value: "customer", label: h.forCustomers },
+                { value: "business", label: h.forBusinesses },
+              ]}
+              className="shrink-0"
+            />
           </div>
 
           <ol className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">

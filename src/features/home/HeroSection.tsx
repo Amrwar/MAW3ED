@@ -69,7 +69,7 @@ export default function HeroSection() {
               onSubmit={onSearch}
               className="mt-1 flex flex-wrap items-center gap-1 max-w-[35rem] rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-2.5 shadow-[var(--shadow-raised)]"
             >
-              <div className="flex flex-[1_1_12rem] min-w-0 items-center gap-2.5 px-3.5">
+              <div className="flex min-h-11 flex-[1_1_12rem] min-w-0 items-center gap-2.5 px-3.5">
                 <Search size={18} strokeWidth={1.8} className="shrink-0 text-[var(--color-subtle)]" aria-hidden="true" />
                 <label htmlFor="hero-q" className="sr-only-label">{h.searchPlaceholder}</label>
                 <input
@@ -78,13 +78,13 @@ export default function HeroSection() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={h.searchPlaceholder}
-                  className="w-full min-w-0 border-0 bg-transparent text-[0.9375rem] font-bold text-[var(--color-ink)] outline-none placeholder:font-normal placeholder:text-[var(--color-faint)]"
+                  className="field-fill w-full min-w-0 border-0 bg-transparent text-[0.9375rem] font-bold text-[var(--color-ink)] outline-none placeholder:font-normal placeholder:text-[var(--color-faint)]"
                 />
               </div>
 
               <span aria-hidden="true" className="hidden sm:block h-7 w-px shrink-0 bg-[var(--color-line)]" />
 
-              <div className="flex flex-[0_1_10rem] min-w-0 items-center gap-2 px-3.5">
+              <div className="flex min-h-11 flex-[0_1_10rem] min-w-0 items-center gap-2 px-3.5">
                 <MapPin size={17} strokeWidth={1.8} className="shrink-0 text-[var(--color-subtle)]" aria-hidden="true" />
                 <label htmlFor="hero-city" className="sr-only-label">{h.allCities}</label>
                 <input
@@ -93,7 +93,7 @@ export default function HeroSection() {
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder={h.allCities}
-                  className="w-full min-w-0 border-0 bg-transparent text-[0.9375rem] text-[var(--color-ink)] outline-none placeholder:text-[var(--color-faint)]"
+                  className="field-fill w-full min-w-0 border-0 bg-transparent text-[0.9375rem] text-[var(--color-ink)] outline-none placeholder:text-[var(--color-faint)]"
                 />
               </div>
 

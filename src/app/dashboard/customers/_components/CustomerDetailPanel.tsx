@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import {
-  X, Phone, Mail, Calendar, DollarSign,
+  Phone, Mail, Calendar, DollarSign,
   BookOpen, Loader2, Check, StickyNote, User,
 } from "lucide-react";
 import { type DashboardBookingStatus, formatDateAr } from "@/features/dashboard/bookings/types";
 import type { CustomerRow } from "@/app/api/business/customers/route";
+import Modal from "@/components/ui/Modal";
 
 type CustomerBooking = {
   id:          string;
@@ -20,21 +21,6 @@ type CustomerBooking = {
 };
 
 type CustomerDetail = CustomerRow & { bookings: CustomerBooking[] };
-
-// Deterministic avatar gradient
-const GRADIENTS = [
-  "linear-gradient(135deg,var(--color-jade),var(--color-jade))",
-  "linear-gradient(135deg,var(--color-jade),var(--color-jade-line))",
-  "linear-gradient(135deg,var(--color-ok),var(--color-jade))",
-  "linear-gradient(135deg,var(--color-warn),var(--color-star))",
-  "linear-gradient(135deg,var(--color-info),var(--color-info))",
-  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
-  "linear-gradient(135deg,var(--color-danger),var(--color-danger))",
-  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
-];
-function custGrad(name: string) {
-  return GRADIENTS[(name.charCodeAt(0) || 0) % GRADIENTS.length];
-}
 
 const BOOKING_STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   PENDING:         { bg: "var(--color-warn-soft)", color: "var(--color-warn)", label: "في الانتظار" },
@@ -103,52 +89,13 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
   });
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
-
-      {/* Panel */}
-      <div
-        className="fixed inset-y-0 end-0 z-50 w-full max-w-md bg-white flex flex-col"
-        style={{ boxShadow: "-8px 0 40px rgba(17,32,28,0.12)" }}
-      >
-        {/* Panel header */}
-        <div
-          className="flex items-center justify-between px-6 py-5 shrink-0"
-          style={{ borderBottom: "1px solid var(--color-surface-3)" }}
-        >
-          <div className="flex items-center gap-3.5">
-            <div
-              className="w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold text-white shrink-0"
-              style={{ background: custGrad(customer.name) }}
-            >
-              {customer.name[0]}
-            </div>
-            <div>
-              <h2
-                className="font-extrabold text-[var(--color-ink)] leading-snug text-base"
-                style={{ letterSpacing: "-0.01em" }}
-              >
-                {customer.name}
-              </h2>
-              <p className="text-xs text-[var(--color-subtle)] mt-0.5 flex items-center gap-1" dir="ltr">
-                <Phone size={10} style={{ color: "var(--color-jade)" }} />
-                {customer.phone}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
-            style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-muted)" }}
-          >
-            <X size={16} />
-          </button>
-        </div>
-
+    <Modal
+      open
+      onClose={onClose}
+      variant="sheet"
+      title={customer.name}
+      description={customer.phone}
+    >
         {/* Stats strip */}
         <div
           className="grid grid-cols-3 shrink-0"
@@ -176,8 +123,8 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
           />
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+      {/* Body */}
+      <div className="space-y-5 pt-5">
 
           {/* Contact info */}
           <PanelSection
@@ -315,9 +262,8 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
               </div>
             )}
           </PanelSection>
-        </div>
       </div>
-    </>
+    </Modal>
   );
 }
 

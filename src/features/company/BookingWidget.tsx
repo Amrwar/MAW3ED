@@ -329,7 +329,7 @@ export default function BookingWidget({
       {step !== "done" && (
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-start justify-between relative">
-            <div className="absolute top-4 right-4 left-4 h-0.5 bg-[var(--color-line)]" style={{ zIndex: 0 }} />
+            <div className="absolute top-4 start-4 end-4 h-0.5 bg-[var(--color-line)]" style={{ zIndex: 0 }} />
             {stepperSteps.map((s) => {
               const done   = currentStepN > s.n;
               const active = currentStepN === s.n;
@@ -380,7 +380,7 @@ export default function BookingWidget({
                       }`}
                     >
                       {selected && (
-                        <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
+                        <span className="absolute top-3 end-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
                           <Check size={13} strokeWidth={3} className="text-white" />
                         </span>
                       )}
@@ -445,7 +445,7 @@ export default function BookingWidget({
                       }`}
                     >
                       {selectedStaff === null && (
-                        <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
+                        <span className="absolute top-3 end-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
                           <Check size={13} strokeWidth={3} className="text-white" />
                         </span>
                       )}
@@ -473,7 +473,7 @@ export default function BookingWidget({
                           }`}
                         >
                           {selected && (
-                            <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
+                            <span className="absolute top-3 end-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
                               <Check size={13} strokeWidth={3} className="text-white" />
                             </span>
                           )}
@@ -546,7 +546,7 @@ export default function BookingWidget({
                           }`}
                         >
                           {selected && (
-                            <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
+                            <span className="absolute top-3 end-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
                               <Check size={13} strokeWidth={3} className="text-white" />
                             </span>
                           )}
