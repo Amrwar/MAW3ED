@@ -97,7 +97,7 @@ export default function BookingDetailPanel({
           style={{ borderBottom: "1px solid var(--color-surface-3)" }}
         >
           <div>
-            <h2 className="font-extrabold text-[var(--color-ink)]" style={{ fontSize: 16 }}>
+            <h2 className="font-extrabold text-[var(--color-ink)] text-base" >
               {bd.title}
             </h2>
             <p className="text-xs text-[var(--color-subtle)] mt-0.5 font-mono" dir="ltr">
@@ -106,7 +106,7 @@ export default function BookingDetailPanel({
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+            className="w-9 h-9 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
             style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-muted)" }}
           >
             <X size={16} />
@@ -118,7 +118,7 @@ export default function BookingDetailPanel({
 
           {/* Customer card */}
           <div
-            className="rounded-2xl p-4 flex items-center gap-4"
+            className="rounded-[var(--radius-lg)] p-4 flex items-center gap-4"
             style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)" }}
           >
             <div
@@ -179,7 +179,7 @@ export default function BookingDetailPanel({
             <Section icon={<User size={14} style={{ color: "var(--color-jade)" }} />} title={bd.notes}>
               {booking.customerNotes && (
                 <p
-                  className="text-sm text-[var(--color-muted)] leading-relaxed rounded-xl px-4 py-3"
+                  className="text-sm text-[var(--color-muted)] leading-relaxed rounded-[var(--radius-md)] px-4 py-3"
                   style={{ background: "var(--color-surface)", border: "1px solid var(--color-line)" }}
                 >
                   {booking.customerNotes}
@@ -187,7 +187,7 @@ export default function BookingDetailPanel({
               )}
               {booking.notes && (
                 <p
-                  className="text-sm text-[var(--color-muted)] leading-relaxed rounded-xl px-4 py-3"
+                  className="text-sm text-[var(--color-muted)] leading-relaxed rounded-[var(--radius-md)] px-4 py-3"
                   style={{ background: "var(--color-surface)", border: "1px solid var(--color-line)" }}
                 >
                   {booking.notes}
@@ -214,7 +214,7 @@ export default function BookingDetailPanel({
         >
           {actionError && (
             <div
-              className="text-sm rounded-xl px-4 py-2.5"
+              className="text-sm rounded-[var(--radius-md)] px-4 py-2.5"
               style={{ background: "var(--color-danger-soft)", border: "1px solid var(--color-danger-line)", color: "var(--color-danger)" }}
             >
               {actionError}
@@ -222,7 +222,7 @@ export default function BookingDetailPanel({
           )}
           {actionSuccess && (
             <div
-              className="text-sm rounded-xl px-4 py-2.5"
+              className="text-sm rounded-[var(--radius-md)] px-4 py-2.5"
               style={{ background: "var(--color-ok-soft)", border: "1px solid var(--color-ok-line)", color: "var(--color-ok)" }}
             >
               {actionSuccess}
@@ -242,7 +242,7 @@ export default function BookingDetailPanel({
                       key={nextStatus}
                       onClick={() => handleAction(nextStatus)}
                       disabled={loading}
-                      className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="px-4 py-2.5 rounded-[var(--radius-md)] text-sm font-semibold transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
                       style={{ background: style.bg, color: style.color }}
                     >
                       {loading && <Loader2 size={14} className="animate-spin" />}
@@ -254,7 +254,7 @@ export default function BookingDetailPanel({
             </div>
           ) : (
             <div
-              className="text-center py-3 rounded-xl"
+              className="text-center py-3 rounded-[var(--radius-md)]"
               style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)" }}
             >
               <p className="text-xs text-[var(--color-subtle)]">
@@ -286,7 +286,7 @@ function Section({
         <p className="text-xs font-bold text-[var(--color-muted)] uppercase tracking-wide">{title}</p>
       </div>
       <div
-        className="rounded-2xl p-4 space-y-2.5"
+        className="rounded-[var(--radius-lg)] p-4 space-y-2.5"
         style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-surface-3)" }}
       >
         {children}

@@ -129,8 +129,8 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
             </div>
             <div>
               <h2
-                className="font-extrabold text-[var(--color-ink)] leading-snug"
-                style={{ fontSize: 16, letterSpacing: "-0.01em" }}
+                className="font-extrabold text-[var(--color-ink)] leading-snug text-base"
+                style={{ letterSpacing: "-0.01em" }}
               >
                 {customer.name}
               </h2>
@@ -142,7 +142,7 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+            className="w-9 h-9 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
             style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-muted)" }}
           >
             <X size={16} />
@@ -204,7 +204,7 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
                 rows={3}
                 maxLength={1000}
                 placeholder="أضف ملاحظات خاصة عن هذا العميل..."
-                className="w-full rounded-xl border text-sm outline-none resize-none"
+                className="w-full rounded-[var(--radius-md)] border text-sm outline-none resize-none"
                 style={{
                   borderColor:  "var(--color-line)",
                   background:   "var(--color-surface-2)",
@@ -239,7 +239,7 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
                   <button
                     onClick={saveNotes}
                     disabled={savingNotes}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl text-white transition-all duration-150 disabled:opacity-60"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-[var(--radius-md)] text-white transition-all duration-150 disabled:opacity-60"
                     style={{
                       background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
                       boxShadow:  "0 2px 8px rgba(14,127,94,0.25)",
@@ -263,7 +263,7 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="h-16 rounded-xl animate-pulse"
+                    className="h-16 rounded-[var(--radius-md)] animate-pulse"
                     style={{ background: "var(--color-surface-3)" }}
                   />
                 ))}
@@ -275,7 +275,7 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
                   return (
                     <div
                       key={b.id}
-                      className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+                      className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] px-4 py-3"
                       style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-surface-3)" }}
                     >
                       <div className="min-w-0 flex-1">
@@ -308,7 +308,7 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
               </div>
             ) : (
               <div
-                className="py-8 text-center rounded-xl"
+                className="py-8 text-center rounded-[var(--radius-md)]"
                 style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-surface-3)" }}
               >
                 <p className="text-sm text-[var(--color-subtle)]">لا يوجد سجل حجوزات بعد</p>
@@ -344,9 +344,8 @@ function StatCell({
         {icon}
       </div>
       <p
-        className="font-extrabold text-[var(--color-ink)] leading-tight"
-        style={{ fontSize: 13 }}
-      >
+        className="font-extrabold text-[var(--color-ink)] leading-tight text-[0.8125rem]"
+        >
         {value}
       </p>
       <p className="text-[10px] text-[var(--color-subtle)] font-medium">{label}</p>
@@ -368,7 +367,7 @@ function PanelSection({
         <p className="text-xs font-bold text-[var(--color-muted)] uppercase tracking-wide">{title}</p>
       </div>
       <div
-        className="rounded-2xl p-4 space-y-2"
+        className="rounded-[var(--radius-lg)] p-4 space-y-2"
         style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-surface-3)" }}
       >
         {children}

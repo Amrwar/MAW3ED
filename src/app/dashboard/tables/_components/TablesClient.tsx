@@ -80,17 +80,15 @@ export default function TablesClient({ initialTables }: Props) {
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-2 transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+          className="flex items-center gap-2 transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)] text-[0.8125rem]"
           style={{
             background:   "var(--color-ink)",
             color:        "var(--color-surface)",
             border:       "none",
             borderRadius: 12,
             padding:      "10px 18px",
-            fontSize:     13,
             fontWeight:   600,
-            cursor:       "pointer",
-          }}
+            cursor:       "pointer" }}
         >
           <Plus size={15} strokeWidth={2.5} />
           {isAr ? "إضافة طاولة" : "Add Table"}
@@ -106,7 +104,7 @@ export default function TablesClient({ initialTables }: Props) {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="rounded-2xl p-4"
+            className="rounded-[var(--radius-lg)] p-4"
             style={{ background: "var(--color-surface)", border: "1.5px solid var(--color-surface-3)" }}
           >
             <p style={{ fontSize: 11, color: "var(--color-subtle)", fontWeight: 500, marginBottom: 6 }}>{stat.label}</p>
@@ -118,7 +116,7 @@ export default function TablesClient({ initialTables }: Props) {
       {/* ── Tables grid ───────────────────────────────── */}
       {tables.length === 0 ? (
         <div
-          className="flex flex-col items-center justify-center rounded-2xl"
+          className="flex flex-col items-center justify-center rounded-[var(--radius-lg)]"
           style={{
             minHeight: 280,
             border:    "2px dashed var(--color-line)",
@@ -160,7 +158,7 @@ export default function TablesClient({ initialTables }: Props) {
             return (
               <div
                 key={table.id}
-                className="rounded-2xl overflow-hidden transition-all duration-150"
+                className="rounded-[var(--radius-lg)] overflow-hidden transition-all duration-150"
                 style={{
                   background: "var(--color-surface)",
                   border:     "1.5px solid var(--color-surface-3)",

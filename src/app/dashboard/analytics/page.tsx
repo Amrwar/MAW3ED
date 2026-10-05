@@ -44,7 +44,7 @@ export default async function AnalyticsPage() {
     if (!canUseFeature(effectivePlan, "analytics")) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-          <div className="w-20 h-20 rounded-2xl bg-[var(--color-jade-soft)] flex items-center justify-center mx-auto mb-5">
+          <div className="w-20 h-20 rounded-[var(--radius-lg)] bg-[var(--color-jade-soft)] flex items-center justify-center mx-auto mb-5">
             <span className="text-3xl">📊</span>
           </div>
           <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
@@ -59,7 +59,7 @@ export default async function AnalyticsPage() {
           </p>
           <Link
             href="/pricing"
-            className="px-6 py-3 rounded-xl bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+            className="px-6 py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
           >
             {an.upsell.cta}
           </Link>

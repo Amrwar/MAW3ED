@@ -124,8 +124,7 @@ export default function BookingFilters({
 
   return (
     <div
-      className="rounded-2xl border bg-white p-5 space-y-4"
-      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-5 space-y-4"
     >
       {/* Row 1 — section label + clear */}
       <div className="flex items-center justify-between">
@@ -190,7 +189,7 @@ export default function BookingFilters({
             placeholder={bf.searchPlaceholder}
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
-            className="w-full rounded-xl border text-sm outline-none transition-all duration-150"
+            className="w-full rounded-[var(--radius-md)] border text-sm outline-none transition-all duration-150"
             style={{
               borderColor: "var(--color-line)",
               background:  "var(--color-surface-2)",
@@ -216,7 +215,7 @@ export default function BookingFilters({
           <select
             value={serviceFilter}
             onChange={(e) => onServiceChange(e.target.value)}
-            className="rounded-xl border text-sm outline-none transition-all duration-150"
+            className="rounded-[var(--radius-md)] border text-sm outline-none transition-all duration-150"
             style={{
               borderColor:  "var(--color-line)",
               background:   "var(--color-surface-2)",
@@ -250,7 +249,7 @@ export default function BookingFilters({
             <button
               key={p.key}
               onClick={() => applyPreset(p.key)}
-              className="text-xs font-medium px-3 py-1.5 rounded-xl border transition-all duration-150"
+              className="text-xs font-medium px-3 py-1.5 rounded-[var(--radius-md)] border transition-all duration-150"
               style={{
                 background:  isActive ? "var(--color-jade-tint)" : "var(--color-surface-2)",
                 color:       isActive ? "var(--color-jade)"  : "var(--color-muted)",
@@ -271,7 +270,7 @@ export default function BookingFilters({
             type="date"
             value={dateFrom}
             onChange={(e) => onDateFromChange(e.target.value)}
-            className="flex-1 rounded-xl border text-sm outline-none"
+            className="flex-1 rounded-[var(--radius-md)] border text-sm outline-none"
             style={{
               borderColor:  "var(--color-line)",
               background:   "var(--color-surface-2)",
@@ -285,7 +284,7 @@ export default function BookingFilters({
             type="date"
             value={dateTo}
             onChange={(e) => onDateToChange(e.target.value)}
-            className="flex-1 rounded-xl border text-sm outline-none"
+            className="flex-1 rounded-[var(--radius-md)] border text-sm outline-none"
             style={{
               borderColor:  "var(--color-line)",
               background:   "var(--color-surface-2)",
@@ -300,7 +299,7 @@ export default function BookingFilters({
       {/* Row 6 — Result count */}
       {hasActiveFilters && (
         <div
-          className="flex items-center gap-2 px-3 py-2 rounded-xl"
+          className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)]"
           style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)" }}
         >
           <span className="text-xs text-[var(--color-subtle)]">{bf.results}:</span>

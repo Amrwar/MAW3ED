@@ -35,7 +35,7 @@ export default function Step6Preview({
       </div>
 
       {/* Page preview card */}
-      <div className="border-2 border-[var(--color-border)] rounded-2xl overflow-hidden">
+      <div className="border-2 border-[var(--color-border)] rounded-[var(--radius-lg)] overflow-hidden">
         {/* Cover */}
         <div className="h-28 bg-gradient-to-br from-gray-200 to-gray-300 relative">
           <div className="absolute inset-0 flex items-center justify-center text-[var(--color-faint)] text-sm">
@@ -46,7 +46,7 @@ export default function Step6Preview({
         {/* Business info */}
         <div className="p-5">
           <div className="flex items-start gap-4 -mt-10 mb-4">
-            <div className="w-16 h-16 rounded-xl bg-white border-2 border-white shadow flex items-center justify-center text-2xl font-extrabold text-[var(--color-brand)] shrink-0">
+            <div className="w-16 h-16 rounded-[var(--radius-md)] bg-white border-2 border-white shadow flex items-center justify-center text-2xl font-extrabold text-[var(--color-brand)] shrink-0">
               {data.nameAr[0] || "؟"}
             </div>
             <div className="pt-4">
@@ -161,7 +161,7 @@ export default function Step6Preview({
       </div>
 
       {submitError && (
-        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-[var(--radius-md)] px-4 py-3">
           {submitError}
         </div>
       )}

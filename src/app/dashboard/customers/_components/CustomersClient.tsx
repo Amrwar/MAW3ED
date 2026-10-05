@@ -134,14 +134,12 @@ export default function CustomersClient({ initialCustomers }: Props) {
 
       {/* ── Page header ── */}
       <div
-        className="rounded-2xl border bg-white px-6 py-5"
-        style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+        className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-5"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1
-              className="font-extrabold text-[var(--color-ink)] leading-tight"
-              style={{ fontSize: 22, letterSpacing: "-0.02em" }}
+              className="m-0 text-[1.75rem] font-light tracking-tight text-[var(--color-ink)]"
             >
               {cu.title}
             </h1>
@@ -189,8 +187,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
 
       {/* ── Search + sort chips ── */}
       <div
-        className="rounded-2xl border bg-white px-5 py-4"
-        style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+        className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-4"
       >
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           {/* Search */}
@@ -205,7 +202,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={cu.searchPlaceholder}
-              className="w-full rounded-xl border text-sm outline-none transition-all"
+              className="w-full rounded-[var(--radius-md)] border text-sm outline-none transition-all"
               style={{
                 borderColor:   "var(--color-line)",
                 background:    "var(--color-surface-2)",
@@ -234,7 +231,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                 <button
                   key={chip.key}
                   onClick={() => applyChip(idx)}
-                  className="text-xs font-medium px-3.5 py-2 rounded-xl border transition-all duration-150"
+                  className="text-xs font-medium px-3.5 py-2 rounded-[var(--radius-md)] border transition-all duration-150"
                   style={{
                     background:  isActive ? "var(--color-ink)"  : "var(--color-surface-2)",
                     color:       isActive ? "var(--color-surface)"   : "var(--color-muted)",
@@ -253,8 +250,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
 
       {/* ── Customers table ── */}
       <div
-        className="rounded-2xl border bg-white overflow-hidden"
-        style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+        className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] overflow-hidden"
       >
         {/* Table header */}
         <div
@@ -372,7 +368,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                   <tr>
                     <td colSpan={7} className="px-5 py-20 text-center">
                       <div
-                        className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+                        className="w-16 h-16 rounded-[var(--radius-lg)] mx-auto mb-4 flex items-center justify-center"
                         style={{ background: "var(--color-surface-2)" }}
                       >
                         <Users size={26} strokeWidth={1.5} style={{ color: "var(--color-subtle)" }} />
@@ -474,7 +470,7 @@ export default function CustomersClient({ initialCustomers }: Props) {
                         <td className="px-5 py-4">
                           <button
                             onClick={(e) => { e.stopPropagation(); setSelected(c); }}
-                            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150"
+                            className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-150"
                             style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-muted)" }}
                           >
                             <Eye size={13} strokeWidth={1.75} />
@@ -532,18 +528,17 @@ function SummaryCard({
 }) {
   return (
     <div
-      className="rounded-2xl border bg-white p-5"
-      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-5"
     >
       <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+        className="w-9 h-9 rounded-[var(--radius-md)] flex items-center justify-center mb-3"
         style={{ background: iconBg }}
       >
         {icon}
       </div>
       <p
-        className="font-extrabold text-[var(--color-ink)] leading-none"
-        style={{ fontSize: 24, letterSpacing: "-0.02em" }}
+        className="font-extrabold text-[var(--color-ink)] leading-none text-[1.5rem]"
+        style={{ letterSpacing: "-0.02em" }}
       >
         {value}
       </p>

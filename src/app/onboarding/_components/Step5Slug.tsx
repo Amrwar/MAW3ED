@@ -89,7 +89,7 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
         </label>
 
         {/* URL preview */}
-        <div className="flex items-center border border-[var(--color-border)] rounded-xl overflow-hidden focus-within:border-[var(--color-brand)] focus-within:ring-1 focus-within:ring-[var(--color-brand)]/20 transition-all">
+        <div className="flex items-center border border-[var(--color-border)] rounded-[var(--radius-md)] overflow-hidden focus-within:border-[var(--color-brand)] focus-within:ring-1 focus-within:ring-[var(--color-brand)]/20 transition-all">
           <span className="bg-[var(--color-surface-2)] px-3 py-2.5 text-sm text-[var(--color-text-muted)] border-e border-[var(--color-border)] shrink-0 select-none">
             maw3ed.com/company/
           </span>
@@ -121,7 +121,7 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
       </div>
 
       {/* Tips */}
-      <div className="bg-[var(--color-surface-2)] rounded-xl p-4 space-y-1.5">
+      <div className="bg-[var(--color-surface-2)] rounded-[var(--radius-md)] p-4 space-y-1.5">
         <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-2">
           نصائح لاختيار رابط جيد:
         </p>
@@ -139,7 +139,7 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
 
       {/* Full URL preview */}
       {status === "available" && (
-        <div className="bg-[var(--color-ok-soft)] border border-[var(--color-ok-line)] rounded-xl p-4 text-center">
+        <div className="bg-[var(--color-ok-soft)] border border-[var(--color-ok-line)] rounded-[var(--radius-md)] p-4 text-center">
           <p className="text-xs text-[var(--color-ok)] mb-1">صفحتك ستكون على:</p>
           <p className="text-sm font-semibold text-[var(--color-ok)]" dir="ltr">
             maw3ed.com/company/{slug}

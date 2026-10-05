@@ -81,7 +81,7 @@ function ResetPasswordForm() {
   return (
     <div className="card p-7">
       <div className="text-center mb-7">
-        <div className="w-12 h-12 rounded-2xl bg-[var(--color-accent-light)] flex items-center justify-center mx-auto mb-4">
+        <div className="w-12 h-12 rounded-[var(--radius-lg)] bg-[var(--color-accent-light)] flex items-center justify-center mx-auto mb-4">
           <Lock size={22} className="text-[var(--color-accent)]" />
         </div>
         <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)] mb-1">
@@ -140,7 +140,7 @@ function ResetPasswordForm() {
 
         {/* Error */}
         {error && (
-          <div className="flex items-start gap-2 bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
+          <div className="flex items-start gap-2 bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-[var(--radius-md)] px-4 py-3">
             <AlertCircle size={15} className="shrink-0 mt-0.5" />
             {error}
           </div>

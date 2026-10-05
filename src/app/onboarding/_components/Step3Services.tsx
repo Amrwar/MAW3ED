@@ -72,7 +72,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
         {services.map((service, i) => (
           <div
             key={i}
-            className="border border-[var(--color-border)] rounded-xl p-4 space-y-3 bg-[var(--color-surface-2)]"
+            className="border border-[var(--color-border)] rounded-[var(--radius-md)] p-4 space-y-3 bg-[var(--color-surface-2)]"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-[var(--color-text-muted)]">
@@ -148,7 +148,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
         <button
           type="button"
           onClick={addService}
-          className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text-muted)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)] transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[var(--color-border)] rounded-[var(--radius-md)] text-sm text-[var(--color-text-muted)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)] transition-colors"
         >
           <Plus size={16} />
           إضافة خدمة أخرى
@@ -156,7 +156,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
       )}
 
       {error && (
-        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-[var(--radius-md)] px-4 py-3">
           {error}
         </div>
       )}

@@ -78,7 +78,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
 
       {/* ── Hero card ──────────────────────────────────────────── */}
       <div
-        className="rounded-2xl overflow-hidden"
+        className="rounded-[var(--radius-lg)] overflow-hidden"
         style={{
           background:   "linear-gradient(135deg, var(--color-ink) 0%, var(--color-jade) 60%, var(--color-jade-hover) 100%)",
           boxShadow:    "0 8px 32px rgba(10,95,71,0.3)",
@@ -116,8 +116,8 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
               </div>
 
               <h1
-                className="font-extrabold text-white leading-tight mb-2"
-                style={{ fontSize: 24, letterSpacing: "-0.03em" }}
+                className="font-extrabold text-white leading-tight mb-2 text-[1.5rem]"
+                style={{ letterSpacing: "-0.03em" }}
               >
                 اربح من دعوة العملاء
               </h1>
@@ -129,7 +129,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
               <div className="flex flex-wrap gap-2.5 mt-5">
                 <button
                   onClick={handleCopy}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius-md)] font-bold text-sm transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                   style={{
                     background: "var(--color-surface)",
                     color:      "var(--color-jade)",
@@ -145,7 +145,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius-md)] font-bold text-sm transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                   style={{
                     background: "rgba(255,255,255,0.12)",
                     color:      "var(--color-surface)",
@@ -161,13 +161,13 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
             {/* Right: earnings counter */}
             {daysEarned > 0 && (
               <div
-                className="shrink-0 rounded-2xl px-6 py-5 text-center"
+                className="shrink-0 rounded-[var(--radius-lg)] px-6 py-5 text-center"
                 style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}
               >
                 <Star size={20} strokeWidth={1.75} style={{ color: "var(--color-star)", margin: "0 auto 8px" }} />
                 <p
-                  className="font-extrabold text-white leading-none"
-                  style={{ fontSize: 36, letterSpacing: "-0.04em" }}
+                  className="font-extrabold text-white leading-none text-[2.25rem]"
+                  style={{ letterSpacing: "-0.04em" }}
                 >
                   {daysEarned}
                 </p>
@@ -182,8 +182,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
 
       {/* ── How it works ──────────────────────────────────────── */}
       <div
-        className="rounded-2xl border bg-white overflow-hidden"
-        style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+        className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] overflow-hidden"
       >
         <div
           className="flex items-center gap-2.5 px-6 py-4"
@@ -201,7 +200,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
               {/* Icon + connector */}
               <div className="flex items-center gap-3 w-full">
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  className="w-10 h-10 rounded-[var(--radius-md)] flex items-center justify-center shrink-0"
                   style={{ background: STEP_ICON_BG[idx] }}
                 >
                   {STEP_ICONS[idx]}
@@ -230,8 +229,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
 
       {/* ── Referral link card ────────────────────────────────── */}
       <div
-        className="rounded-2xl border bg-white p-6"
-        style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+        className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-6"
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-[var(--color-ink)]">{rf.yourLink}</h2>
@@ -245,12 +243,12 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
 
         {/* Link input row */}
         <div
-          className="flex items-center gap-2 rounded-xl px-4 py-3 mb-3"
+          className="flex items-center gap-2 rounded-[var(--radius-md)] px-4 py-3 mb-3"
           style={{ background: "var(--color-surface-2)", border: "1.5px solid var(--color-line)" }}
         >
           <span
-            className="flex-1 text-sm text-[var(--color-muted)] truncate"
-            style={{ fontFamily: "monospace", fontSize: 12 }}
+            className="flex-1 text-sm text-[var(--color-muted)] truncate text-xs"
+            style={{ fontFamily: "monospace" }}
             dir="ltr"
           >
             {referralLink}
@@ -274,7 +272,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-md)] text-xs font-bold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
             style={{
               background: "var(--color-ok-soft)",
               color:      "var(--color-ok)",
@@ -286,7 +284,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
           </a>
           <button
             onClick={handleCopy}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-md)] text-xs font-bold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
             style={{
               background:  "var(--color-surface-2)",
               color:       "var(--color-muted)",
@@ -334,8 +332,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
 
       {/* ── Referrals list ────────────────────────────────────── */}
       <div
-        className="rounded-2xl border bg-white overflow-hidden"
-        style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+        className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] overflow-hidden"
       >
         {/* List header */}
         <div
@@ -372,7 +369,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
         {totalCount === 0 ? (
           <div className="py-16 px-6 text-center">
             <div
-              className="w-20 h-20 rounded-3xl mx-auto mb-5 flex items-center justify-center"
+              className="w-20 h-20 rounded-[var(--radius-xl)] mx-auto mb-5 flex items-center justify-center"
               style={{
                 background: "linear-gradient(135deg, var(--color-jade-tint) 0%, var(--color-jade-soft) 100%)",
                 border:     "1px solid var(--color-jade-line)",
@@ -381,8 +378,8 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
               <Users size={30} strokeWidth={1.5} style={{ color: "var(--color-jade)" }} />
             </div>
             <h4
-              className="font-extrabold text-[var(--color-ink)] mb-2"
-              style={{ fontSize: 16, letterSpacing: "-0.01em" }}
+              className="font-extrabold text-[var(--color-ink)] mb-2 text-base"
+              style={{ letterSpacing: "-0.01em" }}
             >
               {rf.emptyTitle}
             </h4>
@@ -394,7 +391,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius-md)] text-sm font-bold text-white"
                 style={{
                   background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
                   boxShadow:  "0 4px 14px rgba(14,127,94,0.28)",
@@ -405,7 +402,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
               </a>
               <button
                 onClick={handleCopy}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius-md)] text-sm font-bold"
                 style={{
                   background:  "var(--color-surface-2)",
                   border:      "1px solid var(--color-line)",
@@ -484,7 +481,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
       {/* ── Bottom sharing nudge (only when list exists) ─────── */}
       {totalCount > 0 && (
         <div
-          className="rounded-2xl border px-5 py-4 flex items-center justify-between gap-4"
+          className="rounded-[var(--radius-lg)] border px-5 py-4 flex items-center justify-between gap-4"
           style={{
             background:  "rgba(10,95,71,0.03)",
             borderColor: "rgba(10,95,71,0.15)",
@@ -499,7 +496,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[var(--radius-md)] text-xs font-bold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
               style={{ background: "var(--color-jade-tint)", color: "var(--color-jade)", border: "1px solid var(--color-jade-line)" }}
             >
               <Copy size={12} />
@@ -509,7 +506,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[var(--radius-md)] text-xs font-bold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
               style={{ background: "var(--color-ink)", color: "var(--color-surface)" }}
             >
               <MessageCircle size={12} />
@@ -536,22 +533,19 @@ function StatCard({
 }) {
   return (
     <div
-      className="rounded-2xl border bg-white p-5"
-      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-5"
     >
       <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+        className="w-9 h-9 rounded-[var(--radius-md)] flex items-center justify-center mb-3"
         style={{ background: iconBg }}
       >
         {icon}
       </div>
       <p
-        className="font-extrabold leading-none"
+        className="font-extrabold leading-none text-[1.5rem]"
         style={{
-          fontSize:        24,
           letterSpacing:   "-0.02em",
-          color:           accent ?? "var(--color-ink)",
-        }}
+          color:           accent ?? "var(--color-ink)" }}
       >
         {value}
       </p>

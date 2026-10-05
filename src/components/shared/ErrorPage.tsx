@@ -143,7 +143,7 @@ export default function ErrorPage({
             <div className="flex flex-wrap gap-3 mb-10">
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-bold text-white transition-all duration-200"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-[var(--radius-lg)] text-sm font-bold text-white transition-all duration-200"
                 style={{
                   background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
                   boxShadow:  "0 4px 16px rgba(14,127,94,0.35), 0 1px 4px rgba(17,32,28,0.12)",
@@ -155,7 +155,7 @@ export default function ErrorPage({
 
               <Link
                 href="/businesses"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-[var(--radius-lg)] text-sm font-bold transition-all duration-200"
                 style={{
                   background: "var(--color-surface)",
                   border:     "1.5px solid var(--color-line)",
@@ -170,7 +170,7 @@ export default function ErrorPage({
               {onReset && (
                 <button
                   onClick={onReset}
-                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-[var(--radius-lg)] text-sm font-bold transition-all duration-200"
                   style={{
                     background: "var(--color-surface)",
                     border:     "1.5px solid var(--color-line)",
@@ -184,7 +184,7 @@ export default function ErrorPage({
 
             {/* Quick links card */}
             <div
-              className="w-full rounded-2xl p-5"
+              className="w-full rounded-[var(--radius-lg)] p-5"
               style={{
                 background: "var(--color-surface)",
                 border:     "1.5px solid var(--color-line)",

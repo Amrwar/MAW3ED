@@ -101,8 +101,8 @@ export default function ForBusinessPage() {
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[var(--color-jade)]/25 bg-[var(--color-jade)]/[0.07] mb-5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-jade)]" />
                 <span
-                  className="font-semibold uppercase"
-                  style={{ color: "var(--color-jade-hover)", fontSize: 11, letterSpacing: "0.07em" }}
+                  className="font-semibold uppercase text-[0.6875rem]"
+                  style={{ color: "var(--color-jade-hover)", letterSpacing: "0.07em" }}
                 >
                   {fb.benefitsEyebrow}
                 </span>
@@ -128,7 +128,7 @@ export default function ForBusinessPage() {
                   return (
                     <div
                       key={b.title}
-                      className="rounded-3xl bg-white flex items-start gap-5 p-6 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+                      className="rounded-[var(--radius-xl)] bg-white flex items-start gap-5 p-6 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                       style={{
                         border:     "1px solid var(--color-line)",
                         boxShadow:  "0 1px 4px rgba(17,32,28,0.04), 0 4px 16px rgba(17,32,28,0.03)",
@@ -136,7 +136,7 @@ export default function ForBusinessPage() {
                       }}
                     >
                       <div
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                        className="w-12 h-12 rounded-[var(--radius-lg)] flex items-center justify-center shrink-0"
                         style={{ background: iconBg }}
                       >
                         <Icon size={22} strokeWidth={1.75} className="text-white" />
@@ -161,7 +161,7 @@ export default function ForBusinessPage() {
                 {/* Blue glow behind the mockup */}
                 <div
                   aria-hidden
-                  className="absolute inset-4 rounded-3xl pointer-events-none"
+                  className="absolute inset-4 rounded-[var(--radius-xl)] pointer-events-none"
                   style={{
                     background:
                       "radial-gradient(ellipse 90% 80% at 50% 40%, rgba(14,127,94,0.14) 0%, transparent 70%)",
@@ -171,7 +171,7 @@ export default function ForBusinessPage() {
 
                 {/* Mockup card */}
                 <div
-                  className="w-full rounded-3xl overflow-hidden relative"
+                  className="w-full rounded-[var(--radius-xl)] overflow-hidden relative"
                   style={{
                     background: "var(--color-ink)",
                     border:     "1px solid rgba(255,255,255,0.07)",
@@ -195,7 +195,7 @@ export default function ForBusinessPage() {
                         <LayoutDashboard size={14} className="text-white" />
                       </div>
                       <div>
-                        <p className="text-white font-bold" style={{ fontSize: 11 }}>
+                        <p className="text-white font-bold text-[0.6875rem]" >
                           Maw3ed Dashboard
                         </p>
                         <p style={{ color: "var(--color-muted)", fontSize: 10 }}>
@@ -218,12 +218,12 @@ export default function ForBusinessPage() {
                     ].map((s) => (
                       <div
                         key={s.label}
-                        className="rounded-2xl p-3"
+                        className="rounded-[var(--radius-lg)] p-3"
                         style={{ background: "var(--color-night-2)" }}
                       >
-                        <p style={{ color: "var(--color-muted)", fontSize: 10 }} className="mb-1">{s.label}</p>
+                        <p style={{ color: "var(--color-muted)" }} className="mb-1 text-[0.625rem]">{s.label}</p>
                         <p className="font-extrabold text-base" style={{ color: s.color }}>{s.value}</p>
-                        <p style={{ color: "var(--color-ok)", fontSize: 10 }} className="mt-0.5">{s.delta}</p>
+                        <p style={{ color: "var(--color-ok)" }} className="mt-0.5 text-[0.625rem]">{s.delta}</p>
                       </div>
                     ))}
                   </div>
@@ -231,7 +231,7 @@ export default function ForBusinessPage() {
                   {/* Bookings list */}
                   <div className="px-4 pb-2">
                     <div className="flex items-center justify-between mb-3">
-                      <p className="text-white font-bold" style={{ fontSize: 11 }}>
+                      <p className="text-white font-bold text-[0.6875rem]" >
                         {isAr ? "حجوزات اليوم" : "Today's Bookings"}
                       </p>
                       <span style={{ color: "var(--color-jade)", fontSize: 10 }}>
@@ -246,23 +246,22 @@ export default function ForBusinessPage() {
                       ].map((row, j) => (
                         <div
                           key={j}
-                          className="flex items-center gap-3 rounded-xl p-2.5"
+                          className="flex items-center gap-3 rounded-[var(--radius-md)] p-2.5"
                           style={{ background: "var(--color-night-2)" }}
                         >
                           <div
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold shrink-0"
-                            style={{ background: "var(--color-ink-2)", fontSize: 10 }}
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold shrink-0 text-[0.625rem]"
+                            style={{ background: "var(--color-ink-2)" }}
                           >
                             {row.name[0]}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p
-                              className="text-white font-semibold truncate"
-                              style={{ fontSize: 11 }}
-                            >
+                              className="text-white font-semibold truncate text-[0.6875rem]"
+                              >
                               {row.name}
                             </p>
-                            <p className="truncate" style={{ color: "var(--color-muted)", fontSize: 10 }}>
+                            <p className="truncate text-[0.625rem]" style={{ color: "var(--color-muted)" }}>
                               {row.svc} · {row.time}
                             </p>
                           </div>
@@ -288,20 +287,20 @@ export default function ForBusinessPage() {
 
                   {/* Auto-reminder notification */}
                   <div
-                    className="mx-4 my-4 rounded-2xl p-3 flex items-center gap-3"
+                    className="mx-4 my-4 rounded-[var(--radius-lg)] p-3 flex items-center gap-3"
                     style={{
                       background: "rgba(14,127,94,0.10)",
                       border:     "1px solid rgba(14,127,94,0.18)",
                     }}
                   >
                     <div
-                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                      className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center shrink-0"
                       style={{ background: "var(--color-jade)" }}
                     >
                       <Bell size={14} className="text-white" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-white font-bold" style={{ fontSize: 10 }}>
+                      <p className="text-white font-bold text-[0.625rem]" >
                         {isAr ? "تذكير تلقائي أُرسل ✓" : "Auto reminder sent ✓"}
                       </p>
                       <p style={{ color: "var(--color-muted)", fontSize: 10 }}>
@@ -322,7 +321,7 @@ export default function ForBusinessPage() {
                 return (
                   <div
                     key={b.title}
-                    className="rounded-3xl bg-white flex flex-col gap-4 p-6 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+                    className="rounded-[var(--radius-xl)] bg-white flex flex-col gap-4 p-6 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                     style={{
                       border:     "1px solid var(--color-line)",
                       boxShadow:  "0 1px 4px rgba(17,32,28,0.04), 0 4px 16px rgba(17,32,28,0.03)",
@@ -330,7 +329,7 @@ export default function ForBusinessPage() {
                     }}
                   >
                     <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                      className="w-12 h-12 rounded-[var(--radius-lg)] flex items-center justify-center"
                       style={{ background: iconBg }}
                     >
                       <Icon size={22} strokeWidth={1.75} className="text-white" />
@@ -362,7 +361,7 @@ export default function ForBusinessPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {fb.steps.map((step, i) => (
                 <div key={i} className="text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-[var(--color-brand)] text-white text-xl font-extrabold flex items-center justify-center mx-auto mb-4 shadow-sm">
+                  <div className="w-14 h-14 rounded-[var(--radius-lg)] bg-[var(--color-brand)] text-white text-xl font-extrabold flex items-center justify-center mx-auto mb-4 shadow-sm">
                     {step.number}
                   </div>
                   <h3 className="font-bold text-[var(--color-text-primary)] mb-2">{step.title}</h3>

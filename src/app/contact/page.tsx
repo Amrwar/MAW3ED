@@ -34,7 +34,7 @@ export default function ContactPage() {
                 const Icon = channelIcons[i];
                 return (
                   <div key={channel.title} className="card p-6 text-center">
-                    <div className={`w-12 h-12 rounded-xl ${channelColors[i]} flex items-center justify-center mx-auto mb-4`}>
+                    <div className={`w-12 h-12 rounded-[var(--radius-md)] ${channelColors[i]} flex items-center justify-center mx-auto mb-4`}>
                       <Icon size={22} />
                     </div>
                     <h3 className="font-bold text-[var(--color-text-primary)] mb-1">{channel.title}</h3>

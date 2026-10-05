@@ -74,7 +74,7 @@ export function NotificationBell() {
     <button
       type="button"
       aria-label={label}
-      className="relative p-2 rounded-xl text-[var(--color-subtle)] hover:text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] transition-all duration-150"
+      className="relative p-2 rounded-[var(--radius-md)] text-[var(--color-subtle)] hover:text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] transition-all duration-150"
     >
       <Bell size={17} strokeWidth={1.8} />
     </button>
@@ -93,7 +93,7 @@ type DropdownItemProps = {
 
 function DropdownItem({ icon: Icon, label, href, onClick, danger = false }: DropdownItemProps) {
   const base = cn(
-    "group flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium",
+    "group flex items-center gap-3 w-full px-3 py-2.5 rounded-[var(--radius-md)] text-sm font-medium",
     "transition-all duration-150 text-start",
     danger
       ? "text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)] hover:text-[var(--color-danger)]"
@@ -183,7 +183,7 @@ export function UserMenu({ user }: UserMenuProps) {
         aria-haspopup="true"
         aria-expanded={open}
         className={cn(
-          "flex items-center gap-1.5 px-1.5 py-1.5 rounded-xl transition-all duration-150 outline-none",
+          "flex items-center gap-1.5 px-1.5 py-1.5 rounded-[var(--radius-md)] transition-all duration-150 outline-none",
           "focus-visible:ring-2 focus-visible:ring-[var(--color-jade)] focus-visible:ring-offset-1",
           open ? "bg-[var(--color-surface-3)]" : "hover:bg-[var(--color-surface-2)]",
         )}
@@ -203,7 +203,7 @@ export function UserMenu({ user }: UserMenuProps) {
       <div
         role="menu"
         aria-label={lang === "ar" ? "قائمة المستخدم" : "User menu"}
-        className="absolute z-50 end-0 mt-2 w-56 rounded-2xl bg-white border border-[var(--color-line)] py-1.5 overflow-hidden"
+        className="absolute z-50 end-0 mt-2 w-56 rounded-[var(--radius-lg)] bg-white border border-[var(--color-line)] py-1.5 overflow-hidden"
         style={{
           boxShadow:    "0 8px 32px rgba(17,32,28,0.11), 0 2px 8px rgba(17,32,28,0.06)",
           opacity:      open ? 1 : 0,

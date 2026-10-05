@@ -102,14 +102,12 @@ export default function ServicesClient({ initialServices }: Props) {
 
       {/* ── Premium page header ── */}
       <div
-        className="rounded-2xl border bg-white px-6 py-5"
-        style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+        className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-5"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1
-              className="font-extrabold text-[var(--color-ink)] leading-tight"
-              style={{ fontSize: 22, letterSpacing: "-0.02em" }}
+              className="m-0 text-[1.75rem] font-light tracking-tight text-[var(--color-ink)]"
             >
               {sv.title}
             </h1>
@@ -122,11 +120,7 @@ export default function ServicesClient({ initialServices }: Props) {
           </div>
           <button
             onClick={openAdd}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200 shrink-0 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
-            style={{
-              background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
-              boxShadow:  "0 4px 14px rgba(14,127,94,0.28)",
-            }}
+            className="btn btn-primary shrink-0"
           >
             <Plus size={15} strokeWidth={2.5} />
             {sv.addBtn}
@@ -175,8 +169,7 @@ export default function ServicesClient({ initialServices }: Props) {
         <EmptyState onAdd={openAdd} />
       ) : (
         <div
-          className="rounded-2xl border bg-white overflow-hidden"
-          style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+          className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] overflow-hidden"
         >
           {/* Section header */}
           <div
@@ -224,14 +217,14 @@ export default function ServicesClient({ initialServices }: Props) {
       {/* ── Tip card ── */}
       {services.length > 0 && (
         <div
-          className="rounded-2xl border px-5 py-4 flex items-start gap-4"
+          className="rounded-[var(--radius-lg)] border px-5 py-4 flex items-start gap-4"
           style={{
             background:  "rgba(14,127,94,0.03)",
             borderColor: "rgba(14,127,94,0.15)",
           }}
         >
           <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+            className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center shrink-0 mt-0.5"
             style={{ background: "var(--color-jade-tint)" }}
           >
             <TrendingUp size={14} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />
@@ -269,18 +262,17 @@ function SummaryCard({
 }) {
   return (
     <div
-      className="rounded-2xl border bg-white p-5"
-      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-5"
     >
       <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+        className="w-9 h-9 rounded-[var(--radius-md)] flex items-center justify-center mb-3"
         style={{ background: iconBg }}
       >
         {icon}
       </div>
       <p
-        className="font-extrabold text-[var(--color-ink)] leading-none"
-        style={{ fontSize: 24, letterSpacing: "-0.02em" }}
+        className="font-extrabold text-[var(--color-ink)] leading-none text-[1.5rem]"
+        style={{ letterSpacing: "-0.02em" }}
       >
         {value}
       </p>
@@ -327,7 +319,7 @@ function ServiceRow({
     >
       {/* Gradient avatar */}
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-extrabold text-white shrink-0"
+        className="w-10 h-10 rounded-[var(--radius-md)] flex items-center justify-center text-sm font-extrabold text-white shrink-0"
         style={{
           background: s.isAvailable
             ? svcGrad(s.nameAr)
@@ -429,7 +421,7 @@ function ServiceRow({
       <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={() => onEdit(s)}
-          className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150"
+          className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-150"
           style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-muted)" }}
           title={sv.edit}
         >
@@ -439,7 +431,7 @@ function ServiceRow({
         <button
           onClick={() => onDelete(s.id)}
           disabled={isDeleting}
-          className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150 disabled:opacity-40"
+          className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-150 disabled:opacity-40"
           style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-subtle)" }}
           title={sv.delete}
         >
@@ -458,11 +450,10 @@ function ServiceRow({
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div
-      className="rounded-2xl border bg-white py-20 px-8 text-center"
-      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] py-20 px-8 text-center"
     >
       <div
-        className="w-20 h-20 rounded-3xl mx-auto mb-6 flex items-center justify-center"
+        className="w-20 h-20 rounded-[var(--radius-xl)] mx-auto mb-6 flex items-center justify-center"
         style={{
           background: "linear-gradient(135deg, var(--color-jade-tint) 0%, var(--color-jade-soft) 100%)",
           border:     "1px solid var(--color-jade-line)",
@@ -471,8 +462,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         <Layers size={32} strokeWidth={1.5} style={{ color: "var(--color-jade)" }} />
       </div>
       <h3
-        className="font-extrabold text-[var(--color-ink)] mb-2"
-        style={{ fontSize: 18, letterSpacing: "-0.01em" }}
+        className="font-extrabold text-[var(--color-ink)] mb-2 text-[1.125rem]"
+        style={{ letterSpacing: "-0.01em" }}
       >
         لا توجد خدمات بعد
       </h3>
@@ -481,7 +472,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       </p>
       <button
         onClick={onAdd}
-        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+        className="inline-flex items-center gap-2 px-6 py-3 rounded-[var(--radius-md)] text-sm font-bold text-white transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
         style={{
           background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
           boxShadow:  "0 4px 14px rgba(14,127,94,0.28)",

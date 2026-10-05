@@ -6,7 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 function MiniBookingCard() {
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-[var(--color-line)] overflow-hidden w-full max-w-xs" dir="rtl">
+    <div className="bg-white rounded-[var(--radius-lg)] shadow-xl border border-[var(--color-line)] overflow-hidden w-full max-w-xs" dir="rtl">
       {/* Header */}
       <div
         className="px-4 py-4 flex items-center justify-between"
@@ -33,7 +33,7 @@ function MiniBookingCard() {
           ].map((d) => (
             <div
               key={d.n}
-              className={`flex flex-col items-center py-2 px-2.5 rounded-xl shrink-0 min-w-[44px] text-xs ${
+              className={`flex flex-col items-center py-2 px-2.5 rounded-[var(--radius-md)] shrink-0 min-w-[44px] text-xs ${
                 d.disabled
                   ? "bg-[var(--color-surface-3)] text-[var(--color-line-2)] opacity-50"
                   : d.active
@@ -55,7 +55,7 @@ function MiniBookingCard() {
           {["9:00", "10:00", "11:00", "12:00", "2:00", "3:00"].map((t, i) => (
             <div
               key={t}
-              className={`py-2 text-center rounded-xl text-xs font-semibold border ${
+              className={`py-2 text-center rounded-[var(--radius-md)] text-xs font-semibold border ${
                 i === 1
                   ? "bg-[var(--color-jade)] text-white border-[var(--color-jade)]"
                   : "border-[var(--color-line)] text-[var(--color-muted)]"
@@ -66,7 +66,7 @@ function MiniBookingCard() {
           ))}
         </div>
         <button
-          className="w-full py-2.5 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5"
+          className="w-full py-2.5 rounded-[var(--radius-md)] text-white text-xs font-bold flex items-center justify-center gap-1.5"
           style={{ background: "var(--color-ink)" }}
         >
           <Check size={13} /> تأكيد الحجز
@@ -78,13 +78,13 @@ function MiniBookingCard() {
 
 function ConfirmationCard() {
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-[var(--color-line)] p-5 w-full max-w-xs" dir="rtl">
+    <div className="bg-white rounded-[var(--radius-lg)] shadow-xl border border-[var(--color-line)] p-5 w-full max-w-xs" dir="rtl">
       <div className="w-12 h-12 bg-[var(--color-ok-soft)] rounded-full flex items-center justify-center mx-auto mb-3">
         <Check size={24} className="text-[var(--color-ok)]" strokeWidth={2.5} />
       </div>
       <p className="text-center font-extrabold text-[var(--color-ink)] text-base mb-1">تم حجز موعدك! 🎉</p>
       <p className="text-center text-xs text-[var(--color-subtle)] mb-4">سيتواصل معك الفريق قريبًا</p>
-      <div className="space-y-2 bg-[var(--color-surface-2)] rounded-xl p-3">
+      <div className="space-y-2 bg-[var(--color-surface-2)] rounded-[var(--radius-md)] p-3">
         <div className="flex items-center justify-between text-xs">
           <span className="text-[var(--color-subtle)]">الخدمة</span>
           <span className="font-semibold text-[var(--color-ink)]">كشف باطنة</span>
@@ -149,8 +149,8 @@ export default function DemoSection() {
 
             <div className="space-y-4 mb-10">
               {d.features.map((f) => (
-                <div key={f.title} className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                  <div className="w-10 h-10 rounded-xl bg-[var(--color-jade)]/15 flex items-center justify-center shrink-0 text-lg">
+                <div key={f.title} className="flex items-start gap-4 p-4 rounded-[var(--radius-md)] bg-white/5 border border-white/10">
+                  <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-jade)]/15 flex items-center justify-center shrink-0 text-lg">
                     {f.icon}
                   </div>
                   <div>
@@ -163,7 +163,7 @@ export default function DemoSection() {
 
             <Link
               href="/for-business"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-bold text-[var(--color-ink)] text-sm bg-white hover:bg-[var(--color-surface-2)] shadow-lg transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-[var(--radius-md)] font-bold text-[var(--color-ink)] text-sm bg-white hover:bg-[var(--color-surface-2)] shadow-lg transition-all"
             >
               {d.cta}
             </Link>

@@ -70,7 +70,7 @@ export default async function SubscriptionReturnPage() {
             )}
             <Link
               href="/dashboard"
-              className="block w-full text-center py-3 rounded-xl bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+              className="block w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
             >
               الذهاب إلى لوحة التحكم
             </Link>
@@ -91,7 +91,7 @@ export default async function SubscriptionReturnPage() {
             </p>
             <Link
               href="/dashboard/settings"
-              className="block w-full text-center py-3 rounded-xl bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+              className="block w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
             >
               تحقق من حالة الاشتراك
             </Link>
@@ -112,7 +112,7 @@ export default async function SubscriptionReturnPage() {
             </p>
             <Link
               href="/pricing"
-              className="flex items-center justify-center gap-2 w-full text-center py-3 rounded-xl bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+              className="flex items-center justify-center gap-2 w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
             >
               <ArrowRight size={15} />
               عرض الخطط

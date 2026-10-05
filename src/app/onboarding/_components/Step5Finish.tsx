@@ -94,7 +94,7 @@ export default function Step5Finish({
         <label className="field-label">
           رابطك المخصص <span className="text-[var(--color-danger)]">*</span>
         </label>
-        <div className="flex items-center border border-[var(--color-border)] rounded-xl overflow-hidden focus-within:border-[var(--color-brand)] focus-within:ring-1 focus-within:ring-[var(--color-brand)]/20 transition-all">
+        <div className="flex items-center border border-[var(--color-border)] rounded-[var(--radius-md)] overflow-hidden focus-within:border-[var(--color-brand)] focus-within:ring-1 focus-within:ring-[var(--color-brand)]/20 transition-all">
           <span className="bg-[var(--color-surface-2)] px-3 py-2.5 text-sm text-[var(--color-text-muted)] border-e border-[var(--color-border)] shrink-0 select-none whitespace-nowrap">
             maw3ed.com/company/
           </span>
@@ -123,14 +123,14 @@ export default function Step5Finish({
       </div>
 
       {/* Preview card */}
-      <div className="border border-[var(--color-border)] rounded-2xl overflow-hidden">
+      <div className="border border-[var(--color-border)] rounded-[var(--radius-lg)] overflow-hidden">
         {/* Cover */}
         <div className="h-24 bg-gradient-to-br from-[var(--color-accent-light)] to-[var(--color-surface-2)] relative">
           <div className="absolute inset-0 flex items-center justify-center text-[var(--color-text-muted)] text-xs">
             صورة الغلاف
           </div>
           {/* Logo */}
-          <div className="absolute -bottom-6 start-4 w-14 h-14 rounded-xl bg-white border-2 border-white shadow-md flex items-center justify-center text-xl font-extrabold text-[var(--color-brand)]">
+          <div className="absolute -bottom-6 start-4 w-14 h-14 rounded-[var(--radius-md)] bg-white border-2 border-white shadow-md flex items-center justify-center text-xl font-extrabold text-[var(--color-brand)]">
             {data.nameAr[0] || "؟"}
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function Step5Finish({
       </div>
 
       {submitError && (
-        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-[var(--radius-md)] px-4 py-3">
           {submitError}
         </div>
       )}

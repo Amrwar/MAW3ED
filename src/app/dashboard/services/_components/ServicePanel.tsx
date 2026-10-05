@@ -69,8 +69,8 @@ function FieldLabel({
     <div style={{ marginBottom: 6 }}>
       <label
         htmlFor={htmlFor}
-        className="flex items-center gap-1"
-        style={{ fontSize: 12, fontWeight: 600, color: "var(--color-ink-2)" }}
+        className="flex items-center gap-1 text-xs"
+        style={{ fontWeight: 600, color: "var(--color-ink-2)" }}
       >
         {children}
         {required && (
@@ -100,7 +100,7 @@ function FormSection({
 }) {
   return (
     <div
-      className="rounded-xl overflow-hidden"
+      className="rounded-[var(--radius-md)] overflow-hidden"
       style={{ border: "1.5px solid var(--color-line)" }}
     >
       {/* Section header — compact */}
@@ -249,15 +249,15 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
           <div className="flex items-center justify-between px-5 py-3.5">
             <div className="flex items-center gap-2.5 min-w-0">
               <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center shrink-0"
                 style={{ background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)" }}
               >
                 <Sparkles size={14} strokeWidth={2} style={{ color: "var(--color-surface)" }} />
               </div>
               <div className="min-w-0">
                 <h2
-                  className="font-extrabold text-[var(--color-ink)] truncate"
-                  style={{ fontSize: 15, letterSpacing: "-0.02em" }}
+                  className="font-extrabold text-[var(--color-ink)] truncate text-[0.9375rem]"
+                  style={{ letterSpacing: "-0.02em" }}
                 >
                   {editing
                     ? (isAr ? "تعديل الخدمة" : "Edit Service")
@@ -272,7 +272,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150 shrink-0 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+              className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-150 shrink-0 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
               style={{ background: "var(--color-surface-2)", border: "1.5px solid var(--color-line)", color: "var(--color-muted)" }}
             >
               <X size={14} strokeWidth={2} />
@@ -430,8 +430,8 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                     onBlur={blurStyle}
                   />
                   <span
-                    className="absolute top-1/2 -translate-y-1/2 text-xs font-semibold pointer-events-none"
-                    style={{ insetInlineStart: 10, color: "var(--color-subtle)", fontSize: 11 }}
+                    className="absolute top-1/2 -translate-y-1/2 text-xs font-semibold pointer-events-none text-[0.6875rem]"
+                    style={{ insetInlineStart: 10, color: "var(--color-subtle)" }}
                   >
                     {isAr ? "ج.م" : "EGP"}
                   </span>
@@ -466,7 +466,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             icon={<CheckCircle2 size={13} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />}
           >
             <div
-              className="flex items-center justify-between rounded-xl px-3.5 py-3 cursor-pointer"
+              className="flex items-center justify-between rounded-[var(--radius-md)] px-3.5 py-3 cursor-pointer"
               style={{
                 background: form.isAvailable ? "var(--color-ok-soft)" : "var(--color-surface-2)",
                 border:     `1.5px solid ${form.isAvailable ? "var(--color-ok-line)" : "var(--color-line)"}`,
@@ -476,8 +476,8 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             >
               <div className="flex-1 min-w-0">
                 <p
-                  className="font-bold"
-                  style={{ fontSize: 13, color: form.isAvailable ? "var(--color-ok)" : "var(--color-muted)" }}
+                  className="font-bold text-[0.8125rem]"
+                  style={{ color: form.isAvailable ? "var(--color-ok)" : "var(--color-muted)" }}
                 >
                   {form.isAvailable
                     ? (isAr ? "متاحة للحجز" : "Available for booking")
@@ -530,7 +530,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
           {/* ── Error message ── */}
           {error && (
             <div
-              className="flex items-start gap-2.5 rounded-xl px-3.5 py-3"
+              className="flex items-start gap-2.5 rounded-[var(--radius-md)] px-3.5 py-3"
               style={{ background: "var(--color-danger-soft)", border: "1.5px solid var(--color-danger-line)" }}
             >
               <div
@@ -567,15 +567,13 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl font-semibold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+              className="flex-1 rounded-[var(--radius-md)] font-semibold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)] text-[0.875rem]"
               style={{
                 paddingBlock: 11,
-                fontSize:     14,
                 background:   "var(--color-surface-2)",
                 border:       "1.5px solid var(--color-line)",
                 color:        "var(--color-muted)",
-                cursor:       "pointer",
-              }}
+                cursor:       "pointer" }}
             >
               {isAr ? "إلغاء" : "Cancel"}
             </button>
@@ -585,17 +583,15 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
               type="submit"
               form="service-form"
               disabled={saving}
-              className="flex items-center justify-center gap-2 rounded-xl font-extrabold text-white transition-all duration-200 disabled:opacity-60 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+              className="flex items-center justify-center gap-2 rounded-[var(--radius-md)] font-extrabold text-white transition-all duration-200 disabled:opacity-60 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)] text-[0.875rem]"
               style={{
                 flex:          2,
                 paddingBlock:  11,
-                fontSize:      14,
                 background:    "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade-hover) 60%, var(--color-jade) 100%)",
                 boxShadow:     "0 4px 16px rgba(10,95,71,0.3)",
                 border:        "none",
                 cursor:        saving ? "not-allowed" : "pointer",
-                letterSpacing: "-0.01em",
-              }}
+                letterSpacing: "-0.01em" }}
             >
               {saving ? (
                 <>

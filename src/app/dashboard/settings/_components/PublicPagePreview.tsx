@@ -42,7 +42,7 @@ export default function PublicPagePreview({ profile, services }: Props) {
         </p>
         <div className="flex items-center gap-2">
           <div
-            className="flex-1 bg-[var(--color-surface-2)] rounded-xl px-4 py-2.5 text-sm text-[var(--color-text-secondary)] truncate"
+            className="flex-1 bg-[var(--color-surface-2)] rounded-[var(--radius-md)] px-4 py-2.5 text-sm text-[var(--color-text-secondary)] truncate"
             dir="ltr"
           >
             {publicUrl}
@@ -77,16 +77,16 @@ export default function PublicPagePreview({ profile, services }: Props) {
 
         {/* Simulated page card */}
         <div className="p-5">
-          <div className="border border-[var(--color-border)] rounded-2xl overflow-hidden max-w-sm mx-auto shadow-sm">
+          <div className="border border-[var(--color-border)] rounded-[var(--radius-lg)] overflow-hidden max-w-sm mx-auto shadow-sm">
             {/* Cover */}
             <div className="h-24 bg-gradient-to-br from-[var(--color-accent-light)] to-[var(--color-surface-2)] relative">
               {profile.coverImage && (
                 <img src={profile.coverImage} alt="" className="w-full h-full object-cover" />
               )}
               {/* Logo */}
-              <div className="absolute -bottom-6 start-4 w-14 h-14 rounded-xl bg-white shadow-md border border-[var(--color-border)] flex items-center justify-center text-2xl">
+              <div className="absolute -bottom-6 start-4 w-14 h-14 rounded-[var(--radius-md)] bg-white shadow-md border border-[var(--color-border)] flex items-center justify-center text-2xl">
                 {profile.logoImage
-                  ? <img src={profile.logoImage} alt="" className="w-full h-full object-cover rounded-xl" />
+                  ? <img src={profile.logoImage} alt="" className="w-full h-full object-cover rounded-[var(--radius-md)]" />
                   : profile.categoryIcon
                 }
               </div>

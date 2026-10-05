@@ -74,7 +74,7 @@ export default async function PaymentReturnPage({
               تم استلام دفعتك وتأكيد حجزك. سيُرسَل إليك تذكير قبل الموعد.
             </p>
 
-            <div className="bg-[var(--color-surface-2)] rounded-xl p-4 text-start space-y-2.5 mb-6">
+            <div className="bg-[var(--color-surface-2)] rounded-[var(--radius-md)] p-4 text-start space-y-2.5 mb-6">
               <Row label="العمل"    value={booking.business.nameAr} />
               <Row label="الخدمة"   value={booking.service.nameAr} />
               <Row label="التاريخ"  value={booking.date.toISOString().split("T")[0]} />
@@ -91,14 +91,14 @@ export default async function PaymentReturnPage({
             {booking.accessToken && (
               <Link
                 href={`/booking/${booking.accessToken}`}
-                className="block w-full text-center py-3 rounded-xl bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity mb-3"
+                className="block w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity mb-3"
               >
                 عرض تفاصيل الحجز
               </Link>
             )}
             <Link
               href={`/company/${booking.business.slug}`}
-              className="block w-full text-center py-2.5 rounded-xl border-2 border-[var(--color-border)] text-[var(--color-text-secondary)] text-sm font-medium hover:bg-[var(--color-surface-2)] transition-colors"
+              className="block w-full text-center py-2.5 rounded-[var(--radius-md)] border-2 border-[var(--color-border)] text-[var(--color-text-secondary)] text-sm font-medium hover:bg-[var(--color-surface-2)] transition-colors"
             >
               العودة إلى الصفحة الرئيسية
             </Link>
@@ -120,7 +120,7 @@ export default async function PaymentReturnPage({
             {booking?.business?.slug && (
               <Link
                 href={`/company/${booking.business.slug}`}
-                className="flex items-center justify-center gap-2 w-full text-center py-3 rounded-xl bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+                className="flex items-center justify-center gap-2 w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
               >
                 <ArrowRight size={15} />
                 حاول الحجز مجددًا
@@ -146,7 +146,7 @@ export default async function PaymentReturnPage({
             {booking.accessToken && (
               <Link
                 href={`/booking/${booking.accessToken}`}
-                className="block w-full text-center py-3 rounded-xl bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+                className="block w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
               >
                 تحقق من حالة الحجز
               </Link>

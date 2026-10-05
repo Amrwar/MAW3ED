@@ -303,7 +303,7 @@ export default function BookingWidget({
   return (
     <div
       id="booking"
-      className="overflow-hidden rounded-3xl bg-white"
+      className="overflow-hidden rounded-[var(--radius-xl)] bg-white"
       dir="rtl"
       style={{
         boxShadow:  "0 4px 32px rgba(17,32,28,0.10), 0 1px 8px rgba(17,32,28,0.06)",

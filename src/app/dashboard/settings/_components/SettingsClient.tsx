@@ -111,7 +111,7 @@ export default function SettingsClient({
       {/* ── Premium tab strip ───────────────────────────────── */}
       <div className="mb-8 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
         <div
-          className="flex gap-1 p-1 rounded-2xl"
+          className="flex gap-1 p-1 rounded-[var(--radius-lg)]"
           style={{
             background:   "var(--color-surface-3)",
             width:        "fit-content",
@@ -123,7 +123,7 @@ export default function SettingsClient({
             <button
               key={id}
               onClick={() => setTab(id)}
-              className="flex items-center gap-2 rounded-xl font-semibold transition-all duration-150 whitespace-nowrap"
+              className="flex items-center gap-2 rounded-[var(--radius-md)] font-semibold transition-all duration-150 whitespace-nowrap"
               style={
                 tab === id
                   ? {

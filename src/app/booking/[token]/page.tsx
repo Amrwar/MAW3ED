@@ -74,7 +74,7 @@ export default async function BookingPage({ params }: Params) {
 
       <main className="max-w-lg mx-auto px-4 py-8 space-y-4">
         {/* Status card */}
-        <div className={`rounded-2xl border p-5 flex items-center gap-4 ${status.bg} ${status.border}`}>
+        <div className={`rounded-[var(--radius-lg)] border p-5 flex items-center gap-4 ${status.bg} ${status.border}`}>
           <StatusIcon size={28} className={status.color} />
           <div>
             <p className={`font-extrabold text-lg ${status.color}`}>{status.label}</p>
@@ -89,7 +89,7 @@ export default async function BookingPage({ params }: Params) {
         </div>
 
         {/* Booking details */}
-        <div className="bg-white rounded-2xl border border-[var(--color-border)] overflow-hidden">
+        <div className="bg-white rounded-[var(--radius-lg)] border border-[var(--color-border)] overflow-hidden">
           <div className="px-5 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]">
             <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
               تفاصيل الحجز
@@ -115,7 +115,7 @@ export default async function BookingPage({ params }: Params) {
 
         {/* Actions */}
         {(cancellable || reschedulable) && (
-          <div className="bg-white rounded-2xl border border-[var(--color-border)] p-5 space-y-3">
+          <div className="bg-white rounded-[var(--radius-lg)] border border-[var(--color-border)] p-5 space-y-3">
             <p className="text-sm font-semibold text-[var(--color-text-primary)]">
               إدارة الحجز
             </p>

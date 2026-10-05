@@ -60,8 +60,7 @@ export default function DashboardTodayWidget({
       ) : (
         /* ── Premium empty state ── */
         <div
-          className="rounded-2xl border bg-white overflow-hidden"
-          style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+          className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] overflow-hidden"
         >
           {/* Card header */}
           <div
@@ -86,7 +85,7 @@ export default function DashboardTodayWidget({
           <div className="py-14 flex flex-col items-center text-center px-6">
             {/* Decorative icon area */}
             <div
-              className="w-20 h-20 rounded-3xl flex items-center justify-center mb-5"
+              className="w-20 h-20 rounded-[var(--radius-xl)] flex items-center justify-center mb-5"
               style={{
                 background:  "linear-gradient(135deg, rgba(10,95,71,0.08) 0%, rgba(14,127,94,0.06) 100%)",
                 border:      "1px solid rgba(14,127,94,0.14)",
@@ -105,7 +104,7 @@ export default function DashboardTodayWidget({
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setNewBookingOpen(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius-md)] text-sm font-bold text-white transition-all duration-200"
                 style={{
                   background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
                   boxShadow:  "0 4px 14px rgba(14,127,94,0.30)",
@@ -116,7 +115,7 @@ export default function DashboardTodayWidget({
               </button>
               <Link
                 href="/dashboard/bookings"
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-[var(--radius-md)] text-sm font-semibold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                 style={{
                   background:  "var(--color-surface-2)",
                   border:      "1px solid var(--color-line)",

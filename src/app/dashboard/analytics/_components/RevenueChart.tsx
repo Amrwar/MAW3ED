@@ -24,7 +24,7 @@ function CustomTooltip({ active, payload, label, currency }: {
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-[var(--color-border)] rounded-xl shadow-lg px-4 py-3 text-sm">
+    <div className="bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg px-4 py-3 text-sm">
       <p className="font-semibold text-[var(--color-text-primary)] mb-2">{label}</p>
       <p className="text-[var(--color-ok)] font-bold">
         {payload[0].value.toLocaleString("ar-EG-u-nu-latn")} {currency}

@@ -16,7 +16,7 @@ function CustomTooltip({ active, payload, currency }: {
   if (!active || !payload?.length) return null;
   const s = payload[0].payload;
   return (
-    <div className="bg-white border border-[var(--color-border)] rounded-xl shadow-lg px-4 py-3 text-sm min-w-[160px]">
+    <div className="bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg px-4 py-3 text-sm min-w-[160px]">
       <p className="font-semibold text-[var(--color-text-primary)] mb-2">{s.serviceName}</p>
       <p className="text-[var(--color-text-secondary)]">{s.bookings.toLocaleString("ar-EG-u-nu-latn")} حجز</p>
       <p className="font-bold mt-1" style={{ color: s.color }}>

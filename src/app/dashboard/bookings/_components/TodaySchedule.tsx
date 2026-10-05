@@ -42,8 +42,7 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
 
   return (
     <div
-      className="rounded-2xl border bg-white overflow-hidden"
-      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] overflow-hidden"
     >
       {/* Header */}
       <div
@@ -52,7 +51,7 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
       >
         <div className="flex items-center gap-3">
           <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center shrink-0"
             style={{ background: "var(--color-jade-tint)" }}
           >
             <Clock size={15} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />
@@ -87,7 +86,7 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
         {onNewBooking && (
           <button
             onClick={onNewBooking}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-[var(--radius-md)] transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
             style={{
               background:  "var(--color-surface-2)",
               border:      "1px solid var(--color-line)",

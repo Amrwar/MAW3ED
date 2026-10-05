@@ -92,17 +92,15 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-2 transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+          className="flex items-center gap-2 transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)] text-[0.8125rem]"
           style={{
             background:   "var(--color-ink)",
             color:        "var(--color-surface)",
             border:       "none",
             borderRadius: 12,
             padding:      "10px 18px",
-            fontSize:     13,
             fontWeight:   600,
-            cursor:       "pointer",
-          }}
+            cursor:       "pointer" }}
         >
           <Plus size={15} strokeWidth={2.5} />
           {isAr ? "إضافة موظف" : "Add Staff"}
@@ -112,7 +110,7 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
       {/* ── Empty state ─────────────────────────────── */}
       {staff.length === 0 ? (
         <div
-          className="flex flex-col items-center justify-center rounded-2xl"
+          className="flex flex-col items-center justify-center rounded-[var(--radius-lg)]"
           style={{ minHeight: 280, border: "2px dashed var(--color-line)", gap: 16 }}
         >
           <Scissors size={40} style={{ color: "var(--color-line-2)" }} />
@@ -149,7 +147,7 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
             return (
               <div
                 key={member.id}
-                className="rounded-2xl p-4 transition-all duration-150"
+                className="rounded-[var(--radius-lg)] p-4 transition-all duration-150"
                 style={{
                   background: "var(--color-surface)",
                   border:     "1.5px solid var(--color-surface-3)",
@@ -166,15 +164,13 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
                     />
                   ) : (
                     <div
-                      className="flex items-center justify-center text-white shrink-0"
+                      className="flex items-center justify-center text-white shrink-0 text-base"
                       style={{
                         width:      44,
                         height:     44,
                         borderRadius: 12,
                         background: memberGrad(member.nameAr),
-                        fontSize:   16,
-                        fontWeight: 800,
-                      }}
+                        fontWeight: 800 }}
                     >
                       {member.nameAr[0]}
                     </div>

@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="card p-7">
       <div className="text-center mb-7">
-        <div className="w-12 h-12 rounded-2xl bg-[var(--color-accent-light)] flex items-center justify-center mx-auto mb-4">
+        <div className="w-12 h-12 rounded-[var(--radius-lg)] bg-[var(--color-accent-light)] flex items-center justify-center mx-auto mb-4">
           <Mail size={22} className="text-[var(--color-accent)]" />
         </div>
         <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)] mb-1">
@@ -95,7 +95,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         {error && (
-          <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
+          <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-[var(--radius-md)] px-4 py-3">
             {error}
           </div>
         )}

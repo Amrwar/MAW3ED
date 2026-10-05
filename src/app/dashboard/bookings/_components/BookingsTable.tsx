@@ -86,8 +86,7 @@ export default function BookingsTable({
 
   return (
     <div
-      className="rounded-2xl border bg-white overflow-hidden"
-      style={{ borderColor: "var(--color-line)", boxShadow: "0 1px 8px rgba(17,32,28,0.05)" }}
+      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] overflow-hidden"
     >
       {/* Header */}
       <div
@@ -144,7 +143,7 @@ export default function BookingsTable({
               <tr>
                 <td colSpan={7} className="px-5 py-20 text-center">
                   <div
-                    className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+                    className="w-14 h-14 rounded-[var(--radius-lg)] mx-auto mb-4 flex items-center justify-center"
                     style={{ background: "var(--color-surface-2)" }}
                   >
                     <span className="text-3xl">📋</span>

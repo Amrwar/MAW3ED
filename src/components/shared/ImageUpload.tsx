@@ -68,12 +68,12 @@ export default function ImageUpload({
   }
 
   const containerClass = isCover
-    ? "relative w-full h-32 rounded-xl overflow-hidden"
-    : "relative w-20 h-20 rounded-xl overflow-hidden";
+    ? "relative w-full h-32 rounded-[var(--radius-md)] overflow-hidden"
+    : "relative w-20 h-20 rounded-[var(--radius-md)] overflow-hidden";
 
   const emptyClass = isCover
-    ? "w-full h-32 rounded-xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-[var(--color-brand)] hover:bg-[var(--color-accent-light)] transition-colors"
-    : "w-20 h-20 rounded-xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-brand)] hover:bg-[var(--color-accent-light)] transition-colors";
+    ? "w-full h-32 rounded-[var(--radius-md)] border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-[var(--color-brand)] hover:bg-[var(--color-accent-light)] transition-colors"
+    : "w-20 h-20 rounded-[var(--radius-md)] border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-2)] flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-brand)] hover:bg-[var(--color-accent-light)] transition-colors";
 
   return (
     <div className="space-y-1.5">

@@ -61,7 +61,7 @@ export default async function CategoryPage({ params }: Props) {
 
             <div className="flex items-center gap-4">
               <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0"
+                className="w-14 h-14 rounded-[var(--radius-lg)] flex items-center justify-center text-2xl shrink-0"
                 style={{ backgroundColor: category.bgColor }}
               >
                 {category.icon}
@@ -115,7 +115,7 @@ export default async function CategoryPage({ params }: Props) {
                   <Link
                     key={c.id}
                     href={`/categories/${c.slug}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-[var(--color-border)] text-sm font-medium transition-all hover:shadow-sm"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-medium transition-all hover:shadow-sm"
                     style={{ color: c.color }}
                   >
                     <span>{c.icon}</span>
@@ -136,7 +136,7 @@ export default async function CategoryPage({ params }: Props) {
 
 function EmptyState({ categoryName, categoryIcon }: { categoryName: string; categoryIcon: string }) {
   return (
-    <div className="text-center py-24 bg-white rounded-2xl border border-[var(--color-border)]">
+    <div className="text-center py-24 bg-white rounded-[var(--radius-lg)] border border-[var(--color-border)]">
       <div className="text-5xl mb-4">{categoryIcon}</div>
       <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-2">
         لا توجد أعمال في {categoryName} حتى الآن

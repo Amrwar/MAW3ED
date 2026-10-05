@@ -55,7 +55,7 @@ export default function SuccessScreen({ slug, nameAr, onDashboard }: Props) {
       </div>
 
       {/* URL card */}
-      <div className="bg-[var(--color-surface-2)] rounded-2xl p-4 max-w-sm mx-auto space-y-3">
+      <div className="bg-[var(--color-surface-2)] rounded-[var(--radius-lg)] p-4 max-w-sm mx-auto space-y-3">
         <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
           رابط صفحتك
         </p>
@@ -64,7 +64,7 @@ export default function SuccessScreen({ slug, nameAr, onDashboard }: Props) {
         </p>
         <button
           onClick={handleCopy}
-          className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all ${
+          className={`w-full flex items-center justify-center gap-2 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-all ${
             copied
               ? "bg-[var(--color-ok-soft)] text-[var(--color-ok)] border border-[var(--color-ok-line)]"
               : "bg-white border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
@@ -76,7 +76,7 @@ export default function SuccessScreen({ slug, nameAr, onDashboard }: Props) {
       </div>
 
       {/* What's next */}
-      <div className="bg-[var(--color-accent-light)] border border-[var(--color-accent)]/20 rounded-2xl p-4 text-start max-w-sm mx-auto">
+      <div className="bg-[var(--color-accent-light)] border border-[var(--color-accent)]/20 rounded-[var(--radius-lg)] p-4 text-start max-w-sm mx-auto">
         <p className="text-xs font-semibold text-[var(--color-accent)] mb-2">⚡ ما الخطوة التالية؟</p>
         <ul className="space-y-1.5">
           {[

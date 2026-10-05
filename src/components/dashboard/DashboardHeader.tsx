@@ -457,8 +457,8 @@ export default function DashboardHeader({
           <input
             type="text"
             placeholder={h.searchPlaceholder}
-            className="bg-transparent outline-none flex-1 min-w-0"
-            style={{ fontSize: 13, color: "var(--color-ink)", lineHeight: 1 }}
+            className="bg-transparent outline-none flex-1 min-w-0 text-[0.8125rem]"
+            style={{ color: "var(--color-ink)", lineHeight: 1 }}
             onFocus={(e) => {
               const parent = e.currentTarget.parentElement as HTMLDivElement;
               parent.style.borderColor = "var(--color-jade)";
@@ -545,21 +545,19 @@ export default function DashboardHeader({
           />
 
           <div
-            className="hidden md:flex items-center gap-2.5 cursor-pointer select-none rounded-xl px-2 py-1.5 transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+            className="hidden md:flex items-center gap-2.5 cursor-pointer select-none rounded-[var(--radius-md)] px-2 py-1.5 transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
           >
             <div
-              className="flex items-center justify-center text-white shrink-0"
+              className="flex items-center justify-center text-white shrink-0 text-[0.8125rem]"
               style={{
                 width: 34, height: 34, borderRadius: 10,
-                background: "linear-gradient(135deg, var(--color-ink) 0%, var(--color-ink-2) 100%)",
-                fontSize: 13, fontWeight: 900, letterSpacing: "-0.01em",
-              }}
+                background: "linear-gradient(135deg, var(--color-ink) 0%, var(--color-ink-2) 100%)", fontWeight: 900, letterSpacing: "-0.01em" }}
             >
               {name[0]}
             </div>
             <span
-              className="hidden lg:block max-w-[120px] truncate"
-              style={{ fontSize: 13, fontWeight: 600, color: "var(--color-ink)" }}
+              className="hidden lg:block max-w-[120px] truncate text-[0.8125rem]"
+              style={{ fontWeight: 600, color: "var(--color-ink)" }}
             >
               {name}
             </span>
@@ -567,12 +565,10 @@ export default function DashboardHeader({
 
           {/* Mobile: plain avatar only */}
           <div
-            className="md:hidden flex items-center justify-center text-white shrink-0"
+            className="md:hidden flex items-center justify-center text-white shrink-0 text-[0.8125rem]"
             style={{
               width: 34, height: 34, borderRadius: 10,
-              background: "linear-gradient(135deg, var(--color-ink) 0%, var(--color-ink-2) 100%)",
-              fontSize: 13, fontWeight: 900,
-            }}
+              background: "linear-gradient(135deg, var(--color-ink) 0%, var(--color-ink-2) 100%)", fontWeight: 900 }}
           >
             {name[0]}
           </div>
@@ -637,35 +633,33 @@ export default function DashboardHeader({
         {/* ── Business profile card ─────────────────────────── */}
         <div className="px-3 pt-3 pb-2.5 shrink-0">
           <div
-            className="flex items-center gap-3 rounded-2xl px-3.5 py-3"
+            className="flex items-center gap-3 rounded-[var(--radius-lg)] px-3.5 py-3"
             style={{ background: "var(--color-surface-2)", border: "1.5px solid var(--color-surface-3)" }}
           >
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-extrabold text-white shrink-0"
+              className="w-10 h-10 rounded-[var(--radius-md)] flex items-center justify-center text-base font-extrabold text-white shrink-0"
               style={{ background: "linear-gradient(135deg, var(--color-ink) 0%, var(--color-ink-2) 100%)" }}
             >
               {name[0]}
             </div>
             <div className="min-w-0 flex-1">
               <p
-                className="truncate"
-                style={{ fontSize: 13, fontWeight: 700, color: "var(--color-ink)", lineHeight: 1.3 }}
+                className="truncate text-[0.8125rem]"
+                style={{ fontWeight: 700, color: "var(--color-ink)", lineHeight: 1.3 }}
               >
                 {name}
               </p>
               {cityName && (
-                <p className="truncate" style={{ fontSize: 11, color: "var(--color-subtle)", marginTop: 2 }}>
+                <p className="truncate text-[0.6875rem]" style={{ color: "var(--color-subtle)", marginTop: 2 }}>
                   {cityName}
                 </p>
               )}
             </div>
             <span
-              className="shrink-0"
-              style={{
-                fontSize: 10, fontWeight: 700,
+              className="shrink-0 text-[0.625rem]"
+              style={{ fontWeight: 700,
                 padding: "3px 8px", borderRadius: 100,
-                background: planStyle.bg, color: planStyle.text,
-              }}
+                background: planStyle.bg, color: planStyle.text }}
             >
               {planStyle.label}
             </span>
@@ -693,14 +687,14 @@ export default function DashboardHeader({
           {plan === "FREE" && (
             <Link
               href="/dashboard/settings?tab=subscription"
-              className="flex items-start gap-3 rounded-2xl p-3.5 mb-3 transition-all duration-150"
+              className="flex items-start gap-3 rounded-[var(--radius-lg)] p-3.5 mb-3 transition-all duration-150"
               style={{
                 background: "linear-gradient(135deg, var(--color-ink) 0%, var(--color-night-2) 100%)",
                 boxShadow:  "0 4px 16px rgba(17,32,28,0.2)",
               }}
               onClick={() => setMobileOpen(false)}
             >
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center shrink-0 overflow-hidden">
                 <Image src="/icon-nobg.png" alt="موعد" width={28} height={28} className="object-contain" />
               </div>
               <div className="flex-1 min-w-0">
@@ -721,7 +715,7 @@ export default function DashboardHeader({
           {/* Logout */}
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="w-full flex items-center gap-3 px-4 rounded-xl transition-all duration-150"
+            className="w-full flex items-center gap-3 px-4 rounded-[var(--radius-md)] transition-all duration-150"
             style={{
               paddingBlock: 12, color: "var(--color-subtle)",
               background: "transparent", fontSize: 14, fontWeight: 500,
@@ -759,7 +753,7 @@ function Toast({
     <div
       className={cn(
         "pointer-events-auto animate-toast-in",
-        "flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-lg",
+        "flex items-start gap-3 rounded-[var(--radius-lg)] border px-4 py-3 shadow-lg",
         "min-w-64 max-w-80",
         toastClass,
       )}
@@ -812,7 +806,7 @@ function NotificationDropdown({
 
   return (
     <div
-      className="animate-dropdown-in absolute top-full mt-2 end-0 w-80 bg-white rounded-2xl overflow-hidden z-50"
+      className="animate-dropdown-in absolute top-full mt-2 end-0 w-80 bg-white rounded-[var(--radius-lg)] overflow-hidden z-50"
       style={{
         border:    "1.5px solid var(--color-line)",
         boxShadow: "0 8px 32px rgba(17,32,28,0.12)",
@@ -876,7 +870,7 @@ function NotificationDropdown({
                     {n.title}
                   </p>
                   {n.body && (
-                    <p style={{ fontSize: 11, color: "var(--color-subtle)", marginTop: 2 }} className="truncate">
+                    <p style={{ color: "var(--color-subtle)", marginTop: 2 }} className="truncate text-[0.6875rem]">
                       {n.body}
                     </p>
                   )}

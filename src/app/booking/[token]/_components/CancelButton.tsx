@@ -50,7 +50,7 @@ export default function CancelButton({ token, onCancelled }: Props) {
         هل أنت متأكد من إلغاء الحجز؟ لا يمكن التراجع عن هذا الإجراء.
       </p>
       {error && (
-        <p className="text-sm text-[var(--color-danger)] text-center bg-[var(--color-danger-soft)] rounded-xl px-4 py-2">
+        <p className="text-sm text-[var(--color-danger)] text-center bg-[var(--color-danger-soft)] rounded-[var(--radius-md)] px-4 py-2">
           {error}
         </p>
       )}
@@ -66,7 +66,7 @@ export default function CancelButton({ token, onCancelled }: Props) {
         <button
           onClick={handleCancel}
           disabled={loading}
-          className="flex-1 py-2.5 rounded-xl bg-[var(--color-danger)] hover:bg-[var(--color-danger)] text-white text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+          className="flex-1 py-2.5 rounded-[var(--radius-md)] bg-[var(--color-danger)] hover:bg-[var(--color-danger)] text-white text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {loading ? <Loader2 size={15} className="animate-spin" /> : null}
           تأكيد الإلغاء

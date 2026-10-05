@@ -153,7 +153,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                 تم تأكيد الموعد لـ {created.customerName}
               </p>
             </div>
-            <div className="w-full bg-[var(--color-surface-2)] rounded-2xl p-4 text-sm space-y-2.5 text-start">
+            <div className="w-full bg-[var(--color-surface-2)] rounded-[var(--radius-lg)] p-4 text-sm space-y-2.5 text-start">
               <Row icon={<User size={14} />}  label="العميل"   value={created.customerName} />
               <Row icon={<Phone size={14} />} label="الهاتف"   value={created.customerPhone} ltr />
               <Row icon={<Clock size={14} />} label="الخدمة"   value={created.serviceName} />
@@ -222,7 +222,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                     جاري تحميل المواعيد...
                   </div>
                 ) : slots.length === 0 ? (
-                  <p className="py-4 text-sm text-[var(--color-text-muted)] bg-[var(--color-surface-2)] rounded-xl text-center">
+                  <p className="py-4 text-sm text-[var(--color-text-muted)] bg-[var(--color-surface-2)] rounded-[var(--radius-md)] text-center">
                     لا توجد مواعيد متاحة في هذا اليوم
                   </p>
                 ) : (
@@ -232,7 +232,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                         key={slot}
                         type="button"
                         onClick={() => setStartTime(slot)}
-                        className={`py-2 text-sm rounded-xl border transition-all font-medium ${
+                        className={`py-2 text-sm rounded-[var(--radius-md)] border transition-all font-medium ${
                           startTime === slot
                             ? "bg-[var(--color-brand)] text-white border-[var(--color-brand)] shadow-sm"
                             : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
@@ -295,7 +295,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
               </div>
 
               {error && (
-                <p className="text-sm text-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 rounded-xl">{error}</p>
+                <p className="text-sm text-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 rounded-[var(--radius-md)]">{error}</p>
               )}
             </form>
 

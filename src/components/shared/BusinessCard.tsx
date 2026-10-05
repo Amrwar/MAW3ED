@@ -21,7 +21,7 @@ export default function BusinessCard({
     <Link
       href={`/company/${business.slug}`}
       className={cn(
-        "card card-hover group block overflow-hidden rounded-xl transition-all duration-200",
+        "card card-hover group block overflow-hidden rounded-[var(--radius-md)] transition-all duration-200",
         className
       )}
     >

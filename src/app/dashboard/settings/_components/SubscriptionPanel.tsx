@@ -129,7 +129,7 @@ export default function SubscriptionPanel({
       {/* Current plan card */}
       <div className="card p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${PLAN_COLORS[effectivePlan]}`}>
+          <div className={`w-10 h-10 rounded-[var(--radius-md)] flex items-center justify-center ${PLAN_COLORS[effectivePlan]}`}>
             {(() => { const Icon = PLAN_ICONS[effectivePlan]; return <Icon size={18} />; })()}
           </div>
           <div>
@@ -185,7 +185,7 @@ export default function SubscriptionPanel({
           </div>
 
           {error && (
-            <div className="mb-4 bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
+            <div className="mb-4 bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-[var(--radius-md)] px-4 py-3">
               {error}
             </div>
           )}
@@ -198,7 +198,7 @@ export default function SubscriptionPanel({
               return (
                 <div
                   key={targetPlan}
-                  className={`border-2 rounded-xl p-4 transition-all ${
+                  className={`border-2 rounded-[var(--radius-md)] p-4 transition-all ${
                     targetPlan === "PREMIUM"
                       ? "border-[var(--color-warn-line)] bg-[var(--color-warn-soft)]/30"
                       : "border-[var(--color-jade-line)] bg-[var(--color-jade-soft)]/30"
@@ -242,7 +242,7 @@ export default function SubscriptionPanel({
                   <button
                     onClick={() => handleUpgrade(targetPlan)}
                     disabled={!!loading || isCurrentOrLower}
-                    className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
+                    className={`w-full py-2.5 rounded-[var(--radius-md)] text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
                       targetPlan === "PREMIUM"
                         ? "bg-[var(--color-warn)] hover:bg-[var(--color-warn)] text-white"
                         : "bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)] text-white"

@@ -60,7 +60,7 @@ export default async function CityPage({ params }: Props) {
             </nav>
 
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-[var(--color-brand)]/10 flex items-center justify-center shrink-0">
+              <div className="w-14 h-14 rounded-[var(--radius-lg)] bg-[var(--color-brand)]/10 flex items-center justify-center shrink-0">
                 <MapPin size={26} className="text-[var(--color-brand)]" />
               </div>
               <div>
@@ -112,7 +112,7 @@ export default async function CityPage({ params }: Props) {
                   <Link
                     key={c.id}
                     href={`/cities/${c.slug}`}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-white rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] font-medium hover:border-[var(--color-brand)] hover:text-[var(--color-brand)] transition-all"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] font-medium hover:border-[var(--color-brand)] hover:text-[var(--color-brand)] transition-all"
                   >
                     <MapPin size={13} />
                     {c.nameAr}
@@ -132,8 +132,8 @@ export default async function CityPage({ params }: Props) {
 
 function EmptyState({ cityName }: { cityName: string }) {
   return (
-    <div className="text-center py-24 bg-white rounded-2xl border border-[var(--color-border)]">
-      <div className="w-16 h-16 rounded-2xl bg-[var(--color-surface-2)] flex items-center justify-center mx-auto mb-4">
+    <div className="text-center py-24 bg-white rounded-[var(--radius-lg)] border border-[var(--color-border)]">
+      <div className="w-16 h-16 rounded-[var(--radius-lg)] bg-[var(--color-surface-2)] flex items-center justify-center mx-auto mb-4">
         <Building2 size={28} className="text-[var(--color-text-muted)]" />
       </div>
       <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-2">

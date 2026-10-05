@@ -162,7 +162,7 @@ export default function PricingPage() {
                 return (
                   <div
                     key={planId}
-                    className="relative flex flex-col rounded-3xl bg-white overflow-hidden transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+                    className="relative flex flex-col rounded-[var(--radius-xl)] bg-white overflow-hidden transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                     style={{
                       border: featured
                         ? "1px solid rgba(14,127,94,0.38)"
@@ -200,12 +200,10 @@ export default function PricingPage() {
                         >
                           <Zap size={10} style={{ color: "var(--color-jade)" }} />
                           <span
-                            className="font-bold uppercase"
+                            className="font-bold uppercase text-[0.625rem]"
                             style={{
                               color: "var(--color-jade-hover)",
-                              fontSize: 10,
-                              letterSpacing: "0.06em",
-                            }}
+                              letterSpacing: "0.06em" }}
                           >
                             {p.mostPopular}
                           </span>
@@ -215,7 +213,7 @@ export default function PricingPage() {
                       {/* Icon + name + description */}
                       <div className="flex items-start gap-4 mb-7">
                         <div
-                          className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                          className="w-12 h-12 rounded-[var(--radius-lg)] flex items-center justify-center shrink-0"
                           style={{ background: cfg.iconBg }}
                         >
                           <Icon
@@ -299,7 +297,7 @@ export default function PricingPage() {
                       {planId === "FREE" && (
                         <Link
                           href={cfg.ctaHref}
-                          className="block text-center py-3 rounded-2xl text-sm font-bold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+                          className="block text-center py-3 rounded-[var(--radius-lg)] text-sm font-bold transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                           style={{
                             background:  "var(--color-surface-2)",
                             border:      "1.5px solid var(--color-line)",
@@ -313,7 +311,7 @@ export default function PricingPage() {
                       {planId === "PRO" && (
                         <Link
                           href={cfg.ctaHref}
-                          className="block text-center py-3 rounded-2xl text-sm font-bold text-white transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+                          className="block text-center py-3 rounded-[var(--radius-lg)] text-sm font-bold text-white transition-all duration-150 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                           style={{
                             background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
                             boxShadow:  "0 4px 16px rgba(14,127,94,0.40)",
@@ -362,7 +360,7 @@ export default function PricingPage() {
 
               {/* Table card */}
               <div
-                className="overflow-hidden rounded-3xl"
+                className="overflow-hidden rounded-[var(--radius-xl)]"
                 style={{
                   border:     "1px solid var(--color-line)",
                   boxShadow:  "0 4px 24px rgba(17,32,28,0.06), 0 1px 4px rgba(17,32,28,0.03)",
@@ -503,7 +501,7 @@ export default function PricingPage() {
 
               {/* Outer surface card */}
               <div
-                className="relative overflow-hidden rounded-3xl"
+                className="relative overflow-hidden rounded-[var(--radius-xl)]"
                 style={{
                   background: "linear-gradient(135deg, rgba(14,127,94,0.04) 0%, rgba(14,127,94,0.025) 100%)",
                   border:     "1px solid rgba(14,127,94,0.13)",
@@ -531,8 +529,8 @@ export default function PricingPage() {
                       <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[var(--color-jade)]/25 bg-[var(--color-jade)]/10 mb-5">
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-jade)]" />
                         <span
-                          className="font-semibold uppercase"
-                          style={{ color: "var(--color-jade-hover)", fontSize: 11, letterSpacing: "0.07em" }}
+                          className="font-semibold uppercase text-[0.6875rem]"
+                          style={{ color: "var(--color-jade-hover)", letterSpacing: "0.07em" }}
                         >
                           {isAr ? "أسئلة شائعة" : "FAQ"}
                         </span>
@@ -555,7 +553,7 @@ export default function PricingPage() {
 
                       {/* Support CTA card */}
                       <div
-                        className="rounded-2xl p-5"
+                        className="rounded-[var(--radius-lg)] p-5"
                         style={{
                           background: "var(--color-surface)",
                           border:     "1px solid var(--color-line)",
@@ -564,7 +562,7 @@ export default function PricingPage() {
                       >
                         {/* Icon */}
                         <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                          className="w-10 h-10 rounded-[var(--radius-md)] flex items-center justify-center mb-3"
                           style={{
                             background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
                             boxShadow:  "0 4px 12px rgba(14,127,94,0.30)",
@@ -605,7 +603,7 @@ export default function PricingPage() {
                         return (
                           <div
                             key={i}
-                            className="rounded-3xl bg-white overflow-hidden"
+                            className="rounded-[var(--radius-xl)] bg-white overflow-hidden"
                             style={{
                               border:     isOpen
                                 ? "1.5px solid rgba(14,127,94,0.32)"

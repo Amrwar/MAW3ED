@@ -92,7 +92,7 @@ export default function DepositSettingsForm({
         </div>
         <div style={{ padding: "40px 24px", textAlign: "center" }}>
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+            className="w-16 h-16 rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5"
             style={{ background: "var(--color-warn-soft)", border: "1.5px solid var(--color-warn-line)" }}
           >
             <Lock size={26} style={{ color: "var(--color-warn)" }} />
@@ -122,13 +122,11 @@ export default function DepositSettingsForm({
           </p>
           <Link
             href="/pricing"
-            className="inline-flex items-center gap-2 rounded-xl font-bold text-white transition-colors"
+            className="inline-flex items-center gap-2 rounded-[var(--radius-md)] font-bold text-white transition-colors text-[0.8125rem]"
             style={{
               padding:    "10px 24px",
-              fontSize:   13,
               background: "linear-gradient(135deg, var(--color-warn) 0%, var(--color-star) 100%)",
-              boxShadow:  "0 3px 12px rgba(217,119,6,0.3)",
-            }}
+              boxShadow:  "0 3px 12px rgba(217,119,6,0.3)" }}
           >
             {isAr ? "عرض الخطط والأسعار" : "View Plans & Pricing"}
           </Link>
@@ -166,7 +164,7 @@ export default function DepositSettingsForm({
 
           {/* Enable toggle row */}
           <div
-            className="flex items-center justify-between rounded-xl px-4 py-4 cursor-pointer transition-all"
+            className="flex items-center justify-between rounded-[var(--radius-md)] px-4 py-4 cursor-pointer transition-all"
             style={{
               background: enabled ? "var(--color-ok-soft)" : "var(--color-surface-2)",
               border:     `1.5px solid ${enabled ? "var(--color-ok-line)" : "var(--color-line)"}`,
@@ -294,7 +292,7 @@ export default function DepositSettingsForm({
                   </span>
                 </div>
                 <div
-                  className="flex items-center gap-2 rounded-xl px-3.5 py-2.5"
+                  className="flex items-center gap-2 rounded-[var(--radius-md)] px-3.5 py-2.5"
                   style={{ background: "var(--color-jade-tint)", border: "1px solid var(--color-jade-line)" }}
                 >
                   <span style={{ fontSize: 12, color: "var(--color-jade)", fontWeight: 600 }}>
@@ -307,7 +305,7 @@ export default function DepositSettingsForm({
 
               {/* Paymob notice */}
               <div
-                className="flex items-start gap-2.5 mt-4 rounded-xl px-3.5 py-3"
+                className="flex items-start gap-2.5 mt-4 rounded-[var(--radius-md)] px-3.5 py-3"
                 style={{ background: "var(--color-jade-tint)", border: "1px solid var(--color-jade-line)" }}
               >
                 <Info size={13} style={{ color: "var(--color-jade)", marginTop: 1, flexShrink: 0 }} />
@@ -325,7 +323,7 @@ export default function DepositSettingsForm({
       {/* ── Feedback ────────────────────────────────────────── */}
       {error && (
         <div
-          className="flex items-start gap-3 rounded-2xl px-4 py-3.5"
+          className="flex items-start gap-3 rounded-[var(--radius-lg)] px-4 py-3.5"
           style={{ background: "var(--color-danger-soft)", border: "1.5px solid var(--color-danger-line)" }}
         >
           <div
@@ -339,7 +337,7 @@ export default function DepositSettingsForm({
       )}
       {saved && (
         <div
-          className="flex items-center gap-3 rounded-2xl px-4 py-3.5"
+          className="flex items-center gap-3 rounded-[var(--radius-lg)] px-4 py-3.5"
           style={{ background: "var(--color-ok-soft)", border: "1.5px solid var(--color-ok-line)" }}
         >
           <div
@@ -356,7 +354,7 @@ export default function DepositSettingsForm({
 
       {/* ── Save bar ─────────────────────────────────────────── */}
       <div
-        className="flex items-center justify-between rounded-2xl px-5 py-4"
+        className="flex items-center justify-between rounded-[var(--radius-lg)] px-5 py-4"
         style={{
           background:   "var(--color-ground)",
           border:       "1.5px solid var(--color-line)",
@@ -369,16 +367,14 @@ export default function DepositSettingsForm({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 rounded-xl font-extrabold text-white transition-all duration-150 disabled:opacity-60 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+          className="flex items-center gap-2 rounded-[var(--radius-md)] font-extrabold text-white transition-all duration-150 disabled:opacity-60 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)] text-[0.8125rem]"
           style={{
             padding:       "10px 22px",
-            fontSize:      13,
             background:    "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade-hover) 60%, var(--color-jade) 100%)",
             boxShadow:     "0 3px 12px rgba(10,95,71,0.28)",
             border:        "none",
             cursor:        saving ? "not-allowed" : "pointer",
-            letterSpacing: "-0.01em",
-          }}
+            letterSpacing: "-0.01em" }}
         >
           {saving ? (
             <>

@@ -124,7 +124,7 @@ export default function RescheduleFlow({
     return (
       <button
         onClick={() => setStep("date")}
-        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border-2 border-[var(--color-accent)] text-[var(--color-accent)] text-sm font-bold hover:bg-[var(--color-accent-light)] transition-colors"
+        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-[var(--radius-md)] border-2 border-[var(--color-accent)] text-[var(--color-accent)] text-sm font-bold hover:bg-[var(--color-accent-light)] transition-colors"
       >
         <RefreshCw size={15} />
         إعادة جدولة الموعد
@@ -135,7 +135,7 @@ export default function RescheduleFlow({
   // ── Render: success ──────────────────────────────────────────
   if (step === "done") {
     return (
-      <div className="rounded-2xl bg-[var(--color-ok-soft)] border border-[var(--color-ok-line)] p-5 text-center space-y-2">
+      <div className="rounded-[var(--radius-lg)] bg-[var(--color-ok-soft)] border border-[var(--color-ok-line)] p-5 text-center space-y-2">
         <CheckCircle2 size={32} className="mx-auto text-[var(--color-ok)]" />
         <p className="font-bold text-[var(--color-ok)]">تم إعادة الجدولة بنجاح</p>
         <p className="text-sm text-[var(--color-ok)]">
@@ -148,7 +148,7 @@ export default function RescheduleFlow({
 
   // ── Render: flow card ────────────────────────────────────────
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-white overflow-hidden">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-white overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]">
         <RefreshCw size={16} className="text-[var(--color-accent)]" />
@@ -165,7 +165,7 @@ export default function RescheduleFlow({
 
       <div className="p-5 space-y-4">
         {/* Current booking summary */}
-        <div className="rounded-xl bg-[var(--color-surface-2)] px-4 py-3 text-sm">
+        <div className="rounded-[var(--radius-md)] bg-[var(--color-surface-2)] px-4 py-3 text-sm">
           <p className="text-xs text-[var(--color-text-muted)] mb-1">الموعد الحالي</p>
           <p className="font-semibold text-[var(--color-text-primary)]">
             {formatDateAr(currentDate)}
@@ -191,14 +191,14 @@ export default function RescheduleFlow({
               dir="ltr"
             />
             {slotsError && (
-              <p className="text-sm text-[var(--color-danger)] bg-[var(--color-danger-soft)] rounded-xl px-4 py-2">
+              <p className="text-sm text-[var(--color-danger)] bg-[var(--color-danger-soft)] rounded-[var(--radius-md)] px-4 py-2">
                 {slotsError}
               </p>
             )}
             <button
               onClick={handleDateSubmit}
               disabled={!newDate || slotsLoading}
-              className="w-full py-2.5 rounded-xl bg-[var(--color-brand)] text-white text-sm font-bold hover:bg-[var(--color-primary-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-2.5 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:bg-[var(--color-primary-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {slotsLoading
                 ? <><Loader2 size={15} className="animate-spin" /> جاري التحميل...</>
@@ -230,7 +230,7 @@ export default function RescheduleFlow({
                   key={slot}
                   onClick={() => handleSlotSelect(slot)}
                   dir="ltr"
-                  className="py-2 rounded-xl border border-[var(--color-border)] text-sm font-medium text-[var(--color-text-primary)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-light)] hover:text-[var(--color-accent)] transition-all"
+                  className="py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-medium text-[var(--color-text-primary)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-light)] hover:text-[var(--color-accent)] transition-all"
                 >
                   {slot}
                 </button>
@@ -243,7 +243,7 @@ export default function RescheduleFlow({
         {step === "confirm" && (
           <div className="space-y-4">
             {/* Old → New comparison */}
-            <div className="rounded-xl border border-[var(--color-border)] divide-y divide-[var(--color-border)] text-sm overflow-hidden">
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] divide-y divide-[var(--color-border)] text-sm overflow-hidden">
               <div className="px-4 py-3 bg-[var(--color-danger-soft)]">
                 <p className="text-xs text-[var(--color-danger)] mb-0.5">الموعد الحالي</p>
                 <p className="font-semibold text-[var(--color-danger)] line-through">
@@ -267,7 +267,7 @@ export default function RescheduleFlow({
             </p>
 
             {apiError && (
-              <p className="text-sm text-[var(--color-danger)] bg-[var(--color-danger-soft)] rounded-xl px-4 py-2 text-center">
+              <p className="text-sm text-[var(--color-danger)] bg-[var(--color-danger-soft)] rounded-[var(--radius-md)] px-4 py-2 text-center">
                 {apiError}
               </p>
             )}
@@ -276,14 +276,14 @@ export default function RescheduleFlow({
               <button
                 onClick={() => setStep("slots")}
                 disabled={submitting}
-                className="flex-1 py-2.5 rounded-xl border border-[var(--color-border)] text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] transition-colors disabled:opacity-50"
               >
                 تغيير الوقت
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={submitting}
-                className="flex-1 py-2.5 rounded-xl bg-[var(--color-accent)] text-white text-sm font-bold hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white text-sm font-bold hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {submitting
                   ? <><Loader2 size={15} className="animate-spin" /> جاري...</>

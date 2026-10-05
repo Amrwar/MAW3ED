@@ -100,7 +100,7 @@ export default function CitiesPage() {
           <div className="container-app">
             <div className="max-w-lg mx-auto">
               <div
-                className="rounded-3xl p-5 sm:p-8 text-center overflow-hidden relative"
+                className="rounded-[var(--radius-xl)] p-5 sm:p-8 text-center overflow-hidden relative"
                 style={{
                   background: "linear-gradient(135deg, rgba(14,127,94,0.06) 0%, rgba(14,127,94,0.04) 100%)",
                   border:     "1px solid rgba(14,127,94,0.18)",
@@ -117,7 +117,7 @@ export default function CitiesPage() {
                 />
                 <div className="relative z-10">
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                    className="w-12 h-12 rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-4"
                     style={{
                       background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
                       boxShadow:  "0 4px 14px rgba(14,127,94,0.35)",
@@ -129,7 +129,7 @@ export default function CitiesPage() {
                   <p className="text-sm text-[var(--color-muted)] mb-6" style={{ lineHeight: 1.7 }}>{c.notFoundSub}</p>
                   <Link
                     href="/businesses"
-                    className="inline-flex items-center gap-2 px-7 py-3 rounded-2xl text-sm font-bold text-white transition-all duration-200 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+                    className="inline-flex items-center gap-2 px-7 py-3 rounded-[var(--radius-lg)] text-sm font-bold text-white transition-all duration-200 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
                     style={{
                       background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade) 100%)",
                       boxShadow:  "0 4px 16px rgba(14,127,94,0.40)",

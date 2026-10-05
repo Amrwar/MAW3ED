@@ -43,7 +43,7 @@ export default function KPICards({ kpis }: { kpis: AnalyticsPayload["kpis"] }) {
         const Icon = c.icon;
         return (
           <div key={c.label} className="card p-5">
-            <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center mb-4`}>
+            <div className={`w-10 h-10 rounded-[var(--radius-md)] ${c.bg} flex items-center justify-center mb-4`}>
               <Icon size={18} className={c.iconCls} />
             </div>
             <p className="text-2xl font-extrabold text-[var(--color-text-primary)] leading-none">

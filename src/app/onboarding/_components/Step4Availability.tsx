@@ -55,7 +55,7 @@ export default function Step4Availability({ data, onNext, onBack }: Props) {
           <div
             key={day.dayOfWeek}
             className={cn(
-              "flex items-center gap-4 p-3.5 rounded-xl border transition-all",
+              "flex items-center gap-4 p-3.5 rounded-[var(--radius-md)] border transition-all",
               day.isClosed
                 ? "bg-[var(--color-surface-3)] border-[var(--color-border)] opacity-60"
                 : "bg-white border-[var(--color-border)]"
@@ -113,7 +113,7 @@ export default function Step4Availability({ data, onNext, onBack }: Props) {
       </div>
 
       {error && (
-        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-xl px-4 py-3">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-[var(--radius-md)] px-4 py-3">
           {error}
         </div>
       )}

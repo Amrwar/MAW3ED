@@ -470,7 +470,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
       {/* ── Feedback ─────────────────────────────────────────── */}
       {error && (
         <div
-          className="flex items-start gap-3 rounded-2xl px-4 py-3.5"
+          className="flex items-start gap-3 rounded-[var(--radius-lg)] px-4 py-3.5"
           style={{ background: "var(--color-danger-soft)", border: "1.5px solid var(--color-danger-line)" }}
         >
           <div
@@ -484,7 +484,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
       )}
       {success && (
         <div
-          className="flex items-center gap-3 rounded-2xl px-4 py-3.5"
+          className="flex items-center gap-3 rounded-[var(--radius-lg)] px-4 py-3.5"
           style={{ background: "var(--color-ok-soft)", border: "1.5px solid var(--color-ok-line)" }}
         >
           <div
@@ -501,7 +501,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
 
       {/* ── Save action bar ─────────────────────────────────── */}
       <div
-        className="flex items-center justify-between rounded-2xl px-5 py-4"
+        className="flex items-center justify-between rounded-[var(--radius-lg)] px-5 py-4"
         style={{
           background: "var(--color-ground)",
           border:     "1.5px solid var(--color-line)",
@@ -514,16 +514,14 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
         <button
           type="submit"
           disabled={saving}
-          className="flex items-center gap-2 rounded-xl font-extrabold text-white transition-all duration-150 disabled:opacity-60 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+          className="flex items-center gap-2 rounded-[var(--radius-md)] font-extrabold text-white transition-all duration-150 disabled:opacity-60 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)] text-[0.8125rem]"
           style={{
             padding:       "10px 22px",
-            fontSize:      13,
             background:    "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade-hover) 60%, var(--color-jade) 100%)",
             boxShadow:     "0 3px 12px rgba(10,95,71,0.28)",
             border:        "none",
             cursor:        saving ? "not-allowed" : "pointer",
-            letterSpacing: "-0.01em",
-          }}
+            letterSpacing: "-0.01em" }}
         >
           {saving ? (
             <>
