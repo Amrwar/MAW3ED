@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import CustomersClient from "./_components/CustomersClient";
 import type { CustomerRow } from "@/app/api/business/customers/route";
 
-export const metadata: Metadata = { title: "العملاء | موعد" };
+export const metadata: Metadata = { title: "العملاء" };
 
 export default async function CustomersPage() {
   const session = await auth();

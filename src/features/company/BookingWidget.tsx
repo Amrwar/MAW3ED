@@ -129,7 +129,7 @@ export default function BookingWidget({
   tables,
   staffMembers,
 }: BookingWidgetProps) {
-  const { lang } = useLanguage();
+  const { t, lang } = useLanguage();
   const hasResource = businessType === "RESTAURANT" || businessType === "BARBERSHOP";
 
   // Steps
@@ -401,9 +401,17 @@ export default function BookingWidget({
                             </p>
                           )}
                         </div>
-                        <p className="text-base font-extrabold text-[var(--color-jade)] shrink-0">
-                          {money(service.price, lang, service.currency)}
-                        </p>
+                        {/* A service left at the Decimal default has no
+                            price. "0 ج.م" reads as free, which it is not. */}
+                        {service.price > 0 ? (
+                          <p className="num shrink-0 text-base font-extrabold text-[var(--color-jade)]">
+                            {money(service.price, lang, service.currency)}
+                          </p>
+                        ) : (
+                          <p className="shrink-0 text-[0.78125rem] text-[var(--color-subtle)]">
+                            {t.services.priceUnset}
+                          </p>
+                        )}
                       </div>
                     </button>
                   );

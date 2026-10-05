@@ -14,7 +14,7 @@ import { redirect } from "next/navigation";
 import { CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
 import { PLAN_NAMES_AR, type Plan } from "@/lib/plans";
 
-export const metadata: Metadata = { title: "نتيجة الاشتراك | موعد" };
+export const metadata: Metadata = { title: "نتيجة الاشتراك" };
 export const dynamic = "force-dynamic";
 
 export default async function SubscriptionReturnPage() {

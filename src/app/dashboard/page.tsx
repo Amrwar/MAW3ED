@@ -7,7 +7,7 @@ import { type DashboardStats } from "@/features/dashboard/StatsCards";
 import { type RecentBooking } from "@/features/dashboard/RecentBookings";
 import { type DashboardBooking } from "@/features/dashboard/bookings/types";
 
-export const metadata: Metadata = { title: "لوحة التحكم | موعد" };
+export const metadata: Metadata = { title: "لوحة التحكم" };
 
 export default async function DashboardPage() {
   const session = await auth();

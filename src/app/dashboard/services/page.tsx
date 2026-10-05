@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import ServicesClient from "./_components/ServicesClient";
 
-export const metadata: Metadata = { title: "الخدمات | موعد" };
+export const metadata: Metadata = { title: "الخدمات" };
 
 export default async function ServicesPage() {
   const session = await auth();

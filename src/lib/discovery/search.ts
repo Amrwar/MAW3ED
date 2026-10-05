@@ -502,28 +502,6 @@ export async function getFacets(citySlug?: string): Promise<Facets> {
 
 /* ─── Ratings ────────────────────────────────────────────── */
 
-/**
- * Recomputes the denormalised rating on a business.
- *
- * Nothing calls this yet — the review write path does not exist. It is
- * here so that when it does, there is exactly one place that decides
- * what ratingAvg and ratingCount mean, and the listing never drifts from
- * the reviews table.
- */
-export async function recomputeBusinessRating(businessId: string): Promise<void> {
-  const agg = await db.review.aggregate({
-    where: { businessId },
-    _avg: { rating: true },
-    _count: { _all: true },
-  });
-
-  await db.business.update({
-    where: { id: businessId },
-    data: {
-      // Kept to one decimal: the listing shows 4.6, and storing more
-      // precision only invites it to be displayed.
-      ratingAvg: agg._avg.rating === null ? null : Math.round(agg._avg.rating * 10) / 10,
-      ratingCount: agg._count._all,
-    },
-  });
-}
+// recomputeBusinessRating lives in lib/reviews.ts, next to the single
+// rating calculation it has to agree with.
+export { recomputeBusinessRating } from "@/lib/reviews";

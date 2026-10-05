@@ -27,7 +27,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   );
 
   return {
-    title: "تصفح الأعمال | موعد",
+    title: "تصفح الأعمال",
     description:
       "ابحث في الأنشطة المتاحة للحجز في مصر — فلتر حسب التخصص، المدينة، السعر والمواعيد المتاحة.",
     alternates: { canonical: discoveryHref(q) },

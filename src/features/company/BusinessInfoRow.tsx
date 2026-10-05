@@ -3,6 +3,7 @@
 import { MapPin, Clock, Phone, MessageCircle } from "lucide-react";
 import type { Business } from "@/types/business";
 import { clock } from "@/lib/fmt";
+import { telHref, whatsappHref } from "@/lib/contact";
 
 export default function BusinessInfoRow({ business }: { business: Business }) {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
@@ -44,7 +45,7 @@ export default function BusinessInfoRow({ business }: { business: Business }) {
 
           {business.phone && (
             <li>
-              <a href={`tel:${business.phone}`} className={`${pill} hover:border-[var(--color-line-2)]`}>
+              <a href={telHref(business.phone)} className={`${pill} hover:border-[var(--color-line-2)]`}>
                 <Phone size={15} strokeWidth={1.8} className="shrink-0 text-[var(--color-jade)]" aria-hidden="true" />
                 <span className="num font-bold">{business.phone}</span>
               </a>
@@ -54,7 +55,7 @@ export default function BusinessInfoRow({ business }: { business: Business }) {
           {business.whatsapp && (
             <li>
               <a
-                href={`https://wa.me/${business.whatsapp.replace(/\D/g, "")}`}
+                href={whatsappHref(business.whatsapp)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-jade-line)] bg-[var(--color-jade-soft)] px-4 py-3 text-[0.84375rem] font-bold text-[var(--color-ok)]"

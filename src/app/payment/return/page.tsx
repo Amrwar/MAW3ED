@@ -15,7 +15,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
 
-export const metadata: Metadata = { title: "نتيجة الدفع | موعد" };
+export const metadata: Metadata = { title: "نتيجة الدفع" };
 
 // Force dynamic so query params are always fresh
 export const dynamic = "force-dynamic";

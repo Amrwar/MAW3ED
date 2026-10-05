@@ -20,10 +20,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const category = await getCategoryBySlug(slug);
   if (!category) return {};
   return {
-    title: `${category.nameAr} | تصفح الأعمال | موعد`,
+    title: `${category.nameAr} | تصفح الأعمال`,
     description: `اكتشف أفضل أعمال ${category.nameAr} واحجز موعدك بسهولة عبر موعد.`,
     openGraph: {
-      title: `${category.icon} ${category.nameAr} | موعد`,
+      title: `${category.icon} ${category.nameAr}`,
       description: `اكتشف أفضل أعمال ${category.nameAr} واحجز موعدك بسهولة.`,
     },
   };

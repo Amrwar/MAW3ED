@@ -7,7 +7,7 @@ import SettingsClient from "./_components/SettingsClient";
 import { getEffectivePlan, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { daysUntil } from "@/lib/fmt";
 
-export const metadata: Metadata = { title: "الإعدادات | موعد" };
+export const metadata: Metadata = { title: "الإعدادات" };
 
 export default async function SettingsPage() {
   const session = await auth();

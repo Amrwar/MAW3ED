@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ErrorPage from "@/components/shared/ErrorPage";
 
 export const metadata: Metadata = {
-  title: "404 — الصفحة غير موجودة | موعد",
+  title: "404 — الصفحة غير موجودة",
   robots: { index: false },
 };
 

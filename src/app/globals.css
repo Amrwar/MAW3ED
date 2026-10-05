@@ -161,7 +161,12 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
-  overflow-x: hidden;
+  /* clip, not hidden. overflow-x: hidden turns the element into a
+     scroll container, and every position: sticky inside it then sticks
+     to that container instead of the viewport — which silently broke
+     the profile section nav and the dashboard sidebars. clip suppresses
+     the same sideways overflow without creating a scroll port. */
+  overflow-x: clip;
 }
 
 body {
@@ -171,7 +176,7 @@ body {
   line-height: 1.8;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Arabic needs more vertical room than Latin; headings pull it

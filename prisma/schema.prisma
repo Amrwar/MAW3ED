@@ -131,6 +131,7 @@ model Business {
 
   phoneVerifications PhoneVerification[]
   reviews            Review[]
+  images             BusinessImage[]
 
   /// The discovery listing always filters on isPublished first, then on
   /// one of city / neighbourhood / category, and sorts on rating,
@@ -228,13 +229,38 @@ model Review {
   bookingId  String   @unique
   rating     Int /// 1..5, range-checked in app code
   comment    String?  @db.Text
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  /// The owner's public reply. One per review, editable, and shown
+  /// underneath it rather than as a separate review.
+  response    String?   @db.Text
+  respondedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([businessId, createdAt])
+  /// Backs the rating filter and the "highest/lowest first" sorts.
+  @@index([businessId, rating])
+}
+
+/// A photo on the business's profile.
+///
+/// Separate from Business.coverImage: the cover is the one image that
+/// represents the place, these are the rest of it. A caption doubles as
+/// the grouping label in the gallery, when the owner bothers to write
+/// one.
+model BusinessImage {
+  id         String   @id @default(cuid())
+  businessId String
+  url        String
+  caption    String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, sortOrder])
 }
 
 model AvailabilityRule {

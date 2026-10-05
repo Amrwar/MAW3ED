@@ -4,7 +4,7 @@ import { CheckCircle2, AlertTriangle, Clock, XCircle } from "lucide-react";
 import Logo from "@/components/shared/Logo";
 import ResendVerificationButton from "./_components/ResendVerificationButton";
 
-export const metadata: Metadata = { title: "تأكيد البريد الإلكتروني | موعد" };
+export const metadata: Metadata = { title: "تأكيد البريد الإلكتروني" };
 
 type Status = "success" | "expired" | "invalid" | "error" | "pending";
 

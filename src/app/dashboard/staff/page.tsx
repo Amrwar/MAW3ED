@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import StaffClient from "./_components/StaffClient";
 
-export const metadata: Metadata = { title: "الفريق | موعد" };
+export const metadata: Metadata = { title: "الفريق" };
 
 export default async function StaffPage() {
   const session = await auth();

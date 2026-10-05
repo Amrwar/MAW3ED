@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import BookingsClient from "./_components/BookingsClient";
 import type { DashboardBooking } from "@/features/dashboard/bookings/types";
 
-export const metadata: Metadata = { title: "الحجوزات | موعد" };
+export const metadata: Metadata = { title: "الحجوزات" };
 
 export default async function BookingsPage() {
   const session = await auth();

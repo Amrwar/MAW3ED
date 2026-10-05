@@ -1,98 +1,125 @@
 "use client";
 
-import { useState } from "react";
-import { Clock } from "lucide-react";
+import { CalendarClock, Clock, Users } from "lucide-react";
 import type { Service } from "@/types/service";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { duration as fmtDuration, money, num } from "@/lib/fmt";
-import { cn } from "@/lib/utils";
+
+export interface ServiceProvider {
+  id: string;
+  name: string;
+  serviceIds: string[];
+}
 
 interface Props {
   services: Service[];
+  /** Staff who can perform these, where the business has any. */
+  providers: ServiceProvider[];
+  /**
+   * The first free appointment for the business, shared across its
+   * services. Null when nothing is bookable inside the horizon.
+   */
+  nextSlot: { dayOffset: number; time: string } | null;
   onBook?: (service: Service) => void;
 }
 
-export default function ServicesSection({ services, onBook }: Props) {
-  const { lang } = useLanguage();
-  const categories = [...new Set(services.map((s) => s.category).filter(Boolean))];
-  const [activeCategory, setActiveCategory] = useState<string>("all");
+/**
+ * The menu.
+ *
+ * A service shows a price only when one is set. The default is zero,
+ * and three live listings sit on it — advertising "0 ج.م" reads as free
+ * when it means nobody filled the field in.
+ */
+export default function ServicesSection({ services, providers, nextSlot, onBook }: Props) {
+  const { t, lang } = useLanguage();
+  const s = t.services;
 
   if (services.length === 0) return null;
 
-  const filtered =
-    activeCategory === "all"
-      ? services
-      : services.filter((s) => s.category === activeCategory);
+  const dayLabel = (offset: number) =>
+    offset === 0 ? s.today : offset === 1 ? s.tomorrow : s.inDays.replace("{n}", num(offset, lang));
 
   return (
-    <section id="services">
+    <section id="services" className="scroll-mt-32">
       <div className="mb-5 flex items-baseline justify-between gap-4">
-        <h2 className="m-0 text-[1.5rem] font-bold text-[var(--color-ink)]">الخدمات</h2>
+        <h2 className="m-0 text-[1.5rem] font-bold text-[var(--color-ink)]">{s.title}</h2>
         <span className="text-[0.8125rem] text-[var(--color-subtle)]">
-          <span className="num">{num(services.length, lang)}</span> خدمات
+          <span className="num">{num(services.length, lang)}</span> {s.countWord}
         </span>
       </div>
 
-      {categories.length > 1 && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveCategory("all")}
-            aria-pressed={activeCategory === "all"}
-            className={cn("chip", activeCategory === "all" && "chip-active")}
-          >
-            الكل
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setActiveCategory(cat!)}
-              aria-pressed={activeCategory === cat}
-              className={cn("chip", activeCategory === cat && "chip-active")}
+      <ul className="m-0 flex list-none flex-col gap-3 p-0">
+        {services.map((service) => {
+          const who = providers.filter((p) => p.serviceIds.includes(service.id));
+
+          return (
+            <li
+              key={service.id}
+              className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-4"
             >
-              {cat}
-            </button>
-          ))}
-        </div>
-      )}
+              <div className="min-w-0 flex-[1_1_16rem]">
+                <h3 className="m-0 text-base font-bold text-[var(--color-ink)]">
+                  {service.nameAr}
+                </h3>
 
-      <ul className="flex flex-col gap-3">
-        {filtered.map((service) => (
-          <li
-            key={service.id}
-            className="flex flex-wrap items-center gap-5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-4"
-          >
-            <div className="min-w-0 flex-[1_1_15rem]">
-              <h3 className="m-0 text-base font-bold text-[var(--color-ink)]">
-                {service.nameAr}
-              </h3>
-              {service.descriptionAr && (
-                <p className="mt-1.5 line-clamp-1 text-[0.84375rem] text-[var(--color-subtle)]">
-                  {service.descriptionAr}
-                </p>
-              )}
-              {service.duration > 0 && (
-                <p className="mt-1.5 flex items-center gap-1.5 text-[0.8125rem] text-[var(--color-subtle)]">
-                  <Clock size={13} strokeWidth={1.8} aria-hidden="true" />
-                  {fmtDuration(service.duration, lang)}
-                </p>
-              )}
-            </div>
+                {service.descriptionAr && (
+                  <p className="m-0 mt-1.5 line-clamp-2 text-[0.84375rem] leading-relaxed text-[var(--color-subtle)]">
+                    {service.descriptionAr}
+                  </p>
+                )}
 
-            <span className="num shrink-0 text-[1.125rem] font-extrabold text-[var(--color-ink)]">
-              {money(service.price, lang, service.currency)}
-            </span>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[0.8125rem] text-[var(--color-subtle)]">
+                  {service.duration > 0 && (
+                    <span className="flex items-center gap-1.5">
+                      <Clock size={13} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
+                      {fmtDuration(service.duration, lang)}
+                    </span>
+                  )}
 
-            <button
-              type="button"
-              onClick={() => onBook?.(service)}
-              className="btn btn-jade-outline btn-sm shrink-0"
-            >
-              احجز
-            </button>
-          </li>
-        ))}
+                  {/* Who performs it, where the business keeps staff. */}
+                  {who.length > 0 && (
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <Users size={13} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
+                      <span className="truncate">
+                        {who.length === 1
+                          ? who[0].name
+                          : s.providerCount.replace("{n}", num(who.length, lang))}
+                      </span>
+                    </span>
+                  )}
+
+                  {nextSlot && (
+                    <span className="flex items-center gap-1.5 text-[var(--color-jade)]">
+                      <CalendarClock size={13} strokeWidth={1.9} aria-hidden="true" className="shrink-0" />
+                      {s.nextFree} {dayLabel(nextSlot.dayOffset)}{" "}
+                      <span className="num">{nextSlot.time}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <span className="shrink-0 text-end">
+                {service.price > 0 ? (
+                  <span className="num block text-[1.125rem] font-extrabold text-[var(--color-ink)]">
+                    {money(service.price, lang, service.currency)}
+                  </span>
+                ) : (
+                  <span className="block text-[0.84375rem] text-[var(--color-subtle)]">
+                    {s.priceUnset}
+                  </span>
+                )}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => onBook?.(service)}
+                className="btn btn-jade-outline btn-sm shrink-0"
+              >
+                {s.book}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

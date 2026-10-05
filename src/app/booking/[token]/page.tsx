@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import Logo from "@/components/shared/Logo";
 import CancelButton from "./_components/CancelButton";
 import RescheduleFlow from "./_components/RescheduleFlow";
+import LeaveReview from "./_components/LeaveReview";
+import { canReviewBooking } from "@/lib/reviews";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -51,6 +53,7 @@ export default async function BookingPage({ params }: Params) {
     include: {
       business: { select: { nameAr: true, slug: true, phone: true } },
       service:  { select: { id: true, nameAr: true } },
+      review:   { select: { id: true } },
     },
   });
 
@@ -60,11 +63,14 @@ export default async function BookingPage({ params }: Params) {
   const StatusIcon = status.icon;
   const cancellable    = canCancel(booking.status, booking.date, booking.startTime);
   const reschedulable  = cancellable; // same eligibility rules
+  // Only a completed appointment, and only once. The API checks this
+  // again, so a page left open cannot post a second review.
+  const canReview      = canReviewBooking(booking).allowed;
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-2)]" dir="rtl">
       {/* Navbar */}
-      <header className="bg-white border-b border-[var(--color-border)]">
+      <header className="bg-[var(--color-surface)] border-b border-[var(--color-line)]">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center">
           <Link href="/">
             <Logo size="sm" />
@@ -73,6 +79,10 @@ export default async function BookingPage({ params }: Params) {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-8 space-y-4">
+        {canReview && (
+          <LeaveReview token={token} businessName={booking.business.nameAr} />
+        )}
+
         {/* Status card */}
         <div className={`rounded-[var(--radius-lg)] border p-5 flex items-center gap-4 ${status.bg} ${status.border}`}>
           <StatusIcon size={28} className={status.color} />
@@ -89,8 +99,8 @@ export default async function BookingPage({ params }: Params) {
         </div>
 
         {/* Booking details */}
-        <div className="bg-white rounded-[var(--radius-lg)] border border-[var(--color-border)] overflow-hidden">
-          <div className="px-5 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]">
+        <div className="bg-white rounded-[var(--radius-lg)] border border-[var(--color-line)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--color-line)] bg-[var(--color-surface-2)]">
             <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
               تفاصيل الحجز
             </p>
@@ -99,7 +109,7 @@ export default async function BookingPage({ params }: Params) {
             </p>
           </div>
 
-          <div className="divide-y divide-[var(--color-border)]">
+          <div className="divide-y divide-[var(--color-line)]">
             <Row icon={<Store size={15} />}      label="المنشأة"  value={booking.business.nameAr} />
             <Row icon={<Clock size={15} />}       label="الخدمة"   value={booking.service.nameAr} />
             <Row icon={<CalendarDays size={15} />} label="التاريخ" value={formatDateAr(booking.date)} />
@@ -115,7 +125,7 @@ export default async function BookingPage({ params }: Params) {
 
         {/* Actions */}
         {(cancellable || reschedulable) && (
-          <div className="bg-white rounded-[var(--radius-lg)] border border-[var(--color-border)] p-5 space-y-3">
+          <div className="bg-white rounded-[var(--radius-lg)] border border-[var(--color-line)] p-5 space-y-3">
             <p className="text-sm font-semibold text-[var(--color-text-primary)]">
               إدارة الحجز
             </p>

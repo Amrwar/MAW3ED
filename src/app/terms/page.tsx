@@ -3,7 +3,7 @@ import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
-export const metadata: Metadata = { title: "شروط الاستخدام | موعد" };
+export const metadata: Metadata = { title: "شروط الاستخدام" };
 
 export default function TermsPage() {
   return (

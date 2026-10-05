@@ -10,6 +10,11 @@ const BASE_URL = siteUrl;
 // Schema.org two-letter day codes indexed by JS getDay() (0 = Sunday)
 const SCHEMA_DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
 
+/** The same days spelled out, for openingHoursSpecification. */
+const SCHEMA_FULL_DAYS = [
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+] as const;
+
 export interface AvailabilityRule {
   dayOfWeek: number;   // 0–6
   openTime:  string;   // "HH:MM"
@@ -18,8 +23,10 @@ export interface AvailabilityRule {
 }
 
 export interface ServicePrice {
+  nameAr?:  string;
   price:    number;
   currency: string;
+  duration?: number;
 }
 
 export interface LocalBusinessInput {
@@ -32,10 +39,18 @@ export interface LocalBusinessInput {
   coverImage:   string | null;
   logoImage:    string | null;
   address:      string | null;
-  city:         { nameAr: string };
-  category:     { nameAr: string };
-  availability: AvailabilityRule[];
-  services:     ServicePrice[];
+  city:          { nameAr: string };
+  neighborhood?: { nameAr: string } | null;
+  category:      { nameAr: string };
+  availability:  AvailabilityRule[];
+  services:      ServicePrice[];
+  /**
+   * Emitted only when reviews actually exist. Marking up a rating a
+   * business has not earned is what rich-result spam policies are
+   * written against, and it is the thing most likely to get a site
+   * demoted rather than promoted.
+   */
+  rating?:       { value: number; count: number } | null;
 }
 
 /**
@@ -68,6 +83,7 @@ export function buildLocalBusinessJsonLd(b: LocalBusinessInput): Record<string, 
       "@type":          "PostalAddress",
       addressLocality:  b.city.nameAr,
       addressCountry:   "EG",
+      ...(b.neighborhood ? { addressRegion: b.neighborhood.nameAr } : {}),
       ...(b.address ? { streetAddress: b.address } : {}),
     },
     areaServed: b.city.nameAr,
@@ -80,6 +96,51 @@ export function buildLocalBusinessJsonLd(b: LocalBusinessInput): Record<string, 
   if (b.phone)                jsonld.telephone      = normalisePhone(b.phone);
   if (openingHours.length)    jsonld.openingHours   = openingHours;
   if (priceRange)             jsonld.priceRange     = priceRange;
+  if (b.logoImage)            jsonld.logo           = b.logoImage;
+
+  // openingHoursSpecification carries the same hours in the structured
+  // form, which is what Google actually reads for an hours panel.
+  const spec = b.availability
+    .filter((a) => !a.isClosed)
+    .map((a) => ({
+      "@type":     "OpeningHoursSpecification",
+      dayOfWeek:   `https://schema.org/${SCHEMA_FULL_DAYS[a.dayOfWeek]}`,
+      opens:       a.openTime,
+      closes:      a.closeTime,
+    }));
+  if (spec.length) jsonld.openingHoursSpecification = spec;
+
+  // The menu, as an offer catalogue. Only services with a real price
+  // get one — a zero is an empty field, not a free service.
+  const offers = b.services
+    .filter((svc) => svc.nameAr && svc.price > 0)
+    .map((svc) => ({
+      "@type": "Offer",
+      itemOffered: {
+        "@type": "Service",
+        name:    svc.nameAr,
+        ...(svc.duration ? { serviceOutput: `${svc.duration} min` } : {}),
+      },
+      price:         String(svc.price),
+      priceCurrency: svc.currency,
+    }));
+  if (offers.length) {
+    jsonld.hasOfferCatalog = {
+      "@type": "OfferCatalog",
+      name:    b.category.nameAr,
+      itemListElement: offers,
+    };
+  }
+
+  if (b.rating && b.rating.count > 0) {
+    jsonld.aggregateRating = {
+      "@type":      "AggregateRating",
+      ratingValue:  b.rating.value,
+      reviewCount:  b.rating.count,
+      bestRating:   5,
+      worstRating:  1,
+    };
+  }
 
   return jsonld;
 }

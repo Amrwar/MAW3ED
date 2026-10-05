@@ -1,16 +1,21 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import AboutSection from "./AboutSection";
-import ServicesSection from "./ServicesSection";
-import GallerySection from "./GallerySection";
+import ServicesSection, { type ServiceProvider } from "./ServicesSection";
+import GallerySection, { type GalleryImage } from "./GallerySection";
 import ReviewsSection from "./ReviewsSection";
+import LocationSection from "./LocationSection";
 import FAQSection from "./FAQSection";
 import BookingWidget from "./BookingWidget";
+import ProfileNav, { type NavSection } from "./ProfileNav";
 import BusinessCard from "@/components/shared/BusinessCard";
 import type { Service } from "@/types/service";
 import type { Business } from "@/types/business";
 import type { PublicBusiness } from "@/lib/data";
+import type { DayHours } from "@/lib/discovery/hours";
+import type { PublicReview, RatingSummary } from "@/lib/reviews";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export type PublicTable = {
   id:        string;
@@ -39,6 +44,13 @@ interface Props {
   businessType:      "GENERAL" | "RESTAURANT" | "BARBERSHOP";
   tables:            PublicTable[];
   staffMembers:      PublicStaff[];
+  hours:             DayHours[];
+  images:            GalleryImage[];
+  summary:           RatingSummary;
+  reviews:           PublicReview[];
+  reviewsMatched:    number;
+  neighborhoodName:  string | null;
+  nextSlot:          { dayOffset: number; time: string } | null;
 }
 
 export default function CompanyContent({
@@ -50,7 +62,15 @@ export default function CompanyContent({
   businessType,
   tables,
   staffMembers,
+  hours,
+  images,
+  summary,
+  reviews,
+  reviewsMatched,
+  neighborhoodName,
+  nextSlot,
 }: Props) {
+  const { t, lang } = useLanguage();
   const [preselected, setPreselected] = useState<Service | null>(null);
   const widgetRef = useRef<HTMLDivElement>(null);
 
@@ -61,27 +81,75 @@ export default function CompanyContent({
     }, 50);
   }
 
+  const providers: ServiceProvider[] = staffMembers.map((s) => ({
+    id: s.id,
+    name: lang === "en" && s.nameEn ? s.nameEn : s.nameAr,
+    serviceIds: s.serviceIds,
+  }));
+
+  const hasAbout = Boolean(business.about?.trim());
+
+  // Only sections that actually render get a tab, so the bar can never
+  // point at an anchor that is not on the page.
+  const sections: NavSection[] = useMemo(() => {
+    const tabs = t.profile.tabs;
+    const out: NavSection[] = [];
+    if (services.length > 0) out.push({ id: "services", label: tabs.services });
+    if (hasAbout) out.push({ id: "about", label: tabs.about });
+    out.push({ id: "reviews", label: tabs.reviews });
+    if (images.length > 0) out.push({ id: "gallery", label: tabs.gallery });
+    out.push({ id: "location", label: tabs.location });
+    out.push({ id: "faq", label: tabs.faq });
+    return out;
+  }, [services.length, hasAbout, images.length, t.profile.tabs]);
+
   return (
-    <div className="bg-[var(--color-ground)] pb-32 lg:pb-16">
-      <div>
+    <>
+      <ProfileNav sections={sections} />
+
+      <div className="bg-[var(--color-ground)] pb-32 lg:pb-16">
         <div className="container-app py-10">
           <div className="flex flex-wrap items-start gap-9">
 
-            {/* ── Main content column ── */}
-            <div className="flex-[999_1_34rem] min-w-0 space-y-10">
-              <AboutSection business={business} />
-              <ServicesSection services={services} onBook={handleBookService} />
-              <GallerySection />
-              <ReviewsSection rating={business.rating} reviewCount={business.reviewCount} />
+            {/* ── Main column ── */}
+            <div className="min-w-0 flex-[999_1_34rem] space-y-10">
+              <ServicesSection
+                services={services}
+                providers={providers}
+                nextSlot={nextSlot}
+                onBook={handleBookService}
+              />
+
+              {hasAbout && <AboutSection business={business} />}
+
+              <ReviewsSection
+                businessSlug={slug}
+                summary={summary}
+                initialReviews={reviews}
+                initialMatched={reviewsMatched}
+              />
+
+              {images.length > 0 && (
+                <GallerySection images={images} businessName={business.nameAr} />
+              )}
+
+              <LocationSection
+                name={business.nameAr}
+                address={business.address ?? null}
+                cityName={business.locationAr}
+                neighborhoodName={neighborhoodName}
+                phone={business.phone ?? null}
+                hours={hours}
+              />
+
               <FAQSection />
 
-              {/* Similar businesses */}
               {similarBusinesses.length > 0 && (
                 <section>
                   <h2 className="mb-5 text-[1.5rem] font-bold text-[var(--color-ink)]">
-                    أنشطة مشابهة
+                    {lang === "ar" ? "أنشطة مشابهة" : "Similar businesses"}
                   </h2>
-                  <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <ul className="m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2">
                     {similarBusinesses.map((b) => (
                       <li key={b.id} className="min-w-0">
                         <BusinessCard business={b} />
@@ -92,11 +160,11 @@ export default function CompanyContent({
               )}
             </div>
 
-            {/* ── Booking widget sidebar ── */}
+            {/* ── Booking widget ── */}
             <div
               ref={widgetRef}
               id="booking"
-              className="w-full flex-[0_1_22.5rem] min-w-[18rem] lg:sticky lg:top-[6rem]"
+              className="w-full min-w-[18rem] flex-[0_1_22.5rem] scroll-mt-32 lg:sticky lg:top-[7.5rem]"
             >
               <BookingWidget
                 services={services}
@@ -113,6 +181,6 @@ export default function CompanyContent({
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -6,7 +6,7 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { db } from "@/lib/db";
 import { getEffectivePlan, type Plan, type SubscriptionStatus } from "@/lib/plans";
 
-export const metadata: Metadata = { title: "لوحة التحكم | موعد" };
+export const metadata: Metadata = { title: "لوحة التحكم" };
 
 export default async function DashboardLayout({
   children,

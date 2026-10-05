@@ -1,17 +1,23 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, Share2 } from "lucide-react";
+import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import Logo from "@/components/shared/Logo";
-import CompanyHero from "@/features/company/CompanyHero";
-import BusinessInfoRow from "@/features/company/BusinessInfoRow";
+import Breadcrumbs, { breadcrumbJsonLd, type Crumb } from "@/components/shared/Breadcrumbs";
+import ProfileHeader from "@/features/company/ProfileHeader";
 import CompanyContent from "@/features/company/CompanyContent";
+import StickyBookingBar from "@/features/company/StickyBookingBar";
 import type { Business } from "@/types/business";
 import type { Service } from "@/types/service";
 import { buildLocalBusinessJsonLd } from "@/lib/jsonld";
 import { siteUrl } from "@/lib/env";
 import { getPublishedBusinesses } from "@/lib/data";
+import { cairoNow, openState, type DayHours } from "@/lib/discovery/hours";
+import { findNextSlot } from "@/lib/discovery/next-slot";
+import { timeToMinutes } from "@/lib/bookings/time";
+import { getBusinessReviews, getRatingSummary } from "@/lib/reviews";
+import { translations, type Lang } from "@/lib/i18n";
 
 interface Params { params: Promise<{ slug: string }> }
 
@@ -21,35 +27,63 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const biz = await db.business.findUnique({
     where:  { slug, isPublished: true },
     select: {
-      nameAr:     true,
-      taglineAr:  true,
-      about:      true,
-      coverImage: true,
-      city:       { select: { nameAr: true } },
-      category:   { select: { nameAr: true } },
+      nameAr:      true,
+      nameEn:      true,
+      taglineAr:   true,
+      about:       true,
+      coverImage:  true,
+      logoImage:   true,
+      ratingAvg:   true,
+      ratingCount: true,
+      city:         { select: { nameAr: true } },
+      neighborhood: { select: { nameAr: true } },
+      category:     { select: { nameAr: true } },
     },
   });
 
-  if (!biz) return { title: "غير موجود | موعد" };
+  if (!biz) return { title: "غير موجود", robots: { index: false, follow: false } };
 
-  const baseUrl   = siteUrl;
-  const pageUrl   = `${baseUrl}/company/${slug}`;
-  const title     = `${biz.nameAr} | حجز موعد في ${biz.city.nameAr} | موعد`;
+  const pageUrl = `${siteUrl}/company/${slug}`;
+  const place = biz.neighborhood ? `${biz.neighborhood.nameAr}، ${biz.city.nameAr}` : biz.city.nameAr;
+
+  // No brand suffix here: the root layout's title template already
+  // appends "| موعد MAW3ED", and adding one too produced
+  // "… | موعد | موعد MAW3ED" on every page of the site.
+  const title = `${biz.nameAr} — ${biz.category.nameAr} في ${place}`;
+
+  // Description, in order of how much it actually says about the place:
+  // the owner's tagline, then their own words, then a sentence built
+  // from what is on file. Nothing is invented at any step.
   const description =
     biz.taglineAr?.trim() ||
     (biz.about?.trim()
-      ? biz.about.trim().slice(0, 150) + (biz.about.trim().length > 150 ? "…" : "")
-      : `احجز موعدك في ${biz.nameAr} — ${biz.category.nameAr} في ${biz.city.nameAr}. حجز سريع وسهل عبر منصة موعد.`);
-  const ogImages = biz.coverImage
-    ? [{ url: biz.coverImage, width: 1200, height: 630, alt: biz.nameAr }]
+      ? biz.about.trim().slice(0, 155) + (biz.about.trim().length > 155 ? "…" : "")
+      : `احجز موعدك في ${biz.nameAr} — ${biz.category.nameAr} في ${place}. شوف الخدمات والأسعار والمواعيد المتاحة واحجز أونلاين.`);
+
+  const ogImage = biz.coverImage ?? biz.logoImage;
+  const ogImages = ogImage
+    ? [{ url: ogImage, width: 1200, height: 630, alt: biz.nameAr }]
     : [];
 
   return {
     title,
     description,
     alternates: { canonical: pageUrl },
-    openGraph: { title, description, url: pageUrl, siteName: "موعد", locale: "ar_EG", type: "website", images: ogImages },
-    twitter: { card: biz.coverImage ? "summary_large_image" : "summary", title, description, ...(biz.coverImage ? { images: [biz.coverImage] } : {}) },
+    openGraph: {
+      type: "website",
+      title,
+      description,
+      url: pageUrl,
+      siteName: "موعد",
+      locale: "ar_EG",
+      images: ogImages,
+    },
+    twitter: {
+      card: ogImage ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
   };
 }
 
@@ -61,16 +95,20 @@ export default async function CompanyPage({ params }: Params) {
     include: {
       category:     true,
       city:         true,
+      neighborhood: true,
       services:     { where: { isAvailable: true }, orderBy: { sortOrder: "asc" } },
       availability: { orderBy: { dayOfWeek: "asc" } },
-      _count:       { select: { bookings: true } },
+      images:       { orderBy: { sortOrder: "asc" } },
     },
   });
 
   if (!dbBusiness) notFound();
 
-  // Fetch resource data based on businessType
-  const [tablesRaw, staffRaw] = await Promise.all([
+  const cookieStore = await cookies();
+  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const t = translations[lang] ?? translations.ar;
+
+  const [tablesRaw, staffRaw, summary, reviewPage, bookings] = await Promise.all([
     dbBusiness.businessType === "RESTAURANT"
       ? db.table.findMany({
           where:   { businessId: dbBusiness.id, isActive: true },
@@ -78,55 +116,42 @@ export default async function CompanyPage({ params }: Params) {
           orderBy: { createdAt: "asc" },
         })
       : Promise.resolve([]),
-    dbBusiness.businessType === "BARBERSHOP"
-      ? db.staffMember.findMany({
-          where:   { businessId: dbBusiness.id, isActive: true },
-          select:  { id: true, nameAr: true, nameEn: true, role: true, photo: true, services: { select: { serviceId: true } } },
-          orderBy: { createdAt: "asc" },
-        })
-      : Promise.resolve([]),
+    db.staffMember.findMany({
+      where:   { businessId: dbBusiness.id, isActive: true },
+      select:  { id: true, nameAr: true, nameEn: true, role: true, photo: true, services: { select: { serviceId: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
+    // The one rating calculation. Nothing on this page computes its own.
+    getRatingSummary(dbBusiness.id),
+    getBusinessReviews(dbBusiness.id, { sort: "recent", take: 10 }),
+    db.booking.findMany({
+      where: {
+        businessId: dbBusiness.id,
+        status: { in: ["PENDING", "CONFIRMED"] },
+        date: { gte: startOfCairoDay() },
+      },
+      select: { date: true, startTime: true, endTime: true, service: { select: { duration: true } } },
+    }),
   ]);
 
-  // Same category, same listing shape as everywhere else, so the card
-  // gets its rating, hours and next free slot rather than a thinner row.
   const similarBusinesses = (
     await getPublishedBusinesses({ categorySlug: dbBusiness.category.slug, take: 4 })
   )
     .filter((b) => b.slug !== slug)
     .slice(0, 3);
 
-  const business: Business = {
-    id:           dbBusiness.id,
-    slug:         dbBusiness.slug,
-    nameAr:       dbBusiness.nameAr,
-    nameEn:       dbBusiness.nameEn ?? "",
-    taglineAr:    dbBusiness.taglineAr ?? "",
-    category:     dbBusiness.category.nameAr,
-    categorySlug: dbBusiness.category.slug,
-    rating:       4.8,
-    reviewCount:  0,
-    location:     dbBusiness.city.nameAr,
-    locationAr:   dbBusiness.city.nameAr,
-    address:      dbBusiness.address ?? undefined,
-    phone:        dbBusiness.phone ?? undefined,
-    whatsapp:     dbBusiness.whatsapp ?? undefined,
-    coverImage:   dbBusiness.coverImage ?? undefined,
-    logoImage:    dbBusiness.logoImage ?? undefined,
-    isVerified:   dbBusiness.isVerified,
-    isOpen:       isOpenNow(dbBusiness.availability),
-    about:        dbBusiness.about ?? undefined,
-    hours: dbBusiness.availability.map((a) => ({
-      day:    dayName(a.dayOfWeek),
-      dayAr:  dayNameAr(a.dayOfWeek),
-      open:   a.openTime,
-      close:  a.closeTime,
-      closed: a.isClosed,
-    })),
-  };
+  const hours: DayHours[] = dbBusiness.availability.map((a) => ({
+    dayOfWeek: a.dayOfWeek,
+    openTime:  a.openTime,
+    closeTime: a.closeTime,
+    isClosed:  a.isClosed,
+  }));
 
-  const openDays: number[] = dbBusiness.availability
-    .filter((a) => !a.isClosed)
-    .map((a) => a.dayOfWeek);
+  // Opening state on the Cairo clock. This page used to compute it from
+  // the server's own time, which on Vercel is UTC — two or three hours
+  // out, so a business could be reported shut while its doors were open.
+  const { dayOfWeek, time } = cairoNow();
+  const open = openState(hours, dayOfWeek, time);
 
   const services: Service[] = dbBusiness.services.map((s) => ({
     id:            s.id,
@@ -140,6 +165,74 @@ export default async function CompanyPage({ params }: Params) {
     isAvailable:   s.isAvailable,
   }));
 
+  // The first genuinely free appointment, by the same rule the booking
+  // widget applies — not simply the next time the doors open.
+  const todayUTC = startOfCairoDay();
+  const shortest = services.reduce<number | null>(
+    (min, s) => (s.duration > 0 && (min === null || s.duration < min) ? s.duration : min),
+    null,
+  );
+  const nextSlot = findNextSlot(
+    {
+      rules: hours,
+      durationMinutes: shortest,
+      booked: bookings.map((b) => {
+        const startMin = timeToMinutes(b.startTime);
+        return {
+          dayOffset: Math.round((b.date.getTime() - todayUTC.getTime()) / 86_400_000),
+          startMin,
+          endMin: b.endTime ? timeToMinutes(b.endTime) : startMin + b.service.duration,
+        };
+      }),
+    },
+    dayOfWeek,
+    time,
+  );
+
+  const business: Business = {
+    id:           dbBusiness.id,
+    slug:         dbBusiness.slug,
+    nameAr:       dbBusiness.nameAr,
+    nameEn:       dbBusiness.nameEn ?? "",
+    taglineAr:    dbBusiness.taglineAr ?? "",
+    category:     dbBusiness.category.nameAr,
+    categorySlug: dbBusiness.category.slug,
+    // Read, never asserted. This was hardcoded to 4.8 against an empty
+    // reviews table on every profile the site served.
+    rating:       summary.average ?? 0,
+    reviewCount:  summary.count,
+    location:     dbBusiness.city.nameAr,
+    locationAr:   dbBusiness.city.nameAr,
+    address:      dbBusiness.address ?? undefined,
+    phone:        dbBusiness.phone ?? undefined,
+    whatsapp:     dbBusiness.whatsapp ?? undefined,
+    coverImage:   dbBusiness.coverImage ?? undefined,
+    logoImage:    dbBusiness.logoImage ?? undefined,
+    isVerified:   dbBusiness.isVerified,
+    isOpen:       open.state === "open",
+    about:        dbBusiness.about ?? undefined,
+    hours: dbBusiness.availability.map((a) => ({
+      day:    EN_DAYS[a.dayOfWeek] ?? "",
+      dayAr:  AR_DAYS[a.dayOfWeek] ?? "",
+      open:   a.openTime,
+      close:  a.closeTime,
+      closed: a.isClosed,
+    })),
+  };
+
+  const crumbs: Crumb[] = [
+    { label: lang === "ar" ? "الرئيسية" : "Home", href: "/" },
+    {
+      label: lang === "ar" ? dbBusiness.category.nameAr : dbBusiness.category.nameEn,
+      href: `/businesses?category=${dbBusiness.category.slug}`,
+    },
+    {
+      label: lang === "ar" ? dbBusiness.city.nameAr : dbBusiness.city.nameEn,
+      href: `/businesses?city=${dbBusiness.city.slug}`,
+    },
+    { label: lang === "en" && dbBusiness.nameEn ? dbBusiness.nameEn : dbBusiness.nameAr },
+  ];
+
   const jsonLd = buildLocalBusinessJsonLd({
     slug:         dbBusiness.slug,
     nameAr:       dbBusiness.nameAr,
@@ -151,12 +244,24 @@ export default async function CompanyPage({ params }: Params) {
     logoImage:    dbBusiness.logoImage,
     address:      dbBusiness.address,
     city:         dbBusiness.city,
+    neighborhood: dbBusiness.neighborhood,
     category:     dbBusiness.category,
     availability: dbBusiness.availability,
-    services:     dbBusiness.services.map((s) => ({ price: Number(s.price), currency: s.currency })),
+    services:     dbBusiness.services.map((s) => ({
+      nameAr:   s.nameAr,
+      price:    Number(s.price),
+      currency: s.currency,
+      duration: s.duration,
+    })),
+    // Only emitted when real. Marking up a rating that does not exist
+    // is exactly what rich-result spam policies are written against.
+    rating: summary.count > 0 && summary.average !== null
+      ? { value: summary.average, count: summary.count }
+      : null,
   });
 
-  const minPrice = services.length > 0 ? Math.min(...services.map((s) => s.price)) : null;
+  const pricedServices = services.filter((s) => s.price > 0);
+  const minPrice = pricedServices.length > 0 ? Math.min(...pricedServices.map((s) => s.price)) : null;
 
   return (
     <>
@@ -164,47 +269,65 @@ export default async function CompanyPage({ params }: Params) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(crumbs, siteUrl)) }}
+      />
 
-      {/* ── Sticky top navbar ── */}
+      {/* ── Top bar ── */}
       <header className="sticky top-0 z-50 border-b border-[var(--color-line)] bg-[var(--color-ground)]/95 backdrop-blur-md">
         <div className="container-app flex h-16 items-center justify-between gap-5">
-          <nav aria-label="مسار التصفح" className="flex min-w-0 items-center gap-2.5">
-            <Link href="/" className="shrink-0">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link href="/" className="shrink-0" aria-label="موعد">
               <Logo size="sm" />
             </Link>
-            <ChevronRight
-              size={14}
-              aria-hidden="true"
-              className="shrink-0 text-[var(--color-faint)]"
-              style={{ transform: "scaleX(-1)" }}
+            <Breadcrumbs
+              items={crumbs}
+              lang={lang}
+              label={t.profile.breadcrumb}
+              className="hidden sm:block"
             />
-            <span
-              className="truncate text-sm font-bold text-[var(--color-ink)] max-w-[180px] md:max-w-xs"
-              title={business.nameAr}
-            >
-              {business.nameAr}
-            </span>
-          </nav>
-
-          <div className="flex shrink-0 items-center gap-2.5">
-            <button type="button" className="btn btn-outline btn-sm hidden sm:inline-flex">
-              <Share2 size={14} strokeWidth={1.8} aria-hidden="true" />
-              مشاركة
-            </button>
-            <a href="#booking" className="btn btn-primary btn-sm btn-pill">
-              احجز الآن
-            </a>
           </div>
+
+          <a href="#booking" className="btn btn-primary btn-sm btn-pill shrink-0">
+            {t.profile.bookNow}
+          </a>
         </div>
       </header>
 
       <main className="bg-[var(--color-ground)]">
-        <CompanyHero business={business} />
-        <BusinessInfoRow business={business} />
+        {/* The trail again on a phone, where it does not fit in the bar. */}
+        <div className="container-app pt-3 sm:hidden">
+          <Breadcrumbs items={crumbs} lang={lang} label={t.profile.breadcrumb} />
+        </div>
+
+        <ProfileHeader
+          business={{
+            id:               dbBusiness.id,
+            slug:             dbBusiness.slug,
+            nameAr:           dbBusiness.nameAr,
+            nameEn:           dbBusiness.nameEn,
+            categoryName:     lang === "ar" ? dbBusiness.category.nameAr : dbBusiness.category.nameEn,
+            categorySlug:     dbBusiness.category.slug,
+            cityName:         lang === "ar" ? dbBusiness.city.nameAr : dbBusiness.city.nameEn,
+            neighborhoodName: dbBusiness.neighborhood
+              ? lang === "ar" ? dbBusiness.neighborhood.nameAr : dbBusiness.neighborhood.nameEn
+              : null,
+            address:          dbBusiness.address,
+            phone:            dbBusiness.phone,
+            whatsapp:         dbBusiness.whatsapp,
+            coverImage:       dbBusiness.coverImage,
+            logoImage:        dbBusiness.logoImage,
+            isVerified:       dbBusiness.isVerified,
+            open,
+          }}
+          summary={summary}
+        />
+
         <CompanyContent
           business={business}
           services={services}
-          openDays={openDays}
+          openDays={dbBusiness.availability.filter((a) => !a.isClosed).map((a) => a.dayOfWeek)}
           slug={slug}
           similarBusinesses={similarBusinesses}
           businessType={dbBusiness.businessType as "GENERAL" | "RESTAURANT" | "BARBERSHOP"}
@@ -217,46 +340,45 @@ export default async function CompanyPage({ params }: Params) {
             photo:      s.photo,
             serviceIds: s.services.map((ss) => ss.serviceId),
           }))}
+          hours={hours}
+          images={dbBusiness.images.map((i) => ({ id: i.id, url: i.url, caption: i.caption }))}
+          summary={summary}
+          reviews={reviewPage.reviews}
+          reviewsMatched={reviewPage.matched}
+          neighborhoodName={
+            dbBusiness.neighborhood
+              ? lang === "ar" ? dbBusiness.neighborhood.nameAr : dbBusiness.neighborhood.nameEn
+              : null
+          }
+          nextSlot={nextSlot}
         />
       </main>
 
-      {/* ── Mobile sticky bottom CTA ── */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-line)] bg-[var(--color-surface)]/98 backdrop-blur-md lg:hidden">
-        <div className="container-app flex items-center gap-4 py-3">
-          {!!minPrice && (
-            <div className="min-w-0 flex-1">
-              <p className="m-0 text-xs leading-none text-[var(--color-subtle)]">يبدأ من</p>
-              <p className="num m-0 mt-1.5 text-lg font-extrabold leading-none text-[var(--color-ink)]">
-                {minPrice.toLocaleString("ar-EG-u-nu-latn")} ج.م
-              </p>
-            </div>
-          )}
-          <a href="#booking" className="btn btn-primary flex-1">
-            احجز موعدك الآن
-          </a>
-        </div>
-      </div>
+      <StickyBookingBar
+        minPrice={minPrice}
+        currency={services[0]?.currency ?? "EGP"}
+        open={open}
+        watchId="profile-actions"
+      />
     </>
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────
+/* ─── Helpers ──────────────────────────────────────────────── */
 
-function isOpenNow(
-  availability: Array<{ dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }>,
-) {
-  const now        = new Date();
-  const dayOfWeek  = now.getDay();
-  const currentMin = now.getHours() * 60 + now.getMinutes();
-  const rule = availability.find((a) => a.dayOfWeek === dayOfWeek);
-  if (!rule || rule.isClosed) return false;
-  const [oh, om] = rule.openTime.split(":").map(Number);
-  const [ch, cm] = rule.closeTime.split(":").map(Number);
-  return currentMin >= oh * 60 + om && currentMin < ch * 60 + cm;
+/** Midnight today in Cairo, expressed the way bookings are stored. */
+function startOfCairoDay(now: Date = new Date()): Date {
+  const [y, m, d] = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .format(now)
+    .split("-")
+    .map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
 }
 
-const EN_DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const AR_DAYS = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
-
-function dayName(d: number)   { return EN_DAYS[d] ?? ""; }
-function dayNameAr(d: number) { return AR_DAYS[d] ?? ""; }
+const EN_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const AR_DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];

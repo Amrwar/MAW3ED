@@ -20,10 +20,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const city = await getCityBySlug(slug);
   if (!city) return {};
   return {
-    title: `أعمال في ${city.nameAr} | موعد`,
+    title: `أعمال في ${city.nameAr}`,
     description: `اكتشف أفضل الأعمال والمواعيد في ${city.nameAr}. احجز حلاق، صالون، طبيب وأكثر بضغطة واحدة.`,
     openGraph: {
-      title: `أعمال في ${city.nameAr} | موعد`,
+      title: `أعمال في ${city.nameAr}`,
       description: `اكتشف أفضل الأعمال والمواعيد في ${city.nameAr}.`,
     },
   };

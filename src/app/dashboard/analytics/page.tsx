@@ -9,7 +9,7 @@ import AnalyticsClient from "./_components/AnalyticsClient";
 import type { AnalyticsPayload, RevenuePoint, ServiceSlice, HeatCell } from "@/app/api/business/analytics/route";
 import { getEffectivePlan, canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
 
-export const metadata: Metadata = { title: "الإحصائيات | موعد" };
+export const metadata: Metadata = { title: "الإحصائيات" };
 
 const SERVICE_COLORS = [
   "var(--color-jade)","var(--color-star)","var(--color-ok)","var(--color-danger)","var(--color-jade)",

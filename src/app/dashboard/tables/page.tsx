@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import TablesClient from "./_components/TablesClient";
 
-export const metadata: Metadata = { title: "الطاولات | موعد" };
+export const metadata: Metadata = { title: "الطاولات" };
 
 export default async function TablesPage() {
   const session = await auth();

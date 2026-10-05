@@ -3,7 +3,7 @@ import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
-export const metadata: Metadata = { title: "سياسة الخصوصية | موعد" };
+export const metadata: Metadata = { title: "سياسة الخصوصية" };
 
 export default function PrivacyPage() {
   return (

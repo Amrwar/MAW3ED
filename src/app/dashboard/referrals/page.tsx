@@ -6,7 +6,7 @@ import crypto from "crypto";
 import ReferralsClient from "./_components/ReferralsClient";
 import { siteUrl } from "@/lib/env";
 
-export const metadata: Metadata = { title: "الإحالات | موعد" };
+export const metadata: Metadata = { title: "الإحالات" };
 
 /** Generates a unique 8-char uppercase hex referral code. */
 async function generateReferralCode(): Promise<string> {
