@@ -57,6 +57,7 @@ export async function GET(_req: Request) {
     return ok(data);
   } catch (e) {
     if (e instanceof Response) return e;
+    log.error("[deposit settings GET]", e);
     return err("حدث خطأ", 500);
   }
 }

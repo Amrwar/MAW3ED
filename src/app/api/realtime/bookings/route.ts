@@ -100,9 +100,11 @@ export async function GET(req: Request) {
 
             sendEvent(isNew ? "BOOKING_CREATED" : "BOOKING_UPDATED", payload);
           }
-        } catch {
-          // DB errors are transient — log and continue rather than closing the stream
-          log.error("[realtime/bookings] poll error");
+        } catch (e) {
+          // Transient DB errors should not close the stream, but the
+          // reason still needs recording — a poll that fails every tick
+          // looks identical to one that never fails.
+          log.error("[realtime/bookings] poll error", e);
         }
       }, 3000);
 

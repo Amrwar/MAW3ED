@@ -40,6 +40,7 @@ export async function GET(_req: Request, { params }: Params) {
     });
   } catch (e) {
     if (e instanceof Response) return e;
+    log.error("[booking [id]]", e);
     return err("حدث خطأ", 500);
   }
 }

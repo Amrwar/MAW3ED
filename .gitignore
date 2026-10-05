@@ -50,3 +50,6 @@ next-env.d.ts
 /ios/App/Pods
 /ios/App/App.xcworkspace/xcuserdata
 
+
+.vercel
+.env*

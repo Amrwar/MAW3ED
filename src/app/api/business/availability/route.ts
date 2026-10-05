@@ -16,6 +16,7 @@ export async function GET() {
     return ok(rules);
   } catch (e) {
     if (e instanceof Response) return e;
+    log.error("[availability GET]", e);
     return err("حدث خطأ", 500);
   }
 }

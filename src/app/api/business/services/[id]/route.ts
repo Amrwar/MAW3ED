@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { serviceSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,6 +28,7 @@ export async function PUT(req: Request, { params }: Params) {
     return ok(updated);
   } catch (e) {
     if (e instanceof Response) return e;
+    log.error("[service [id]]", e);
     return err("حدث خطأ أثناء التحديث", 500);
   }
 }
@@ -47,6 +49,7 @@ export async function DELETE(_req: Request, { params }: Params) {
     return ok({ deleted: true });
   } catch (e) {
     if (e instanceof Response) return e;
+    log.error("[service [id]]", e);
     return err("حدث خطأ أثناء الحذف", 500);
   }
 }

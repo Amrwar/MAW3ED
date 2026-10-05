@@ -24,10 +24,24 @@ const required = z.object({
   DATABASE_URL: z
     .string()
     .min(1, "DATABASE_URL is required — the Postgres connection string"),
-  AUTH_SECRET: z
-    .string()
-    .min(16, "AUTH_SECRET is required and must be at least 16 characters"),
 });
+
+/**
+ * NextAuth v5 accepts AUTH_SECRET or the v4 name NEXTAUTH_SECRET, and
+ * this project was set up with the latter. Requiring only the new name
+ * is what failed the Vercel build: the secret was present all along,
+ * under the name NextAuth still supports.
+ */
+const authSecret = z
+  .object({
+    AUTH_SECRET: z.string().min(16).optional(),
+    NEXTAUTH_SECRET: z.string().min(16).optional(),
+  })
+  .refine((v) => Boolean(v.AUTH_SECRET || v.NEXTAUTH_SECRET), {
+    message:
+      "AUTH_SECRET (or NEXTAUTH_SECRET) is required and must be at least 16 characters",
+    path: ["AUTH_SECRET"],
+  });
 
 const optional = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -65,7 +79,7 @@ const optional = z.object({
   CLOUDINARY_API_SECRET: z.string().optional(),
 });
 
-const schema = required.merge(optional);
+const schema = required.merge(optional).and(authSecret);
 
 export type Env = z.infer<typeof schema>;
 
@@ -179,6 +193,12 @@ export function getSiteUrl(): string {
  * which is safe because it touches no secrets.
  */
 export const siteUrl: string = getSiteUrl();
+
+/** The signing secret, under whichever name it is configured. */
+export function getAuthSecret(): string {
+  const e = getEnv();
+  return e.AUTH_SECRET ?? e.NEXTAUTH_SECRET ?? "";
+}
 
 export const isProduction = process.env.NODE_ENV === "production";
 export const isTest = process.env.NODE_ENV === "test";

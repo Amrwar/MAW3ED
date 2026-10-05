@@ -16,6 +16,7 @@ export async function GET() {
     return ok(services);
   } catch (e) {
     if (e instanceof Response) return e;
+    log.error("[services GET]", e);
     return err("حدث خطأ", 500);
   }
 }

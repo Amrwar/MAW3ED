@@ -38,7 +38,10 @@ export async function POST(req: Request) {
 
   try {
     body = await req.json();
-  } catch {
+  } catch (e) {
+    // A callback we cannot parse means a customer may have paid for a
+    // booking that never got confirmed. That must leave a trace.
+    log.error("paymob webhook: unparseable payload", e);
     return err("invalid JSON", 400);
   }
 
