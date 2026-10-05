@@ -35,7 +35,7 @@ export type Business = {
   phone?: string;
   whatsapp?: string;
   website?: string;
-  coverImage: string;
+  coverImage?: string;
   logoImage?: string;
   images?: string[];
   isVerified: boolean;

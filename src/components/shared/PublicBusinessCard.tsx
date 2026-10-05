@@ -6,19 +6,7 @@ import type { PublicBusiness } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { num } from "@/lib/fmt";
-
-/**
- * Covers cycle through the soft out-of-focus treatments when a
- * business has not uploaded a photo. Deterministic per slug so a
- * business keeps the same one between visits.
- */
-const COVERS = ["photo-warm", "photo-cool", "photo-green", "photo-stone"];
-
-function coverFor(slug: string): string {
-  let h = 0;
-  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) >>> 0;
-  return COVERS[h % COVERS.length];
-}
+import { coverClassFor } from "@/lib/category-cover";
 
 interface Props {
   business: PublicBusiness;
@@ -54,7 +42,7 @@ export default function PublicBusinessCard({ business, className, featured = fal
           <span
             role="img"
             aria-label={name}
-            className={cn("block w-full", coverFor(business.slug), featured ? "h-56" : "h-[11.5rem]")}
+            className={cn("block w-full", coverClassFor(business.category.slug), featured ? "h-56" : "h-[11.5rem]")}
           />
         )}
 

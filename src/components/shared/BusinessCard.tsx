@@ -5,6 +5,7 @@ import type { Business } from "@/types/business";
 import StarRating from "./StarRating";
 import Badge from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
+import { coverClassFor } from "@/lib/category-cover";
 
 interface BusinessCardProps {
   business: Business;
@@ -27,13 +28,21 @@ export default function BusinessCard({
     >
       {/* Cover Image */}
       <div className="relative overflow-hidden h-44">
-        <Image
-          src={business.coverImage}
-          alt={business.nameAr}
-          fill
-          sizes="(max-width: 768px) 100vw, 33vw"
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+        {business.coverImage ? (
+          <Image
+            src={business.coverImage}
+            alt={business.nameAr}
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <span
+            role="img"
+            aria-label={business.nameAr}
+            className={cn("absolute inset-0", coverClassFor(business.categorySlug))}
+          />
+        )}
         {/* Badges overlay */}
         <div className="absolute top-3 start-3 flex flex-wrap gap-1.5">
           {business.isVerified && (

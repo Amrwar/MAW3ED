@@ -583,3 +583,160 @@ h1, h2, h3, h4, h5, h6 {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* ─── Category wallpapers ────────────────────────────────────
+   A business with no cover photo gets the wallpaper for its
+   trade rather than a random tint: a spa reads as a spa, a
+   barbershop as a barbershop. Ground + sparse line motif, both
+   drawn in CSS — no image requests, and it scales to any box.
+   A real uploaded photo always wins over these.          */
+.cover-clinics {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 13v18M13 22h18'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #CFE2DA, #6E9389 52%, #2C4941);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-dentists {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 19c0-3.4 2.6-5.8 5.6-5.8 1.6 0 2.2.8 3.4.8s1.8-.8 3.4-.8c3 0 5.6 2.4 5.6 5.8 0 5.4-1.7 7.6-2.8 11.8-.6 2.2-2.8 2.2-3.3 0l-.9-4.4h-1.6l-.9 4.4c-.5 2.2-2.7 2.2-3.3 0C14.7 26.6 13 24.4 13 19z'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #D4E4EA, #7FA3B0 52%, #32505C);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-labs {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 12v8l-6 11a2 2 0 0 0 1.8 3h12.4a2 2 0 0 0 1.8-3l-6-11v-8M17 12h8'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #CDD8E2, #7E8FA3 52%, #333F4E);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-salons {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='16' cy='29' r='3.1'/%3E%3Ccircle cx='28' cy='29' r='3.1'/%3E%3Cpath d='M18.3 26.7 30 13M25.7 26.7 14 13'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #C9AE8E, #9A7B5B 52%, #443225);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-beauty-centers {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12l2.6 7.4L32 22l-7.4 2.6L22 32l-2.6-7.4L12 22l7.4-2.6z'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #DEC3C0, #AE8A86 52%, #4E3836);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-spas {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 31c0-9 7-16 16-16 0 9-7 16-16 16zM14 31c4-4.5 8.5-7.5 13-9.5'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #C2CFC0, #7E967E 52%, #2E4134);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-gyms {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 18h4v8h-4zM28 18h4v8h-4zM16 22h12'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #B4B3AB, #7C7B74 52%, #2B2C2A);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-restaurants {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 12v7a2 2 0 0 0 2 2v11M15 12v5M19 12v5M29 12c2 0 3 2.2 3 5.4s-1 5.2-3 5.2v9.4'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #D8BBA3, #A8805F 52%, #4A3426);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-consulting {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 31V24M22 31V13M31 31v-11'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #C3D5D2, #78978F 52%, #2B4340);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-legal {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12v20M14 32h16M15 18h14M15 18l-4 8h8zM29 18l4 8h-8z'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #C8C7BD, #8A8676 52%, #343129);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-home-services {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 23l10-9 10 9v10a1 1 0 0 1-1 1H13a1 1 0 0 1-1-1z'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #CCCBA9, #92916E 52%, #3B3B28);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-car-services {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 27l2.4-7.4h15.2L32 27v4H12zM16 31v2M30 31v2'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #C2CBD2, #7D8A95 52%, #333C44);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-photography {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='22' cy='22' r='8.6'/%3E%3Cpath d='M22 13.4l5.6 9.7M30.6 22H19.4M24.8 30.3 19.2 20.6'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #C3BDB5, #857E76 52%, #302C28);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+.cover-education {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 14h7.5a3 3 0 0 1 3 3v14.5a3 3 0 0 0-3-3H12zM32 14h-7.5a3 3 0 0 0-3 3v14.5a3 3 0 0 1 3-3H32z'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #C8CCDE, #808699 52%, #32364A);
+  background-size: 64px 64px, cover, cover, cover;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+
+/* Anything without its own wallpaper, and the generic fallback. */
+.cover-default {
+  background-image:
+    radial-gradient(118% 88% at 20% 10%, rgb(255 255 255 / 0.34), transparent 58%),
+    radial-gradient(84% 72% at 82% 100%, rgb(0 0 0 / 0.30), transparent 70%),
+    linear-gradient(150deg, #D7C4A8, #A68D6E 52%, #4B3E30);
+  background-size: cover, cover, cover;
+  background-repeat: no-repeat;
+}

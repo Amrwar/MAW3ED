@@ -7,6 +7,7 @@ import PageHero from "@/components/shared/PageHero";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { ArrowRight, ArrowLeft, Search } from "lucide-react";
+import { coverClassFor } from "@/lib/category-cover";
 
 // ─── Types ─────────────────────────────────────────────────
 
@@ -20,10 +21,6 @@ type Category = {
   color?:   string;
   iconSvg?: string;
 };
-
-/** Cover treatments cycle so adjacent tiles never repeat; each is
- *  replaced by the category's real photograph once uploaded. */
-const COVERS = ["photo-warm", "photo-cool", "photo-green", "photo-stone"];
 
 // ─── Static fallback data ───────────────────────────────────
 
@@ -109,7 +106,7 @@ export default function CategoriesPage() {
                       <span
                         role="img"
                         aria-label={name}
-                        className={`block h-[8.5rem] ${COVERS[idx % COVERS.length]}`}
+                        className={`block h-[8.5rem] ${coverClassFor(cat.slug)}`}
                       />
                       <span className="block px-5 pb-5 pt-4">
                         <span className="block truncate text-base font-bold text-[var(--color-ink)]">

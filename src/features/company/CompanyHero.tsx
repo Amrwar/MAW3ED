@@ -5,20 +5,14 @@ import type { Business } from "@/types/business";
 import { getInitials } from "@/lib/utils";
 import { rating as fmtRating, num } from "@/lib/fmt";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { coverClassFor } from "@/lib/category-cover";
 
 /**
  * Cover photos crop rather than letterbox. The previous build scaled
  * the logo to fill the banner and blurred a copy behind it, which is
- * why every business page showed a smeared wordmark — a business
- * without a real cover now gets a clean tinted band instead.
+ * why every business page showed a smeared wordmark. A business with
+ * no cover now gets the wallpaper for its trade instead.
  */
-const COVERS = ["photo-warm", "photo-cool", "photo-green", "photo-stone"];
-
-function coverFor(slug: string): string {
-  let h = 0;
-  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) >>> 0;
-  return COVERS[h % COVERS.length];
-}
 
 /** A logo stored in the cover slot is not a cover; treat it as absent. */
 function hasRealCover(b: Business): boolean {
@@ -42,7 +36,7 @@ export default function CompanyHero({ business }: { business: Business }) {
         ) : (
           <div
             aria-hidden="true"
-            className={`h-[clamp(11rem,26vw,19rem)] w-full ${coverFor(business.slug)}`}
+            className={`h-[clamp(11rem,26vw,19rem)] w-full ${coverClassFor(business.categorySlug)}`}
           />
         )}
 

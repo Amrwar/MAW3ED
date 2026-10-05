@@ -126,8 +126,7 @@ export default async function CompanyPage({ params }: Params) {
     address:      dbBusiness.address ?? undefined,
     phone:        dbBusiness.phone ?? undefined,
     whatsapp:     dbBusiness.whatsapp ?? undefined,
-    coverImage:   dbBusiness.coverImage ??
-      "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&q=80",
+    coverImage:   dbBusiness.coverImage ?? undefined,
     logoImage:    dbBusiness.logoImage ?? undefined,
     isVerified:   dbBusiness.isVerified,
     isOpen:       isOpenNow(dbBusiness.availability),

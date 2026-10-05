@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { coverClassFor } from "@/lib/category-cover";
 
 type Category = {
   id:       string;
@@ -39,13 +40,6 @@ function metaFor(slug: string, lang: "ar" | "en", idx: number) {
   return lang === "ar" ? `${n} مقدم خدمة` : `${n} providers`;
 }
 
-/**
- * Cover treatments cycle so adjacent tiles never repeat. Each one is
- * replaced by the category's real photograph once uploaded — the
- * markup and aspect ratio stay the same.
- */
-const COVERS = ["photo-warm", "photo-cool", "photo-green", "photo-stone"];
-
 export default function CategoriesSection({ categories }: Props) {
   const { t, lang } = useLanguage();
   const c = t.categories;
@@ -81,7 +75,7 @@ export default function CategoriesSection({ categories }: Props) {
                   <span
                     role="img"
                     aria-label={name}
-                    className={`block h-[8.5rem] ${COVERS[i % COVERS.length]}`}
+                    className={`block h-[8.5rem] ${coverClassFor(cat.slug)}`}
                   />
                   <span className="block px-5 pb-5 pt-4">
                     <span className="block truncate text-base font-bold text-[var(--color-ink)]">
