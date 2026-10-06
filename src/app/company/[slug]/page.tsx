@@ -97,6 +97,7 @@ export default async function CompanyPage({ params }: Params) {
       city:         true,
       neighborhood: true,
       services:     { where: { isAvailable: true }, orderBy: { sortOrder: "asc" } },
+      branches:     { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
       availability: { orderBy: { dayOfWeek: "asc" } },
       images:       { orderBy: { sortOrder: "asc" } },
     },
@@ -351,6 +352,9 @@ export default async function CompanyPage({ params }: Params) {
               : null
           }
           nextSlot={nextSlot}
+          branches={dbBusiness.branches.map((b) => ({ id: b.id, nameAr: b.nameAr, address: b.address }))}
+          depositEnabled={dbBusiness.depositEnabled}
+          depositPercent={dbBusiness.depositPercent}
         />
       </main>
 

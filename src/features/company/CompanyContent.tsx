@@ -51,6 +51,9 @@ interface Props {
   reviewsMatched:    number;
   neighborhoodName:  string | null;
   nextSlot:          { dayOffset: number; time: string } | null;
+  branches:          { id: string; nameAr: string; address: string | null }[];
+  depositEnabled:    boolean;
+  depositPercent:    number;
 }
 
 export default function CompanyContent({
@@ -69,6 +72,9 @@ export default function CompanyContent({
   reviewsMatched,
   neighborhoodName,
   nextSlot,
+  branches,
+  depositEnabled,
+  depositPercent,
 }: Props) {
   const { t, lang } = useLanguage();
   const [preselected, setPreselected] = useState<Service | null>(null);
@@ -175,6 +181,9 @@ export default function CompanyContent({
                 businessType={businessType}
                 tables={tables}
                 staffMembers={staffMembers}
+                branches={branches}
+                depositEnabled={depositEnabled}
+                depositPercent={depositPercent}
               />
             </div>
 

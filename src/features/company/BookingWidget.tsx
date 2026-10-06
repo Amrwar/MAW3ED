@@ -22,22 +22,50 @@ interface BookingWidgetProps {
   businessType:        "GENERAL" | "RESTAURANT" | "BARBERSHOP";
   tables:              PublicTable[];
   staffMembers:        PublicStaff[];
+  /** Locations. Most businesses have none, and the step is skipped. */
+  branches?:           PublicBranch[];
+  /** Only for the summary's preview; the server decides what is owed. */
+  depositEnabled?:     boolean;
+  depositPercent?:     number;
 }
 
-type BookingConfirmation = {
-  id:           string;
-  accessToken:  string | null;
-  businessName: string;
-  serviceName:  string;
-  date:         string;
-  startTime:    string;
-  endTime:      string;
-  customerName: string;
-  totalPrice:   number;
-  currency:     string;
+export type PublicBranch = {
+  id:      string;
+  nameAr:  string;
+  address: string | null;
 };
 
-type Step = "service" | "resource" | "datetime" | "details" | "done";
+type BookingConfirmation = {
+  id:            string;
+  reference:     string | null;
+  accessToken:   string | null;
+  businessName:  string;
+  serviceName:   string;
+  date:          string;
+  startTime:     string;
+  endTime:       string;
+  customerName:  string;
+  totalPrice:    number;
+  depositAmount: number | null;
+  currency:      string;
+};
+
+/**
+ * The eight steps, in the order a person answers them. `resource` is
+ * the barber or the table; `branch` only appears when the business
+ * keeps more than one location. Steps that do not apply are left out of
+ * the list entirely rather than skipped through, so the stepper never
+ * counts to a number nobody will reach.
+ */
+type Step =
+  | "service"
+  | "resource"
+  | "branch"
+  | "date"
+  | "time"
+  | "details"
+  | "summary"
+  | "done";
 
 // ─── Constants ────────────────────────────────────────────
 
@@ -52,34 +80,106 @@ const AR_MONTHS = [
 
 // ─── Helpers ──────────────────────────────────────────────
 
-function toLocalISO(d: Date): string {
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, "0"),
-    String(d.getDate()).padStart(2, "0"),
-  ].join("-");
+/**
+ * A key that survives a retry of the same submission but not a fresh
+ * run through the form. crypto.randomUUID where it exists; some older
+ * in-app browsers on Android do not have it.
+ */
+function newIdempotencyKey(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `mwd-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
+/** What the server said about an empty day, in words. */
+function emptyDayMessage(reason: string | null): string {
+  switch (reason) {
+    case "business-closed": return "المكان مقفول في اليوم ده";
+    case "staff-off":       return "مقدّم الخدمة ده مش متاح في اليوم ده";
+    case "holiday":         return "أجازة رسمية";
+    case "vacation":        return "مقدّم الخدمة في أجازة";
+    case "same-day-cutoff": return "قفل الحجز لليوم";
+    case "too-far-ahead":   return "الحجز مش مفتوح للتاريخ ده لسه";
+    case "past":            return "اليوم ده عدّى";
+    default:                return "لا توجد مواعيد متاحة";
+  }
+}
+
+/** Back and next, which four of the steps render identically. */
+function StepButtons({
+  onBack,
+  onNext,
+  nextEnabled,
+  nextLabel = "التالي",
+}: {
+  onBack: () => void;
+  onNext: () => void;
+  nextEnabled: boolean;
+  nextLabel?: string;
+}) {
+  return (
+    <div className="flex gap-2 mt-5">
+      <button
+        onClick={onBack}
+        className="flex-1 py-3.5 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-muted)] font-bold text-sm flex items-center justify-center gap-1 transition-all"
+      >
+        <ChevronRight size={15} aria-hidden="true" /> رجوع
+      </button>
+      <button
+        disabled={!nextEnabled}
+        onClick={onNext}
+        className={`flex-1 py-3.5 rounded-[var(--radius-lg)] font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+          nextEnabled
+            ? "bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)] text-[var(--color-inverse)]"
+            : "bg-[var(--color-surface-3)] text-[var(--color-faint)] cursor-not-allowed"
+        }`}
+      >
+        {nextLabel} <span className="text-base leading-none" aria-hidden="true">←</span>
+      </button>
+    </div>
+  );
+}
+
+
+/**
+ * The next `count` days, counted from today in Cairo.
+ *
+ * Deliberately not the browser's today. A customer in London at 23:00
+ * is already on tomorrow in Cairo, and the strip used to offer them a
+ * day the server then refused as past — the kind of bug that looks like
+ * the site is broken rather than like a timezone.
+ */
 function getUpcomingDays(count: number) {
-  const base = new Date();
-  base.setHours(0, 0, 0, 0);
+  const todayCairo = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+  const [y, m, d] = todayCairo.split("-").map(Number);
+  const base = Date.UTC(y, m - 1, d);
+
   return Array.from({ length: count }, (_, i) => {
-    const d = new Date(base);
-    d.setDate(base.getDate() + i);
+    // UTC arithmetic on a date with no time component: no hour can
+    // shift it onto the wrong day.
+    const day = new Date(base + i * 86_400_000);
     return {
-      iso:     toLocalISO(d),
-      dayAr:   AR_DAYS[d.getDay()],
-      dayNum:  d.getDate(),
-      monthAr: AR_MONTHS[d.getMonth()],
-      dow:     d.getDay(),
+      iso:     day.toISOString().slice(0, 10),
+      dayAr:   AR_DAYS[day.getUTCDay()],
+      dayNum:  day.getUTCDate(),
+      monthAr: AR_MONTHS[day.getUTCMonth()],
+      dow:     day.getUTCDay(),
     };
   });
 }
 
 function formatDateAr(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
-  const date = new Date(y, m - 1, d, 12);
-  return `${AR_DAYS[date.getDay()]}، ${d} ${AR_MONTHS[m - 1]} ${y}`;
+  // UTC, to match how the strip above builds its days.
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return `${AR_DAYS[date.getUTCDay()]}، ${d} ${AR_MONTHS[m - 1]} ${y}`;
 }
 
 // ─── Sub-components ───────────────────────────────────────
@@ -128,19 +228,33 @@ export default function BookingWidget({
   businessType,
   tables,
   staffMembers,
+  branches = [],
+  depositEnabled = false,
+  depositPercent = 0,
 }: BookingWidgetProps) {
   const { t, lang } = useLanguage();
-  const hasResource = businessType === "RESTAURANT" || businessType === "BARBERSHOP";
+  const hasResource =
+    (businessType === "RESTAURANT" && tables.length > 0) ||
+    (businessType === "BARBERSHOP" && staffMembers.length > 0);
+  const hasBranches = branches.length > 1;
 
-  // Steps
-  const ALL_STEPS: Step[] = hasResource
-    ? ["service", "resource", "datetime", "details"]
-    : ["service", "datetime", "details"];
+  const ALL_STEPS: Step[] = [
+    "service",
+    ...(hasResource ? (["resource"] as Step[]) : []),
+    ...(hasBranches ? (["branch"] as Step[]) : []),
+    "date",
+    "time",
+    "details",
+    "summary",
+  ];
 
   const stepLabel = (s: Step): string => {
     if (s === "service")  return "الخدمة";
     if (s === "resource") return businessType === "RESTAURANT" ? "الطاولة" : "الحلاق";
-    if (s === "datetime") return "الموعد";
+    if (s === "branch")   return "الفرع";
+    if (s === "date")     return "اليوم";
+    if (s === "time")     return "الوقت";
+    if (s === "summary")  return "المراجعة";
     return "بياناتك";
   };
 
@@ -163,8 +277,20 @@ export default function BookingWidget({
   const [selectedStaff,   setSelectedStaff]   = useState<PublicStaff | null>(null);
   const [partySize,       setPartySize]        = useState(2);
 
+  const [selectedBranch, setSelectedBranch] = useState<PublicBranch | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  /**
+   * One key per attempt at this booking, minted when the summary is
+   * reached. A double-tap, a retry after a dropped connection or a
+   * browser replay all carry the same key and return the same booking
+   * rather than making a second one.
+   */
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
+
+  /** Why the server says the chosen day is empty, when it says so. */
+  const [slotsReason, setSlotsReason] = useState<string | null>(null);
 
   const [name,   setName]   = useState("");
   const [phone,  setPhone]  = useState("");
@@ -191,8 +317,8 @@ export default function BookingWidget({
     setSelectedDate(null);
     setSelectedTime(null);
     setSlots([]);
-    setStep(hasResource ? "resource" : "datetime");
-  }, [preselectedService, hasResource]);
+    setStep(hasResource ? "resource" : hasBranches ? "branch" : "date");
+  }, [preselectedService, hasResource, hasBranches]);
 
   // Fetch available slots when date / service / resource changes
   useEffect(() => {
@@ -206,14 +332,19 @@ export default function BookingWidget({
       serviceId: selectedService.id,
       date:      selectedDate,
     });
-    if (selectedStaff) params.set("staffMemberId", selectedStaff.id);
-    if (selectedTable) params.set("tableId",       selectedTable.id);
+    if (selectedStaff)  params.set("staffMemberId", selectedStaff.id);
+    if (selectedTable)  params.set("tableId",       selectedTable.id);
+    if (selectedBranch) params.set("branchId",      selectedBranch.id);
 
     fetch(`/api/public/${slug}/slots?${params}`)
       .then((r) => r.json())
-      .then((data) => { setSlots(data.slots ?? []); setSlotsLoading(false); })
+      .then((data) => {
+        setSlots(data.slots ?? []);
+        setSlotsReason(data.reason ?? null);
+        setSlotsLoading(false);
+      })
       .catch(() => { setSlotsError("تعذّر تحميل المواعيد، حاول مرة أخرى"); setSlotsLoading(false); });
-  }, [selectedDate, selectedService, selectedStaff, selectedTable, slug]);
+  }, [selectedDate, selectedService, selectedStaff, selectedTable, selectedBranch, slug]);
 
   function validate(): boolean {
     const errs: typeof errors = {};
@@ -235,6 +366,11 @@ export default function BookingWidget({
     setSubmitting(true);
     setSubmitError(null);
 
+    // Reuse the key across retries of this same attempt; only a fresh
+    // run through the form mints a new one.
+    const key = idempotencyKey ?? newIdempotencyKey();
+    if (!idempotencyKey) setIdempotencyKey(key);
+
     try {
       const res = await fetch(`/api/public/${slug}/bookings`, {
         method:  "POST",
@@ -249,7 +385,9 @@ export default function BookingWidget({
           notes:         notes.trim() || undefined,
           tableId:       selectedTable?.id,
           staffMemberId: selectedStaff?.id,
+          branchId:      selectedBranch?.id,
           partySize:     businessType === "RESTAURANT" ? partySize : undefined,
+          idempotencyKey: key,
         }),
       });
 
@@ -278,8 +416,11 @@ export default function BookingWidget({
     setSelectedService(null);
     setSelectedTable(null);
     setSelectedStaff(null);
+    setSelectedBranch(null);
     setSelectedDate(null);
     setSelectedTime(null);
+    setIdempotencyKey(null);
+    setSlotsReason(null);
     setName(""); setPhone(""); setEmail(""); setNotes("");
     setErrors({});
     setSlots([]);
@@ -289,6 +430,18 @@ export default function BookingWidget({
   }
 
   // ── Derived ─────────────────────────────────────────────
+  /**
+   * What the customer pays now, or null when nothing is due up front.
+   *
+   * The server decides this for real — it checks the plan as well as
+   * the switch — so this is a preview, and it stays null unless the
+   * business both takes deposits and has a price to take one from.
+   */
+  const depositDue =
+    depositEnabled && depositPercent > 0 && selectedService && selectedService.price > 0
+      ? Math.round((selectedService.price * depositPercent) / 100)
+      : null;
+
   // For barbershop: filter staff to those who offer the selected service
   const availableStaff = selectedService
     ? staffMembers.filter(
@@ -613,7 +766,43 @@ export default function BookingWidget({
         )}
 
         {/* ═══ STEP: datetime ═══ */}
-        {step === "datetime" && (
+        {/* ═══ STEP: branch ═══ */}
+        {step === "branch" && (
+          <div>
+            <SectionTitle>اختر الفرع</SectionTitle>
+            <div className="flex flex-col gap-2">
+              {branches.map((b) => {
+                const selected = selectedBranch?.id === b.id;
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => setSelectedBranch(b)}
+                    aria-pressed={selected}
+                    className={`w-full text-start rounded-[var(--radius-lg)] border-2 px-4 py-3 transition-all ${
+                      selected
+                        ? "border-[var(--color-jade)] bg-[var(--color-jade-soft)]"
+                        : "border-[var(--color-line-2)] hover:border-[var(--color-jade)]/50"
+                    }`}
+                  >
+                    <p className="text-sm font-bold text-[var(--color-ink)]">{b.nameAr}</p>
+                    {b.address && (
+                      <p className="mt-0.5 text-xs text-[var(--color-subtle)]">{b.address}</p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <StepButtons
+              onBack={goBack}
+              onNext={goNext}
+              nextEnabled={!!selectedBranch}
+            />
+          </div>
+        )}
+
+        {/* ═══ STEP: date ═══ */}
+        {step === "date" && (
           <div>
             <SectionTitle>اختر اليوم</SectionTitle>
 
@@ -630,11 +819,12 @@ export default function BookingWidget({
                     key={d.iso}
                     disabled={disabled}
                     onClick={() => setSelectedDate(d.iso)}
-                    className={`flex flex-col items-center py-2.5 px-2.5 rounded-[var(--radius-md)] text-xs shrink-0 min-w-[44px] transition-all ${
+                    aria-pressed={selected}
+                    className={`flex flex-col items-center py-2.5 px-2.5 rounded-[var(--radius-md)] text-xs shrink-0 min-w-[46px] transition-all ${
                       disabled
                         ? "opacity-30 cursor-not-allowed bg-[var(--color-surface-3)] text-[var(--color-faint)]"
                         : selected
-                        ? "bg-[var(--color-jade)] text-white"
+                        ? "bg-[var(--color-jade)] text-[var(--color-inverse)]"
                         : "bg-[var(--color-surface-3)] hover:bg-[var(--color-line)] text-[var(--color-ink-2)]"
                     }`}
                   >
@@ -646,68 +836,65 @@ export default function BookingWidget({
               })}
             </div>
 
-            {selectedDate ? (
-              <div className="mt-5">
-                <SectionTitle>اختر الوقت</SectionTitle>
-
-                {slotsLoading && (
-                  <div className="flex items-center justify-center py-8 gap-2">
-                    <Loader2 size={20} className="animate-spin text-[var(--color-jade)]" />
-                    <span className="text-sm text-[var(--color-faint)]">جارٍ التحميل…</span>
-                  </div>
-                )}
-                {!slotsLoading && slotsError && (
-                  <p className="text-sm text-[var(--color-danger)] text-center py-4">{slotsError}</p>
-                )}
-                {!slotsLoading && !slotsError && slots.length === 0 && (
-                  <div className="text-center py-6">
-                    <CalendarDays size={28} className="mx-auto text-[var(--color-faint)] mb-2" />
-                    <p className="text-sm text-[var(--color-faint)]">لا توجد مواعيد متاحة</p>
-                    <p className="text-xs text-[var(--color-faint)] mt-1">اختر يومًا آخر</p>
-                  </div>
-                )}
-                {!slotsLoading && !slotsError && slots.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2">
-                    {slots.map((slot) => (
-                      <button
-                        key={slot}
-                        dir="ltr"
-                        onClick={() => setSelectedTime(slot)}
-                        className={`py-2.5 rounded-[var(--radius-md)] text-xs font-semibold border-2 transition-all ${
-                          selectedTime === slot
-                            ? "bg-[var(--color-jade)] text-white border-[var(--color-jade)]"
-                            : "bg-white border-[var(--color-line-2)] hover:border-[var(--color-jade)]/50 text-[var(--color-ink-2)]"
-                        }`}
-                      >
-                        {slot}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-[var(--color-faint)] mt-4 text-center">اختر يومًا لعرض المواعيد المتاحة</p>
+            {!selectedDate && (
+              <p className="text-xs text-[var(--color-faint)] mt-4 text-center">
+                اختر يومًا للمتابعة
+              </p>
             )}
 
-            <div className="flex gap-2 mt-5">
-              <button
-                onClick={goBack}
-                className="flex-1 py-3.5 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-muted)] font-bold text-sm flex items-center justify-center gap-1 hover:border-[var(--color-line-2)] transition-all"
-              >
-                <ChevronRight size={15} /> رجوع
-              </button>
-              <button
-                disabled={!selectedDate || !selectedTime}
-                onClick={goNext}
-                className={`flex-1 py-3.5 rounded-[var(--radius-lg)] text-white font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                  selectedDate && selectedTime
-                    ? "bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)]"
-                    : "bg-[var(--color-surface-3)] text-[var(--color-faint)] cursor-not-allowed"
-                }`}
-              >
-                التالي <span className="text-base leading-none">←</span>
-              </button>
-            </div>
+            <StepButtons onBack={goBack} onNext={goNext} nextEnabled={!!selectedDate} />
+          </div>
+        )}
+
+        {/* ═══ STEP: time ═══ */}
+        {step === "time" && (
+          <div>
+            <SectionTitle>
+              اختر الوقت{selectedDate ? ` — ${formatDateAr(selectedDate)}` : ""}
+            </SectionTitle>
+
+            {slotsLoading && (
+              <div className="flex items-center justify-center py-8 gap-2">
+                <Loader2 size={20} className="animate-spin text-[var(--color-jade)]" />
+                <span className="text-sm text-[var(--color-faint)]">جارٍ التحميل…</span>
+              </div>
+            )}
+
+            {!slotsLoading && slotsError && (
+              <p className="text-sm text-[var(--color-danger)] text-center py-4">{slotsError}</p>
+            )}
+
+            {!slotsLoading && !slotsError && slots.length === 0 && (
+              <div className="text-center py-6">
+                <CalendarDays size={28} className="mx-auto text-[var(--color-faint)] mb-2" />
+                {/* The server says why the day is empty rather than
+                    leaving a blank grid to be puzzled over. */}
+                <p className="text-sm text-[var(--color-faint)]">{emptyDayMessage(slotsReason)}</p>
+                <p className="text-xs text-[var(--color-faint)] mt-1">اختر يومًا آخر</p>
+              </div>
+            )}
+
+            {!slotsLoading && !slotsError && slots.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {slots.map((slot) => (
+                  <button
+                    key={slot}
+                    dir="ltr"
+                    onClick={() => setSelectedTime(slot)}
+                    aria-pressed={selectedTime === slot}
+                    className={`py-2.5 rounded-[var(--radius-md)] text-xs font-semibold border-2 transition-all ${
+                      selectedTime === slot
+                        ? "bg-[var(--color-jade)] text-[var(--color-inverse)] border-[var(--color-jade)]"
+                        : "bg-[var(--color-surface)] border-[var(--color-line-2)] hover:border-[var(--color-jade)]/50 text-[var(--color-ink-2)]"
+                    }`}
+                  >
+                    {slot}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <StepButtons onBack={goBack} onNext={goNext} nextEnabled={!!selectedTime} />
           </div>
         )}
 
@@ -793,20 +980,91 @@ export default function BookingWidget({
               </div>
             )}
 
+            <StepButtons
+              onBack={goBack}
+              onNext={() => { if (validate()) goNext(); }}
+              nextEnabled
+              nextLabel="مراجعة الحجز"
+            />
+          </div>
+        )}
+
+        {/* ═══ STEP: summary ═══ */}
+        {step === "summary" && selectedService && (
+          <div>
+            <SectionTitle>راجع التفاصيل قبل التأكيد</SectionTitle>
+
+            <div
+              className="rounded-[var(--radius-lg)] px-4 py-3.5 space-y-2"
+              style={{ background: "var(--color-jade-tint)", border: "1px solid var(--color-jade-line)" }}
+            >
+              <SummaryRow label="المكان" value={businessName} />
+              {selectedBranch && <SummaryRow label="الفرع" value={selectedBranch.nameAr} />}
+              <SummaryRow
+                label={businessType === "RESTAURANT" ? "الجلسة" : "الخدمة"}
+                value={selectedService.nameAr}
+              />
+              {selectedStaff && <SummaryRow label="مقدّم الخدمة" value={selectedStaff.nameAr} />}
+              {selectedTable && <SummaryRow label="الطاولة" value={selectedTable.name} />}
+              {businessType === "RESTAURANT" && (
+                <SummaryRow label="عدد الأشخاص" value={`${partySize}`} />
+              )}
+              <SummaryRow label="التاريخ" value={selectedDate ? formatDateAr(selectedDate) : ""} />
+              <SummaryRow label="الوقت" value={selectedTime ?? ""} ltr />
+              <SummaryRow label="المدة" value={`${selectedService.duration} دقيقة`} />
+
+              <div className="pt-2.5 border-t border-[var(--color-jade-line)]">
+                <SummaryRow
+                  label="السعر"
+                  value={
+                    selectedService.price > 0
+                      ? money(selectedService.price, lang, selectedService.currency)
+                      : "السعر غير محدد"
+                  }
+                  bold
+                />
+                {/* Shown only where the business actually takes one. */}
+                {depositDue !== null && (
+                  <SummaryRow
+                    label="المقدّم المطلوب الآن"
+                    value={money(depositDue, lang, selectedService.currency)}
+                  />
+                )}
+              </div>
+
+              <SummaryRow label="الاسم" value={name.trim()} />
+              <SummaryRow label="الهاتف" value={phone.trim()} ltr />
+            </div>
+
+            {/* The policy, stated before they commit rather than after. */}
+            <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface-2)] px-4 py-3">
+              <p className="m-0 text-xs font-bold text-[var(--color-ink)]">سياسة الإلغاء</p>
+              <p className="m-0 mt-1.5 text-xs leading-relaxed text-[var(--color-subtle)]">
+                يمكنك تعديل أو إلغاء الحجز مجانًا حتى ساعتين قبل الموعد.
+                {depositDue !== null ? " المقدّم غير قابل للاسترداد بعد تأكيد الحجز." : ""}
+              </p>
+            </div>
+
+            {submitError && (
+              <div className="mt-4 bg-[var(--color-danger-soft)] border border-[var(--color-danger-line)] text-[var(--color-danger)] text-sm rounded-[var(--radius-md)] px-4 py-3 leading-relaxed">
+                {submitError}
+              </div>
+            )}
+
             <div className="flex gap-2 mt-5">
               <button
                 onClick={goBack}
                 disabled={submitting}
-                className="flex-1 py-3.5 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-muted)] font-bold text-sm flex items-center justify-center gap-1 hover:border-[var(--color-line-2)] transition-all disabled:opacity-50"
+                className="flex-1 py-3.5 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-muted)] font-bold text-sm flex items-center justify-center gap-1 transition-all disabled:opacity-50"
               >
                 <ChevronRight size={15} /> رجوع
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 py-3.5 rounded-[var(--radius-lg)] bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
+                className="flex-1 py-3.5 rounded-[var(--radius-lg)] bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)] text-[var(--color-inverse)] font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
               >
-                {submitting ? <><Loader2 size={14} className="animate-spin" /> جارٍ الحجز…</> : "تأكيد الحجز"}
+                {submitting ? <><Loader2 size={14} className="animate-spin" /> جارٍ الحجز…</> : depositDue !== null ? "تأكيد والدفع" : "تأكيد الحجز"}
               </button>
             </div>
           </div>
@@ -828,7 +1086,10 @@ export default function BookingWidget({
             <div className="text-start rounded-[var(--radius-lg)] p-4 space-y-3 mb-5" style={{ background: "rgba(14,127,94,0.06)", border: "1px solid rgba(14,127,94,0.14)" }}>
               <div className="flex items-center justify-between pb-3 border-b border-[rgba(14,127,94,0.14)]">
                 <p className="text-xs font-medium text-[var(--color-faint)]">رقم الحجز</p>
-                <p className="text-xs font-mono text-[var(--color-muted)]" dir="ltr">#{confirmation.id.slice(-8).toUpperCase()}</p>
+                {/* The reference, which is what support asks for. */}
+                <p className="num text-sm font-extrabold tracking-wide text-[var(--color-ink)]" dir="ltr">
+                  {confirmation.reference ?? confirmation.id.slice(-8).toUpperCase()}
+                </p>
               </div>
               <SummaryRow label="العميل"  value={confirmation.customerName} />
               <SummaryRow label="الخدمة"  value={confirmation.serviceName} />
@@ -839,21 +1100,31 @@ export default function BookingWidget({
               <div className="pt-3 border-t border-[rgba(14,127,94,0.14)]">
                 <SummaryRow
                   label="الإجمالي"
-                  value={`${confirmation.totalPrice.toLocaleString("ar-EG-u-nu-latn")} ${confirmation.currency}`}
+                  value={money(confirmation.totalPrice, lang, confirmation.currency)}
                   bold
                 />
               </div>
             </div>
 
             {confirmation.accessToken && (
-              <a
-                href={`/booking/${confirmation.accessToken}`}
-                target="_blank"
-                rel="noreferrer"
-                className="block w-full text-center py-3 rounded-[var(--radius-lg)] border-2 border-[var(--color-jade)] text-[var(--color-jade)] text-sm font-bold hover:bg-[var(--color-jade-soft)] transition-colors mb-3"
-              >
-                عرض تفاصيل الحجز
-              </a>
+              <>
+                <a
+                  href={`/api/public/booking/${confirmation.accessToken}/calendar`}
+                  download
+                  className="mb-3 flex w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] border-2 border-[var(--color-jade)] py-3 text-sm font-bold text-[var(--color-jade)] transition-colors hover:bg-[var(--color-jade-soft)]"
+                >
+                  <CalendarDays size={15} aria-hidden="true" />
+                  أضف الموعد للتقويم
+                </a>
+                <a
+                  href={`/booking/${confirmation.accessToken}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mb-3 block w-full rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] py-3 text-center text-sm font-bold text-[var(--color-muted)] transition-colors hover:border-[var(--color-jade)]"
+                >
+                  عرض تفاصيل الحجز
+                </a>
+              </>
             )}
 
             <button
