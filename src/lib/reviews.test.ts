@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { canReviewBooking, parseRatingFilter, parseReviewSort } from "./reviews";
+import { canReviewBooking, parseRatingFilter, parseReviewSort,
+  VISIBLE_STATUSES,
+  visibleWhere,
+} from "./reviews";
 
 describe("parseReviewSort", () => {
   it("accepts the four orderings the UI offers", () => {
@@ -66,5 +69,27 @@ describe("canReviewBooking", () => {
     expect(canReviewBooking({ status: "CANCELLED", review: { id: "r1" } }).reason).toBe(
       "already-reviewed",
     );
+  });
+});
+
+describe("what counts as a review that exists", () => {
+  it("shows a published review and one that has been reported", () => {
+    // A reported review stays up. Hiding on accusation alone would make
+    // the report button a censorship button: anybody could silence any
+    // review by tapping it, and a business could silence its worst.
+    expect([...VISIBLE_STATUSES].sort()).toEqual(["PUBLISHED", "UNDER_REVIEW"]);
+  });
+
+  it("never shows a hidden or withdrawn one", () => {
+    const visible: string[] = [...VISIBLE_STATUSES];
+    expect(visible).not.toContain("HIDDEN");
+    expect(visible).not.toContain("REMOVED");
+  });
+
+  it("gives every reader the same filter", () => {
+    // The list, the count, the average and the distribution all build
+    // their query from this one object, which is what stops a page
+    // saying "127 reviews" above 126 of them.
+    expect(visibleWhere).toEqual({ status: { in: ["PUBLISHED", "UNDER_REVIEW"] } });
   });
 });

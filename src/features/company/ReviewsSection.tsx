@@ -8,6 +8,7 @@ import { REVIEW_SORTS, type PublicReview, type RatingSummary, type ReviewSort } 
 import { useLanguage } from "@/contexts/LanguageContext";
 import { num } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
+import ReviewActions from "./ReviewActions";
 
 interface Props {
   businessSlug: string;
@@ -270,6 +271,12 @@ function ReviewItem({ review }: { review: PublicReview }) {
           </span>
         )}
 
+        {/* Said plainly, because people vote on what they read and the
+            words may have changed since. */}
+        {review.editedAt && (
+          <span className="text-[0.6875rem] text-[var(--color-faint)]">{r.edited}</span>
+        )}
+
         <span className="num ms-auto text-[0.75rem] text-[var(--color-subtle)]">{when}</span>
       </div>
 
@@ -303,6 +310,26 @@ function ReviewItem({ review }: { review: PublicReview }) {
           {review.comment}
         </p>
       )}
+
+      {review.photos.length > 0 && (
+        <ul className="m-0 mt-3 flex list-none flex-wrap gap-2 p-0">
+          {review.photos.map((src) => (
+            <li key={src}>
+              <a href={src} target="_blank" rel="noopener noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt={r.reviewPhoto}
+                  loading="lazy"
+                  className="h-24 w-24 rounded-[var(--radius-md)] object-cover transition-opacity hover:opacity-85"
+                />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <ReviewActions review={review} labels={r} />
 
       {/* The owner's reply sits under the review, indented, and is
           labelled — never presented as another review. */}

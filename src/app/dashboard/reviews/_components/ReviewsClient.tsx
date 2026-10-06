@@ -1,6 +1,8 @@
 "use client";
 
-import { Star } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2, MessageSquare, Star, Trash2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { num } from "@/lib/fmt";
 import type { PublicReview, RatingSummary } from "@/lib/reviews";
@@ -123,16 +125,7 @@ export default function ReviewsClient({
               </p>
             )}
 
-            {r.response && (
-              <div className="mt-3 rounded-[var(--radius-md)] border-s-2 border-[var(--color-jade)] bg-[var(--color-surface-2)] p-3">
-                <p className="m-0 text-[0.6875rem] font-bold text-[var(--color-jade)]">
-                  {ar ? "ردّك" : "Your reply"}
-                </p>
-                <p className="m-0 mt-1 text-[0.8125rem] leading-relaxed text-[var(--color-ink-2)]">
-                  {r.response.text}
-                </p>
-              </div>
-            )}
+            <Reply review={r} ar={ar} />
           </li>
         ))}
       </ul>
@@ -144,6 +137,123 @@ export default function ReviewsClient({
             : `Showing the latest ${num(reviews.length, lang)} of ${num(total, lang)}`}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * The owner's public answer.
+ *
+ * A reply is the only remedy a review platform can honestly offer a
+ * business that disagrees: it never changes the rating and never hides
+ * anything. If they believe a review breaks the rules there is a report
+ * button on the public page, and a moderator decides — not them.
+ */
+function Reply({ review, ar }: { review: PublicReview; ar: boolean }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState(review.response?.text ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send(method: "PUT" | "DELETE") {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/business/reviews/${review.id}/response`, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: method === "PUT" ? JSON.stringify({ response: text.trim() }) : undefined,
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? (ar ? "تعذّر الحفظ" : "Could not save"));
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+    } catch {
+      setError(ar ? "تعذّر الاتصال" : "Could not connect");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (review.response && !open) {
+    return (
+      <div className="mt-3 rounded-[var(--radius-md)] border-s-2 border-[var(--color-jade)] bg-[var(--color-surface-2)] p-3">
+        <p className="m-0 text-[0.6875rem] font-bold text-[var(--color-jade)]">
+          {ar ? "ردّك" : "Your reply"}
+        </p>
+        <p className="m-0 mt-1 whitespace-pre-wrap text-[0.8125rem] leading-relaxed text-[var(--color-ink-2)]">
+          {review.response.text}
+        </p>
+        <div className="mt-2 flex gap-3">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="min-h-9 text-[0.75rem] font-bold text-[var(--color-jade)]"
+          >
+            {ar ? "تعديل" : "Edit"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void send("DELETE")}
+            disabled={busy}
+            className="inline-flex min-h-9 items-center gap-1 text-[0.75rem] text-[var(--color-danger)]"
+          >
+            <Trash2 size={11} aria-hidden="true" />
+            {ar ? "حذف الرد" : "Remove"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-3 inline-flex min-h-9 items-center gap-1.5 text-[0.75rem] font-bold text-[var(--color-jade)]"
+      >
+        <MessageSquare size={12} aria-hidden="true" />
+        {ar ? "ردّ على التقييم" : "Reply"}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3">
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={3}
+        maxLength={1000}
+        autoFocus
+        placeholder={
+          ar
+            ? "ردّك هيظهر تحت التقييم للناس كلها"
+            : "Your reply appears under the review, for everyone"
+        }
+        aria-label={ar ? "ردّك" : "Your reply"}
+        className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] p-3 text-[0.8125rem] leading-relaxed text-[var(--color-ink)] outline-none focus:border-[var(--color-jade)]"
+      />
+      {error && <p className="m-0 mt-1 text-[0.75rem] text-[var(--color-danger)]">{error}</p>}
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          onClick={() => void send("PUT")}
+          disabled={busy || !text.trim()}
+          className="btn btn-primary btn-sm"
+        >
+          {busy && <Loader2 size={13} className="animate-spin" aria-hidden="true" />}
+          {ar ? "انشر الرد" : "Publish reply"}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost btn-sm">
+          {ar ? "إلغاء" : "Cancel"}
+        </button>
+      </div>
     </div>
   );
 }
