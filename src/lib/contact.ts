@@ -34,3 +34,23 @@ export function whatsappHref(raw: string, countryCode = "20"): string {
 
   return `https://wa.me/${digits}`;
 }
+
+/**
+ * The platform's own support WhatsApp number, if it has one.
+ *
+ * The contact page offered a WhatsApp card reading "تواصل عبر واتساب"
+ * with no number behind it and no link on it — an invitation to get in
+ * touch that could not be acted on. There is no support number anywhere
+ * in the app: WHATSAPP_PHONE_NUMBER_ID is a Cloud API identifier for
+ * sending, not a number anyone can message.
+ *
+ * So it is configuration. Set it and the card appears with a working
+ * link; leave it unset and the card is not offered at all, which is
+ * honest about the fact that the channel does not exist yet.
+ *
+ * NEXT_PUBLIC_ because the contact page is a client component, and a
+ * published support number is not a secret.
+ */
+export const SUPPORT_WHATSAPP: string = (
+  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? ""
+).trim();
