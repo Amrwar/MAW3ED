@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { ResourceKind } from "./resource-labels";
 
 /**
  * What a business schedules on.
@@ -33,7 +34,7 @@ export interface SchedulingCapabilities {
    * The dominant resource kind, which only decides what the UI calls
    * them — "الطاولات" or "الغرف". Never affects scheduling.
    */
-  resourceKind: "TABLE" | "ROOM" | "CHAIR" | "EQUIPMENT" | "OTHER" | null;
+  resourceKind: ResourceKind | null;
 }
 
 export const NO_CAPABILITIES: SchedulingCapabilities = {
@@ -74,34 +75,13 @@ export async function getCapabilities(businessId: string): Promise<SchedulingCap
 /* ─── Labels ─────────────────────────────────────────────── */
 
 /**
- * What to call a resource on screen.
- *
- * The only thing the kind is used for. Scheduling treats every kind
- * identically — one booking at a time — which is the point of having
- * one model.
+ * Re-exported so existing callers keep working. They live in
+ * resource-labels.ts because client components need them and this
+ * module imports Prisma.
  */
-export const RESOURCE_KIND_LABELS: Record<
-  NonNullable<SchedulingCapabilities["resourceKind"]>,
-  { ar: string; arOne: string; en: string; enOne: string }
-> = {
-  TABLE: { ar: "الطاولات", arOne: "طاولة", en: "Tables", enOne: "Table" },
-  ROOM: { ar: "الغرف", arOne: "غرفة", en: "Rooms", enOne: "Room" },
-  CHAIR: { ar: "الكراسي", arOne: "كرسي", en: "Chairs", enOne: "Chair" },
-  EQUIPMENT: { ar: "الأجهزة", arOne: "جهاز", en: "Equipment", enOne: "Equipment" },
-  OTHER: { ar: "الموارد", arOne: "مورد", en: "Resources", enOne: "Resource" },
-};
-
-export function resourceLabel(
-  kind: SchedulingCapabilities["resourceKind"],
-  lang: "ar" | "en",
-  one = false,
-): string {
-  const entry = RESOURCE_KIND_LABELS[kind ?? "OTHER"];
-  if (lang === "ar") return one ? entry.arOne : entry.ar;
-  return one ? entry.enOne : entry.en;
-}
-
-/** What a business calls the person performing a service. */
-export function providerLabel(lang: "ar" | "en"): string {
-  return lang === "ar" ? "مقدّم الخدمة" : "Provider";
-}
+export {
+  RESOURCE_KIND_LABELS,
+  resourceLabel,
+  providerLabel,
+  chooseResourceLabel,
+} from "./resource-labels";

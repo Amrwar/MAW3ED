@@ -193,9 +193,13 @@ export async function createBooking(
               depositAmount: input.depositAmount,
               staffMemberId: input.staffMemberId ?? null,
               resourceId: input.resourceId ?? null,
-              // Kept in step with resourceId while anything still reads
-              // the deprecated column.
-              tableId: input.resourceId ?? null,
+              // Booking.tableId is deliberately not set. It has a foreign
+              // key to Table, a resource id is not a table id, and so
+              // mirroring one into the other fails the constraint the
+              // moment a business schedules anything that was not
+              // migrated from the old Table model. Nothing reads the
+              // column any more.
+
               branchId: input.branchId ?? null,
               partySize: input.partySize ?? null,
             },

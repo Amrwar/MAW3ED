@@ -109,14 +109,20 @@ export default async function CompanyPage({ params }: Params) {
   const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
   const t = translations[lang] ?? translations.ar;
 
-  const [tablesRaw, staffRaw, summary, reviewPage, bookings] = await Promise.all([
-    dbBusiness.businessType === "RESTAURANT"
-      ? db.table.findMany({
-          where:   { businessId: dbBusiness.id, isActive: true },
-          select:  { id: true, name: true, tableType: true, capacity: true, notes: true, photo: true },
-          orderBy: { createdAt: "asc" },
-        })
-      : Promise.resolve([]),
+  const [resourcesRaw, staffRaw, summary, reviewPage, bookings] = await Promise.all([
+    // Every business, not only restaurants: a clinic schedules rooms, a
+    // gym schedules equipment, a salon schedules chairs. What is offered
+    // follows from what the business has configured, never from its
+    // category — the same rule the dashboard and the availability engine
+    // already follow.
+    db.resource.findMany({
+      where:   { businessId: dbBusiness.id, isActive: true },
+      select:  {
+        id: true, name: true, kind: true, capacity: true,
+        area: true, notes: true, photo: true,
+      },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    }),
     db.staffMember.findMany({
       where:   { businessId: dbBusiness.id, isActive: true },
       select:  { id: true, nameAr: true, nameEn: true, role: true, photo: true, services: { select: { serviceId: true } } },
@@ -332,7 +338,7 @@ export default async function CompanyPage({ params }: Params) {
           slug={slug}
           similarBusinesses={similarBusinesses}
           businessType={dbBusiness.businessType as "GENERAL" | "RESTAURANT" | "BARBERSHOP"}
-          tables={tablesRaw}
+          resources={resourcesRaw}
           staffMembers={staffRaw.map((s) => ({
             id:         s.id,
             nameAr:     s.nameAr,

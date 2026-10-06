@@ -8,7 +8,7 @@ type Params = { params: Promise<{ slug: string }> };
 /**
  * GET /api/public/[slug]/slots?serviceId=&date=YYYY-MM-DD
  *
- * The times a customer may pick. Optional staffMemberId, tableId and
+ * The times a customer may pick. Optional staffMemberId, resourceId and
  * branchId narrow it to one resource.
  *
  * This endpoint and the one that creates a booking both call

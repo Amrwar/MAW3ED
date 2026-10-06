@@ -6,10 +6,14 @@ import {
   Loader2, CalendarDays, Clock, Check, Users, Scissors,
 } from "lucide-react";
 import type { Service } from "@/types/service";
-import type { PublicTable, PublicStaff } from "./CompanyContent";
+import type { PublicResource, PublicStaff } from "./CompanyContent";
 import { money, duration as fmtDuration } from "@/lib/fmt";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { TABLE_TYPE_LABELS } from "@/lib/business-type";
+import {
+  chooseResourceLabel,
+  providerLabel,
+  resourceLabel,
+} from "@/lib/scheduling/resource-labels";
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -20,7 +24,8 @@ interface BookingWidgetProps {
   openDays:            number[];
   preselectedService?: Service | null;
   businessType:        "GENERAL" | "RESTAURANT" | "BARBERSHOP";
-  tables:              PublicTable[];
+  /** Tables, rooms, chairs, machines — whatever an appointment holds. */
+  resources:           PublicResource[];
   staffMembers:        PublicStaff[];
   /** Locations. Most businesses have none, and the step is skipped. */
   branches?:           PublicBranch[];
@@ -51,14 +56,22 @@ type BookingConfirmation = {
 };
 
 /**
- * The eight steps, in the order a person answers them. `resource` is
- * the barber or the table; `branch` only appears when the business
- * keeps more than one location. Steps that do not apply are left out of
- * the list entirely rather than skipped through, so the stepper never
- * counts to a number nobody will reach.
+ * The steps, in the order a person answers them.
+ *
+ * `provider` and `resource` are independent dimensions, not two names
+ * for one choice: a salon may schedule both a stylist and a chair, a
+ * clinic a doctor and a room. Each appears when the business has
+ * something to offer in it, which is what the availability engine and
+ * the dashboard already do — a business that has configured neither is
+ * asked about neither.
+ *
+ * Steps that do not apply are left out of the list entirely rather than
+ * skipped through, so the stepper never counts to a number nobody will
+ * reach.
  */
 type Step =
   | "service"
+  | "provider"
   | "resource"
   | "branch"
   | "date"
@@ -226,22 +239,34 @@ export default function BookingWidget({
   openDays,
   preselectedService,
   businessType,
-  tables,
+  resources,
   staffMembers,
   branches = [],
   depositEnabled = false,
   depositPercent = 0,
 }: BookingWidgetProps) {
   const { t, lang } = useLanguage();
-  const hasResource =
-    (businessType === "RESTAURANT" && tables.length > 0) ||
-    (businessType === "BARBERSHOP" && staffMembers.length > 0);
-  const hasBranches = branches.length > 1;
+  // What this business schedules on, read off what it has rather than
+  // off what it is. Both, either or neither is a valid answer.
+  const hasStaff     = staffMembers.length > 0;
+  const hasResources = resources.length > 0;
+  const hasBranches  = branches.length > 1;
+
+  /** The kind decides only what a resource is called on screen. */
+  const resourceKind = resources[0]?.kind ?? null;
+
+  /**
+   * Party size is asked when a resource counts seats, not when the
+   * business is a restaurant. A clinic room that seats nobody is not
+   * asked about; a garden table for eight is.
+   */
+  const resourcesCountSeats = resources.some((r) => r.capacity != null);
 
   const ALL_STEPS: Step[] = [
     "service",
-    ...(hasResource ? (["resource"] as Step[]) : []),
-    ...(hasBranches ? (["branch"] as Step[]) : []),
+    ...(hasStaff     ? (["provider"] as Step[]) : []),
+    ...(hasResources ? (["resource"] as Step[]) : []),
+    ...(hasBranches  ? (["branch"]   as Step[]) : []),
     "date",
     "time",
     "details",
@@ -250,7 +275,8 @@ export default function BookingWidget({
 
   const stepLabel = (s: Step): string => {
     if (s === "service")  return "الخدمة";
-    if (s === "resource") return businessType === "RESTAURANT" ? "الطاولة" : "الحلاق";
+    if (s === "provider") return providerLabel(lang);
+    if (s === "resource") return resourceLabel(resourceKind, lang, true);
     if (s === "branch")   return "الفرع";
     if (s === "date")     return "اليوم";
     if (s === "time")     return "الوقت";
@@ -269,13 +295,12 @@ export default function BookingWidget({
     const idx = ALL_STEPS.indexOf(step);
     if (idx > 0) setStep(ALL_STEPS[idx - 1]);
   }
-  function goToStep(s: Step) { setStep(s); }
 
   // ── Selections ──────────────────────────────────────────
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [selectedTable,   setSelectedTable]   = useState<PublicTable | null>(null);
-  const [selectedStaff,   setSelectedStaff]   = useState<PublicStaff | null>(null);
-  const [partySize,       setPartySize]        = useState(2);
+  const [selectedService,  setSelectedService]  = useState<Service | null>(null);
+  const [selectedResource, setSelectedResource] = useState<PublicResource | null>(null);
+  const [selectedStaff,    setSelectedStaff]    = useState<PublicStaff | null>(null);
+  const [partySize,        setPartySize]        = useState(2);
 
   const [selectedBranch, setSelectedBranch] = useState<PublicBranch | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -312,13 +337,15 @@ export default function BookingWidget({
   useEffect(() => {
     if (!preselectedService) return;
     setSelectedService(preselectedService);
-    setSelectedTable(null);
+    setSelectedResource(null);
     setSelectedStaff(null);
     setSelectedDate(null);
     setSelectedTime(null);
     setSlots([]);
-    setStep(hasResource ? "resource" : hasBranches ? "branch" : "date");
-  }, [preselectedService, hasResource, hasBranches]);
+    setStep(
+      hasStaff ? "provider" : hasResources ? "resource" : hasBranches ? "branch" : "date",
+    );
+  }, [preselectedService, hasStaff, hasResources, hasBranches]);
 
   // Fetch available slots when date / service / resource changes
   useEffect(() => {
@@ -332,9 +359,12 @@ export default function BookingWidget({
       serviceId: selectedService.id,
       date:      selectedDate,
     });
-    if (selectedStaff)  params.set("staffMemberId", selectedStaff.id);
-    if (selectedTable)  params.set("tableId",       selectedTable.id);
-    if (selectedBranch) params.set("branchId",      selectedBranch.id);
+    if (selectedStaff)    params.set("staffMemberId", selectedStaff.id);
+    // resourceId, not tableId: the slots endpoint reads resourceId, so
+    // the old name meant the chosen table never narrowed availability
+    // and the customer was offered times it was already taken.
+    if (selectedResource) params.set("resourceId",    selectedResource.id);
+    if (selectedBranch)   params.set("branchId",      selectedBranch.id);
 
     fetch(`/api/public/${slug}/slots?${params}`)
       .then((r) => r.json())
@@ -344,7 +374,7 @@ export default function BookingWidget({
         setSlotsLoading(false);
       })
       .catch(() => { setSlotsError("تعذّر تحميل المواعيد، حاول مرة أخرى"); setSlotsLoading(false); });
-  }, [selectedDate, selectedService, selectedStaff, selectedTable, selectedBranch, slug]);
+  }, [selectedDate, selectedService, selectedStaff, selectedResource, selectedBranch, slug]);
 
   function validate(): boolean {
     const errs: typeof errors = {};
@@ -383,10 +413,10 @@ export default function BookingWidget({
           customerPhone: phone.trim(),
           customerEmail: email.trim() || undefined,
           notes:         notes.trim() || undefined,
-          tableId:       selectedTable?.id,
+          resourceId:    selectedResource?.id,
           staffMemberId: selectedStaff?.id,
           branchId:      selectedBranch?.id,
-          partySize:     businessType === "RESTAURANT" ? partySize : undefined,
+          partySize:     selectedResource?.capacity != null ? partySize : undefined,
           idempotencyKey: key,
         }),
       });
@@ -414,7 +444,7 @@ export default function BookingWidget({
   function reset() {
     setStep("service");
     setSelectedService(null);
-    setSelectedTable(null);
+    setSelectedResource(null);
     setSelectedStaff(null);
     setSelectedBranch(null);
     setSelectedDate(null);
@@ -537,7 +567,7 @@ export default function BookingWidget({
                           <Check size={13} strokeWidth={3} className="text-white" />
                         </span>
                       )}
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 pe-8">
                         <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-jade-soft)] flex items-center justify-center shrink-0">
                           {service.image
                             // eslint-disable-next-line @next/next/no-img-element
@@ -584,184 +614,194 @@ export default function BookingWidget({
           </div>
         )}
 
-        {/* ═══ STEP: resource (barber / table) ═══ */}
-        {step === "resource" && (
+        {/* ═══ STEP: provider ═══ */}
+        {step === "provider" && (
           <div>
-            {/* ── Barbershop: pick barber ── */}
-            {businessType === "BARBERSHOP" && (
-              <>
-                <SectionTitle>اختر الحلاق</SectionTitle>
+            <SectionTitle>اختر {providerLabel(lang)}</SectionTitle>
 
-                {availableStaff.length === 0 ? (
-                  <p className="text-sm text-[var(--color-faint)] text-center py-6">لا يوجد موظفون متاحون</p>
-                ) : (
-                  <div className="space-y-3">
-                    {/* "Any barber" option */}
+            {availableStaff.length === 0 ? (
+              <p className="text-sm text-[var(--color-faint)] text-center py-6">
+                لا يوجد {providerLabel(lang)} متاح للخدمة دي
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {/* Nobody in particular. The engine picks whoever is free. */}
+                <button
+                  onClick={() => setSelectedStaff(null)}
+                  className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
+                    selectedStaff === null
+                      ? "border-[var(--color-jade)] bg-[var(--color-jade-tint)]"
+                      : "border-[var(--color-line-2)] bg-white hover:border-[var(--color-jade)]/40"
+                  }`}
+                >
+                  {selectedStaff === null && (
+                    <span className="absolute top-3 end-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
+                      <Check size={13} strokeWidth={3} className="text-white" />
+                    </span>
+                  )}
+                  <div className="flex items-center gap-3 pe-8">
+                    <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-surface-3)] flex items-center justify-center shrink-0">
+                      <Scissors size={22} className="text-[var(--color-faint)]" />
+                    </div>
+                    <div>
+                      <p className="text-[15px] font-bold text-[var(--color-ink)]">
+                        أي {providerLabel(lang)} متاح
+                      </p>
+                      <p className="text-xs text-[var(--color-faint)] mt-0.5">
+                        سيتم تخصيص أقرب موعد
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                {availableStaff.map((staff) => {
+                  const selected = selectedStaff?.id === staff.id;
+                  return (
                     <button
-                      onClick={() => setSelectedStaff(null)}
+                      key={staff.id}
+                      onClick={() => setSelectedStaff(staff)}
                       className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
-                        selectedStaff === null
+                        selected
                           ? "border-[var(--color-jade)] bg-[var(--color-jade-tint)]"
                           : "border-[var(--color-line-2)] bg-white hover:border-[var(--color-jade)]/40"
                       }`}
                     >
-                      {selectedStaff === null && (
+                      {selected && (
                         <span className="absolute top-3 end-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
                           <Check size={13} strokeWidth={3} className="text-white" />
                         </span>
                       )}
                       <div className="flex items-center gap-3">
-                        <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-surface-3)] flex items-center justify-center shrink-0">
-                          <Scissors size={22} className="text-[var(--color-faint)]" />
+                        <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-jade-soft)] flex items-center justify-center shrink-0 overflow-hidden">
+                          {staff.photo
+                            // eslint-disable-next-line @next/next/no-img-element
+                            ? <img src={staff.photo} alt={staff.nameAr} className="w-full h-full object-cover" />
+                            : <span className="text-xl font-bold text-[var(--color-jade)]">{staff.nameAr.charAt(0)}</span>
+                          }
                         </div>
-                        <div>
-                          <p className="text-[15px] font-bold text-[var(--color-ink)]">أي حلاق متاح</p>
-                          <p className="text-xs text-[var(--color-faint)] mt-0.5">سيتم تخصيص أقرب موعد</p>
+                        <div className="min-w-0">
+                          <p className="text-[15px] font-bold text-[var(--color-ink)]">{staff.nameAr}</p>
+                          {staff.role && (
+                            <p className="text-xs text-[var(--color-faint)] mt-0.5">{staff.role}</p>
+                          )}
                         </div>
                       </div>
                     </button>
-
-                    {availableStaff.map((staff) => {
-                      const selected = selectedStaff?.id === staff.id;
-                      return (
-                        <button
-                          key={staff.id}
-                          onClick={() => setSelectedStaff(staff)}
-                          className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
-                            selected
-                              ? "border-[var(--color-jade)] bg-[var(--color-jade-tint)]"
-                              : "border-[var(--color-line-2)] bg-white hover:border-[var(--color-jade)]/40"
-                          }`}
-                        >
-                          {selected && (
-                            <span className="absolute top-3 end-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
-                              <Check size={13} strokeWidth={3} className="text-white" />
-                            </span>
-                          )}
-                          <div className="flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-jade-soft)] flex items-center justify-center shrink-0 overflow-hidden">
-                              {staff.photo
-                                // eslint-disable-next-line @next/next/no-img-element
-                                ? <img src={staff.photo} alt={staff.nameAr} className="w-full h-full object-cover" />
-                                : <span className="text-xl font-bold text-[var(--color-jade)]">{staff.nameAr.charAt(0)}</span>
-                              }
-                            </div>
-                            <div>
-                              <p className="text-[15px] font-bold text-[var(--color-ink)]">{staff.nameAr}</p>
-                              {staff.role && <p className="text-xs text-[var(--color-faint)] mt-0.5">{staff.role}</p>}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
+                  );
+                })}
+              </div>
             )}
 
-            {/* ── Restaurant: pick table ── */}
-            {businessType === "RESTAURANT" && (
-              <>
-                <SectionTitle>اختر الطاولة</SectionTitle>
+            <StepButtons onBack={goBack} onNext={goNext} nextEnabled />
+          </div>
+        )}
 
-                {/* Party size */}
-                <div className="mb-4 flex items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-line-2)] px-4 py-3 bg-[var(--color-surface-2)]">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink-2)]">
-                    <Users size={15} className="text-[var(--color-jade)]" />
-                    عدد الأشخاص
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setPartySize((n) => Math.max(1, n - 1))}
-                      className="w-7 h-7 rounded-full bg-white border border-[var(--color-line-2)] text-[var(--color-muted)] font-bold flex items-center justify-center hover:border-[var(--color-jade)] transition-all text-lg leading-none"
-                    >−</button>
-                    <span className="text-base font-extrabold text-[var(--color-ink)] w-5 text-center">{partySize}</span>
-                    <button
-                      type="button"
-                      onClick={() => setPartySize((n) => Math.min(50, n + 1))}
-                      className="w-7 h-7 rounded-full bg-white border border-[var(--color-line-2)] text-[var(--color-muted)] font-bold flex items-center justify-center hover:border-[var(--color-jade)] transition-all text-lg leading-none"
-                    >+</button>
-                  </div>
+        {/* ═══ STEP: resource ═══ */}
+        {step === "resource" && (
+          <div>
+            <SectionTitle>{chooseResourceLabel(resourceKind, lang)}</SectionTitle>
+
+            {/* Asked only when a resource counts seats. */}
+            {resourcesCountSeats && (
+              <div className="mb-4 flex items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-line-2)] px-4 py-3 bg-[var(--color-surface-2)]">
+                <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink-2)]">
+                  <Users size={15} className="text-[var(--color-jade)]" />
+                  عدد الأشخاص
                 </div>
-
-                {tables.length === 0 ? (
-                  <p className="text-sm text-[var(--color-faint)] text-center py-6">لا توجد طاولات متاحة حاليًا</p>
-                ) : (
-                  <div className="space-y-3">
-                    {tables.map((table) => {
-                      const selected    = selectedTable?.id === table.id;
-                      const typeLabel   = TABLE_TYPE_LABELS[table.tableType]?.ar ?? table.tableType;
-                      const tooSmall    = partySize > table.capacity;
-                      return (
-                        <button
-                          key={table.id}
-                          onClick={() => !tooSmall && setSelectedTable(table)}
-                          disabled={tooSmall}
-                          className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
-                            tooSmall
-                              ? "opacity-40 cursor-not-allowed border-[var(--color-line-2)]"
-                              : selected
-                              ? "border-[var(--color-jade)] bg-[var(--color-jade-tint)]"
-                              : "border-[var(--color-line-2)] bg-white hover:border-[var(--color-jade)]/40"
-                          }`}
-                        >
-                          {selected && (
-                            <span className="absolute top-3 end-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
-                              <Check size={13} strokeWidth={3} className="text-white" />
-                            </span>
-                          )}
-                          <div className="flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-warn-soft)] flex items-center justify-center shrink-0 overflow-hidden">
-                              {table.photo
-                                // eslint-disable-next-line @next/next/no-img-element
-                                ? <img src={table.photo} alt={table.name} className="w-full h-full object-cover" />
-                                : <span className="text-2xl">🪑</span>
-                              }
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[15px] font-bold text-[var(--color-ink)]">{table.name}</p>
-                              <p className="text-xs text-[var(--color-faint)] mt-0.5">{typeLabel}</p>
-                            </div>
-                            <div className="text-end shrink-0">
-                              <p className="text-sm font-extrabold text-[var(--color-ink)] flex items-center gap-1">
-                                <Users size={12} /> {table.capacity}
-                              </p>
-                              {tooSmall && (
-                                <p className="text-[10px] text-[var(--color-danger)] mt-0.5">صغيرة</p>
-                              )}
-                            </div>
-                          </div>
-                          {table.notes && (
-                            <p className="text-xs text-[var(--color-faint)] mt-2 pe-2">{table.notes}</p>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    aria-label="أقل"
+                    onClick={() => setPartySize((n) => Math.max(1, n - 1))}
+                    className="w-9 h-9 rounded-full bg-white border border-[var(--color-line-2)] text-[var(--color-muted)] font-bold flex items-center justify-center hover:border-[var(--color-jade)] transition-all text-lg leading-none"
+                  >−</button>
+                  <span className="num text-base font-extrabold text-[var(--color-ink)] w-5 text-center">
+                    {partySize}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="أكثر"
+                    onClick={() => setPartySize((n) => Math.min(50, n + 1))}
+                    className="w-9 h-9 rounded-full bg-white border border-[var(--color-line-2)] text-[var(--color-muted)] font-bold flex items-center justify-center hover:border-[var(--color-jade)] transition-all text-lg leading-none"
+                  >+</button>
+                </div>
+              </div>
             )}
 
-            <div className="flex gap-2 mt-5">
-              <button
-                onClick={() => goToStep("service")}
-                className="flex-1 py-3.5 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-muted)] font-bold text-sm flex items-center justify-center gap-1 hover:border-[var(--color-line-2)] transition-all"
-              >
-                <ChevronRight size={15} /> رجوع
-              </button>
-              <button
-                disabled={businessType === "RESTAURANT" && !selectedTable}
-                onClick={goNext}
-                className={`flex-1 py-3.5 rounded-[var(--radius-lg)] text-white font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                  businessType === "RESTAURANT" && !selectedTable
-                    ? "bg-[var(--color-surface-3)] text-[var(--color-faint)] cursor-not-allowed"
-                    : "bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)]"
-                }`}
-              >
-                التالي <span className="text-base leading-none">←</span>
-              </button>
-            </div>
+            {resources.length === 0 ? (
+              <p className="text-sm text-[var(--color-faint)] text-center py-6">
+                لا توجد {resourceLabel(resourceKind, lang)} متاحة حاليًا
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {resources.map((resource) => {
+                  const selected = selectedResource?.id === resource.id;
+                  // Only a resource that counts seats can be too small.
+                  const tooSmall =
+                    resource.capacity != null && partySize > resource.capacity;
+                  return (
+                    <button
+                      key={resource.id}
+                      onClick={() => !tooSmall && setSelectedResource(resource)}
+                      disabled={tooSmall}
+                      className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
+                        tooSmall
+                          ? "opacity-40 cursor-not-allowed border-[var(--color-line-2)]"
+                          : selected
+                          ? "border-[var(--color-jade)] bg-[var(--color-jade-tint)]"
+                          : "border-[var(--color-line-2)] bg-white hover:border-[var(--color-jade)]/40"
+                      }`}
+                    >
+                      {selected && (
+                        <span className="absolute top-3 end-3 w-6 h-6 rounded-full bg-[var(--color-jade)] flex items-center justify-center">
+                          <Check size={13} strokeWidth={3} className="text-white" />
+                        </span>
+                      )}
+                      {/* pe-8 keeps the content clear of the tick in the
+                          corner; always, so selecting does not shift it. */}
+                      <div className="flex items-center gap-3 pe-8">
+                        <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-warn-soft)] flex items-center justify-center shrink-0 overflow-hidden">
+                          {resource.photo
+                            // eslint-disable-next-line @next/next/no-img-element
+                            ? <img src={resource.photo} alt={resource.name} className="w-full h-full object-cover" />
+                            : <span className="text-sm font-bold text-[var(--color-ink-2)]">
+                                {resourceLabel(resource.kind, lang, true)}
+                              </span>
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[15px] font-bold text-[var(--color-ink)]">{resource.name}</p>
+                          {resource.area && (
+                            <p className="text-xs text-[var(--color-faint)] mt-0.5">{resource.area}</p>
+                          )}
+                        </div>
+                        {resource.capacity != null && (
+                          <div className="text-end shrink-0">
+                            <p className="num text-sm font-extrabold text-[var(--color-ink)] flex items-center gap-1">
+                              <Users size={12} /> {resource.capacity}
+                            </p>
+                            {tooSmall && (
+                              <p className="text-[10px] text-[var(--color-danger)] mt-0.5">صغيرة</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {resource.notes && (
+                        <p className="text-xs text-[var(--color-faint)] mt-2 pe-2">{resource.notes}</p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/*
+              A choice is required. Availability is computed for the
+              resource that was picked, so letting somebody through
+              without one would offer times when every room is already
+              taken and fail at the last step instead of the first.
+            */}
+            <StepButtons onBack={goBack} onNext={goNext} nextEnabled={!!selectedResource} />
           </div>
         )}
 
@@ -904,11 +944,18 @@ export default function BookingWidget({
             {/* Mini summary */}
             <div className="rounded-[var(--radius-lg)] px-4 py-3 mb-5 space-y-1.5" style={{ background: "rgba(14,127,94,0.06)", border: "1px solid rgba(14,127,94,0.14)" }}>
               <SummaryRow label={businessType === "RESTAURANT" ? "الجلسة" : "الخدمة"} value={selectedService?.nameAr ?? ""} />
-              {selectedStaff && <SummaryRow label="الحلاق"  value={selectedStaff.nameAr} />}
-              {selectedTable && <SummaryRow label="الطاولة" value={selectedTable.name} />}
+              {selectedStaff && (
+                <SummaryRow label={providerLabel(lang)} value={selectedStaff.nameAr} />
+              )}
+              {selectedResource && (
+                <SummaryRow
+                  label={resourceLabel(selectedResource.kind, lang, true)}
+                  value={selectedResource.name}
+                />
+              )}
               <SummaryRow label="اليوم"  value={selectedDate ? formatDateAr(selectedDate) : ""} />
               <SummaryRow label="الوقت"  value={selectedTime ?? ""} ltr />
-              {businessType === "RESTAURANT" && (
+              {selectedResource?.capacity != null && (
                 <SummaryRow label="الأشخاص" value={`${partySize} أشخاص`} />
               )}
             </div>
@@ -1004,9 +1051,16 @@ export default function BookingWidget({
                 label={businessType === "RESTAURANT" ? "الجلسة" : "الخدمة"}
                 value={selectedService.nameAr}
               />
-              {selectedStaff && <SummaryRow label="مقدّم الخدمة" value={selectedStaff.nameAr} />}
-              {selectedTable && <SummaryRow label="الطاولة" value={selectedTable.name} />}
-              {businessType === "RESTAURANT" && (
+              {selectedStaff && (
+                <SummaryRow label={providerLabel(lang)} value={selectedStaff.nameAr} />
+              )}
+              {selectedResource && (
+                <SummaryRow
+                  label={resourceLabel(selectedResource.kind, lang, true)}
+                  value={selectedResource.name}
+                />
+              )}
+              {selectedResource?.capacity != null && (
                 <SummaryRow label="عدد الأشخاص" value={`${partySize}`} />
               )}
               <SummaryRow label="التاريخ" value={selectedDate ? formatDateAr(selectedDate) : ""} />
@@ -1095,8 +1149,15 @@ export default function BookingWidget({
               <SummaryRow label="الخدمة"  value={confirmation.serviceName} />
               <SummaryRow label="التاريخ" value={formatDateAr(confirmation.date)} />
               <SummaryRow label="الوقت"   value={`${confirmation.startTime} – ${confirmation.endTime}`} ltr />
-              {selectedTable && <SummaryRow label="الطاولة" value={selectedTable.name} />}
-              {selectedStaff && <SummaryRow label="الحلاق"  value={selectedStaff.nameAr} />}
+              {selectedResource && (
+                <SummaryRow
+                  label={resourceLabel(selectedResource.kind, lang, true)}
+                  value={selectedResource.name}
+                />
+              )}
+              {selectedStaff && (
+                <SummaryRow label={providerLabel(lang)} value={selectedStaff.nameAr} />
+              )}
               <div className="pt-3 border-t border-[rgba(14,127,94,0.14)]">
                 <SummaryRow
                   label="الإجمالي"

@@ -35,10 +35,10 @@ export async function hasBookingConflict(
   options?: {
     excludeBookingId?: string; // used during reschedule to exclude the booking being moved
     staffMemberId?:    string; // scope conflicts to a specific barber
-    tableId?:          string; // scope conflicts to a specific table
+    resourceId?:       string; // scope conflicts to one room, table or chair
   },
 ): Promise<boolean> {
-  const { excludeBookingId, staffMemberId, tableId } = options ?? {};
+  const { excludeBookingId, staffMemberId, resourceId } = options ?? {};
   const existing = await db.booking.findMany({
     where: {
       businessId,
@@ -46,7 +46,7 @@ export async function hasBookingConflict(
       status: { in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED"] },
       ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
       ...(staffMemberId    ? { staffMemberId }                  : {}),
-      ...(tableId          ? { tableId }                        : {}),
+      ...(resourceId       ? { resourceId }                     : {}),
     },
     select: {
       startTime: true,

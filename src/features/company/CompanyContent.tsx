@@ -16,14 +16,21 @@ import type { PublicBusiness } from "@/lib/data";
 import type { DayHours } from "@/lib/discovery/hours";
 import type { PublicReview, RatingSummary } from "@/lib/reviews";
 import { useLanguage } from "@/contexts/LanguageContext";
+import type { ResourceKind } from "@/lib/scheduling/resource-labels";
 
-export type PublicTable = {
-  id:        string;
-  name:      string;
-  tableType: string;
-  capacity:  number;
-  notes:     string | null;
-  photo:     string | null;
+/**
+ * A thing an appointment holds: a table, a room, a chair, a machine.
+ * One shape for all of them — the kind only decides what it is called.
+ */
+export type PublicResource = {
+  id:       string;
+  name:     string;
+  kind:     ResourceKind;
+  /** Seats or beds, when the kind counts anything. Null when it does not. */
+  capacity: number | null;
+  area:     string | null;
+  notes:    string | null;
+  photo:    string | null;
 };
 
 export type PublicStaff = {
@@ -42,7 +49,7 @@ interface Props {
   slug:              string;
   similarBusinesses: PublicBusiness[];
   businessType:      "GENERAL" | "RESTAURANT" | "BARBERSHOP";
-  tables:            PublicTable[];
+  resources:         PublicResource[];
   staffMembers:      PublicStaff[];
   hours:             DayHours[];
   images:            GalleryImage[];
@@ -63,7 +70,7 @@ export default function CompanyContent({
   slug,
   similarBusinesses,
   businessType,
-  tables,
+  resources,
   staffMembers,
   hours,
   images,
@@ -179,7 +186,7 @@ export default function CompanyContent({
                 openDays={openDays}
                 preselectedService={preselected}
                 businessType={businessType}
-                tables={tables}
+                resources={resources}
                 staffMembers={staffMembers}
                 branches={branches}
                 depositEnabled={depositEnabled}
