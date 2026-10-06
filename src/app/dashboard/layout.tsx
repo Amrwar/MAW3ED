@@ -5,6 +5,8 @@ import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { db } from "@/lib/db";
 import { getEffectivePlan, type Plan, type SubscriptionStatus } from "@/lib/plans";
+import { getCapabilities, resourceLabel } from "@/lib/scheduling/capabilities";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = { title: "لوحة التحكم" };
 
@@ -62,6 +64,13 @@ export default async function DashboardLayout({
 
   const cityName = business.city?.nameAr ?? "";
 
+  // What this business calls its rooms, chairs or tables — derived from
+  // what it has created, not from its category.
+  const capabilities = await getCapabilities(business.id);
+  const cookieStore = await cookies();
+  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as "ar" | "en";
+  const resourceWord = resourceLabel(capabilities.resourceKind, lang);
+
   return (
     <div className="min-h-screen" style={{ background: "var(--color-surface-2)" }}>
       <DashboardSidebar
@@ -69,7 +78,7 @@ export default async function DashboardLayout({
         cityName={cityName}
         pendingCount={pendingCount}
         plan={effectivePlan}
-        businessType={(business.businessType as string) ?? "GENERAL"}
+        resourceWord={resourceWord}
       />
 
       <div className="md:ms-64">
@@ -78,7 +87,7 @@ export default async function DashboardLayout({
           cityName={cityName}
           pendingCount={pendingCount}
           plan={effectivePlan}
-          businessType={(business.businessType as string) ?? "GENERAL"}
+          resourceWord={resourceWord}
         />
         <main className="p-5 md:p-7 max-w-[1400px]">{children}</main>
       </div>

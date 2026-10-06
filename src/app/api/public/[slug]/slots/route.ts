@@ -40,7 +40,7 @@ export async function GET(req: Request, { params }: Params) {
       serviceId,
       date,
       staffMemberId: searchParams.get("staffMemberId"),
-      tableId: searchParams.get("tableId"),
+      resourceId: searchParams.get("resourceId"),
       branchId: searchParams.get("branchId"),
     });
 

@@ -146,6 +146,7 @@ model Business {
   images             BusinessImage[]
   branches           Branch[]
   timeBlocks         TimeBlock[]
+  resources          Resource[]
 
   /// The discovery listing always filters on isPublished first, then on
   /// one of city / neighbourhood / category, and sorts on rating,
@@ -175,6 +176,7 @@ model Branch {
   business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   bookings   Booking[]
   timeBlocks TimeBlock[]
+  resources  Resource[]
 
   @@index([businessId, isActive, sortOrder])
 }
@@ -394,7 +396,8 @@ model Booking {
   paymobOrderId          String? // Paymob order ID for payment tracking
   paymobTransactionId    String? // Paymob transaction ID after successful payment
   // ── Business-type-specific fields ────────────────────────────
-  tableId                String? // Restaurant: which table is reserved
+  tableId                String? // Deprecated: mirrors resourceId, see Resource
+  resourceId             String? // the room / chair / table / equipment held
   staffMemberId          String? // Barbershop: which staff member handles the booking
   branchId               String? // which location, when the business has more than one
   partySize              Int? // Restaurant: number of guests
@@ -405,6 +408,7 @@ model Booking {
   service     Service      @relation(fields: [serviceId], references: [id])
   customer    Customer?    @relation(fields: [customerId], references: [id])
   table       Table?       @relation(fields: [tableId], references: [id])
+  resource    Resource?    @relation(fields: [resourceId], references: [id])
   staffMember StaffMember? @relation(fields: [staffMemberId], references: [id])
   branch      Branch?      @relation(fields: [branchId], references: [id])
   review      Review?
@@ -415,6 +419,7 @@ model Booking {
   @@index([businessId, status])
   @@index([businessId, startsAt])
   @@index([branchId])
+  @@index([resourceId])
   @@index([serviceId])
   @@index([customerId])
   @@index([staffMemberId])
@@ -466,6 +471,51 @@ model PasswordResetToken {
 }
 
 // ─── Restaurant Tables ────────────────────────────────────────
+/// Anything with a fixed number of it that an appointment occupies.
+///
+/// A restaurant calls them tables, a clinic calls them rooms, a salon
+/// calls them chairs and a gym calls them equipment. They behave
+/// identically — one booking at a time, optionally in a branch,
+/// optionally with a capacity — so they are one model. The kind is a
+/// label for the owner, never a branch in the scheduling code.
+///
+/// Supersedes Table, which is kept only so nothing that still reads it
+/// breaks; every Table was copied here under the same id.
+model Resource {
+  id         String       @id @default(cuid())
+  businessId String
+  branchId   String?
+  kind       ResourceKind @default(OTHER)
+  name       String
+  /// Seats, beds, slots — whatever the kind counts. Null when it does
+  /// not count anything.
+  capacity   Int?
+  /// A free-text zone inside the branch: "الطابق الأول", "الحديقة".
+  area       String?
+  notes      String?
+  photo      String?
+  isActive   Boolean      @default(true)
+  sortOrder  Int          @default(0)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  bookings Booking[]
+
+  @@index([businessId, isActive, sortOrder])
+  @@index([branchId])
+}
+
+enum ResourceKind {
+  TABLE
+  ROOM
+  CHAIR
+  EQUIPMENT
+  OTHER
+}
+
+/// Deprecated. Superseded by Resource; see the note there.
 model Table {
   id         String    @id @default(cuid())
   businessId String

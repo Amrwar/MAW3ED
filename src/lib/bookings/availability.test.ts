@@ -34,7 +34,7 @@ function base(over: Partial<AvailabilityInput> = {}): AvailabilityInput {
     branchId: null,
     blocks: [],
     bookings: [],
-    tableId: null,
+    resourceId: null,
     ...over,
   };
 }
@@ -119,7 +119,7 @@ describe("service duration and buffer", () => {
     const r = computeAvailability(
       base({
         policy: { ...base().policy, bufferMinutes: 15 },
-        bookings: [{ startMin: 600, endMin: 660, staffMemberId: null, tableId: null }], // 10:00–11:00
+        bookings: [{ startMin: 600, endMin: 660, staffMemberId: null, resourceId: null }], // 10:00–11:00
       }),
     );
     // 11:00 would start inside the 15-minute gap the 10:00 booking holds.
@@ -131,7 +131,7 @@ describe("service duration and buffer", () => {
     const r = computeAvailability(
       base({
         policy: { ...base().policy, bufferMinutes: 30 },
-        bookings: [{ startMin: 720, endMin: 780, staffMemberId: null, tableId: null }], // 12:00–13:00
+        bookings: [{ startMin: 720, endMin: 780, staffMemberId: null, resourceId: null }], // 12:00–13:00
       }),
     );
     // An 11:00–12:00 appointment plus 30 minutes would run into 12:00.
@@ -148,14 +148,14 @@ describe("service duration and buffer", () => {
 describe("existing bookings", () => {
   it("removes a taken slot", () => {
     const r = computeAvailability(
-      base({ bookings: [{ startMin: 600, endMin: 660, staffMemberId: null, tableId: null }] }),
+      base({ bookings: [{ startMin: 600, endMin: 660, staffMemberId: null, resourceId: null }] }),
     );
     expect(r.slots).not.toContain("10:00");
     expect(r.slots).toContain("09:00");
   });
 
   it("scopes collision to the staff member asked for", () => {
-    const booked = [{ startMin: 600, endMin: 660, staffMemberId: "sara", tableId: null }];
+    const booked = [{ startMin: 600, endMin: 660, staffMemberId: "sara", resourceId: null }];
     // Omar is free at 10:00 even though Sara is not.
     expect(
       computeAvailability(base({ staffMemberId: "omar", bookings: booked })).slots,
@@ -167,7 +167,7 @@ describe("existing bookings", () => {
 
   it("treats an unscoped business as a single resource, as it always has", () => {
     const r = computeAvailability(
-      base({ bookings: [{ startMin: 600, endMin: 660, staffMemberId: null, tableId: null }] }),
+      base({ bookings: [{ startMin: 600, endMin: 660, staffMemberId: null, resourceId: null }] }),
     );
     expect(r.slots).not.toContain("10:00");
   });
@@ -344,7 +344,7 @@ describe("the rules together", () => {
           sameDayCutoff: "16:00",
         },
         blocks: [block({ kind: "BREAK", dayOfWeek: 2, startTime: "13:00", endTime: "14:00" })],
-        bookings: [{ startMin: 660, endMin: 720, staffMemberId: null, tableId: null }], // 11:00–12:00
+        bookings: [{ startMin: 660, endMin: 720, staffMemberId: null, resourceId: null }], // 11:00–12:00
       }),
     );
 

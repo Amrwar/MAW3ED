@@ -63,7 +63,7 @@ export interface ExistingBooking {
   startMin: number;
   endMin: number;
   staffMemberId: string | null;
-  tableId: string | null;
+  resourceId: string | null;
 }
 
 export interface SchedulingPolicy {
@@ -99,8 +99,11 @@ export interface AvailabilityInput {
   blocks: BlockRule[];
   /** Live bookings for this business on this date. */
   bookings: ExistingBooking[];
-  /** Scopes collision to one table, as the restaurant flow does. */
-  tableId: string | null;
+  /**
+   * Scopes collision to one room, chair, table or machine. A resource
+   * is held by one booking at a time whatever it is called.
+   */
+  resourceId: string | null;
 }
 
 export type UnavailableReason =
@@ -250,15 +253,17 @@ export function computeAvailability(input: AvailabilityInput): AvailabilityResul
   const { bufferMinutes } = input.policy;
   const duration = input.serviceDuration;
 
-  // Collision is scoped the same way the database constraint is: a
-  // booking against a named person or table only blocks others against
-  // that same one; a booking against neither blocks the whole business.
+  // Collision is scoped exactly as the database constraint is: a
+  // booking against a named person or resource only blocks others
+  // against that same one, so several chairs or rooms run in parallel;
+  // a booking against neither blocks the whole business, which is how a
+  // one-room clinic behaves.
   const relevant = input.bookings.filter((b) => {
     if (input.staffMemberId || b.staffMemberId) {
       return b.staffMemberId === input.staffMemberId;
     }
-    if (input.tableId || b.tableId) {
-      return b.tableId === input.tableId;
+    if (input.resourceId || b.resourceId) {
+      return b.resourceId === input.resourceId;
     }
     return true;
   });

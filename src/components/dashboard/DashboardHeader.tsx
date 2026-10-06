@@ -8,7 +8,7 @@ import {
   LayoutDashboard, CalendarDays, Settings, Store,
   BarChart3, Users, MessageSquare, Gift,
   LogOut, ArrowUpRight,
-  Utensils, Scissors, Users2,
+  Utensils, Scissors, Users2, CalendarCheck, Armchair, Building2,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -79,53 +79,36 @@ function variantFromStatus(status: string): NotifVariant {
 
 // ── Nav config (mirrors DashboardSidebar) ─────────────────────────────────────
 
-function getNavConfig(businessType: BusinessType, labels: Record<string, string>, pendingCount: number) {
-  if (businessType === "RESTAURANT") {
-    return {
-      main: [
-        { icon: LayoutDashboard, href: "/dashboard",           label: labels.home,         soon: false, badge: null },
-        { icon: CalendarDays,    href: "/dashboard/bookings",  label: labels.reservations, soon: false, badge: pendingCount },
-        { icon: Utensils,        href: "/dashboard/tables",    label: labels.tables,       soon: false, badge: null },
-        { icon: Users,           href: "/dashboard/customers", label: labels.customers,    soon: false, badge: null },
-        { icon: BarChart3,       href: "/dashboard/analytics", label: labels.analytics,    soon: false, badge: null },
-      ],
-      secondary: [
-        { icon: MessageSquare, href: "/dashboard/reviews",   label: labels.reviews,   soon: true,  badge: null },
-        { icon: Gift,          href: "/dashboard/referrals", label: labels.referrals, soon: false, badge: null },
-      ],
-      utility: [
-        { icon: Settings, href: "/dashboard/settings", label: labels.settings, soon: false, badge: null },
-      ],
-    };
-  }
-  if (businessType === "BARBERSHOP") {
-    return {
-      main: [
-        { icon: LayoutDashboard, href: "/dashboard",           label: labels.home,         soon: false, badge: null },
-        { icon: CalendarDays,    href: "/dashboard/bookings",  label: labels.appointments, soon: false, badge: pendingCount },
-        { icon: Scissors,        href: "/dashboard/services",  label: labels.services,     soon: false, badge: null },
-        { icon: Users2,          href: "/dashboard/staff",     label: labels.staff,        soon: false, badge: null },
-        { icon: Users,           href: "/dashboard/customers", label: labels.customers,    soon: false, badge: null },
-        { icon: BarChart3,       href: "/dashboard/analytics", label: labels.analytics,    soon: false, badge: null },
-      ],
-      secondary: [
-        { icon: MessageSquare, href: "/dashboard/reviews",   label: labels.reviews,   soon: true,  badge: null },
-        { icon: Gift,          href: "/dashboard/referrals", label: labels.referrals, soon: false, badge: null },
-      ],
-      utility: [
-        { icon: Settings, href: "/dashboard/settings", label: labels.settings, soon: false, badge: null },
-      ],
-    };
-  }
+/**
+ * One navigation, for every business.
+ *
+ * This used to be three near-identical lists chosen by businessType: a
+ * restaurant got "Tables" and no staff page, a barbershop got staff and
+ * no tables, and everything else got neither — so a clinic could not
+ * manage its treatment rooms and a gym could not manage its equipment.
+ *
+ * Every business now gets every dimension, because every business is
+ * allowed to use them. What varies is only the word for a resource,
+ * which follows what the owner has actually created.
+ */
+function getNavConfig(
+  labels: Record<string, string>,
+  pendingCount: number,
+  resourceWord: string,
+) {
   return {
     main: [
       { icon: LayoutDashboard, href: "/dashboard",           label: labels.home,      soon: false, badge: null },
-      { icon: CalendarDays,    href: "/dashboard/bookings",  label: labels.bookings,  soon: false, badge: pendingCount },
-      { icon: Store,           href: "/dashboard/services",  label: labels.services,  soon: false, badge: null },
+      { icon: CalendarDays,    href: "/dashboard/calendar",  label: labels.calendar,  soon: false, badge: null },
+      { icon: CalendarCheck,   href: "/dashboard/bookings",  label: labels.bookings,  soon: false, badge: pendingCount },
       { icon: Users,           href: "/dashboard/customers", label: labels.customers, soon: false, badge: null },
       { icon: BarChart3,       href: "/dashboard/analytics", label: labels.analytics, soon: false, badge: null },
     ],
     secondary: [
+      { icon: Store,         href: "/dashboard/services",  label: labels.services,  soon: false, badge: null },
+      { icon: Users2,        href: "/dashboard/staff",     label: labels.staff,     soon: false, badge: null },
+      { icon: Armchair,      href: "/dashboard/resources", label: resourceWord,     soon: false, badge: null },
+      { icon: Building2,     href: "/dashboard/branches",  label: labels.branches,  soon: false, badge: null },
       { icon: MessageSquare, href: "/dashboard/reviews",   label: labels.reviews,   soon: true,  badge: null },
       { icon: Gift,          href: "/dashboard/referrals", label: labels.referrals, soon: false, badge: null },
     ],
@@ -278,13 +261,18 @@ export default function DashboardHeader({
   cityName     = "",
   pendingCount = 0,
   plan         = "FREE",
-  businessType = "GENERAL",
+  resourceWord,
 }: {
   businessName:  string;
   cityName?:     string;
   pendingCount?: number;
   plan?:         Plan;
-  businessType?: string;
+  /**
+   * What this business calls its rooms, chairs or tables. Resolved from
+   * what it has configured, so the nav reads "الغرف" for a clinic and
+   * "الطاولات" for a restaurant without either being hard-coded.
+   */
+  resourceWord?: string;
 }) {
   const { t }    = useLanguage();
   const h        = t.dashboard.header;
@@ -293,7 +281,7 @@ export default function DashboardHeader({
 
   const name      = businessName || s.yourBusiness;
   const planStyle = PLAN_STYLES[plan];
-  const navCfg    = getNavConfig(businessType as BusinessType, s, pendingCount);
+  const navCfg    = getNavConfig(s, pendingCount, resourceWord ?? s.resources);
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [toasts,        setToasts]        = useState<ToastItem[]>([]);

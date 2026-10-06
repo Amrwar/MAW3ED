@@ -30,7 +30,7 @@ export interface SlotQuery {
   /** YYYY-MM-DD */
   date: string;
   staffMemberId?: string | null;
-  tableId?: string | null;
+  resourceId?: string | null;
   branchId?: string | null;
   /** Ignores this booking when checking collisions — used by reschedule. */
   excludeBookingId?: string | null;
@@ -77,7 +77,7 @@ export async function loadAvailability(
         startTime: true,
         endTime: true,
         staffMemberId: true,
-        tableId: true,
+        resourceId: true,
         service: { select: { duration: true } },
       },
     }),
@@ -162,10 +162,10 @@ export async function loadAvailability(
         startMin,
         endMin: b.endTime ? timeToMinutes(b.endTime) : startMin + b.service.duration,
         staffMemberId: b.staffMemberId,
-        tableId: b.tableId,
+        resourceId: b.resourceId,
       };
     }),
-    tableId: q.tableId ?? null,
+    resourceId: q.resourceId ?? null,
   };
 
   return { ...computeAvailability(input), serviceDuration: service.duration };

@@ -103,7 +103,7 @@ export async function POST(req: Request, { params }: Params) {
       serviceId:        booking.serviceId,
       date:             newDate,
       staffMemberId:    booking.staffMemberId,
-      tableId:          booking.tableId,
+      resourceId:          booking.resourceId,
       branchId:         booking.branchId,
       excludeBookingId: booking.id,
     });

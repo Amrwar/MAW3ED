@@ -53,7 +53,7 @@ export interface CreateBookingInput {
   startTime: string;
   notes?: string | null;
   staffMemberId?: string | null;
-  tableId?: string | null;
+  resourceId?: string | null;
   branchId?: string | null;
   partySize?: number | null;
   status: "PENDING" | "PENDING_PAYMENT" | "CONFIRMED";
@@ -90,7 +90,7 @@ const BOOKING_SELECT = {
   customerName: true,
   customerPhone: true,
   staffMemberId: true,
-  tableId: true,
+  resourceId: true,
   branchId: true,
   partySize: true,
   notes: true,
@@ -123,7 +123,7 @@ export async function createBooking(
       serviceId: input.serviceId,
       date: input.date,
       staffMemberId: input.staffMemberId ?? null,
-      tableId: input.tableId ?? null,
+      resourceId: input.resourceId ?? null,
       branchId: input.branchId ?? null,
     },
     now,
@@ -192,7 +192,10 @@ export async function createBooking(
               idempotencyKey: input.idempotencyKey ?? null,
               depositAmount: input.depositAmount,
               staffMemberId: input.staffMemberId ?? null,
-              tableId: input.tableId ?? null,
+              resourceId: input.resourceId ?? null,
+              // Kept in step with resourceId while anything still reads
+              // the deprecated column.
+              tableId: input.resourceId ?? null,
               branchId: input.branchId ?? null,
               partySize: input.partySize ?? null,
             },
