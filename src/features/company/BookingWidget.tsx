@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import {
   ChevronRight, CheckCircle,
   Loader2, CalendarDays, Clock, Check, Users, Scissors,
@@ -245,6 +245,13 @@ export default function BookingWidget({
   depositEnabled = false,
   depositPercent = 0,
 }: BookingWidgetProps) {
+  // Ids for the details step. The four fields had visible <label>s with
+  // no htmlFor and no id to point at, and a label that neither wraps
+  // its input nor names one is associated with nothing: a screen reader
+  // read out four anonymous boxes, and tapping a label focused none of
+  // them. Scoped per instance so two widgets on a page cannot collide.
+  const fid = useId();
+
   const { t, lang } = useLanguage();
   // What this business schedules on, read off what it has rather than
   // off what it is. Both, either or neither is a valid answer.
@@ -559,6 +566,7 @@ export default function BookingWidget({
                   return (
                     <button
                       key={service.id}
+                      aria-pressed={selected}
                       onClick={() => setSelectedService(service)}
                       className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
                         selected
@@ -631,6 +639,7 @@ export default function BookingWidget({
               <div className="space-y-3">
                 {/* Nobody in particular. The engine picks whoever is free. */}
                 <button
+                  aria-pressed={selectedStaff === null}
                   onClick={() => setSelectedStaff(null)}
                   className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
                     selectedStaff === null
@@ -663,6 +672,7 @@ export default function BookingWidget({
                   return (
                     <button
                       key={staff.id}
+                      aria-pressed={selected}
                       onClick={() => setSelectedStaff(staff)}
                       className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
                         selected
@@ -746,6 +756,7 @@ export default function BookingWidget({
                   return (
                     <button
                       key={resource.id}
+                      aria-pressed={selected}
                       onClick={() => !tooSmall && setSelectedResource(resource)}
                       disabled={tooSmall}
                       className={`w-full text-start rounded-[var(--radius-lg)] border-2 p-3.5 transition-all relative ${
@@ -968,54 +979,82 @@ export default function BookingWidget({
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5">
+                <label
+                  htmlFor={`${fid}-name`}
+                  className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5"
+                >
                   الاسم الكامل <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <input
+                  id={`${fid}-name`}
                   type="text"
+                  autoComplete="name"
+                  aria-required="true"
+                  aria-invalid={errors.name ? true : undefined}
+                  aria-describedby={errors.name ? `${fid}-name-err` : undefined}
                   placeholder="محمد أحمد"
                   value={name}
                   onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: undefined })); }}
                   className={`w-full rounded-[var(--radius-md)] border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.name ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
                 />
-                {errors.name && <p className="field-error">{errors.name}</p>}
+                {errors.name && <p id={`${fid}-name-err`} className="field-error">{errors.name}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5">
+                <label
+                  htmlFor={`${fid}-phone`}
+                  className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5"
+                >
                   رقم الهاتف <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <input
+                  id={`${fid}-phone`}
                   type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  aria-required="true"
+                  aria-invalid={errors.phone ? true : undefined}
+                  aria-describedby={errors.phone ? `${fid}-phone-err` : undefined}
                   placeholder="01xxxxxxxxx"
                   value={phone}
                   dir="ltr"
                   onChange={(e) => { setPhone(e.target.value); setErrors((p) => ({ ...p, phone: undefined })); }}
                   className={`w-full rounded-[var(--radius-md)] border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.phone ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
                 />
-                {errors.phone && <p className="field-error">{errors.phone}</p>}
+                {errors.phone && <p id={`${fid}-phone-err`} className="field-error">{errors.phone}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5">
+                <label
+                  htmlFor={`${fid}-email`}
+                  className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5"
+                >
                   البريد الإلكتروني <span className="text-[var(--color-faint)] font-normal">(اختياري)</span>
                 </label>
                 <input
+                  id={`${fid}-email`}
                   type="email"
+                  autoComplete="email"
+                  aria-invalid={errors.email ? true : undefined}
+                  aria-describedby={errors.email ? `${fid}-email-err` : undefined}
                   placeholder="example@email.com"
                   value={email}
                   dir="ltr"
                   onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); }}
                   className={`w-full rounded-[var(--radius-md)] border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.email ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
                 />
-                {errors.email && <p className="field-error">{errors.email}</p>}
+                {errors.email && <p id={`${fid}-email-err`} className="field-error">{errors.email}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5">
+                <label
+                  htmlFor={`${fid}-notes`}
+                  className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5"
+                >
                   ملاحظات <span className="text-[var(--color-faint)] font-normal">(اختياري)</span>
                 </label>
                 <textarea
+                  id={`${fid}-notes`}
                   placeholder="أي معلومات إضافية…"
                   rows={2}
                   value={notes}
