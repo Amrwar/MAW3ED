@@ -3,7 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import DashboardHomeClient from "@/features/dashboard/DashboardHomeClient";
-import { type DashboardStats } from "@/features/dashboard/StatsCards";
+import { getDashboardKpis } from "@/lib/dashboard/queries";
+import { cairoDayEnd, cairoDayStart } from "@/lib/bookings/instants";
 import { type RecentBooking } from "@/features/dashboard/RecentBookings";
 import { type DashboardBooking } from "@/features/dashboard/bookings/types";
 
@@ -26,68 +27,32 @@ export default async function DashboardPage() {
 
   if (!business) redirect("/onboarding");
 
-  const now              = new Date();
-  const startThisMonth   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const startLastMonth   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
-  const todayStart       = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const todayEnd         = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
   const businessId       = session.user.businessId;
 
-  const [
-    rawBookings,
-    bookingsThisMonth,
-    bookingsLastMonth,
-    totalCustomers,
-    newCustomers,
-    pendingBookings,
-    revenueThisMonth,
-    revenueLastMonth,
-    rawTodayBookings,
-  ] = await Promise.all([
+  // The headline numbers come from getDashboardKpis; this is only what
+  // the lists below need. Seven aggregate queries that fed the old
+  // stats cards used to run here on every load and are gone with them.
+  const [rawBookings, rawTodayBookings] = await Promise.all([
     db.booking.findMany({
       where:   { businessId },
       include: { service: { select: { nameAr: true } } },
       orderBy: { date: "desc" },
       take:    20,
     }),
-    db.booking.count({
-      where: { businessId, createdAt: { gte: startThisMonth } },
-    }),
-    db.booking.count({
-      where: { businessId, createdAt: { gte: startLastMonth, lt: startThisMonth } },
-    }),
-    db.customer.count({ where: { businessId } }),
-    db.customer.count({ where: { businessId, createdAt: { gte: startThisMonth } } }),
-    db.booking.count({ where: { businessId, status: "PENDING" } }),
-    db.booking.aggregate({
-      where: { businessId, status: { in: ["CONFIRMED", "COMPLETED"] }, createdAt: { gte: startThisMonth } },
-      _sum:  { totalPrice: true },
-    }),
-    db.booking.aggregate({
-      where: { businessId, status: { in: ["CONFIRMED", "COMPLETED"] }, createdAt: { gte: startLastMonth, lt: startThisMonth } },
-      _sum:  { totalPrice: true },
-    }),
     db.booking.findMany({
       where: {
         businessId,
-        date:   { gte: todayStart, lt: todayEnd },
-        status: { in: ["PENDING", "CONFIRMED"] },
+        startsAt: { gte: cairoDayStart(), lt: cairoDayEnd() },
+        status: { in: ["PENDING", "CONFIRMED", "ARRIVED", "IN_PROGRESS"] },
       },
       include: { service: { select: { nameAr: true, duration: true } } },
       orderBy: { startTime: "asc" },
     }),
   ]);
 
-  const stats: DashboardStats = {
-    bookingsThisMonth,
-    bookingsLastMonth,
-    totalCustomers,
-    newCustomers,
-    pendingBookings,
-    revenueThisMonth: Number(revenueThisMonth._sum.totalPrice ?? 0),
-    revenueLastMonth: Number(revenueLastMonth._sum.totalPrice ?? 0),
-    currency: business.services[0]?.currency ?? "EGP",
-  };
+  // Counted from booking rows, in the one place that defines what
+  // "completed", "revenue" and "no-show" mean. See lib/dashboard/stats.
+  const kpis = await getDashboardKpis(businessId);
 
   const recentBookings: RecentBooking[] = rawBookings.map((b) => ({
     id:            b.id,
@@ -141,7 +106,7 @@ export default async function DashboardPage() {
       businessNameAr={business.nameAr}
       slug={business.slug}
       services={widgetServices}
-      stats={stats}
+      kpis={kpis}
       recentBookings={recentBookings}
       todayBookings={todayBookings}
       openDaysCount={openDaysCount}

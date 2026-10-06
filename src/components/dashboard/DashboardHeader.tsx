@@ -5,14 +5,10 @@ import {
   Bell, Search, Volume2, VolumeX,
   CalendarPlus, Ban, CheckCircle2, RefreshCw, X,
   Menu,
-  LayoutDashboard, CalendarDays, Settings, Store,
-  BarChart3, Users, MessageSquare, Gift,
   LogOut, ArrowUpRight,
-  Utensils, Scissors, Users2, CalendarCheck, Armchair, Building2,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import type { BusinessType } from "@/lib/business-type";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import Logo from "@/components/shared/Logo";
@@ -20,6 +16,7 @@ import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
 import type { RealtimeBookingEvent } from "@/hooks/useRealtimeBookings";
 import Dropdown from "@/components/ui/Dropdown";
 import { cn } from "@/lib/utils";
+import { buildNav, isActive, isGroupOpen, type NavSection } from "@/lib/dashboard/nav";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { Plan } from "@/lib/plans";
 
@@ -79,44 +76,6 @@ function variantFromStatus(status: string): NotifVariant {
 
 // ── Nav config (mirrors DashboardSidebar) ─────────────────────────────────────
 
-/**
- * One navigation, for every business.
- *
- * This used to be three near-identical lists chosen by businessType: a
- * restaurant got "Tables" and no staff page, a barbershop got staff and
- * no tables, and everything else got neither — so a clinic could not
- * manage its treatment rooms and a gym could not manage its equipment.
- *
- * Every business now gets every dimension, because every business is
- * allowed to use them. What varies is only the word for a resource,
- * which follows what the owner has actually created.
- */
-function getNavConfig(
-  labels: Record<string, string>,
-  pendingCount: number,
-  resourceWord: string,
-) {
-  return {
-    main: [
-      { icon: LayoutDashboard, href: "/dashboard",           label: labels.home,      soon: false, badge: null },
-      { icon: CalendarDays,    href: "/dashboard/calendar",  label: labels.calendar,  soon: false, badge: null },
-      { icon: CalendarCheck,   href: "/dashboard/bookings",  label: labels.bookings,  soon: false, badge: pendingCount },
-      { icon: Users,           href: "/dashboard/customers", label: labels.customers, soon: false, badge: null },
-      { icon: BarChart3,       href: "/dashboard/analytics", label: labels.analytics, soon: false, badge: null },
-    ],
-    secondary: [
-      { icon: Store,         href: "/dashboard/services",  label: labels.services,  soon: false, badge: null },
-      { icon: Users2,        href: "/dashboard/staff",     label: labels.staff,     soon: false, badge: null },
-      { icon: Armchair,      href: "/dashboard/resources", label: resourceWord,     soon: false, badge: null },
-      { icon: Building2,     href: "/dashboard/branches",  label: labels.branches,  soon: false, badge: null },
-      { icon: MessageSquare, href: "/dashboard/reviews",   label: labels.reviews,   soon: true,  badge: null },
-      { icon: Gift,          href: "/dashboard/referrals", label: labels.referrals, soon: false, badge: null },
-    ],
-    utility: [
-      { icon: Settings, href: "/dashboard/settings", label: labels.settings, soon: false, badge: null },
-    ],
-  };
-}
 
 const PLAN_STYLES: Record<Plan, { bg: string; text: string; label: string }> = {
   FREE:    { bg: "var(--color-surface-3)", text: "var(--color-muted)",  label: "مجاني"   },
@@ -192,64 +151,74 @@ function IconBtn({
 /** Hoisted out of the component body: defining a component during
  *  render remounts the whole group on every parent render. */
 function MobileNavGroup({
-  items,
+  section,
   pathname,
-  comingSoonLabel,
   onNavigate,
 }: {
-  items: ReturnType<typeof getNavConfig>["main"];
+  section: NavSection;
   pathname: string;
-  comingSoonLabel: string;
   onNavigate: () => void;
 }) {
+  const row = (active: boolean) =>
+    cn(
+      "flex min-h-12 items-center gap-3 rounded-[var(--radius-sm)] px-4 text-[0.875rem] transition-colors",
+      active
+        ? "bg-[var(--color-jade)] font-bold text-white"
+        : "text-[#BACBC4] hover:bg-[var(--color-night-2)] hover:text-white",
+    );
+
   return (
     <div className="flex flex-col gap-0.5">
-      {items.map((item) => {
-        const { href, icon: Icon, label, soon, badge } = item;
-        const active =
-          pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-
-        if (soon) {
-          return (
-            <div
-              key={href}
-              className="flex min-h-12 cursor-not-allowed select-none items-center gap-3 rounded-[var(--radius-sm)] px-4 text-[0.875rem] text-[var(--color-night-subtle)]/60"
-            >
-              <Icon size={17} strokeWidth={1.75} aria-hidden="true" />
-              <span className="flex-1">{label}</span>
-              <span className="rounded-full bg-[var(--color-night-line)] px-2 py-0.5 text-[0.625rem] font-bold text-[var(--color-night-subtle)]">
-                {comingSoonLabel}
-              </span>
-            </div>
-          );
-        }
-
+      {section.title && (
+        <p className="m-0 px-4 pb-1 pt-3 text-[0.625rem] font-bold uppercase tracking-wider text-[var(--color-night-subtle)]">
+          {section.title}
+        </p>
+      )}
+      {section.items.map((item) => {
+        const Icon = item.icon;
+        const active = isActive(item.href, pathname);
         return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            onClick={onNavigate}
-            className={cn(
-              "flex min-h-12 items-center gap-3 rounded-[var(--radius-sm)] px-4 text-[0.875rem] transition-colors",
-              active
-                ? "bg-[var(--color-jade)] font-bold text-white"
-                : "text-[#BACBC4] hover:bg-[var(--color-night-2)] hover:text-white",
+          <div key={item.href}>
+            <Link
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              onClick={onNavigate}
+              className={row(active)}
+            >
+              <Icon size={17} strokeWidth={active ? 2.1 : 1.75} aria-hidden="true" />
+              <span className="flex-1 truncate">{item.label}</span>
+              {item.badge != null && item.badge > 0 && (
+                <span
+                  className={cn(
+                    "num rounded-full px-2 py-0.5 text-[0.6875rem] font-bold",
+                    active ? "bg-white/22 text-white" : "bg-[var(--color-night-line)] text-white",
+                  )}
+                >
+                  {item.badge}
+                </span>
+              )}
+            </Link>
+
+            {item.children && isGroupOpen(item, pathname) && (
+              <div className="mb-1 ms-7 flex flex-col gap-0.5 border-s border-[var(--color-night-line)] ps-2">
+                {item.children.map((child) => (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    onClick={onNavigate}
+                    className={cn(
+                      "flex min-h-11 items-center rounded-[var(--radius-sm)] px-4 text-[0.8125rem] transition-colors",
+                      isActive(child.href, pathname)
+                        ? "bg-white/15 font-bold text-white"
+                        : "text-[var(--color-night-subtle)] hover:bg-white/8 hover:text-white",
+                    )}
+                  >
+                    {child.label}
+                  </Link>
+                ))}
+              </div>
             )}
-          >
-            <Icon size={17} strokeWidth={active ? 2.1 : 1.75} aria-hidden="true" />
-            <span className="flex-1 truncate">{label}</span>
-            {badge != null && badge > 0 && (
-              <span
-                className={cn(
-                  "num rounded-full px-2 py-0.5 text-[0.6875rem] font-bold",
-                  active ? "bg-white/22 text-white" : "bg-[var(--color-night-line)] text-white",
-                )}
-              >
-                {badge}
-              </span>
-            )}
-          </Link>
+          </div>
         );
       })}
     </div>
@@ -262,6 +231,8 @@ export default function DashboardHeader({
   pendingCount = 0,
   plan         = "FREE",
   resourceWord,
+  hasResources = false,
+  hasBranches  = false,
 }: {
   businessName:  string;
   cityName?:     string;
@@ -273,6 +244,9 @@ export default function DashboardHeader({
    * "الطاولات" for a restaurant without either being hard-coded.
    */
   resourceWord?: string;
+  /** Entries for things the business does not have are left out. */
+  hasResources?: boolean;
+  hasBranches?:  boolean;
 }) {
   const { t }    = useLanguage();
   const h        = t.dashboard.header;
@@ -281,7 +255,13 @@ export default function DashboardHeader({
 
   const name      = businessName || s.yourBusiness;
   const planStyle = PLAN_STYLES[plan];
-  const navCfg    = getNavConfig(s, pendingCount, resourceWord ?? s.resources);
+  const sections  = buildNav({
+    labels: s,
+    pendingCount,
+    resourceWord: resourceWord ?? s.resources,
+    hasResources,
+    hasBranches,
+  });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [toasts,        setToasts]        = useState<ToastItem[]>([]);
@@ -642,11 +622,18 @@ export default function DashboardHeader({
           className="flex-1 min-h-0 overflow-y-auto"
           style={{ padding: "6px 10px 12px" }}
         >
-          <MobileNavGroup items={navCfg.main} pathname={pathname} comingSoonLabel={s.comingSoon} onNavigate={() => setMobileOpen(false)} />
-          <div style={{ height: 1, background: "var(--color-surface-3)", marginBlock: 6, marginInline: 4 }} />
-          <MobileNavGroup items={navCfg.secondary} pathname={pathname} comingSoonLabel={s.comingSoon} onNavigate={() => setMobileOpen(false)} />
-          <div style={{ height: 1, background: "var(--color-surface-3)", marginBlock: 6, marginInline: 4 }} />
-          <MobileNavGroup items={navCfg.utility} pathname={pathname} comingSoonLabel={s.comingSoon} onNavigate={() => setMobileOpen(false)} />
+          {sections.map((section, i) => (
+            <div key={section.title ?? "main"}>
+              {i > 0 && (
+                <div style={{ height: 1, background: "var(--color-surface-3)", marginBlock: 6, marginInline: 4 }} />
+              )}
+              <MobileNavGroup
+                section={section}
+                pathname={pathname}
+                onNavigate={() => setMobileOpen(false)}
+              />
+            </div>
+          ))}
         </nav>
 
         {/* ── Bottom area ───────────────────────────────────── */}

@@ -1,512 +1,320 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import {
-  Search, ChevronDown, ChevronUp, Users,
-  UsersRound, CalendarDays, Wallet,
-  Eye, ChevronLeft,
-} from "lucide-react";
-import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
-import { cn } from "@/lib/utils";
-import CustomerDetailPanel from "./CustomerDetailPanel";
-import type { CustomerRow } from "@/app/api/business/customers/route";
-import { formatDateAr } from "@/features/dashboard/bookings/types";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useState, useTransition } from "react";
+import { AlertTriangle, Search, StickyNote, Users, X } from "lucide-react";
+import EmptyState from "@/components/ui/EmptyState";
+import Pagination from "@/components/ui/Pagination";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { money, num } from "@/lib/fmt";
+import { cn } from "@/lib/utils";
 
-type SortKey = "createdAt" | "bookingCount" | "totalSpend" | "lastVisit" | "name";
-
-// Deterministic avatar gradient
-const GRADIENTS = [
-  "linear-gradient(135deg,var(--color-jade),var(--color-jade))",
-  "linear-gradient(135deg,var(--color-jade),var(--color-jade-line))",
-  "linear-gradient(135deg,var(--color-ok),var(--color-jade))",
-  "linear-gradient(135deg,var(--color-warn),var(--color-star))",
-  "linear-gradient(135deg,var(--color-info),var(--color-info))",
-  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
-  "linear-gradient(135deg,var(--color-danger),var(--color-danger))",
-  "linear-gradient(135deg,var(--color-jade-hover),var(--color-jade-line))",
-];
-function custGrad(name: string) {
-  return GRADIENTS[(name.charCodeAt(0) || 0) % GRADIENTS.length];
+export interface CustomerRow {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  tags: string[];
+  hasNotes: boolean;
+  visits: number;
+  cancelled: number;
+  noShows: number;
+  spend: number;
+  noShowRate: number | null;
+  lastVisit: string | null;
+  nextVisit: string | null;
 }
 
-function customerLabel(c: CustomerRow): { text: string; bg: string; color: string } {
-  if (c.bookingCount === 0)  return { text: "جديد",         bg: "var(--color-surface-3)", color: "var(--color-muted)" };
-  if (c.bookingCount >= 5)   return { text: "عميل مميز ⭐", bg: "var(--color-warn-soft)", color: "var(--color-warn)" };
-  return { text: "عميل دائم", bg: "var(--color-ok-soft)", color: "var(--color-ok)" };
-}
+/**
+ * Who has been here, and what happened.
+ *
+ * Search and filters live in the URL, so a business can send a colleague
+ * a link to "everyone who has missed an appointment" and it opens the
+ * same thing. Sorting and paging go through the server for the same
+ * reason — the list is the query, not a client-side state.
+ */
+export default function CustomersClient({
+  rows,
+  total,
+  page,
+  perPage,
+  allTags,
+}: {
+  rows: CustomerRow[];
+  total: number;
+  page: number;
+  perPage: number;
+  allTags: string[];
+}) {
+  const { lang } = useLanguage();
+  const ar = lang === "ar";
+  const router = useRouter();
+  const params = useSearchParams();
+  const [, startTransition] = useTransition();
+  const [q, setQ] = useState(params.get("q") ?? "");
 
-function customerStatus(c: CustomerRow): { text: string; bg: string; color: string } {
-  if (!c.lastBookingDate)    return { text: "غير نشط", bg: "var(--color-surface-3)", color: "var(--color-subtle)" };
-  const diffDays = (Date.now() - new Date(c.lastBookingDate).getTime()) / 86_400_000;
-  if (diffDays <= 90)        return { text: "نشط",     bg: "var(--color-ok-soft)", color: "var(--color-ok)" };
-  return { text: "غير نشط", bg: "var(--color-surface-3)", color: "var(--color-subtle)" };
-}
-
-interface Props {
-  initialCustomers: CustomerRow[];
-}
-
-const SORT_CHIPS: Array<{ key: SortKey; order: "asc" | "desc"; label: string }> = [
-  { key: "createdAt",   order: "desc", label: "الكل" },
-  { key: "bookingCount",order: "desc", label: "الأكثر حجزاً" },
-  { key: "totalSpend",  order: "desc", label: "الأعلى إنفاقاً" },
-  { key: "lastVisit",   order: "desc", label: "آخر زيارة" },
-];
-
-export default function CustomersClient({ initialCustomers }: Props) {
-  const [customers,       setCustomers]       = useState<CustomerRow[]>(initialCustomers);
-  const [loading,         setLoading]         = useState(false);
-  const [search,          setSearch]          = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [sortKey,         setSortKey]         = useState<SortKey>("createdAt");
-  const [sortOrder,       setSortOrder]       = useState<"asc" | "desc">("desc");
-  const [selected,        setSelected]        = useState<CustomerRow | null>(null);
-  const [activeChip,      setActiveChip]      = useState(0);
-
-  const { t, lang } = useLanguage();
-  const cu     = t.dashboard.customers;
-  const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 350);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const fetchCustomers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ sort: sortKey, order: sortOrder });
-      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
-      const res  = await fetch(`/api/business/customers?${params}`);
-      const data = await res.json();
-      setCustomers(data.customers ?? []);
-    } catch { /* keep previous */ } finally {
-      setLoading(false);
+  function apply(patch: Record<string, string | null>) {
+    const next = new URLSearchParams(params.toString());
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null || v === "") next.delete(k);
+      else next.set(k, v);
     }
-  }, [debouncedSearch, sortKey, sortOrder]);
-
-  useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
-
-  function applyChip(idx: number) {
-    const chip = SORT_CHIPS[idx];
-    setActiveChip(idx);
-    setSortKey(chip.key);
-    setSortOrder(chip.order);
+    // Any change to the filters starts from the first page; staying on
+    // page 4 of a different result set shows an empty screen.
+    if (!("page" in patch)) next.delete("page");
+    startTransition(() => router.push(`/dashboard/customers?${next.toString()}`));
   }
 
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortOrder("desc");
-    }
-    setActiveChip(-1); // deselect chip when using column header
-  }
+  const activeTag = params.get("tag");
+  const onlyNoShows = params.get("noShows") === "1";
+  const onlyReturning = params.get("returning") === "1";
+  const sort = params.get("sort") ?? "recent";
+  const filtered = Boolean(q || activeTag || onlyNoShows || onlyReturning);
 
-  function handleNotesSaved(id: string, notes: string | null) {
-    setCustomers((prev) => prev.map((c) => (c.id === id ? { ...c, notes } : c)));
-    setSelected((prev) => (prev?.id === id ? { ...prev, notes } : prev));
-  }
-
-  // Derived stats
-  const now              = Date.now();
-  const startOfMonth     = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
-  const activeCount      = customers.filter((c) => {
-    if (!c.lastBookingDate) return false;
-    return (now - new Date(c.lastBookingDate).getTime()) / 86_400_000 <= 90;
-  }).length;
-  const newThisMonth     = customers.filter((c) => new Date(c.createdAt).getTime() >= startOfMonth).length;
-  const avgSpend         = customers.length
-    ? Math.round(customers.reduce((a, c) => a + c.totalSpend, 0) / customers.length)
-    : 0;
-  const currency         = customers[0]?.currency ?? "EGP";
-
-  /**
-   * A sortable column. aria-sort belongs on the header cell, not the
-   * button inside it, so the cell and its control are one component.
-   */
-  const SortTH = ({ k, children }: { k: SortKey; children: React.ReactNode }) => {
-    const active = sortKey === k;
-    const Icon = active && sortOrder === "asc" ? ChevronUp : ChevronDown;
-    return (
-      <TH aria-sort={active ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}>
-        <button
-          type="button"
-          onClick={() => toggleSort(k)}
-          className={cn(
-            "-mx-2 flex min-h-11 items-center gap-1 rounded-[var(--radius-sm)] px-2 transition-colors",
-            active ? "text-[var(--color-jade)]" : "hover:text-[var(--color-muted)]",
-          )}
-        >
-          {children}
-          <Icon
-            size={11}
-            aria-hidden="true"
-            className={active ? "text-[var(--color-jade)]" : "text-[var(--color-line-2)]"}
-          />
-        </button>
-      </TH>
-    );
-  };
+  const date = (iso: string | null) =>
+    iso
+      ? new Intl.DateTimeFormat(ar ? "ar-EG-u-nu-latn" : "en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }).format(new Date(iso))
+      : "—";
 
   return (
     <div className="space-y-5">
-
-      {/* ── Page header ── */}
-      <div
-        className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-5"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1
-              className="m-0 text-[1.75rem] font-light tracking-tight text-[var(--color-ink)]"
-            >
-              {cu.title}
-            </h1>
-            <p className="text-sm text-[var(--color-subtle)] mt-1">
-              إدارة العملاء وسجل الحجوزات والتفاعل ·{" "}
-              <span className="font-semibold text-[var(--color-muted)]">
-                {customers.length.toLocaleString(locale)} {cu.countSuffix}
-              </span>
-            </p>
-          </div>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="m-0 text-[1.375rem] font-light tracking-tight text-[var(--color-ink)]">
+            {ar ? "العملاء" : "Customers"}
+          </h1>
+          <p className="m-0 mt-1 text-[0.8125rem] text-[var(--color-subtle)]">
+            {total === 0
+              ? ar
+                ? "لسه مفيش عملاء"
+                : "No customers yet"
+              : ar
+                ? `${num(total, lang)} عميل`
+                : `${num(total, lang)} customers`}
+          </p>
         </div>
-      </div>
+      </header>
 
-      {/* ── Summary cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard
-          icon={<Users size={16} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />}
-          iconBg="var(--color-jade-tint)"
-          value={customers.length.toLocaleString(locale)}
-          label="إجمالي العملاء"
-          sub="مسجلون في النظام"
-        />
-        <SummaryCard
-          icon={<UsersRound size={16} strokeWidth={1.75} style={{ color: "var(--color-ok)" }} />}
-          iconBg="var(--color-ok-soft)"
-          value={activeCount.toLocaleString(locale)}
-          label="العملاء النشطون"
-          sub="آخر 90 يوماً"
-        />
-        <SummaryCard
-          icon={<CalendarDays size={16} strokeWidth={1.75} style={{ color: "var(--color-jade)" }} />}
-          iconBg="var(--color-jade-tint)"
-          value={newThisMonth.toLocaleString(locale)}
-          label="جدد هذا الشهر"
-          sub="عميل جديد"
-        />
-        <SummaryCard
-          icon={<Wallet size={16} strokeWidth={1.75} style={{ color: "var(--color-warn)" }} />}
-          iconBg="var(--color-warn-soft)"
-          value={customers.length > 0 ? avgSpend.toLocaleString(locale) : "—"}
-          label="متوسط الإنفاق"
-          sub={currency}
-        />
-      </div>
-
-      {/* ── Search + sort chips ── */}
-      <div
-        className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-4"
-      >
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          {/* Search */}
-          <div className="relative flex-1 w-full sm:max-w-sm">
+      {/* ── Search and filters ─────────────────────────────── */}
+      <div className="card space-y-3 p-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            apply({ q: q.trim() || null });
+          }}
+          className="flex gap-2"
+        >
+          <div className="relative flex-1">
             <Search
-              size={14}
-              className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ insetInlineEnd: 12, color: "var(--color-subtle)" }}
+              size={15}
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-[var(--color-faint)]"
             />
             <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={cu.searchPlaceholder}
-              className="w-full rounded-[var(--radius-md)] border text-sm outline-none transition-all"
-              style={{
-                borderColor:   "var(--color-line)",
-                background:    "var(--color-surface-2)",
-                color:         "var(--color-ink)",
-                paddingBlock:  9,
-                paddingInline: "12px 38px",
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = "var(--color-jade)";
-                e.currentTarget.style.background  = "var(--color-surface)";
-                e.currentTarget.style.boxShadow   = "0 0 0 3px rgba(14,127,94,0.1)";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = "var(--color-line)";
-                e.currentTarget.style.background  = "var(--color-surface-2)";
-                e.currentTarget.style.boxShadow   = "none";
-              }}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={ar ? "دوّر بالاسم أو الرقم" : "Search by name or number"}
+              aria-label={ar ? "دوّر بالاسم أو الرقم" : "Search by name or number"}
+              className="min-h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] ps-9 pe-3 text-[0.875rem] text-[var(--color-ink)] outline-none focus:border-[var(--color-jade)]"
             />
           </div>
+          <button type="submit" className="btn btn-primary btn-sm">
+            {ar ? "دوّر" : "Search"}
+          </button>
+        </form>
 
-          {/* Sort chips */}
-          <div className="flex gap-2 flex-wrap">
-            {SORT_CHIPS.map((chip, idx) => {
-              const isActive = activeChip === idx;
-              return (
-                <button
-                  key={chip.key}
-                  onClick={() => applyChip(idx)}
-                  className="text-xs font-medium px-3.5 py-2 rounded-[var(--radius-md)] border transition-all duration-150"
-                  style={{
-                    background:  isActive ? "var(--color-ink)"  : "var(--color-surface-2)",
-                    color:       isActive ? "var(--color-surface)"   : "var(--color-muted)",
-                    borderColor: isActive ? "var(--color-ink)"   : "var(--color-line)",
-                    fontWeight:  isActive ? 700 : 500,
-                    boxShadow:   isActive ? "0 2px 8px rgba(17,32,28,0.15)" : "none",
-                  }}
-                >
-                  {chip.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Customers table ── */}
-      <div
-        className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] overflow-hidden"
-      >
-        {/* Table header */}
-        <div
-          className="flex items-center justify-between px-6 py-4"
-          style={{ borderBottom: "1px solid var(--color-surface-3)" }}
-        >
-          <div className="flex items-center gap-3">
-            <h2 className="text-sm font-bold text-[var(--color-ink)]">قائمة العملاء</h2>
-            {!loading && (
-              <span
-                className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: "var(--color-surface-3)", color: "var(--color-muted)" }}
-              >
-                {customers.length}
-              </span>
-            )}
-          </div>
-          {loading && (
-            <div className="flex items-center gap-2 text-xs text-[var(--color-subtle)]">
-              <div className="w-3 h-3 rounded-full border-2 border-[var(--color-jade)] border-t-transparent animate-spin" />
-              جاري التحديث
-            </div>
-          )}
-        </div>
-
-        <Table minWidth="46.25rem">
-
-          <THead>
-            <TR>
-              <SortTH k="name">{cu.columns.customer}</SortTH>
-              <TH>{cu.columns.phone}</TH>
-              <SortTH k="bookingCount">{cu.columns.bookings}</SortTH>
-              <SortTH k="lastVisit">{cu.columns.lastVisit}</SortTH>
-              <SortTH k="totalSpend">{cu.columns.spend}</SortTH>
-              <TH>الحالة</TH>
-              <TH>
-                <span className="sr-only">تفاصيل</span>
-              </TH>
-            </TR>
-          </THead>
-
-          <TBody>
-              {/* Loading skeleton */}
-              {loading && customers.length === 0
-                ? Array.from({ length: 6 }).map((_, i) => (
-                    <TR key={i}>
-                      {Array.from({ length: 7 }).map((_, j) => (
-                        <TD key={j}>
-                          <div
-                            className="h-3.5 animate-pulse rounded-[var(--radius-sm)] bg-[var(--color-surface-3)]"
-                            style={{ width: j === 0 ? 140 : j === 6 ? 40 : 80 }}
-                          />
-                        </TD>
-                      ))}
-                    </TR>
-                  ))
-
-                /* Empty */
-                : customers.length === 0 ? (
-                  <TR>
-                    <TD colSpan={7} className="px-5 py-20 text-center">
-                      <div
-                        className="w-16 h-16 rounded-[var(--radius-lg)] mx-auto mb-4 flex items-center justify-center"
-                        style={{ background: "var(--color-surface-2)" }}
-                      >
-                        <Users size={26} strokeWidth={1.5} style={{ color: "var(--color-subtle)" }} />
-                      </div>
-                      <p className="text-sm font-semibold text-[var(--color-muted)]">
-                        {search ? cu.emptySearch : cu.emptyTitle}
-                      </p>
-                      {!search && (
-                        <p className="text-xs text-[var(--color-subtle)] mt-1">{cu.emptySub}</p>
-                      )}
-                    </TD>
-                  </TR>
-
-                /* Rows */
-                ) : (
-                  customers.map((c) => {
-                    const label  = customerLabel(c);
-                    const status = customerStatus(c);
-                    const isSelected = selected?.id === c.id;
-
-                    return (
-                      <TR
-                        key={c.id}
-                        selected={isSelected}
-                        onClick={() => setSelected(c)}
-                        className={loading ? "opacity-60" : undefined}
-                      >
-                        {/* Customer */}
-                        <TD>
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-extrabold text-white shrink-0"
-                              style={{ background: custGrad(c.name) }}
-                            >
-                              {c.name[0]}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold text-[var(--color-ink)] leading-snug truncate">{c.name}</p>
-                              <span
-                                className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5"
-                                style={{ background: label.bg, color: label.color }}
-                              >
-                                {label.text}
-                              </span>
-                            </div>
-                          </div>
-                        </TD>
-
-                        {/* Phone */}
-                        <TD>
-                          <p className="text-sm text-[var(--color-muted)]" dir="ltr">{c.phone}</p>
-                        </TD>
-
-                        {/* Booking count */}
-                        <TD>
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className="text-sm font-bold"
-                              style={{ color: c.bookingCount > 0 ? "var(--color-ink)" : "var(--color-subtle)" }}
-                            >
-                              {c.bookingCount.toLocaleString(locale)}
-                            </span>
-                            <span className="text-xs text-[var(--color-subtle)]">{cu.bookingCount}</span>
-                          </div>
-                        </TD>
-
-                        {/* Last visit */}
-                        <TD>
-                          <p className="text-sm text-[var(--color-muted)] whitespace-nowrap">
-                            {c.lastBookingDate ? formatDateAr(c.lastBookingDate) : (
-                              <span className="text-[var(--color-line-2)]">—</span>
-                            )}
-                          </p>
-                        </TD>
-
-                        {/* Total spend */}
-                        <TD>
-                          <p className="text-sm font-extrabold whitespace-nowrap" style={{ color: c.totalSpend > 0 ? "var(--color-jade)" : "var(--color-subtle)" }}>
-                            {c.totalSpend.toLocaleString(locale)}
-                            <span className="text-xs font-normal text-[var(--color-subtle)] ms-1">{c.currency}</span>
-                          </p>
-                        </TD>
-
-                        {/* Status */}
-                        <TD>
-                          <span
-                            className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
-                            style={{ background: status.bg, color: status.color }}
-                          >
-                            {status.text}
-                          </span>
-                        </TD>
-
-                        {/* Action */}
-                        <TD>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setSelected(c); }}
-                            className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-150"
-                            style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-line)", color: "var(--color-muted)" }}
-                          >
-                            <Eye size={13} strokeWidth={1.75} />
-                          </button>
-                        </TD>
-                      </TR>
-                    );
-                  })
-                )}
-          </TBody>
-        </Table>
-
-        {/* Table footer */}
-        {customers.length > 0 && !loading && (
-          <div
-            className="px-6 py-3 flex items-center justify-between"
-            style={{ borderTop: "1px solid var(--color-surface-3)" }}
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterChip
+            active={onlyReturning}
+            onClick={() => apply({ returning: onlyReturning ? null : "1" })}
           >
-            <p className="text-xs text-[var(--color-subtle)]">
-              عرض{" "}
-              <span className="font-bold text-[var(--color-muted)]">{customers.length}</span>{" "}
-              عميل
-            </p>
-            <p className="text-xs text-[var(--color-subtle)] flex items-center gap-1">
-              اضغط على أي صف لعرض التفاصيل
-              <ChevronLeft size={12} />
-            </p>
+            {ar ? "عملاء بيرجعوا" : "Returning"}
+          </FilterChip>
+          <FilterChip
+            active={onlyNoShows}
+            onClick={() => apply({ noShows: onlyNoShows ? null : "1" })}
+          >
+            {ar ? "غابوا قبل كده" : "Has missed one"}
+          </FilterChip>
+
+          {allTags.map((tag) => (
+            <FilterChip
+              key={tag}
+              active={activeTag === tag}
+              onClick={() => apply({ tag: activeTag === tag ? null : tag })}
+            >
+              {tag}
+            </FilterChip>
+          ))}
+
+          <div className="ms-auto flex items-center gap-2">
+            <label className="text-[0.75rem] text-[var(--color-subtle)]" htmlFor="cust-sort">
+              {ar ? "ترتيب" : "Sort"}
+            </label>
+            <select
+              id="cust-sort"
+              value={sort}
+              onChange={(e) => apply({ sort: e.target.value })}
+              className="min-h-9 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] px-2 text-[0.8125rem] text-[var(--color-ink)]"
+            >
+              <option value="recent">{ar ? "الأحدث" : "Most recent"}</option>
+              <option value="visits">{ar ? "الأكتر زيارة" : "Most visits"}</option>
+              <option value="spend">{ar ? "الأكتر إنفاقًا" : "Highest spend"}</option>
+              <option value="name">{ar ? "الاسم" : "Name"}</option>
+            </select>
           </div>
+        </div>
+
+        {filtered && (
+          <button
+            type="button"
+            onClick={() => {
+              setQ("");
+              startTransition(() => router.push("/dashboard/customers"));
+            }}
+            className="inline-flex min-h-9 items-center gap-1 text-[0.78125rem] font-bold text-[var(--color-jade)]"
+          >
+            <X size={13} aria-hidden="true" />
+            {ar ? "امسح الفلاتر" : "Clear filters"}
+          </button>
         )}
       </div>
 
-      {/* ── Detail panel ── */}
-      {selected && (
-        <CustomerDetailPanel
-          customer={selected}
-          onClose={() => setSelected(null)}
-          onNotesSaved={handleNotesSaved}
-        />
+      {/* ── The list ───────────────────────────────────────── */}
+      {rows.length === 0 ? (
+        <div className="card">
+          <EmptyState
+            icon={<Users size={24} strokeWidth={1.7} />}
+            title={
+              filtered
+                ? ar
+                  ? "مفيش حد بالمواصفات دي"
+                  : "Nobody matches that"
+                : ar
+                  ? "لسه مفيش عملاء"
+                  : "No customers yet"
+            }
+            body={
+              filtered
+                ? ar
+                  ? "جرّب تغيّر البحث أو تشيل فلتر."
+                  : "Try a different search, or remove a filter."
+                : ar
+                  ? "أول ما حد يحجز، هيبان هنا بكل تاريخه."
+                  : "The first person to book will appear here with their whole history."
+            }
+          />
+        </div>
+      ) : (
+        <>
+          <ul className="m-0 list-none space-y-2 p-0">
+            {rows.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/dashboard/customers/${c.id}`}
+                  className="card card-hover flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[0.9375rem] font-bold text-[var(--color-ink)]">
+                        {c.name}
+                      </span>
+                      {c.hasNotes && (
+                        <StickyNote
+                          size={13}
+                          aria-label={ar ? "فيه ملاحظات" : "Has notes"}
+                          className="text-[var(--color-faint)]"
+                        />
+                      )}
+                      {c.noShows > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-danger-soft)] px-2 py-0.5 text-[0.6875rem] font-bold text-[var(--color-danger)]">
+                          <AlertTriangle size={10} aria-hidden="true" />
+                          {ar ? `غاب ${num(c.noShows, lang)}` : `${num(c.noShows, lang)} missed`}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="num m-0 mt-0.5 text-[0.78125rem] text-[var(--color-subtle)]" dir="ltr">
+                      {c.phone}
+                    </p>
+
+                    {c.tags.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {c.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full bg-[var(--color-surface-3)] px-2 py-0.5 text-[0.6875rem] text-[var(--color-muted)]"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <dl className="m-0 grid shrink-0 grid-cols-3 gap-x-5 gap-y-1 text-[0.75rem] sm:w-[22rem]">
+                    <Stat label={ar ? "زيارات" : "Visits"} value={num(c.visits, lang)} />
+                    <Stat
+                      label={ar ? "أنفق" : "Spent"}
+                      value={c.spend > 0 ? money(c.spend, lang) : "—"}
+                    />
+                    <Stat
+                      label={ar ? "آخر زيارة" : "Last visit"}
+                      value={date(c.lastVisit)}
+                    />
+                  </dl>
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          <Pagination
+            page={page}
+            totalPages={Math.max(1, Math.ceil(total / perPage))}
+            onPageChange={(p: number) => apply({ page: String(p) })}
+          />
+        </>
       )}
     </div>
   );
 }
 
-// ─── Summary card ─────────────────────────────────────────────────────────────
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="m-0 text-[0.6875rem] text-[var(--color-faint)]">{label}</dt>
+      <dd className="num m-0 mt-0.5 font-bold text-[var(--color-ink)]">{value}</dd>
+    </div>
+  );
+}
 
-function SummaryCard({
-  icon, iconBg, value, label, sub,
+function FilterChip({
+  active,
+  onClick,
+  children,
 }: {
-  icon:   React.ReactNode;
-  iconBg: string;
-  value:  string;
-  label:  string;
-  sub?:   string;
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
 }) {
   return (
-    <div
-      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-5"
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "min-h-9 rounded-full border px-3 text-[0.78125rem] transition-colors",
+        active
+          ? "border-[var(--color-jade)] bg-[var(--color-jade-tint)] font-bold text-[var(--color-jade)]"
+          : "border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-muted)] hover:border-[var(--color-jade)]/40",
+      )}
     >
-      <div
-        className="w-9 h-9 rounded-[var(--radius-md)] flex items-center justify-center mb-3"
-        style={{ background: iconBg }}
-      >
-        {icon}
-      </div>
-      <p
-        className="font-extrabold text-[var(--color-ink)] leading-none text-[1.5rem]"
-        style={{ letterSpacing: "-0.02em" }}
-      >
-        {value}
-      </p>
-      <p className="text-xs font-semibold text-[var(--color-muted)] mt-1">{label}</p>
-      {sub && <p className="text-[11px] text-[var(--color-subtle)] mt-0.5">{sub}</p>}
-    </div>
+      {children}
+    </button>
   );
 }

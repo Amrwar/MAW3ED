@@ -1,49 +1,70 @@
 import type { Metadata } from "next";
-import { auth } from "@/auth";
-import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
+import { requireBusinessPage } from "@/lib/dashboard/guard";
+import { getCustomers, type CustomerSort } from "@/lib/dashboard/queries";
 import CustomersClient from "./_components/CustomersClient";
-import type { CustomerRow } from "@/app/api/business/customers/route";
 
 export const metadata: Metadata = { title: "العملاء" };
 
-export default async function CustomersPage() {
-  const session = await auth();
-  if (!session?.user?.businessId) redirect("/onboarding");
+const PER_PAGE = 25;
 
-  const businessId = session.user.businessId;
+/**
+ * The customer list.
+ *
+ * Every figure beside a name — visits, cancellations, missed
+ * appointments, what they have spent — is counted from their bookings
+ * when the page loads. Nothing is stored and nothing is estimated.
+ *
+ * Note this replaces a "total spend" that summed confirmed *and*
+ * completed bookings, which counted money for appointments that had not
+ * happened yet.
+ */
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { business } = await requireBusinessPage();
+  const sp = await searchParams;
 
-  const raw = await db.customer.findMany({
-    where:   { businessId },
-    include: {
-      bookings: {
-        select: { totalPrice: true, date: true, status: true, currency: true },
-      },
-    },
-    orderBy: { createdAt: "desc" },
+  const one = (k: string) => {
+    const v = sp[k];
+    return Array.isArray(v) ? v[0] : v;
+  };
+
+  const page = Math.max(1, Number(one("page") ?? 1) || 1);
+  const sort = (one("sort") ?? "recent") as CustomerSort;
+
+  const { items, total, allTags } = await getCustomers(business.id, {
+    q: one("q"),
+    tag: one("tag"),
+    noShows: one("noShows") === "1",
+    returning: one("returning") === "1",
+    sort,
+    take: PER_PAGE,
+    skip: (page - 1) * PER_PAGE,
   });
 
-  const initialCustomers: CustomerRow[] = raw.map((c) => {
-    const active   = c.bookings.filter((b) => b.status !== "CANCELLED");
-    const revenue  = c.bookings
-      .filter((b) => b.status === "CONFIRMED" || b.status === "COMPLETED")
-      .reduce((sum, b) => sum + Number(b.totalPrice), 0);
-    const sorted   = [...active].sort((a, b) => b.date.getTime() - a.date.getTime());
-    const currency = c.bookings[0]?.currency ?? "EGP";
-
-    return {
-      id:              c.id,
-      name:            c.name,
-      phone:           c.phone,
-      email:           c.email,
-      notes:           c.notes,
-      createdAt:       c.createdAt.toISOString(),
-      bookingCount:    active.length,
-      totalSpend:      revenue,
-      lastBookingDate: sorted[0]?.date.toISOString().split("T")[0] ?? null,
-      currency,
-    };
-  });
-
-  return <CustomersClient initialCustomers={initialCustomers} />;
+  return (
+    <CustomersClient
+      rows={items.map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        tags: c.tags,
+        hasNotes: c.hasNotes,
+        visits: c.stats.visits,
+        cancelled: c.stats.cancelled,
+        noShows: c.stats.noShows,
+        spend: c.stats.revenue,
+        noShowRate: c.stats.noShowRate,
+        lastVisit: c.stats.lastVisit?.toISOString() ?? null,
+        nextVisit: c.stats.nextVisit?.toISOString() ?? null,
+      }))}
+      total={total}
+      page={page}
+      perPage={PER_PAGE}
+      allTags={allTags}
+    />
+  );
 }

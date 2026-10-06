@@ -62,8 +62,14 @@ export async function GET(_req: Request, { params }: Params) {
   }
 }
 
-const notesSchema = z.object({
-  notes: z.string().max(1000, "الملاحظات طويلة جدًا").nullable(),
+const patchSchema = z.object({
+  notes: z.string().max(2000).nullable().optional(),
+  /**
+   * The whole list, not a delta. A tag is removed by sending the list
+   * without it, which means two people editing at once cannot end up
+   * with a tag nobody added.
+   */
+  tags: z.array(z.string().trim().min(1).max(30)).max(20).optional(),
 });
 
 /**
@@ -76,21 +82,36 @@ export async function PATCH(req: Request, { params }: Params) {
     const { id } = await params;
 
     const body   = await req.json();
-    const parsed = notesSchema.safeParse(body);
+    const parsed = patchSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
-    // Verify ownership
+    // Verify ownership — a customer id from another business must not
+    // be editable from here.
     const existing = await db.customer.findFirst({
-      where: { id, businessId: business.id },
+      where:  { id, businessId: business.id },
+      select: { id: true },
     });
     if (!existing) return err("العميل غير موجود", 404);
 
+    const { notes, tags } = parsed.data;
+
     const updated = await db.customer.update({
       where: { id },
-      data:  { notes: parsed.data.notes },
+      data: {
+        ...(notes !== undefined
+          ? { notes, notesUpdatedAt: notes?.trim() ? new Date() : null }
+          : {}),
+        // Deduplicated and trimmed here rather than trusted from the
+        // client, so the tag filter does not end up with two of the
+        // same label that merely look alike.
+        ...(tags !== undefined
+          ? { tags: [...new Set(tags.map((t) => t.trim()).filter(Boolean))] }
+          : {}),
+      },
+      select: { id: true, notes: true, tags: true, notesUpdatedAt: true },
     });
 
-    return ok({ id: updated.id, notes: updated.notes });
+    return ok(updated);
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[customer PATCH]", e);

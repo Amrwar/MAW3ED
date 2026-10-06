@@ -28,6 +28,37 @@ export function cairoDateString(now: Date = new Date()): string {
   }).format(now);
 }
 
+/**
+ * The instant the Cairo day containing `now` began.
+ *
+ * Needed because "today's bookings" is a Cairo day, while bookings are
+ * stored as instants. Egypt is UTC+2 in winter and UTC+3 under summer
+ * time, so the offset cannot be assumed — and it is not enough to find
+ * *an* instant on the right day, which is the mistake that costs you
+ * the first hour: 01:00 Cairo is also "today". The candidate is only
+ * the start if the millisecond before it belongs to the previous day.
+ */
+export function cairoDayStart(now: Date = new Date()): Date {
+  const day = cairoDateString(now);
+  const utcMidnight = new Date(`${day}T00:00:00Z`);
+
+  for (const offsetHours of [3, 2]) {
+    const candidate = new Date(utcMidnight.getTime() - offsetHours * 3_600_000);
+    if (
+      cairoDateString(candidate) === day &&
+      cairoDateString(new Date(candidate.getTime() - 1)) !== day
+    ) {
+      return candidate;
+    }
+  }
+  return utcMidnight;
+}
+
+/** The instant the Cairo day containing `now` ends. */
+export function cairoDayEnd(now: Date = new Date()): Date {
+  return new Date(cairoDayStart(now).getTime() + 86_400_000);
+}
+
 /** Minutes since midnight, in Cairo. */
 export function cairoMinutes(now: Date = new Date()): number {
   const parts = new Intl.DateTimeFormat("en-GB", {

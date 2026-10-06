@@ -5,7 +5,7 @@ import {
   ExternalLink, Store, Clock, CheckCircle2,
   AlertTriangle, ChevronLeft, TrendingUp, ArrowLeft,
 } from "lucide-react";
-import StatsCards, { type DashboardStats } from "@/features/dashboard/StatsCards";
+import KpiGrid, { type Kpis } from "@/features/dashboard/KpiGrid";
 import RecentBookings, { type RecentBooking } from "@/features/dashboard/RecentBookings";
 import QuickActions from "@/features/dashboard/QuickActions";
 import NewBookingButton from "@/features/dashboard/NewBookingButton";
@@ -32,7 +32,7 @@ interface Props {
   businessNameAr:      string;
   slug:                string;
   services:            ServicePreview[];
-  stats:               DashboardStats;
+  kpis:                Kpis;
   recentBookings:      RecentBooking[];
   todayBookings:       DashboardBooking[];
   openDaysCount:       number;
@@ -85,7 +85,7 @@ export default function DashboardHomeClient({
   businessNameAr,
   slug,
   services,
-  stats,
+  kpis,
   recentBookings,
   todayBookings,
   openDaysCount,
@@ -192,7 +192,7 @@ export default function DashboardHomeClient({
       </div>
 
       {/* ── KPIs ── */}
-      <StatsCards stats={stats} />
+      <KpiGrid kpis={kpis} />
 
       {/* ── Today + side column ── */}
       <div className="flex flex-wrap items-start gap-6">

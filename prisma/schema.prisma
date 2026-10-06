@@ -519,13 +519,26 @@ model Customer {
   name       String
   phone      String
   email      String?
+  /// What the business wants to remember about this person.
   notes      String?
+  notesUpdatedAt DateTime?
+  /// Free-text labels the business invents for itself: "زبون دائم",
+  /// "بيتأخر", "حساسية صبغة". An array rather than a join table —
+  /// a tag has no properties of its own.
+  tags       String[] @default([])
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
 
   business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   bookings Booking[]
 
+  /// Visits, cancellations, no-shows and spend are counted from
+  /// Booking at read time, never stored here: a stored count is a
+  /// count that can be wrong, and a business has hundreds of bookings,
+  /// not millions.
   @@unique([businessId, phone])
+  @@index([businessId, createdAt])
+  @@index([tags], type: Gin)
 }
 
 model Booking {

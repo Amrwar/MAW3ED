@@ -79,6 +79,8 @@ export default async function DashboardLayout({
         pendingCount={pendingCount}
         plan={effectivePlan}
         resourceWord={resourceWord}
+        hasResources={capabilities.resources}
+        hasBranches={capabilities.branches}
       />
 
       <div className="md:ms-64">
@@ -88,6 +90,8 @@ export default async function DashboardLayout({
           pendingCount={pendingCount}
           plan={effectivePlan}
           resourceWord={resourceWord}
+          hasResources={capabilities.resources}
+          hasBranches={capabilities.branches}
         />
         <main className="p-5 md:p-7 max-w-[1400px]">{children}</main>
       </div>

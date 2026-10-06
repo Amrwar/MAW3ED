@@ -4,62 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard,
-  CalendarDays,
-  Settings,
-  Store,
-  BarChart3,
-  Users,
-  MessageSquare,
-  Gift,
   LogOut,
   ArrowUpRight,
-  Utensils,
-  Scissors,
-  Users2,
-  CalendarCheck,
-  Armchair,
-  Building2,
 } from "lucide-react";
 import Logo from "@/components/shared/Logo";
 import type { Plan } from "@/lib/plans";
-import type { BusinessType } from "@/lib/business-type";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
+import { buildNav, isActive, isGroupOpen, type NavSection } from "@/lib/dashboard/nav";
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
-/**
- * One navigation, for every business. See the note on the identical
- * function in DashboardHeader — this is the sidebar's copy of the same
- * list, in the shape this component renders.
- */
-function getNavConfig(
-  s: Record<string, string>,
-  pendingCount: number,
-  resourceWord: string,
-) {
-  return {
-    items: [
-      { icon: LayoutDashboard, href: "/dashboard",           label: s.home,      soon: false, badge: null },
-      { icon: CalendarDays,    href: "/dashboard/calendar",  label: s.calendar,  soon: false, badge: null },
-      { icon: CalendarCheck,   href: "/dashboard/bookings",  label: s.bookings,  soon: false, badge: pendingCount },
-      { icon: Users,           href: "/dashboard/customers", label: s.customers, soon: false, badge: null },
-      { icon: BarChart3,       href: "/dashboard/analytics", label: s.analytics, soon: false, badge: null },
-    ],
-    secondary: [
-      { icon: Store,         href: "/dashboard/services",  label: s.services,  soon: false, badge: null },
-      { icon: Users2,        href: "/dashboard/staff",     label: s.staff,     soon: false, badge: null },
-      { icon: Armchair,      href: "/dashboard/resources", label: resourceWord, soon: false, badge: null },
-      { icon: Building2,     href: "/dashboard/branches",  label: s.branches,  soon: false, badge: null },
-      { icon: MessageSquare, href: "/dashboard/reviews",   label: s.reviews,   soon: true,  badge: null },
-      { icon: Gift,          href: "/dashboard/referrals", label: s.referrals, soon: false, badge: null },
-    ],
-    utility: [
-      { icon: Settings, href: "/dashboard/settings", label: s.settings, soon: false, badge: null },
-    ],
-  };
-}
 
 // ─── Plan badge config ────────────────────────────────────────────────────────
 
@@ -77,6 +32,9 @@ interface DashboardSidebarProps {
   pendingCount?: number;
   plan?:         Plan;
   resourceWord?: string;
+  /** Entries for things the business does not have are left out. */
+  hasResources?: boolean;
+  hasBranches?:  boolean;
 }
 
 // ─── Nav item ─────────────────────────────────────────────────────────────────
@@ -87,29 +45,13 @@ function NavItem({
   label,
   active,
   badge,
-  soon,
-  comingSoonLabel,
 }: {
-  href:            string;
-  Icon:            React.ElementType;
-  label:           string;
-  active:          boolean;
-  badge?:          number | null;
-  soon?:           boolean;
-  comingSoonLabel: string;
+  href:   string;
+  Icon:   React.ElementType;
+  label:  string;
+  active: boolean;
+  badge?: number | null;
 }) {
-  if (soon) {
-    return (
-      <div className="flex min-h-11 cursor-not-allowed select-none items-center gap-3 rounded-[var(--radius-sm)] px-3 text-[0.84375rem] text-[var(--color-night-subtle)]/60">
-        <Icon size={17} strokeWidth={1.75} aria-hidden="true" />
-        <span className="flex-1">{label}</span>
-        <span className="rounded-full bg-[var(--color-night-line)] px-2 py-0.5 text-[0.625rem] font-bold text-[var(--color-night-subtle)]">
-          {comingSoonLabel}
-        </span>
-      </div>
-    );
-  }
-
   return (
     <Link
       href={href}
@@ -144,31 +86,50 @@ function NavDivider() {
 }
 
 function NavGroup({
-  items,
+  section,
   pathname,
-  comingSoonLabel,
 }: {
-  items: ReturnType<typeof getNavConfig>["items"];
+  section: NavSection;
   pathname: string;
-  comingSoonLabel: string;
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      {items.map((item) => {
-        const active =
-          pathname === item.href ||
-          (item.href !== "/dashboard" && pathname.startsWith(item.href));
+      {section.title && (
+        <p className="m-0 px-3 pb-1 pt-3 text-[0.625rem] font-bold uppercase tracking-wider text-[var(--color-night-subtle)]">
+          {section.title}
+        </p>
+      )}
+      {section.items.map((item) => {
+        const open = isGroupOpen(item, pathname);
         return (
-          <NavItem
-            key={item.href}
-            href={item.href}
-            Icon={item.icon}
-            label={item.label}
-            active={active}
-            badge={item.badge}
-            soon={item.soon}
-            comingSoonLabel={comingSoonLabel}
-          />
+          <div key={item.href}>
+            <NavItem
+              href={item.href}
+              Icon={item.icon}
+              label={item.label}
+              active={isActive(item.href, pathname)}
+              badge={item.badge ?? null}
+            />
+            {/* A group's children only take up room while you are in it. */}
+            {item.children && open && (
+              <div className="mb-1 ms-6 flex flex-col gap-0.5 border-s border-[var(--color-night-line)] ps-2">
+                {item.children.map((child) => (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    className={cn(
+                      "flex min-h-9 items-center rounded-[var(--radius-sm)] px-3 text-[0.78125rem] transition-colors",
+                      isActive(child.href, pathname)
+                        ? "bg-white/15 font-bold text-white"
+                        : "text-[var(--color-night-subtle)] hover:bg-white/8 hover:text-white",
+                    )}
+                  >
+                    {child.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         );
       })}
     </div>
@@ -183,13 +144,21 @@ export default function DashboardSidebar({
   pendingCount = 0,
   plan         = "FREE",
   resourceWord,
+  hasResources = false,
+  hasBranches  = false,
 }: DashboardSidebarProps) {
   const pathname  = usePathname();
   const { t }     = useLanguage();
   const s         = t.dashboard.sidebar as unknown as Record<string, string>;
   const name      = businessName || s.yourBusiness;
   const planStyle = PLAN_STYLES[plan];
-  const navCfg    = getNavConfig(s, pendingCount, resourceWord ?? s.resources);
+  const sections  = buildNav({
+    labels: s,
+    pendingCount,
+    resourceWord: resourceWord ?? s.resources,
+    hasResources,
+    hasBranches,
+  });
 
   return (
     <aside className="fixed inset-y-0 start-0 z-40 hidden w-64 flex-col bg-[var(--color-night)] md:flex">
@@ -226,11 +195,12 @@ export default function DashboardSidebar({
 
       {/* ── Navigation ── */}
       <nav className="flex-1 overflow-y-auto px-3 pb-3">
-        <NavGroup items={navCfg.items} pathname={pathname} comingSoonLabel={s.comingSoon} />
-        <NavDivider />
-        <NavGroup items={navCfg.secondary} pathname={pathname} comingSoonLabel={s.comingSoon} />
-        <NavDivider />
-        <NavGroup items={navCfg.utility} pathname={pathname} comingSoonLabel={s.comingSoon} />
+        {sections.map((section, i) => (
+          <div key={section.title ?? "main"}>
+            {i > 0 && <NavDivider />}
+            <NavGroup section={section} pathname={pathname} />
+          </div>
+        ))}
       </nav>
 
       {/* ── Bottom ── */}
