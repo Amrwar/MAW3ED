@@ -81,7 +81,7 @@ export default async function DashboardLayout({
         resourceWord={resourceWord}
         hasResources={capabilities.resources}
         hasBranches={capabilities.branches}
-        isAdmin={session.user.isAdmin ?? false}
+        isAdmin={Boolean(session.user.adminRole)}
       />
 
       <div className="md:ms-64">
@@ -93,7 +93,7 @@ export default async function DashboardLayout({
           resourceWord={resourceWord}
           hasResources={capabilities.resources}
           hasBranches={capabilities.branches}
-          isAdmin={session.user.isAdmin ?? false}
+          isAdmin={Boolean(session.user.adminRole)}
         />
         <main className="p-5 md:p-7 max-w-[1400px]">{children}</main>
       </div>

@@ -111,10 +111,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         });
         token.businessId = dbUser?.business?.id ?? null;
         token.phone      = dbUser?.phone ?? null;
-        // Read from the same query rather than its own: the moderation
-        // link has to know, and a second round trip for one boolean
-        // would be a query on every sign-in for everybody.
-        token.isAdmin    = dbUser?.isAdmin ?? false;
+        // Carried for the navigation only. Access is decided by
+        // lib/admin/guard, which reads the role from the database on
+        // every request — a token minted at sign-in cannot be trusted
+        // to say whether somebody is still an administrator.
+        token.adminRole  = dbUser?.adminRole ?? null;
         token.resolved   = true;
       }
 
@@ -125,7 +126,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       session.user.id         = token.id as string;
       session.user.businessId = (token.businessId as string | null | undefined) ?? null;
       session.user.phone      = (token.phone as string | null | undefined) ?? null;
-      session.user.isAdmin    = (token.isAdmin as boolean | undefined) ?? false;
+      session.user.adminRole  = (token.adminRole as string | null | undefined) ?? null;
       return session;
     },
   },

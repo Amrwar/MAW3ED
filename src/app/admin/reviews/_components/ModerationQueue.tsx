@@ -114,8 +114,8 @@ export default function ModerationQueue({
     }).format(new Date(iso));
 
   return (
-    <main className="min-h-screen bg-[var(--color-ground)]">
-      <div className="container-app max-w-[56rem] py-8">
+    <div>
+      <div className="max-w-[56rem]">
         <header className="mb-6">
           <h1 className="m-0 text-[1.5rem] font-light tracking-tight text-[var(--color-ink)]">
             مراجعة التقييمات
@@ -336,7 +336,7 @@ export default function ModerationQueue({
           </ul>
         )}
       </div>
-    </main>
+    </div>
   );
 }
 

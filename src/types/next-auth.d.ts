@@ -9,8 +9,11 @@ declare module "next-auth" {
       email?:      string | null;
       name?:       string | null;
       businessId?: string | null;
-      /** A platform moderator; set by hand in the database. */
-      isAdmin?: boolean;
+      /**
+       * For showing the admin link only. Never for deciding access:
+       * lib/admin/guard reads the role from the database per request.
+       */
+      adminRole?: string | null;
       /** E.164, present once a phone sign-in has happened. */
       phone?:      string | null;
     };

@@ -2,7 +2,8 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
-import { requireAdminApi } from "@/lib/admin";
+import { adminNotFound, requireAdminApi } from "@/lib/admin/guard";
+import { recordAudit } from "@/lib/admin/audit";
 import { recomputeBusinessRating } from "@/lib/reviews";
 import { ACTION_RESULT, canModerate } from "@/lib/review-policy";
 
@@ -31,8 +32,8 @@ const schema = z.object({
  */
 export async function POST(req: Request, { params }: Params) {
   try {
-    const admin = await requireAdminApi();
-    if (!admin) return err("غير موجود", 404);
+    const admin = await requireAdminApi("reviews.moderate");
+    if (!admin) return adminNotFound();
 
     const { id } = await params;
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -82,6 +83,20 @@ export async function POST(req: Request, { params }: Params) {
     // Outside the transaction: it reads the reviews back, so it has to
     // see the write that just happened.
     await recomputeBusinessRating(review.businessId);
+
+    await recordAudit({
+      actor: admin,
+      action: `review.${action}`,
+      resourceType: "review",
+      resourceId: id,
+      summary: `${admin.name ?? "مراجع"} نفّذ "${action}" على تقييم وحوله من ${review.status} إلى ${next}`,
+      metadata: {
+        from: review.status,
+        to: next,
+        businessId: review.businessId,
+        ...(note?.trim() ? { note: note.trim() } : {}),
+      },
+    });
 
     const summary = await db.business.findUnique({
       where: { id: review.businessId },

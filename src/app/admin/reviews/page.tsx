@@ -1,8 +1,10 @@
-import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { requireAdminApi, requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin/guard";
 import ModerationQueue from "./_components/ModerationQueue";
+import { adminMetadata } from "@/lib/admin/meta";
+
+export const generateMetadata = adminMetadata("reviews.read", "مراجعة التقييمات");
 
 /**
  * The title is decided per request, not exported as a constant.
@@ -12,13 +14,6 @@ import ModerationQueue from "./_components/ModerationQueue";
  * moderation" — which told them the page exists, the one thing the
  * notFound() is there to avoid.
  */
-export async function generateMetadata(): Promise<Metadata> {
-  const admin = await requireAdminApi();
-  return {
-    title: admin ? "مراجعة التقييمات" : "غير موجود",
-    robots: { index: false, follow: false },
-  };
-}
 
 /**
  * The moderation queue.
@@ -33,7 +28,7 @@ export default async function AdminReviewsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireAdminPage();
+  await requireAdminPage("reviews.read");
 
   const sp = await searchParams;
   const one = (k: string) => {

@@ -35,9 +35,12 @@ model User {
   notifyByEmail    Boolean  @default(true)
   /// Off until an SMS gateway is configured; see lib/notifications.
   notifyBySms      Boolean  @default(false)
-  /// A platform moderator. Set by hand in the database — nothing in the
-  /// application can grant it, so there is no screen to get wrong.
+  /// Deprecated in favour of adminRole; kept so a token minted before
+  /// roles existed still resolves. Nothing reads it to decide access.
   isAdmin          Boolean  @default(false)
+  /// What this account may administer. Null for everybody who is not an
+  /// administrator, which is almost everybody.
+  adminRole        AdminRole?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -251,6 +254,22 @@ model Business {
   pendingPlan                Plan?
   subscriptionPaymobOrderId  String? // Paymob order ID for subscription payment
   subscriptionReminderSentAt DateTime? // prevents duplicate renewal reminder emails
+
+  // ── Where this business stands with us ──────────────────────
+  /// isPublished says whether the page is visible. This says why.
+  /// A page can be invisible because nobody has looked at it yet,
+  /// because it was turned down, or because it was taken down — three
+  /// different situations one boolean could not tell apart.
+  status                     BusinessStatus @default(APPROVED)
+  /// Shown to the owner. A decision with no reason is one they cannot
+  /// act on.
+  statusNote                 String?
+  statusChangedAt            DateTime?
+  statusChangedById          String?
+  /// Editorially promoted. Separate from isVerified, which is earned by
+  /// completing a profile and cannot be granted by anybody.
+  isFeatured                 Boolean        @default(false)
+  featuredAt                 DateTime?
 
   // ── What this business wants to be told about ───────────────
   // Every default matches what businesses already receive, so nobody's
@@ -866,6 +885,52 @@ model StaffService {
   service     Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@id([staffMemberId, serviceId])
+}
+
+enum AdminRole {
+  /// Reported reviews and nothing else.
+  MODERATOR
+  /// Businesses, customers, bookings, verification and the catalogue.
+  ADMIN
+  /// Everything, including money and granting roles.
+  SUPER_ADMIN
+}
+
+enum BusinessStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+/// What an administrator did.
+///
+/// Append-only by convention: nothing writes to a row after creating
+/// it and no screen offers a way to. The actor's name and role are
+/// copied in rather than joined, because a log that renders whoever
+/// holds an id today rewrites its own history the moment somebody is
+/// promoted or renamed.
+model AuditLog {
+  id           String   @id @default(cuid())
+  at           DateTime @default(now())
+  actorId      String?
+  actorName    String?
+  actorRole    String?
+  /// A verb: "business.suspend", "review.hide".
+  action       String
+  resourceType String
+  resourceId   String?
+  /// One sentence, readable without decoding the metadata.
+  summary      String
+  /// What the action needs to be understood later — old and new values,
+  /// the reason given. Never credentials, never a customer's contact
+  /// details.
+  metadata     Json?
+
+  @@index([at(sort: Desc)])
+  @@index([actorId, at(sort: Desc)])
+  @@index([resourceType, resourceId, at(sort: Desc)])
+  @@index([action])
 }
 
 enum BusinessType {

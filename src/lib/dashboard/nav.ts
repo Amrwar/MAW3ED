@@ -59,7 +59,7 @@ export interface NavContext {
   hasResources: boolean;
   /** More than one location. */
   hasBranches: boolean;
-  /** A platform moderator sees the review queue; nobody else does. */
+  /** An administrator sees a way into the panel; nobody else does. */
   isAdmin?: boolean;
 }
 
@@ -125,7 +125,7 @@ export function buildNav(ctx: NavContext): NavSection[] {
   // absent rather than disabled for everybody else — a greyed-out link
   // would tell the whole platform the page exists.
   if (ctx.isAdmin) {
-    account.push({ href: "/admin/reviews", label: s.moderation, icon: ShieldCheck });
+    account.push({ href: "/admin", label: s.moderation, icon: ShieldCheck });
   }
 
   return [
