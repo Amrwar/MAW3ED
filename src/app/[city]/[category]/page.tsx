@@ -129,6 +129,12 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
               </p>
             </header>
 
+            {/* Named for the heading outline. Each card is an h3, and
+                without this they hung straight off the h1. */}
+            <h2 className="sr-only-label">
+              {isAr ? "الأنشطة المتاحة" : "Available businesses"}
+            </h2>
+
             <ul className="m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((b) => (
                 <li key={b.slug} className="min-w-0">

@@ -56,9 +56,9 @@ export default function Footer() {
 
           {columns.map((col) => (
             <div key={col.title}>
-              <h4 className="mb-4 text-[0.8125rem] font-bold text-[var(--color-ink)]">
+              <h2 className="mb-4 text-[0.8125rem] font-bold text-[var(--color-ink)]">
                 {col.title}
-              </h4>
+              </h2>
               <ul className="link-list flex flex-col">
                 {col.links.map((link) => (
                   <li key={link.href}>

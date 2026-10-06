@@ -217,7 +217,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 mb-4" dir="rtl">
       <div className="w-1 h-5 bg-[var(--color-jade)] rounded-full" />
-      <h4 className="text-base font-bold text-[var(--color-jade)]">{children}</h4>
+      <h3 className="text-base font-bold text-[var(--color-jade)]">{children}</h3>
     </div>
   );
 }
@@ -483,9 +483,13 @@ export default function BookingWidget({
   const stepperSteps = ALL_STEPS.map((s, i) => ({ id: s, label: stepLabel(s), n: i + 1 }));
   const currentStepN = ALL_STEPS.indexOf(step) + 1;
 
+  // No id="booking" here. The anchor lives on the wrapper in
+  // CompanyContent, which is the element carrying the scroll offset for
+  // the sticky header. This had it too, so every profile shipped the id
+  // twice and the five links that point at #booking landed on whichever
+  // came first in the markup rather than on the one that was meant.
   return (
     <div
-      id="booking"
       className="overflow-hidden rounded-[var(--radius-xl)] bg-white"
       dir="rtl"
       style={{

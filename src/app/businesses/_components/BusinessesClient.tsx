@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, useId } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Search, SlidersHorizontal, Store, X } from "lucide-react";
@@ -59,6 +59,13 @@ export default function BusinessesClient({
   const b = t.businesses;
   const f = t.filters;
   const isAr = lang === "ar";
+
+  // Not a literal. While the page streams, React holds the resolved
+  // markup in a hidden div before swapping it in, so for that window
+  // the id exists twice — and label[for] takes the first match in
+  // document order, which is the hidden copy. Clicking the search
+  // label in that window focused nothing.
+  const uid = useId();
 
   const router = useRouter();
   const pathname = usePathname();
@@ -220,12 +227,12 @@ export default function BusinessesClient({
             className="flex flex-wrap items-center gap-3"
           >
             <label
-              htmlFor="browse-q"
+              htmlFor={`${uid}-q`}
               className="flex min-h-12 flex-[1_1_18rem] cursor-text items-center gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-line-2)] bg-[var(--color-ground)] px-4 focus-within:ring-2 focus-within:ring-[var(--color-jade)]"
             >
               <Search size={18} strokeWidth={1.8} aria-hidden="true" className="shrink-0 text-[var(--color-subtle)]" />
               <input
-                id="browse-q"
+                id={`${uid}-q`}
                 type="search"
                 value={term}
                 onChange={(e) => setTerm(e.target.value)}
@@ -338,6 +345,10 @@ export default function BusinessesClient({
             )
           ) : (
             <>
+              {/* The filter groups are the page's h2s; the results had
+                  no heading at all, so the card h3s hung off the h1. */}
+              <h2 className="sr-only-label">{isAr ? "نتائج البحث" : "Search results"}</h2>
+
               <ul
                 className={cn(
                   "m-0 grid list-none grid-cols-1 gap-5 p-0 transition-opacity sm:grid-cols-2 xl:grid-cols-3",

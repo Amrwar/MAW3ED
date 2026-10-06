@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { Check } from "lucide-react";
 import type { DiscoveryQuery } from "@/lib/discovery/params";
 import { RATING_FLOORS } from "@/lib/discovery/params";
@@ -23,6 +24,14 @@ interface Props {
  * one they discover by tapping.
  */
 export default function FilterPanel({ query, facets, priceBounds, onChange }: Props) {
+  // This panel is on the page twice: the desktop sidebar and the
+  // filter drawer a phone opens. Hard-coded ids made both copies claim
+  // the same ones, and a label resolves to the first match in document
+  // order — so every price label in the drawer pointed at the sidebar's
+  // input, which is display:none on a phone. Tapping the label focused
+  // something invisible: no caret, no keyboard, nothing.
+  const uid = useId();
+
   const { t, lang } = useLanguage();
   const f = t.filters;
   const isAr = lang === "ar";
@@ -180,7 +189,7 @@ export default function FilterPanel({ query, facets, priceBounds, onChange }: Pr
         <Group title={f.price} hint={`${num(priceBounds.min, lang)} – ${num(priceBounds.max, lang)} ${t.businessCard.currency}`}>
           <div className="flex items-center gap-2">
             <NumberField
-              id="filter-min-price"
+              id={`${uid}-min-price`}
               label={f.priceFrom}
               value={query.minPrice}
               placeholder={String(priceBounds.min)}
@@ -188,7 +197,7 @@ export default function FilterPanel({ query, facets, priceBounds, onChange }: Pr
             />
             <span aria-hidden="true" className="mt-5 text-[var(--color-faint)]">—</span>
             <NumberField
-              id="filter-max-price"
+              id={`${uid}-max-price`}
               label={f.priceTo}
               value={query.maxPrice}
               placeholder={String(priceBounds.max)}
@@ -234,12 +243,12 @@ function Group({
 }) {
   return (
     <section>
-      <h3 className="m-0 mb-2.5 text-[0.8125rem] font-bold text-[var(--color-ink)]">
+      <h2 className="m-0 mb-2.5 text-[0.8125rem] font-bold text-[var(--color-ink)]">
         {title}
         {hint && (
           <span className="ms-2 font-normal text-[var(--color-subtle)]">{hint}</span>
         )}
-      </h3>
+      </h2>
       {children}
     </section>
   );
