@@ -168,3 +168,54 @@ function normalisePhone(raw: string): string {
   if (digits.startsWith("20")) return `+${digits}`;
   return `+20${digits}`;
 }
+
+/* ─── Breadcrumbs ─────────────────────────────────────────── */
+
+/**
+ * BreadcrumbList for a landing page.
+ *
+ * Google shows these as the path under a result instead of a bare URL,
+ * which is most of the value of having landing pages at all: "موعد ›
+ * القاهرة › عيادات طبية" reads as a place in a structure rather than
+ * as a guess.
+ *
+ * Positions are 1-based and the last item is the current page, which
+ * carries no URL of its own — a self-link in a breadcrumb is noise.
+ */
+export function buildBreadcrumbJsonLd(
+  trail: { name: string; path?: string }[],
+): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: trail.map((step, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: step.name,
+      ...(step.path ? { item: `${BASE_URL}${step.path}` } : {}),
+    })),
+  };
+}
+
+/**
+ * ItemList for a landing page's results.
+ *
+ * Says "this page lists these businesses, in this order" rather than
+ * leaving a crawler to infer it from the markup. Only the businesses
+ * actually on the page, so it never claims more than it shows.
+ */
+export function buildItemListJsonLd(
+  items: { slug: string; name: string }[],
+): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    numberOfItems: items.length,
+    itemListElement: items.map((b, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${BASE_URL}/company/${b.slug}`,
+      name: b.name,
+    })),
+  };
+}

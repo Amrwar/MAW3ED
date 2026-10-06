@@ -1,11 +1,19 @@
 /**
- * Centralized absolute URL builder for Maw3ed public pages.
- * Uses AUTH_URL env var (set by Next Auth) as the base, falling back to the
- * production domain. All URLs are built here so the domain never appears in
- * more than one place.
+ * Absolute URLs for public pages.
+ *
+ * There is a second resolver in lib/env.ts and that is deliberate, not
+ * an oversight: env.ts is server-only by design, and this module is
+ * imported by client components for SITE_HOST. They read the same
+ * variables in the same order so they cannot disagree about what the
+ * site is called — if one changes, change both.
  */
 
-const BASE = (process.env.AUTH_URL ?? "https://maw3ed.net").replace(/\/$/, "");
+const BASE = (
+  process.env.AUTH_URL ??
+  process.env.NEXTAUTH_URL ??
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  "https://maw3ed.net"
+).replace(/\/+$/, "");
 
 /** Full absolute URL for a customer's booking management page */
 export function bookingPageUrl(accessToken: string): string {

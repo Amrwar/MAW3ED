@@ -7,26 +7,41 @@ import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
 import BusinessCard from "@/components/shared/BusinessCard";
 import { getCategories, getCategoryBySlug, getPublishedBusinesses } from "@/lib/data";
+import { MIN_BUSINESSES, getLandingCategories } from "@/lib/seo/landing";
+import { buildMetadata } from "@/lib/seo/meta";
+import { db } from "@/lib/db";
 
 type Props = { params: Promise<{ category: string }> };
 
 export async function generateStaticParams() {
-  const categories = await getCategories();
+  // Ten of the fourteen categories have no business in them. Those are
+  // not pages; they are an empty grid with a heading over it.
+  const categories = await getLandingCategories();
   return categories.map((c) => ({ category: c.slug }));
 }
+
+export const dynamicParams = true;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { category: slug } = await params;
   const category = await getCategoryBySlug(slug);
-  if (!category) return {};
-  return {
-    title: `${category.nameAr} | تصفح الأعمال`,
-    description: `اكتشف أفضل أعمال ${category.nameAr} واحجز موعدك بسهولة عبر موعد.`,
-    openGraph: {
-      title: `${category.icon} ${category.nameAr}`,
-      description: `اكتشف أفضل أعمال ${category.nameAr} واحجز موعدك بسهولة.`,
-    },
-  };
+  if (!category) return { title: "غير موجود", robots: { index: false, follow: false } };
+
+  const count = await db.business.count({
+    where: { isPublished: true, categoryId: category.id },
+  });
+  if (count < MIN_BUSINESSES) {
+    return { title: "غير موجود", robots: { index: false, follow: false } };
+  }
+
+  return buildMetadata({
+    title: `${category.nameAr} — احجز أونلاين`,
+    description:
+      count === 1
+        ? `نشاط واحد في ${category.nameAr} بيستقبل حجوزات أونلاين على موعد.`
+        : `${count} من ${category.nameAr} بيستقبلوا حجوزات أونلاين على موعد. قارن واحجز في ثوانٍ.`,
+    path: `/categories/${category.slug}`,
+  });
 }
 
 export default async function CategoryPage({ params }: Props) {
@@ -39,6 +54,7 @@ export default async function CategoryPage({ params }: Props) {
   ]);
 
   if (!category) notFound();
+  if (businesses.length < MIN_BUSINESSES) notFound();
 
   const otherCategories = allCategories.filter((c) => c.slug !== slug).slice(0, 8);
 

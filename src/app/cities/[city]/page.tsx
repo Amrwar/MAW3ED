@@ -7,26 +7,45 @@ import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
 import BusinessCard from "@/components/shared/BusinessCard";
 import { getCities, getCityBySlug, getPublishedBusinesses } from "@/lib/data";
+import { MIN_BUSINESSES, getLandingCities, getLandingCombos } from "@/lib/seo/landing";
+import { buildMetadata } from "@/lib/seo/meta";
+import { db } from "@/lib/db";
 
 type Props = { params: Promise<{ city: string }> };
 
+/**
+ * Only cities that have a business.
+ *
+ * There are 27 cities in the database and four of them have a listing.
+ * Building the other 23 produces pages whose entire content is "nothing
+ * here", and the sitemap used to advertise every one of them.
+ */
 export async function generateStaticParams() {
-  const cities = await getCities();
+  const cities = await getLandingCities();
   return cities.map((c) => ({ city: c.slug }));
 }
+
+/** A city that gains its first business becomes a page without a deploy. */
+export const dynamicParams = true;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { city: slug } = await params;
   const city = await getCityBySlug(slug);
-  if (!city) return {};
-  return {
-    title: `أعمال في ${city.nameAr}`,
-    description: `اكتشف أفضل الأعمال والمواعيد في ${city.nameAr}. احجز حلاق، صالون، طبيب وأكثر بضغطة واحدة.`,
-    openGraph: {
-      title: `أعمال في ${city.nameAr}`,
-      description: `اكتشف أفضل الأعمال والمواعيد في ${city.nameAr}.`,
-    },
-  };
+  if (!city) return { title: "غير موجود", robots: { index: false, follow: false } };
+
+  const count = await countInCity(city.id);
+  if (count < MIN_BUSINESSES) {
+    return { title: "غير موجود", robots: { index: false, follow: false } };
+  }
+
+  return buildMetadata({
+    title: `أعمال في ${city.nameAr} — احجز أونلاين`,
+    description:
+      count === 1
+        ? `نشاط واحد في ${city.nameAr} بيستقبل حجوزات أونلاين على موعد.`
+        : `${count} نشاط في ${city.nameAr} بيستقبلوا حجوزات أونلاين على موعد. شوف المواعيد المتاحة واحجز في ثوانٍ.`,
+    path: `/cities/${city.slug}`,
+  });
 }
 
 export default async function CityPage({ params }: Props) {
@@ -38,9 +57,16 @@ export default async function CityPage({ params }: Props) {
     getCities(),
   ]);
 
+  // Unknown, or real but empty. Both are a 404 rather than a page
+  // whose only content is that it has none.
   if (!city) notFound();
+  if (businesses.length < MIN_BUSINESSES) notFound();
 
   const otherCities = allCities.filter((c) => c.slug !== slug).slice(0, 6);
+
+  // Only pairs that render — the same source the routes and the
+  // sitemap use, so every link here leads somewhere.
+  const cityCombos = (await getLandingCombos()).filter((c) => c.citySlug === slug);
 
   return (
     <>
@@ -101,6 +127,37 @@ export default async function CityPage({ params }: Props) {
             <EmptyState cityName={city.nameAr} />
           )}
 
+          {/* The landing pages inside this city.
+
+              How a crawler finds /cairo/clinics at all: nothing else on
+              the site links to the city-and-category pages, and a page
+              that appears in the sitemap with no link pointing at it is
+              a weak signal. They are also the links a reader wants —
+              they came for a city and now want a kind of place in it. */}
+          {cityCombos.length > 0 && (
+            <div className="mt-14">
+              <h2 className="text-base font-bold text-[var(--color-text-primary)] mb-4">
+                تصفح حسب التخصص في {city.nameAr}
+              </h2>
+              <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+                {cityCombos.map((c) => (
+                  <li key={c.categorySlug}>
+                    <Link
+                      href={`/${c.citySlug}/${c.categorySlug}`}
+                      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] px-4 text-[0.84375rem] text-[var(--color-muted)] transition-colors hover:border-[var(--color-jade)] hover:text-[var(--color-jade)]"
+                    >
+                      {c.categoryNameAr}
+                      <span className="num text-[0.75rem] text-[var(--color-faint)]">
+                        {c.count}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+
           {/* ── Other cities ──────────────────────────────── */}
           {otherCities.length > 0 && (
             <div className="mt-14">
@@ -152,4 +209,9 @@ function EmptyState({ cityName }: { cityName: string }) {
       </div>
     </div>
   );
+}
+
+/** How many published businesses this city has. */
+async function countInCity(cityId: string): Promise<number> {
+  return db.business.count({ where: { isPublished: true, cityId } });
 }

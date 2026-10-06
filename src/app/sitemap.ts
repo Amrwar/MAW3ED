@@ -1,65 +1,96 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
-import { siteUrl } from "@/lib/env";
+import { siteUrl } from "@/lib/url";
+import {
+  getLandingCategories,
+  getLandingCities,
+  getLandingCombos,
+} from "@/lib/seo/landing";
 
-const BASE_URL = siteUrl;
-
-function url(path: string): string {
-  return `${BASE_URL}${path}`;
-}
-
+/**
+ * The sitemap offers exactly the pages that exist.
+ *
+ * It used to list every city and every category in the database: 41
+ * URLs, 33 of which rendered an empty grid under a heading. A sitemap
+ * is a claim that these pages are worth fetching, and a third of them
+ * being empty is the claim being wrong — it spends crawl budget and
+ * teaches a search engine that the site's pages are thin.
+ *
+ * Everything here comes from lib/seo/landing, which is the same module
+ * the pages themselves use to decide whether to render or 404. They
+ * cannot disagree.
+ *
+ * Paginated URLs are deliberately absent. "?page=2" is marked noindex
+ * by the pages that emit it, and a sitemap entry for a page we have
+ * asked not to be indexed is a contradiction.
+ */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [businesses, cities, categories] = await Promise.all([
+  const [businesses, cities, categories, combos] = await Promise.all([
     db.business.findMany({
-      where:   { isPublished: true },
-      select:  { slug: true, updatedAt: true },
+      where: { isPublished: true },
+      select: { slug: true, updatedAt: true },
       orderBy: { updatedAt: "desc" },
     }),
-    db.city.findMany({
-      select:  { slug: true },
-      orderBy: { nameAr: "asc" },
-    }),
-    db.category.findMany({
-      select:  { slug: true },
-      orderBy: { nameAr: "asc" },
-    }),
+    getLandingCities(),
+    getLandingCategories(),
+    getLandingCombos(),
   ]);
 
+  const now = new Date();
+
   const staticRoutes: MetadataRoute.Sitemap = [
-    {
-      url:             url("/"),
-      lastModified:    new Date(),
-      changeFrequency: "daily",
-      priority:        1.0,
-    },
-    {
-      url:             url("/businesses"),
-      lastModified:    new Date(),
-      changeFrequency: "daily",
-      priority:        0.9,
-    },
+    { url: siteUrl("/"), lastModified: now, changeFrequency: "daily", priority: 1.0 },
+    { url: siteUrl("/businesses"), lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    { url: siteUrl("/categories"), lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: siteUrl("/cities"), lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: siteUrl("/for-business"), lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: siteUrl("/pricing"), lastModified: now, changeFrequency: "monthly", priority: 0.5 },
+    { url: siteUrl("/faq"), lastModified: now, changeFrequency: "monthly", priority: 0.4 },
+    { url: siteUrl("/contact"), lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: siteUrl("/terms"), lastModified: now, changeFrequency: "yearly", priority: 0.2 },
+    { url: siteUrl("/privacy"), lastModified: now, changeFrequency: "yearly", priority: 0.2 },
   ];
 
   const cityRoutes: MetadataRoute.Sitemap = cities.map((c) => ({
-    url:             url(`/cities/${c.slug}`),
-    lastModified:    new Date(),
+    url: siteUrl(`/cities/${c.slug}`),
+    lastModified: now,
     changeFrequency: "weekly" as const,
-    priority:        0.7,
+    priority: 0.7,
   }));
 
   const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
-    url:             url(`/categories/${c.slug}`),
-    lastModified:    new Date(),
+    url: siteUrl(`/categories/${c.slug}`),
+    lastModified: now,
     changeFrequency: "weekly" as const,
-    priority:        0.7,
+    priority: 0.7,
+  }));
+
+  /**
+   * The city-and-category pages, which are the ones worth ranking:
+   * "دكتور أسنان في مدينة نصر" is a search somebody actually makes,
+   * and this is the page that answers it.
+   */
+  const comboRoutes: MetadataRoute.Sitemap = combos.map((c) => ({
+    url: siteUrl(`/${c.citySlug}/${c.categorySlug}`),
+    lastModified: now,
+    changeFrequency: "weekly" as const,
+    // Above the broader city and category pages: more specific, and
+    // the only page on the site that matches that search exactly.
+    priority: 0.75,
   }));
 
   const businessRoutes: MetadataRoute.Sitemap = businesses.map((b) => ({
-    url:             url(`/company/${b.slug}`),
-    lastModified:    b.updatedAt,
+    url: siteUrl(`/company/${b.slug}`),
+    lastModified: b.updatedAt,
     changeFrequency: "weekly" as const,
-    priority:        0.8,
+    priority: 0.8,
   }));
 
-  return [...staticRoutes, ...cityRoutes, ...categoryRoutes, ...businessRoutes];
+  return [
+    ...staticRoutes,
+    ...comboRoutes,
+    ...cityRoutes,
+    ...categoryRoutes,
+    ...businessRoutes,
+  ];
 }
