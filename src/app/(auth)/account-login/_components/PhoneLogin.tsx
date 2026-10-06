@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { ArrowRight, MessageCircle, Smartphone } from "lucide-react";
@@ -199,6 +200,14 @@ export default function PhoneLogin() {
           </div>
         </form>
       )}
+
+      {/* A business owner who lands here signs in with an email and a
+          password, not a code, and had no way through from this page. */}
+      <p className="mt-7 text-center text-[0.8125rem] text-[var(--color-subtle)]">
+        <Link href="/login" className="font-bold text-[var(--color-jade)] hover:underline">
+          {t.account.ownerSignIn}
+        </Link>
+      </p>
     </div>
   );
 }

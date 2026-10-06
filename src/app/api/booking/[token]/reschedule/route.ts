@@ -5,17 +5,7 @@ import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { loadAvailability } from "@/lib/bookings/schedule";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { Prisma } from "@prisma/client";
-import { bookingPageUrl } from "@/lib/url";
-import {
-  sendRescheduleConfirmationToCustomer,
-  sendRescheduleAlertToBusiness,
-  type BookingEmailData,
-} from "@/lib/services/email";
-import {
-  sendCustomerConfirmationTemplate,
-  sendBusinessBookingTemplate,
-} from "@/lib/services/whatsapp";
-import type { BookingNotificationData } from "@/lib/services/whatsapp-messages";
+import { notify } from "@/lib/notifications";
 import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ token: string }> };
@@ -155,44 +145,14 @@ export async function POST(req: Request, { params }: Params) {
       throw e;
     }
 
-    // ── Notifications (fire-and-forget) ──────────────────────────────────────
-    const bookingUrl = bookingPageUrl(token);
-
-    const notifData: BookingNotificationData = {
-      businessName:  booking.business.nameAr,
-      serviceName:   booking.service.nameAr,
-      date:          newDate,
-      startTime:     newStartTime,
-      endTime:       newEndTime,
-      customerName:  booking.customerName,
-      customerPhone: booking.customerPhone,
-      totalPrice:    Number(booking.totalPrice),
-      currency:      booking.currency,
-      bookingUrl,
-    };
-
-    const emailData: BookingEmailData = {
-      ...notifData,
-      notes: booking.notes,
-      bookingUrl,
-    };
-
-    // Business owner — WhatsApp
-    const businessPhone = booking.business.whatsapp ?? booking.business.phone;
-    if (businessPhone) void sendBusinessBookingTemplate(businessPhone, notifData);
-
-    // Customer — WhatsApp confirmation
-    void sendCustomerConfirmationTemplate(booking.customerPhone, notifData);
-
-    // Business owner — email
-    if (booking.business.owner.email) {
-      void sendRescheduleAlertToBusiness(booking.business.owner.email, emailData);
-    }
-
-    // Customer — email (only if on file)
-    if (booking.customer?.email) {
-      void sendRescheduleConfirmationToCustomer(booking.customer.email, emailData);
-    }
+    // One call for both sides. Note this now respects the WhatsApp
+    // plan gate, which this route never checked while the booking route
+    // always did — a free plan was getting a paid channel here only.
+    void notify({
+      type: "booking.rescheduled",
+      bookingId: booking.id,
+      movedTo: `${newDate}T${newStartTime}`,
+    });
 
     return ok({
       date:      newDate,

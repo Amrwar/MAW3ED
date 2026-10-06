@@ -20,6 +20,7 @@ import {
   emailVerificationHtml,
 } from "./email-templates";
 import { log } from "@/lib/logger";
+import { failed, sent, skipped, type SendOutcome } from "./send-outcome";
 
 const client  = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM    = process.env.EMAIL_FROM ?? "Maw3ed <noreply@maw3ed.net>";
@@ -33,21 +34,31 @@ export interface EmailPayload {
 /**
  * Base send helper — fire-and-forget, never throws.
  */
-export async function sendEmail(payload: EmailPayload): Promise<void> {
+export async function sendEmail(payload: EmailPayload): Promise<SendOutcome> {
   if (!client) {
     log.warn("[Email] Disabled — set RESEND_API_KEY to enable.");
-    return;
+    return skipped("email-not-configured");
   }
+  if (!payload.to) return skipped("no-address");
 
-  const { error } = await client.emails.send({
-    from:    FROM,
-    to:      payload.to,
-    subject: payload.subject,
-    html:    payload.html,
-  });
+  try {
+    const { data, error } = await client.emails.send({
+      from:    FROM,
+      to:      payload.to,
+      subject: payload.subject,
+      html:    payload.html,
+    });
 
-  if (error) {
-    log.error("[Email] Resend error:", error);
+    if (error) {
+      log.error("[Email] Resend error:", error);
+      return failed(error.name ?? "resend-error");
+    }
+    return sent(data?.id);
+  } catch (e) {
+    // The client can throw on a network failure; it never used to
+    // escape this function and it still does not.
+    log.error("[Email] Network error:", e);
+    return failed("network-error");
   }
 }
 
@@ -76,10 +87,10 @@ export interface BookingEmailData {
 export async function sendBookingConfirmationToCustomer(
   customerEmail: string,
   data: BookingEmailData,
-): Promise<void> {
-  if (!customerEmail?.trim()) return;
+): Promise<SendOutcome> {
+  if (!customerEmail?.trim()) return skipped("no-address");
 
-  await sendEmail({
+  return sendEmail({
     to:      customerEmail.trim(),
     subject: `✅ تم تسجيل حجزك في ${data.businessName}`,
     html:    customerConfirmationHtml(data),
@@ -93,10 +104,10 @@ export async function sendBookingConfirmationToCustomer(
 export async function sendBookingReminderToCustomer(
   customerEmail: string,
   data: BookingEmailData,
-): Promise<void> {
-  if (!customerEmail?.trim()) return;
+): Promise<SendOutcome> {
+  if (!customerEmail?.trim()) return skipped("no-address");
 
-  await sendEmail({
+  return sendEmail({
     to:      customerEmail.trim(),
     subject: `⏰ تذكير: موعدك في ${data.businessName} غداً`,
     html:    customerReminderHtml(data),
@@ -109,9 +120,9 @@ export async function sendBookingReminderToCustomer(
 export async function sendPasswordResetEmail(
   to: string,
   resetUrl: string,
-): Promise<void> {
-  if (!to?.trim()) return;
-  await sendEmail({
+): Promise<SendOutcome> {
+  if (!to?.trim()) return skipped("no-address");
+  return sendEmail({
     to:      to.trim(),
     subject: "🔐 إعادة تعيين كلمة المرور — موعد",
     html:    passwordResetHtml(resetUrl),
@@ -124,9 +135,9 @@ export async function sendPasswordResetEmail(
 export async function sendRescheduleConfirmationToCustomer(
   customerEmail: string,
   data: BookingEmailData,
-): Promise<void> {
-  if (!customerEmail?.trim()) return;
-  await sendEmail({
+): Promise<SendOutcome> {
+  if (!customerEmail?.trim()) return skipped("no-address");
+  return sendEmail({
     to:      customerEmail.trim(),
     subject: `📅 تم إعادة جدولة حجزك في ${data.businessName}`,
     html:    customerConfirmationHtml(data),
@@ -139,9 +150,9 @@ export async function sendRescheduleConfirmationToCustomer(
 export async function sendRescheduleAlertToBusiness(
   ownerEmail: string,
   data: BookingEmailData,
-): Promise<void> {
-  if (!ownerEmail?.trim()) return;
-  await sendEmail({
+): Promise<SendOutcome> {
+  if (!ownerEmail?.trim()) return skipped("no-address");
+  return sendEmail({
     to:      ownerEmail.trim(),
     subject: `🔄 إعادة جدولة حجز من ${data.customerName}`,
     html:    businessAlertHtml(data),
@@ -160,9 +171,9 @@ export async function sendSubscriptionRenewalReminder(
     renewUrl:     string;
     daysLeft:     number;
   },
-): Promise<void> {
-  if (!ownerEmail?.trim()) return;
-  await sendEmail({
+): Promise<SendOutcome> {
+  if (!ownerEmail?.trim()) return skipped("no-address");
+  return sendEmail({
     to:      ownerEmail.trim(),
     subject: `⏰ اشتراكك في موعد سينتهي خلال ${params.daysLeft} أيام`,
     html:    subscriptionRenewalReminderHtml(params),
@@ -179,9 +190,9 @@ export async function sendSubscriptionExpiredEmail(
     planName:     string;
     renewUrl:     string;
   },
-): Promise<void> {
-  if (!ownerEmail?.trim()) return;
-  await sendEmail({
+): Promise<SendOutcome> {
+  if (!ownerEmail?.trim()) return skipped("no-address");
+  return sendEmail({
     to:      ownerEmail.trim(),
     subject: "😔 انتهى اشتراكك في موعد — جدِّد الآن",
     html:    subscriptionExpiredHtml(params),
@@ -195,10 +206,10 @@ export async function sendSubscriptionExpiredEmail(
 export async function sendNewBookingAlertToBusiness(
   ownerEmail: string,
   data: BookingEmailData,
-): Promise<void> {
-  if (!ownerEmail?.trim()) return;
+): Promise<SendOutcome> {
+  if (!ownerEmail?.trim()) return skipped("no-address");
 
-  await sendEmail({
+  return sendEmail({
     to:      ownerEmail.trim(),
     subject: `🗓️ موعد جديد من ${data.customerName}`,
     html:    businessAlertHtml(data),
@@ -212,9 +223,9 @@ export async function sendEmailVerification(
   to: string,
   verifyUrl: string,
   name?: string | null,
-): Promise<void> {
-  if (!to?.trim()) return;
-  await sendEmail({
+): Promise<SendOutcome> {
+  if (!to?.trim()) return skipped("no-address");
+  return sendEmail({
     to:      to.trim(),
     subject: "أكّد بريدك الإلكتروني — موعد",
     html:    emailVerificationHtml(verifyUrl, name),

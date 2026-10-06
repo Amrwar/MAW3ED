@@ -1,129 +1,141 @@
 import { db } from "@/lib/db";
-import { sendCustomerReminderTemplate } from "@/lib/services/whatsapp";
-import { sendBookingReminderToCustomer, type BookingEmailData } from "@/lib/services/email";
-import type { BookingNotificationData } from "@/lib/services/whatsapp-messages";
-import { bookingPageUrl } from "@/lib/url";
+import { notify } from "@/lib/notifications";
 import { log } from "@/lib/logger";
 
 /**
  * GET /api/cron/reminders
  *
- * Invoked daily by Vercel Cron (see vercel.json).
- * Finds all CONFIRMED bookings for tomorrow, sends a WhatsApp + optional email
- * reminder to each customer, then stamps customerReminderSentAt to prevent
- * duplicate sends on the next run.
+ * Runs hourly (see vercel.json) and sends three things:
  *
- * Security: Vercel automatically sets CRON_SECRET and attaches
- *   Authorization: Bearer <CRON_SECRET>  to every cron invocation.
- *   If CRON_SECRET is present in env, the header is validated here.
+ *   - the reminder, `reminderLeadHours` before the appointment;
+ *   - the shorter nudge, `startingSoonLeadMins` before it, for
+ *     businesses that switched it on;
+ *   - the review request, once the appointment is done.
+ *
+ * It used to run once a day and remind about "tomorrow", which meant a
+ * business could not ask for three hours' notice or two days'. The lead
+ * time is per business now, so the job has to wake up often enough to
+ * honour the shortest one.
+ *
+ * Running hourly is only safe because sending twice is impossible: every
+ * send claims a key in NotificationDelivery before it goes out, so an
+ * appointment that sits inside its reminder window for several
+ * consecutive runs is still reminded exactly once. The job does not
+ * decide that — it just asks, and the dispatcher answers DUPLICATE.
+ *
+ * Security: Vercel attaches Authorization: Bearer <CRON_SECRET> to every
+ * cron invocation; it is validated when the secret is set.
  */
+
+/** How far ahead to look at all. Nothing may be scheduled further out. */
+const MAX_LEAD_HOURS = 72;
+
+/** How long after an appointment ends to ask for a review. */
+const REVIEW_DELAY_HOURS = 3;
+/** And how long before we stop asking. */
+const REVIEW_WINDOW_HOURS = 72;
+
 export async function GET(req: Request) {
-  // ── Auth ─────────────────────────────────────────────────────
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    if (req.headers.get("Authorization") !== `Bearer ${cronSecret}`) {
       log.warn("[Reminders] Rejected unauthorized request");
       return new Response("Unauthorized", { status: 401 });
     }
   }
 
-  // ── Tomorrow's UTC date (midnight → midnight) ─────────────────
-  // Bookings are stored as UTC midnight, so we query for exactly
-  // the UTC date that corresponds to tomorrow.
   const now = new Date();
-  const tomorrowUTC = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
-  );
-  const tomorrowLabel = tomorrowUTC.toISOString().split("T")[0];
+  const counts = { reminder: 0, startingSoon: 0, review: 0, skipped: 0, failed: 0 };
 
-  log.info(`[Reminders] Running for date: ${tomorrowLabel}`);
+  /* ── Upcoming appointments ──────────────────────────────── */
 
-  // ── Fetch unreminded confirmed bookings for tomorrow ──────────
-  const bookings = await db.booking.findMany({
+  const horizon = new Date(now.getTime() + MAX_LEAD_HOURS * 3_600_000);
+  const upcoming = await db.booking.findMany({
     where: {
-      date:                   tomorrowUTC,
-      status:                 "CONFIRMED",
-      customerReminderSentAt: null,           // skip already-reminded
+      status: "CONFIRMED",
+      startsAt: { gte: now, lte: horizon },
     },
     select: {
-      id:           true,
-      accessToken:  true,
-      customerName: true,
-      customerPhone:true,
-      date:         true,
-      startTime:    true,
-      endTime:      true,
-      totalPrice:   true,
-      currency:     true,
-      notes:        true,
-      business: { select: { nameAr: true } },
-      service:  { select: { nameAr: true } },
-      customer: { select: { email: true } },
+      id: true,
+      startsAt: true,
+      customerReminderSentAt: true,
+      business: {
+        select: {
+          id: true,
+          reminderEnabled: true,
+          reminderLeadHours: true,
+          startingSoonEnabled: true,
+          startingSoonLeadMins: true,
+        },
+      },
     },
   });
 
-  log.info(`[Reminders] ${bookings.length} booking(s) to remind`);
+  log.info(`[Reminders] ${upcoming.length} upcoming booking(s) in the next ${MAX_LEAD_HOURS}h`);
 
-  let sent   = 0;
-  let failed = 0;
+  for (const b of upcoming) {
+    if (!b.startsAt) continue;
+    const minutesAway = (b.startsAt.getTime() - now.getTime()) / 60_000;
+    const biz = b.business;
 
-  for (const booking of bookings) {
     try {
-      const dateStr   = booking.date.toISOString().split("T")[0];
-      const bookingUrl = booking.accessToken ? bookingPageUrl(booking.accessToken) : null;
-
-      const notifData: BookingNotificationData = {
-        businessName:  booking.business.nameAr,
-        serviceName:   booking.service.nameAr,
-        date:          dateStr,
-        startTime:     booking.startTime,
-        endTime:       booking.endTime ?? "",
-        customerName:  booking.customerName,
-        customerPhone: booking.customerPhone,
-        totalPrice:    Number(booking.totalPrice),
-        currency:      booking.currency,
-      };
-
-      // WhatsApp reminder (never throws — logs internally on failure)
-      await sendCustomerReminderTemplate(booking.customerPhone, notifData);
-
-      // Email reminder — only if customer has an email on file
-      const customerEmail = booking.customer?.email;
-      if (customerEmail) {
-        const emailData: BookingEmailData = {
-          ...notifData,
-          notes:      booking.notes,
-          bookingUrl,
-        };
-        await sendBookingReminderToCustomer(customerEmail, emailData);
+      // The reminder, once the appointment is inside its lead window.
+      if (biz.reminderEnabled && minutesAway <= biz.reminderLeadHours * 60) {
+        const results = await notify({ type: "booking.reminder", bookingId: b.id });
+        if (results.some((r) => r.status === "SENT")) {
+          counts.reminder++;
+          // Kept in step for the dashboard, which still reads it. The
+          // ledger is what actually prevents a second send.
+          await db.booking.update({
+            where: { id: b.id },
+            data: { customerReminderSentAt: new Date() },
+          });
+        } else {
+          counts.skipped++;
+        }
       }
 
-      // ── Stamp reminder timestamp to prevent duplicate sends ────
-      await db.booking.update({
-        where: { id: booking.id },
-        data:  { customerReminderSentAt: new Date() },
-      });
-
-      log.info(
-        `[Reminders] ✓ ${booking.id} — ${booking.customerName} (${booking.customerPhone})`,
-      );
-      sent++;
+      // The shorter nudge, for businesses that asked for one.
+      if (biz.startingSoonEnabled && minutesAway <= biz.startingSoonLeadMins) {
+        const results = await notify({ type: "booking.startingSoon", bookingId: b.id });
+        if (results.some((r) => r.status === "SENT")) counts.startingSoon++;
+      }
     } catch (e) {
-      // DB update failing is the main risk here — WhatsApp/email never throw.
-      // Log and continue so one failure doesn't abort remaining reminders.
-      log.error(`[Reminders] ✗ Failed for booking ${booking.id}:`, e);
-      failed++;
+      log.error(`[Reminders] ✗ ${b.id}`, e);
+      counts.failed++;
     }
   }
 
-  log.info(`[Reminders] Complete — sent: ${sent}, failed: ${failed}`);
+  /* ── Finished appointments, not yet reviewed ────────────── */
 
-  return Response.json({
-    ok:        true,
-    date:      tomorrowLabel,
-    processed: bookings.length,
-    sent,
-    failed,
+  const reviewFrom = new Date(now.getTime() - REVIEW_WINDOW_HOURS * 3_600_000);
+  const reviewTo = new Date(now.getTime() - REVIEW_DELAY_HOURS * 3_600_000);
+
+  const finished = await db.booking.findMany({
+    where: {
+      status: "COMPLETED",
+      endsAt: { gte: reviewFrom, lte: reviewTo },
+      // Asking somebody to review something they already reviewed is
+      // the fastest way to teach them to ignore us.
+      review: null,
+      business: { reviewRequestEnabled: true },
+    },
+    select: { id: true },
   });
+
+  log.info(`[Reminders] ${finished.length} finished booking(s) to ask about`);
+
+  for (const b of finished) {
+    try {
+      const results = await notify({ type: "review.requested", bookingId: b.id });
+      if (results.some((r) => r.status === "SENT")) counts.review++;
+    } catch (e) {
+      log.error(`[Reminders] ✗ review request ${b.id}`, e);
+      counts.failed++;
+    }
+  }
+
+  log.info(`[Reminders] Complete — ${JSON.stringify(counts)}`);
+
+  return Response.json({ ok: true, at: now.toISOString(), ...counts });
 }

@@ -4,6 +4,7 @@
  */
 
 import type { BookingEmailData } from "./email";
+import { siteUrl } from "@/lib/url";
 
 const AR_DAYS: string[] = [
   "الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت",
@@ -356,4 +357,49 @@ export function emailVerificationHtml(verifyUrl: string, name?: string | null): 
     <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0E7F5E;">موعد</strong></p>
   `;
   return layout(body);
+}
+
+// ── The general-purpose notification email ────────────────────
+
+/**
+ * One email for every event that has no bespoke template of its own.
+ *
+ * The booking flows keep their hand-written templates — a confirmation
+ * with the full appointment table reads better than anything generic.
+ * This is for the rest, so that adding an event does not mean designing
+ * an email before it can be sent at all.
+ *
+ * The text is escaped: a business name or a customer name arrives here
+ * from a form, and a name with an angle bracket in it must not be able
+ * to rewrite the message around it.
+ */
+export function notificationHtml(
+  title: string,
+  body: string | null,
+  href: string | null,
+): string {
+  const link = href ? (/^https?:\/\//i.test(href) ? href : siteUrl(href)) : null;
+  return layout(`
+  <h1 style="margin:0 0 12px;font-size:20px;font-weight:800;color:#111827;line-height:1.5;">${escapeHtml(title)}</h1>
+  ${
+    body
+      ? `<p style="margin:0 0 24px;font-size:15px;color:#4b5563;line-height:1.8;">${escapeHtml(body)}</p>`
+      : ""
+  }
+  ${
+    link
+      ? `<table cellpadding="0" cellspacing="0"><tr><td style="border-radius:10px;background:#6366f1;">
+           <a href="${escapeHtml(link)}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">عرض التفاصيل</a>
+         </td></tr></table>`
+      : ""
+  }`);
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }

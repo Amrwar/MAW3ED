@@ -119,6 +119,14 @@ export default function LoginPage() {
           {l.createAccount}
         </Link>
       </p>
+
+      {/* This form is for business owners. A customer has no password —
+          they sign in with a code — and nothing here said so. */}
+      <p className="m-0 mt-3 border-t border-[var(--color-line)] pt-5 text-center text-[0.8125rem] text-[var(--color-subtle)]">
+        <Link href="/account-login" className="font-bold text-[var(--color-jade)]">
+          {t.account.customerSignIn}
+        </Link>
+      </p>
     </div>
   );
 }

@@ -2,8 +2,7 @@ import { db } from "@/lib/db";
 import { bookingStatusSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
-import { NOTIFY_COPY, notifyCustomer } from "@/lib/account/notify";
-import { formatWhen } from "@/lib/account/when";
+import { notify } from "@/lib/notifications";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -79,30 +78,33 @@ export async function PATCH(req: Request, { params }: Params) {
       );
     }
 
-    // Recorded for the customer's account before the response goes
-    // back, so the badge is already right when they open it.
-    const copy =
-      newStatus === "CONFIRMED"
-        ? NOTIFY_COPY.confirmed(business.nameAr, formatWhen(booking.date, booking.startTime))
-        : newStatus === "CANCELLED"
-          ? NOTIFY_COPY.cancelled(business.nameAr)
-          : newStatus === "COMPLETED"
-            ? NOTIFY_COPY.completed(business.nameAr)
-            : null;
-
-    if (copy) {
-      void notifyCustomer({
-        phone: booking.customerPhone,
-        ...copy,
-        href: booking.accessToken ? `/booking/${booking.accessToken}` : "/account",
-        bookingId: booking.id,
-      });
-    }
-
     const updated = await db.booking.update({
       where: { id },
       data:  { status: newStatus },
     });
+
+    // Told after the update, not before: a notification saying "your
+    // booking is confirmed" must not go out if the write that confirms
+    // it then fails.
+    //
+    // There is no REJECTED status — declining is a cancellation — but
+    // the two read very differently to a customer. Losing an
+    // appointment that was never confirmed is "we could not take it";
+    // losing one that was confirmed is "your appointment is off". The
+    // previous status is what tells them apart.
+    const wasPending = booking.status === "PENDING" || booking.status === "PENDING_PAYMENT";
+
+    if (newStatus === "CONFIRMED") {
+      void notify({ type: "booking.confirmed", bookingId: booking.id });
+    } else if (newStatus === "CANCELLED") {
+      void notify(
+        wasPending
+          ? { type: "booking.rejected", bookingId: booking.id }
+          : { type: "booking.cancelled", bookingId: booking.id, by: "business" },
+      );
+    } else if (newStatus === "COMPLETED") {
+      void notify({ type: "booking.completed", bookingId: booking.id });
+    }
 
     return ok({ id: updated.id, status: updated.status });
   } catch (e) {

@@ -14,18 +14,9 @@
 import { db } from "@/lib/db";
 import { err } from "@/lib/api";
 import { verifyWebhookHmac, type PaymobTransactionObj } from "@/lib/services/paymob";
-import { bookingPageUrl } from "@/lib/url";
 import { type Plan } from "@/lib/plans";
-import {
-  sendBusinessBookingTemplate,
-  sendCustomerConfirmationTemplate,
-} from "@/lib/services/whatsapp";
-import type { BookingNotificationData } from "@/lib/services/whatsapp-messages";
-import {
-  sendNewBookingAlertToBusiness,
-  type BookingEmailData,
-} from "@/lib/services/email";
 import { log } from "@/lib/logger";
+import { notify } from "@/lib/notifications";
 
 interface PaymobWebhookBody {
   type?: string;
@@ -117,47 +108,32 @@ async function handleBookingPayment(
       },
     });
 
-    const bookingUrl  = bookingPageUrl(booking.accessToken ?? "");
-    const bookingDate = updated.date.toISOString().split("T")[0];
+    // Paymob retries a webhook it did not hear a clean answer to, so
+    // the transaction id goes into the event: a retry computes the same
+    // deduplication key and the customer is not thanked twice for one
+    // payment.
+    void notify({
+      type: "payment.received",
+      bookingId: booking.id,
+      amount: Number(updated.depositAmount ?? updated.totalPrice),
+      transactionId: String(obj.id),
+    });
+    void notify({ type: "booking.confirmed", bookingId: booking.id });
 
-    const notifData: BookingNotificationData = {
-      businessName:  booking.business.nameAr,
-      serviceName:   booking.service.nameAr,
-      date:          bookingDate,
-      startTime:     updated.startTime,
-      endTime:       updated.endTime ?? "",
-      customerName:  updated.customerName,
-      customerPhone: updated.customerPhone,
-      totalPrice:    Number(updated.totalPrice),
-      currency:      updated.currency,
-      bookingUrl,
-    };
-
-    const businessPhone = booking.business.whatsapp ?? booking.business.phone;
-    if (businessPhone) void sendBusinessBookingTemplate(businessPhone, notifData);
-    void sendCustomerConfirmationTemplate(updated.customerPhone, notifData);
-
-    const emailData: BookingEmailData = {
-      businessName:  booking.business.nameAr,
-      serviceName:   booking.service.nameAr,
-      date:          bookingDate,
-      startTime:     updated.startTime,
-      endTime:       updated.endTime ?? "",
-      customerName:  updated.customerName,
-      customerPhone: updated.customerPhone,
-      totalPrice:    Number(updated.totalPrice),
-      currency:      updated.currency,
-      notes:         updated.notes,
-      bookingUrl,
-    };
-
-    if (booking.business.owner.email) {
-      void sendNewBookingAlertToBusiness(booking.business.owner.email, emailData);
-    }
   } else {
     await db.booking.update({
       where: { id: booking.id },
       data:  { status: "FAILED_PAYMENT" },
+    });
+
+    // Nobody was told about a failed payment before this. The customer
+    // was left looking at a booking that quietly stopped existing.
+    void notify({
+      type: "payment.failed",
+      bookingId: booking.id,
+      // Paymob's payload has no message field; what it does tell us is
+      // whether it errored or simply was not successful.
+      reason: obj.error_occured ? "provider-error" : "declined",
     });
   }
 
@@ -198,6 +174,13 @@ async function handleSubscriptionPayment(
     log.info(
       `[paymob webhook] subscription activated: business=${business.id} plan=${plan} until=${currentPeriodEnd.toISOString()}`,
     );
+
+    // The owner paid and heard nothing back from us before this.
+    void notify({
+      type: "subscription.renewed",
+      businessId: business.id,
+      until: currentPeriodEnd,
+    });
 
     // ── Referral reward: add 30 free days to the referrer ────────────────────
     if (business.referredById && !business.referralRewardedAt) {

@@ -33,6 +33,8 @@ model User {
   /// settings elsewhere.
   notifyByWhatsApp Boolean  @default(true)
   notifyByEmail    Boolean  @default(true)
+  /// Off until an SMS gateway is configured; see lib/notifications.
+  notifyBySms      Boolean  @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -104,13 +106,63 @@ model Notification {
 }
 
 enum NotificationKind {
+  BOOKING_CREATED
   BOOKING_CONFIRMED
+  BOOKING_REJECTED
   BOOKING_CANCELLED
   BOOKING_RESCHEDULED
   BOOKING_REMINDER
+  BOOKING_STARTING_SOON
   BOOKING_COMPLETED
   REVIEW_REQUEST
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  SUBSCRIPTION_RENEWAL_DUE
+  SUBSCRIPTION_EXPIRED
+  SUBSCRIPTION_RENEWED
   GENERAL
+}
+
+/// How a notification reached somebody.
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WHATSAPP
+  SMS
+}
+
+enum DeliveryStatus {
+  SENT
+  SKIPPED
+  FAILED
+}
+
+/// The record of what has already gone out.
+///
+/// `dedupeKey` is the whole mechanism for not sending twice: it names
+/// the event, its subject and the recipient on one channel, and a
+/// sender claims it before sending. A cron that runs twice, a webhook
+/// the payment provider retries, or a double-tapped button all compute
+/// the same key and the second one finds it taken.
+model NotificationDelivery {
+  id         String              @id @default(cuid())
+  dedupeKey  String              @unique
+  kind       NotificationKind
+  channel    NotificationChannel
+  status     DeliveryStatus
+  /// A phone or an email address, so support can answer "did they get
+  /// it?". Never the message body — that would put a customer's
+  /// details in a second place for no reason.
+  recipient  String
+  bookingId  String?
+  businessId String?
+  error      String?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@index([kind, createdAt])
+  @@index([bookingId])
+  @@index([businessId])
 }
 
 model Account {
@@ -196,6 +248,30 @@ model Business {
   pendingPlan                Plan?
   subscriptionPaymobOrderId  String? // Paymob order ID for subscription payment
   subscriptionReminderSentAt DateTime? // prevents duplicate renewal reminder emails
+
+  // ── What this business wants to be told about ───────────────
+  // Every default matches what businesses already receive, so nobody's
+  // notifications change until they choose to change them.
+  notifyByEmail        Boolean @default(true)
+  notifyByWhatsApp     Boolean @default(true)
+  notifyNewBooking     Boolean @default(true)
+  notifyCancellation   Boolean @default(true)
+  notifyPayment        Boolean @default(true)
+  /// Where alerts go. Null means the owner's email and the business's
+  /// own WhatsApp number, which is what happens today.
+  notificationEmail    String?
+  notificationPhone    String?
+
+  // ── Reminders ───────────────────────────────────────────────
+  reminderEnabled      Boolean @default(true)
+  /// How long before the appointment the reminder goes out. 24 is what
+  /// the daily job has always sent.
+  reminderLeadHours    Int     @default(24)
+  /// The second, shorter nudge. Off by default: it is an extra message
+  /// to somebody who already had one, which is the business's call.
+  startingSoonEnabled  Boolean @default(false)
+  startingSoonLeadMins Int     @default(120)
+  reviewRequestEnabled Boolean @default(true)
   // ── Referrals ─────────────────────────────────────────────
   referralCode               String?            @unique // 8-char uppercase code e.g. "A3F7C2D1"
   referredById               String? // businessId that referred this business

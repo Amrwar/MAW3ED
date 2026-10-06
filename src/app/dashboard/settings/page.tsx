@@ -89,6 +89,20 @@ export default async function SettingsPage() {
       cities={cities.map((c) => ({ id: c.id, nameAr: c.nameAr }))}
       categories={categories.map((c) => ({ id: c.id, nameAr: c.nameAr, nameEn: c.nameEn ?? c.nameAr, icon: c.icon }))}
       services={services}
+      notificationPrefs={{
+        notifyByEmail:        business.notifyByEmail,
+        notifyByWhatsApp:     business.notifyByWhatsApp,
+        notifyNewBooking:     business.notifyNewBooking,
+        notifyCancellation:   business.notifyCancellation,
+        notifyPayment:        business.notifyPayment,
+        notificationEmail:    business.notificationEmail,
+        notificationPhone:    business.notificationPhone,
+        reminderEnabled:      business.reminderEnabled,
+        reminderLeadHours:    business.reminderLeadHours,
+        startingSoonEnabled:  business.startingSoonEnabled,
+        startingSoonLeadMins: business.startingSoonLeadMins,
+        reviewRequestEnabled: business.reviewRequestEnabled,
+      }}
       depositEnabled={business.depositEnabled}
       depositPercent={business.depositPercent}
       plan={business.plan as Plan}

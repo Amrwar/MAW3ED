@@ -4,15 +4,20 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Bell,
+  BellRing,
   CalendarCheck,
   CalendarClock,
+  CalendarPlus,
   CalendarX,
   CheckCheck,
+  CreditCard,
   Star,
+  TriangleAlert,
 } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
+import { groupByDay } from "@/lib/notifications/grouping";
 
 export interface NotificationRow {
   id: string;
@@ -25,12 +30,20 @@ export interface NotificationRow {
 }
 
 const ICONS: Record<string, typeof Bell> = {
+  BOOKING_CREATED: CalendarPlus,
   BOOKING_CONFIRMED: CalendarCheck,
+  BOOKING_REJECTED: CalendarX,
   BOOKING_CANCELLED: CalendarX,
   BOOKING_RESCHEDULED: CalendarClock,
   BOOKING_REMINDER: CalendarClock,
+  BOOKING_STARTING_SOON: BellRing,
   BOOKING_COMPLETED: CheckCheck,
   REVIEW_REQUEST: Star,
+  PAYMENT_RECEIVED: CreditCard,
+  PAYMENT_FAILED: TriangleAlert,
+  SUBSCRIPTION_RENEWAL_DUE: TriangleAlert,
+  SUBSCRIPTION_EXPIRED: TriangleAlert,
+  SUBSCRIPTION_RENEWED: CheckCheck,
   GENERAL: Bell,
 };
 
@@ -108,8 +121,17 @@ export default function NotificationList({
         </div>
       )}
 
-      <ul className="m-0 list-none space-y-2 p-0">
-        {rows.map((r) => {
+      {groupByDay(rows).map((group) => (
+        <section key={group.bucket}>
+          <h2 className="mb-2 mt-1 text-[0.75rem] font-bold uppercase tracking-wide text-[var(--color-faint)]">
+            {group.bucket === "today"
+              ? a.groupToday
+              : group.bucket === "yesterday"
+                ? a.groupYesterday
+                : a.groupEarlier}
+          </h2>
+          <ul className="m-0 list-none space-y-2 p-0">
+            {group.items.map((r) => {
           const Icon = ICONS[r.kind] ?? Bell;
           const unreadRow = !r.readAt;
 
@@ -177,8 +199,10 @@ export default function NotificationList({
               )}
             </li>
           );
-        })}
-      </ul>
+            })}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }

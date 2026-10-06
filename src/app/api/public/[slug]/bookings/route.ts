@@ -1,21 +1,11 @@
 import { db } from "@/lib/db";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
-import { bookingPageUrl } from "@/lib/url";
 import { createBooking } from "@/lib/bookings/create";
-import {
-  sendBusinessBookingTemplate,
-  sendCustomerConfirmationTemplate,
-} from "@/lib/services/whatsapp";
-import type { BookingNotificationData } from "@/lib/services/whatsapp-messages";
-import {
-  sendBookingConfirmationToCustomer,
-  sendNewBookingAlertToBusiness,
-  type BookingEmailData,
-} from "@/lib/services/email";
 import { createPaymentSession, calcDepositCents } from "@/lib/services/paymob";
 import { getEffectivePlan, getMonthlyBookingLimit, canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { log } from "@/lib/logger";
+import { notify } from "@/lib/notifications";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -151,9 +141,6 @@ export async function POST(req: Request, { params }: Params) {
       );
     }
 
-    // ── Build booking URL for customer self-service ───────────────────────────
-    const bookingUrl = bookingPageUrl(accessToken);
-
     const bookingResponse = {
       id:           booking.id,
       reference:    booking.reference,
@@ -209,47 +196,12 @@ export async function POST(req: Request, { params }: Params) {
       }
     }
 
-    // ── No deposit: send notifications and return ─────────────────────────────
-    const notifData: BookingNotificationData = {
-      businessName:  business.nameAr,
-      serviceName:   service.nameAr,
-      date,
-      startTime,
-      endTime,
-      customerName,
-      customerPhone,
-      totalPrice:    Number(service.price),
-      currency:      service.currency,
-      bookingUrl,
-    };
-
-    // WhatsApp notifications require GROWTH+ plan
-    if (canUseFeature(effectivePlan, "whatsapp")) {
-      const businessPhone = business.whatsapp ?? business.phone;
-      if (businessPhone) void sendBusinessBookingTemplate(businessPhone, notifData);
-      void sendCustomerConfirmationTemplate(customerPhone, notifData);
-    }
-
-    const emailData: BookingEmailData = {
-      businessName:  business.nameAr,
-      serviceName:   service.nameAr,
-      date,
-      startTime,
-      endTime,
-      customerName,
-      customerPhone,
-      totalPrice:    Number(service.price),
-      currency:      service.currency,
-      notes:         notes ?? null,
-      bookingUrl,
-    };
-
-    if (business.owner.email) {
-      void sendNewBookingAlertToBusiness(business.owner.email, emailData);
-    }
-    if (customerEmail) {
-      void sendBookingConfirmationToCustomer(customerEmail, emailData);
-    }
+    // ── No deposit: tell everybody, and return ────────────────────────────────
+    // One call. Who hears about it, on which channels, and whether the
+    // plan includes WhatsApp are all decided in lib/notifications —
+    // including the in-app copy the customer's account shows, which
+    // this route never used to file.
+    void notify({ type: "booking.created", bookingId: booking.id });
 
     return ok(
       {

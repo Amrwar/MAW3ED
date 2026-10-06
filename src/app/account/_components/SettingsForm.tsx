@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Alert from "@/components/ui/Alert";
+import Toggle from "@/components/ui/Toggle";
 import type { AccountUser } from "@/lib/account/queries";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { cn } from "@/lib/utils";
 
 /**
  * What the customer hears about, and how.
@@ -78,48 +78,5 @@ export default function SettingsForm({ user }: { user: AccountUser }) {
         </p>
       </section>
     </div>
-  );
-}
-
-function Toggle({
-  label,
-  hint,
-  checked,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[var(--radius-md)] px-2 py-2.5 transition-colors hover:bg-[var(--color-surface-2)]">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="sr-only"
-      />
-      <span
-        aria-hidden="true"
-        className={cn(
-          "mt-0.5 flex h-6 w-10 shrink-0 items-center rounded-full p-0.5 transition-colors",
-          checked ? "bg-[var(--color-jade)]" : "bg-[var(--color-line-2)]",
-        )}
-      >
-        <span
-          className={cn(
-            "block h-5 w-5 rounded-full bg-[var(--color-surface)] transition-transform",
-            checked ? "translate-x-4 rtl:-translate-x-4" : "translate-x-0",
-          )}
-        />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[0.875rem] font-bold text-[var(--color-ink)]">{label}</span>
-        <span className="mt-0.5 block text-[0.78125rem] leading-relaxed text-[var(--color-subtle)]">
-          {hint}
-        </span>
-      </span>
-    </label>
   );
 }

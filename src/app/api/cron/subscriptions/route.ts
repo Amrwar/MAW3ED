@@ -20,15 +20,8 @@
  */
 
 import { db } from "@/lib/db";
-import { PLAN_NAMES_AR, type Plan } from "@/lib/plans";
-import {
-  sendSubscriptionRenewalReminder,
-  sendSubscriptionExpiredEmail,
-} from "@/lib/services/email";
 import { log } from "@/lib/logger";
-import { siteUrl } from "@/lib/env";
-
-const SITE_URL = siteUrl;
+import { notify } from "@/lib/notifications";
 
 function authorize(req: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
@@ -43,7 +36,6 @@ export async function GET(req: Request) {
   }
 
   const now     = new Date();
-  const renewUrl = `${SITE_URL}/dashboard/settings`;
 
   let expired = 0;
   let reminded = 0;
@@ -68,13 +60,10 @@ export async function GET(req: Request) {
         data:  { subscriptionStatus: "INACTIVE" },
       });
 
-      if (biz.owner.email) {
-        await sendSubscriptionExpiredEmail(biz.owner.email, {
-          businessName: biz.nameAr,
-          planName:     PLAN_NAMES_AR[biz.plan as Plan],
-          renewUrl,
-        });
-      }
+      // The dispatcher still sends the same hand-written expiry email —
+      // it also files the in-app copy, and records the send so a cron
+      // that overlaps itself cannot post it twice.
+      await notify({ type: "subscription.expired", businessId: biz.id });
 
       log.info(`[subscriptions cron] ✓ Expired: ${biz.id} (${biz.nameAr})`);
       expired++;
@@ -108,15 +97,7 @@ export async function GET(req: Request) {
       const msLeft     = expiryDate.getTime() - now.getTime();
       const daysLeft   = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
 
-      if (biz.owner.email) {
-        await sendSubscriptionRenewalReminder(biz.owner.email, {
-          businessName: biz.nameAr,
-          planName:     PLAN_NAMES_AR[biz.plan as Plan],
-          expiryDate:   expiryDate.toISOString().split("T")[0],
-          renewUrl,
-          daysLeft,
-        });
-      }
+      await notify({ type: "subscription.renewalDue", businessId: biz.id, daysLeft });
 
       await db.business.update({
         where: { id: biz.id },

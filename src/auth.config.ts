@@ -29,7 +29,11 @@ export const authConfig: NextAuthConfig = {
       // being dumped on the account home having lost where they were
       // going. Note /account-login itself starts with "/account", hence
       // the exact match plus trailing slash rather than startsWith.
-      if (path === "/account" || path.startsWith("/account/")) {
+      if (
+        path === "/account" ||
+        path.startsWith("/account/") ||
+        path === "/notifications"
+      ) {
         if (!isLoggedIn) {
           const url = new URL("/account-login", nextUrl);
           url.searchParams.set("next", path + nextUrl.search);

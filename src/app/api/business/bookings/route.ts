@@ -5,9 +5,9 @@ import { ok, err, requireBusiness } from "@/lib/api";
 import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { generateReference } from "@/lib/bookings/reference";
-import { sendNewBookingAlertToBusiness, type BookingEmailData } from "@/lib/services/email";
 import { getEffectivePlan, getMonthlyBookingLimit, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { log } from "@/lib/logger";
+import { notify } from "@/lib/notifications";
 
 /**
  * GET /api/business/bookings
@@ -205,22 +205,11 @@ export async function POST(req: Request) {
       throw e;
     }
 
-    // ── Email alert to business owner (fire-and-forget) ───────────────────────
-    if (booking.business.owner.email) {
-      const emailData: BookingEmailData = {
-        businessName:  booking.business.nameAr,
-        serviceName:   booking.service.nameAr,
-        date:          booking.date.toISOString().split("T")[0],
-        startTime:     booking.startTime,
-        endTime:       booking.endTime ?? "",
-        customerName:  booking.customerName,
-        customerPhone: booking.customerPhone,
-        totalPrice:    Number(booking.totalPrice),
-        currency:      booking.currency,
-        notes:         booking.notes,
-      };
-      void sendNewBookingAlertToBusiness(booking.business.owner.email, emailData);
-    }
+    // A booking the business typed in itself used to email the owner —
+    // who had just created it — and tell the customer nothing at all.
+    // The customer gets their confirmation now, and the owner's alert
+    // is still sent, mutable from their notification settings.
+    void notify({ type: "booking.created", bookingId: booking.id });
 
     return ok(
       {

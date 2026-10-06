@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { User, Clock, Eye, CreditCard, Zap } from "lucide-react";
+import { User, Clock, Eye, CreditCard, Zap, Bell } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import ProfileForm from "./ProfileForm";
 import AvailabilityForm from "./AvailabilityForm";
 import PublicPagePreview from "./PublicPagePreview";
 import DepositSettingsForm from "./DepositSettingsForm";
+import NotificationSettingsForm, {
+  type NotificationPrefs,
+} from "./NotificationSettingsForm";
 import SubscriptionPanel from "./SubscriptionPanel";
-import type { Plan, SubscriptionStatus } from "@/lib/plans";
+import { canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
 
 export type Profile = {
   id:             string;
@@ -48,6 +51,7 @@ type Props = {
   services:           ServicePreview[];
   depositEnabled:     boolean;
   depositPercent:     number;
+  notificationPrefs:  NotificationPrefs;
   plan:               Plan;
   subscriptionStatus: SubscriptionStatus;
   currentPeriodEnd:   string | null;
@@ -55,8 +59,8 @@ type Props = {
   daysUntilExpiry:    number | null;
 };
 
-const TAB_IDS = ["profile", "availability", "payments", "subscription", "preview"] as const;
-const TAB_ICONS = [User, Clock, CreditCard, Zap, Eye];
+const TAB_IDS = ["profile", "availability", "payments", "notifications", "subscription", "preview"] as const;
+const TAB_ICONS = [User, Clock, CreditCard, Bell, Zap, Eye];
 
 type Tab = typeof TAB_IDS[number];
 
@@ -68,6 +72,7 @@ export default function SettingsClient({
   services,
   depositEnabled,
   depositPercent,
+  notificationPrefs,
   plan,
   subscriptionStatus,
   currentPeriodEnd,
@@ -165,6 +170,12 @@ export default function SettingsClient({
           initialEnabled={depositEnabled}
           initialPercent={depositPercent}
           canUseDeposits={effectivePlan === "PREMIUM"}
+        />
+      )}
+      {tab === "notifications" && (
+        <NotificationSettingsForm
+          initial={notificationPrefs}
+          whatsappAvailable={canUseFeature(effectivePlan, "whatsapp")}
         />
       )}
       {tab === "subscription" && (

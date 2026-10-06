@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
-import { NOTIFY_COPY, notifyCustomer } from "@/lib/account/notify";
+import { notify } from "@/lib/notifications";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -43,12 +43,10 @@ export async function POST(_req: Request, { params }: Params) {
       data:  { status: "CANCELLED" },
     });
 
-    void notifyCustomer({
-      phone: booking.customerPhone,
-      ...NOTIFY_COPY.cancelled(booking.business.nameAr),
-      href: "/account/history",
-      bookingId: booking.id,
-    });
+    // The business hears about this too now — somebody not turning up
+    // to a slot they are holding is the business's news as much as the
+    // customer's, and only the customer was being told.
+    void notify({ type: "booking.cancelled", bookingId: booking.id, by: "customer" });
 
     return ok({ cancelled: true });
   } catch (e) {
