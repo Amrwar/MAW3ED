@@ -212,24 +212,39 @@ h1, h2, h3, h4, h5, h6 {
 
    Set once here rather than a class per control, so a new button is
    right by default instead of right when somebody remembers. */
-button:not(:disabled),
-[role="button"]:not([aria-disabled="true"]),
-summary,
-select:not(:disabled) {
-  cursor: pointer;
-}
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled) {
+    cursor: pointer;
+  }
 
-button:disabled,
-select:disabled,
-[aria-disabled="true"] {
-  cursor: not-allowed;
+  button:disabled,
+  select:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
 }
 
 /* ─── Focus ──────────────────────────────────────────────── */
-:focus-visible {
-  outline: 2px solid var(--color-jade);
-  outline-offset: 2px;
-  border-radius: 4px;
+/* In @layer base so a component can opt out with outline-none and be
+   believed. Unlayered, this rule beat Tailwind's utilities: the hero
+   search input says outline-none because its surrounding cell draws the
+   focus ring, and it was getting a second ring of its own anyway —
+   drawn tight around the 28px input, cutting straight through the
+   field's own label.
+
+   The corollary: outline-none is now believed, so anything carrying it
+   owes the keyboard its own visible focus state. Two Links had the
+   class and nothing else — they only ever showed a ring because this
+   rule was overriding them. The class came off instead. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-jade);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
 /* ─── Scrollbar ──────────────────────────────────────────── */

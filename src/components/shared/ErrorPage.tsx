@@ -84,7 +84,7 @@ export default function ErrorPage({
         }}
       >
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="focus:outline-none">
+          <Link href="/">
             <Image src="/logo.png" alt="موعد" width={110} height={46} className="object-contain" priority />
           </Link>
           <Link

@@ -49,7 +49,7 @@ export default function Logo({
 
   if (href) {
     return (
-      <Link href={href} className="flex items-center focus:outline-none">
+      <Link href={href} className="flex items-center">
         {imgEl}
       </Link>
     );

@@ -96,15 +96,35 @@ export default function ProfileHeader({ business: b, summary }: Props) {
 
   return (
     <header>
-      {/* ── 1. Cover ── */}
-      <div className="relative">
+      {/* ── 1. Cover ──
+          object-cover used to crop this box, and the box is about five
+          times wider than it is tall. Every cover anybody has actually
+          uploaded is between 1:1 and 2:1 — a square logo, a poster, a
+          photo — so the crop was showing an eighteen percent band
+          through the middle and slicing the business's own name in half.
+
+          The image is drawn whole now, with a blurred, scaled copy of
+          itself behind it so the box is filled rather than letterboxed
+          with empty bars. Works for any shape, which matters because
+          nobody uploads a 5:1 image. */}
+      <div className="relative overflow-hidden bg-[var(--color-surface-3)]">
         {hasRealCover(b) ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={b.coverImage!}
-            alt=""
-            className="h-[clamp(11rem,26vw,19rem)] w-full object-cover"
-          />
+          <div className="relative h-[clamp(11rem,26vw,19rem)] w-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={b.coverImage!}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full scale-125 object-cover blur-2xl"
+            />
+            <span aria-hidden="true" className="absolute inset-0 bg-black/15" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={b.coverImage!}
+              alt=""
+              className="relative h-full w-full object-contain"
+            />
+          </div>
         ) : (
           <div
             aria-hidden="true"
