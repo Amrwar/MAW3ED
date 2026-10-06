@@ -5,6 +5,14 @@ import { cn } from "@/lib/utils";
 interface LogoProps {
   className?: string;
   size?: "sm" | "md" | "lg";
+  /**
+   * Where the logo links. Defaults to the home page, which means Logo
+   * renders its own <a> — so do not wrap it in another one. The company
+   * page did, and an <a> inside an <a> is invalid HTML that made React
+   * throw a hydration error on every load.
+   *
+   * Pass href="" for a logo that is only a picture.
+   */
   href?: string;
   showText?: boolean;
   variant?: "default" | "white";

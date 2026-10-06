@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import Logo from "@/components/shared/Logo";
@@ -285,9 +284,11 @@ export default async function CompanyPage({ params }: Params) {
       <header className="sticky top-0 z-50 border-b border-[var(--color-line)] bg-[var(--color-ground)]/95 backdrop-blur-md">
         <div className="container-app flex h-16 items-center justify-between gap-5">
           <div className="flex min-w-0 items-center gap-3">
-            <Link href="/" className="shrink-0" aria-label="موعد">
-              <Logo size="sm" />
-            </Link>
+            {/* Logo renders its own link to "/", so wrapping it in
+                another produced an <a> inside an <a>: invalid HTML, and
+                React threw a hydration error on every load of this
+                page. */}
+            <Logo size="sm" className="shrink-0" />
             <Breadcrumbs
               items={crumbs}
               lang={lang}

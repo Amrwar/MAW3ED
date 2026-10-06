@@ -203,6 +203,28 @@ h1, h2, h3, h4, h5, h6 {
 .font-display { font-family: var(--font-display); }
 .font-latin   { font-family: var(--font-latin); }
 
+/* ─── Pointer affordance ─────────────────────────────────── */
+/* Tailwind v4 dropped the preflight rule that gave buttons a pointer
+   cursor, so every control without an explicit .btn / .chip / .slot
+   class was hovering as plain text: the language toggle, the favourite
+   hearts, the FAQ accordions, the city and time selects. Nothing looked
+   clickable unless it happened to be styled as a button.
+
+   Set once here rather than a class per control, so a new button is
+   right by default instead of right when somebody remembers. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary,
+select:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 /* ─── Focus ──────────────────────────────────────────────── */
 :focus-visible {
   outline: 2px solid var(--color-jade);

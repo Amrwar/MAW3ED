@@ -1,3 +1,4 @@
+import type { ReviewStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 
 /**
@@ -13,6 +14,24 @@ import { db } from "@/lib/db";
  * zero: zero is a rating, "none" is the absence of one, and a profile
  * must never show both a count and an empty state.
  */
+
+/**
+ * The reviews that exist, as far as the public is concerned.
+ *
+ * Exported and used by every reader — the list, the count, the average,
+ * the distribution, the business's own page and the search index. One
+ * constant, so a review cannot be absent from the list and present in
+ * the number above it.
+ *
+ * UNDER_REVIEW is included deliberately. Hiding a review the moment
+ * somebody objects to it would turn the report button into a
+ * censorship button: anybody could silence any review by clicking it.
+ * A reported review stays up, and a person decides.
+ */
+export const VISIBLE_STATUSES = ["PUBLISHED", "UNDER_REVIEW"] as const satisfies readonly ReviewStatus[];
+
+/** The filter clause every public query starts from. */
+export const visibleWhere = { status: { in: [...VISIBLE_STATUSES] } };
 
 export const REVIEW_SORTS = ["recent", "highest", "lowest", "helpful"] as const;
 export type ReviewSort = (typeof REVIEW_SORTS)[number];
@@ -51,7 +70,7 @@ export const EMPTY_SUMMARY: RatingSummary = {
 export async function getRatingSummary(businessId: string): Promise<RatingSummary> {
   const grouped = await db.review.groupBy({
     by: ["rating"],
-    where: { businessId },
+    where: { businessId, ...visibleWhere },
     _count: { _all: true },
   });
 
@@ -91,6 +110,13 @@ export interface PublicReview {
   verifiedBooking: boolean;
   /** What the customer booked, when it is still on the menu. */
   serviceName: string | null;
+  /** The day of the appointment this review is about, YYYY-MM-DD. */
+  bookedOn: string | null;
+  /** Cloudinary URLs the customer attached. */
+  photos: string[];
+  helpfulCount: number;
+  /** Set when the author rewrote it; the page says so. */
+  editedAt: string | null;
   response: { text: string; at: string } | null;
 }
 
@@ -106,9 +132,9 @@ const ORDER_BY = {
   recent: [{ createdAt: "desc" as const }],
   highest: [{ rating: "desc" as const }, { createdAt: "desc" as const }],
   lowest: [{ rating: "asc" as const }, { createdAt: "desc" as const }],
-  // Nothing votes on reviews yet, so "most helpful" would be a made-up
-  // ordering. It means "the ones with something written in them".
-  helpful: [{ createdAt: "desc" as const }],
+  // Real votes now. Ties break by recency rather than arbitrarily, so
+  // the order is stable between page loads.
+  helpful: [{ helpfulCount: "desc" as const }, { createdAt: "desc" as const }],
 };
 
 export interface ReviewPage {
@@ -124,8 +150,8 @@ export async function getBusinessReviews(
   const sort = opts.sort ?? "recent";
   const where = {
     businessId,
+    ...visibleWhere,
     ...(opts.rating ? { rating: opts.rating } : {}),
-    ...(sort === "helpful" ? { comment: { not: null } } : {}),
   };
 
   const [rows, matched] = await Promise.all([
@@ -138,6 +164,10 @@ export async function getBusinessReviews(
         id: true,
         rating: true,
         comment: true,
+        photos: true,
+        helpfulCount: true,
+        editedAt: true,
+        status: true,
         response: true,
         respondedAt: true,
         createdAt: true,
@@ -145,6 +175,7 @@ export async function getBusinessReviews(
           select: {
             status: true,
             customerName: true,
+            date: true,
             service: { select: { nameAr: true } },
           },
         },
@@ -159,10 +190,14 @@ export async function getBusinessReviews(
       id: r.id,
       rating: r.rating,
       comment: r.comment,
+      photos: r.photos,
+      helpfulCount: r.helpfulCount,
+      editedAt: r.editedAt ? r.editedAt.toISOString() : null,
       createdAt: r.createdAt.toISOString(),
       authorName: displayName(r.booking.customerName),
       verifiedBooking: r.booking.status === "COMPLETED",
       serviceName: r.booking.service?.nameAr ?? null,
+      bookedOn: r.booking.date ? r.booking.date.toISOString().slice(0, 10) : null,
       response:
         r.response && r.respondedAt
           ? { text: r.response, at: r.respondedAt.toISOString() }
@@ -188,17 +223,13 @@ export async function recomputeBusinessRating(businessId: string): Promise<void>
 }
 
 /**
- * Whether this booking may be reviewed.
- *
- * Only a completed appointment, and only once — the unique constraint
- * on Review.bookingId enforces the second half, this reports it before
- * the customer types anything.
+ * Re-exported so existing callers keep working. The rules live in
+ * review-policy.ts, where the windows they depend on are written down.
  */
-export function canReviewBooking(b: {
-  status: string;
-  review?: { id: string } | null;
-}): { allowed: boolean; reason: "ok" | "not-completed" | "already-reviewed" } {
-  if (b.review) return { allowed: false, reason: "already-reviewed" };
-  if (b.status !== "COMPLETED") return { allowed: false, reason: "not-completed" };
-  return { allowed: true, reason: "ok" };
-}
+export {
+  canReviewBooking,
+  canEditReview,
+  editDaysLeft,
+  EDIT_WINDOW_DAYS,
+  REVIEW_WINDOW_DAYS,
+} from "./review-policy";

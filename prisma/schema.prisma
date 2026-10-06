@@ -35,6 +35,9 @@ model User {
   notifyByEmail    Boolean  @default(true)
   /// Off until an SMS gateway is configured; see lib/notifications.
   notifyBySms      Boolean  @default(false)
+  /// A platform moderator. Set by hand in the database — nothing in the
+  /// application can grant it, so there is no screen to get wrong.
+  isAdmin          Boolean  @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -464,19 +467,114 @@ model Review {
   bookingId  String   @unique
   rating     Int /// 1..5, range-checked in app code
   comment    String?  @db.Text
+  /// What the customer attached, as Cloudinary URLs.
+  photos     String[] @default([])
   /// The owner's public reply. One per review, editable, and shown
   /// underneath it rather than as a separate review.
   response    String?   @db.Text
   respondedAt DateTime?
+
+  /// Whether this review appears and counts.
+  ///
+  /// The rule the whole system rests on: anything that is not PUBLISHED
+  /// is absent from the list, the count, the average and the
+  /// distribution alike. A page that said "127 reviews" above 126 of
+  /// them would be worse than showing nothing.
+  status         ReviewStatus @default(PUBLISHED)
+  /// For the next moderator, never shown publicly.
+  moderationNote String?      @db.Text
+  moderatedAt    DateTime?
+  moderatedById  String?
+  /// Set the first time the author rewrites it, so the page can say so
+  /// rather than quietly showing different words than were voted on.
+  editedAt       DateTime?
+  /// Follows ReviewVote, which is the truth. Denormalised so "most
+  /// helpful" is an index scan and not a count per row.
+  helpfulCount   Int          @default(0)
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  booking  Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  votes    ReviewVote[]
+  reports  ReviewReport[]
 
   @@index([businessId, createdAt])
   /// Backs the rating filter and the "highest/lowest first" sorts.
   @@index([businessId, rating])
+  /// Every public query filters on status, so it leads these.
+  @@index([businessId, status, createdAt])
+  @@index([businessId, status, rating])
+  @@index([businessId, status, helpfulCount])
+  @@index([status])
+}
+
+enum ReviewStatus {
+  /// Visible, and counts toward the rating.
+  PUBLISHED
+  /// Reported and awaiting a look. Still visible: hiding on accusation
+  /// alone would make the report button a censorship button.
+  UNDER_REVIEW
+  /// Taken down by a moderator. Invisible, uncounted, restorable.
+  HIDDEN
+  /// Withdrawn by its own author.
+  REMOVED
+}
+
+/// One vote per review per device.
+///
+/// The voter is a hash of the device id together with the review id, so
+/// two rows cannot be joined up into a picture of what one person has
+/// read.
+model ReviewVote {
+  id        String   @id @default(cuid())
+  reviewId  String
+  voterHash String
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, voterHash])
+}
+
+/// Somebody complained about a review.
+model ReviewReport {
+  id       String       @id @default(cuid())
+  reviewId String
+  reason   ReportReason
+  /// In their words. Optional.
+  detail   String?      @db.Text
+  /// Hashed, for rate limiting and for spotting one person reporting
+  /// everything. Never an address and never a name.
+  reporterHash String
+  /// True when the business being reviewed is the one complaining, so a
+  /// moderator knows who is asking.
+  byBusiness   Boolean      @default(false)
+  status       ReportStatus @default(OPEN)
+  resolvedAt   DateTime?
+  resolvedById String?
+  createdAt    DateTime     @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, reporterHash, reason])
+  @@index([status, createdAt])
+  @@index([reviewId])
+}
+
+enum ReportReason {
+  INAPPROPRIATE
+  FAKE
+  SPAM
+  HARASSMENT
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  UPHELD
+  DISMISSED
 }
 
 /// A photo on the business's profile.

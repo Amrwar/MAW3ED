@@ -17,6 +17,23 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const body = await req.json();
   const { serviceIds, ...rest } = body;
 
+  // Service ids arrive from the client and were attached without a
+  // check, so a request naming another business's service would have
+  // linked it to this staff member. Narrowed to the services this
+  // business actually owns; anything else is dropped rather than
+  // refused, because the usual cause is a stale screen.
+  let ownServiceIds: string[] | undefined;
+  if (serviceIds !== undefined) {
+    if (!Array.isArray(serviceIds)) {
+      return NextResponse.json({ error: "serviceIds must be a list" }, { status: 422 });
+    }
+    const mine = await db.service.findMany({
+      where: { businessId: session.user.businessId, id: { in: serviceIds as string[] } },
+      select: { id: true },
+    });
+    ownServiceIds = mine.map((x) => x.id);
+  }
+
   const member = await db.staffMember.update({
     where: { id },
     data: {
@@ -27,10 +44,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       isActive:    rest.isActive  != null  ? rest.isActive                : existing.isActive,
       workingDays: rest.workingDays != null ? rest.workingDays            : existing.workingDays,
       specialties: rest.specialties != null ? rest.specialties            : existing.specialties,
-      ...(serviceIds !== undefined && {
+      ...(ownServiceIds !== undefined && {
         services: {
           deleteMany: {},
-          create: (serviceIds as string[]).map((sid) => ({ serviceId: sid })),
+          create: ownServiceIds.map((sid) => ({ serviceId: sid })),
         },
       }),
     },

@@ -219,8 +219,13 @@ export default function BusinessCard({ business: b, className }: Props) {
         )}
 
         {/* ── Footer ── */}
-        <div className="mt-auto flex items-center gap-3 border-t border-[var(--color-line)] pt-3.5">
-          <span className="min-w-0 text-[0.8125rem] text-[var(--color-subtle)]">
+        {/* Wraps rather than squeezing: the two buttons are shrink-0, so
+            on a narrow card the price was left with whatever pixels
+            remained — about forty — and "السعر غير محدد" came out
+            stacked three words tall. Given a line of its own it reads
+            as a sentence. */}
+        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2.5 border-t border-[var(--color-line)] pt-3.5">
+          <span className="text-[0.8125rem] text-[var(--color-subtle)]">
             {b.minPrice !== null ? (
               <>
                 {c.from}{" "}
