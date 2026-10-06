@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { buildMetadata } from "@/lib/seo/meta";
 import { db } from "@/lib/db";
 import ForBusinessContent from "./_components/ForBusinessContent";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "لأصحاب الأعمال",
   description: "اعرض نشاطك على موعد واستقبل حجوزات أونلاين.",
-};
+  path: "/for-business",
+});
 
 /**
  * The pitch to business owners.

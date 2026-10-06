@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { canonicalFor } from "@/lib/seo/meta";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
 import Navbar from "@/components/layout/Navbar";
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
   title: "موعد | MAW3ED — احجز موعدك في ثوانٍ",
   description:
     "ابحث عن عيادة، صالون، جيم أو مركز قريب منك في مصر، شوف المواعيد المتاحة واحجز في ثوانٍ. الحجز مجاني والتأكيد فوري.",
-  alternates: { canonical: "/" },
+  alternates: { canonical: canonicalFor("/") },
 };
 
 /**

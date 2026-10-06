@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
+import { buildMetadata } from "@/lib/seo/meta";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
-export const metadata: Metadata = { title: "سياسة الخصوصية" };
+export const metadata: Metadata = buildMetadata({
+  title: "سياسة الخصوصية",
+  description: "إزاي موعد بيجمع بياناتك ويستخدمها ويحميها.",
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (

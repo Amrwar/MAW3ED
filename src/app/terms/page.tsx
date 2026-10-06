@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
+import { buildMetadata } from "@/lib/seo/meta";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
-export const metadata: Metadata = { title: "شروط الاستخدام" };
+export const metadata: Metadata = buildMetadata({
+  title: "شروط الاستخدام",
+  description: "شروط استخدام منصة موعد للعملاء ولأصحاب الأعمال.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

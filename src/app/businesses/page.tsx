@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { siteUrl } from "@/lib/url";
 import { cookies } from "next/headers";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -30,7 +31,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     title: "تصفح الأعمال",
     description:
       "ابحث في الأنشطة المتاحة للحجز في مصر — فلتر حسب التخصص، المدينة، السعر والمواعيد المتاحة.",
-    alternates: { canonical: discoveryHref(q) },
+    // Absolute, like every other page. A relative canonical is legal
+    // but resolves against whatever host served the page.
+    alternates: { canonical: siteUrl(discoveryHref(q)) },
     robots: filtered || q.page > 1 ? { index: false, follow: true } : { index: true, follow: true },
   };
 }

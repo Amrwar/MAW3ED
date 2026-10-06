@@ -21,7 +21,9 @@ interface Props {
  *
  * It only reports what it is handed: a count of zero is shown rather
  * than hidden, because a dead end the visitor can see is better than
- * one they discover by tapping.
+ * one they discover by tapping. Shown and also disabled — 33 of the 41
+ * options here currently match nothing, and leaving them live meant 33
+ * clickable rows that could only ever return an empty page.
  */
 export default function FilterPanel({ query, facets, priceBounds, onChange }: Props) {
   // This panel is on the page twice: the desktop sidebar and the
@@ -265,16 +267,24 @@ function Row({
   active: boolean;
   onClick: () => void;
 }) {
+  // An option matching nothing cannot be chosen — but one that is
+  // already chosen stays live whatever its count, or a filter that
+  // narrows to zero results would trap the visitor with no way back.
+  const dead = count === 0 && !active;
+
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={dead}
       aria-pressed={active}
       className={cn(
         "flex min-h-11 w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 text-start text-[0.875rem] transition-colors",
         active
           ? "bg-[var(--color-jade-soft)] font-bold text-[var(--color-ok)]"
-          : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]",
+          : dead
+            ? "text-[var(--color-faint)]"
+            : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]",
       )}
     >
       <span className="min-w-0 flex-1 truncate">{label}</span>
