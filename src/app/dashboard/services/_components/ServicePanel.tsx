@@ -190,8 +190,10 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           nameAr:        form.nameAr.trim(),
-          nameEn:        form.nameEn.trim()        || undefined,
-          descriptionAr: form.descriptionAr.trim() || undefined,
+          // null, not undefined — an undefined key is dropped by
+          // JSON.stringify and the old value survives the save.
+          nameEn:        form.nameEn.trim()        || null,
+          descriptionAr: form.descriptionAr.trim() || null,
           duration:      form.duration,
           price:         form.price,
           isAvailable:   form.isAvailable,

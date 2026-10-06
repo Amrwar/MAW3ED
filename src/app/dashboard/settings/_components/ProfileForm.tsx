@@ -184,18 +184,24 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
       const res = await fetch("/api/business", {
         method:  "PUT",
         headers: { "Content-Type": "application/json" },
+        // null, not undefined: JSON.stringify drops an undefined key
+        // entirely, so an emptied field was never sent and the server
+        // kept the old value. Removing a photo and saving appeared to
+        // do nothing, and so did clearing a phone number or an address.
         body:    JSON.stringify({
           nameAr:     form.nameAr.trim(),
-          nameEn:     form.nameEn.trim()     || undefined,
-          taglineAr:  form.taglineAr.trim()  || undefined,
-          phone:      form.phone.trim()      || undefined,
-          whatsapp:   form.whatsapp.trim()   || undefined,
-          address:    form.address.trim()    || undefined,
-          about:      form.about.trim()      || undefined,
+          nameEn:     form.nameEn.trim()     || null,
+          taglineAr:  form.taglineAr.trim()  || null,
+          phone:      form.phone.trim()      || null,
+          whatsapp:   form.whatsapp.trim()   || null,
+          address:    form.address.trim()    || null,
+          about:      form.about.trim()      || null,
+          // These two are required — a business cannot have no city and
+          // no category — so an empty one means "unchanged", not "clear".
           cityId:     form.cityId            || undefined,
           categoryId: form.categoryId        || undefined,
-          coverImage: coverImage             || undefined,
-          logoImage:  logoImage              || undefined,
+          coverImage: coverImage             || null,
+          logoImage:  logoImage              || null,
         }),
       });
 

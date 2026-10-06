@@ -53,25 +53,52 @@ export const onboardingSchema = z.object({
 });
 
 // ─── Business update ──────────────────────────────────────
+/**
+ * A field the owner is allowed to empty.
+ *
+ * Three states have to stay distinguishable, and the bug this fixes
+ * came from collapsing two of them:
+ *
+ *   - the key is absent        → leave whatever is stored alone
+ *   - the key is null or ""    → clear it
+ *   - the key has a value      → set it
+ *
+ * `undefined` survives as `undefined`, which Prisma reads as "do not
+ * touch this column"; only an explicit empty becomes null. Transforming
+ * `undefined` to null here would wipe every field a client did not
+ * happen to send.
+ */
+const clearable = <T extends z.ZodTypeAny>(inner: T) =>
+  inner
+    .or(z.literal(""))
+    .nullable()
+    .optional()
+    .transform((v) => (v === "" ? null : v));
+
 export const businessUpdateSchema = z.object({
+  // Required: a business must keep a name, a city and a category.
   nameAr:      z.string().min(2, "أدخل اسم العمل").optional(),
-  nameEn:      z.string().optional(),
-  taglineAr:   z.string().max(120).optional(),
-  phone:       z.string().optional(),
-  whatsapp:    z.string().optional(),
-  address:     z.string().optional(),
-  about:       z.string().max(600).optional(),
-  cityId:      z.string().optional(),
-  categoryId:  z.string().optional(),
-  coverImage:  z.string().url("رابط صورة الغلاف غير صحيح").optional(),
-  logoImage:   z.string().url("رابط الشعار غير صحيح").optional(),
+  cityId:      z.string().min(1).optional(),
+  categoryId:  z.string().min(1).optional(),
+
+  // Clearable: emptying any of these is a thing an owner may want.
+  nameEn:      clearable(z.string()),
+  taglineAr:   clearable(z.string().max(120)),
+  phone:       clearable(z.string()),
+  whatsapp:    clearable(z.string()),
+  address:     clearable(z.string()),
+  about:       clearable(z.string().max(600)),
+  coverImage:  clearable(z.string().url("رابط صورة الغلاف غير صحيح")),
+  logoImage:   clearable(z.string().url("رابط الشعار غير صحيح")),
 });
 
 // ─── Service ──────────────────────────────────────────────
 export const serviceSchema = z.object({
   nameAr:       z.string().min(2, "أدخل اسم الخدمة"),
-  nameEn:       z.string().optional(),
-  descriptionAr: z.string().optional(),
+  // Clearable for the same reason the business fields are: an owner who
+  // empties a description and saves expects it to go.
+  nameEn:       clearable(z.string()),
+  descriptionAr: clearable(z.string()),
   duration:     z.number().min(5).max(480),
   price:        z.number().min(0),
   isAvailable:  z.boolean().optional(),
