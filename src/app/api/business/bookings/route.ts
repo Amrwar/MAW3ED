@@ -2,7 +2,9 @@ import { type Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
-import { hasBookingConflict, timeToMinutes, minutesToTime } from "@/lib/bookings/overlap";
+import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
+import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
+import { generateReference } from "@/lib/bookings/reference";
 import { sendNewBookingAlertToBusiness, type BookingEmailData } from "@/lib/services/email";
 import { getEffectivePlan, getMonthlyBookingLimit, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { log } from "@/lib/logger";
@@ -152,19 +154,9 @@ export async function POST(req: Request) {
     });
     if (!service) return err("الخدمة غير موجودة", 404);
 
-    // Parse date to UTC midnight
-    const [y, m, d] = date.split("-").map(Number);
-    const dateUTC   = new Date(Date.UTC(y, m - 1, d));
-
-    // Calculate candidate time range
-    const candidateStart = timeToMinutes(startTime);
-    const candidateEnd   = candidateStart + service.duration;
-    const endTime        = minutesToTime(candidateEnd);
-
-    // Range-overlap conflict check (same rule as the public booking flow)
-    if (await hasBookingConflict(business.id, dateUTC, candidateStart, candidateEnd)) {
-      return err("هذا الموعد يتعارض مع حجز موجود، اختر وقتًا آخر", 409);
-    }
+    const dateUTC = dateToUTC(date);
+    const endTime = minutesToTime(timeToMinutes(startTime) + service.duration);
+    const { startsAt, endsAt } = bookingInstants(date, startTime, endTime, service.duration);
 
     // Upsert customer
     const customer = await db.customer.upsert({
@@ -173,27 +165,45 @@ export async function POST(req: Request) {
       update: { name: customerName },
     });
 
-    // Create booking (CONFIRMED by default for manual bookings)
-    const booking = await db.booking.create({
-      data: {
-        businessId:    business.id,
-        serviceId,
-        customerId:    customer.id,
-        customerName,
-        customerPhone,
-        date:          dateUTC,
-        startTime,
-        endTime,
-        status:        "CONFIRMED",
-        totalPrice:    service.price,
-        currency:      service.currency,
-        notes:         notes || null,
-      },
-      include: {
-        service:  { select: { nameAr: true, duration: true } },
-        business: { include: { owner: { select: { email: true } } } },
-      },
-    });
+    // Create booking (CONFIRMED by default for manual bookings).
+    //
+    // The owner is allowed to write into a slot the public rules would
+    // refuse — squeezing someone in outside opening hours is their call,
+    // and blocking it would be a regression. What they cannot do is
+    // double-book: the exclusion constraint applies to this path too,
+    // and the violation is reported rather than swallowed.
+    let booking;
+    try {
+      booking = await db.booking.create({
+        data: {
+          businessId:    business.id,
+          serviceId,
+          customerId:    customer.id,
+          customerName,
+          customerPhone,
+          date:          dateUTC,
+          startTime,
+          endTime,
+          startsAt,
+          endsAt,
+          reference:     generateReference(),
+          status:        "CONFIRMED",
+          totalPrice:    service.price,
+          currency:      service.currency,
+          notes:         notes || null,
+        },
+        include: {
+          service:  { select: { nameAr: true, duration: true } },
+          business: { include: { owner: { select: { email: true } } } },
+        },
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      if (message.includes("booking_no_overlap")) {
+        return err("هذا الموعد يتعارض مع حجز موجود، اختر وقتًا آخر", 409);
+      }
+      throw e;
+    }
 
     // ── Email alert to business owner (fire-and-forget) ───────────────────────
     if (booking.business.owner.email) {

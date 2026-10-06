@@ -89,6 +89,18 @@ model Business {
   phoneVerifiedAt            DateTime? // set once a WhatsApp OTP is confirmed
   depositEnabled             Boolean            @default(false)
   depositPercent             Int                @default(20)
+  // ── Scheduling policy ────────────────────────────────────────
+  /// Minutes reserved after every appointment — cleaning, notes, the
+  /// walk to the door. Applied on top of the service duration when
+  /// deciding whether two bookings collide.
+  bufferMinutes              Int                @default(0)
+  /// How soon from now a customer may book. 0 means "any time left today".
+  minNoticeMinutes           Int                @default(0)
+  /// How far ahead the calendar is open.
+  maxAdvanceDays             Int                @default(60)
+  /// "HH:MM" in Cairo. Past it, today is closed for new bookings even
+  /// if slots remain. Null means no cutoff.
+  sameDayCutoff              String?
   // ── Subscription ──────────────────────────────────────────
   plan                       Plan               @default(FREE)
   subscriptionStatus         SubscriptionStatus @default(ACTIVE)
@@ -132,6 +144,8 @@ model Business {
   phoneVerifications PhoneVerification[]
   reviews            Review[]
   images             BusinessImage[]
+  branches           Branch[]
+  timeBlocks         TimeBlock[]
 
   /// The discovery listing always filters on isPublished first, then on
   /// one of city / neighbourhood / category, and sorts on rating,
@@ -141,6 +155,61 @@ model Business {
   @@index([isPublished, neighborhoodId])
   @@index([isPublished, ratingAvg])
   @@index([isPublished, createdAt])
+}
+
+/// A physical location. Optional: most businesses have exactly one
+/// place and never create a branch, in which case bookings carry a null
+/// branchId and the profile shows the business address as it always has.
+model Branch {
+  id         String   @id @default(cuid())
+  businessId String
+  nameAr     String
+  nameEn     String?
+  address    String?
+  phone      String?
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bookings   Booking[]
+  timeBlocks TimeBlock[]
+
+  @@index([businessId, isActive, sortOrder])
+}
+
+/// Time removed from the calendar, for any reason.
+///
+/// Either weekly (dayOfWeek set) or dated (startsOn/endsOn set); a row
+/// with neither is ignored rather than treated as "always". Leaving
+/// startTime and endTime null means the whole day.
+model TimeBlock {
+  id            String        @id @default(cuid())
+  businessId    String
+  /// Null means the whole business is affected.
+  staffMemberId String?
+  /// Null means every branch.
+  branchId      String?
+  kind          TimeBlockKind
+  /// Weekly form: 0 = Sunday.
+  dayOfWeek     Int?
+  /// Dated form, inclusive of both ends, stored as UTC midnight.
+  startsOn      DateTime?
+  endsOn        DateTime?
+  /// "HH:MM". Null for an all-day block.
+  startTime     String?
+  endTime       String?
+  reason        String?
+  createdAt     DateTime      @default(now())
+
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  staffMember StaffMember? @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  branch      Branch?      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, dayOfWeek])
+  @@index([businessId, startsOn, endsOn])
+  @@index([staffMemberId])
 }
 
 model Category {
@@ -308,6 +377,18 @@ model Booking {
   currency               String        @default("EGP")
   notes                  String?
   accessToken            String?       @unique // secure random token for customer self-service URL
+  /// Human-quotable identifier, e.g. "MWD-7F92K". Unique across the
+  /// platform so support can find a booking from it alone.
+  reference              String?       @unique
+  /// Set by the client on a create request. A retry carrying the same
+  /// key returns the original booking instead of making a second one.
+  idempotencyKey         String?       @unique
+  /// The appointment as an interval, which is what the overlap
+  /// constraint in the database is defined over. Derived from date +
+  /// startTime/endTime; see lib/bookings/instants.ts for the one place
+  /// that computes it.
+  startsAt               DateTime?     @db.Timestamp(3)
+  endsAt                 DateTime?     @db.Timestamp(3)
   customerReminderSentAt DateTime? // set after reminder is sent — prevents duplicate sends
   depositAmount          Decimal?      @db.Decimal(10, 2) // deposit amount required (null = no deposit)
   paymobOrderId          String? // Paymob order ID for payment tracking
@@ -315,6 +396,7 @@ model Booking {
   // ── Business-type-specific fields ────────────────────────────
   tableId                String? // Restaurant: which table is reserved
   staffMemberId          String? // Barbershop: which staff member handles the booking
+  branchId               String? // which location, when the business has more than one
   partySize              Int? // Restaurant: number of guests
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
@@ -324,12 +406,15 @@ model Booking {
   customer    Customer?    @relation(fields: [customerId], references: [id])
   table       Table?       @relation(fields: [tableId], references: [id])
   staffMember StaffMember? @relation(fields: [staffMemberId], references: [id])
+  branch      Branch?      @relation(fields: [branchId], references: [id])
   review      Review?
 
   /// This table had no indexes at all. Every slot lookup, every dashboard
   /// list and the most-booked sort scanned it.
   @@index([businessId, date])
   @@index([businessId, status])
+  @@index([businessId, startsAt])
+  @@index([branchId])
   @@index([serviceId])
   @@index([customerId])
   @@index([staffMemberId])
@@ -411,11 +496,31 @@ model StaffMember {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  services StaffService[]
-  bookings Booking[]
+  business   Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  services   StaffService[]
+  bookings   Booking[]
+  hours      StaffHours[]
+  timeBlocks TimeBlock[]
 
   @@index([businessId, isActive])
+}
+
+/// A staff member's own working hours for one weekday.
+///
+/// workingDays on StaffMember says which days they work; this says
+/// when. A member with no rows falls back to the business hours, which
+/// is what every existing record does.
+model StaffHours {
+  id            String  @id @default(cuid())
+  staffMemberId String
+  dayOfWeek     Int
+  startTime     String
+  endTime       String
+  isOff         Boolean @default(false)
+
+  staffMember StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([staffMemberId, dayOfWeek])
 }
 
 model StaffService {
@@ -449,10 +554,22 @@ enum BookingStatus {
   PENDING_PAYMENT // awaiting customer deposit payment
   PENDING // payment done (or no deposit required) — awaiting owner confirmation
   CONFIRMED // owner confirmed or auto-confirmed after payment
+  ARRIVED // customer is here, not yet being served
+  IN_PROGRESS // being served right now
   COMPLETED // appointment finished
   CANCELLED // owner or customer cancelled
   NO_SHOW // customer didn't show up
   FAILED_PAYMENT // payment failed or expired
+}
+
+/// Why a stretch of time is unavailable. Kept as one model rather than
+/// four, because the availability engine treats them identically — the
+/// kind only changes what the owner sees in the calendar.
+enum TimeBlockKind {
+  BREAK // recurring, e.g. lunch every weekday
+  HOLIDAY // whole business shut for a date range
+  VACATION // one staff member away
+  CLOSURE // one-off, e.g. maintenance
 }
 
 enum Plan {

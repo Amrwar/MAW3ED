@@ -5,6 +5,8 @@ export type BookingStatusKey =
   | "PENDING_PAYMENT"
   | "PENDING"
   | "CONFIRMED"
+  | "ARRIVED"
+  | "IN_PROGRESS"
   | "COMPLETED"
   | "CANCELLED"
   | "NO_SHOW"
@@ -21,6 +23,8 @@ const STATUS: Record<
   PENDING_PAYMENT: { cls: "badge-warning", ar: "بانتظار الدفع",   en: "Awaiting payment" },
   PENDING:         { cls: "badge-warning", ar: "في الانتظار",     en: "Pending" },
   CONFIRMED:       { cls: "badge-success", ar: "مؤكّد",           en: "Confirmed" },
+  ARRIVED:         { cls: "badge-accent",  ar: "وصل",             en: "Arrived" },
+  IN_PROGRESS:     { cls: "badge-brand",   ar: "جاري التنفيذ",    en: "In progress" },
   COMPLETED:       { cls: "badge-default", ar: "مكتمل",           en: "Completed" },
   CANCELLED:       { cls: "badge-danger",  ar: "ملغي",            en: "Cancelled" },
   NO_SHOW:         { cls: "badge-danger",  ar: "لم يحضر",         en: "No-show" },

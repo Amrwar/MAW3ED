@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
-import { hasBookingConflict, timeToMinutes, minutesToTime } from "@/lib/bookings/overlap";
+import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
+import { loadAvailability } from "@/lib/bookings/schedule";
+import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
+import { Prisma } from "@prisma/client";
 import { bookingPageUrl } from "@/lib/url";
 import {
   sendRescheduleConfirmationToCustomer,
@@ -68,6 +71,9 @@ export async function POST(req: Request, { params }: Params) {
     if (!booking) return err("الحجز غير موجود", 404);
 
     // ── Status gate ──────────────────────────────────────────────────────────
+    // ARRIVED and IN_PROGRESS are deliberately absent: once somebody is
+    // in the building, moving the appointment is the owner's job, not a
+    // self-service action.
     if (!["PENDING", "CONFIRMED"].includes(booking.status)) {
       return err("لا يمكن إعادة جدولة هذا الحجز", 400);
     }
@@ -85,44 +91,69 @@ export async function POST(req: Request, { params }: Params) {
       );
     }
 
-    // ── New date must not be in the past (Egypt timezone) ───────────────────
-    const nowEgyptStr = new Date().toLocaleDateString("en-CA", {
-      timeZone: "Africa/Cairo",
+    // ── Is the new time actually available? ─────────────────────────────────
+    //
+    // The same engine the slots endpoint uses, with this booking excluded
+    // so it can move within the day it already occupies. Every rule
+    // applies: hours, staff, breaks, holidays, notice, advance window.
+    const newDateUTC = dateToUTC(newDate);
+
+    const availability = await loadAvailability({
+      businessId:       booking.businessId,
+      serviceId:        booking.serviceId,
+      date:             newDate,
+      staffMemberId:    booking.staffMemberId,
+      tableId:          booking.tableId,
+      branchId:         booking.branchId,
+      excludeBookingId: booking.id,
     });
-    const [ty, tm, td] = nowEgyptStr.split("-").map(Number);
-    const todayUTC     = new Date(Date.UTC(ty, tm - 1, td));
 
-    const [ny, nm, nd] = newDate.split("-").map(Number);
-    const newDateUTC   = new Date(Date.UTC(ny, nm - 1, nd));
+    if (!availability.slots.includes(newStartTime)) {
+      return err(
+        availability.reason === "past"
+          ? "لا يمكن الحجز في تاريخ ماضٍ"
+          : "الموعد ده مش متاح، اختر وقت تاني",
+        409,
+      );
+    }
 
-    if (newDateUTC < todayUTC) return err("لا يمكن الحجز في تاريخ ماضٍ", 400);
-
-    // ── Compute new end time ─────────────────────────────────────────────────
     const candidateStart = timeToMinutes(newStartTime);
     const candidateEnd   = candidateStart + booking.service.duration;
     const newEndTime     = minutesToTime(candidateEnd);
 
-    // ── Conflict check (exclude the booking being rescheduled) ──────────────
-    const conflict = await hasBookingConflict(
-      booking.businessId,
-      newDateUTC,
-      candidateStart,
-      candidateEnd,
-      { excludeBookingId: booking.id }, // ← exclude self so a booking can move within the same day
+    // startsAt/endsAt move with the appointment. They are what the
+    // overlap constraint is defined over, so leaving them behind would
+    // have the database guarding the old time and ignoring the new one.
+    const { startsAt, endsAt } = bookingInstants(
+      newDate,
+      newStartTime,
+      newEndTime,
+      booking.service.duration,
     );
-    if (conflict) return err("هذا الموعد محجوز بالفعل، اختر وقتًا آخر", 409);
 
     // ── Persist ──────────────────────────────────────────────────────────────
-    const updated = await db.booking.update({
-      where: { id: booking.id },
-      data: {
-        date:                  newDateUTC,
-        startTime:             newStartTime,
-        endTime:               newEndTime,
-        status:                "PENDING",      // reset so owner reviews new time
-        customerReminderSentAt: null,           // reset so reminder fires for new date
-      },
-    });
+    let updated;
+    try {
+      updated = await db.booking.update({
+        where: { id: booking.id },
+        data: {
+          date:                  newDateUTC,
+          startTime:             newStartTime,
+          endTime:               newEndTime,
+          startsAt,
+          endsAt,
+          status:                "PENDING",      // reset so owner reviews new time
+          customerReminderSentAt: null,           // reset so reminder fires for new date
+        },
+      });
+    } catch (e) {
+      // Somebody took the slot between the check above and this write.
+      const message = e instanceof Prisma.PrismaClientKnownRequestError ? e.message : String(e);
+      if (message.includes("booking_no_overlap")) {
+        return err("حد تاني حجز الموعد ده دلوقتي، اختر وقت تاني", 409);
+      }
+      throw e;
+    }
 
     // ── Notifications (fire-and-forget) ──────────────────────────────────────
     const bookingUrl = bookingPageUrl(token);

@@ -109,6 +109,15 @@ export const bookingSchema = z.object({
   partySize:     z.number().int().min(1).max(50).optional(),
   // Barbershop
   staffMemberId: z.string().optional(),
+  // Which location, when the business keeps more than one.
+  branchId:      z.string().optional(),
+  /**
+   * Client-generated, stable across retries of the same submission. A
+   * second request carrying the same key returns the first booking
+   * instead of making another — which is what stops a double-tap, a
+   * flaky connection or a browser retry producing two appointments.
+   */
+  idempotencyKey: z.string().min(8).max(100).optional(),
 });
 
 export type SignUpInput     = z.infer<typeof signUpSchema>;

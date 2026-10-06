@@ -604,6 +604,8 @@ export const translations = {
       bookingStatus: {
         CONFIRMED:       "مؤكد",
         PENDING:         "في الانتظار",
+        ARRIVED:         "وصل",
+        IN_PROGRESS:     "جاري التنفيذ",
         COMPLETED:       "مكتمل",
         CANCELLED:       "ملغي",
         NO_SHOW:         "لم يحضر",
@@ -612,7 +614,9 @@ export const translations = {
         ALL:             "الكل",
       },
       bookingActions: {
-        CONFIRMED: "تأكيد الحجز",
+        CONFIRMED:   "تأكيد الحجز",
+        ARRIVED:     "العميل وصل",
+        IN_PROGRESS: "بدأ التنفيذ",
         COMPLETED: "تمّ بنجاح",
         CANCELLED: "إلغاء الحجز",
         NO_SHOW:   "لم يحضر",
@@ -1364,6 +1368,8 @@ export const translations = {
       bookingStatus: {
         CONFIRMED:       "Confirmed",
         PENDING:         "Pending",
+        ARRIVED:         "Arrived",
+        IN_PROGRESS:     "In progress",
         COMPLETED:       "Completed",
         CANCELLED:       "Cancelled",
         NO_SHOW:         "No Show",
@@ -1372,7 +1378,9 @@ export const translations = {
         ALL:             "All",
       },
       bookingActions: {
-        CONFIRMED: "Confirm Booking",
+        CONFIRMED:   "Confirm Booking",
+        ARRIVED:     "Mark arrived",
+        IN_PROGRESS: "Start service",
         COMPLETED: "Mark Complete",
         CANCELLED: "Cancel Booking",
         NO_SHOW:   "No Show",

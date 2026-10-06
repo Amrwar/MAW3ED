@@ -1,9 +1,8 @@
-import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import { bookingPageUrl } from "@/lib/url";
-import { hasBookingConflict, timeToMinutes, minutesToTime } from "@/lib/bookings/overlap";
+import { createBooking } from "@/lib/bookings/create";
 import {
   sendBusinessBookingTemplate,
   sendCustomerConfirmationTemplate,
@@ -38,7 +37,7 @@ export async function POST(req: Request, { params }: Params) {
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
     const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes,
-            tableId, staffMemberId, partySize } = parsed.data;
+            tableId, staffMemberId, branchId, partySize, idempotencyKey } = parsed.data;
 
     const business = await db.business.findUnique({
       where:   { slug, isPublished: true },
@@ -52,22 +51,6 @@ export async function POST(req: Request, { params }: Params) {
     });
     if (!service) return err("الخدمة غير موجودة", 404);
 
-    // Parse date as UTC midnight — must match how slots API stores/queries
-    const [year, month, day] = date.split("-").map(Number);
-    const dateUTC = new Date(Date.UTC(year, month - 1, day));
-
-    // ── Calculate candidate time range ────────────────────────────────────────
-    const candidateStart = timeToMinutes(startTime);
-    const candidateEnd   = candidateStart + service.duration;
-    const endTime        = minutesToTime(candidateEnd);
-
-    // ── Overlap conflict check ─────────────────────────────────────────────────
-    // Scope conflict check to the specific resource when provided, so multiple
-    // barbers / tables can accept bookings at the same time.
-    if (await hasBookingConflict(business.id, dateUTC, candidateStart, candidateEnd, { staffMemberId, tableId })) {
-      return err("هذا الموعد محجوز بالفعل، اختر وقتًا آخر", 409);
-    }
-
     // ── Upsert customer ────────────────────────────────────────────────────────
     const customer = await db.customer.upsert({
       where:  { businessId_phone: { businessId: business.id, phone: customerPhone } },
@@ -75,69 +58,105 @@ export async function POST(req: Request, { params }: Params) {
       update: { name: customerName, ...(customerEmail ? { email: customerEmail } : {}) },
     });
 
-    // ── Resolve effective plan and enforce booking limit ──────────────────────
+    // ── Resolve effective plan ────────────────────────────────────────────────
     const effectivePlan = getEffectivePlan(
       business.plan as Plan,
       business.subscriptionStatus as SubscriptionStatus,
       business.trialEndsAt,
     );
 
-    const monthlyLimit = getMonthlyBookingLimit(effectivePlan);
-    if (isFinite(monthlyLimit)) {
-      const now       = new Date();
-      const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-      const monthEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-      const count = await db.booking.count({
-        where: {
-          businessId: business.id,
-          createdAt:  { gte: monthStart, lt: monthEnd },
-          status:     { notIn: ["FAILED_PAYMENT", "CANCELLED"] },
-        },
-      });
-      if (count >= monthlyLimit) {
-        return err("عذرًا، هذا العمل بلغ الحد الأقصى من الحجوزات الشهرية", 429);
-      }
-    }
-
     // ── Determine initial status and deposit ──────────────────────────────────
-    // Deposits require PRO plan
+    // Deposits require a plan that includes them.
     const requiresDeposit = business.depositEnabled && canUseFeature(effectivePlan, "deposits");
     const depositCents    = requiresDeposit
       ? calcDepositCents(Number(service.price), business.depositPercent)
       : 0;
     const depositAmount   = requiresDeposit ? depositCents / 100 : null;
-    const initialStatus   = requiresDeposit ? "PENDING_PAYMENT" : "PENDING";
 
-    // ── Create booking ─────────────────────────────────────────────────────────
-    const accessToken = randomBytes(32).toString("hex");
-    const booking = await db.booking.create({
-      data: {
-        businessId:    business.id,
-        serviceId:     service.id,
-        customerId:    customer.id,
-        customerName,
-        customerPhone,
-        date:          dateUTC,
-        startTime,
-        endTime,
-        status:        initialStatus,
-        totalPrice:    service.price,
-        currency:      service.currency,
-        notes:         notes ?? null,
-        accessToken,
-        depositAmount,
-        tableId:       tableId       ?? null,
-        staffMemberId: staffMemberId ?? null,
-        partySize:     partySize     ?? null,
-      },
+    // autoConfirm skips the owner's review step; without it the booking
+    // waits for them, which is the behaviour every existing business has.
+    const initialStatus: "PENDING" | "PENDING_PAYMENT" | "CONFIRMED" =
+      requiresDeposit ? "PENDING_PAYMENT" : business.autoConfirm ? "CONFIRMED" : "PENDING";
+
+    // ── Create ────────────────────────────────────────────────────────────────
+    //
+    // Everything that used to live here — the conflict check, the monthly
+    // limit count, the insert — now happens inside one transaction in
+    // lib/bookings/create.ts, with the slot re-derived server-side and an
+    // exclusion constraint underneath. See the note at the top of that file.
+    const result = await createBooking({
+      businessId:     business.id,
+      serviceId:      service.id,
+      customerId:     customer.id,
+      customerName,
+      customerPhone,
+      date,
+      startTime,
+      notes:          notes ?? null,
+      staffMemberId:  staffMemberId ?? null,
+      tableId:        tableId ?? null,
+      branchId:       branchId ?? null,
+      partySize:      partySize ?? null,
+      status:         initialStatus,
+      totalPrice:     service.price,
+      currency:       service.currency,
+      depositAmount,
+      idempotencyKey: idempotencyKey ?? null,
+      monthlyLimit:   getMonthlyBookingLimit(effectivePlan),
     });
+
+    if (!result.ok) {
+      switch (result.failure.kind) {
+        case "slot-taken":
+          return err("حد تاني حجز الموعد ده دلوقتي، اختر وقت تاني", 409);
+        case "slot-unavailable":
+          return err(unavailableMessage(result.failure.reason), 409);
+        case "limit-reached":
+          return err("عذرًا، هذا العمل بلغ الحد الأقصى من الحجوزات الشهرية", 429);
+        case "service-not-found":
+          return err("الخدمة غير موجودة", 404);
+      }
+    }
+
+    const { booking, reused } = result;
+    const endTime = booking.endTime ?? startTime;
+    const accessToken = booking.accessToken!;
+
+    // A retry that matched an earlier request returns the original
+    // booking and sends nothing again — no second confirmation, no
+    // second payment session.
+    if (reused) {
+      return ok(
+        {
+          booking: {
+            id:           booking.id,
+            reference:    booking.reference,
+            accessToken,
+            businessName: business.nameAr,
+            serviceName:  service.nameAr,
+            date,
+            startTime:    booking.startTime,
+            endTime,
+            customerName: booking.customerName,
+            totalPrice:   Number(booking.totalPrice),
+            depositAmount: booking.depositAmount ? Number(booking.depositAmount) : null,
+            currency:     booking.currency,
+            status:       booking.status,
+          },
+          requiresPayment: booking.status === "PENDING_PAYMENT",
+          idempotentReplay: true,
+        },
+        200,
+      );
+    }
 
     // ── Build booking URL for customer self-service ───────────────────────────
     const bookingUrl = bookingPageUrl(accessToken);
 
     const bookingResponse = {
       id:           booking.id,
-      accessToken:  booking.accessToken,
+      reference:    booking.reference,
+      accessToken,
       businessName: business.nameAr,
       serviceName:  service.nameAr,
       date,
@@ -241,5 +260,27 @@ export async function POST(req: Request, { params }: Params) {
   } catch (e) {
     log.error("[booking POST]", e);
     return err("حدث خطأ أثناء الحجز، حاول مرة أخرى", 500);
+  }
+}
+
+/** Why the server turned a slot down, in words a customer can act on. */
+function unavailableMessage(reason: string | null): string {
+  switch (reason) {
+    case "past":
+      return "الوقت ده عدّى خلاص";
+    case "too-far-ahead":
+      return "الحجز مش مفتوح للتاريخ ده لسه";
+    case "same-day-cutoff":
+      return "قفل الحجز لليوم، جرّب بكرة";
+    case "business-closed":
+      return "النشاط مقفول في الوقت ده";
+    case "staff-off":
+      return "الموظف ده مش متاح في الوقت ده";
+    case "holiday":
+      return "النشاط مقفول في اليوم ده (أجازة)";
+    case "vacation":
+      return "الموظف ده في أجازة";
+    default:
+      return "الموعد ده مش متاح، اختر وقت تاني";
   }
 }

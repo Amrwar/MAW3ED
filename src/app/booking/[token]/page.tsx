@@ -28,8 +28,10 @@ function formatDateAr(date: Date): string {
 }
 
 const STATUS_CONFIG = {
-  PENDING:   { label: "في الانتظار",  icon: Clock,        color: "text-[var(--color-star)]",  bg: "bg-[var(--color-warn-soft)]",  border: "border-[var(--color-warn-line)]" },
-  CONFIRMED: { label: "مؤكد",         icon: CheckCircle,  color: "text-[var(--color-ok)]",  bg: "bg-[var(--color-ok-soft)]",  border: "border-[var(--color-ok-line)]" },
+  PENDING:     { label: "في الانتظار",  icon: Clock,        color: "text-[var(--color-star)]",  bg: "bg-[var(--color-warn-soft)]",  border: "border-[var(--color-warn-line)]" },
+  CONFIRMED:   { label: "مؤكد",         icon: CheckCircle,  color: "text-[var(--color-ok)]",  bg: "bg-[var(--color-ok-soft)]",  border: "border-[var(--color-ok-line)]" },
+  ARRIVED:     { label: "وصلت",         icon: CheckCircle,  color: "text-[var(--color-jade)]", bg: "bg-[var(--color-jade-soft)]", border: "border-[var(--color-jade-line)]" },
+  IN_PROGRESS: { label: "جاري التنفيذ", icon: Clock,        color: "text-[var(--color-info)]", bg: "bg-[var(--color-info-soft)]", border: "border-[var(--color-info-line)]" },
   COMPLETED: { label: "مكتمل",        icon: CheckCircle,  color: "text-[var(--color-jade)]",   bg: "bg-[var(--color-jade-soft)]",   border: "border-[var(--color-jade-line)]"  },
   CANCELLED: { label: "ملغي",         icon: XCircle,      color: "text-[var(--color-danger)]",    bg: "bg-[var(--color-danger-soft)]",    border: "border-[var(--color-danger-line)]"   },
   NO_SHOW:   { label: "لم يحضر",      icon: AlertCircle,  color: "text-[var(--color-subtle)]",   bg: "bg-[var(--color-surface-2)]",   border: "border-[var(--color-line)]"  },
@@ -51,9 +53,11 @@ export default async function BookingPage({ params }: Params) {
   const booking = await db.booking.findUnique({
     where:   { accessToken: token },
     include: {
-      business: { select: { nameAr: true, slug: true, phone: true } },
-      service:  { select: { id: true, nameAr: true } },
-      review:   { select: { id: true } },
+      business:    { select: { nameAr: true, slug: true, phone: true } },
+      service:     { select: { id: true, nameAr: true, duration: true } },
+      staffMember: { select: { nameAr: true } },
+      branch:      { select: { nameAr: true } },
+      review:      { select: { id: true } },
     },
   });
 
@@ -89,8 +93,10 @@ export default async function BookingPage({ params }: Params) {
           <div>
             <p className={`font-extrabold text-lg ${status.color}`}>{status.label}</p>
             <p className="text-sm text-[var(--color-text-muted)]">
-              {booking.status === "PENDING"   && "حجزك قيد المراجعة، سيتواصل معك الفريق قريبًا"}
-              {booking.status === "CONFIRMED" && "حجزك مؤكد، نراك قريبًا!"}
+              {booking.status === "PENDING"     && "حجزك قيد المراجعة، سيتواصل معك الفريق قريبًا"}
+              {booking.status === "CONFIRMED"   && "حجزك مؤكد، نراك قريبًا!"}
+              {booking.status === "ARRIVED"     && "تم تسجيل وصولك، استنى شوية"}
+              {booking.status === "IN_PROGRESS" && "الخدمة شغالة دلوقتي"}
               {booking.status === "COMPLETED" && "شكرًا لزيارتك"}
               {booking.status === "CANCELLED" && "تم إلغاء هذا الحجز"}
               {booking.status === "NO_SHOW"   && "لم يتم الحضور في هذا الموعد"}
@@ -104,8 +110,11 @@ export default async function BookingPage({ params }: Params) {
             <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
               تفاصيل الحجز
             </p>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5" dir="ltr">
-              #{booking.id.slice(-8).toUpperCase()}
+            {/* The reference, not a slice of the internal id. This is
+                what a customer reads down the phone and what support
+                searches on. */}
+            <p className="num mt-1 text-[0.9375rem] font-extrabold tracking-wide text-[var(--color-ink)]" dir="ltr">
+              {booking.reference ?? booking.id.slice(-8).toUpperCase()}
             </p>
           </div>
 
@@ -119,9 +128,60 @@ export default async function BookingPage({ params }: Params) {
               value={booking.endTime ? `${booking.startTime} – ${booking.endTime}` : booking.startTime}
               ltr
             />
+            <Row
+              icon={<Clock size={15} />}
+              label="المدة"
+              value={`${booking.service.duration} دقيقة`}
+            />
+            {booking.staffMember && (
+              <Row icon={<Store size={15} />} label="مقدّم الخدمة" value={booking.staffMember.nameAr} />
+            )}
+            {booking.branch && (
+              <Row icon={<Store size={15} />} label="الفرع" value={booking.branch.nameAr} />
+            )}
             <Row icon={<Phone size={15} />} label="الهاتف" value={booking.customerPhone} ltr />
+            <Row
+              icon={<Store size={15} />}
+              label="السعر"
+              value={
+                Number(booking.totalPrice) > 0
+                  ? `${Number(booking.totalPrice).toLocaleString("ar-EG-u-nu-latn")} ${booking.currency}`
+                  : "السعر غير محدد"
+              }
+            />
+            {booking.depositAmount !== null && Number(booking.depositAmount) > 0 && (
+              <Row
+                icon={<Store size={15} />}
+                label="المقدّم المطلوب"
+                value={`${Number(booking.depositAmount).toLocaleString("ar-EG-u-nu-latn")} ${booking.currency}`}
+              />
+            )}
           </div>
         </div>
+
+        {/* Add to calendar — a plain .ics, which every calendar opens
+            and which sends the appointment to nobody. */}
+        {["PENDING", "CONFIRMED", "ARRIVED", "IN_PROGRESS"].includes(booking.status) && (
+          <a
+            href={`/api/public/booking/${token}/calendar`}
+            className="btn btn-outline w-full"
+            download
+          >
+            <CalendarDays size={16} strokeWidth={1.9} aria-hidden="true" />
+            أضف الموعد للتقويم
+          </a>
+        )}
+
+        {/* Rebook — only once the visit is over, and pre-selecting the
+            service they had rather than starting from a blank page. */}
+        {["COMPLETED", "CANCELLED", "NO_SHOW"].includes(booking.status) && (
+          <Link
+            href={`/company/${booking.business.slug}?service=${booking.serviceId}#booking`}
+            className="btn btn-primary w-full"
+          >
+            احجز مرة تانية
+          </Link>
+        )}
 
         {/* Actions */}
         {(cancellable || reschedulable) && (
@@ -130,7 +190,10 @@ export default async function BookingPage({ params }: Params) {
               إدارة الحجز
             </p>
             <p className="text-xs text-[var(--color-text-muted)]">
-              يمكنك تعديل أو إلغاء الحجز حتى {CUTOFF_HOURS} ساعات قبل الموعد
+              يمكنك تعديل أو إلغاء الحجز حتى {CUTOFF_HOURS} ساعات قبل الموعد.
+              {booking.depositAmount !== null && Number(booking.depositAmount) > 0
+                ? " المقدّم المدفوع غير قابل للاسترداد بعد التأكيد."
+                : ""}
             </p>
 
             {reschedulable && (
