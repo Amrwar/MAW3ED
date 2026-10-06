@@ -1,16 +1,21 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { useSession } from "next-auth/react";
 
 /**
- * Saved businesses, kept in the browser.
+ * Saved businesses.
  *
- * Deliberately not on the account: a visitor should be able to save a
- * place before deciding whether to sign up, and nothing here is worth a
- * round trip. It lives on this device only, which the button's label
- * says out loud.
+ * Two homes, one list. A signed-out visitor saves to this device, which
+ * is what lets somebody save a place before deciding whether to sign
+ * up. A signed-in customer saves to their account, so the list follows
+ * them to a new phone.
  *
- * Every read and write is wrapped — localStorage throws in a private
+ * The device list is handed over once on sign-in and then left alone —
+ * clearing it would lose the list for anyone who signs out again, and
+ * merging is idempotent so a repeat does nothing.
+ *
+ * Every read and write is wrapped: localStorage throws in a private
  * window and in some embedded browsers, and a saved list is not worth
  * taking the page down for.
  */
@@ -18,14 +23,10 @@ import { useCallback, useSyncExternalStore } from "react";
 const KEY = "maw3ed:favorites";
 /** Fires in this tab; the storage event only reaches the others. */
 const CHANGED = "maw3ed:favorites-changed";
-
 const EMPTY: string[] = [];
 
-/**
- * useSyncExternalStore compares snapshots by identity, so parsing on
- * every call would loop forever. The last parse is cached against the
- * raw string it came from and only redone when that changes.
- */
+/* ─── The local store ────────────────────────────────────── */
+
 let cachedRaw: string | null = null;
 let cachedValue: string[] = EMPTY;
 
@@ -46,7 +47,6 @@ function getSnapshot(): string[] {
     cachedValue = EMPTY;
     return cachedValue;
   }
-
   try {
     const parsed: unknown = JSON.parse(raw);
     cachedValue = Array.isArray(parsed)
@@ -81,18 +81,74 @@ function write(ids: string[]): void {
   window.dispatchEvent(new Event(CHANGED));
 }
 
+/* ─── The hook ───────────────────────────────────────────── */
+
 export function useFavorites() {
   const ids = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const { status } = useSession();
+  const signedIn = status === "authenticated";
+  const syncedFor = useRef<string | null>(null);
 
-  const toggle = useCallback((id: string) => {
-    const next = [...getSnapshot()];
-    const at = next.indexOf(id);
-    if (at === -1) next.push(id);
-    else next.splice(at, 1);
-    write(next);
-  }, []);
+  // On sign-in, hand the device list over and adopt the account's.
+  // Keyed on the session status so it runs once per sign-in, not once
+  // per render.
+  useEffect(() => {
+    if (!signedIn || syncedFor.current === "done") return;
+    syncedFor.current = "done";
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const local = getSnapshot();
+        const res = await fetch("/api/account/favorites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ businessIds: local }),
+        });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { businessIds?: string[] };
+        if (data.businessIds && !cancelled) write(data.businessIds);
+      } catch {
+        // Offline, or the endpoint is unhappy. The device list still
+        // works; the next sign-in will try again.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn]);
+
+  const toggle = useCallback(
+    (id: string) => {
+      const current = getSnapshot();
+      const saved = current.includes(id);
+      const next = saved ? current.filter((x) => x !== id) : [...current, id];
+
+      // Write locally first so the heart responds immediately; the
+      // request catches up. A failed request leaves the two out of
+      // step until the next sign-in merge, which is the right trade
+      // for a button pressed this often.
+      write(next);
+
+      if (!signedIn) return;
+
+      void fetch(
+        saved ? `/api/account/favorites?businessId=${encodeURIComponent(id)}` : "/api/account/favorites",
+        saved
+          ? { method: "DELETE" }
+          : {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ businessId: id }),
+            },
+      ).catch(() => {});
+    },
+    [signedIn],
+  );
 
   const isFavorite = useCallback((id: string) => ids.includes(id), [ids]);
 
-  return { ids, isFavorite, toggle };
+  return { ids, isFavorite, toggle, signedIn };
 }

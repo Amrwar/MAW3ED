@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { bookingStatusSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { NOTIFY_COPY, notifyCustomer } from "@/lib/account/notify";
+import { formatWhen } from "@/lib/account/when";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -75,6 +77,26 @@ export async function PATCH(req: Request, { params }: Params) {
         `لا يمكن تغيير الحالة من "${booking.status}" إلى "${newStatus}"`,
         400,
       );
+    }
+
+    // Recorded for the customer's account before the response goes
+    // back, so the badge is already right when they open it.
+    const copy =
+      newStatus === "CONFIRMED"
+        ? NOTIFY_COPY.confirmed(business.nameAr, formatWhen(booking.date, booking.startTime))
+        : newStatus === "CANCELLED"
+          ? NOTIFY_COPY.cancelled(business.nameAr)
+          : newStatus === "COMPLETED"
+            ? NOTIFY_COPY.completed(business.nameAr)
+            : null;
+
+    if (copy) {
+      void notifyCustomer({
+        phone: booking.customerPhone,
+        ...copy,
+        href: booking.accessToken ? `/booking/${booking.accessToken}` : "/account",
+        bookingId: booking.id,
+      });
     }
 
     const updated = await db.booking.update({

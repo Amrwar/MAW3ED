@@ -45,7 +45,9 @@ export async function POST(req: Request) {
         expiresAt: new Date(Date.now() + EMAIL_TOKEN_TTL_MS),
       },
     });
-    await sendEmailVerification(
+    // email is nullable on User now that customers sign in with a
+    // phone; an owner always has one, so this never skips in practice.
+    if (user.email) await sendEmailVerification(
       user.email,
       `${siteUrl}/api/auth/verify-email/confirm?token=${token}`,
       user.name,

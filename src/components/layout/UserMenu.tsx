@@ -9,6 +9,7 @@ import {
   Bell,
   ChevronDown,
   Store,
+  CalendarClock,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Dropdown, { DropdownItem, DropdownDivider } from "@/components/ui/Dropdown";
@@ -18,14 +19,16 @@ import { cn } from "@/lib/utils";
 
 export interface NavUser {
   id:          string;
-  email:       string;
+  /** Absent for a customer who signed in with a phone and no address. */
+  email?:      string | null;
   name?:       string | null;
+  phone?:      string | null;
   businessId?: string | null;
 }
 
 // ─── Helpers ───────────────────────────────────────────────
 
-function getInitials(name?: string | null, email?: string): string {
+function getInitials(name?: string | null, email?: string | null): string {
   if (name?.trim()) {
     const parts = name.trim().split(/\s+/);
     return parts.length >= 2
@@ -44,7 +47,7 @@ export function UserAvatar({
   size = "md",
 }: {
   name?:   string | null;
-  email:   string;
+  email?:  string | null;
   size?:   "sm" | "md" | "lg";
 }) {
   const dims = { sm: "w-7 h-7 text-[10px]", md: "w-9 h-9 text-sm", lg: "w-11 h-11 text-base" };
@@ -97,7 +100,8 @@ export function UserMenu({ user }: UserMenuProps) {
 
   const L = {
     menu:      lang === "ar" ? "قائمة المستخدم" : "User menu",
-    profile:   lang === "ar" ? "الملف الشخصي" : "Profile",
+    account:   lang === "ar" ? "حجوزاتي" : "My bookings",
+    profile:   lang === "ar" ? "بياناتي" : "Profile",
     dashboard: lang === "ar" ? "لوحة التحكم"  : "Dashboard",
     business:  lang === "ar" ? "إدارة نشاطي"   : "My Business",
     settings:  lang === "ar" ? "الإعدادات"     : "Settings",
@@ -150,7 +154,11 @@ export function UserMenu({ user }: UserMenuProps) {
         </div>
       </div>
 
-      <DropdownItem icon={<User2 size={15} strokeWidth={1.8} />} href="/profile">
+      <DropdownItem icon={<CalendarClock size={15} strokeWidth={1.8} />} href="/account">
+        {L.account}
+      </DropdownItem>
+
+      <DropdownItem icon={<User2 size={15} strokeWidth={1.8} />} href="/account/profile">
         {L.profile}
       </DropdownItem>
 

@@ -5,6 +5,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
 import { db } from "@/lib/db";
+import { accountForVerifiedPhone, verifyLoginCode } from "@/lib/auth/login-code";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -41,6 +42,50 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         };
       },
     }),
+
+    /**
+     * Customers sign in with a code sent to their phone.
+     *
+     * The code is verified here rather than in a route that then issues
+     * a session, so there is exactly one place a phone can become a
+     * logged-in user and no endpoint that hands out sessions on its own.
+     *
+     * verifyLoginCode consumes the code, so a replay of the same
+     * request fails — the second attempt finds nothing to check.
+     */
+    Credentials({
+      id:   "phone-otp",
+      name: "Phone",
+      credentials: {
+        phone: { label: "Phone", type: "tel" },
+        code:  { label: "Code",  type: "text" },
+      },
+      async authorize(credentials) {
+        const parsed = z
+          .object({ phone: z.string().min(6), code: z.string().min(4).max(10) })
+          .safeParse(credentials);
+
+        if (!parsed.success) return null;
+
+        const result = await verifyLoginCode(parsed.data.phone, parsed.data.code);
+        if (!result.ok) return null;
+
+        const account = await accountForVerifiedPhone(result.phone);
+
+        const user = await db.user.findUnique({
+          where:   { id: account.id },
+          include: { business: { select: { id: true } } },
+        });
+        if (!user) return null;
+
+        return {
+          id:         user.id,
+          email:      user.email,
+          name:       user.name,
+          businessId: user.business?.id ?? null,
+        };
+      },
+    }),
   ],
   callbacks: {
     ...authConfig.callbacks,
@@ -52,14 +97,21 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.businessId = (user as { businessId?: string | null }).businessId ?? null;
       }
 
-      // Re-fetch when explicitly triggered (e.g. after onboarding) OR when
-      // businessId is missing from the token (stale session, tab left open, etc.)
-      if ((trigger === "update" || !token.businessId) && token.id) {
+      // Re-fetch when explicitly triggered (e.g. after onboarding), or
+      // once for a token minted before this field existed.
+      //
+      // Deliberately not "whenever businessId is falsy": a customer has
+      // no business and never will, so that condition fired a database
+      // query on every single request for them. `resolved` records that
+      // the question has been asked and answered.
+      if ((trigger === "update" || !token.resolved) && token.id) {
         const dbUser = await db.user.findUnique({
           where:   { id: token.id as string },
           include: { business: { select: { id: true } } },
         });
         token.businessId = dbUser?.business?.id ?? null;
+        token.phone      = dbUser?.phone ?? null;
+        token.resolved   = true;
       }
 
       return token;
@@ -68,6 +120,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       session.user.id         = token.id as string;
       session.user.businessId = (token.businessId as string | null | undefined) ?? null;
+      session.user.phone      = (token.phone as string | null | undefined) ?? null;
       return session;
     },
   },

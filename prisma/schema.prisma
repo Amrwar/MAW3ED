@@ -10,20 +10,107 @@ datasource db {
 }
 
 // ─── Auth (NextAuth v5 required models) ───────────────────
+/// One person. A User with a business is an owner; a User with a
+/// verified phone is a customer; the same person can be both.
+///
+/// email is no longer required: a customer signs in with a phone they
+/// prove over WhatsApp and may never give an address at all. Owners
+/// still sign in with email and password, so one of the two must be
+/// present — enforced in the application, because a partial unique
+/// index cannot express "at least one of".
 model User {
   id            String    @id @default(cuid())
   name          String?
-  email         String    @unique
+  email         String?   @unique
   emailVerified DateTime?
   password      String?
   image         String?
+  /// E.164, e.g. "+201234567890". The key a customer's bookings are
+  /// found by, which is why it only counts once verified.
+  phone           String?   @unique
+  phoneVerifiedAt DateTime?
+  /// What the customer wants to hear about. Owners have their own
+  /// settings elsewhere.
+  notifyByWhatsApp Boolean  @default(true)
+  notifyByEmail    Boolean  @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts    Account[]
-  sessions    Session[]
-  business    Business?
-  emailTokens EmailVerificationToken[]
+  accounts      Account[]
+  sessions      Session[]
+  business      Business?
+  emailTokens   EmailVerificationToken[]
+  favorites     Favorite[]
+  notifications Notification[]
+
+  @@index([phone])
+}
+
+/// A one-time code sent to a phone to sign in.
+///
+/// Separate from PhoneVerification, which belongs to a business proving
+/// its own number. This one has no business and no session behind it,
+/// so it carries its own throttling.
+model LoginCode {
+  id         String   @id @default(cuid())
+  /// E.164. Not unique: an expired row is kept until cleaned up.
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  lastSentAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([phone, createdAt])
+}
+
+/// A business a customer has saved.
+///
+/// Replaces the per-device list in localStorage, which was lost on a
+/// new phone and could not be acted on by anything server-side.
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  businessId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, businessId])
+  @@index([userId, createdAt])
+}
+
+/// Something that happened that the customer should know about.
+///
+/// Written when a booking changes state, so the account can show a
+/// history of it rather than only the current status.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  kind      NotificationKind
+  title     String
+  body      String?
+  /// Where tapping it should go, relative to the site root.
+  href      String?
+  bookingId String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+enum NotificationKind {
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_RESCHEDULED
+  BOOKING_REMINDER
+  BOOKING_COMPLETED
+  REVIEW_REQUEST
+  GENERAL
 }
 
 model Account {
@@ -147,6 +234,7 @@ model Business {
   branches           Branch[]
   timeBlocks         TimeBlock[]
   resources          Resource[]
+  favorites          Favorite[]
 
   /// The discovery listing always filters on isPublished first, then on
   /// one of city / neighbourhood / category, and sorts on rating,
@@ -371,6 +459,14 @@ model Booking {
   customerId             String?
   customerName           String
   customerPhone          String
+  /// The phone in canonical form ("201107578212"), computed by the
+  /// database from customerPhone — a GENERATED column, never written by
+  /// this application. customerPhone keeps whatever the customer typed,
+  /// because that is what the business reads and dials; this is what an
+  /// account is matched against, since a signed-in customer's phone is
+  /// always canonical. Read-only: see
+  /// prisma/migrations/add_booking_phone_e164.sql.
+  customerPhoneE164      String?
   date                   DateTime
   startTime              String
   endTime                String?
@@ -422,6 +518,8 @@ model Booking {
   @@index([resourceId])
   @@index([serviceId])
   @@index([customerId])
+  @@index([customerPhoneE164])
+  @@index([customerPhoneE164, startsAt])
   @@index([staffMemberId])
   @@index([tableId])
 }

@@ -110,7 +110,7 @@ export default function Navbar() {
             ) : (
               <>
                 <Link
-                  href="/login"
+                  href="/account-login"
                   className="flex min-h-11 items-center text-[0.90625rem] font-bold text-[var(--color-ink)] transition-colors hover:text-[var(--color-jade)]"
                 >
                   {t.nav.login}
@@ -214,7 +214,7 @@ export default function Navbar() {
               </div>
             ) : (
               <div className="mt-3 pt-3 border-t border-[var(--color-line)] px-4 flex flex-col gap-2.5">
-                <Link href="/login" className="btn btn-outline w-full">
+                <Link href="/account-login" className="btn btn-outline w-full">
                   {t.nav.login}
                 </Link>
                 <Link href="/signup?type=business" className="btn btn-primary w-full">

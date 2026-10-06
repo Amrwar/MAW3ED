@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { NOTIFY_COPY, notifyCustomer } from "@/lib/account/notify";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -40,6 +41,13 @@ export async function POST(_req: Request, { params }: Params) {
     await db.booking.update({
       where: { id: booking.id },
       data:  { status: "CANCELLED" },
+    });
+
+    void notifyCustomer({
+      phone: booking.customerPhone,
+      ...NOTIFY_COPY.cancelled(booking.business.nameAr),
+      href: "/account/history",
+      bookingId: booking.id,
     });
 
     return ok({ cancelled: true });
