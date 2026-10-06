@@ -26,8 +26,10 @@ const KNOWN = new Set([
 ]);
 
 /**
- * Slugs that differ between the seed, the static fallback list and
- * older records, mapped onto the wallpaper that fits them.
+ * Slugs that differ between the seed and older records, mapped onto
+ * the wallpaper that fits them. (There used to be a third source, the
+ * hard-coded category list on /categories; that page reads the
+ * database now.)
  */
 const ALIASES: Record<string, string> = {
   medical:     "clinics",

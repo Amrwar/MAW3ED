@@ -24,12 +24,20 @@ export default function DashboardTodayWidget({
   const [newBookingOpen,  setNewBookingOpen]  = useState(false);
 
   const handleStatusChange = useCallback(async (id: string, status: DashboardBookingStatus) => {
-    const res = await fetch(`/api/dashboard/bookings/${id}/status`, {
+    // /api/dashboard/bookings/[id]/status was the address here, and no
+    // such route has ever existed — the PATCH 404'd, so confirming or
+    // completing a booking from the home page failed every time with
+    // "فشل تحديث الحالة". The bookings page has been calling the real
+    // endpoint all along.
+    const res = await fetch(`/api/business/bookings/${id}`, {
       method:  "PATCH",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ status }),
     });
-    if (!res.ok) throw new Error("فشل تحديث الحالة");
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? "فشل تحديث الحالة");
+    }
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
     setSelectedBooking((prev) => (prev?.id === id ? { ...prev, status } : prev));
   }, []);
