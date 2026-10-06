@@ -231,9 +231,11 @@ export default function ServicesClient({ initialServices }: Props) {
           </div>
           <div>
             <p className="text-sm font-bold text-[var(--color-jade)] mb-0.5">نصيحة لتحسين الأداء</p>
+            {/* The "+40% bookings" this used to claim was a number
+                nobody measured. The advice stands on its own. */}
             <p className="text-xs text-[var(--color-muted)] leading-relaxed">
-              الخدمات التي تحتوي على وصف واضح تحصل على حجوزات أكثر بنسبة تصل إلى 40%.
-              تأكد من إضافة وصف مفصل لكل خدمة لزيادة معدل الحجز.
+              عميل بيقرأ وصف واضح بيعرف هياخد إيه بالظبط وبيتردد أقل قبل ما يحجز.
+              اكتب لكل خدمة وصف يقول إيه اللي بيحصل فيها وبتاخد قد إيه.
             </p>
           </div>
         </div>

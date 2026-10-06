@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Megaphone,
   Settings,
+  ShieldCheck,
   Store,
   Sun,
   Users,
@@ -58,6 +59,8 @@ export interface NavContext {
   hasResources: boolean;
   /** More than one location. */
   hasBranches: boolean;
+  /** A platform moderator sees the review queue; nobody else does. */
+  isAdmin?: boolean;
 }
 
 export function buildNav(ctx: NavContext): NavSection[] {
@@ -117,6 +120,13 @@ export function buildNav(ctx: NavContext): NavSection[] {
     { href: "/dashboard/billing", label: s.billing, icon: CreditCard },
     { href: "/dashboard/settings", label: s.settings, icon: Settings },
   ];
+
+  // The moderation queue. Only an admin has one, and the entry is
+  // absent rather than disabled for everybody else — a greyed-out link
+  // would tell the whole platform the page exists.
+  if (ctx.isAdmin) {
+    account.push({ href: "/admin/reviews", label: s.moderation, icon: ShieldCheck });
+  }
 
   return [
     { title: null, items: operate },

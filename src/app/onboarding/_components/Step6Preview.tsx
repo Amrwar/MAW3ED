@@ -2,6 +2,7 @@ import { MapPin, Phone, Clock, CheckCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import type { Category, City } from "@prisma/client";
 import type { OnboardingData } from "./OnboardingForm";
+import { SITE_HOST } from "@/lib/url";
 
 const DAY_LABELS = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 
@@ -124,7 +125,7 @@ export default function Step6Preview({
         {/* URL bar */}
         <div className="bg-[var(--color-surface-2)] border-t border-[var(--color-border)] px-5 py-3">
           <p className="text-xs text-[var(--color-text-muted)]" dir="ltr">
-            maw3ed.com/company/
+            {SITE_HOST}/company/
             <span className="font-semibold text-[var(--color-text-primary)]">
               {data.slug}
             </span>

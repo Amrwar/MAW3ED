@@ -9,6 +9,8 @@ declare module "next-auth" {
       email?:      string | null;
       name?:       string | null;
       businessId?: string | null;
+      /** A platform moderator; set by hand in the database. */
+      isAdmin?: boolean;
       /** E.164, present once a phone sign-in has happened. */
       phone?:      string | null;
     };

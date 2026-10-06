@@ -233,6 +233,7 @@ export default function DashboardHeader({
   resourceWord,
   hasResources = false,
   hasBranches  = false,
+  isAdmin      = false,
 }: {
   businessName:  string;
   cityName?:     string;
@@ -247,6 +248,8 @@ export default function DashboardHeader({
   /** Entries for things the business does not have are left out. */
   hasResources?: boolean;
   hasBranches?:  boolean;
+  /** Shows the moderation entry; nobody else sees it exists. */
+  isAdmin?:      boolean;
 }) {
   const { t }    = useLanguage();
   const h        = t.dashboard.header;
@@ -261,6 +264,7 @@ export default function DashboardHeader({
     resourceWord: resourceWord ?? s.resources,
     hasResources,
     hasBranches,
+    isAdmin,
   });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);

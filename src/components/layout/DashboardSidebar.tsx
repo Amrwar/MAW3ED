@@ -35,6 +35,8 @@ interface DashboardSidebarProps {
   /** Entries for things the business does not have are left out. */
   hasResources?: boolean;
   hasBranches?:  boolean;
+  /** Shows the moderation entry; nobody else sees it exists. */
+  isAdmin?:      boolean;
 }
 
 // ─── Nav item ─────────────────────────────────────────────────────────────────
@@ -146,6 +148,7 @@ export default function DashboardSidebar({
   resourceWord,
   hasResources = false,
   hasBranches  = false,
+  isAdmin      = false,
 }: DashboardSidebarProps) {
   const pathname  = usePathname();
   const { t }     = useLanguage();
@@ -158,6 +161,7 @@ export default function DashboardSidebar({
     resourceWord: resourceWord ?? s.resources,
     hasResources,
     hasBranches,
+    isAdmin,
   });
 
   return (

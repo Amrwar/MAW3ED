@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import { makeSlug } from "@/lib/api";
 import type { Category, City } from "@prisma/client";
 import type { OnboardingData } from "./OnboardingForm";
+import { SITE_HOST } from "@/lib/url";
 
 type SlugStatus = "idle" | "checking" | "available" | "taken" | "invalid";
 
@@ -96,7 +97,7 @@ export default function Step5Finish({
         </label>
         <div className="flex items-center border border-[var(--color-border)] rounded-[var(--radius-md)] overflow-hidden focus-within:border-[var(--color-brand)] focus-within:ring-1 focus-within:ring-[var(--color-brand)]/20 transition-all">
           <span className="bg-[var(--color-surface-2)] px-3 py-2.5 text-sm text-[var(--color-text-muted)] border-e border-[var(--color-border)] shrink-0 select-none whitespace-nowrap">
-            maw3ed.com/company/
+            {SITE_HOST}/company/
           </span>
           <input
             type="text"
@@ -186,7 +187,7 @@ export default function Step5Finish({
         {/* URL bar */}
         <div className="bg-[var(--color-surface-2)] border-t border-[var(--color-border)] px-5 py-2.5">
           <p className="text-xs text-[var(--color-text-muted)]" dir="ltr">
-            maw3ed.com/company/
+            {SITE_HOST}/company/
             <span className="font-semibold text-[var(--color-text-primary)]">{slug || "..."}</span>
           </p>
         </div>

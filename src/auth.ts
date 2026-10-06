@@ -111,6 +111,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         });
         token.businessId = dbUser?.business?.id ?? null;
         token.phone      = dbUser?.phone ?? null;
+        // Read from the same query rather than its own: the moderation
+        // link has to know, and a second round trip for one boolean
+        // would be a query on every sign-in for everybody.
+        token.isAdmin    = dbUser?.isAdmin ?? false;
         token.resolved   = true;
       }
 
@@ -121,6 +125,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       session.user.id         = token.id as string;
       session.user.businessId = (token.businessId as string | null | undefined) ?? null;
       session.user.phone      = (token.phone as string | null | undefined) ?? null;
+      session.user.isAdmin    = (token.isAdmin as boolean | undefined) ?? false;
       return session;
     },
   },

@@ -5,6 +5,7 @@ import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { makeSlug } from "@/lib/api";
 import type { OnboardingData } from "./OnboardingForm";
+import { SITE_HOST } from "@/lib/url";
 
 interface Props {
   data:   OnboardingData;
@@ -91,7 +92,7 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
         {/* URL preview */}
         <div className="flex items-center border border-[var(--color-border)] rounded-[var(--radius-md)] overflow-hidden focus-within:border-[var(--color-brand)] focus-within:ring-1 focus-within:ring-[var(--color-brand)]/20 transition-all">
           <span className="bg-[var(--color-surface-2)] px-3 py-2.5 text-sm text-[var(--color-text-muted)] border-e border-[var(--color-border)] shrink-0 select-none">
-            maw3ed.com/company/
+            {SITE_HOST}/company/
           </span>
           <input
             type="text"
@@ -142,7 +143,7 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
         <div className="bg-[var(--color-ok-soft)] border border-[var(--color-ok-line)] rounded-[var(--radius-md)] p-4 text-center">
           <p className="text-xs text-[var(--color-ok)] mb-1">صفحتك ستكون على:</p>
           <p className="text-sm font-semibold text-[var(--color-ok)]" dir="ltr">
-            maw3ed.com/company/{slug}
+            {SITE_HOST}/company/{slug}
           </p>
         </div>
       )}
