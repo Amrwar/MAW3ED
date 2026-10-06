@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Scissors, Loader2 } from "lucide-react";
 import StaffPanel from "./StaffPanel";
+import type { TimeBlockRow } from "./TimeBlocks";
+import type { StaffHoursRow } from "./WeeklyHours";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export type StaffMember = {
@@ -16,6 +18,8 @@ export type StaffMember = {
   specialties:  string[];
   serviceIds:   string[];
   serviceNames: string[];
+  /** Their own week, where they have set one. Empty follows the shop. */
+  hours?:       StaffHoursRow[];
 };
 
 type AvailableService = { id: string; nameAr: string };
@@ -23,6 +27,8 @@ type AvailableService = { id: string; nameAr: string };
 type Props = {
   initialStaff:      StaffMember[];
   availableServices: AvailableService[];
+  businessHours:     { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }[];
+  timeBlocks:        TimeBlockRow[];
 };
 
 const DAY_LABELS_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
@@ -42,7 +48,12 @@ function memberGrad(name: string) {
   return GRADIENTS[(name.charCodeAt(0) || 0) % GRADIENTS.length];
 }
 
-export default function StaffClient({ initialStaff, availableServices }: Props) {
+export default function StaffClient({
+  initialStaff,
+  availableServices,
+  businessHours,
+  timeBlocks,
+}: Props) {
   const [staff,      setStaff]      = useState<StaffMember[]>(initialStaff);
   const [panelOpen,  setPanelOpen]  = useState(false);
   const [editing,    setEditing]    = useState<StaffMember | null>(null);
@@ -290,6 +301,9 @@ export default function StaffClient({ initialStaff, availableServices }: Props) 
 
       {/* ── Panel ────────────────────────────────────── */}
       <StaffPanel
+        businessHours={businessHours}
+        staffHours={editing?.hours ?? []}
+        timeBlocks={timeBlocks.filter((b) => b.staffMemberId === editing?.id)}
         open={panelOpen}
         onClose={() => setPanelOpen(false)}
         onSaved={handleSaved}

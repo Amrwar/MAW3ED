@@ -7,6 +7,8 @@ import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import ImageUpload from "@/components/shared/ImageUpload";
+import WeeklyHours, { type StaffHoursRow } from "./WeeklyHours";
+import TimeBlocks, { type TimeBlockRow } from "./TimeBlocks";
 
 const DAY_LABELS_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const DAY_LABELS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -19,6 +21,12 @@ interface Props {
   onSaved:           (member: StaffMember, isNew: boolean) => void;
   editing:           StaffMember | null;
   availableServices: AvailableService[];
+  /** The fallback shown against a member with no hours of their own. */
+  businessHours?:    { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }[];
+  /** This member's own week, where they have one. */
+  staffHours?:       StaffHoursRow[];
+  /** Breaks and time off already recorded for them. */
+  timeBlocks?:       TimeBlockRow[];
 }
 
 type FormState = {
@@ -43,7 +51,16 @@ const EMPTY: FormState = {
   serviceIds:  [],
 };
 
-export default function StaffPanel({ open, onClose, onSaved, editing, availableServices }: Props) {
+export default function StaffPanel({
+  open,
+  onClose,
+  onSaved,
+  editing,
+  availableServices,
+  businessHours = [],
+  staffHours = [],
+  timeBlocks = [],
+}: Props) {
   const { lang } = useLanguage();
   const isAr     = lang === "ar";
 
@@ -347,6 +364,20 @@ export default function StaffPanel({ open, onClose, onSaved, editing, availableS
             </div>
 
           {error && <Alert tone="danger">{error}</Alert>}
+
+          {/* Hours and absences only once the person exists: both are
+              keyed on their id, and there is nothing to attach them to
+              until the member has been saved. */}
+          {editing && (
+            <div className="space-y-6 border-t border-[var(--color-line)] pt-5">
+              <WeeklyHours
+                staffMemberId={editing.id}
+                initial={staffHours}
+                businessHours={businessHours}
+              />
+              <TimeBlocks staffMemberId={editing.id} initial={timeBlocks} />
+            </div>
+          )}
         </div>
       </form>
     </Modal>

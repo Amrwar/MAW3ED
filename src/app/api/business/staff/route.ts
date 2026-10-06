@@ -9,7 +9,10 @@ export async function GET() {
   const staff = await db.staffMember.findMany({
     where:   { businessId: session.user.businessId },
     orderBy: { createdAt: "asc" },
-    include: { services: { include: { service: { select: { id: true, nameAr: true } } } } },
+    include: {
+      services: { include: { service: { select: { id: true, nameAr: true } } } },
+      hours:    { orderBy: { dayOfWeek: "asc" } },
+    },
   });
 
   return NextResponse.json(staff);
@@ -38,7 +41,10 @@ export async function POST(req: Request) {
         ? { create: (serviceIds as string[]).map((sid) => ({ serviceId: sid })) }
         : undefined,
     },
-    include: { services: { include: { service: { select: { id: true, nameAr: true } } } } },
+    include: {
+      services: { include: { service: { select: { id: true, nameAr: true } } } },
+      hours:    { orderBy: { dayOfWeek: "asc" } },
+    },
   });
 
   return NextResponse.json(member, { status: 201 });
