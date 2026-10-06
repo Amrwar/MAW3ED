@@ -6,7 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
 import BusinessCard from "@/components/shared/BusinessCard";
-import { getCategories, getCategoryBySlug, getPublishedBusinesses } from "@/lib/data";
+import { getCategoryBySlug, getPublishedBusinesses } from "@/lib/data";
 import { MIN_BUSINESSES, getLandingCategories } from "@/lib/seo/landing";
 import { buildMetadata } from "@/lib/seo/meta";
 import { db } from "@/lib/db";
@@ -50,7 +50,12 @@ export default async function CategoryPage({ params }: Props) {
   const [category, businesses, allCategories] = await Promise.all([
     getCategoryBySlug(slug),
     getPublishedBusinesses({ categorySlug: slug }),
-    getCategories(),
+    // Not getCategories(). This list links to sibling category pages,
+    // and a category page refuses to exist below MIN_BUSINESSES — so
+    // the full taxonomy produced links straight into a 404. Six of the
+    // eight shown here did. getLandingCategories() is the same source
+    // the sitemap uses: the pages that are actually there.
+    getLandingCategories(),
   ]);
 
   if (!category) notFound();
@@ -129,10 +134,9 @@ export default async function CategoryPage({ params }: Props) {
               <div className="flex flex-wrap gap-2">
                 {otherCategories.map((c) => (
                   <Link
-                    key={c.id}
+                    key={c.slug}
                     href={`/categories/${c.slug}`}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-medium transition-all hover:shadow-sm"
-                    style={{ color: c.color }}
                   >
                     <span>{c.icon}</span>
                     <span className="text-[var(--color-text-secondary)]">{c.nameAr}</span>

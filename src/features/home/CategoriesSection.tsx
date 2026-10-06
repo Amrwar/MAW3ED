@@ -27,7 +27,11 @@ export default function CategoriesSection({ categories, limit = 8 }: Props) {
   const isAr = lang === "ar";
   const ArrowIcon = isAr ? ArrowLeft : ArrowRight;
 
-  const shown = categories.slice(0, limit);
+  // Every tile links to /categories/[slug], and that page refuses to
+  // exist below MIN_BUSINESSES. Sorted by count, the tail of this list
+  // is the empty categories — four of the eight shown here linked
+  // straight into a 404.
+  const shown = categories.filter((c) => c.count > 0).slice(0, limit);
   if (shown.length === 0) return null;
 
   return (

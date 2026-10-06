@@ -6,7 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
 import BusinessCard from "@/components/shared/BusinessCard";
-import { getCities, getCityBySlug, getPublishedBusinesses } from "@/lib/data";
+import { getCityBySlug, getPublishedBusinesses } from "@/lib/data";
 import { MIN_BUSINESSES, getLandingCities, getLandingCombos } from "@/lib/seo/landing";
 import { buildMetadata } from "@/lib/seo/meta";
 import { db } from "@/lib/db";
@@ -54,7 +54,11 @@ export default async function CityPage({ params }: Props) {
   const [city, businesses, allCities] = await Promise.all([
     getCityBySlug(slug),
     getPublishedBusinesses({ citySlug: slug }),
-    getCities(),
+    // Not getCities(). A city page refuses to exist below
+    // MIN_BUSINESSES, so listing every city in the table linked into a
+    // 404 — five of the six shown here did. Same source as the sitemap
+    // and as cityCombos below, which already got this right.
+    getLandingCities(),
   ]);
 
   // Unknown, or real but empty. Both are a 404 rather than a page
@@ -167,7 +171,7 @@ export default async function CityPage({ params }: Props) {
               <div className="flex flex-wrap gap-2">
                 {otherCities.map((c) => (
                   <Link
-                    key={c.id}
+                    key={c.slug}
                     href={`/cities/${c.slug}`}
                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] font-medium hover:border-[var(--color-brand)] hover:text-[var(--color-brand)] transition-all"
                   >
