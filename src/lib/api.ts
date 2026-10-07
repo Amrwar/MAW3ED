@@ -1,4 +1,6 @@
+import { headers } from "next/headers";
 import { auth } from "@/auth";
+import { readAccessToken } from "@/lib/auth/mobile-token";
 import { db } from "@/lib/db";
 
 /** Standard JSON response helpers */
@@ -8,11 +10,65 @@ export const ok = (data: unknown, status = 200) =>
 export const err = (message: string, status = 400) =>
   Response.json({ error: message }, { status });
 
-/** Require a valid session. Returns session or throws 401 response. */
-export async function requireSession() {
+/**
+ * Require a signed-in caller.
+ *
+ * Two ways in, one session shape out.
+ *
+ * The browser sends a NextAuth cookie. A native app cannot sensibly
+ * hold one, so it sends `Authorization: Bearer <access token>` instead
+ * and this resolves it into the same object every route already
+ * expects. That is the whole of the mobile integration: no route knows
+ * which kind of client it is serving, and none had to be changed.
+ *
+ * The cookie is tried first, because the web is the common case and an
+ * app would not be sending both.
+ */
+export async function requireSession(): Promise<CallerSession> {
   const session = await auth();
-  if (!session?.user?.id) throw err("غير مصرح", 401);
-  return session;
+  if (session?.user?.id) return session as CallerSession;
+
+  const bearer = await sessionFromBearer();
+  if (bearer) return bearer;
+
+  throw err("غير مصرح", 401);
+}
+
+/**
+ * The session a bearer token stands for.
+ *
+ * Shaped exactly like the NextAuth one so callers cannot tell them
+ * apart — anything that reads session.user.id or session.user.businessId
+ * keeps working unchanged.
+ *
+ * The header is read from next/headers rather than from a Request
+ * object so this can be called from the many routes that never take
+ * one, and from server components.
+ */
+async function sessionFromBearer(): Promise<CallerSession | null> {
+  const header = (await headers()).get("authorization");
+  if (!header?.startsWith("Bearer ")) return null;
+
+  const claims = await readAccessToken(header.slice(7).trim());
+  if (!claims) return null;
+
+  return {
+    user: {
+      id: claims.sub,
+      businessId: claims.businessId,
+      adminRole: claims.adminRole,
+    },
+  };
+}
+
+/** The shape both paths produce. */
+export interface CallerSession {
+  user: {
+    id: string;
+    businessId?: string | null;
+    adminRole?: string | null;
+    [key: string]: unknown;
+  };
 }
 
 /** Require session + a linked business. Returns both or throws. */
@@ -51,13 +107,3 @@ export async function requireBusiness() {
   return { session, business };
 }
 
-/** Slugify an English string for URL use */
-export function makeSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-]/g, "")
-    .replace(/--+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}

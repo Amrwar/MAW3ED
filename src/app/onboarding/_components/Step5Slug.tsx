@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import Button from "@/components/ui/Button";
-import { makeSlug } from "@/lib/api";
+import { makeSlug } from "@/lib/slug";
 import type { OnboardingData } from "./OnboardingForm";
 import { SITE_HOST } from "@/lib/url";
 

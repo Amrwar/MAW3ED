@@ -5,7 +5,7 @@ import {
   CheckCircle, XCircle, Loader2, MapPin, Phone, Clock,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
-import { makeSlug } from "@/lib/api";
+import { makeSlug } from "@/lib/slug";
 import type { Category, City } from "@prisma/client";
 import type { OnboardingData } from "./OnboardingForm";
 import { SITE_HOST } from "@/lib/url";

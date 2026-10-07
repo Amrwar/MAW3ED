@@ -51,6 +51,10 @@ model User {
   favorites     Favorite[]
   notifications Notification[]
 
+  /// Native app sessions and the devices push goes to.
+  mobileSessions MobileSession[]
+  deviceTokens   DeviceToken[]
+
   /// Payments this person keyed in by hand, and refunds they issued.
   paymentsRecorded Payment[] @relation("PaymentRecordedBy")
   refundsIssued    Refund[]  @relation("RefundActor")
@@ -141,6 +145,10 @@ enum NotificationChannel {
   EMAIL
   WHATSAPP
   SMS
+  /// Native app. Dormant until something is wired to send on it, the
+  /// same way SMS has been — the dispatcher treats an unconfigured
+  /// channel as skipped, not failed.
+  PUSH
 }
 
 enum DeliveryStatus {
@@ -1299,4 +1307,58 @@ model DiscountRedemption {
 
   @@index([discountId])
   @@index([customerId])
+}
+
+
+// ─── Native clients ──────────────────────────────────────────────────
+// The web signs in with a NextAuth cookie. A native app cannot use one
+// sensibly, so it carries bearer tokens instead — the same session,
+// reached a second way, rather than a second authentication system.
+
+/// One signed-in native app, so a refresh token can be revoked.
+///
+/// A bearer token that cannot be withdrawn is a password that never
+/// expires. Signing out, losing a phone, or an admin cutting access all
+/// mean deleting a row here, and the next refresh fails.
+model MobileSession {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// What the person would recognise in a list of their sessions.
+  deviceName String?
+  platform   String? /// "ios" | "android"
+
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime @default(now())
+  /// Past this, refreshing fails however valid the signature.
+  expiresAt    DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Where to send a push, per device.
+///
+/// Kept apart from MobileSession on purpose: a push token outlives a
+/// sign-out — the device is still the device — and one person may be
+/// signed in on two phones.
+model DeviceToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The Expo push token. Unique, because the same device re-registering
+  /// must update its row rather than collect duplicates and be sent to
+  /// twice.
+  token    String  @unique
+  platform String /// "ios" | "android"
+
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  /// Set when the provider tells us the token is dead, so the sender
+  /// stops trying without the row being lost.
+  disabledAt DateTime?
+
+  @@index([userId])
 }

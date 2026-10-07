@@ -21,7 +21,7 @@ export interface Recipient {
   email: string | null;
   /** Where tapping the in-app notification should go. */
   href: string;
-  allow: { inApp: boolean; email: boolean; whatsapp: boolean; sms: boolean };
+  allow: { inApp: boolean; email: boolean; whatsapp: boolean; sms: boolean; push: boolean };
 }
 
 /** Exactly the shape the dispatcher loads; kept narrow on purpose. */
@@ -100,6 +100,10 @@ export function customerRecipient(
       // Both sides of a booking's WhatsApp ride on the business's plan.
       whatsapp: p.notifyByWhatsApp && subject.business.whatsappAllowed,
       sms: p.notifyBySms,
+      // Only an account can have a device registered against it, so a
+      // guest booking is not "denied" push — there is nowhere to send
+      // one. Whether a device exists is checked by the sender.
+      push: subject.customerUserId !== null,
     },
   };
 }
@@ -124,6 +128,8 @@ export function businessRecipient(
       // A business has no SMS number field of its own yet; it would be
       // the notification phone when one is configured.
       sms: false,
+      // The owner's own account, if they have the app.
+      push: wantsEvent(business, event),
     },
   };
 }

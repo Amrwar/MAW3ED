@@ -170,5 +170,10 @@ export function allows(recipient: Recipient, channel: NotificationChannel): bool
       return recipient.allow.whatsapp;
     case "SMS":
       return recipient.allow.sms;
+    case "PUSH":
+      // Allowed when the person has a device registered. There is no
+      // separate preference yet: installing the app and granting the
+      // permission is the opt-in, and removing it is the opt-out.
+      return recipient.allow.push;
   }
 }
