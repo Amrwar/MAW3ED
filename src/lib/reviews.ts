@@ -1,5 +1,6 @@
 import type { ReviewStatus } from "@prisma/client";
 import { db } from "@/lib/db";
+import type { ReviewSort } from "./review-sorts";
 
 /**
  * Reviews, and the one calculation of a rating.
@@ -33,18 +34,16 @@ export const VISIBLE_STATUSES = ["PUBLISHED", "UNDER_REVIEW"] as const satisfies
 /** The filter clause every public query starts from. */
 export const visibleWhere = { status: { in: [...VISIBLE_STATUSES] } };
 
-export const REVIEW_SORTS = ["recent", "highest", "lowest", "helpful"] as const;
-export type ReviewSort = (typeof REVIEW_SORTS)[number];
-
-export function parseReviewSort(raw: string | undefined): ReviewSort {
-  return REVIEW_SORTS.includes(raw as ReviewSort) ? (raw as ReviewSort) : "recent";
-}
-
-/** A star filter is one of the five buckets, or none. */
-export function parseRatingFilter(raw: string | undefined): number | null {
-  const n = Number(raw);
-  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
-}
+// These moved to review-sorts.ts, which imports nothing, so a client
+// component can read them without importing this module and dragging
+// `db` across the boundary with it. Re-exported here so every existing
+// server-side caller keeps working unchanged.
+export {
+  REVIEW_SORTS,
+  parseReviewSort,
+  parseRatingFilter,
+} from "./review-sorts";
+export type { ReviewSort };
 
 export interface RatingSummary {
   /** Rounded to one decimal. null when nobody has reviewed. */
