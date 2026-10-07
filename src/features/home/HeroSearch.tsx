@@ -73,16 +73,23 @@ export default function HeroSearch({ cities, suggestions, initialCity = "" }: Pr
   ];
 
   return (
-    <section className="bg-[var(--color-ground)] pt-20">
-      <div className="container-app py-12 lg:py-20">
+    /*
+       The page opens dark. The footer closes on the same colour, so the
+       two bracket everything between them and the light sections in the
+       middle read as sections rather than as one continuous sheet —
+       which is what they were when ground, surface and surface-2 sat
+       within four percent of each other.
+    */
+    <section className="bg-[var(--color-night)] pt-20">
+      <div className="container-app py-14 lg:py-24">
         <div className="mx-auto flex max-w-[52rem] flex-col items-center text-center">
 
-          <h1 className="display-title text-balance">
+          <h1 className="display-title text-balance text-[var(--color-inverse)]">
             {h.title}{" "}
-            <span className="font-extrabold text-[var(--color-jade)]">{h.titleAccent}</span>
+            <span className="font-extrabold text-[var(--color-night-accent)]">{h.titleAccent}</span>
           </h1>
 
-          <p className="mt-5 max-w-[46ch] text-[1.0625rem] leading-[1.75] text-[var(--color-muted)]">
+          <p className="mt-5 max-w-[46ch] text-[1.0625rem] leading-[1.75] text-[var(--color-night-text)]">
             {h.subtitle}
           </p>
 
@@ -208,13 +215,13 @@ export default function HeroSearch({ cities, suggestions, initialCity = "" }: Pr
               listings. Nothing is shown when none do. */}
           {suggestions.length > 0 && (
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-              <span className="text-[0.8125rem] text-[var(--color-subtle)]">{h.tryLabel}</span>
+              <span className="text-[0.8125rem] text-[var(--color-night-subtle)]">{h.tryLabel}</span>
               {suggestions.map((c) => (
                 <button
                   key={c.slug}
                   type="button"
                   onClick={() => jumpTo(c.slug)}
-                  className="chip"
+                  className="chip chip-on-dark"
                 >
                   {isAr ? c.nameAr : c.nameEn}
                 </button>
@@ -227,13 +234,13 @@ export default function HeroSearch({ cities, suggestions, initialCity = "" }: Pr
             {promises.map(({ Icon, text }) => (
               <li
                 key={text}
-                className="flex items-center gap-2 text-[0.84375rem] text-[var(--color-muted)]"
+                className="flex items-center gap-2 text-[0.84375rem] text-[var(--color-night-text)]"
               >
                 <Icon
                   size={15}
                   strokeWidth={1.9}
                   aria-hidden="true"
-                  className="shrink-0 text-[var(--color-jade)]"
+                  className="shrink-0 text-[var(--color-night-accent)]"
                 />
                 {text}
               </li>

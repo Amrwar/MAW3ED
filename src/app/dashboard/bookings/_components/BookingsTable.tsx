@@ -133,7 +133,7 @@ export default function BookingsTable({
                   {Array.from({ length: 7 }).map((_, j) => (
                     <td key={j} className="px-5 py-4">
                       <div
-                        className="rounded-lg animate-pulse"
+                        className="rounded-[var(--radius-md)] animate-pulse"
                         style={{ height: 14, background: "var(--color-surface-3)", width: j === 0 ? 120 : j === 6 ? 60 : 80 }}
                       />
                     </td>
@@ -236,7 +236,7 @@ export default function BookingsTable({
                         <button
                           onClick={(e) => handleQuickAction(e, b, primaryAction)}
                           disabled={!!actionLoadingId}
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-150 disabled:opacity-50 whitespace-nowrap"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-[var(--radius-md)] transition-all duration-150 disabled:opacity-50 whitespace-nowrap"
                           style={{ background: actionStyle.bg, color: actionStyle.color }}
                         >
                           {isActionLoading && <Loader2 size={11} className="animate-spin" />}

@@ -115,7 +115,9 @@ export default async function HomePage() {
         <FinalCTA />
       </main>
 
-      <Footer />
+      {/* The page already closes with its own call to action above, so
+          the footer does not repeat it. */}
+      <Footer cta={false} />
 
       <OrganizationJsonLd lang={lang} />
     </>

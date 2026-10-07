@@ -131,7 +131,7 @@ export default function Step5Finish({
             صورة الغلاف
           </div>
           {/* Logo */}
-          <div className="absolute -bottom-6 start-4 w-14 h-14 rounded-[var(--radius-md)] bg-white border-2 border-white shadow-md flex items-center justify-center text-xl font-extrabold text-[var(--color-brand)]">
+          <div className="absolute -bottom-6 start-4 w-14 h-14 rounded-[var(--radius-md)] bg-white border-2 border-white shadow-[var(--shadow-raised)] flex items-center justify-center text-xl font-extrabold text-[var(--color-brand)]">
             {data.nameAr[0] || "؟"}
           </div>
         </div>

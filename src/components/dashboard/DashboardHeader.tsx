@@ -715,7 +715,7 @@ function Toast({
     <div
       className={cn(
         "pointer-events-auto animate-toast-in",
-        "flex items-start gap-3 rounded-[var(--radius-lg)] border px-4 py-3 shadow-lg",
+        "flex items-start gap-3 rounded-[var(--radius-lg)] border px-4 py-3 shadow-[var(--shadow-float)]",
         "min-w-64 max-w-80",
         toastClass,
       )}

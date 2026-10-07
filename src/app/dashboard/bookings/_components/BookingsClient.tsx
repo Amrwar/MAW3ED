@@ -194,7 +194,7 @@ export default function BookingsClient({
               className={cn(
                 "flex h-9 items-center gap-2 rounded-full px-4 text-[0.8125rem] transition-colors",
                 view === "calendar"
-                  ? "bg-[var(--color-surface)] font-bold text-[var(--color-ink)] shadow-[0_1px_2px_rgb(17_32_28/0.08)]"
+                  ? "bg-[var(--color-surface)] font-bold text-[var(--color-ink)] shadow-[var(--shadow-card)]"
                   : "text-[var(--color-muted)]",
               )}
             >
@@ -209,7 +209,7 @@ export default function BookingsClient({
               className={cn(
                 "flex h-9 items-center gap-2 rounded-full px-4 text-[0.8125rem] transition-colors",
                 view === "list"
-                  ? "bg-[var(--color-surface)] font-bold text-[var(--color-ink)] shadow-[0_1px_2px_rgb(17_32_28/0.08)]"
+                  ? "bg-[var(--color-surface)] font-bold text-[var(--color-ink)] shadow-[var(--shadow-card)]"
                   : "text-[var(--color-muted)]",
               )}
             >

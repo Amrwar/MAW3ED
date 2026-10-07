@@ -234,7 +234,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                         onClick={() => setStartTime(slot)}
                         className={`py-2 text-sm rounded-[var(--radius-md)] border transition-all font-medium ${
                           startTime === slot
-                            ? "bg-[var(--color-jade)] text-white border-[var(--color-jade)] shadow-sm"
+                            ? "bg-[var(--color-jade)] text-white border-[var(--color-jade)] shadow-[var(--shadow-card)]"
                             : "border-[var(--color-line)] text-[var(--color-text-secondary)] hover:border-[var(--color-jade)] hover:text-[var(--color-jade)]"
                         }`}
                         dir="ltr"

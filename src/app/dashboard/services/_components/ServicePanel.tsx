@@ -109,7 +109,7 @@ function FormSection({
         style={{ background: "var(--color-ground)", borderBottom: "1px solid var(--color-surface-3)" }}
       >
         <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+          className="w-7 h-7 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0"
           style={{ background: "var(--color-jade-tint)" }}
         >
           {icon}
@@ -303,7 +303,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                 <span className="flex items-center gap-1.5">
                   {isAr ? "اسم الخدمة بالإنجليزية" : "Service Name (English)"}
                   <span
-                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--radius-xs)]"
                     style={{ background: "var(--color-surface-3)", color: "var(--color-subtle)" }}
                   >
                     {isAr ? "اختياري" : "Optional"}
@@ -330,7 +330,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                   <Languages size={11} style={{ color: "var(--color-subtle)" }} />
                   {isAr ? "وصف الخدمة" : "Service Description"}
                   <span
-                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--radius-xs)]"
                     style={{ background: "var(--color-surface-3)", color: "var(--color-subtle)" }}
                   >
                     {isAr ? "اختياري" : "Optional"}

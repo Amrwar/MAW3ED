@@ -371,7 +371,7 @@ export default function ForBusinessContent({ businesses }: { businesses: RealBus
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {fb.steps.map((step, i) => (
                 <div key={i} className="text-center">
-                  <div className="w-14 h-14 rounded-[var(--radius-lg)] bg-[var(--color-brand)] text-white text-xl font-extrabold flex items-center justify-center mx-auto mb-4 shadow-sm">
+                  <div className="w-14 h-14 rounded-[var(--radius-lg)] bg-[var(--color-brand)] text-white text-xl font-extrabold flex items-center justify-center mx-auto mb-4 shadow-[var(--shadow-card)]">
                     {step.number}
                   </div>
                   <h3 className="font-bold text-[var(--color-text-primary)] mb-2">{step.title}</h3>

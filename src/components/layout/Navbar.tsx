@@ -64,14 +64,17 @@ export default function Navbar() {
     <header
       className={cn(
         "fixed top-0 inset-x-0 z-50 transition-colors duration-300",
-        "bg-[var(--color-ground)]/92 backdrop-blur-md",
-        scrolled && "border-b border-[var(--color-line)]",
+        // Dark, because every page now opens on --color-night: the bar
+        // sits on the hero rather than floating above it in a different
+        // colour. On the pages with no hero it reads as a header band.
+        "bg-[var(--color-night)]/92 backdrop-blur-md",
+        scrolled && "border-b border-[var(--color-night-line)]",
       )}
     >
       <div className="container-app">
         <div className="flex items-center justify-between h-20 gap-8">
 
-          <Logo size="sm" href="/" />
+          <Logo size="sm" href="/" variant="white" />
 
           {/* Desktop nav */}
           <nav className="hidden lg:flex items-center gap-7 flex-1">
@@ -82,8 +85,8 @@ export default function Navbar() {
                 className={cn(
                   "flex min-h-11 items-center text-[0.90625rem] transition-colors",
                   isActive(link.href)
-                    ? "font-bold text-[var(--color-jade)]"
-                    : "text-[var(--color-muted)] hover:text-[var(--color-ink)]",
+                    ? "font-bold text-[var(--color-night-accent)]"
+                    : "text-[var(--color-night-text)] hover:text-[var(--color-inverse)]",
                 )}
               >
                 {link.label}
@@ -96,7 +99,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={toggleLang}
-              className="flex items-center gap-2 h-11 px-3.5 text-[0.8125rem] rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors"
+              className="flex items-center gap-2 h-11 px-3.5 text-[0.8125rem] rounded-full border border-[var(--color-night-line)] bg-[var(--color-night-2)] text-[var(--color-night-text)] hover:text-[var(--color-inverse)] transition-colors"
             >
               <Globe size={15} strokeWidth={1.6} aria-hidden="true" />
               {t.nav.langToggle}
@@ -111,7 +114,7 @@ export default function Navbar() {
               <>
                 <Link
                   href="/account-login"
-                  className="flex min-h-11 items-center text-[0.90625rem] font-bold text-[var(--color-ink)] transition-colors hover:text-[var(--color-jade)]"
+                  className="flex min-h-11 items-center text-[0.90625rem] font-bold text-[var(--color-inverse)] transition-colors hover:text-[var(--color-night-accent)]"
                 >
                   {t.nav.login}
                 </Link>
@@ -130,14 +133,14 @@ export default function Navbar() {
             <button
               type="button"
               onClick={toggleLang}
-              className="flex items-center gap-1.5 h-11 px-3 text-xs rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-muted)] transition-colors"
+              className="flex items-center gap-1.5 h-11 px-3 text-xs rounded-full border border-[var(--color-night-line)] bg-[var(--color-night-2)] text-[var(--color-night-text)] transition-colors"
             >
               <Globe size={13} strokeWidth={1.6} aria-hidden="true" />
               {t.nav.langToggle}
             </button>
             <button
               type="button"
-              className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-ink)] hover:bg-[var(--color-surface-3)] transition-colors"
+              className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-inverse)] hover:bg-[var(--color-night-2)] transition-colors"
               onClick={() => setIsOpen(!isOpen)}
               aria-label={lang === "ar" ? "القائمة" : "Menu"}
               aria-expanded={isOpen}

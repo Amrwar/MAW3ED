@@ -24,6 +24,9 @@ export const translations = {
       business: "للشركات",
       support:  "الدعم",
       copyright:"© 2026 Maw3ed. جميع الحقوق محفوظة.",
+      ctaTitle: "عندك نشاط؟ خليه يستقبل حجوزات",
+      ctaBody:  "صفحة حجز خاصة بيك ورابط تشاركه في دقايق.",
+      ctaButton:"ابدأ مجانًا",
       links: {
         home:         "الرئيسية",
         businesses:   "تصفح الأعمال",
@@ -1052,6 +1055,9 @@ export const translations = {
       business: "For Business",
       support:  "Support",
       copyright:"© 2026 Maw3ed. All rights reserved.",
+      ctaTitle: "Run a business? Start taking bookings",
+      ctaBody:  "Your own booking page and a link to share, in minutes.",
+      ctaButton:"Start free",
       links: {
         home:         "Home",
         businesses:   "Browse Businesses",

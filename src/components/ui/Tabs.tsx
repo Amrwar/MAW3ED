@@ -109,7 +109,7 @@ export default function Tabs<T extends string>({
             className={cn(
               "flex h-11 items-center gap-2 rounded-full px-4 text-[0.84375rem] transition-colors",
               active
-                ? "bg-[var(--color-surface)] font-bold text-[var(--color-ink)] shadow-[0_1px_2px_rgb(17_32_28/0.08)]"
+                ? "bg-[var(--color-surface)] font-bold text-[var(--color-ink)] shadow-[var(--shadow-card)]"
                 : "text-[var(--color-muted)] hover:text-[var(--color-ink)]",
             )}
           >

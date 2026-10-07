@@ -77,14 +77,14 @@ export default function PublicPagePreview({ profile, services }: Props) {
 
         {/* Simulated page card */}
         <div className="p-5">
-          <div className="border border-[var(--color-border)] rounded-[var(--radius-lg)] overflow-hidden max-w-sm mx-auto shadow-sm">
+          <div className="border border-[var(--color-border)] rounded-[var(--radius-lg)] overflow-hidden max-w-sm mx-auto shadow-[var(--shadow-card)]">
             {/* Cover */}
             <div className="h-24 bg-gradient-to-br from-[var(--color-accent-light)] to-[var(--color-surface-2)] relative">
               {profile.coverImage && (
                 <img src={profile.coverImage} alt="" className="w-full h-full object-cover" />
               )}
               {/* Logo */}
-              <div className="absolute -bottom-6 start-4 w-14 h-14 rounded-[var(--radius-md)] bg-white shadow-md border border-[var(--color-border)] flex items-center justify-center text-2xl">
+              <div className="absolute -bottom-6 start-4 w-14 h-14 rounded-[var(--radius-md)] bg-white shadow-[var(--shadow-raised)] border border-[var(--color-border)] flex items-center justify-center text-2xl">
                 {profile.logoImage
                   ? <img src={profile.logoImage} alt="" className="w-full h-full object-cover rounded-[var(--radius-md)]" />
                   : profile.categoryIcon

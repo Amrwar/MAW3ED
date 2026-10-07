@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import Logo from "@/components/shared/Logo";
+import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-export default function Footer() {
+export default function Footer({ cta = true }: { cta?: boolean }) {
   const { t, lang } = useLanguage();
   const f = t.footer;
 
@@ -42,21 +43,62 @@ export default function Footer() {
   const madeIn = lang === "ar" ? "صُنع في القاهرة" : "Made in Cairo";
 
   return (
-    <footer className="bg-[var(--color-surface)] border-t border-[var(--color-line)]">
-      <div className="container-app pt-14 pb-10">
+    /*
+      The footer closes the frame the hero opens.
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr] gap-10 mb-11">
+      It used to be --color-surface: the same white as the cards sitting
+      on top of it, so the page did not end anywhere, it just stopped.
+      Dark gives the page a bottom edge, and it is the same --color-night
+      the hero opens on, so the two bracket everything between them.
+    */
+    <footer className="bg-[var(--color-night)] text-[var(--color-inverse)]">
+      <div className={cn("container-app", cta ? "pt-0" : "pt-16")}>
+
+        {/* The one thing worth asking for, where a reader who got this
+            far is most likely to say yes.
+
+            Off on a page that already ends with its own call to action.
+            The home page does, and two near-identical asks stacked back
+            to back read as a page that does not know what it wants. */}
+        {cta && (
+          /*
+            Relative, not a negative top margin. A negative margin on the
+            first child drags the footer's own top edge up with it, so
+            the card lands exactly on the boundary and overlaps nothing.
+            Relative leaves the footer's box where it is and moves only
+            the paint, so the card genuinely straddles the seam; the
+            negative bottom margin takes back the space it left behind.
+          */
+          <div className="relative -top-11 -mb-6 flex flex-wrap items-center justify-between gap-6 rounded-[var(--radius-xl)] bg-[var(--color-jade)] px-8 py-10 shadow-[var(--shadow-float)] sm:px-11">
+            <div className="min-w-0">
+              <h2 className="m-0 text-[1.375rem] font-bold leading-[1.45] text-[var(--color-inverse)] sm:text-[1.625rem]">
+                {f.ctaTitle}
+              </h2>
+              <p className="m-0 mt-2 text-[0.9375rem] text-[var(--color-jade-soft)]">
+                {f.ctaBody}
+              </p>
+            </div>
+            <Link
+              href="/signup"
+              className="shrink-0 rounded-[var(--radius-md)] bg-[var(--color-inverse)] px-8 py-4 text-[0.9375rem] font-extrabold text-[var(--color-jade-hover)] transition-colors hover:bg-[var(--color-jade-soft)]"
+            >
+              {f.ctaButton}
+            </Link>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-10 pb-13 pt-13 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
 
           <div className="sm:col-span-2 lg:col-span-1">
-            <Logo size="sm" className="mb-4" />
-            <p className="max-w-[34ch] text-[0.84375rem] leading-[1.8] text-[var(--color-subtle)]">
+            <Logo size="sm" variant="white" className="mb-4" />
+            <p className="max-w-[34ch] text-[0.84375rem] leading-[1.9] text-[var(--color-night-text)]">
               {f.tagline}
             </p>
           </div>
 
           {columns.map((col) => (
             <div key={col.title}>
-              <h2 className="mb-4 text-[0.8125rem] font-bold text-[var(--color-ink)]">
+              <h2 className="mb-4 text-[0.8125rem] font-bold text-[var(--color-inverse)]">
                 {col.title}
               </h2>
               <ul className="link-list flex flex-col">
@@ -64,7 +106,7 @@ export default function Footer() {
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-[0.84375rem] text-[var(--color-muted)] hover:text-[var(--color-jade)] transition-colors"
+                      className="text-[0.84375rem] text-[var(--color-night-text)] transition-colors hover:text-[var(--color-inverse)]"
                     >
                       {link.label}
                     </Link>
@@ -75,9 +117,9 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-5 border-t border-[var(--color-line)] pt-6">
-          <p className="text-[0.78125rem] text-[var(--color-subtle)]">{f.copyright}</p>
-          <p className="text-[0.78125rem] text-[var(--color-subtle)]">{madeIn}</p>
+        <div className="flex flex-wrap items-center justify-between gap-5 border-t border-[var(--color-night-line)] py-7">
+          <p className="m-0 text-[0.78125rem] text-[var(--color-night-subtle)]">{f.copyright}</p>
+          <p className="m-0 text-[0.78125rem] text-[var(--color-night-subtle)]">{madeIn}</p>
         </div>
       </div>
     </footer>

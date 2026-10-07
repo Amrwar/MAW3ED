@@ -284,7 +284,7 @@ function StatCell({
       style={{ borderInlineStart: separator ? "1px solid var(--color-surface-3)" : "none" }}
     >
       <div
-        className="w-7 h-7 rounded-lg flex items-center justify-center mb-0.5"
+        className="w-7 h-7 rounded-[var(--radius-sm)] flex items-center justify-center mb-0.5"
         style={{ background: iconBg }}
       >
         {icon}

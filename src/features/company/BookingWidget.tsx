@@ -1291,7 +1291,7 @@ export default function BookingWidget({
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 py-3.5 rounded-[var(--radius-lg)] bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)] text-[var(--color-inverse)] font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-60"
+                className="flex-1 py-3.5 rounded-[var(--radius-lg)] bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)] text-[var(--color-inverse)] font-bold text-sm flex items-center justify-center gap-2 shadow-[var(--shadow-raised)] transition-all disabled:opacity-60"
               >
                 {submitting ? <><Loader2 size={14} className="animate-spin" /> جارٍ الحجز…</> : depositDue !== null ? "تأكيد والدفع" : "تأكيد الحجز"}
               </button>

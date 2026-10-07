@@ -301,7 +301,7 @@ export default function DayCalendar({
                 className="relative h-0 self-start border-t-2 border-dashed border-[var(--color-danger)]"
                 style={{ gridColumn: "1 / -1", gridRow: Math.floor(nowRow) + 1 }}
               >
-                <span className="num absolute -top-2.5 start-0 rounded-[4px] bg-[var(--color-danger)] px-1.5 py-0.5 text-[0.625rem] font-bold text-white">
+                <span className="num absolute -top-2.5 start-0 rounded-[var(--radius-xs)] bg-[var(--color-danger)] px-1.5 py-0.5 text-[0.625rem] font-bold text-white">
                   {clock(`${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, "0")}`)}
                 </span>
               </div>

@@ -136,7 +136,7 @@ export default async function CategoryPage({ params }: Props) {
                   <Link
                     key={c.slug}
                     href={`/categories/${c.slug}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-medium transition-all hover:shadow-sm"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-medium transition-all hover:shadow-[var(--shadow-card)]"
                   >
                     <span>{c.icon}</span>
                     <span className="text-[var(--color-text-secondary)]">{c.nameAr}</span>

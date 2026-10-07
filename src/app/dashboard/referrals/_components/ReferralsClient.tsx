@@ -255,7 +255,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
           </span>
           <button
             onClick={handleCopy}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition-all duration-150 shrink-0 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[var(--radius-md)] text-xs font-bold transition-all duration-150 shrink-0 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
             style={
               copied
                 ? { background: "var(--color-ok-soft)", color: "var(--color-ok)", border: "1px solid var(--color-ok-line)" }

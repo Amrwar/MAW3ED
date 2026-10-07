@@ -78,28 +78,37 @@
   --color-star:            #D9A441;
 
   /* ── Legacy aliases ──────────────────────────────────
-     The old token names remain so every component that
-     already reads them picks up the new palette for free.
-     New code should use the Nasma names above.          */
-  --color-brand:           #11201C;
-  --color-brand-light:     #19302A;
-  --color-brand-soft:      #2C3B36;
-  --color-brand-gray:      #566761;
-  --color-accent:          #0E7F5E;
-  --color-accent-hover:    #0A5F47;
-  --color-accent-light:    #E9F2EE;
-  --color-primary:         #11201C;
-  --color-primary-hover:   #19302A;
-  --color-border:          #E7E8E2;
-  --color-border-2:        #D8DCD6;
-  --color-text-primary:    #11201C;
-  --color-text-secondary:  #566761;
-  --color-text-muted:      #8B968F;
-  --color-text-inverse:    #FFFFFF;
-  --color-success:         #0A5F47;
-  --color-success-light:   #E9F2EE;
-  --color-warning:         #8A6514;
-  --color-warning-light:   #FDF3E0;
+     The old token names, kept so the components that still
+     read them follow the palette above. New code uses the
+     names above.
+
+     These were a second set of hardcoded hex values, which
+     is not an alias — it is a copy, and copies drift. One
+     already had: --color-text-muted stayed at #8B968F after
+     --color-subtle was darkened to meet contrast, so 116
+     pieces of text across the app went on failing WCAG
+     while the token they were supposed to mirror passed.
+     Written as references now, so that cannot happen again
+     and the comment above is true.                       */
+  --color-brand:           var(--color-ink);
+  --color-brand-light:     var(--color-night-2);
+  --color-brand-soft:      var(--color-ink-2);
+  --color-brand-gray:      var(--color-muted);
+  --color-accent:          var(--color-jade);
+  --color-accent-hover:    var(--color-jade-hover);
+  --color-accent-light:    var(--color-jade-soft);
+  --color-primary:         var(--color-ink);
+  --color-primary-hover:   var(--color-night-2);
+  --color-border:          var(--color-line);
+  --color-border-2:        var(--color-line-2);
+  --color-text-primary:    var(--color-ink);
+  --color-text-secondary:  var(--color-muted);
+  --color-text-muted:      var(--color-subtle);
+  --color-text-inverse:    var(--color-inverse);
+  --color-success:         var(--color-ok);
+  --color-success-light:   var(--color-ok-soft);
+  --color-warning:         var(--color-warn);
+  --color-warning-light:   var(--color-warn-soft);
 
   /* Typography ----------------------------------------- */
   --font-arabic:   "Almarai", "Segoe UI", system-ui, sans-serif;
@@ -483,6 +492,20 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-ink);
 }
 
+/* The same chip on a dark band. Outlined rather than filled, so the
+   search card stays the brightest thing in the hero and these read as
+   suggestions beneath it rather than competing with it. */
+.chip-on-dark {
+  background: transparent;
+  border-color: var(--color-night-line);
+  color: var(--color-night-text);
+}
+.chip-on-dark:hover {
+  background: var(--color-night-2);
+  border-color: var(--color-night-accent);
+  color: var(--color-inverse);
+}
+
 .chip-active {
   background: var(--color-night);
   border-color: var(--color-night);
@@ -531,48 +554,56 @@ h1, h2, h3, h4, h5, h6 {
   cursor: not-allowed;
 }
 
-/* ─── Section headings ───────────────────────────────────── */
-.section-eyebrow {
-  font-family: var(--font-latin);
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--color-subtle);
-}
+/* These set a colour, so they live in @layer components: unlayered,
+   they beat every Tailwind utility and a text-[...] on the element is
+   silently ignored. The dark hero's heading disappeared exactly that
+   way — .display-title's ink won against the utility asking for white,
+   the same trap :focus-visible was in. Layered, the utility wins and
+   the default still applies everywhere nobody overrides it. */
+@layer components {
+  /* ─── Section headings ───────────────────────────────────── */
+  .section-eyebrow {
+    font-family: var(--font-latin);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-subtle);
+  }
 
-/* Arabic has no letter case, and tracking pulls the joined letterforms
-   apart — so the Arabic eyebrow is simply a small bold label. */
-[dir="rtl"] .section-eyebrow {
-  font-family: var(--font-arabic);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-}
+  /* Arabic has no letter case, and tracking pulls the joined letterforms
+     apart — so the Arabic eyebrow is simply a small bold label. */
+  [dir="rtl"] .section-eyebrow {
+    font-family: var(--font-arabic);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+  }
 
-.section-title {
-  font-size: clamp(1.75rem, 3.4vw, 2.5rem);
-  font-weight: 300;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  color: var(--color-ink);
-}
+  .section-title {
+    font-size: clamp(1.75rem, 3.4vw, 2.5rem);
+    font-weight: 300;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--color-ink);
+  }
 
-.section-subtitle {
-  font-size: 1.0625rem;
-  line-height: 1.75;
-  color: var(--color-muted);
-  max-width: 52ch;
-}
+  .section-subtitle {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    color: var(--color-muted);
+    max-width: 52ch;
+  }
 
-/* Hero-scale display heading */
-.display-title {
-  font-size: clamp(2.5rem, 6vw, 4.625rem);
-  font-weight: 300;
-  line-height: 1.07;
-  letter-spacing: -0.025em;
-  color: var(--color-ink);
+  /* Hero-scale display heading */
+  .display-title {
+    font-size: clamp(2.5rem, 6vw, 4.625rem);
+    font-weight: 300;
+    line-height: 1.07;
+    letter-spacing: -0.025em;
+    color: var(--color-ink);
+  }
 }
 
 /* ─── Misc ───────────────────────────────────────────────── */
