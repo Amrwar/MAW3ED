@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The mobile app is its own project with its own TypeScript and
+    // lint config; linting React Native with the Next rules reports
+    // noise about rules that do not apply to it.
+    "mobile/**",
+    "android/**",
+    "ios/**",
   ]),
 ]);
 
