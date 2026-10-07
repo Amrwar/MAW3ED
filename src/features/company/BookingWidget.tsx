@@ -606,12 +606,12 @@ export default function BookingWidget({
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                       active ? "bg-[var(--color-jade)] text-white"
                              : done  ? "bg-[var(--color-jade)] text-white"
-                             : "bg-[var(--color-line)] text-[var(--color-faint)]"
+                             : "bg-[var(--color-line)] text-[var(--color-subtle)]"
                     }`}
                   >
                     {done ? <Check size={14} strokeWidth={3} /> : s.n}
                   </div>
-                  <span className={`text-[11px] font-semibold ${active ? "text-[var(--color-jade)]" : "text-[var(--color-faint)]"}`}>
+                  <span className={`text-[11px] font-semibold ${active ? "text-[var(--color-jade)]" : "text-[var(--color-subtle)]"}`}>
                     {s.label}
                   </span>
                 </div>
@@ -631,7 +631,7 @@ export default function BookingWidget({
             </SectionTitle>
 
             {services.length === 0 ? (
-              <p className="text-sm text-[var(--color-faint)] text-center py-6">لا توجد خدمات متاحة حاليًا</p>
+              <p className="text-sm text-[var(--color-subtle)] text-center py-6">لا توجد خدمات متاحة حاليًا</p>
             ) : (
               <div className="space-y-3">
                 {services.map((service) => {
@@ -663,7 +663,7 @@ export default function BookingWidget({
                         <div className="flex-1 min-w-0">
                           <p className="text-[15px] font-bold text-[var(--color-ink)] leading-snug">{service.nameAr}</p>
                           {service.duration > 0 && (
-                            <p className="text-xs text-[var(--color-faint)] mt-1 flex items-center gap-1">
+                            <p className="text-xs text-[var(--color-subtle)] mt-1 flex items-center gap-1">
                               <Clock size={11} />
                               {fmtDuration(service.duration, lang)}
                             </p>
@@ -705,7 +705,7 @@ export default function BookingWidget({
             <SectionTitle>اختر {providerLabel(lang)}</SectionTitle>
 
             {availableStaff.length === 0 ? (
-              <p className="text-sm text-[var(--color-faint)] text-center py-6">
+              <p className="text-sm text-[var(--color-subtle)] text-center py-6">
                 لا يوجد {providerLabel(lang)} متاح للخدمة دي
               </p>
             ) : (
@@ -733,7 +733,7 @@ export default function BookingWidget({
                       <p className="text-[15px] font-bold text-[var(--color-ink)]">
                         أي {providerLabel(lang)} متاح
                       </p>
-                      <p className="text-xs text-[var(--color-faint)] mt-0.5">
+                      <p className="text-xs text-[var(--color-subtle)] mt-0.5">
                         سيتم تخصيص أقرب موعد
                       </p>
                     </div>
@@ -769,7 +769,7 @@ export default function BookingWidget({
                         <div className="min-w-0">
                           <p className="text-[15px] font-bold text-[var(--color-ink)]">{staff.nameAr}</p>
                           {staff.role && (
-                            <p className="text-xs text-[var(--color-faint)] mt-0.5">{staff.role}</p>
+                            <p className="text-xs text-[var(--color-subtle)] mt-0.5">{staff.role}</p>
                           )}
                         </div>
                       </div>
@@ -816,7 +816,7 @@ export default function BookingWidget({
             )}
 
             {resources.length === 0 ? (
-              <p className="text-sm text-[var(--color-faint)] text-center py-6">
+              <p className="text-sm text-[var(--color-subtle)] text-center py-6">
                 لا توجد {resourceLabel(resourceKind, lang)} متاحة حاليًا
               </p>
             ) : (
@@ -860,7 +860,7 @@ export default function BookingWidget({
                         <div className="flex-1 min-w-0">
                           <p className="text-[15px] font-bold text-[var(--color-ink)]">{resource.name}</p>
                           {resource.area && (
-                            <p className="text-xs text-[var(--color-faint)] mt-0.5">{resource.area}</p>
+                            <p className="text-xs text-[var(--color-subtle)] mt-0.5">{resource.area}</p>
                           )}
                         </div>
                         {resource.capacity != null && (
@@ -875,7 +875,7 @@ export default function BookingWidget({
                         )}
                       </div>
                       {resource.notes && (
-                        <p className="text-xs text-[var(--color-faint)] mt-2 pe-2">{resource.notes}</p>
+                        <p className="text-xs text-[var(--color-subtle)] mt-2 pe-2">{resource.notes}</p>
                       )}
                     </button>
                   );
@@ -965,7 +965,7 @@ export default function BookingWidget({
             </div>
 
             {!selectedDate && (
-              <p className="text-xs text-[var(--color-faint)] mt-4 text-center">
+              <p className="text-xs text-[var(--color-subtle)] mt-4 text-center">
                 اختر يومًا للمتابعة
               </p>
             )}
@@ -984,7 +984,7 @@ export default function BookingWidget({
             {slotsLoading && (
               <div className="flex items-center justify-center py-8 gap-2">
                 <Loader2 size={20} className="animate-spin text-[var(--color-jade)]" />
-                <span className="text-sm text-[var(--color-faint)]">جارٍ التحميل…</span>
+                <span className="text-sm text-[var(--color-subtle)]">جارٍ التحميل…</span>
               </div>
             )}
 
@@ -997,8 +997,8 @@ export default function BookingWidget({
                 <CalendarDays size={28} className="mx-auto text-[var(--color-faint)] mb-2" />
                 {/* The server says why the day is empty rather than
                     leaving a blank grid to be puzzled over. */}
-                <p className="text-sm text-[var(--color-faint)]">{emptyDayMessage(slotsReason)}</p>
-                <p className="text-xs text-[var(--color-faint)] mt-1">اختر يومًا آخر</p>
+                <p className="text-sm text-[var(--color-subtle)]">{emptyDayMessage(slotsReason)}</p>
+                <p className="text-xs text-[var(--color-subtle)] mt-1">اختر يومًا آخر</p>
               </div>
             )}
 
@@ -1102,7 +1102,7 @@ export default function BookingWidget({
                   htmlFor={`${fid}-email`}
                   className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5"
                 >
-                  البريد الإلكتروني <span className="text-[var(--color-faint)] font-normal">(اختياري)</span>
+                  البريد الإلكتروني <span className="text-[var(--color-subtle)] font-normal">(اختياري)</span>
                 </label>
                 <input
                   id={`${fid}-email`}
@@ -1124,7 +1124,7 @@ export default function BookingWidget({
                   htmlFor={`${fid}-notes`}
                   className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5"
                 >
-                  ملاحظات <span className="text-[var(--color-faint)] font-normal">(اختياري)</span>
+                  ملاحظات <span className="text-[var(--color-subtle)] font-normal">(اختياري)</span>
                 </label>
                 <textarea
                   id={`${fid}-notes`}
@@ -1306,7 +1306,7 @@ export default function BookingWidget({
               <CheckCircle size={40} className="text-[var(--color-ok)]" />
             </div>
             <h3 className="font-extrabold text-xl text-[var(--color-ink)] mb-1">تم حجز موعدك!</h3>
-            <p className="text-sm text-[var(--color-faint)] mb-6 leading-relaxed">
+            <p className="text-sm text-[var(--color-subtle)] mb-6 leading-relaxed">
               يسعدنا استقبالك. سيتواصل معك الفريق قريبًا.
               <br />
               تم إرسال تفاصيل الحجز ورابط الإدارة إلى بريدك الإلكتروني.
@@ -1314,7 +1314,7 @@ export default function BookingWidget({
 
             <div className="text-start rounded-[var(--radius-lg)] p-4 space-y-3 mb-5" style={{ background: "rgba(14,127,94,0.06)", border: "1px solid rgba(14,127,94,0.14)" }}>
               <div className="flex items-center justify-between pb-3 border-b border-[rgba(14,127,94,0.14)]">
-                <p className="text-xs font-medium text-[var(--color-faint)]">رقم الحجز</p>
+                <p className="text-xs font-medium text-[var(--color-subtle)]">رقم الحجز</p>
                 {/* The reference, which is what support asks for. */}
                 <p className="num text-sm font-extrabold tracking-wide text-[var(--color-ink)]" dir="ltr">
                   {confirmation.reference ?? confirmation.id.slice(-8).toUpperCase()}

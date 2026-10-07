@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { resolveSource } from "@/lib/attribution/source";
 import { OWN_HOSTS } from "@/lib/attribution/hosts";
 import RecordView from "@/features/company/RecordView";
@@ -294,11 +295,11 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(crumbs, siteUrl)) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbJsonLd(crumbs, siteUrl)) }}
       />
 
       {/* ── Top bar ── */}
@@ -324,7 +325,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
         </div>
       </header>
 
-      <main className="bg-[var(--color-ground)]">
+      <main id="main" className="bg-[var(--color-ground)]">
         {/* The trail again on a phone, where it does not fit in the bar. */}
         <div className="container-app pt-3 sm:hidden">
           <Breadcrumbs items={crumbs} lang={lang} label={t.profile.breadcrumb} />

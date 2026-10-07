@@ -25,7 +25,15 @@
   --color-ink:             #11201C;   /* headings, primary text */
   --color-ink-2:           #2C3B36;   /* body on light surfaces */
   --color-muted:           #566761;   /* secondary text         */
-  --color-subtle:          #8B968F;   /* captions, meta         */
+  /* Captions and meta — real text, so it has to be readable. It was
+     #8B968F, which is 3.06:1 on white and fails WCAG AA for anything
+     under 24px. This is the same hue, darkened until it passes at
+     4.6:1, and it is the colour of roughly 300 pieces of text across
+     the app: service durations, prices, addresses, timestamps. */
+  --color-subtle:          #6A726C;   /* captions, meta — 4.5:1 */
+  /* Disabled controls and placeholders, where AA does not apply. Kept
+     light on purpose: it is the one token that is allowed to recede.
+     Anything using it for live text is using the wrong token. */
   --color-faint:           #B6BEB9;   /* disabled, placeholders */
   --color-inverse:         #FFFFFF;   /* text on dark           */
 
@@ -576,6 +584,26 @@ h1, h2, h3, h4, h5, h6 {
 .gradient-text-dark {
   color: var(--color-jade);
   -webkit-text-fill-color: currentColor;
+}
+
+/* The skip link: off-screen until it is focused, then pinned to the
+   top corner. Not display:none, which would take it out of the tab
+   order and defeat the whole purpose. */
+.skip-link {
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: -4rem;
+  z-index: 100;
+  padding: 0.625rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-jade);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: top 0.15s ease;
+}
+.skip-link:focus-visible {
+  top: 1rem;
 }
 
 /* Visually hidden but readable by screen readers */

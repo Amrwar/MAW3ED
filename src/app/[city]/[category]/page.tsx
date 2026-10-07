@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -105,7 +106,7 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-[var(--color-ground)] pt-20">
+      <main id="main" className="min-h-screen bg-[var(--color-ground)] pt-20">
         <Container>
           <div className="py-8">
             <Breadcrumbs
@@ -190,7 +191,7 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
+          __html: jsonLdScript(
             buildBreadcrumbJsonLd(trail.map((s) => ({ name: s.name, path: s.path }))),
           ),
         }}
@@ -198,7 +199,7 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
+          __html: jsonLdScript(
             buildItemListJsonLd(items.map((b) => ({ slug: b.slug, name: b.nameAr }))),
           ),
         }}

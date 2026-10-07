@@ -43,7 +43,7 @@ export default async function CitiesPage() {
   return (
     <>
       <Navbar />
-      <main className="bg-[var(--color-ground)]">
+      <main id="main" className="bg-[var(--color-ground)]">
         <PageHero
           badge={c.eyebrow}
           title={c.title}

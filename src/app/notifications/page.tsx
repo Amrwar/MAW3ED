@@ -43,7 +43,7 @@ export default async function NotificationsPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-[var(--color-ground)] pt-20">
+      <main id="main" className="min-h-screen bg-[var(--color-ground)] pt-20">
         <div className="container-app max-w-[46rem] py-8">
           <header className="mb-6">
             <h1 className="m-0 text-[1.5rem] font-light tracking-tight text-[var(--color-ink)]">

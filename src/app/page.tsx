@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { canonicalFor } from "@/lib/seo/meta";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
@@ -62,7 +63,7 @@ export default async function HomePage() {
     <>
       <Navbar />
 
-      <main>
+      <main id="main">
         {/* 1 — What, where, when */}
         <HeroSearch
           cities={cities}
@@ -239,7 +240,7 @@ function OrganizationJsonLd({ lang }: { lang: Lang }) {
     <script
       type="application/ld+json"
       // Built from constants above, not from user input.
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
     />
   );
 }

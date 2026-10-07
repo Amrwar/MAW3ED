@@ -99,7 +99,7 @@ export default function ErrorPage({
       </header>
 
       {/* ── Main ─────────────────────────────────────────────────────────────── */}
-      <main className="max-w-5xl mx-auto px-6 py-14 lg:py-20" dir="rtl">
+      <main id="main" className="max-w-5xl mx-auto px-6 py-14 lg:py-20" dir="rtl">
         <div className="flex flex-col lg:flex-row items-center gap-14 lg:gap-8">
 
           {/* ── Column 1: Text content ── */}

@@ -91,6 +91,8 @@ model Favorite {
 
   @@unique([userId, businessId])
   @@index([userId, createdAt])
+  @@index([businessId])
+
 }
 
 /// Something that happened that the customer should know about.
@@ -192,6 +194,8 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
+
 }
 
 model Session {
@@ -201,6 +205,8 @@ model Session {
   expires      DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+
 }
 
 model VerificationToken {
@@ -349,6 +355,8 @@ model Business {
   @@index([isPublished, neighborhoodId])
   @@index([isPublished, ratingAvg])
   @@index([isPublished, createdAt])
+  @@index([referredById])
+
 }
 
 /// A physical location. Optional: most businesses have exactly one
@@ -405,6 +413,8 @@ model TimeBlock {
   @@index([businessId, dayOfWeek])
   @@index([businessId, startsOn, endsOn])
   @@index([staffMemberId])
+  @@index([branchId])
+
 }
 
 model Category {
@@ -852,6 +862,8 @@ model Table {
 
   business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   bookings Booking[]
+  @@index([businessId])
+
 }
 
 // ─── Barbershop Staff ─────────────────────────────────────────
@@ -903,6 +915,8 @@ model StaffService {
   service     Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@id([staffMemberId, serviceId])
+  @@index([serviceId])
+
 }
 
 enum AdminRole {
@@ -1099,6 +1113,8 @@ model Payment {
   @@index([bookingId])
   @@index([status, createdAt])
   @@index([kind, createdAt])
+  @@index([recordedById])
+
 }
 
 /// Money sent back. Issued by a super admin, never by the business.
@@ -1125,6 +1141,8 @@ model Refund {
 
   @@index([paymentId])
   @@index([status, createdAt])
+  @@index([actorId])
+
 }
 
 /// Every webhook the provider has sent us, by its own id.

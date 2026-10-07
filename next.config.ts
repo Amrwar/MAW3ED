@@ -1,7 +1,53 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
 
+/**
+ * Response headers, which the site was serving none of.
+ *
+ * Each one closes something specific:
+ *
+ *   nosniff            stops a browser deciding an uploaded file is
+ *                      JavaScript because its first bytes look like it.
+ *   frame-ancestors    nobody frames a Maw3ed page. Paymob is a
+ *                      redirect, not an embed, so this costs nothing.
+ *   Referrer-Policy    a booking page URL carries a slug and a channel;
+ *                      it should not leak in full to third parties.
+ *   HSTS               the site is already HTTPS-only in production;
+ *                      this stops the first request being the weak one.
+ *                      Not preloaded — that is a decision with a long
+ *                      undo, and it is yours to make.
+ *   Permissions-Policy nothing here needs a camera, a microphone or a
+ *                      payment handler, so nothing may ask.
+ *
+ * Deliberately absent: Content-Security-Policy. Next inlines bootstrap
+ * scripts and Sentry tunnels through /monitoring, so a strict policy
+ * needs nonce plumbing and a staging soak to avoid breaking the page it
+ * is protecting. The structured-data injection it would have mitigated
+ * is now escaped at source instead. Worth doing next, in its own pass.
+ */
+const SECURITY_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(self), payment=(), usb=()",
+  },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains",
+  },
+];
+
 const nextConfig: NextConfig = {
+  // The header advertises the framework and its major version to
+  // anybody scanning for a known issue in it.
+  poweredByHeader: false,
+
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+  },
+
   images: {
     remotePatterns: [
       {

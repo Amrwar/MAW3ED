@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { siteUrl } from "@/lib/url";
 import { cookies } from "next/headers";
 import Navbar from "@/components/layout/Navbar";
@@ -55,7 +56,7 @@ export default async function BusinessesPage({ searchParams }: Props) {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen">
+      <main id="main" className="min-h-screen">
         <BusinessesClient
           query={query}
           businesses={result.businesses}
@@ -72,7 +73,7 @@ export default async function BusinessesPage({ searchParams }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: jsonLdScript({
             "@context": "https://schema.org",
             "@type": "ItemList",
             name: t.businesses.pageTitle,

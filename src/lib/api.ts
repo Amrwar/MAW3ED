@@ -16,6 +16,20 @@ export async function requireSession() {
 }
 
 /** Require session + a linked business. Returns both or throws. */
+/**
+ * The signed-in owner and the business they own.
+ *
+ * The id comes from the token, which is signed and so cannot be edited
+ * by its holder — but it is a snapshot taken at sign-in, and the
+ * ownership it records can stop being true while the token is still
+ * valid. Sessions last weeks. So the row is re-read and its ownerId is
+ * checked against the account making the request, the same way the
+ * admin guard re-reads a role rather than trusting the copy in the
+ * token.
+ *
+ * A business has exactly one owner — Business.ownerId is unique — so
+ * this is the whole of the question, not the first half of it.
+ */
 export async function requireBusiness() {
   const session = await requireSession();
   if (!session.user.businessId) throw err("لم يتم العثور على عملك", 404);
@@ -24,6 +38,15 @@ export async function requireBusiness() {
     where: { id: session.user.businessId },
   });
   if (!business) throw err("لم يتم العثور على عملك", 404);
+
+  // Not an authorisation error on purpose: a token naming a business
+  // this account no longer owns is indistinguishable, from here, from
+  // one naming a business that was deleted. Both mean "you have no
+  // business", and saying anything more precise would confirm that
+  // somebody else's business exists.
+  if (business.ownerId !== session.user.id) {
+    throw err("لم يتم العثور على عملك", 404);
+  }
 
   return { session, business };
 }

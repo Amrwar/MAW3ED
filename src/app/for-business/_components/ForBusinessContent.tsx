@@ -69,7 +69,7 @@ export default function ForBusinessContent({ businesses }: { businesses: RealBus
   return (
     <>
       <Navbar />
-      <main>
+      <main id="main">
         <PageHero
           badge={fb.badge}
           title={heroTitle}

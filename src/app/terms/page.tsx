@@ -14,7 +14,7 @@ export default function TermsPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-16">
+      <main id="main" className="pt-24 pb-16">
         <div className="container-app max-w-3xl">
           <h1 className="text-3xl font-extrabold text-[var(--color-text-primary)] mb-2">
             شروط الاستخدام

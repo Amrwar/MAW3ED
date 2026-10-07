@@ -118,7 +118,7 @@ export default function PricingPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen" style={{ background: "var(--color-surface-2)" }}>
+      <main id="main" className="min-h-screen" style={{ background: "var(--color-surface-2)" }}>
 
         <PageHero
           badge={p.eyebrow}

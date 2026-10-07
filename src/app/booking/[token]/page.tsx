@@ -82,7 +82,7 @@ export default async function BookingPage({ params }: Params) {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-8 space-y-4">
+      <main id="main" className="max-w-lg mx-auto px-4 py-8 space-y-4">
         {canReview && (
           <LeaveReview token={token} businessName={booking.business.nameAr} />
         )}

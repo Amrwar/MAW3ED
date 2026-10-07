@@ -61,7 +61,7 @@ export default function ContactPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen pt-16">
+      <main id="main" className="min-h-screen pt-16">
         <section className="border-b border-[var(--color-border)] bg-[var(--color-surface-2)] py-14">
           <Container>
             <div className="mx-auto max-w-xl text-center">

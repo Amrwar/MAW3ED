@@ -50,7 +50,7 @@ export default async function CategoriesPage() {
   return (
     <>
       <Navbar />
-      <main className="bg-[var(--color-ground)]">
+      <main id="main" className="bg-[var(--color-ground)]">
         <PageHero badge={c.eyebrow} title={c.title} subtitle={c.subtitle} />
 
         <section className="py-14">

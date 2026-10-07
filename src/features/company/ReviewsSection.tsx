@@ -274,7 +274,7 @@ function ReviewItem({ review }: { review: PublicReview }) {
         {/* Said plainly, because people vote on what they read and the
             words may have changed since. */}
         {review.editedAt && (
-          <span className="text-[0.6875rem] text-[var(--color-faint)]">{r.edited}</span>
+          <span className="text-[0.6875rem] text-[var(--color-subtle)]">{r.edited}</span>
         )}
 
         <span className="num ms-auto text-[0.75rem] text-[var(--color-subtle)]">{when}</span>

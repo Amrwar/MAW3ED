@@ -75,7 +75,7 @@ export default async function CityPage({ params }: Props) {
   return (
     <>
       <Navbar />
-      <main className="pt-16 min-h-screen bg-[var(--color-surface-2)]">
+      <main id="main" className="pt-16 min-h-screen bg-[var(--color-surface-2)]">
 
         {/* ── Hero ─────────────────────────────────────────── */}
         <div className="bg-white border-b border-[var(--color-border)]">

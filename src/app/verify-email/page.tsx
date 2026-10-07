@@ -74,7 +74,7 @@ export default async function VerifyEmailPage({ searchParams }: Props) {
         <Logo size="sm" />
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-5 py-14">
+      <main id="main" className="flex flex-1 items-center justify-center px-5 py-14">
         <div className="w-full max-w-[28rem] rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-8 text-center shadow-[var(--shadow-raised)]">
           <span
             aria-hidden="true"

@@ -95,7 +95,7 @@ export default async function DashboardLayout({
           hasBranches={capabilities.branches}
           isAdmin={Boolean(session.user.adminRole)}
         />
-        <main className="p-5 md:p-7 max-w-[1400px]">{children}</main>
+        <main id="main" className="p-5 md:p-7 max-w-[1400px]">{children}</main>
       </div>
     </div>
   );

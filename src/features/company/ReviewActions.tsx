@@ -118,7 +118,7 @@ export default function ReviewActions({
             type="button"
             onClick={() => setReportOpen((v) => !v)}
             aria-expanded={reportOpen}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-2 text-[0.75rem] text-[var(--color-faint)] hover:text-[var(--color-danger)]"
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-2 text-[0.75rem] text-[var(--color-subtle)] hover:text-[var(--color-danger)]"
           >
             <Flag size={11} aria-hidden="true" />
             {text(r, "reportReview")}

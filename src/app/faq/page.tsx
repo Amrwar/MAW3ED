@@ -14,7 +14,7 @@ export default function FaqPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen">
+      <main id="main" className="min-h-screen">
         <PageHero
           badge={f.eyebrow}
           title={f.title}

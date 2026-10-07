@@ -77,7 +77,7 @@ export default function AdminShell({
           ))}
         </nav>
 
-        <main className="min-w-0 flex-1">{children}</main>
+        <main id="main" className="min-w-0 flex-1">{children}</main>
       </div>
     </div>
   );

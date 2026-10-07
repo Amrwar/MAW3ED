@@ -47,6 +47,20 @@ export default async function RootLayout({
   return (
     <html lang={lang} dir={dir}>
       <body className="antialiased min-h-screen">
+        {/*
+          Skip to the content.
+          
+          Every page puts a header, a nav and a language switcher before
+          the thing the visitor came for — forty-odd tab stops on a
+          business profile. Without this, reaching the booking widget by
+          keyboard means passing all of them, on every page, every time.
+
+          Off-screen until focused, which is the point: it is the first
+          tab stop, and the first Tab press reveals it.
+        */}
+        <a href="#main" className="skip-link">
+          {lang === "ar" ? "تخطَّ إلى المحتوى" : "Skip to content"}
+        </a>
         <Providers lang={lang}>{children}</Providers>
       </body>
     </html>
