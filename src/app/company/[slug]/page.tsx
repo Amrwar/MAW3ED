@@ -303,19 +303,25 @@ export default async function CompanyPage({ params, searchParams }: Params) {
       />
 
       {/* ── Top bar ── */}
-      <header className="sticky top-0 z-50 border-b border-[var(--color-line)] bg-[var(--color-ground)]/95 backdrop-blur-md">
+      {/* Dark, like the navbar on every other page. This bar is the
+          profile's own rather than the shared Navbar, so it does not
+          follow it automatically — and a white bar here against a dark
+          one everywhere else is the kind of seam that makes a product
+          feel assembled from parts. */}
+      <header className="sticky top-0 z-50 border-b border-[var(--color-night-line)] bg-[var(--color-night)]/95 backdrop-blur-md">
         <div className="container-app flex h-16 items-center justify-between gap-5">
           <div className="flex min-w-0 items-center gap-3">
             {/* Logo renders its own link to "/", so wrapping it in
                 another produced an <a> inside an <a>: invalid HTML, and
                 React threw a hydration error on every load of this
                 page. */}
-            <Logo size="sm" className="shrink-0" />
+            <Logo size="sm" variant="white" className="shrink-0" />
             <Breadcrumbs
               items={crumbs}
               lang={lang}
               label={t.profile.breadcrumb}
               className="hidden sm:block"
+              onDark
             />
           </div>
 

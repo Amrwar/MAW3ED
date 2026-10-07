@@ -20,11 +20,14 @@ export default function Breadcrumbs({
   lang,
   label,
   className,
+  onDark = false,
 }: {
   items: Crumb[];
   lang: "ar" | "en";
   label: string;
   className?: string;
+  /** On a --color-night bar, where the light-surface colours vanish. */
+  onDark?: boolean;
 }) {
   if (items.length === 0) return null;
   const Separator = lang === "ar" ? ChevronLeft : ChevronRight;
@@ -40,13 +43,13 @@ export default function Breadcrumbs({
                 <Separator
                   size={13}
                   aria-hidden="true"
-                  className="shrink-0 text-[var(--color-faint)]"
+                  className={cn("shrink-0", onDark ? "text-[var(--color-night-subtle)]" : "text-[var(--color-faint)]")}
                 />
               )}
               {last || !item.href ? (
                 <span
                   aria-current={last ? "page" : undefined}
-                  className="flex min-h-11 items-center truncate font-bold text-[var(--color-ink)]"
+                  className={cn("flex min-h-11 items-center truncate font-bold", onDark ? "text-[var(--color-inverse)]" : "text-[var(--color-ink)]")}
                   title={item.label}
                 >
                   {item.label}
@@ -54,7 +57,7 @@ export default function Breadcrumbs({
               ) : (
                 <Link
                   href={item.href}
-                  className="flex min-h-11 items-center truncate text-[var(--color-muted)] transition-colors hover:text-[var(--color-jade)]"
+                  className={cn("flex min-h-11 items-center truncate transition-colors", onDark ? "text-[var(--color-night-text)] hover:text-[var(--color-inverse)]" : "text-[var(--color-muted)] hover:text-[var(--color-jade)]")}
                 >
                   {item.label}
                 </Link>
