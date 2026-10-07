@@ -58,6 +58,12 @@ const optional = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
 
+  // The address the contact page and FAQ send users to. Declared here
+  // so the audit of what this deployment depends on is complete; the
+  // value itself is read in src/lib/support.ts, which the client
+  // bundle can import.
+  NEXT_PUBLIC_SUPPORT_EMAIL: z.string().optional(),
+
   // Payments (Paymob)
   PAYMOB_API_KEY: z.string().optional(),
   PAYMOB_HMAC_SECRET: z.string().optional(),

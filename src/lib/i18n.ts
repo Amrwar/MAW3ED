@@ -1,3 +1,5 @@
+import { SUPPORT_EMAIL } from "./support";
+
 export type Lang = "ar" | "en";
 
 export const translations = {
@@ -715,7 +717,7 @@ export const translations = {
       title:    "تواصل معنا",
       subtitle: "فريق دعم موعد جاهز لمساعدتك في أي وقت.",
       channels: [
-        { title:"البريد الإلكتروني", value:"support@maw3ed.net",    sub:"نرد خلال 24 ساعة" },
+        { title:"البريد الإلكتروني", value:SUPPORT_EMAIL,            sub:"نرد خلال 24 ساعة" },
         { title:"واتساب",          value:"تواصل عبر واتساب",         sub:"ردود سريعة" },
       ],
     },
@@ -733,7 +735,7 @@ export const translations = {
         { q:"هل بياناتي آمنة؟",                       a:"نعم، نستخدم أعلى معايير الأمان والتشفير لحماية بياناتك وبيانات عملائك." },
         { q:"كيف يتلقى العملاء تأكيد الحجز؟",          a:"يتلقى العملاء تأكيدًا فوريًا عبر البريد الإلكتروني، وتذكيرًا تلقائيًا قبل موعدهم." },
         { q:"هل يعمل موعد على الهاتف المحمول؟",        a:"نعم، موعد يعمل بشكل كامل على جميع الأجهزة — الهاتف المحمول، التابلت، والكمبيوتر." },
-        { q:"كيف أتواصل مع فريق الدعم؟",              a:"يمكنك التواصل معنا عبر صفحة تواصل معنا أو عبر البريد الإلكتروني support@maw3ed.net" },
+        { q:"كيف أتواصل مع فريق الدعم؟",              a:`يمكنك التواصل معنا عبر صفحة تواصل معنا أو عبر البريد الإلكتروني ${SUPPORT_EMAIL}` },
       ],
     },
     pricing: {
@@ -1746,7 +1748,7 @@ export const translations = {
       title:    "Contact Us",
       subtitle: "The Maw3ed support team is ready to help you anytime.",
       channels: [
-        { title:"Email",     value:"support@maw3ed.net",  sub:"We respond within 24 hours" },
+        { title:"Email",     value:SUPPORT_EMAIL,         sub:"We respond within 24 hours" },
         { title:"WhatsApp",  value:"Chat on WhatsApp",    sub:"Quick responses" },
       ],
     },
@@ -1764,7 +1766,7 @@ export const translations = {
         { q:"Is my data secure?",                       a:"Yes, we use the highest standards of security and encryption to protect your data and your customers' data." },
         { q:"How do customers receive booking confirmations?", a:"Customers receive an instant confirmation by email and an automatic reminder before their appointment." },
         { q:"Does Maw3ed work on mobile?",              a:"Yes, Maw3ed works fully on all devices — mobile phones, tablets, and computers." },
-        { q:"How do I contact the support team?",       a:"You can reach us via the Contact Us page or by email at support@maw3ed.net" },
+        { q:"How do I contact the support team?",       a:`You can reach us via the Contact Us page or by email at ${SUPPORT_EMAIL}` },
       ],
     },
     pricing: {

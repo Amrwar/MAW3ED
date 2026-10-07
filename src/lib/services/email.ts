@@ -25,6 +25,23 @@ import { failed, sent, skipped, type SendOutcome } from "./send-outcome";
 const client  = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM    = process.env.EMAIL_FROM ?? "Maw3ed <noreply@maw3ed.net>";
 
+/**
+ * Whether a send will be attempted at all.
+ *
+ * A route that exists only to put a link in somebody's inbox needs to
+ * know this BEFORE it tells them to go and look: "check your email" is
+ * a lie when there is no key to send with, and it is a lie that costs
+ * the user their account rather than merely confusing them.
+ *
+ * Deliberately the same condition as `client` above rather than
+ * getIntegrations().email, which also requires EMAIL_FROM. EMAIL_FROM
+ * has a working default, so demanding it here would refuse sends that
+ * currently succeed.
+ */
+export function isEmailEnabled(): boolean {
+  return client !== null;
+}
+
 export interface EmailPayload {
   to:      string;
   subject: string;

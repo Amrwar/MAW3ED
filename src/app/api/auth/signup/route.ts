@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { log } from "@/lib/logger";
 import { siteUrl } from "@/lib/env";
 import { sendEmailVerification } from "@/lib/services/email";
+import { skipped } from "@/lib/services/send-outcome";
 import {
   generateEmailToken,
   hashSecret,
@@ -54,13 +55,28 @@ export async function POST(req: Request) {
     });
     // email is nullable on User now that customers sign in with a
     // phone; an owner always has one, so this never skips in practice.
-    if (user.email) await sendEmailVerification(
-      user.email,
-      `${siteUrl}/api/auth/verify-email/confirm?token=${token}`,
-      user.name,
-    );
+    const outcome = user.email
+      ? await sendEmailVerification(
+          user.email,
+          `${siteUrl}/api/auth/verify-email/confirm?token=${token}`,
+          user.name,
+        )
+      : skipped("no-address");
 
-    return ok({ user, verificationSent: true }, 201);
+    if (!outcome.ok) {
+      log.error("[signup] verification link not delivered", {
+        userId: user.id,
+        reason: outcome.reason,
+      });
+    }
+
+    // The flag reports what happened rather than being hardcoded true.
+    // Fire-and-forget is still right here — a mail outage must not stop
+    // somebody creating an account, and the link can be re-requested
+    // from the account page — but the response should not claim a send
+    // that did not occur, so a screen can offer "resend" instead of
+    // "check your inbox".
+    return ok({ user, verificationSent: outcome.ok }, 201);
   } catch (e) {
     log.error("[signup]", e);
     return err("حدث خطأ أثناء إنشاء الحساب", 500);
