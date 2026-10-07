@@ -144,7 +144,19 @@ describe("effective plan", () => {
   it("refuses a lapsed business the features it used to have", () => {
     const lapsed = { plan: "PREMIUM" as const, subscriptionStatus: "INACTIVE" as const, trialEndsAt: null };
     expect(businessAllows(lapsed, "analytics")).toBe(false);
-    expect(businessAllows(lapsed, "reminders")).toBe(false);
+    expect(businessAllows(lapsed, "deposits")).toBe(false);
+    expect(businessAllows(lapsed, "api")).toBe(false);
+  });
+
+  it("keeps reminding customers whatever happens to the subscription", () => {
+    // Reminders are on every plan, so a lapsed or free business still
+    // tells its customers when their appointment is. The person who
+    // gets stood up by a forgotten reminder did not choose the plan.
+    const lapsed = { plan: "PREMIUM" as const, subscriptionStatus: "INACTIVE" as const, trialEndsAt: null };
+    const free = { plan: "FREE" as const, subscriptionStatus: "ACTIVE" as const, trialEndsAt: null };
+    expect(businessAllows(lapsed, "reminders")).toBe(true);
+    expect(businessAllows(free, "reminders")).toBe(true);
+    expect(PLANS.every((p) => allows(p, "reminders"))).toBe(true);
   });
 });
 

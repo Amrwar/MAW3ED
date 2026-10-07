@@ -14,9 +14,9 @@
  * by comparing plan names. Both are now rank and matrix questions.
  *
  *   FREE     a working booking page: profile, services, scheduling,
- *            thirty bookings a month
- *   PRO      the business tools: unlimited bookings, staff, reminders,
- *            WhatsApp, analytics, and taking money from customers
+ *            thirty bookings a month, and reminders to the customer
+ *   PRO      the business tools: unlimited bookings, staff, WhatsApp,
+ *            analytics, and taking money from customers
  *   PREMIUM  the group tools: branches, advanced analytics, marketing,
  *            API access, priority support, own branding
  */
@@ -75,7 +75,15 @@ export interface Entitlements {
   staffMembers: number;
   /** Branches. 1 means a single location, i.e. no multi-branch. */
   branches: number;
-  /** Automatic reminders to the customer before their appointment. */
+  /**
+   * Automatic reminders to the customer before their appointment.
+   *
+   * On every plan, free included. It is the customer who is reminded,
+   * not the business, and a missed appointment because nobody was told
+   * costs the person who booked it as much as the person who lost the
+   * slot. The entitlement stays in the matrix so it can be moved if
+   * that view ever changes, but it is granted to everyone.
+   */
   reminders: boolean;
   /** WhatsApp as a notification channel. */
   whatsapp: boolean;
@@ -100,7 +108,7 @@ export const PLAN_FEATURES: Record<Plan, Entitlements> = {
     monthlyBookings: 30,
     staffMembers: 0,
     branches: 1,
-    reminders: false,
+    reminders: true,
     whatsapp: false,
     deposits: false,
     analytics: false,

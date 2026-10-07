@@ -88,10 +88,14 @@ export async function GET(req: Request) {
     const remindersAllowed = businessAllows(biz, "reminders");
 
     try {
-      // The reminder, once the appointment is inside its lead window —
-      // and only on a plan that includes them. The owner's own
-      // reminderEnabled switch still has to be on; this is the ceiling
-      // above it, not a replacement for it.
+      // The reminder, once the appointment is inside its lead window.
+      //
+      // The entitlement is checked rather than assumed, but every plan
+      // has it — a customer who is not told when their appointment is
+      // did not choose the plan. The check stays so that if reminders
+      // ever do become paid, this is already the one place it is
+      // decided; the owner's own reminderEnabled switch is separate and
+      // still has to be on.
       if (remindersAllowed && biz.reminderEnabled && minutesAway <= biz.reminderLeadHours * 60) {
         const results = await notify({ type: "booking.reminder", bookingId: b.id });
         if (results.some((r) => r.status === "SENT")) {
