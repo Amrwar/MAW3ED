@@ -3,6 +3,7 @@ import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { requestNonce } from "@/lib/security/nonce";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
@@ -64,6 +65,10 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 }
 
 export default async function CityCategoryPage({ params, searchParams }: Props) {
+  // The nonce for this request's CSP; the ld+json tags below carry it
+  // or the browser refuses to parse them.
+  const nonce = await requestNonce();
+
   const { city, category } = await params;
   const page = parsePage((await searchParams).page);
 
@@ -190,6 +195,7 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
 
       <script
         type="application/ld+json"
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: jsonLdScript(
             buildBreadcrumbJsonLd(trail.map((s) => ({ name: s.name, path: s.path }))),
@@ -198,6 +204,7 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
       />
       <script
         type="application/ld+json"
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: jsonLdScript(
             buildItemListJsonLd(items.map((b) => ({ slug: b.slug, name: b.nameAr }))),

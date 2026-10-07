@@ -3,6 +3,7 @@ import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { canonicalFor } from "@/lib/seo/meta";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
+import { requestNonce } from "@/lib/security/nonce";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import HeroSearch from "@/features/home/HeroSearch";
@@ -218,7 +219,7 @@ async function BusinessRowServer({
  * the result in Google. The per-business LocalBusiness markup on
  * /company/[slug] is unchanged.
  */
-function OrganizationJsonLd({ lang }: { lang: Lang }) {
+async function OrganizationJsonLd({ lang }: { lang: Lang }) {
   const site = getSiteUrl();
   const jsonLd = {
     "@context": "https://schema.org",
@@ -241,6 +242,9 @@ function OrganizationJsonLd({ lang }: { lang: Lang }) {
   return (
     <script
       type="application/ld+json"
+      // CSP counts a ld+json tag as a script, so it needs the nonce or
+      // the browser drops it and the structured data silently vanishes.
+      nonce={await requestNonce()}
       // Built from constants above, not from user input.
       dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
     />

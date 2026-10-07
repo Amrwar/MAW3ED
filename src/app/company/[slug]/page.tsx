@@ -5,6 +5,7 @@ import { OWN_HOSTS } from "@/lib/attribution/hosts";
 import RecordView from "@/features/company/RecordView";
 import { notFound } from "next/navigation";
 import { cookies, headers } from "next/headers";
+import { requestNonce } from "@/lib/security/nonce";
 import { db } from "@/lib/db";
 import Logo from "@/components/shared/Logo";
 import Breadcrumbs, { breadcrumbJsonLd, type Crumb } from "@/components/shared/Breadcrumbs";
@@ -94,6 +95,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function CompanyPage({ params, searchParams }: Params) {
+  // The nonce for this request's CSP; the ld+json tags below carry it
+  // or the browser refuses to parse them.
+  const nonce = await requestNonce();
+
   const { slug } = await params;
 
   // Where this visitor came from, decided here rather than in the
@@ -295,10 +300,12 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     <>
       <script
         type="application/ld+json"
+        nonce={nonce}
         dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
       <script
         type="application/ld+json"
+        nonce={nonce}
         dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbJsonLd(crumbs, siteUrl)) }}
       />
 
