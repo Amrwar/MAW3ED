@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { businessAllows } from "@/lib/plans";
 import { notify } from "@/lib/notifications";
 import { log } from "@/lib/logger";
 
@@ -66,6 +67,11 @@ export async function GET(req: Request) {
           reminderLeadHours: true,
           startingSoonEnabled: true,
           startingSoonLeadMins: true,
+          // Reminders are an entitlement, so the plan has to come with
+          // the booking rather than be looked up per row.
+          plan: true,
+          subscriptionStatus: true,
+          trialEndsAt: true,
         },
       },
     },
@@ -78,9 +84,15 @@ export async function GET(req: Request) {
     const minutesAway = (b.startsAt.getTime() - now.getTime()) / 60_000;
     const biz = b.business;
 
+    // Asked once per booking, for both kinds of nudge below.
+    const remindersAllowed = businessAllows(biz, "reminders");
+
     try {
-      // The reminder, once the appointment is inside its lead window.
-      if (biz.reminderEnabled && minutesAway <= biz.reminderLeadHours * 60) {
+      // The reminder, once the appointment is inside its lead window —
+      // and only on a plan that includes them. The owner's own
+      // reminderEnabled switch still has to be on; this is the ceiling
+      // above it, not a replacement for it.
+      if (remindersAllowed && biz.reminderEnabled && minutesAway <= biz.reminderLeadHours * 60) {
         const results = await notify({ type: "booking.reminder", bookingId: b.id });
         if (results.some((r) => r.status === "SENT")) {
           counts.reminder++;
@@ -96,7 +108,8 @@ export async function GET(req: Request) {
       }
 
       // The shorter nudge, for businesses that asked for one.
-      if (biz.startingSoonEnabled && minutesAway <= biz.startingSoonLeadMins) {
+      // The same entitlement: a shorter nudge is still a reminder.
+      if (remindersAllowed && biz.startingSoonEnabled && minutesAway <= biz.startingSoonLeadMins) {
         const results = await notify({ type: "booking.startingSoon", bookingId: b.id });
         if (results.some((r) => r.status === "SENT")) counts.startingSoon++;
       }

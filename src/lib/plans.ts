@@ -150,15 +150,26 @@ export function entitlement<K extends PlanFeature>(plan: Plan, key: K): Entitlem
 }
 
 /**
+ * The value at which a counted entitlement is not really a feature.
+ *
+ * Zero for most of them: no staff is no staff feature. One for
+ * branches, because every business has a location and only the second
+ * one is "multiple branches" — without this, allows(FREE, "branches")
+ * answers true and an upgrade prompt points at the plan they are
+ * already on.
+ */
+const BASELINE: Partial<Record<PlanFeature, number>> = { branches: 1 };
+
+/**
  * Is this feature available at all?
  *
- * A ceiling of zero is as much a "no" as `false` is, so callers that
- * only want to know whether to show a button do not have to care
- * whether the entitlement is counted or not.
+ * A ceiling at the baseline is as much a "no" as `false` is, so callers
+ * that only want to know whether to show a button do not have to care
+ * whether the entitlement is counted or where its baseline sits.
  */
 export function allows(plan: Plan, key: PlanFeature): boolean {
   const value = PLAN_FEATURES[plan][key];
-  return typeof value === "number" ? value > 0 : value;
+  return typeof value === "number" ? value > (BASELINE[key] ?? 0) : value;
 }
 
 /** The ceiling for a counted entitlement. */
@@ -202,6 +213,29 @@ export function getEffectivePlan(
   if (status === "TRIAL" && trialEndsAt && trialEndsAt > new Date()) return "PRO";
   if (status === "INACTIVE") return "FREE";
   return plan;
+}
+
+/**
+ * The same question, asked of a business row.
+ *
+ * Every caller was spelling out the same three arguments in the same
+ * order, which is three chances to pass trialEndsAt where
+ * subscriptionStatus goes.
+ */
+export function effectivePlanOf(business: {
+  plan: Plan;
+  subscriptionStatus: SubscriptionStatus;
+  trialEndsAt: Date | null;
+}): Plan {
+  return getEffectivePlan(business.plan, business.subscriptionStatus, business.trialEndsAt);
+}
+
+/** What this business is allowed to do, by entitlement name. */
+export function businessAllows(
+  business: { plan: Plan; subscriptionStatus: SubscriptionStatus; trialEndsAt: Date | null },
+  key: PlanFeature,
+): boolean {
+  return allows(effectivePlanOf(business), key);
 }
 
 /** Kept for the call sites that read better this way. */
@@ -327,9 +361,7 @@ export function featureRows(plan: Plan): FeatureRow[] {
     const counted = typeof value === "number";
     return {
       key,
-      // A counted entitlement is only "on" above zero; branches are the
-      // exception, where one is the normal case and not a feature.
-      enabled: counted ? (key === "branches" ? value > 1 : value > 0) : value,
+      enabled: allows(plan, key),
       ar: counted ? countLabel(key, value, "ar") : LABELS[key].ar,
       en: counted ? countLabel(key, value, "en") : LABELS[key].en,
     };

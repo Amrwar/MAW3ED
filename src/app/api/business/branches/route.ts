@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  PLAN_NAMES_AR,
+  cheapestPlanWith,
+  effectivePlanOf,
+  wouldExceed,
+} from "@/lib/plans";
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
@@ -38,6 +44,21 @@ export async function POST(req: Request) {
 
     const parsed = branchSchema.safeParse(await req.json());
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
+
+    // Multi-branch is an entitlement. A ceiling of one means a single
+    // location, which is the normal case and not a feature — so this
+    // only bites on the second branch. Asked before creating, so a
+    // lapsed plan never deletes a branch somebody already has.
+    const plan    = effectivePlanOf(ctx.business);
+    const current = await db.branch.count({ where: { businessId: ctx.business.id } });
+
+    if (wouldExceed(plan, "branches", current)) {
+      const upgrade = cheapestPlanWith("branches");
+      return err(
+        `الفروع المتعددة متاحة في خطة ${upgrade ? PLAN_NAMES_AR[upgrade] : "أعلى"}.`,
+        403,
+      );
+    }
 
     const branch = await db.branch.create({
       data: {
