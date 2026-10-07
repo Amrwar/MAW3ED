@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { signUpSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import bcrypt from "bcryptjs";
@@ -13,6 +14,12 @@ import {
 
 export async function POST(req: Request) {
   try {
+    // Keyed on the caller when no account is named yet. 429 with
+    // Retry-After, and a message that says nothing about whether
+    // the account exists.
+    const limited = await rateLimit("signup");
+    if (!limited.ok) return tooManyRequests(limited);
+
     const body = await req.json();
     const parsed = signUpSchema.safeParse(body);
 

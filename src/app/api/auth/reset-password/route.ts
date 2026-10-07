@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { z } from "zod";
@@ -18,6 +19,12 @@ const schema = z.object({
  */
 export async function POST(req: Request) {
   try {
+    // Keyed on the caller when no account is named yet. 429 with
+    // Retry-After, and a message that says nothing about whether
+    // the account exists.
+    const limited = await rateLimit("resetPassword");
+    if (!limited.ok) return tooManyRequests(limited);
+
     const body   = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);

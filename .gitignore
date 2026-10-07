@@ -44,12 +44,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# capacitor
-/android/.gradle
-/android/app/build
-/ios/App/Pods
-/ios/App/App.xcworkspace/xcuserdata
-
 
 .vercel
 .env*

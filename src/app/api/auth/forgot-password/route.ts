@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { sendPasswordResetEmail } from "@/lib/services/email";
@@ -17,6 +18,12 @@ const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
  */
 export async function POST(req: Request) {
   try {
+    // Keyed on the caller when no account is named yet. 429 with
+    // Retry-After, and a message that says nothing about whether
+    // the account exists.
+    const limited = await rateLimit("forgotPassword");
+    if (!limited.ok) return tooManyRequests(limited);
+
     const { email } = await req.json();
     if (!email || typeof email !== "string") return err("أدخل البريد الإلكتروني", 422);
 

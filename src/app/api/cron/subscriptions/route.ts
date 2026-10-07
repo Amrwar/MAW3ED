@@ -20,6 +20,7 @@
  */
 
 import { db } from "@/lib/db";
+import { pruneRateLimits } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
 
@@ -112,7 +113,19 @@ export async function GET(req: Request) {
     }
   }
 
-  log.info(`[subscriptions cron] Complete — expired: ${expired}, reminded: ${reminded}, failed: ${failed}`);
+  // Clearing expired rate-limit windows rides along here rather than
+  // running on the hot path: a delete on every login would cost every
+  // request to tidy a table that stays small anyway.
+  let pruned = 0;
+  try {
+    pruned = await pruneRateLimits();
+  } catch (e) {
+    log.error("[subscriptions cron] rate-limit prune failed", e);
+  }
 
-  return Response.json({ ok: true, expired, reminded, failed });
+  log.info(
+    `[subscriptions cron] Complete — expired: ${expired}, reminded: ${reminded}, failed: ${failed}, rate-limit rows pruned: ${pruned}`,
+  );
+
+  return Response.json({ ok: true, expired, reminded, failed, pruned });
 }

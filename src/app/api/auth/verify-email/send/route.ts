@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err } from "@/lib/api";
 import { auth } from "@/auth";
 import { log } from "@/lib/logger";
@@ -24,6 +25,11 @@ import {
  */
 export async function POST() {
   try {
+    // In front of the per-account cooldown below, which needs an
+    // account before it can throttle anything.
+    const limited = await rateLimit("verifyEmail");
+    if (!limited.ok) return tooManyRequests(limited);
+
     const session = await auth();
     if (!session?.user?.id) return err("غير مصرح", 401);
 

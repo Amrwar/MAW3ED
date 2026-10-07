@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">موعد</string>
-    <string name="title_activity_main">موعد</string>
-    <string name="package_name">com.maw3ed.app</string>
-    <string name="custom_url_scheme">com.maw3ed.app</string>
-</resources>
