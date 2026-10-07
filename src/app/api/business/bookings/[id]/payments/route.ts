@@ -1,0 +1,232 @@
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { ok, err, requireBusiness } from "@/lib/api";
+import { log } from "@/lib/logger";
+import { createPaymentSession } from "@/lib/services/paymob";
+import {
+  attachProviderOrder,
+  openPayment,
+  paidCentsForBooking,
+  recordManualPayment,
+} from "@/lib/payments/ledger";
+import { balanceCents, formatCents, toCents } from "@/lib/payments/money";
+import { canUseFeature, getEffectivePlan } from "@/lib/plans";
+
+type Params = { params: Promise<{ id: string }> };
+
+const schema = z
+  .object({
+    /**
+     * "link" opens a Paymob session the owner sends to the customer.
+     * "manual" records money that changed hands at the counter.
+     */
+    mode: z.enum(["link", "manual"]),
+    method: z.enum(["CASH", "CARD", "OTHER"]).optional(),
+    /** Piastres. Defaults to whatever is still owed. */
+    amountCents: z.number().int().positive().optional(),
+  })
+  .refine((v) => v.mode !== "manual" || !!v.method, {
+    message: "طريقة الدفع مطلوبة",
+    path: ["method"],
+  });
+
+/**
+ * GET /api/business/bookings/[id]/payments
+ *
+ * What has been collected against this booking and what is left. The
+ * owner's view of one booking's money.
+ */
+export async function GET(_req: Request, { params }: Params) {
+  try {
+    const { business } = await requireBusiness();
+    const { id } = await params;
+
+    const booking = await db.booking.findFirst({
+      where: { id, businessId: business.id },
+      select: { id: true, totalPrice: true, currency: true },
+    });
+    if (!booking) return err("الحجز غير موجود", 404);
+
+    const payments = await db.payment.findMany({
+      where: { bookingId: booking.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        kind: true,
+        status: true,
+        provider: true,
+        method: true,
+        amountCents: true,
+        refundedCents: true,
+        receiptNumber: true,
+        paidAt: true,
+        failureReason: true,
+        createdAt: true,
+      },
+    });
+
+    const paid = await paidCentsForBooking(booking.id);
+    const total = toCents(booking.totalPrice);
+
+    return ok({
+      totalCents: total,
+      paidCents: paid,
+      outstandingCents: balanceCents(booking.totalPrice, paid),
+      currency: booking.currency,
+      payments: payments.map((p) => ({ ...p, paidAt: p.paidAt?.toISOString() ?? null })),
+    });
+  } catch (e) {
+    if (e instanceof Response) return e;
+    log.error("[booking payments GET]", e);
+    return err("حدث خطأ", 500);
+  }
+}
+
+/**
+ * POST /api/business/bookings/[id]/payments
+ *
+ * Collect what is still owed, either by sending the customer a payment
+ * link or by recording that they paid in person.
+ *
+ * The amount is computed here from the booking's price and what the
+ * ledger says has already been collected. A caller may ask for less
+ * than the outstanding balance — part payments happen — but never for
+ * more, and never for a booking that is already settled.
+ */
+export async function POST(req: Request, { params }: Params) {
+  try {
+    const { session, business } = await requireBusiness();
+    const { id } = await params;
+
+    const parsed = schema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return err(parsed.error.issues[0]?.message ?? "طلب غير صالح", 422);
+    }
+    const { mode, method, amountCents } = parsed.data;
+
+    const effectivePlan = getEffectivePlan(
+      business.plan,
+      business.subscriptionStatus,
+      business.trialEndsAt,
+    );
+
+    const booking = await db.booking.findFirst({
+      where: { id, businessId: business.id },
+      select: {
+        id: true,
+        status: true,
+        totalPrice: true,
+        currency: true,
+        customerName: true,
+        customerPhone: true,
+        customer: { select: { email: true } },
+      },
+    });
+    if (!booking) return err("الحجز غير موجود", 404);
+
+    if (booking.status === "CANCELLED") {
+      return err("الحجز ملغي", 409);
+    }
+
+    const paid = await paidCentsForBooking(booking.id);
+    const outstanding = balanceCents(booking.totalPrice, paid);
+
+    if (outstanding === 0) {
+      return err("الحجز مدفوع بالكامل", 409);
+    }
+
+    const amount = amountCents ?? outstanding;
+    if (amount > outstanding) {
+      return err(
+        `المبلغ أكبر من المتبقي (${formatCents(outstanding, booking.currency)})`,
+        422,
+      );
+    }
+
+    // ── Money taken at the counter ──────────────────────────────────────────
+    //
+    // No provider to hear back from: the owner saying it happened is
+    // the whole of the evidence, which is why the row carries who they
+    // are. Allowed on any plan — recording cash is bookkeeping, not a
+    // payment feature we are providing.
+    if (mode === "manual") {
+      const payment = await recordManualPayment({
+        kind: paid === 0 ? "BOOKING_FULL" : "BOOKING_BALANCE",
+        businessId: business.id,
+        bookingId: booking.id,
+        amountCents: amount,
+        method: method!,
+        recordedById: session.user.id,
+        currency: booking.currency,
+      });
+
+      await settleBookingIfPaid(booking.id, booking.totalPrice);
+
+      return ok({
+        paymentId: payment.id,
+        receiptNumber: payment.receiptNumber,
+        outstandingCents: balanceCents(booking.totalPrice, paid + amount),
+      });
+    }
+
+    // ── A link for the customer ─────────────────────────────────────────────
+    //
+    // This one goes through Paymob, so it needs the plan that includes
+    // taking payments.
+    if (!canUseFeature(effectivePlan, "deposits")) {
+      return err("إرسال رابط دفع متاح في الخطط المدفوعة", 403);
+    }
+
+    const payment = await openPayment({
+      kind: paid === 0 ? "BOOKING_FULL" : "BOOKING_BALANCE",
+      businessId: business.id,
+      bookingId: booking.id,
+      amountCents: amount,
+      currency: booking.currency,
+    });
+
+    try {
+      const { paymentUrl, paymobOrderId } = await createPaymentSession({
+        bookingId: booking.id,
+        amountCents: amount,
+        currency: booking.currency,
+        customerName: booking.customerName,
+        customerPhone: booking.customerPhone,
+        customerEmail: booking.customer?.email ?? undefined,
+      });
+
+      await attachProviderOrder(payment.id, paymobOrderId);
+
+      return ok({ paymentId: payment.id, paymentUrl, amountCents: amount });
+    } catch (sessionError) {
+      await db.payment.update({
+        where: { id: payment.id },
+        data: { status: "FAILED", failureReason: "could not open a Paymob session" },
+      });
+      log.error("[booking payments POST] Paymob session failed", sessionError);
+      return err("تعذّر إنشاء رابط الدفع، حاول مرة أخرى", 502);
+    }
+  } catch (e) {
+    if (e instanceof Response) return e;
+    log.error("[booking payments POST]", e);
+    return err("حدث خطأ", 500);
+  }
+}
+
+/**
+ * A booking that has been paid in full should not still be waiting for
+ * payment. Only ever moves it forward, and never out of a state a human
+ * put it in.
+ */
+async function settleBookingIfPaid(bookingId: string, totalPrice: unknown): Promise<void> {
+  const paid = await paidCentsForBooking(bookingId);
+  if (balanceCents(totalPrice as never, paid) > 0) return;
+
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { status: true },
+  });
+  if (booking?.status !== "PENDING_PAYMENT") return;
+
+  await db.booking.update({ where: { id: bookingId }, data: { status: "CONFIRMED" } });
+}

@@ -45,6 +45,10 @@ export const PERMISSIONS = [
   "subscriptions.read",
   "subscriptions.manage",
   "payments.read",
+  // Moving money back out. Separate from payments.read because
+  // reading what somebody paid and sending it back to them are
+  // not the same level of trust.
+  "payments.refund",
 
   // Operational.
   "notifications.read",
@@ -88,6 +92,7 @@ const SUPER_ADMIN: Permission[] = [
   "subscriptions.read",
   "subscriptions.manage",
   "payments.read",
+  "payments.refund",
   "settings.manage",
   "roles.grant",
 ];

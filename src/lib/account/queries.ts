@@ -311,3 +311,70 @@ export async function getAccountSummary(userId: string, phone: string) {
 
   return { upcoming, total, favorites, unread };
 }
+
+/**
+ * Every payment this customer has made, newest first.
+ *
+ * Matched the same way bookings are — on the generated
+ * customerPhoneE164 column, never on whatever they typed — so a number
+ * written 01107578212 one day and +20 110 757 8212 the next still finds
+ * the same history.
+ *
+ * Failed and abandoned attempts are left out. A customer looking for a
+ * receipt does not need to be reminded of a card that was declined
+ * three weeks ago; the owner and the admin can both still see them.
+ */
+export async function getPaymentHistory(phone: string) {
+  const rows = await db.payment.findMany({
+    where: {
+      booking: { customerPhoneE164: phone },
+      status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"] },
+    },
+    orderBy: { paidAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      kind: true,
+      status: true,
+      method: true,
+      provider: true,
+      amountCents: true,
+      refundedCents: true,
+      currency: true,
+      receiptNumber: true,
+      paidAt: true,
+      booking: {
+        select: {
+          id: true,
+          reference: true,
+          date: true,
+          startTime: true,
+          service: { select: { nameAr: true, nameEn: true } },
+          business: { select: { nameAr: true, nameEn: true, slug: true } },
+        },
+      },
+    },
+  });
+
+  return rows.map((p) => ({
+    id: p.id,
+    kind: p.kind,
+    status: p.status,
+    method: p.method,
+    amountCents: p.amountCents,
+    refundedCents: p.refundedCents,
+    currency: p.currency,
+    receiptNumber: p.receiptNumber,
+    paidAt: p.paidAt?.toISOString() ?? null,
+    bookingRef: p.booking?.reference ?? null,
+    bookingDate: p.booking?.date.toISOString() ?? null,
+    startTime: p.booking?.startTime ?? null,
+    serviceAr: p.booking?.service.nameAr ?? null,
+    serviceEn: p.booking?.service.nameEn ?? null,
+    businessAr: p.booking?.business.nameAr ?? null,
+    businessEn: p.booking?.business.nameEn ?? null,
+    businessSlug: p.booking?.business.slug ?? null,
+  }));
+}
+
+export type AccountPayment = Awaited<ReturnType<typeof getPaymentHistory>>[number];
