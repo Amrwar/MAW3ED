@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useId } from "react";
+import type { TrafficSource } from "@prisma/client";
 import {
   ChevronRight, CheckCircle,
   Loader2, CalendarDays, Clock, Check, Users, Scissors,
@@ -24,6 +25,8 @@ interface BookingWidgetProps {
   openDays:            number[];
   preselectedService?: Service | null;
   businessType:        "GENERAL" | "RESTAURANT" | "BARBERSHOP";
+  /** The channel that brought this visitor, for attribution. */
+  source?:             TrafficSource;
   /** Tables, rooms, chairs, machines — whatever an appointment holds. */
   resources:           PublicResource[];
   staffMembers:        PublicStaff[];
@@ -242,6 +245,7 @@ export default function BookingWidget({
   resources,
   staffMembers,
   branches = [],
+  source,
   depositEnabled = false,
   depositPercent = 0,
 }: BookingWidgetProps) {
@@ -425,6 +429,10 @@ export default function BookingWidget({
           branchId:      selectedBranch?.id,
           partySize:     selectedResource?.capacity != null ? partySize : undefined,
           idempotencyKey: key,
+          // Carried from the page, which read it off the link and the
+          // Referer header. Lets a booking say which channel produced
+          // it rather than it being inferred from when it happened.
+          source,
         }),
       });
 

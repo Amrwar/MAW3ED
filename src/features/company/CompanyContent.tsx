@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import type { TrafficSource } from "@prisma/client";
 import AboutSection from "./AboutSection";
 import ServicesSection, { type ServiceProvider } from "./ServicesSection";
 import GallerySection, { type GalleryImage } from "./GallerySection";
@@ -49,6 +50,8 @@ interface Props {
   slug:              string;
   similarBusinesses: PublicBusiness[];
   businessType:      "GENERAL" | "RESTAURANT" | "BARBERSHOP";
+  /** Where this visitor came from, worked out on the server. */
+  source:            TrafficSource;
   resources:         PublicResource[];
   staffMembers:      PublicStaff[];
   hours:             DayHours[];
@@ -70,6 +73,7 @@ export default function CompanyContent({
   slug,
   similarBusinesses,
   businessType,
+  source,
   resources,
   staffMembers,
   hours,
@@ -186,6 +190,7 @@ export default function CompanyContent({
                 openDays={openDays}
                 preselectedService={preselected}
                 businessType={businessType}
+                source={source}
                 resources={resources}
                 staffMembers={staffMembers}
                 branches={branches}

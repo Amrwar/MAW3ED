@@ -332,6 +332,7 @@ model Business {
 
   phoneVerifications PhoneVerification[]
   payments           Payment[]
+  profileViews       ProfileView[]
   reviews            Review[]
   images             BusinessImage[]
   branches           Branch[]
@@ -720,6 +721,11 @@ model Booking {
   branch      Branch?      @relation(fields: [branchId], references: [id])
   review      Review?
   payments    Payment[]
+
+  /// Where the visitor came from before they booked. Null for bookings
+  /// made before attribution existed, and for anything that arrived
+  /// without a source — never guessed.
+  source      TrafficSource?
 
   /// This table had no indexes at all. Every slot lookup, every dashboard
   /// list and the most-booked sort scanned it.
@@ -1136,4 +1142,49 @@ model WebhookEvent {
 
   @@unique([provider, eventId])
   @@index([receivedAt])
+}
+
+
+// ─── Attribution ─────────────────────────────────────────────────────
+// "Instagram sent 340 views and 18 of them booked" is answerable.
+// "Who was visitor number 204" is deliberately not: nothing here
+// identifies a person, and there is no row to join to one.
+
+/// Where a visitor arrived from.
+///
+/// A closed list rather than free text, so the dashboard can group by
+/// it and a typo in a link cannot invent a channel. Anything
+/// unrecognised lands in OTHER rather than being dropped, so a link
+/// somebody edited by hand still counts as a visit.
+enum TrafficSource {
+  DIRECT /// typed, bookmarked, or no referrer
+  INSTAGRAM
+  WHATSAPP
+  FACEBOOK
+  GOOGLE /// including the Google Business Profile link
+  WEBSITE /// the business's own site
+  QR /// a printed code in the shop
+  MAW3ED /// browsing inside the marketplace
+  OTHER
+}
+
+/// How many people looked at a business's page, by channel, by day.
+///
+/// A counter, not a log. One row per business per source per day,
+/// incremented — so a hundred thousand views cost one row, and there is
+/// nothing in it that could identify who any of them were. No IP, no
+/// cookie, no user agent, no device id. That is a design decision, not
+/// an omission: the question worth answering is whether a channel
+/// works, and that does not require knowing who walked past.
+model ProfileView {
+  id         String        @id @default(cuid())
+  businessId String
+  business   Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  source     TrafficSource
+  /// Calendar day, Africa/Cairo, stored as a bare date.
+  day        DateTime      @db.Date
+  count      Int           @default(0)
+
+  @@unique([businessId, source, day])
+  @@index([businessId, day])
 }

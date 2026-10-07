@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import type { TrafficSource } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
@@ -60,6 +61,8 @@ export interface CreateBookingInput {
   totalPrice: Prisma.Decimal | number;
   currency: string;
   depositAmount: number | null;
+  /** The channel the visitor arrived through; null when unattributed. */
+  source?: TrafficSource | null;
   /** Client-supplied; a retry with the same value is not a second booking. */
   idempotencyKey?: string | null;
   /** Checked inside the transaction so two requests cannot both be the last. */
@@ -191,6 +194,7 @@ export async function createBooking(
               reference: generateReference(),
               idempotencyKey: input.idempotencyKey ?? null,
               depositAmount: input.depositAmount,
+              source: input.source ?? null,
               staffMemberId: input.staffMemberId ?? null,
               resourceId: input.resourceId ?? null,
               // Booking.tableId is deliberately not set. It has a foreign

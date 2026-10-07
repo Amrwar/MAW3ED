@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { resolveSource } from "@/lib/attribution/source";
+import { OWN_HOSTS } from "@/lib/attribution/hosts";
+import RecordView from "@/features/company/RecordView";
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { db } from "@/lib/db";
 import Logo from "@/components/shared/Logo";
 import Breadcrumbs, { breadcrumbJsonLd, type Crumb } from "@/components/shared/Breadcrumbs";
@@ -18,7 +21,10 @@ import { timeToMinutes } from "@/lib/bookings/time";
 import { getBusinessReviews, getRatingSummary } from "@/lib/reviews";
 import { translations, type Lang } from "@/lib/i18n";
 
-interface Params { params: Promise<{ slug: string }> }
+interface Params {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
@@ -86,8 +92,23 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-export default async function CompanyPage({ params }: Params) {
+export default async function CompanyPage({ params, searchParams }: Params) {
   const { slug } = await params;
+
+  // Where this visitor came from, decided here rather than in the
+  // browser: the Referer header is only readable on the server, and the
+  // ?src= on the link is what the business meant whatever the browser
+  // reports. The value is handed to two places — a beacon that counts
+  // the view, and the booking widget, so a booking carries the channel
+  // that produced it instead of it being inferred from timing.
+  const sp = await searchParams;
+  const srcParam = typeof sp.src === "string" ? sp.src : null;
+  const requestHeaders = await headers();
+  const source = resolveSource({
+    src: srcParam,
+    referrer: requestHeaders.get("referer"),
+    ownHosts: OWN_HOSTS,
+  });
 
   const dbBusiness = await db.business.findUnique({
     where:   { slug, isPublished: true },
@@ -332,8 +353,14 @@ export default async function CompanyPage({ params }: Params) {
           summary={summary}
         />
 
+        {/* Counts the visit from the browser, so a crawler rendering
+            this page does not look like a customer. Anonymous: the
+            channel and the day, nothing about who. */}
+        <RecordView slug={slug} source={source} />
+
         <CompanyContent
           business={business}
+          source={source}
           services={services}
           openDays={dbBusiness.availability.filter((a) => !a.isClosed).map((a) => a.dayOfWeek)}
           slug={slug}

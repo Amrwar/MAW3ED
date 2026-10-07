@@ -29,7 +29,8 @@ export async function POST(req: Request, { params }: Params) {
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
     const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes,
-            tableId, resourceId, staffMemberId, branchId, partySize, idempotencyKey } = parsed.data;
+            tableId, resourceId, staffMemberId, branchId, partySize, idempotencyKey,
+            source } = parsed.data;
 
     const business = await db.business.findUnique({
       where:   { slug, isPublished: true },
@@ -94,6 +95,7 @@ export async function POST(req: Request, { params }: Params) {
       totalPrice:     service.price,
       currency:       service.currency,
       depositAmount,
+      source:         source ?? null,
       idempotencyKey: idempotencyKey ?? null,
       monthlyLimit:   getMonthlyBookingLimit(effectivePlan),
     });

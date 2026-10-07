@@ -147,6 +147,15 @@ export const bookingSchema = z.object({
    * flaky connection or a browser retry producing two appointments.
    */
   idempotencyKey: z.string().min(8).max(100).optional(),
+  /// The channel the visitor arrived through. Optional, because a
+  /// booking that arrives without one is unattributed, which is a real
+  /// answer — never guessed into a channel it might not be.
+  source: z
+    .enum([
+      "DIRECT", "INSTAGRAM", "WHATSAPP", "FACEBOOK",
+      "GOOGLE", "WEBSITE", "QR", "MAW3ED", "OTHER",
+    ])
+    .optional(),
 });
 
 export type SignUpInput     = z.infer<typeof signUpSchema>;

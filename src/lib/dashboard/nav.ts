@@ -9,6 +9,7 @@ import {
   Gift,
   Globe,
   LayoutDashboard,
+  Link2,
   MessageSquare,
   Megaphone,
   Settings,
@@ -100,8 +101,12 @@ export function buildNav(ctx: NavContext): NavSection[] {
   );
 
   const grow: NavItem[] = [
-    // Referrals is the one marketing feature that exists. Promotions,
-    // coupons and booking links are not built, so they are not here.
+    // Booking links, the QR code and channel performance live together,
+    // because a link is only worth placing somewhere if you can tell
+    // afterwards whether it worked. Coupons and promotions are not
+    // built yet, so they are not here — a nav entry for something
+    // unbuilt is a promise the app cannot keep.
+    { href: "/dashboard/links", label: s.bookingLinks, icon: Link2 },
     { href: "/dashboard/referrals", label: s.referrals, icon: Gift },
     {
       href: "/dashboard/reports",
