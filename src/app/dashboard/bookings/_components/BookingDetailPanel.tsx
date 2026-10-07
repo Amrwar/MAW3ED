@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import CollectBalance from "./CollectBalance";
 import { Phone, Loader2, User, Calendar, Clock, CreditCard } from "lucide-react";
 import {
   type DashboardBooking,
@@ -189,6 +190,13 @@ export default function BookingDetailPanel({
                 value={`${booking.depositAmount?.toLocaleString(locale)} ${booking.currency}`}
               />
             )}
+
+            {/* What has actually been collected, and how to collect the
+                rest. Read from the ledger rather than from the booking,
+                which only ever knew about the deposit. */}
+            <div className="mt-3 border-t border-[var(--color-line)] pt-3">
+              <CollectBalance bookingId={booking.id} />
+            </div>
           </Section>
 
           {/* Notes */}
