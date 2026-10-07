@@ -1,4 +1,7 @@
 import { db } from "@/lib/db";
+import { resolveAutomatic, resolveCode } from "@/lib/discounts/resolve";
+import { FAILURE_AR } from "@/lib/discounts/apply";
+import { toCents } from "@/lib/payments/money";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import { createBooking } from "@/lib/bookings/create";
@@ -30,7 +33,7 @@ export async function POST(req: Request, { params }: Params) {
 
     const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes,
             tableId, resourceId, staffMemberId, branchId, partySize, idempotencyKey,
-            source } = parsed.data;
+            source, discountCode } = parsed.data;
 
     const business = await db.business.findUnique({
       where:   { slug, isPublished: true },
@@ -58,11 +61,48 @@ export async function POST(req: Request, { params }: Params) {
       business.trialEndsAt,
     );
 
+    // ── Price, after anything that reduces it ─────────────────────────────────
+    //
+    // Worked out here and never taken from the request. The browser may
+    // send a code; it may not send a price. What the customer was
+    // quoted is re-derived from the same rules that produced the quote,
+    // so a tampered payload gets the honest number rather than its own.
+    const subtotalCents = toCents(service.price);
+
+    const resolved = discountCode
+      ? await resolveCode({
+          businessId: business.id,
+          serviceId: service.id,
+          subtotalCents,
+          code: discountCode,
+          customerId: customer.id,
+        })
+      : await resolveAutomatic({
+          businessId: business.id,
+          serviceId: service.id,
+          subtotalCents,
+          customerId: customer.id,
+        });
+
+    // A code the customer typed and got wrong is worth saying out loud.
+    // A promotion that happens not to apply is not: nobody asked.
+    if (discountCode && resolved.ok === false) {
+      return err(
+        resolved.reason === "not-found" ? "الكود ده مش موجود" : FAILURE_AR[resolved.reason],
+        422,
+      );
+    }
+
+    const applied = resolved.ok === true ? resolved.discount : null;
+    const totalCents = applied ? applied.totalCents : subtotalCents;
+
     // ── Determine initial status and deposit ──────────────────────────────────
-    // Deposits require a plan that includes them.
+    // Deposits require a plan that includes them, and are a share of
+    // what is actually owed — a deposit computed on the pre-discount
+    // price would collect more than the booking costs.
     const requiresDeposit = business.depositEnabled && canUseFeature(effectivePlan, "deposits");
     const depositCents    = requiresDeposit
-      ? calcDepositCents(Number(service.price), business.depositPercent)
+      ? calcDepositCents(totalCents / 100, business.depositPercent)
       : 0;
     const depositAmount   = requiresDeposit ? depositCents / 100 : null;
 
@@ -92,10 +132,14 @@ export async function POST(req: Request, { params }: Params) {
       branchId:       branchId ?? null,
       partySize:      partySize ?? null,
       status:         initialStatus,
-      totalPrice:     service.price,
+      // Already reduced: it is what the customer owes, so every
+      // deposit, balance and payment calculation downstream reads it
+      // without needing to know a discount happened.
+      totalPrice:     totalCents / 100,
       currency:       service.currency,
       depositAmount,
       source:         source ?? null,
+      discount:       applied ? { id: applied.id, amountCents: applied.amountCents } : null,
       idempotencyKey: idempotencyKey ?? null,
       monthlyLimit:   getMonthlyBookingLimit(effectivePlan),
     });
@@ -110,6 +154,11 @@ export async function POST(req: Request, { params }: Params) {
           return err("عذرًا، هذا العمل بلغ الحد الأقصى من الحجوزات الشهرية", 429);
         case "service-not-found":
           return err("الخدمة غير موجودة", 404);
+        case "discount-gone":
+          // Somebody took the last one while this customer was filling
+          // in their name. Better to say so than to quietly charge them
+          // more than the price they were quoted.
+          return err("العرض خلص دلوقتي، جرّب تحجز من غير كود", 409);
       }
     }
 

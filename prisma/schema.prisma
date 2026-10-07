@@ -333,6 +333,7 @@ model Business {
   phoneVerifications PhoneVerification[]
   payments           Payment[]
   profileViews       ProfileView[]
+  discounts          Discount[]
   reviews            Review[]
   images             BusinessImage[]
   branches           Branch[]
@@ -726,6 +727,11 @@ model Booking {
   /// made before attribution existed, and for anything that arrived
   /// without a source — never guessed.
   source      TrafficSource?
+
+  /// What a discount took off, in piastres, for reporting. totalPrice
+  /// is already the amount after it — see the Discount model.
+  discountCents Int @default(0)
+  discountRedemption DiscountRedemption?
 
   /// This table had no indexes at all. Every slot lookup, every dashboard
   /// list and the most-booked sort scanned it.
@@ -1187,4 +1193,92 @@ model ProfileView {
 
   @@unique([businessId, source, day])
   @@index([businessId, day])
+}
+
+
+// ─── Discounts ───────────────────────────────────────────────────────
+// One mechanism wearing two faces. With a code, the customer types it
+// and it is a coupon; without one it applies on its own to anything
+// matching its rules and it is a promotion. Two models would mean two
+// code paths that both reduce a price, and they would drift.
+
+enum DiscountKind {
+  PERCENT /// value is 1..100
+  FIXED /// value is piastres off
+}
+
+/// A reduction a business offers.
+///
+/// Where the money goes: Booking.totalPrice is stored already reduced —
+/// it is what the customer owes, and every deposit, balance and payment
+/// calculation reads it without needing to know a discount happened.
+/// Booking.discountCents records how much came off, so a report can say
+/// what was given away without re-deriving it.
+model Discount {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  /// Set: the customer types it — a coupon. Null: it applies by itself
+  /// to anything matching — a promotion.
+  code   String?
+  nameAr String
+  nameEn String?
+
+  kind  DiscountKind
+  /// Percent for PERCENT, piastres for FIXED. Range-checked in app code
+  /// because the meaning depends on kind.
+  value Int
+
+  /// Floor before it applies at all, in piastres.
+  minSpendCents Int?
+  /// Ceiling on what a PERCENT discount may take off. A half-price
+  /// offer on an expensive service can cost more than it was meant to.
+  maxDiscountCents Int?
+
+  /// Total redemptions allowed, and per customer. Null means no limit.
+  maxRedemptions   Int?
+  perCustomerLimit Int?
+  /// Kept in step inside the booking transaction, so two people cannot
+  /// both take the last one.
+  redemptionCount  Int  @default(0)
+
+  startsAt DateTime?
+  endsAt   DateTime?
+  isActive Boolean   @default(true)
+
+  /// Empty means every service. Service ids rather than a relation,
+  /// because a service being removed should not delete the offer.
+  serviceIds String[] @default([])
+
+  redemptions DiscountRedemption[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// A code is unique within a business, not globally — two salons may
+  /// both run "EID20". Postgres treats NULLs as distinct, so any number
+  /// of code-less promotions coexist.
+  @@unique([businessId, code])
+  @@index([businessId, isActive])
+}
+
+/// One use of a discount, against one booking.
+model DiscountRedemption {
+  id         String   @id @default(cuid())
+  discountId String
+  discount   Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  /// One per booking, enforced by the database: a booking cannot carry
+  /// two discounts, and a retry cannot redeem the same offer twice.
+  bookingId  String   @unique
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  /// Who used it, for the per-customer limit. Null for a guest.
+  customerId  String?
+  amountCents Int
+
+  createdAt DateTime @default(now())
+
+  @@index([discountId])
+  @@index([customerId])
 }

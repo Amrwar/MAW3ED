@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { claimRedemption } from "@/lib/discounts/resolve";
 import type { TrafficSource } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -40,7 +41,9 @@ export type CreateFailure =
   | { kind: "service-not-found" }
   | { kind: "slot-unavailable"; reason: string | null }
   | { kind: "slot-taken" }
-  | { kind: "limit-reached" };
+  | { kind: "limit-reached" }
+  /** The offer ran out between the quote and the booking. */
+  | { kind: "discount-gone" };
 
 export interface CreateBookingInput {
   businessId: string;
@@ -63,6 +66,16 @@ export interface CreateBookingInput {
   depositAmount: number | null;
   /** The channel the visitor arrived through; null when unattributed. */
   source?: TrafficSource | null;
+  /**
+   * A discount already evaluated against the service price.
+   *
+   * totalPrice is expected to be the reduced figure — the caller works
+   * out both together, so there is no moment where one has been applied
+   * and the other has not. What happens here is the part that must be
+   * inside the transaction: claiming a redemption against the cap, and
+   * recording it.
+   */
+  discount?: { id: string; amountCents: number } | null;
   /** Client-supplied; a retry with the same value is not a second booking. */
   idempotencyKey?: string | null;
   /** Checked inside the transaction so two requests cannot both be the last. */
@@ -174,7 +187,7 @@ export async function createBooking(
             if (used >= input.monthlyLimit) throw new LimitReached();
           }
 
-          return tx.booking.create({
+          const created = await tx.booking.create({
             data: {
               businessId: input.businessId,
               serviceId: input.serviceId,
@@ -195,6 +208,7 @@ export async function createBooking(
               idempotencyKey: input.idempotencyKey ?? null,
               depositAmount: input.depositAmount,
               source: input.source ?? null,
+              discountCents: input.discount?.amountCents ?? 0,
               staffMemberId: input.staffMemberId ?? null,
               resourceId: input.resourceId ?? null,
               // Booking.tableId is deliberately not set. It has a foreign
@@ -209,6 +223,32 @@ export async function createBooking(
             },
             select: BOOKING_SELECT,
           });
+
+          // The discount is claimed after the booking exists, inside
+          // the same transaction. Claiming it is a conditional update —
+          // "increment, but only if there are uses left" — because
+          // reading the count and then writing it lets two people both
+          // take the last one on a popular offer.
+          //
+          // Losing the claim rolls the whole thing back rather than
+          // quietly charging the customer the full price: they were
+          // quoted a number, and a booking that silently costs more
+          // than the quote is worse than one that failed.
+          if (input.discount) {
+            const claimed = await claimRedemption(tx, input.discount.id);
+            if (!claimed) throw new DiscountGone();
+
+            await tx.discountRedemption.create({
+              data: {
+                discountId: input.discount.id,
+                bookingId: created.id,
+                customerId: input.customerId,
+                amountCents: input.discount.amountCents,
+              },
+            });
+          }
+
+          return created;
         },
         {
           // Serializable, because the limit count and the insert have to
@@ -220,6 +260,7 @@ export async function createBooking(
       return { ok: true, booking, reused: false };
     } catch (e) {
       if (e instanceof LimitReached) return { ok: false, failure: { kind: "limit-reached" } };
+      if (e instanceof DiscountGone) return { ok: false, failure: { kind: "discount-gone" } };
 
       const code = pgCode(e);
       const conflicted =
@@ -270,6 +311,9 @@ export async function createBooking(
 /* ─── Error plumbing ─────────────────────────────────────── */
 
 class LimitReached extends Error {}
+
+/** The offer ran out between quoting the price and taking the booking. */
+class DiscountGone extends Error {}
 
 function pgCode(e: unknown): string | null {
   if (e instanceof Prisma.PrismaClientKnownRequestError) {

@@ -15,6 +15,7 @@ import {
   Settings,
   ShieldCheck,
   Store,
+  Ticket,
   Sun,
   Users,
   Users2,
@@ -103,10 +104,9 @@ export function buildNav(ctx: NavContext): NavSection[] {
   const grow: NavItem[] = [
     // Booking links, the QR code and channel performance live together,
     // because a link is only worth placing somewhere if you can tell
-    // afterwards whether it worked. Coupons and promotions are not
-    // built yet, so they are not here — a nav entry for something
-    // unbuilt is a promise the app cannot keep.
+    // afterwards whether it worked.
     { href: "/dashboard/links", label: s.bookingLinks, icon: Link2 },
+    { href: "/dashboard/offers", label: s.offers, icon: Ticket },
     { href: "/dashboard/referrals", label: s.referrals, icon: Gift },
     {
       href: "/dashboard/reports",

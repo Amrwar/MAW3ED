@@ -201,14 +201,29 @@ function formatDateAr(iso: string): string {
 // ─── Sub-components ───────────────────────────────────────
 
 function SummaryRow({
-  label, value, ltr = false, bold = false,
-}: { label: string; value: string; ltr?: boolean; bold?: boolean }) {
+  label, value, ltr = false, bold = false, strike = false, good = false,
+}: {
+  label: string;
+  value: string;
+  ltr?: boolean;
+  bold?: boolean;
+  /** The price before a discount came off it. */
+  strike?: boolean;
+  /** The amount that came off — read as a gain, not a charge. */
+  good?: boolean;
+}) {
   return (
     <div className="flex items-center justify-between text-sm gap-4">
       <span className="text-[var(--color-subtle)] shrink-0">{label}</span>
       <span
         dir={ltr ? "ltr" : undefined}
-        className={`text-end ${bold ? "font-extrabold text-[var(--color-jade)]" : "font-semibold text-[var(--color-ink)]"}`}
+        className={
+          strike
+            ? "text-end font-semibold text-[var(--color-faint)] line-through"
+            : good
+              ? "text-end font-semibold text-[var(--color-ok)]"
+              : `text-end ${bold ? "font-extrabold text-[var(--color-jade)]" : "font-semibold text-[var(--color-ink)]"}`
+        }
       >
         {value}
       </span>
@@ -235,6 +250,14 @@ function ServiceIcon({ service }: { service: Service }) {
 
 // ─── Main Component ───────────────────────────────────────
 
+interface Quote {
+  subtotalCents: number;
+  totalCents: number;
+  currency: string;
+  discount: { nameAr: string; code: string | null; amountCents: number; automatic: boolean } | null;
+  codeError: string | null;
+}
+
 export default function BookingWidget({
   services,
   businessName,
@@ -255,6 +278,14 @@ export default function BookingWidget({
   // read out four anonymous boxes, and tapping a label focused none of
   // them. Scoped per instance so two widgets on a page cannot collide.
   const fid = useId();
+
+  // The coupon the customer typed, and what the server said it is
+  // worth. The widget never works out a price itself — it asks the same
+  // endpoint the booking route asks, so the number shown here is the
+  // number charged there.
+  const [codeInput, setCodeInput] = useState("");
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quoting, setQuoting] = useState(false);
 
   const { t, lang } = useLanguage();
   // What this business schedules on, read off what it has rather than
@@ -433,6 +464,10 @@ export default function BookingWidget({
           // Referer header. Lets a booking say which channel produced
           // it rather than it being inferred from when it happened.
           source,
+          // Only the code. The price is re-derived server-side from the
+          // same rules that produced the quote, so a tampered payload
+          // gets the honest number rather than its own.
+          discountCode: quote?.discount?.code ?? undefined,
         }),
       });
 
@@ -493,6 +528,36 @@ export default function BookingWidget({
         (s) => s.serviceIds.length === 0 || s.serviceIds.includes(selectedService.id),
       )
     : staffMembers;
+
+  // Asks what this booking costs, with or without a code. Runs on its
+  // own when the service is picked, so an automatic promotion is shown
+  // without the customer having to do anything.
+  async function fetchQuote(code?: string) {
+    if (!selectedService) return;
+    setQuoting(true);
+    try {
+      const res = await fetch(`/api/public/${slug}/quote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceId: selectedService.id, code: code?.trim() || undefined }),
+      });
+      const data = await res.json().catch(() => null);
+      setQuote(res.ok ? ((data?.data ?? data) as Quote) : null);
+    } catch {
+      // A quote that could not be fetched leaves the full price shown,
+      // which is the safe direction to be wrong in.
+      setQuote(null);
+    } finally {
+      setQuoting(false);
+    }
+  }
+
+  useEffect(() => {
+    setQuote(null);
+    setCodeInput("");
+    if (selectedService) void fetchQuote();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedService?.id, slug]);
 
   // Step index for stepper (1-based, "done" step doesn't appear in stepper)
   const stepperSteps = ALL_STEPS.map((s, i) => ({ id: s, label: stepLabel(s), n: i + 1 }));
@@ -1119,21 +1184,80 @@ export default function BookingWidget({
               <SummaryRow label="المدة" value={`${selectedService.duration} دقيقة`} />
 
               <div className="pt-2.5 border-t border-[var(--color-jade-line)]">
-                <SummaryRow
-                  label="السعر"
-                  value={
-                    selectedService.price > 0
-                      ? money(selectedService.price, lang, selectedService.currency)
-                      : "السعر غير محدد"
-                  }
-                  bold
-                />
+                {/* The struck-through original only appears when
+                    something actually came off it. A price crossed out
+                    beside the same price is a sales trick. */}
+                {quote?.discount ? (
+                  <>
+                    <SummaryRow
+                      label="السعر"
+                      value={money(quote.subtotalCents / 100, lang, selectedService.currency)}
+                      strike
+                    />
+                    <SummaryRow
+                      label={quote.discount.nameAr}
+                      value={`− ${money(quote.discount.amountCents / 100, lang, selectedService.currency)}`}
+                      good
+                    />
+                    <SummaryRow
+                      label="الإجمالي"
+                      value={money(quote.totalCents / 100, lang, selectedService.currency)}
+                      bold
+                    />
+                  </>
+                ) : (
+                  <SummaryRow
+                    label="السعر"
+                    value={
+                      selectedService.price > 0
+                        ? money(selectedService.price, lang, selectedService.currency)
+                        : "السعر غير محدد"
+                    }
+                    bold
+                  />
+                )}
+
                 {/* Shown only where the business actually takes one. */}
                 {depositDue !== null && (
                   <SummaryRow
                     label="المقدّم المطلوب الآن"
                     value={money(depositDue, lang, selectedService.currency)}
                   />
+                )}
+
+                {/* A code the customer was given. An automatic
+                    promotion is already applied, so the field would
+                    only invite them to look for a better one. */}
+                {selectedService.price > 0 && !quote?.discount?.automatic && (
+                  <div className="mt-3">
+                    <label
+                      htmlFor={`${fid}-code`}
+                      className="mb-1.5 block text-xs font-semibold text-[var(--color-subtle)]"
+                    >
+                      عندك كود خصم؟
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id={`${fid}-code`}
+                        value={codeInput}
+                        onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                        placeholder="اكتب الكود"
+                        dir="ltr"
+                        autoComplete="off"
+                        aria-invalid={quote?.codeError ? true : undefined}
+                        className="min-w-0 flex-1 rounded-[var(--radius-md)] border-2 border-[var(--color-line-2)] px-3 py-2 text-sm outline-none transition-all focus:border-[var(--color-jade)]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void fetchQuote(codeInput)}
+                        disabled={quoting || !codeInput.trim()}
+                        className="shrink-0 rounded-[var(--radius-md)] border-2 border-[var(--color-jade)] px-4 text-sm font-bold text-[var(--color-jade)] transition-colors disabled:opacity-50"
+                      >
+                        {quoting ? "..." : "فعّل"}
+                      </button>
+                    </div>
+                    {quote?.codeError && <p className="field-error mt-1.5">{quote.codeError}</p>}
+                  </div>
                 )}
               </div>
 

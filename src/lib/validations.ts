@@ -156,6 +156,9 @@ export const bookingSchema = z.object({
       "GOOGLE", "WEBSITE", "QR", "MAW3ED", "OTHER",
     ])
     .optional(),
+  /// A coupon the customer typed. Looked up server-side; the price is
+  /// never taken from the request.
+  discountCode: z.string().trim().max(40).optional(),
 });
 
 export type SignUpInput     = z.infer<typeof signUpSchema>;
