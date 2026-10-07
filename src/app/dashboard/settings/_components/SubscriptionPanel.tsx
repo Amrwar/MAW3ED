@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { Zap, CheckCircle, Loader2, Crown, Star, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
 import {
-  PLAN_FEATURES,
+  PLANS,
+  PAID_PLANS,
   PLAN_NAMES_AR,
   PLAN_PRICES_EGP,
+  featureRows,
+  isUpgrade,
+  planAtLeast,
   type Plan,
   type SubscriptionStatus,
 } from "@/lib/plans";
@@ -30,14 +34,6 @@ const PLAN_COLORS = {
   PREMIUM: "text-[var(--color-warn)] bg-[var(--color-warn-soft)]",
 };
 
-const FEATURE_LABELS: Record<keyof typeof PLAN_FEATURES.FREE, string> = {
-  monthlyBookings: "حجوزات شهرية",
-  whatsapp:        "إشعارات واتساب",
-  deposits:        "دفع عربون من العملاء",
-  analytics:       "لوحة الإحصائيات",
-  customBranding:  "إخفاء شعار موعد",
-};
-
 export default function SubscriptionPanel({
   plan,
   subscriptionStatus,
@@ -50,6 +46,9 @@ export default function SubscriptionPanel({
 
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
   const isInactive     = subscriptionStatus === "INACTIVE" && plan !== "FREE";
+  // Nothing left to sell them. Asked by rank so adding a tier above
+  // PREMIUM does not quietly hide the upgrade panel from its buyers.
+  const isTopPlan      = planAtLeast(effectivePlan, PLANS[PLANS.length - 1]);
 
   async function handleUpgrade(targetPlan: "PRO" | "PREMIUM") {
     setLoading(targetPlan);
@@ -155,12 +154,7 @@ export default function SubscriptionPanel({
 
         {/* Feature list for current plan */}
         <div className="space-y-2">
-          {(Object.keys(FEATURE_LABELS) as Array<keyof typeof PLAN_FEATURES.FREE>).map((key) => {
-            const val     = PLAN_FEATURES[effectivePlan][key];
-            const enabled = typeof val === "boolean" ? val : true;
-            const label   = key === "monthlyBookings"
-              ? `${val === Infinity ? "غير محدودة" : val} حجوزات شهرية`
-              : FEATURE_LABELS[key];
+          {featureRows(effectivePlan).map(({ key, enabled, ar: label }) => {
             return (
               <div key={key} className="flex items-center gap-2 text-sm">
                 <CheckCircle
@@ -177,7 +171,7 @@ export default function SubscriptionPanel({
       </div>
 
       {/* Upgrade options */}
-      {effectivePlan !== "PREMIUM" && (
+      {!isTopPlan && (
         <div className="card p-6">
           <div className="flex items-center gap-2 mb-5">
             <Sparkles size={16} className="text-[var(--color-accent)]" />
@@ -191,9 +185,8 @@ export default function SubscriptionPanel({
           )}
 
           <div className="grid gap-4">
-            {(["PRO", "PREMIUM"] as const).map((targetPlan) => {
-              const ep = effectivePlan as string;
-              const isCurrentOrLower = ep === "PREMIUM" || ep === targetPlan;
+            {PAID_PLANS.map((targetPlan) => {
+              const isCurrentOrLower = !isUpgrade(effectivePlan, targetPlan);
               const PlanIcon = PLAN_ICONS[targetPlan];
               return (
                 <div
@@ -223,12 +216,7 @@ export default function SubscriptionPanel({
                   </div>
 
                   <div className="space-y-1.5 mb-4">
-                    {(Object.keys(FEATURE_LABELS) as Array<keyof typeof PLAN_FEATURES.FREE>).map((key) => {
-                      const val     = PLAN_FEATURES[targetPlan][key];
-                      const enabled = typeof val === "boolean" ? val : true;
-                      const label   = key === "monthlyBookings"
-                        ? `${val === Infinity ? "غير محدودة" : val} حجوزات شهرية`
-                        : FEATURE_LABELS[key];
+                    {featureRows(targetPlan).map(({ key, enabled, ar: label }) => {
                       if (!enabled) return null;
                       return (
                         <div key={key} className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
@@ -263,7 +251,7 @@ export default function SubscriptionPanel({
         </div>
       )}
 
-      {effectivePlan === "PREMIUM" && (
+      {isTopPlan && (
         <div className="card p-5 bg-[var(--color-warn-soft)] border-[var(--color-warn-line)]">
           <div className="flex items-center gap-3">
             <Crown size={20} className="text-[var(--color-warn)]" />

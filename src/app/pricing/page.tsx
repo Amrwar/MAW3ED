@@ -7,27 +7,21 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PageHero from "@/components/shared/PageHero";
 import { Table } from "@/components/ui/Table";
-import { PLAN_FEATURES, PLAN_PRICES_EGP, PLAN_NAMES_AR, PLAN_NAMES_EN } from "@/lib/plans";
+import {
+  PLAN_PRICES_EGP,
+  PLAN_NAMES_AR,
+  PLAN_NAMES_EN,
+  FEATURE_ORDER,
+  featureRows,
+  type PlanFeature,
+} from "@/lib/plans";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type PlanId = "FREE" | "PRO" | "PREMIUM";
 
-// ─── Feature list (concise labels for both cards + table) ──────────────────
-
-const FEATURES_LIST_AR = [
-  { key: "monthlyBookings" as const, label: "الحجوزات الشهرية" },
-  { key: "whatsapp"        as const, label: "إشعارات واتساب" },
-  { key: "analytics"       as const, label: "الإحصائيات والتقارير" },
-  { key: "deposits"        as const, label: "دفع العربون (Paymob)" },
-  { key: "customBranding"  as const, label: "إخفاء شعار موعد" },
-];
-const FEATURES_LIST_EN = [
-  { key: "monthlyBookings" as const, label: "Monthly Bookings" },
-  { key: "whatsapp"        as const, label: "WhatsApp Notifications" },
-  { key: "analytics"       as const, label: "Analytics & Reports" },
-  { key: "deposits"        as const, label: "Deposit Payments (Paymob)" },
-  { key: "customBranding"  as const, label: "Remove Maw3ed Branding" },
-];
+// The rows, their wording and their counting all come from lib/plans.
+// This page kept its own five-row list, so a feature added to the
+// matrix was simply absent from the page that sells it.
 
 // ─── Plan visual config ────────────────────────────────────────────────────
 
@@ -104,7 +98,10 @@ export default function PricingPage() {
   const p    = t.pricing;
   const isAr = lang === "ar";
 
-  const featuresList = isAr ? FEATURES_LIST_AR : FEATURES_LIST_EN;
+  // One row per entitlement, per plan, already worded and counted.
+  const rowsFor = (planId: PlanId) => featureRows(planId);
+  const rowOf = (planId: PlanId, key: PlanFeature) =>
+    rowsFor(planId).find((r) => r.key === key)!;
   const planNames    = isAr ? PLAN_NAMES_AR    : PLAN_NAMES_EN;
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -273,12 +270,8 @@ export default function PricingPage() {
 
                       {/* Feature list */}
                       <ul className="space-y-3.5 mb-8 flex-1">
-                        {featuresList.map(({ key, label }) => {
-                          const val     = PLAN_FEATURES[planId][key];
-                          const enabled = typeof val === "boolean" ? val : true;
-                          const display = key === "monthlyBookings"
-                            ? (val === Infinity ? p.unlimited : `${val} ${p.bookings}`)
-                            : label;
+                        {rowsFor(planId).map(({ key, enabled, ar, en }) => {
+                          const display = isAr ? ar : en;
 
                           return (
                             <li key={key} className="flex items-center gap-3">
@@ -420,7 +413,7 @@ export default function PricingPage() {
 
                     {/* Body rows */}
                     <tbody>
-                      {featuresList.map(({ key, label }, i) => (
+                      {FEATURE_ORDER.map((key, i) => (
                         <tr key={key}>
                           {/* Feature label */}
                           <td
@@ -430,13 +423,13 @@ export default function PricingPage() {
                               borderBottom: "1px solid var(--color-surface-3)",
                             }}
                           >
-                            {label}
+                            {isAr ? rowOf("FREE", key).ar : rowOf("FREE", key).en}
                           </td>
 
                           {/* Plan cells */}
                           {PLAN_ORDER.map((planId) => {
                             const cfg = PLANS_CONFIG[planId];
-                            const val = PLAN_FEATURES[planId][key];
+                            const row = rowOf(planId, key);
 
                             const rowBg = i % 2 === 0 ? "var(--color-surface)" : "var(--color-surface-2)";
                             // The featured column keeps a jade wash through
@@ -448,16 +441,20 @@ export default function PricingPage() {
                               : rowBg;
 
                             let content: React.ReactNode;
-                            if (key === "monthlyBookings") {
+                            // A counted entitlement says how many rather
+                            // than just yes: "up to 10 staff" is the
+                            // difference between two tiers, and a tick in
+                            // both columns hides it.
+                            if (key === "monthlyBookings" || key === "staffMembers") {
                               content = (
                                 <span
                                   className="font-bold"
                                   style={{ color: cfg.featured ? "var(--color-jade)" : "var(--color-ink)" }}
                                 >
-                                  {val === Infinity ? p.unlimited : `${val} ${p.bookings}`}
+                                  {isAr ? row.ar : row.en}
                                 </span>
                               );
-                            } else if (val) {
+                            } else if (row.enabled) {
                               content = (
                                 <div
                                   className="w-6 h-6 rounded-full flex items-center justify-center mx-auto"

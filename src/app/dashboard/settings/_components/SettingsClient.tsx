@@ -169,7 +169,7 @@ export default function SettingsClient({
         <DepositSettingsForm
           initialEnabled={depositEnabled}
           initialPercent={depositPercent}
-          canUseDeposits={effectivePlan === "PREMIUM"}
+          canUseDeposits={canUseFeature(effectivePlan, "deposits")}
         />
       )}
       {tab === "notifications" && (
