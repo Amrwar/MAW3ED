@@ -16,12 +16,16 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
-import { PLAN_PRICES_CENTS } from "@/lib/plans";
+import { PAID_PLANS } from "@/lib/plans";
 import { createSubscriptionPaymentSession } from "@/lib/services/paymob";
+import { attachProviderOrder, openPayment } from "@/lib/payments/ledger";
+import { canPurchase, priceCentsFor } from "@/lib/payments/subscription";
 import { log } from "@/lib/logger";
 
 const upgradeSchema = z.object({
-  plan: z.enum(["PRO", "PREMIUM"]),
+  // From the matrix, so a new paid tier is purchasable without this
+  // route having to be told about it.
+  plan: z.enum(PAID_PLANS),
 });
 
 export async function POST(req: Request) {
@@ -34,18 +38,20 @@ export async function POST(req: Request) {
 
     const { plan } = parsed.data;
 
-    // Don't allow downgrade via this endpoint
-    if (business.plan === "PREMIUM" && plan === "PRO") {
-      return err("لا يمكن الرجوع لخطة أقل من هنا", 400);
-    }
-
-    // Don't re-pay for the same active plan (unless renewing — INACTIVE is OK)
-    if (business.plan === plan && business.subscriptionStatus === "ACTIVE" && business.currentPeriodEnd) {
-      const daysLeft = Math.ceil((business.currentPeriodEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-      if (daysLeft > 7) {
-        return err("أنت مشترك بالفعل في هذه الخطة وتجديدها لا يزال بعيدًا", 400);
-      }
-    }
+    // Asked by rank, not by plan name. The old version compared
+    // "PREMIUM" to "PRO" directly, which is a fact about the tier
+    // order living outside the matrix that owns it.
+    //
+    // Renewing early is allowed now. It used to be refused more than a
+    // week out because the webhook set the new period to now + 30 days
+    // and threw away whatever was left; it extends from the existing
+    // end instead, so paying early costs the owner nothing.
+    const check = canPurchase({
+      currentPlan: business.plan,
+      targetPlan:  plan,
+      status:      business.subscriptionStatus,
+    });
+    if (!check.ok) return err(check.reason ?? "لا يمكن تنفيذ هذه الترقية", 400);
 
     // Get owner info for billing
     const owner = await db.user.findUnique({
@@ -55,27 +61,47 @@ export async function POST(req: Request) {
 
     const ownerName  = owner?.name ?? business.nameAr;
     const ownerPhone = business.phone ?? business.whatsapp ?? "01000000000";
-    const amountCents = PLAN_PRICES_CENTS[plan];
+    const amountCents = priceCentsFor(plan);
 
-    const { paymentUrl, paymobOrderId } = await createSubscriptionPaymentSession({
-      businessId:  business.id,
+    // Opened before the owner leaves, so an abandoned upgrade is a
+    // PENDING row naming the plan rather than nothing at all.
+    const payment = await openPayment({
+      kind:       "SUBSCRIPTION",
+      businessId: business.id,
       plan,
       amountCents,
-      ownerName,
-      ownerPhone,
-      ownerEmail: owner?.email ?? undefined,
     });
 
-    // Store pending plan and Paymob order ID for webhook correlation
-    await db.business.update({
-      where: { id: business.id },
-      data:  {
-        pendingPlan:               plan,
-        subscriptionPaymobOrderId: paymobOrderId,
-      },
-    });
+    try {
+      const { paymentUrl, paymobOrderId } = await createSubscriptionPaymentSession({
+        businessId:  business.id,
+        plan,
+        amountCents,
+        ownerName,
+        ownerPhone,
+        ownerEmail: owner?.email ?? undefined,
+      });
 
-    return ok({ paymentUrl });
+      await attachProviderOrder(payment.id, paymobOrderId);
+
+      // Still written: it is how anything older finds this payment.
+      await db.business.update({
+        where: { id: business.id },
+        data:  {
+          pendingPlan:               plan,
+          subscriptionPaymobOrderId: paymobOrderId,
+        },
+      });
+
+      return ok({ paymentUrl });
+    } catch (sessionError) {
+      await db.payment.update({
+        where: { id: payment.id },
+        data:  { status: "FAILED", failureReason: "could not open a Paymob session" },
+      });
+      throw sessionError;
+    }
+
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[subscription upgrade]", e);

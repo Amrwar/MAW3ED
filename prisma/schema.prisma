@@ -51,6 +51,10 @@ model User {
   favorites     Favorite[]
   notifications Notification[]
 
+  /// Payments this person keyed in by hand, and refunds they issued.
+  paymentsRecorded Payment[] @relation("PaymentRecordedBy")
+  refundsIssued    Refund[]  @relation("RefundActor")
+
   @@index([phone])
 }
 
@@ -327,6 +331,7 @@ model Business {
   referrals  Business[] @relation("BusinessReferrals")
 
   phoneVerifications PhoneVerification[]
+  payments           Payment[]
   reviews            Review[]
   images             BusinessImage[]
   branches           Branch[]
@@ -714,6 +719,7 @@ model Booking {
   staffMember StaffMember? @relation(fields: [staffMemberId], references: [id])
   branch      Branch?      @relation(fields: [branchId], references: [id])
   review      Review?
+  payments    Payment[]
 
   /// This table had no indexes at all. Every slot lookup, every dashboard
   /// list and the most-booked sort scanned it.
@@ -982,4 +988,152 @@ enum SubscriptionStatus {
   TRIAL
   ACTIVE
   INACTIVE
+}
+
+
+// ─── Money ───────────────────────────────────────────────────────────
+// Payment state used to live in four nullable string columns —
+// paymobOrderId and paymobTransactionId on Booking, and
+// subscriptionPaymobOrderId and pendingPlan on Business. That is enough
+// to confirm one booking once. It is not enough to hold a second
+// payment against the same booking, a refund, a receipt, a failed
+// attempt, or an answer to "what did this business actually pay us".
+
+/// What the money was for.
+enum PaymentKind {
+  BOOKING_DEPOSIT /// part of the price, up front, to hold the slot
+  BOOKING_BALANCE /// the rest of it, after a deposit
+  BOOKING_FULL /// the whole price in one go
+  SUBSCRIPTION /// a business buying a plan
+}
+
+/// Where the money came through.
+enum PaymentProvider {
+  PAYMOB
+  MANUAL /// taken in person and recorded by the owner
+}
+
+enum PaymentMethod {
+  CARD
+  WALLET
+  CASH
+  OTHER
+}
+
+/// A payment's life. Only SUCCEEDED means the money arrived, and only
+/// the webhook may write it.
+enum PaymentStatus {
+  PENDING /// session created, customer sent to the provider
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  ABANDONED /// never came back, and the session expired
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+/// One attempt to move money, successful or not.
+///
+/// A row is written before the customer is sent to Paymob, not after
+/// they come back, so an abandoned payment leaves a trace rather than
+/// nothing. Nothing but the webhook may set SUCCEEDED.
+model Payment {
+  id       String          @id @default(cuid())
+  kind     PaymentKind
+  status   PaymentStatus   @default(PENDING)
+  provider PaymentProvider @default(PAYMOB)
+  method   PaymentMethod?
+
+  /// Piastres, never pounds. Paymob charges in the minor unit and
+  /// rounding between the two is how money goes missing.
+  amountCents   Int
+  currency      String @default("EGP")
+  /// Sum of succeeded refunds against this payment.
+  refundedCents Int    @default(0)
+
+  /// The provider's own identifiers. Unique, which is what makes a
+  /// replayed webhook a no-op instead of a second confirmation.
+  providerOrderId       String? @unique
+  providerTransactionId String? @unique
+
+  bookingId  String?
+  booking    Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  /// Only for SUBSCRIPTION: the plan being bought.
+  plan Plan?
+
+  /// Sequential and human-quotable, assigned when the money arrives.
+  receiptNumber String?   @unique
+  paidAt        DateTime?
+  failureReason String?
+
+  /// Who keyed it in, for a payment taken in person.
+  recordedById String?
+  recordedBy   User?   @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  refunds Refund[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, createdAt])
+  @@index([bookingId])
+  @@index([status, createdAt])
+  @@index([kind, createdAt])
+}
+
+/// Money sent back. Issued by a super admin, never by the business.
+model Refund {
+  id        String       @id @default(cuid())
+  paymentId String
+  payment   Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  amountCents Int
+  status    RefundStatus @default(PENDING)
+
+  providerRefundId String?
+  /// Shown to nobody but staff; the reason the money went back.
+  reason           String
+  failureReason    String?
+
+  /// Copied, not joined: the record should still read correctly if the
+  /// account is later removed.
+  actorId   String?
+  actorName String
+  actor     User?   @relation("RefundActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([paymentId])
+  @@index([status, createdAt])
+}
+
+/// Every webhook the provider has sent us, by its own id.
+///
+/// This is the idempotency record. Paymob retries anything it did not
+/// hear a clean 200 for, and two retries can arrive at once; the unique
+/// key means the second insert loses and that delivery does nothing.
+model WebhookEvent {
+  id       String          @id @default(cuid())
+  provider PaymentProvider
+  /// The provider's transaction id — what identifies the event itself.
+  eventId  String
+
+  /// So a replay that differs from what we stored is visible rather
+  /// than silently treated as the same event.
+  payloadHash String
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  /// What we did about it, for support to read later.
+  outcome     String?
+
+  @@unique([provider, eventId])
+  @@index([receivedAt])
 }

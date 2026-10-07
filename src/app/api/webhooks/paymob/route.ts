@@ -1,27 +1,52 @@
 /**
  * POST /api/webhooks/paymob
  *
- * Handles two types of Paymob transaction callbacks:
- *   1. Booking deposit — identified by paymobOrderId on Booking
- *   2. Subscription upgrade — identified by subscriptionPaymobOrderId on Business
+ * The only thing in the application allowed to decide that money
+ * arrived. Nothing a browser says about a payment is believed; this is
+ * where payment state is written, and it writes it from a signed
+ * callback and nowhere else.
  *
- * Security: always verify HMAC before trusting payment data.
+ * Order of business, and none of it is optional:
  *
- * Configure in Paymob dashboard:
- *   Settings → Transaction processed callback → https://your-domain/api/webhooks/paymob
+ *   1. Verify the HMAC. An unsigned or wrongly signed callback is
+ *      refused before anything is read out of it.
+ *   2. Claim the delivery by Paymob's own transaction id. Paymob
+ *      retries anything it did not hear a clean 200 for, and two
+ *      retries can land at once; the unique index decides which one
+ *      proceeds and the other does nothing.
+ *   3. Find the payment by the provider's order id.
+ *   4. Check the amount is the amount we asked for.
+ *   5. Settle or fail it, with the booking or the subscription moving
+ *      in the same transaction.
+ *
+ * Configure in Paymob: Settings → Transaction processed callback →
+ * https://your-domain/api/webhooks/paymob
  */
 
+import type { Prisma, Payment } from "@prisma/client";
 import { db } from "@/lib/db";
 import { err } from "@/lib/api";
 import { verifyWebhookHmac, type PaymobTransactionObj } from "@/lib/services/paymob";
-import { type Plan } from "@/lib/plans";
+import {
+  claimWebhookEvent,
+  closeWebhookEvent,
+  failPayment,
+  settlePayment,
+} from "@/lib/payments/ledger";
+import { renewalPeriodEnd } from "@/lib/payments/subscription";
+import type { Plan } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
 
 interface PaymobWebhookBody {
   type?: string;
-  obj?:  PaymobTransactionObj;
+  obj?: PaymobTransactionObj;
   hmac?: string;
+}
+
+/** Always 200: an error code makes Paymob retry a delivery we handled. */
+function ack(extra: Record<string, unknown> = {}) {
+  return Response.json({ received: true, ...extra }, { status: 200 });
 }
 
 export async function POST(req: Request) {
@@ -36,226 +61,334 @@ export async function POST(req: Request) {
     return err("invalid JSON", 400);
   }
 
-  if (body.type !== "TRANSACTION") {
-    return Response.json({ received: true }, { status: 200 });
-  }
+  if (body.type !== "TRANSACTION") return ack();
 
-  const obj  = body.obj;
+  const obj = body.obj;
   const hmac = body.hmac ?? new URL(req.url).searchParams.get("hmac") ?? "";
-
   if (!obj) return err("missing transaction object", 400);
 
-  // ── 1. Verify HMAC ────────────────────────────────────────────────────────
+  // ── 1. Signature ──────────────────────────────────────────────────────────
   if (!verifyWebhookHmac(obj, hmac)) {
     log.warn("[paymob webhook] HMAC verification failed");
     return err("invalid signature", 403);
   }
 
-  const paymobOrderId = String(obj.order.id);
+  const transactionId = String(obj.id);
+  const providerOrderId = String(obj.order.id);
 
-  // ── 2. Try booking payment first ──────────────────────────────────────────
+  // ── 2. Idempotency ────────────────────────────────────────────────────────
+  const fresh = await claimWebhookEvent("PAYMOB", transactionId, body);
+  if (!fresh) return ack({ duplicate: true });
+
+  try {
+    const outcome = await handle(obj, providerOrderId, transactionId);
+    await closeWebhookEvent("PAYMOB", transactionId, outcome);
+    return ack({ outcome });
+  } catch (e) {
+    // The delivery stays claimed and unprocessed, which is what a human
+    // looks for when a customer says they paid and nothing happened.
+    log.error("[paymob webhook] handler threw", e);
+    await closeWebhookEvent("PAYMOB", transactionId, "error");
+    return ack({ outcome: "error" });
+  }
+}
+
+// ─── Routing one transaction to its payment ───────────────────────────────────
+
+async function handle(
+  obj: PaymobTransactionObj,
+  providerOrderId: string,
+  transactionId: string,
+): Promise<string> {
+  const payment = await findPayment(providerOrderId);
+
+  if (!payment) {
+    log.warn("paymob webhook: no payment for order", { providerOrderId });
+    return "no-matching-payment";
+  }
+
+  // ── 4. The amount is ours, not theirs ───────────────────────────────────
+  //
+  // Paymob sends what was charged. If that is not what we opened the
+  // payment for, something is wrong on one side or the other and the
+  // booking must not be confirmed on the strength of it.
+  if (obj.amount_cents !== payment.amountCents) {
+    log.error("[paymob webhook] amount mismatch", {
+      paymentId: payment.id,
+      expected: payment.amountCents,
+      received: obj.amount_cents,
+    });
+    await failPayment({
+      paymentId: payment.id,
+      reason: `amount mismatch: expected ${payment.amountCents}, got ${obj.amount_cents}`,
+      providerTransactionId: transactionId,
+    });
+    return "amount-mismatch";
+  }
+
+  const succeeded = obj.success && !obj.pending && !obj.error_occured;
+
+  if (!succeeded) {
+    if (obj.pending) return "still-pending";
+    return handleFailure(payment, obj, transactionId);
+  }
+
+  return payment.kind === "SUBSCRIPTION"
+    ? handleSubscriptionSuccess(payment, transactionId, obj)
+    : handleBookingSuccess(payment, transactionId, obj);
+}
+
+/**
+ * Payments opened before the ledger existed have no Payment row, only
+ * an order id on the booking or the business. Those are adopted into
+ * the ledger on the way through rather than being left unhandled.
+ */
+async function findPayment(providerOrderId: string): Promise<Payment | null> {
+  const existing = await db.payment.findUnique({ where: { providerOrderId } });
+  if (existing) return existing;
+
   const booking = await db.booking.findFirst({
-    where:   { paymobOrderId },
-    include: {
-      business: {
-        select: {
-          nameAr:   true,
-          whatsapp: true,
-          phone:    true,
-          owner:    { select: { email: true } },
-        },
+    where: { paymobOrderId: providerOrderId },
+    select: { id: true, businessId: true, depositAmount: true, totalPrice: true },
+  });
+  if (booking) {
+    const amount = Number(booking.depositAmount ?? booking.totalPrice);
+    return db.payment.create({
+      data: {
+        kind: booking.depositAmount != null ? "BOOKING_DEPOSIT" : "BOOKING_FULL",
+        businessId: booking.businessId,
+        bookingId: booking.id,
+        amountCents: Math.round(amount * 100),
+        providerOrderId,
+        status: "PENDING",
       },
-      service: { select: { nameAr: true } },
+    });
+  }
+
+  const business = await db.business.findFirst({
+    where: { subscriptionPaymobOrderId: providerOrderId },
+    select: { id: true, pendingPlan: true },
+  });
+  if (business?.pendingPlan && business.pendingPlan !== "FREE") {
+    const { PLAN_PRICES_CENTS } = await import("@/lib/plans");
+    return db.payment.create({
+      data: {
+        kind: "SUBSCRIPTION",
+        businessId: business.id,
+        plan: business.pendingPlan,
+        amountCents: PLAN_PRICES_CENTS[business.pendingPlan as "PRO" | "PREMIUM"],
+        providerOrderId,
+        status: "PENDING",
+      },
+    });
+  }
+
+  return null;
+}
+
+function methodOf(obj: PaymobTransactionObj) {
+  const type = (obj.source_data?.type ?? "").toLowerCase();
+  if (type.includes("card")) return "CARD" as const;
+  if (type.includes("wallet")) return "WALLET" as const;
+  return "OTHER" as const;
+}
+
+// ─── Booking ──────────────────────────────────────────────────────────────────
+
+async function handleBookingSuccess(
+  payment: Payment,
+  transactionId: string,
+  obj: PaymobTransactionObj,
+): Promise<string> {
+  const { changed } = await settlePayment({
+    paymentId: payment.id,
+    providerTransactionId: transactionId,
+    method: methodOf(obj),
+    onFirstSettle: async (tx, settled) => {
+      if (!settled.bookingId) return;
+
+      const booking = await tx.booking.findUnique({
+        where: { id: settled.bookingId },
+        select: { status: true },
+      });
+      if (!booking) return;
+
+      // The balance arriving does not re-confirm an already confirmed
+      // booking, and nothing drags a cancelled one back to life.
+      const terminal = ["COMPLETED", "CANCELLED", "NO_SHOW"];
+      if (terminal.includes(booking.status)) return;
+
+      await tx.booking.update({
+        where: { id: settled.bookingId },
+        data: {
+          status: "CONFIRMED",
+          // Kept in step for anything still reading the old columns.
+          paymobTransactionId: transactionId,
+        },
+      });
     },
   });
 
-  if (booking) {
-    return handleBookingPayment(booking, obj);
-  }
+  if (!changed) return "already-settled";
 
-  // ── 3. Try subscription payment ───────────────────────────────────────────
-  const business = await db.business.findFirst({
-    where:   { subscriptionPaymobOrderId: paymobOrderId },
-    include: { owner: { select: { email: true, name: true } } },
-  });
-
-  if (business) {
-    return handleSubscriptionPayment(business, obj);
-  }
-
-  // Unknown order — log and ack
-  log.warn("paymob webhook: no booking or subscription for order", { paymobOrderId });
-  return Response.json({ received: true }, { status: 200 });
-}
-
-// ─── Booking deposit handler ──────────────────────────────────────────────────
-
-async function handleBookingPayment(
-  booking: NonNullable<Awaited<ReturnType<typeof findBooking>>>,
-  obj:     PaymobTransactionObj,
-) {
-  const terminalStatuses = ["CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW", "FAILED_PAYMENT"];
-  if (terminalStatuses.includes(booking.status)) {
-    return Response.json({ received: true, skipped: true }, { status: 200 });
-  }
-
-  if (obj.success && !obj.pending && !obj.error_occured) {
-    const updated = await db.booking.update({
-      where: { id: booking.id },
-      data:  {
-        status:              "CONFIRMED",
-        paymobTransactionId: String(obj.id),
-      },
-    });
-
-    // Paymob retries a webhook it did not hear a clean answer to, so
-    // the transaction id goes into the event: a retry computes the same
-    // deduplication key and the customer is not thanked twice for one
-    // payment.
+  if (payment.bookingId) {
+    // The transaction id goes into the event so a retry computes the
+    // same deduplication key and the customer is not thanked twice.
     void notify({
       type: "payment.received",
-      bookingId: booking.id,
-      amount: Number(updated.depositAmount ?? updated.totalPrice),
-      transactionId: String(obj.id),
+      bookingId: payment.bookingId,
+      amount: payment.amountCents / 100,
+      transactionId,
     });
-    void notify({ type: "booking.confirmed", bookingId: booking.id });
-
-  } else {
-    await db.booking.update({
-      where: { id: booking.id },
-      data:  { status: "FAILED_PAYMENT" },
-    });
-
-    // Nobody was told about a failed payment before this. The customer
-    // was left looking at a booking that quietly stopped existing.
-    void notify({
-      type: "payment.failed",
-      bookingId: booking.id,
-      // Paymob's payload has no message field; what it does tell us is
-      // whether it errored or simply was not successful.
-      reason: obj.error_occured ? "provider-error" : "declined",
-    });
+    if (payment.kind !== "BOOKING_BALANCE") {
+      void notify({ type: "booking.confirmed", bookingId: payment.bookingId });
+    }
   }
 
-  return Response.json({ received: true }, { status: 200 });
+  return "booking-settled";
 }
 
-// ─── Subscription payment handler ─────────────────────────────────────────────
+async function handleFailure(
+  payment: Payment,
+  obj: PaymobTransactionObj,
+  transactionId: string,
+): Promise<string> {
+  const reason = obj.error_occured ? "provider-error" : "declined";
 
-async function handleSubscriptionPayment(
-  business: Awaited<ReturnType<typeof findBusiness>>,
-  obj:      PaymobTransactionObj,
-) {
-  if (!business) return Response.json({ received: true }, { status: 200 });
+  const { changed } = await failPayment({
+    paymentId: payment.id,
+    reason,
+    providerTransactionId: transactionId,
+    onFirstFail: async (tx, failed) => {
+      if (failed.kind === "SUBSCRIPTION") {
+        // Let go of the pending plan so the owner can try again.
+        await tx.business.update({
+          where: { id: failed.businessId },
+          data: { pendingPlan: null, subscriptionPaymobOrderId: null },
+        });
+        return;
+      }
 
-  if (obj.success && !obj.pending && !obj.error_occured) {
-    const plan = business.pendingPlan as Plan | null;
-    if (!plan || plan === "FREE") {
-      log.warn("paymob webhook: subscription payment with no pendingPlan", { businessId: business.id });
-      return Response.json({ received: true }, { status: 200 });
-    }
+      if (!failed.bookingId) return;
+      const booking = await tx.booking.findUnique({
+        where: { id: failed.bookingId },
+        select: { status: true },
+      });
+      // A failed balance payment does not unconfirm a booking that the
+      // deposit already paid for.
+      if (failed.kind === "BOOKING_BALANCE") return;
+      if (!booking || booking.status !== "PENDING_PAYMENT") return;
 
-    // Activate subscription: 30-day period from now
-    const currentPeriodEnd = new Date();
-    currentPeriodEnd.setDate(currentPeriodEnd.getDate() + 30);
+      await tx.booking.update({
+        where: { id: failed.bookingId },
+        data: { status: "FAILED_PAYMENT" },
+      });
+    },
+  });
 
-    await db.business.update({
-      where: { id: business.id },
-      data:  {
-        plan,
-        subscriptionStatus:         "ACTIVE",
-        currentPeriodEnd,
-        pendingPlan:                null,
-        subscriptionPaymobOrderId:  null,
-        subscriptionReminderSentAt: null, // reset so reminder fires again next cycle
-      },
-    });
+  if (!changed) return "already-resolved";
 
-    log.info(
-      `[paymob webhook] subscription activated: business=${business.id} plan=${plan} until=${currentPeriodEnd.toISOString()}`,
-    );
+  if (payment.bookingId) {
+    void notify({ type: "payment.failed", bookingId: payment.bookingId, reason });
+  }
 
-    // The owner paid and heard nothing back from us before this.
+  return "failed";
+}
+
+// ─── Subscription ─────────────────────────────────────────────────────────────
+
+async function handleSubscriptionSuccess(
+  payment: Payment,
+  transactionId: string,
+  obj: PaymobTransactionObj,
+): Promise<string> {
+  const plan = payment.plan as Plan | null;
+  if (!plan || plan === "FREE") {
+    log.warn("paymob webhook: subscription payment with no plan", { paymentId: payment.id });
+    return "subscription-without-plan";
+  }
+
+  // A holder, because control-flow analysis cannot see that the
+  // settle callback runs before this is read.
+  const period: { until: Date | null } = { until: null };
+
+  const { changed } = await settlePayment({
+    paymentId: payment.id,
+    providerTransactionId: transactionId,
+    method: methodOf(obj),
+    onFirstSettle: async (tx, settled) => {
+      const business = await tx.business.findUniqueOrThrow({
+        where: { id: settled.businessId },
+        select: { currentPeriodEnd: true, referredById: true, referralRewardedAt: true },
+      });
+
+      // Extends from whatever is left, not from today — renewing early
+      // used to forfeit the remaining days, which is why the upgrade
+      // route had to refuse renewals more than a week out.
+      period.until = renewalPeriodEnd(business.currentPeriodEnd);
+
+      await tx.business.update({
+        where: { id: settled.businessId },
+        data: {
+          plan,
+          subscriptionStatus: "ACTIVE",
+          currentPeriodEnd: period.until,
+          pendingPlan: null,
+          subscriptionPaymobOrderId: null,
+          subscriptionReminderSentAt: null,
+        },
+      });
+
+      await rewardReferrer(tx, settled.businessId, business);
+    },
+  });
+
+  if (!changed) return "already-settled";
+
+  log.info("[paymob webhook] subscription activated", {
+    businessId: payment.businessId,
+    plan,
+    until: period.until?.toISOString(),
+  });
+
+  if (period.until) {
     void notify({
       type: "subscription.renewed",
-      businessId: business.id,
-      until: currentPeriodEnd,
-    });
-
-    // ── Referral reward: add 30 free days to the referrer ────────────────────
-    if (business.referredById && !business.referralRewardedAt) {
-      try {
-        const referrer = await db.business.findUnique({
-          where:  { id: business.referredById },
-          select: { id: true, currentPeriodEnd: true },
-        });
-        if (referrer) {
-          const now  = new Date();
-          const base = referrer.currentPeriodEnd && referrer.currentPeriodEnd > now
-            ? referrer.currentPeriodEnd
-            : now;
-          const newEnd = new Date(base);
-          newEnd.setDate(newEnd.getDate() + 30);
-
-          await db.$transaction([
-            db.business.update({
-              where: { id: referrer.id },
-              data:  { currentPeriodEnd: newEnd },
-            }),
-            db.business.update({
-              where: { id: business.id },
-              data:  { referralRewardedAt: now },
-            }),
-          ]);
-
-          log.info(
-            `[referral reward] referrer=${referrer.id} +30 days → ${newEnd.toISOString()}`,
-          );
-        }
-      } catch (e) {
-        // Non-fatal — log but don't fail the webhook response
-        log.error("[referral reward]", e);
-      }
-    }
-  } else {
-    // Payment failed — clear pending plan
-    await db.business.update({
-      where: { id: business.id },
-      data:  { pendingPlan: null, subscriptionPaymobOrderId: null },
+      businessId: payment.businessId,
+      until: period.until,
     });
   }
 
-  return Response.json({ received: true }, { status: 200 });
+  return "subscription-settled";
 }
 
-// ─── Type helpers ─────────────────────────────────────────────────────────────
+/**
+ * A business whose referral finally paid gets the referrer 30 days.
+ *
+ * Inside the settlement transaction, and guarded by referralRewardedAt,
+ * so a replay cannot hand out the reward twice.
+ */
+async function rewardReferrer(
+  tx: Prisma.TransactionClient,
+  businessId: string,
+  business: { referredById: string | null; referralRewardedAt: Date | null },
+): Promise<void> {
+  if (!business.referredById || business.referralRewardedAt) return;
 
-function findBooking(paymobOrderId: string) {
-  return db.booking.findFirst({
-    where:   { paymobOrderId },
-    include: {
-      business: {
-        select: {
-          nameAr:   true,
-          whatsapp: true,
-          phone:    true,
-          owner:    { select: { email: true } },
-        },
-      },
-      service: { select: { nameAr: true } },
-    },
+  const referrer = await tx.business.findUnique({
+    where: { id: business.referredById },
+    select: { id: true, currentPeriodEnd: true },
   });
-}
+  if (!referrer) return;
 
-function findBusiness(paymobOrderId: string) {
-  return db.business.findFirst({
-    where:  { subscriptionPaymobOrderId: paymobOrderId },
-    select: {
-      id:                        true,
-      pendingPlan:               true,
-      referredById:              true,
-      referralRewardedAt:        true,
-      owner:                     { select: { email: true, name: true } },
-    },
+  await tx.business.update({
+    where: { id: referrer.id },
+    data: { currentPeriodEnd: renewalPeriodEnd(referrer.currentPeriodEnd) },
   });
+  await tx.business.update({
+    where: { id: businessId },
+    data: { referralRewardedAt: new Date() },
+  });
+
+  log.info("[referral reward] 30 days added", { referrerId: referrer.id });
 }

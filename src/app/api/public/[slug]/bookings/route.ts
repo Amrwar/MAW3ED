@@ -2,7 +2,9 @@ import { db } from "@/lib/db";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import { createBooking } from "@/lib/bookings/create";
-import { createPaymentSession, calcDepositCents } from "@/lib/services/paymob";
+import { createPaymentSession } from "@/lib/services/paymob";
+import { depositCents as calcDepositCents } from "@/lib/payments/money";
+import { attachProviderOrder, openPayment } from "@/lib/payments/ledger";
 import { getEffectivePlan, getMonthlyBookingLimit, canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
@@ -159,6 +161,18 @@ export async function POST(req: Request, { params }: Params) {
 
     // ── If deposit required: initiate Paymob payment session ─────────────────
     if (requiresDeposit) {
+      // The ledger row goes in before the customer leaves for Paymob.
+      // If they close the tab there is a PENDING payment saying what
+      // they were trying to pay and for what, rather than a booking
+      // that just sits in PENDING_PAYMENT with nothing behind it.
+      const payment = await openPayment({
+        kind:        "BOOKING_DEPOSIT",
+        businessId:  business.id,
+        bookingId:   booking.id,
+        amountCents: depositCents,
+        currency:    service.currency,
+      });
+
       try {
         const { paymentUrl, paymobOrderId } = await createPaymentSession({
           bookingId:     booking.id,
@@ -169,7 +183,9 @@ export async function POST(req: Request, { params }: Params) {
           customerEmail,
         });
 
-        // Store Paymob order ID for webhook correlation
+        await attachProviderOrder(payment.id, paymobOrderId);
+
+        // Still written: it is how anything older finds this payment.
         await db.booking.update({
           where: { id: booking.id },
           data:  { paymobOrderId },
@@ -190,6 +206,10 @@ export async function POST(req: Request, { params }: Params) {
         await db.booking.update({
           where: { id: booking.id },
           data:  { status: "FAILED_PAYMENT" },
+        });
+        await db.payment.update({
+          where: { id: payment.id },
+          data:  { status: "FAILED", failureReason: "could not open a Paymob session" },
         });
         log.error("[booking POST] Paymob session failed:", paymobError);
         return err("تعذّر بدء عملية الدفع، حاول مرة أخرى", 502);

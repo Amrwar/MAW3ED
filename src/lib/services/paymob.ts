@@ -15,7 +15,7 @@
  *   PAYMOB_HMAC_SECRET    — HMAC secret from Settings → Security Settings
  */
 
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { log } from "@/lib/logger";
 
 const PAYMOB_BASE = "https://accept.paymob.com/api";
@@ -229,7 +229,74 @@ export function verifyWebhookHmac(
   ].join("");
 
   const expected = createHmac("sha512", secret).update(data).digest("hex");
-  return expected === hmac;
+
+  // Constant time. A plain === returns as soon as two bytes differ, and
+  // the time it took is a measurement of how much of the signature was
+  // right — enough, over many tries, to forge one.
+  const a = Buffer.from(expected, "utf8");
+  const b = Buffer.from(hmac ?? "", "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+// ─── Public: Refund ───────────────────────────────────────────────────────────
+
+export interface RefundOutcome {
+  ok: boolean;
+  providerRefundId?: string;
+  error?: string;
+}
+
+/**
+ * Send money back for a transaction Paymob has already captured.
+ *
+ * Paymob takes the amount in piastres and refuses anything above what
+ * was taken, so a partial refund is just a smaller number. The caller
+ * has already checked that this much is left to refund; this only
+ * reports what Paymob said.
+ */
+export async function refundTransaction(
+  transactionId: string,
+  amountCents: number,
+): Promise<RefundOutcome> {
+  try {
+    const authToken = await authenticate();
+
+    const res = await fetch(`${PAYMOB_BASE}/acceptance/void_refund/refund`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        auth_token: authToken,
+        transaction_id: transactionId,
+        amount_cents: amountCents,
+      }),
+    });
+
+    const text = await res.text();
+    if (!res.ok) {
+      log.error("[paymob] refund refused", { transactionId, status: res.status, text });
+      return { ok: false, error: `paymob ${res.status}: ${text.slice(0, 300)}` };
+    }
+
+    let parsed: { id?: number | string; success?: boolean } = {};
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // Paymob answered 200 with something unparseable. The money has
+      // most likely moved, so this is not reported as a failure — it is
+      // reported as a refund with no id, which a human has to reconcile.
+      log.warn("[paymob] refund returned unparseable body", { transactionId, text });
+    }
+
+    if (parsed.success === false) {
+      return { ok: false, error: "paymob reported the refund as unsuccessful" };
+    }
+
+    return { ok: true, providerRefundId: parsed.id != null ? String(parsed.id) : undefined };
+  } catch (e) {
+    log.error("[paymob] refund threw", e);
+    return { ok: false, error: e instanceof Error ? e.message : "network error" };
+  }
 }
 
 /**
