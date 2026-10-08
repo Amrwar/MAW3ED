@@ -5,7 +5,8 @@ import {
   getLandingCategories,
   getLandingCities,
   getLandingCombos,
-} from "@/lib/seo/landing";
+
+  prerenderHints,} from "@/lib/seo/landing";
 
 /**
  * The sitemap offers exactly the pages that exist.
@@ -25,15 +26,28 @@ import {
  * asked not to be indexed is a contradiction.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Each of the four is allowed to come back empty.
+  //
+  // The sitemap is prerendered, so an unreachable database used to fail
+  // the whole build with "Error occurred prerendering page
+  // /sitemap.xml" and a bare ErrorEvent. That is exactly what CI does,
+  // building with a placeholder DATABASE_URL, and it went unnoticed for
+  // months because the build step never ran.
+  //
+  // A sitemap listing only the static routes is a worse sitemap; a
+  // failed build ships nothing at all. On Vercel, where the database is
+  // reachable, this changes nothing.
   const [businesses, cities, categories, combos] = await Promise.all([
-    db.business.findMany({
-      where: { isPublished: true },
-      select: { slug: true, updatedAt: true },
-      orderBy: { updatedAt: "desc" },
-    }),
-    getLandingCities(),
-    getLandingCategories(),
-    getLandingCombos(),
+    prerenderHints("published businesses", () =>
+      db.business.findMany({
+        where: { isPublished: true },
+        select: { slug: true, updatedAt: true },
+        orderBy: { updatedAt: "desc" },
+      }),
+    ),
+    prerenderHints("cities", getLandingCities),
+    prerenderHints("categories", getLandingCategories),
+    prerenderHints("city/category combos", getLandingCombos),
   ]);
 
   const now = new Date();

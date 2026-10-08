@@ -11,7 +11,7 @@ import BusinessCard from "@/components/shared/BusinessCard";
 import Breadcrumbs from "@/components/shared/Breadcrumbs";
 import { translations, type Lang } from "@/lib/i18n";
 import { buildBreadcrumbJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
-import { getLandingCombos, resolveCombo } from "@/lib/seo/landing";
+import { getLandingCombos, resolveCombo, prerenderHints } from "@/lib/seo/landing";
 import { buildMetadata, parsePage } from "@/lib/seo/meta";
 import { EMPTY_QUERY } from "@/lib/discovery/params";
 import { searchBusinesses } from "@/lib/discovery/search";
@@ -35,7 +35,7 @@ type Props = {
  * business is listed in a new pair without a deploy.
  */
 export async function generateStaticParams() {
-  const combos = await getLandingCombos();
+  const combos = await prerenderHints("city/category combos", getLandingCombos);
   return combos.map((c) => ({ city: c.citySlug, category: c.categorySlug }));
 }
 
