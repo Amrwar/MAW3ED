@@ -1,19 +1,175 @@
+import { useState } from "react";
+import { Switch, View, StyleSheet } from "react-native";
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Typography";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { ListState } from "@/components/ui/ListState";
+import { useNotifications, useProfile, useUpdateProfile } from "@/hooks/useCustomerData";
+import { useAuth } from "@/stores/auth";
+import { VERSION_LABEL } from "@/constants/version";
+import { num } from "@/lib/format";
+import { colors, spacing } from "@/constants/theme";
 
 /**
- * Profile, notifications, settings, sign out.
+ * Account.
  *
- * A placeholder. This phase builds the architecture, not the screens —
- * so rather than mock data that would have to be torn out, it says
- * plainly that there is nothing here yet.
+ * Who you are, how you want to be reached, and the way out. The
+ * notification toggles save as you flip them — a Save button for two
+ * switches is a step that exists only to be forgotten.
  */
-export default function CustomerAccount() {
+export default function Account() {
+  const { user, signOut } = useAuth();
+  const profile = useProfile();
+  const update = useUpdateProfile();
+  const notifications = useNotifications();
+
+  const [signingOut, setSigningOut] = useState(false);
+
+  const data = profile.data;
+
   return (
     <Screen>
       <Text variant="title">حسابي</Text>
-      <EmptyState title="قيد الإنشاء" body="الشاشة دي هتتبني في المرحلة الجاية." />
+
+      <ListState
+        loading={profile.isLoading}
+        error={profile.error}
+        isEmpty={false}
+        emptyTitle=""
+        onRetry={() => profile.refetch()}
+      >
+        <View style={styles.sections}>
+          {/* ── Identity ── */}
+          <Card>
+            <Text variant="bodyBold">{data?.name ?? user?.name ?? "بدون اسم"}</Text>
+            {data?.email ? (
+              <Text variant="caption" tone="muted" style={styles.row}>
+                {data.email}
+              </Text>
+            ) : null}
+
+            <View style={styles.phoneRow}>
+              <Text variant="caption" tone="muted">
+                {data?.phone ?? "مفيش رقم موبايل"}
+              </Text>
+              {/* Three states, not two: no number at all is a different
+                  problem from a number nobody confirmed. */}
+              {data?.phone ? (
+                <Badge
+                  label={data.phoneVerified ? "متأكد" : "محتاج تأكيد"}
+                  tone={data.phoneVerified ? "ok" : "warn"}
+                />
+              ) : (
+                <Badge label="مطلوب للحجز" tone="warn" />
+              )}
+            </View>
+
+            {data && !data.phoneVerified ? (
+              <Text variant="caption" tone="subtle" style={styles.hint}>
+                حجوزاتك بتترّبط برقمك، فلازم يتأكد الأول.
+              </Text>
+            ) : null}
+          </Card>
+
+          {/* ── How we reach you ── */}
+          <Card>
+            <Text variant="bodyBold">التنبيهات</Text>
+
+            <View style={styles.switchRow}>
+              <Text variant="body">واتساب</Text>
+              <Switch
+                value={data?.notifyByWhatsApp ?? false}
+                onValueChange={(value) => update.mutate({ notifyByWhatsApp: value })}
+                disabled={!data || update.isPending}
+                trackColor={{ true: colors.jade, false: colors.line2 }}
+                accessibilityLabel="تنبيهات واتساب"
+              />
+            </View>
+
+            <View style={styles.switchRow}>
+              <Text variant="body">إيميل</Text>
+              <Switch
+                value={data?.notifyByEmail ?? false}
+                onValueChange={(value) => update.mutate({ notifyByEmail: value })}
+                // An account with no email cannot be emailed, so the
+                // switch is off the table rather than silently useless.
+                disabled={!data?.email || update.isPending}
+                trackColor={{ true: colors.jade, false: colors.line2 }}
+                accessibilityLabel="تنبيهات الإيميل"
+              />
+            </View>
+
+            {!data?.email ? (
+              <Text variant="caption" tone="subtle" style={styles.hint}>
+                ضيف إيميل عشان تقدر تستقبل تنبيهات عليه.
+              </Text>
+            ) : null}
+
+            {update.isError ? (
+              <Text variant="caption" tone="danger" style={styles.hint}>
+                ما اتحفظش. جرّب تاني.
+              </Text>
+            ) : null}
+          </Card>
+
+          {/* ── Notifications ── */}
+          <Card>
+            <View style={styles.switchRow}>
+              <Text variant="bodyBold">الإشعارات</Text>
+              {notifications.data && notifications.data.unread > 0 ? (
+                <Badge label={`${num(notifications.data.unread)} جديد`} tone="jade" />
+              ) : null}
+            </View>
+            <Text variant="caption" tone="muted" style={styles.row}>
+              {notifications.data?.notifications[0]?.title ?? "مفيش إشعارات."}
+            </Text>
+          </Card>
+
+          <Button
+            label="تسجيل الخروج"
+            variant="outline"
+            loading={signingOut}
+            onPress={async () => {
+              setSigningOut(true);
+              try {
+                await signOut();
+              } finally {
+                // The navigator moves to the login screen on its own
+                // once the user is gone; this only matters if it fails.
+                setSigningOut(false);
+              }
+            }}
+          />
+
+          {/* Quiet, but the first thing worth knowing in a bug report. */}
+          <Text variant="caption" tone="subtle" style={styles.version}>
+            {VERSION_LABEL}
+          </Text>
+        </View>
+      </ListState>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  sections: { marginTop: spacing.lg, gap: spacing.lg },
+  row: { marginTop: spacing.xs },
+  phoneRow: {
+    marginTop: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flexWrap: "wrap",
+  },
+  hint: { marginTop: spacing.sm },
+  switchRow: {
+    marginTop: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  version: { textAlign: "center", marginTop: spacing.sm },
+});

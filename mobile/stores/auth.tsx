@@ -44,7 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const tokens = await getTokens();
         if (!tokens) return;
-        const me = await api.get<AuthUser>("/api/account/profile");
+        // /api/auth/mobile/me, not /api/account/profile. The latter
+        // had no GET handler at all, so this 404'd on every cold start,
+        // the catch below read that as an expired session, and the app
+        // signed the user out every single launch. The two endpoints
+        // answer different questions now: this one is identity and
+        // roles, profile is what the account screen renders.
+        const me = await api.get<AuthUser>("/api/auth/mobile/me");
         if (!cancelled) setUser(me);
       } catch {
         // Expired or revoked. Not an error worth showing: it is simply
