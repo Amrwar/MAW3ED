@@ -31,8 +31,18 @@ const PLATFORM_PROVIDED = new Set([
   "VERCEL_ENV",
   "VERCEL_URL",
   "VERCEL_PROJECT_PRODUCTION_URL",
+  "VERCEL_GIT_COMMIT_SHA",
   "CI",
 ]);
+
+/**
+ * Written by next.config.ts at build time, not by a person.
+ *
+ * Putting these in .env.example would invite somebody to set them by
+ * hand, which would be worse than leaving them out: the app would then
+ * report a version that does not match the code it is running.
+ */
+const BUILD_INJECTED = new Set(["NEXT_PUBLIC_APP_VERSION", "NEXT_PUBLIC_COMMIT_SHA"]);
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
@@ -53,7 +63,7 @@ function variablesRead(): Map<string, string[]> {
     // `process.env.X ?? "some-fallback"`, and X is not a variable.
     const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
     for (const [, name] of code.matchAll(/process\.env\.([A-Z][A-Z0-9_]+)/g)) {
-      if (PLATFORM_PROVIDED.has(name)) continue;
+      if (PLATFORM_PROVIDED.has(name) || BUILD_INJECTED.has(name)) continue;
       const where = relative(ROOT, file).replace(/\\/g, "/");
       const list = found.get(name) ?? [];
       if (!list.includes(where)) list.push(where);
