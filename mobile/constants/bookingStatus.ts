@@ -50,12 +50,22 @@ export function statusTone(status: string): BadgeTone {
 /**
  * What an owner can do to a booking next.
  *
+ * These mirror VALID_TRANSITIONS in
+ * src/app/api/business/bookings/[id]/route.ts exactly. They have to:
+ * this list used to be written from the BookingStatus enum instead,
+ * which offered ARRIVED and IN_PROGRESS — both real statuses, both
+ * refused by the API with a 422, because bookingStatusSchema does not
+ * accept them and no transition reaches them. Two of the five buttons
+ * on the bookings screen always failed.
+ *
  * A finished or cancelled appointment offers nothing: there is no
- * forward move from either, and showing greyed-out buttons invites
- * people to press them.
+ * forward move from either, and greyed-out buttons invite people to
+ * press them.
  */
 export function nextActionsFor(status: string): { status: string; label: string }[] {
   switch (status) {
+    case "PENDING_PAYMENT":
+      return [{ status: "CANCELLED", label: "ألغِ" }];
     case "PENDING":
       return [
         { status: "CONFIRMED", label: "أكّد" },
@@ -63,14 +73,10 @@ export function nextActionsFor(status: string): { status: string; label: string 
       ];
     case "CONFIRMED":
       return [
-        { status: "ARRIVED", label: "وصل" },
+        { status: "COMPLETED", label: "خلص" },
         { status: "NO_SHOW", label: "لم يحضر" },
         { status: "CANCELLED", label: "ألغِ" },
       ];
-    case "ARRIVED":
-      return [{ status: "IN_PROGRESS", label: "ابدأ" }];
-    case "IN_PROGRESS":
-      return [{ status: "COMPLETED", label: "خلص" }];
     default:
       return [];
   }
