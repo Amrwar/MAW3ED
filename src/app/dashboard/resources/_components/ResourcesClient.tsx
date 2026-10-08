@@ -10,7 +10,7 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Textarea from "@/components/ui/Textarea";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
-import { RESOURCE_KIND_LABELS } from "@/lib/scheduling/capabilities";
+import { RESOURCE_KIND_LABELS } from "@/lib/scheduling/resource-labels";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { num } from "@/lib/fmt";
 import { cn } from "@/lib/utils";

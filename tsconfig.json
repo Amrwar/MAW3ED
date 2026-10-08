@@ -32,9 +32,6 @@
   ],
   "exclude": [
     "node_modules",
-    "android",
-    "ios",
-    "_legacy-capacitor",
     "mobile"
   ]
 }

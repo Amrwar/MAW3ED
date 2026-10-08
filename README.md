@@ -20,6 +20,12 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 
 ### 2026-04-08 — Capacitor for Android & iOS
 
+> **Superseded 2026-10-07.** Reversed by the Expo app in `mobile/`; the
+> Capacitor shell, `android/`, `ios/` and the four `@capacitor/*`
+> dependencies have been removed. Kept here because the reasoning below
+> is why the shell existed, and the trade-off it lists is what eventually
+> ruled it out.
+
 **Decision:** Used Capacitor to wrap the live Vercel deployment (`https://maw-3-ed.vercel.app`) in a native WebView shell instead of doing a React Native rewrite.
 
 **Why:** The app has server-side features (NextAuth, Prisma, API routes) that cannot be statically exported. Pointing Capacitor at the live URL means no code duplication and automatic updates with every Vercel deploy — no App Store release required for content changes.
@@ -29,7 +35,9 @@ Booking platform for Egyptian businesses (clinics, salons, gyms, spas, consultin
 - App Store rejection risk is slightly higher for pure webview apps.
 - iOS build requires a Mac with Xcode — cannot be done on Windows.
 
-**Config:** `capacitor.config.ts` — App ID: `com.maw3ed.app`, App name: `موعد`.
+**Was configured in:** `capacitor.config.ts` (deleted) — App ID `com.maw3ed.app`,
+pointed at `https://maw-3-ed.vercel.app`. The replacement is
+`mobile/app.config.ts`, App ID `net.maw3ed.app`.
 
 ---
 

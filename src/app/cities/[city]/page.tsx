@@ -7,7 +7,7 @@ import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
 import BusinessCard from "@/components/shared/BusinessCard";
 import { getCityBySlug, getPublishedBusinesses } from "@/lib/data";
-import { MIN_BUSINESSES, getLandingCities, getLandingCombos } from "@/lib/seo/landing";
+import { MIN_BUSINESSES, getLandingCities, getLandingCombos, prerenderHints } from "@/lib/seo/landing";
 import { buildMetadata } from "@/lib/seo/meta";
 import { db } from "@/lib/db";
 
@@ -21,7 +21,7 @@ type Props = { params: Promise<{ city: string }> };
  * here", and the sitemap used to advertise every one of them.
  */
 export async function generateStaticParams() {
-  const cities = await getLandingCities();
+  const cities = await prerenderHints("cities", getLandingCities);
   return cities.map((c) => ({ city: c.slug }));
 }
 

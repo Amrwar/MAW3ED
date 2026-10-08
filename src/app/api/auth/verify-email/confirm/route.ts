@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
 import { siteUrl } from "@/lib/env";
 import { hashSecret, isExpired } from "@/lib/verification";
@@ -12,6 +13,11 @@ import { syncVerifiedBadge } from "@/lib/business-verification";
  * never stored — and is single-use.
  */
 export async function GET(req: Request) {
+  // An emailed link is still a token to guess at. Limited by
+  // caller, since no account is named until the token resolves.
+  const limited = await rateLimit("verifyEmail");
+  if (!limited.ok) return tooManyRequests(limited);
+
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
 

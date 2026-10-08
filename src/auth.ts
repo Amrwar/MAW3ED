@@ -1,4 +1,6 @@
 import NextAuth from "next-auth";
+import { rateLimit } from "@/lib/rate-limit";
+import { log } from "@/lib/logger";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { z } from "zod";
@@ -23,6 +25,21 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           .safeParse(credentials);
 
         if (!parsed.success) return null;
+
+        // Rate limited here rather than in a route, because NextAuth
+        // owns /api/auth/callback/credentials and this is the only
+        // code of ours every attempt passes through.
+        //
+        // Keyed on the email, not the caller's address: an attacker
+        // rotating IP addresses still cannot grind one account, and an
+        // office behind one NAT is not locked out because a colleague
+        // mistyped. Returning null is the same answer a wrong password
+        // gets, so the limit cannot be used to tell them apart.
+        const limited = await rateLimit("login", parsed.data.email);
+        if (!limited.ok) {
+          log.warn("[auth] login rate limited");
+          return null;
+        }
 
         const user = await db.user.findUnique({
           where:   { email: parsed.data.email },

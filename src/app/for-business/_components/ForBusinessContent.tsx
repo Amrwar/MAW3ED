@@ -166,7 +166,15 @@ export default function ForBusinessContent({ businesses }: { businesses: RealBus
               </div>
 
               {/* ── Dashboard product mockup ── */}
-              <div className="relative flex items-start justify-center">
+              <div
+                className="relative flex items-start justify-center"
+                role="img"
+                aria-label={
+                  isAr
+                    ? "مثال توضيحي لشكل لوحة التحكم — الأرقام للعرض فقط"
+                    : "An illustration of the dashboard — the figures are for display only"
+                }
+              >
 
                 {/* Blue glow behind the mockup */}
                 <div
@@ -213,10 +221,19 @@ export default function ForBusinessContent({ businesses }: { businesses: RealBus
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-jade)]" />
-                      <span style={{ color: "var(--color-muted)", fontSize: 10 }}>Live</span>
-                    </div>
+                    {/*
+                      This said "Live" beside a green dot, next to 124
+                      bookings and a 4.9 rating that are drawn, not
+                      measured. The numbers are fine as an illustration
+                      of the dashboard; the badge was what made them
+                      read as somebody's actual figures.
+                    */}
+                    <span
+                      style={{ color: "var(--color-muted)", fontSize: 10 }}
+                      className="rounded-full px-2 py-0.5"
+                    >
+                      {isAr ? "مثال توضيحي" : "Example"}
+                    </span>
                   </div>
 
                   {/* Stats row */}

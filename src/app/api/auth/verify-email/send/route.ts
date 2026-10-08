@@ -1,9 +1,10 @@
 import { db } from "@/lib/db";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err } from "@/lib/api";
 import { auth } from "@/auth";
 import { log } from "@/lib/logger";
 import { siteUrl } from "@/lib/env";
-import { sendEmailVerification } from "@/lib/services/email";
+import { sendEmailVerification, isEmailEnabled } from "@/lib/services/email";
 import {
   generateEmailToken,
   hashSecret,
@@ -24,8 +25,21 @@ import {
  */
 export async function POST() {
   try {
+    // In front of the per-account cooldown below, which needs an
+    // account before it can throttle anything.
+    const limited = await rateLimit("verifyEmail");
+    if (!limited.ok) return tooManyRequests(limited);
+
     const session = await auth();
     if (!session?.user?.id) return err("غير مصرح", 401);
+
+    // Checked before a token is minted, because issuing one would burn
+    // the per-account cooldown below and invalidate the previous link
+    // for a send that is not going to happen.
+    if (!isEmailEnabled()) {
+      log.error("[verify-email/send] no mail provider configured");
+      return err("خدمة البريد غير متاحة حالياً. تواصل مع الدعم.", 503);
+    }
 
     const user = await db.user.findUnique({
       where: { id: session.user.id },
@@ -59,12 +73,29 @@ export async function POST() {
     });
 
     // email is nullable on User now that customers sign in with a
-    // phone; an owner always has one, so this never skips in practice.
-    if (user.email) await sendEmailVerification(
+    // phone; a customer who signed up by phone has no address to
+    // verify, which is a different answer from a failed send.
+    if (!user.email) {
+      return err("مفيش بريد إلكتروني على الحساب", 422);
+    }
+
+    const outcome = await sendEmailVerification(
       user.email,
       `${siteUrl}/api/auth/verify-email/confirm?token=${token}`,
       user.name,
     );
+
+    // This caller is signed in, so there is no address to enumerate and
+    // nothing to hide: tell them it failed instead of logging "sent"
+    // and returning { sent: true } the way this did before, which left
+    // somebody waiting on a link that was never handed to a provider.
+    if (!outcome.ok) {
+      log.error("verification email not delivered", {
+        userId: user.id,
+        reason: outcome.reason,
+      });
+      return err("ما قدرناش نبعت الرابط. حاول تاني بعد شوية.", 502);
+    }
 
     log.info("verification email sent", { userId: user.id });
     return ok({ sent: true });

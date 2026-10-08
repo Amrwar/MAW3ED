@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { siteUrl } from "@/lib/url";
 import { cookies } from "next/headers";
+import { requestNonce } from "@/lib/security/nonce";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { discoveryHref, parseDiscoveryQuery } from "@/lib/discovery/params";
@@ -40,6 +41,10 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function BusinessesPage({ searchParams }: Props) {
+  // The nonce for this request's CSP; the ld+json tags below carry it
+  // or the browser refuses to parse them.
+  const nonce = await requestNonce();
+
   const query = parseDiscoveryQuery(await searchParams);
 
   const cookieStore = await cookies();
@@ -72,6 +77,7 @@ export default async function BusinessesPage({ searchParams }: Props) {
           business names rather than just the page title. */}
       <script
         type="application/ld+json"
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: jsonLdScript({
             "@context": "https://schema.org",

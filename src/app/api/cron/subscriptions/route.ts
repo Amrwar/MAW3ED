@@ -16,24 +16,20 @@
  *    → send "renew in X days" email to owner
  *    → stamp subscriptionReminderSentAt to prevent duplicate sends
  *
- * Security: validates Authorization: Bearer <CRON_SECRET> if set in env.
+ * Security: always validates Authorization: Bearer <CRON_SECRET>. With
+ * no secret set the job refuses to run rather than running for anybody
+ * who asks.
  */
 
 import { db } from "@/lib/db";
+import { pruneRateLimits } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
-
-function authorize(req: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true;
-  return req.headers.get("Authorization") === `Bearer ${cronSecret}`;
-}
+import { authorizeCron } from "@/lib/security/cron-auth";
 
 export async function GET(req: Request) {
-  if (!authorize(req)) {
-    log.warn("[subscriptions cron] Rejected unauthorized request");
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const allowed = authorizeCron(req, "subscriptions");
+  if (!allowed.ok) return allowed.response;
 
   const now     = new Date();
 
@@ -112,7 +108,19 @@ export async function GET(req: Request) {
     }
   }
 
-  log.info(`[subscriptions cron] Complete — expired: ${expired}, reminded: ${reminded}, failed: ${failed}`);
+  // Clearing expired rate-limit windows rides along here rather than
+  // running on the hot path: a delete on every login would cost every
+  // request to tidy a table that stays small anyway.
+  let pruned = 0;
+  try {
+    pruned = await pruneRateLimits();
+  } catch (e) {
+    log.error("[subscriptions cron] rate-limit prune failed", e);
+  }
 
-  return Response.json({ ok: true, expired, reminded, failed });
+  log.info(
+    `[subscriptions cron] Complete — expired: ${expired}, reminded: ${reminded}, failed: ${failed}, rate-limit rows pruned: ${pruned}`,
+  );
+
+  return Response.json({ ok: true, expired, reminded, failed, pruned });
 }

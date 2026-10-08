@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 
 /**
  * Which landing pages exist.
@@ -185,4 +186,43 @@ export async function resolveCombo(
   if (count < MIN_BUSINESSES) return null;
 
   return { city, category, count };
+}
+
+/**
+ * Prerender hints, which are allowed to come back empty.
+ *
+ * generateStaticParams decides which of these pages are built ahead of
+ * time. All three routes set `dynamicParams = true`, so a page the list
+ * leaves out is not missing — it renders on demand the first time
+ * somebody asks for it. That is already how a sixth city/category combo
+ * appears without a deploy.
+ *
+ * Which makes the list an optimisation, and an optimisation should not
+ * be able to fail a build. It could: these helpers query the database,
+ * Next calls them while collecting page data, and a build with no
+ * reachable database died with "Failed to collect page data for
+ * /[city]/[category]" and a bare ECONNREFUSED. That is what CI does —
+ * it builds with a placeholder DATABASE_URL — and the failure was
+ * invisible for months because the build step never ran.
+ *
+ * So an unreachable database now means "prerender nothing", which is
+ * correct and recoverable, instead of "fail the build". On Vercel,
+ * where the database is reachable, nothing changes: the same pages get
+ * prerendered as before.
+ */
+export async function prerenderHints<T>(
+  label: string,
+  load: () => Promise<T[]>,
+): Promise<T[]> {
+  try {
+    return await load();
+  } catch (e) {
+    // Deliberately not log.error: on a build without a database this is
+    // expected, and an error here would train people to ignore errors.
+    log.warn(
+      `[landing] could not read ${label} while prerendering; these pages will render on demand`,
+      { reason: e instanceof Error ? e.message : String(e) },
+    );
+    return [];
+  }
 }

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { sendWhatsAppMessage } from "@/lib/services/whatsapp";
@@ -25,6 +26,11 @@ import {
  */
 export async function POST(req: Request) {
   try {
+    // In front of the per-account cooldown below, which needs an
+    // account before it can throttle anything.
+    const limited = await rateLimit("phoneOtp");
+    if (!limited.ok) return tooManyRequests(limited);
+
     const { business } = await requireBusiness();
 
     const body = await req.json().catch(() => null);

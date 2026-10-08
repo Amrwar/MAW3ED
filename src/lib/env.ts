@@ -58,6 +58,12 @@ const optional = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
 
+  // The address the contact page and FAQ send users to. Declared here
+  // so the audit of what this deployment depends on is complete; the
+  // value itself is read in src/lib/support.ts, which the client
+  // bundle can import.
+  NEXT_PUBLIC_SUPPORT_EMAIL: z.string().optional(),
+
   // Payments (Paymob)
   PAYMOB_API_KEY: z.string().optional(),
   PAYMOB_HMAC_SECRET: z.string().optional(),
@@ -77,6 +83,32 @@ const optional = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
+
+  // SMS. No gateway is configured; the channel reports
+  // "sms-not-configured" and the ledger says so, rather than pretending
+  // a message went out. Wiring one is the single send() in
+  // notifications/channels.ts.
+  SMS_API_URL: z.string().optional(),
+  SMS_API_KEY: z.string().optional(),
+  SMS_SENDER_ID: z.string().optional(),
+
+  // Error tracking. Empty leaves Sentry inert: no events, and the build
+  // wrapper is a no-op. The DSN identifies a project and is safe in a
+  // browser; the auth token uploads source maps and is not.
+  SENTRY_DSN: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
+  SENTRY_ORG: z.string().optional(),
+  SENTRY_PROJECT: z.string().optional(),
+  SENTRY_AUTH_TOKEN: z.string().optional(),
+
+  // The bare domain shown in copy and used for canonical links.
+  // NEXT_PUBLIC_ because a client component prints it; a domain name
+  // is not a secret.
+  NEXT_PUBLIC_SITE_HOST: z.string().optional(),
+
+  // The number the contact page offers. Unset hides the card rather
+  // than showing one with nothing behind it.
+  NEXT_PUBLIC_SUPPORT_WHATSAPP: z.string().optional(),
 });
 
 const schema = required.merge(optional).and(authSecret);
@@ -138,6 +170,8 @@ export interface Integrations {
   email: boolean;
   payments: boolean;
   whatsapp: boolean;
+  /** No gateway is wired; the channel is dormant, not broken. */
+  sms: boolean;
   uploads: boolean;
 }
 
@@ -159,6 +193,7 @@ export function getIntegrations(): Integrations {
       has("PAYMOB_IFRAME_ID") &&
       has("PAYMOB_INTEGRATION_ID"),
     whatsapp: has("WHATSAPP_ACCESS_TOKEN") && has("WHATSAPP_PHONE_NUMBER_ID"),
+    sms: has("SMS_API_URL") && has("SMS_API_KEY"),
     uploads:
       has("CLOUDINARY_CLOUD_NAME") &&
       has("CLOUDINARY_API_KEY") &&

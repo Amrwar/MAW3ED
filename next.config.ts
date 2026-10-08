@@ -19,11 +19,10 @@ import { withSentryConfig } from "@sentry/nextjs/config";
  *   Permissions-Policy nothing here needs a camera, a microphone or a
  *                      payment handler, so nothing may ask.
  *
- * Deliberately absent: Content-Security-Policy. Next inlines bootstrap
- * scripts and Sentry tunnels through /monitoring, so a strict policy
- * needs nonce plumbing and a staging soak to avoid breaking the page it
- * is protecting. The structured-data injection it would have mitigated
- * is now escaped at source instead. Worth doing next, in its own pass.
+ * Not here: Content-Security-Policy. It carries a per-request nonce, so
+ * it is built in src/middleware.ts from src/lib/security/csp.ts — these
+ * headers are computed once at build time, which would hand every
+ * visitor the same nonce and defeat the point of having one.
  */
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },

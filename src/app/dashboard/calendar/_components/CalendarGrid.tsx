@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { CalendarBlock, CalendarEntry, CalendarView } from "@/lib/scheduling/calendar";
-import { datesBetween, layoutDay } from "@/lib/scheduling/calendar";
+import { datesBetween, layoutDay } from "@/lib/scheduling/calendar-layout";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { minutesToTime } from "@/lib/bookings/time";
 import { cn } from "@/lib/utils";

@@ -7,7 +7,7 @@ import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
 import BusinessCard from "@/components/shared/BusinessCard";
 import { getCategoryBySlug, getPublishedBusinesses } from "@/lib/data";
-import { MIN_BUSINESSES, getLandingCategories } from "@/lib/seo/landing";
+import { MIN_BUSINESSES, getLandingCategories, prerenderHints } from "@/lib/seo/landing";
 import { buildMetadata } from "@/lib/seo/meta";
 import { db } from "@/lib/db";
 
@@ -16,7 +16,7 @@ type Props = { params: Promise<{ category: string }> };
 export async function generateStaticParams() {
   // Ten of the fourteen categories have no business in them. Those are
   // not pages; they are an empty grid with a heading over it.
-  const categories = await getLandingCategories();
+  const categories = await prerenderHints("categories", getLandingCategories);
   return categories.map((c) => ({ category: c.slug }));
 }
 

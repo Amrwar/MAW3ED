@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { businessAllows } from "@/lib/plans";
 import { notify } from "@/lib/notifications";
 import { log } from "@/lib/logger";
+import { authorizeCron } from "@/lib/security/cron-auth";
 
 /**
  * GET /api/cron/reminders
@@ -25,7 +26,9 @@ import { log } from "@/lib/logger";
  * decide that — it just asks, and the dispatcher answers DUPLICATE.
  *
  * Security: Vercel attaches Authorization: Bearer <CRON_SECRET> to every
- * cron invocation; it is validated when the secret is set.
+ * cron invocation, and it is always validated. With no secret set the
+ * job refuses to run rather than running for anybody who asks — this
+ * endpoint sends messages to real customers.
  */
 
 /** How far ahead to look at all. Nothing may be scheduled further out. */
@@ -37,13 +40,8 @@ const REVIEW_DELAY_HOURS = 3;
 const REVIEW_WINDOW_HOURS = 72;
 
 export async function GET(req: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    if (req.headers.get("Authorization") !== `Bearer ${cronSecret}`) {
-      log.warn("[Reminders] Rejected unauthorized request");
-      return new Response("Unauthorized", { status: 401 });
-    }
-  }
+  const allowed = authorizeCron(req, "reminders");
+  if (!allowed.ok) return allowed.response;
 
   const now = new Date();
   const counts = { reminder: 0, startingSoon: 0, review: 0, skipped: 0, failed: 0 };

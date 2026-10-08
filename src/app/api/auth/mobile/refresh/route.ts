@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
@@ -22,6 +23,12 @@ const schema = z.object({ refreshToken: z.string().min(10) });
  */
 export async function POST(req: Request) {
   try {
+    // Keyed on the caller when no account is named yet. 429 with
+    // Retry-After, and a message that says nothing about whether
+    // the account exists.
+    const limited = await rateLimit("mobileRefresh");
+    if (!limited.ok) return tooManyRequests(limited);
+
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return err("انتهت الجلسة، سجّل الدخول من تاني", 401);
 

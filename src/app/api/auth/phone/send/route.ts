@@ -1,4 +1,5 @@
 import { createLoginCode } from "@/lib/auth/login-code";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err } from "@/lib/api";
 import { sendWhatsAppMessage } from "@/lib/services/whatsapp";
 import { formatEgyptianMobile } from "@/lib/verification";
@@ -21,6 +22,12 @@ import { log } from "@/lib/logger";
  */
 export async function POST(req: Request) {
   try {
+    // Keyed on the caller when no account is named yet. 429 with
+    // Retry-After, and a message that says nothing about whether
+    // the account exists.
+    const limited = await rateLimit("phoneOtp");
+    if (!limited.ok) return tooManyRequests(limited);
+
     const body = await req.json().catch(() => null);
     const raw = typeof body?.phone === "string" ? body.phone : "";
     if (!raw) return err("أدخل رقم الموبايل", 422);

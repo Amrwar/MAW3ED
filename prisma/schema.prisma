@@ -1362,3 +1362,23 @@ model DeviceToken {
 
   @@index([userId])
 }
+
+
+/// A fixed-window counter, shared by every serverless instance.
+///
+/// In-memory rate limiting does not work here: Vercel runs many
+/// instances and recycles them, so a Map would give an attacker the
+/// whole limit per instance per cold start. Postgres is the one thing
+/// they all share.
+///
+/// The key holds a HASH of whatever is being limited — an address, an
+/// email — never the thing itself, and the row expires in minutes. A
+/// table of login attempts that named the people attempting them would
+/// be a worse disclosure than the attack it guards against.
+model RateLimit {
+  key       String   @id
+  count     Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}

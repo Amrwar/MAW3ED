@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
@@ -28,6 +29,12 @@ const schema = z.object({
  */
 export async function POST(req: Request) {
   try {
+    // Keyed on the caller when no account is named yet. 429 with
+    // Retry-After, and a message that says nothing about whether
+    // the account exists.
+    const limited = await rateLimit("login");
+    if (!limited.ok) return tooManyRequests(limited);
+
     const parsed = schema.safeParse(await req.json().catch(() => null));
     // Deliberately the same message as a wrong password: a different
     // one for a malformed body tells a prober how to shape their next
