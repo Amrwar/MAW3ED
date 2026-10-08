@@ -69,7 +69,15 @@ export async function POST(req: Request) {
 
   // ── 1. Signature ──────────────────────────────────────────────────────────
   if (!verifyWebhookHmac(obj, hmac)) {
-    log.warn("[paymob webhook] HMAC verification failed");
+    // The ids come from an unverified payload, so they are logged as a
+    // lead to follow, never acted on. Without them a rejected delivery
+    // cannot be tied to the customer saying they paid and nothing
+    // happened, which is the only moment anybody reads this line.
+    log.warn("[paymob webhook] HMAC verification failed", {
+      claimedOrderId: String(obj.order?.id ?? "none").slice(0, 32),
+      claimedTransactionId: String(obj.id ?? "none").slice(0, 32),
+      hmacLength: hmac.length,
+    });
     return err("invalid signature", 403);
   }
 
@@ -124,6 +132,48 @@ async function handle(
       providerTransactionId: transactionId,
     });
     return "amount-mismatch";
+  }
+
+  // ── 5. The currency is ours too ─────────────────────────────────────────
+  //
+  // amount_cents is a number with no unit attached. 28550 piastres and
+  // 28550 cents of something else are the same integer, so checking the
+  // amount alone would settle a 285.50 EGP booking against a payment
+  // taken in another currency.
+  //
+  // In practice Paymob charges in whatever the integration is
+  // configured for, so this should never fire. It is checked for the
+  // same reason the amount is: the field is in the HMAC-signed payload,
+  // so it is authentic and free to verify, and a confirmation is a
+  // promise to both the customer and the business.
+  if (obj.currency && obj.currency.toUpperCase() !== payment.currency.toUpperCase()) {
+    log.error("[paymob webhook] currency mismatch", {
+      paymentId: payment.id,
+      expected: payment.currency,
+      received: obj.currency,
+    });
+    await failPayment({
+      paymentId: payment.id,
+      reason: `currency mismatch: expected ${payment.currency}, got ${obj.currency}`,
+      providerTransactionId: transactionId,
+    });
+    return "currency-mismatch";
+  }
+
+  // ── 6. Money that has gone back ─────────────────────────────────────────
+  //
+  // Paymob sends a TRANSACTION callback for a refund or a void as well,
+  // with success still true and is_refunded or is_voided set. Read as a
+  // payment, that is an already-settled no-op — so a refund issued from
+  // the Paymob dashboard, rather than through /admin/payments, never
+  // reached the ledger and the payment went on reading SUCCEEDED.
+  //
+  // It is recorded rather than acted on: the booking is not cancelled
+  // here, because why the money went back is a decision somebody made
+  // outside this system and the ledger should reflect it, not guess at
+  // its intent.
+  if (obj.is_refunded || obj.is_voided) {
+    return reconcileReversal(payment, obj, transactionId);
   }
 
   const succeeded = obj.success && !obj.pending && !obj.error_occured;
@@ -186,6 +236,76 @@ async function findPayment(providerOrderId: string): Promise<Payment | null> {
   return null;
 }
 
+/**
+ * A refund or a void that happened at the provider, not here.
+ *
+ * /admin/payments records its own refunds as it issues them. This is
+ * for the other direction: somebody refunds or voids in the Paymob
+ * dashboard, and without this the ledger never hears about it — the
+ * payment keeps reading SUCCEEDED and the business's takings are
+ * overstated for as long as nobody reconciles by hand.
+ *
+ * A Refund row is written so the money is accounted for, attributed to
+ * the provider rather than to an admin who did not do it. The booking
+ * is deliberately left alone: a refund can mean a cancellation, a
+ * goodwill gesture or a correction, and inferring which from a boolean
+ * would be guessing at somebody's intent.
+ */
+async function reconcileReversal(
+  payment: Payment,
+  obj: PaymobTransactionObj,
+  transactionId: string,
+): Promise<string> {
+  const kind = obj.is_voided ? "void" : "refund";
+
+  // Paymob reports the reversed amount on the transaction. Fall back to
+  // the full payment, since a void is always for the whole of it.
+  const amountCents = Math.min(
+    Math.abs(obj.amount_cents || payment.amountCents),
+    payment.amountCents,
+  );
+
+  const already = await db.refund.findFirst({
+    where: { paymentId: payment.id, providerRefundId: transactionId },
+    select: { id: true },
+  });
+  // The webhook-event guard already stops a replay of the same
+  // delivery; this stops a second delivery with a new event id from
+  // double-counting the same reversal.
+  if (already) return "reversal-already-recorded";
+
+  await db.$transaction(async (tx) => {
+    await tx.refund.create({
+      data: {
+        paymentId: payment.id,
+        amountCents,
+        status: "SUCCEEDED",
+        providerRefundId: transactionId,
+        reason: `${kind} recorded from Paymob callback`,
+        // No actor: nobody in this system did it.
+        actorName: "Paymob",
+      },
+    });
+
+    const refundedTotal = Math.min(payment.refundedCents + amountCents, payment.amountCents);
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: {
+        refundedCents: refundedTotal,
+        status: refundedTotal >= payment.amountCents ? "REFUNDED" : "PARTIALLY_REFUNDED",
+      },
+    });
+  });
+
+  log.warn("[paymob webhook] reversal reconciled from provider", {
+    paymentId: payment.id,
+    kind,
+    amountCents,
+  });
+
+  return `reversal-${kind}`;
+}
+
 function methodOf(obj: PaymobTransactionObj) {
   const type = (obj.source_data?.type ?? "").toLowerCase();
   if (type.includes("card")) return "CARD" as const;
@@ -230,6 +350,21 @@ async function handleBookingSuccess(
   });
 
   if (!changed) return "already-settled";
+
+  // Deliberately info and deliberately boring: ids and figures, no
+  // customer name, no card data. source_data.pan is the last four
+  // digits and is still not logged — there is no question this line
+  // answers that needs it.
+  log.info("[paymob webhook] booking payment settled", {
+    paymentId: payment.id,
+    bookingId: payment.bookingId,
+    businessId: payment.businessId,
+    kind: payment.kind,
+    amountCents: payment.amountCents,
+    currency: payment.currency,
+    transactionId,
+    method: methodOf(obj),
+  });
 
   if (payment.bookingId) {
     // The transaction id goes into the event so a retry computes the
