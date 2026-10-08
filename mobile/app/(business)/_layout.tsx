@@ -1,5 +1,5 @@
-import { Tabs } from "expo-router";
-import { Redirect } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/stores/auth";
 import { colors, typography, touchTarget } from "@/constants/theme";
 
@@ -15,7 +15,20 @@ import { colors, typography, touchTarget } from "@/constants/theme";
  * Today's schedule, the calendar, bookings, customers. Services, staff
  * and settings are configuration — occasional, fiddly, better on the
  * web — so they sit inside Account rather than taking a tab each.
+ *
+ * Outline icons that fill when active, so the selected tab is marked by
+ * shape as well as colour rather than by colour alone.
  */
+
+/** One place to add a tab, so the icon and the route cannot drift. */
+const TABS = [
+  { name: "index", title: "اليوم", icon: "today" },
+  { name: "calendar", title: "التقويم", icon: "calendar" },
+  { name: "bookings", title: "الحجوزات", icon: "list" },
+  { name: "customers", title: "العملاء", icon: "people" },
+  { name: "account", title: "حسابي", icon: "person" },
+] as const;
+
 export default function BusinessLayout() {
   const { user, restoring } = useAuth();
 
@@ -41,11 +54,22 @@ export default function BusinessLayout() {
         },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "اليوم" }} />
-      <Tabs.Screen name="calendar" options={{ title: "التقويم" }} />
-      <Tabs.Screen name="bookings" options={{ title: "الحجوزات" }} />
-      <Tabs.Screen name="customers" options={{ title: "العملاء" }} />
-      <Tabs.Screen name="account" options={{ title: "حسابي" }} />
+      {TABS.map((tab) => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            title: tab.title,
+            tabBarIcon: ({ color, focused, size }) => (
+              <Ionicons
+                name={focused ? tab.icon : (`${tab.icon}-outline` as never)}
+                size={size ?? 22}
+                color={color}
+              />
+            ),
+          }}
+        />
+      ))}
     </Tabs>
   );
 }
