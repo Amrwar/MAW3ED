@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
-import { ok, err } from "@/lib/api";
+import { ok, err, requireSession } from "@/lib/api";
 import { log } from "@/lib/logger";
 
 const patchSchema = z.object({
@@ -20,8 +19,7 @@ const patchSchema = z.object({
  */
 export async function PATCH(req: Request) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return err("غير مصرح", 401);
+    const session = await requireSession();
 
     const parsed = patchSchema.safeParse(await req.json());
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
@@ -50,7 +48,58 @@ export async function PATCH(req: Request) {
 
     return ok({ user });
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[account profile PATCH]", e);
     return err("حدث خطأ أثناء الحفظ", 500);
+  }
+}
+
+/**
+ * GET /api/account/profile
+ *
+ * The details the account screen shows and the PATCH above edits.
+ *
+ * This did not exist. The file had only a PATCH, while the mobile app
+ * called GET on it at every cold start — so the request 404'd, the app
+ * read that as an expired session and signed the user out on every
+ * launch. Identity and roles now live at GET /api/auth/mobile/me; this
+ * answers the other question, which is what to put on the screen.
+ *
+ * The phone is returned but is not editable here, for the reason the
+ * PATCH documents: it is the key every booking is found by.
+ */
+export async function GET() {
+  try {
+    const session = await requireSession();
+
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        phoneVerifiedAt: true,
+        notifyByWhatsApp: true,
+        notifyByEmail: true,
+      },
+    });
+    if (!user) return err("غير مصرح", 401);
+
+    return ok({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      // The screen needs to tell "no number" from "unverified number":
+      // one asks them to add one, the other to confirm it.
+      phoneVerified: Boolean(user.phone && user.phoneVerifiedAt),
+      notifyByWhatsApp: user.notifyByWhatsApp,
+      notifyByEmail: user.notifyByEmail,
+    });
+  } catch (e) {
+    if (e instanceof Response) return e;
+    log.error("[account profile GET]", e);
+    return err("حدث خطأ", 500);
   }
 }

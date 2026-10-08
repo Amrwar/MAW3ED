@@ -6,30 +6,41 @@ import {
   limitOf,
   wouldExceed,
 } from "@/lib/plans";
-import { auth } from "@/auth";
+import { requireBusiness } from "@/lib/api";
 import { db } from "@/lib/db";
 
+/**
+ * requireBusiness rather than auth() + session.user.businessId: it
+ * accepts the mobile app's bearer token, which auth() refused, and it
+ * confirms against the database that the caller still owns the business
+ * instead of trusting an id carried in a long-lived token.
+ */
+
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { business } = await requireBusiness();
 
-  const staff = await db.staffMember.findMany({
-    where:   { businessId: session.user.businessId },
-    orderBy: { createdAt: "asc" },
-    include: {
-      services: { include: { service: { select: { id: true, nameAr: true } } } },
-      hours:    { orderBy: { dayOfWeek: "asc" } },
-    },
-  });
+    const staff = await db.staffMember.findMany({
+      where:   { businessId: business.id },
+      orderBy: { createdAt: "asc" },
+      include: {
+        services: { include: { service: { select: { id: true, nameAr: true } } } },
+        hours:    { orderBy: { dayOfWeek: "asc" } },
+      },
+    });
 
-  return NextResponse.json(staff);
+    return NextResponse.json(staff);
+  } catch (e) {
+    if (e instanceof Response) return e;
+    throw e;
+  }
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { business: owned } = await requireBusiness();
 
-  const body = await req.json();
+    const body = await req.json();
   const { nameAr, nameEn, role, photo, isActive, workingDays, specialties, serviceIds } = body;
 
   if (!nameAr?.trim()) return NextResponse.json({ error: "اسم الموظف بالعربية مطلوب" }, { status: 400 });
@@ -38,13 +49,13 @@ export async function POST(req: Request) {
   // that lapses leaves the staff a business already has in place — it
   // simply cannot add to them.
   const business = await db.business.findUnique({
-    where:  { id: session.user.businessId },
+    where:  { id: owned.id },
     select: { plan: true, subscriptionStatus: true, trialEndsAt: true },
   });
   if (!business) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const plan    = effectivePlanOf(business);
-  const current = await db.staffMember.count({ where: { businessId: session.user.businessId } });
+  const current = await db.staffMember.count({ where: { businessId: owned.id } });
 
   if (wouldExceed(plan, "staffMembers", current)) {
     const ceiling = limitOf(plan, "staffMembers");
@@ -61,7 +72,7 @@ export async function POST(req: Request) {
 
   const member = await db.staffMember.create({
     data: {
-      businessId:  session.user.businessId,
+      businessId:  owned.id,
       nameAr:      nameAr.trim(),
       nameEn:      nameEn?.trim()  || null,
       role:        role?.trim()    || null,
@@ -79,5 +90,9 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json(member, { status: 201 });
+    return NextResponse.json(member, { status: 201 });
+  } catch (e) {
+    if (e instanceof Response) return e;
+    throw e;
+  }
 }

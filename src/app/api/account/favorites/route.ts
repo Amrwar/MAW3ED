@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
-import { ok, err } from "@/lib/api";
+import { ok, err, requireSession } from "@/lib/api";
+import { getFavorites } from "@/lib/account/queries";
 import { log } from "@/lib/logger";
 
 /**
@@ -15,15 +15,30 @@ const bodySchema = z.object({ businessId: z.string().min(1) });
 /** The one-off hand-over from the device list; capped so it cannot be abused. */
 const mergeSchema = z.object({ businessIds: z.array(z.string().min(1)).max(100) });
 
+/**
+ * requireSession rather than auth(): it accepts the cookie the website
+ * sends AND the bearer token the mobile app sends. With auth() alone
+ * every one of these endpoints answered 401 to the app, which is why
+ * the customer half of it could not load anything.
+ */
 async function requireUser() {
-  const session = await auth();
-  return session?.user?.id ?? null;
+  const session = await requireSession();
+  return session.user.id;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const userId = await requireUser();
-    if (!userId) return err("غير مصرح", 401);
+
+    // The website only needs the ids — it already has the businesses on
+    // the page and uses these to fill in the heart icons. A phone has
+    // nothing cached, so ?expand=1 returns the records themselves
+    // rather than making it fetch each one.
+    const expand = new URL(req.url).searchParams.get("expand") === "1";
+    if (expand) {
+      const rows = await getFavorites(userId);
+      return ok({ favorites: rows.map((r) => ({ ...r.business, savedAt: r.createdAt })) });
+    }
 
     const favorites = await db.favorite.findMany({
       where: { userId },
@@ -32,6 +47,7 @@ export async function GET() {
 
     return ok({ businessIds: favorites.map((f) => f.businessId) });
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[favorites GET]", e);
     return err("حدث خطأ", 500);
   }
@@ -40,7 +56,6 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const userId = await requireUser();
-    if (!userId) return err("غير مصرح", 401);
 
     const body = await req.json().catch(() => null);
 
@@ -81,6 +96,7 @@ export async function POST(req: Request) {
 
     return ok({ saved: true }, 201);
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[favorites POST]", e);
     return err("حدث خطأ", 500);
   }
@@ -89,7 +105,6 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const userId = await requireUser();
-    if (!userId) return err("غير مصرح", 401);
 
     const businessId = new URL(req.url).searchParams.get("businessId");
     if (!businessId) return err("businessId مطلوب", 400);
@@ -100,6 +115,7 @@ export async function DELETE(req: Request) {
 
     return ok({ removed: true });
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[favorites DELETE]", e);
     return err("حدث خطأ", 500);
   }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
-import { ok, err } from "@/lib/api";
+import { ok, err, requireSession } from "@/lib/api";
+import { getNotifications } from "@/lib/account/queries";
 import { log } from "@/lib/logger";
 
 const patchSchema = z.object({ ids: z.array(z.string().min(1)).min(1).max(200) });
@@ -15,8 +15,7 @@ const patchSchema = z.object({ ids: z.array(z.string().min(1)).min(1).max(200) }
  */
 export async function PATCH(req: Request) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return err("غير مصرح", 401);
+    const session = await requireSession();
 
     const parsed = patchSchema.safeParse(await req.json());
     if (!parsed.success) return err("بيانات غير صالحة", 422);
@@ -28,7 +27,32 @@ export async function PATCH(req: Request) {
 
     return ok({ updated: result.count });
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[notifications PATCH]", e);
+    return err("حدث خطأ", 500);
+  }
+}
+
+/**
+ * GET /api/account/notifications
+ *
+ * The list the bell opens, newest first, with how many are unread.
+ *
+ * The website reads this through a server component; the app has to ask
+ * for it. Same query either way.
+ */
+export async function GET() {
+  try {
+    const session = await requireSession();
+
+    // getNotifications already counts the unread ones; recounting here
+    // would be a second answer to the same question.
+    const { items, unread } = await getNotifications(session.user.id);
+
+    return ok({ notifications: items, unread });
+  } catch (e) {
+    if (e instanceof Response) return e;
+    log.error("[notifications GET]", e);
     return err("حدث خطأ", 500);
   }
 }
