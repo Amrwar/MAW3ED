@@ -70,8 +70,30 @@ const declared = new Set(
     .map((m) => m[1]),
 );
 
+/**
+ * Read explicitly, so a missing template says what is wrong.
+ *
+ * This file is the one somebody copies to .env. It was matched by
+ * `.env*` in .gitignore and had never been committed, so this suite
+ * died with a bare ENOENT on a fresh checkout while every other test
+ * passed. The .gitignore is fixed; this keeps the next version of that
+ * mistake legible.
+ */
+function readEnvExample(): string {
+  const path = join(ROOT, ".env.example");
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    throw new Error(
+      ".env.example is missing. It is the template this project is set up from, " +
+        "and it must be committed — check that .gitignore's `.env*` rule still has " +
+        "the `!.env.example` exception below it.",
+    );
+  }
+}
+
 const documented = new Set(
-  [...readFileSync(join(ROOT, ".env.example"), "utf8").matchAll(/^([A-Z][A-Z0-9_]+)=/gm)]
+  [...readEnvExample().matchAll(/^([A-Z][A-Z0-9_]+)=/gm)]
     .map((m) => m[1]),
 );
 

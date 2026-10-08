@@ -32,6 +32,13 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the template, which is the whole point of having one. It
+# holds placeholders only — user:password@host, change-me-... — and is
+# what somebody copies to .env when setting the project up. `.env*`
+# above was matching it too, so it had never been committed: a clone
+# got no template at all, and the environment audit documented
+# variables in a file nobody else could see.
+!.env.example
 
 # local tool directories (may contain secrets); .github is kept
 .*/
@@ -43,7 +50,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-
-.vercel
-.env*
