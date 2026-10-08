@@ -1,24 +1,38 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireBusiness } from "@/lib/api";
 import { db } from "@/lib/db";
 
+/**
+ * requireBusiness rather than auth() + session.user.businessId.
+ *
+ * Two things change. It accepts the bearer token the mobile app sends,
+ * which auth() alone refused — these endpoints answered 401 to the app.
+ * And it re-reads the business from the database and checks the caller
+ * still owns it, instead of trusting a businessId copied out of a JWT
+ * that may be sixty days old.
+ */
+
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { business } = await requireBusiness();
 
-  const tables = await db.table.findMany({
-    where:   { businessId: session.user.businessId },
-    orderBy: { createdAt: "asc" },
-  });
+    const tables = await db.table.findMany({
+      where:   { businessId: business.id },
+      orderBy: { createdAt: "asc" },
+    });
 
-  return NextResponse.json(tables);
+    return NextResponse.json(tables);
+  } catch (e) {
+    if (e instanceof Response) return e;
+    throw e;
+  }
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { business } = await requireBusiness();
 
-  const body = await req.json();
+    const body = await req.json();
   const { name, tableType, capacity, notes, photo, isActive } = body;
 
   if (!name?.trim()) return NextResponse.json({ error: "اسم الطاولة مطلوب" }, { status: 400 });
@@ -26,7 +40,7 @@ export async function POST(req: Request) {
 
   const table = await db.table.create({
     data: {
-      businessId: session.user.businessId,
+      businessId: business.id,
       name:       name.trim(),
       tableType:  tableType ?? "MIDDLE",
       capacity:   Number(capacity),
@@ -36,5 +50,9 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json(table, { status: 201 });
+    return NextResponse.json(table, { status: 201 });
+  } catch (e) {
+    if (e instanceof Response) return e;
+    throw e;
+  }
 }

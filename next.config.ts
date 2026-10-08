@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
+import pkg from "./package.json" with { type: "json" };
 
 /**
  * Response headers, which the site was serving none of.
@@ -38,7 +39,19 @@ const SECURITY_HEADERS = [
   },
 ];
 
+/**
+ * Read once at build time so the running app can say which build it is.
+ * Vercel sets VERCEL_GIT_COMMIT_SHA on every deployment; locally there
+ * is none, and the UI prints just the version.
+ */
+
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSION: pkg.version,
+    NEXT_PUBLIC_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? "",
+  },
+
   // The header advertises the framework and its major version to
   // anybody scanning for a known issue in it.
   poweredByHeader: false,

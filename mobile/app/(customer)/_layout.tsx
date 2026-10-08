@@ -1,4 +1,5 @@
 import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { colors, typography, touchTarget } from "@/constants/theme";
 
 /**
@@ -9,10 +10,20 @@ import { colors, typography, touchTarget } from "@/constants/theme";
  * start truncating. Notifications live inside Account rather than
  * taking a sixth — they are checked occasionally, not constantly.
  *
- * The icons are placeholders until an icon set is chosen; the brief is
- * explicit that this phase is architecture, and a tab bar that renders
- * with correct labels and routes is the part that needs to be right.
+ * Outline icons that fill when active, which is the convention on both
+ * platforms and means the selected tab is marked twice over — by shape
+ * and by colour — rather than by colour alone.
  */
+
+/** One place to add a tab, so the icon and the route cannot drift. */
+const TABS = [
+  { name: "index", title: "الرئيسية", icon: "home" },
+  { name: "search", title: "ابحث", icon: "search" },
+  { name: "bookings", title: "حجوزاتي", icon: "calendar" },
+  { name: "favorites", title: "المحفوظات", icon: "heart" },
+  { name: "account", title: "حسابي", icon: "person" },
+] as const;
+
 export default function CustomerLayout() {
   return (
     <Tabs
@@ -33,11 +44,22 @@ export default function CustomerLayout() {
         },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "الرئيسية" }} />
-      <Tabs.Screen name="search" options={{ title: "ابحث" }} />
-      <Tabs.Screen name="bookings" options={{ title: "حجوزاتي" }} />
-      <Tabs.Screen name="favorites" options={{ title: "المحفوظات" }} />
-      <Tabs.Screen name="account" options={{ title: "حسابي" }} />
+      {TABS.map((tab) => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            title: tab.title,
+            tabBarIcon: ({ color, focused, size }) => (
+              <Ionicons
+                name={focused ? tab.icon : (`${tab.icon}-outline` as never)}
+                size={size ?? 22}
+                color={color}
+              />
+            ),
+          }}
+        />
+      ))}
     </Tabs>
   );
 }

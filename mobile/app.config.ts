@@ -111,7 +111,22 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-secure-store",
-    "expo-localization",
+    [
+      // RTL is set natively at build time, not at runtime.
+      //
+      // The app's copy is Arabic throughout, so the layout direction is
+      // a property of the product, not of the phone: an Egyptian user
+      // whose device is set to English still needs the Arabic layout.
+      //
+      // It is configured here rather than with I18nManager.forceRTL
+      // because that call only takes effect on the NEXT launch — the
+      // very first run after install would lay out left-to-right with
+      // Arabic text in it, which is the worst possible first
+      // impression for an Arabic-first product. Setting it in the
+      // build means the first frame is correct.
+      "expo-localization",
+      { supportsRTL: true, forcesRTL: true },
+    ],
     [
       // The splash moved out of the top-level config and into this
       // plugin in SDK 57. Dark, so launching the app and the app itself

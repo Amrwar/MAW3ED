@@ -4,6 +4,7 @@ import Link from "next/link";
 import Logo from "@/components/shared/Logo";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { VERSION_LABEL, APP_COMMIT } from "@/lib/version";
 
 export default function Footer({ cta = true }: { cta?: boolean }) {
   const { t, lang } = useLanguage();
@@ -118,7 +119,20 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-5 border-t border-[var(--color-night-line)] py-7">
-          <p className="m-0 text-[0.78125rem] text-[var(--color-night-subtle)]">{f.copyright}</p>
+          <p className="m-0 text-[0.78125rem] text-[var(--color-night-subtle)]">
+            {f.copyright}{" "}
+            {/*
+              Quiet on purpose: nobody reads a footer for this, but the
+              first person to report a bug that is already fixed needs
+              somewhere to look. title= carries the full commit.
+            */}
+            <span
+              className="opacity-60"
+              title={APP_COMMIT ? `build ${APP_COMMIT}` : undefined}
+            >
+              {VERSION_LABEL}
+            </span>
+          </p>
           <p className="m-0 text-[0.78125rem] text-[var(--color-night-subtle)]">{madeIn}</p>
         </div>
       </div>

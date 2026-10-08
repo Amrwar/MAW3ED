@@ -1,17 +1,41 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireBusiness } from "@/lib/api";
 import { db } from "@/lib/db";
+
+/**
+ * requireBusiness rather than auth() + session.user.businessId: it
+ * accepts the mobile app's bearer token, which auth() alone refused,
+ * and it confirms against the database that the caller still owns this
+ * business instead of trusting an id inside a long-lived token.
+ */
+
+/**
+ * The caller's business, or the Response explaining why there is none.
+ *
+ * requireBusiness throws its refusal; these handlers are small and read
+ * better with an early return than with each one wrapped in a
+ * try/catch that exists only to hand that Response back.
+ */
+async function ownedBusiness() {
+  try {
+    const { business } = await requireBusiness();
+    return business;
+  } catch (e) {
+    if (e instanceof Response) return e;
+    throw e;
+  }
+}
 
 async function getOwned(id: string, businessId: string) {
   return db.staffMember.findFirst({ where: { id, businessId } });
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user?.businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = await ownedBusiness();
+  if (guard instanceof Response) return guard;
 
   const { id } = await params;
-  const existing = await getOwned(id, session.user.businessId);
+  const existing = await getOwned(id, guard.id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
@@ -28,7 +52,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "serviceIds must be a list" }, { status: 422 });
     }
     const mine = await db.service.findMany({
-      where: { businessId: session.user.businessId, id: { in: serviceIds as string[] } },
+      where: { businessId: guard.id, id: { in: serviceIds as string[] } },
       select: { id: true },
     });
     ownServiceIds = mine.map((x) => x.id);
@@ -58,11 +82,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user?.businessId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = await ownedBusiness();
+  if (guard instanceof Response) return guard;
 
   const { id } = await params;
-  const existing = await getOwned(id, session.user.businessId);
+  const existing = await getOwned(id, guard.id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await db.staffMember.delete({ where: { id } });
