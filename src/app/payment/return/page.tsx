@@ -11,6 +11,7 @@
  */
 
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
@@ -29,7 +30,34 @@ export default async function PaymentReturnPage({
 }) {
   const sp = await searchParams;
   // Paymob passes our booking ID as merchant_order_id
-  const bookingId = typeof sp.merchant_order_id === "string" ? sp.merchant_order_id : null;
+  const merchantOrderId = typeof sp.merchant_order_id === "string" ? sp.merchant_order_id : null;
+
+  // ── Subscriptions land here too ─────────────────────────────
+  //
+  // The return URL is a single setting in the Paymob dashboard, and
+  // nothing in the code can vary it per payment — getPaymentKey sends
+  // no return_url. So every payment comes back to whichever page that
+  // setting names, including subscription upgrades, which have no
+  // booking at all.
+  //
+  // Their merchant_order_id is "sub_{businessId}_{plan}_{timestamp}",
+  // and feeding that to booking.findUnique finds nothing, so an owner
+  // who had just paid was shown "الحجز غير موجود" — a booking they
+  // never made, missing. It said that whether the payment had
+  // succeeded or failed, which made a success look like a failure.
+  //
+  // The query string is carried across so the subscription page sees
+  // exactly what Paymob sent.
+  if (merchantOrderId?.startsWith("sub_")) {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(sp)) {
+      if (typeof value === "string") query.set(key, value);
+    }
+    const suffix = query.toString();
+    redirect(`/payment/subscription/return${suffix ? `?${suffix}` : ""}`);
+  }
+
+  const bookingId = merchantOrderId;
   const paymobSuccess = sp.success === "true";
 
   let booking = null;
