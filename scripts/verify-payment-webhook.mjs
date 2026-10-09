@@ -26,6 +26,7 @@
 import { createHmac } from "crypto";
 import { PrismaClient } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 const BASE = process.argv[2] ?? "http://localhost:3000";
 const SECRET = process.env.PAYMOB_HMAC_SECRET;
@@ -37,7 +38,13 @@ if (!SECRET) {
 }
 
 const connectionString = (process.env.DATABASE_URL ?? "").replace(/[&?]channel_binding=require/g, "");
-const db = new PrismaClient({ adapter: new PrismaNeon({ connectionString }) });
+// Same rule as src/lib/db.ts: Neon's adapter speaks to Neon's proxy,
+// so a local Postgres needs the plain one. This harness is usually
+// pointed at a throwaway database, which is the whole point of it.
+const isLocal = /^postgres(ql)?:\/\/[^@]*@(localhost|127\.0\.0\.1)[:/]/.test(connectionString);
+const db = new PrismaClient({
+  adapter: isLocal ? new PrismaPg({ connectionString }) : new PrismaNeon({ connectionString }),
+});
 
 let passed = 0;
 let failed = 0;

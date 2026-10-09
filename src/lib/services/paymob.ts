@@ -53,6 +53,26 @@ export interface PaymobTransactionObj {
     sub_type: string;
     type:     string;
   };
+  /**
+   * The gateway's own account of what happened.
+   *
+   * Optional because it is not part of the HMAC field list and Paymob
+   * does not promise it on every callback — but when a transaction
+   * fails it is the only thing that says why. Without it a decline is
+   * recorded as "provider-error" and there is nothing to act on:
+   * a wrong integration id, an expired card and a bank refusal all
+   * look identical.
+   *
+   * Nothing here is card data. `message` is a sentence like
+   * "Insufficient funds", and the response codes are the acquirer's.
+   */
+  data?: {
+    message?:           string;
+    txn_response_code?: string | number;
+    acq_response_code?: string | number;
+    /** Present when Paymob itself rejected the request. */
+    gateway_integration_pk?: number;
+  };
 }
 
 // ─── Step 1: Authenticate ─────────────────────────────────────────────────────
@@ -69,6 +89,67 @@ async function authenticate(): Promise<string> {
   }
   const data: PaymobAuthResponse = await res.json();
   return data.token;
+}
+
+/**
+ * Does the Paymob configuration actually work?
+ *
+ * Authenticates and stops. It creates no order, no payment key and no
+ * charge — the same first call every payment makes, and nothing after
+ * it.
+ *
+ * It exists because three real subscription attempts failed with
+ * "provider-error" and there was no way to tell a bad credential from
+ * a declined card. This separates the two: if authentication fails the
+ * problem is configuration and no card will ever work; if it succeeds
+ * the credentials are fine and the decline came from the bank.
+ *
+ * Never returns a secret. The API key is used and not reported; the
+ * integration and iframe ids are identifiers visible in the Paymob
+ * dashboard, not credentials, and they are what somebody needs to
+ * compare against it.
+ */
+export interface PaymobDiagnostics {
+  configured: boolean;
+  missing: string[];
+  authenticated: boolean;
+  /** Paymob's own words when authentication fails. */
+  authError?: string;
+  integrationId: string | null;
+  iframeId: string | null;
+  hmacConfigured: boolean;
+}
+
+export async function diagnosePaymob(): Promise<PaymobDiagnostics> {
+  const required = [
+    "PAYMOB_API_KEY",
+    "PAYMOB_INTEGRATION_ID",
+    "PAYMOB_IFRAME_ID",
+    "PAYMOB_HMAC_SECRET",
+  ];
+  const missing = required.filter((k) => !process.env[k]);
+
+  const result: PaymobDiagnostics = {
+    configured: missing.length === 0,
+    missing,
+    authenticated: false,
+    integrationId: process.env.PAYMOB_INTEGRATION_ID ?? null,
+    iframeId: process.env.PAYMOB_IFRAME_ID ?? null,
+    hmacConfigured: Boolean(process.env.PAYMOB_HMAC_SECRET),
+  };
+
+  if (!process.env.PAYMOB_API_KEY) return result;
+
+  try {
+    await authenticate();
+    result.authenticated = true;
+  } catch (e) {
+    // Paymob's message, trimmed. It names the problem — an expired or
+    // wrong key reads differently from a network failure.
+    result.authError = (e instanceof Error ? e.message : String(e)).slice(0, 300);
+  }
+
+  return result;
 }
 
 // ─── Step 2: Create order ─────────────────────────────────────────────────────
