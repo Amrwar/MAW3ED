@@ -287,3 +287,113 @@ export async function paidCentsForBooking(bookingId: string): Promise<number> {
   });
   return rows.reduce((sum, p) => sum + p.amountCents - p.refundedCents, 0);
 }
+
+// ─── Refunds ──────────────────────────────────────────────────────────────────
+
+export interface RefundReservation {
+  ok: boolean;
+  /** Why not, when ok is false. Already a message for a person. */
+  reason?: string;
+  /** What is left after this reservation. */
+  remainingCents: number;
+}
+
+/**
+ * Reserve part of a payment for refund, before asking the provider.
+ *
+ * The refund route used to read refundedCents, call Paymob, and then
+ * write `the value it read + amount`. Two requests arriving together —
+ * two admins, or one impatient double-click — both read the same
+ * starting figure, both send a real refund, and both write the same
+ * total. The money goes back twice and the ledger records it once.
+ *
+ * This closes that by moving the decision into the database. The UPDATE
+ * is conditional on the amount still fitting, so of two concurrent
+ * callers exactly one matches a row and the other gets zero and is
+ * refused. Postgres serialises the two updates on the same row, so
+ * there is no window between the check and the write for the second to
+ * slip through.
+ *
+ * Reserving before the provider call rather than after is deliberate:
+ * an over-reservation can be released, but money already sent cannot be
+ * un-sent, so the failure worth having is the one that refunds too
+ * little rather than too much.
+ */
+export async function reserveRefund(
+  paymentId: string,
+  amountCents: number,
+): Promise<RefundReservation> {
+  if (amountCents <= 0) {
+    return { ok: false, reason: "المبلغ لازم يكون أكبر من صفر", remainingCents: 0 };
+  }
+
+  const updated = await db.$executeRaw`
+    UPDATE "Payment"
+       SET "refundedCents" = "refundedCents" + ${amountCents}
+     WHERE "id" = ${paymentId}
+       AND "status" IN ('SUCCEEDED', 'PARTIALLY_REFUNDED')
+       AND "refundedCents" + ${amountCents} <= "amountCents"`;
+
+  if (updated === 0) {
+    // Either it never succeeded, or this would take it past the total.
+    // Both are refusals; the caller reads the row to say which.
+    const payment = await db.payment.findUnique({
+      where: { id: paymentId },
+      select: { amountCents: true, refundedCents: true, status: true },
+    });
+    if (!payment) return { ok: false, reason: "الدفعة غير موجودة", remainingCents: 0 };
+
+    const remaining = payment.amountCents - payment.refundedCents;
+    return {
+      ok: false,
+      reason:
+        payment.status !== "SUCCEEDED" && payment.status !== "PARTIALLY_REFUNDED"
+          ? "لا يمكن استرجاع دفعة لم تنجح"
+          : remaining <= 0
+            ? "تم استرجاع هذه الدفعة بالكامل"
+            : "المبلغ أكبر من المتبقي",
+      remainingCents: Math.max(0, remaining),
+    };
+  }
+
+  const after = await db.payment.findUniqueOrThrow({
+    where: { id: paymentId },
+    select: { amountCents: true, refundedCents: true },
+  });
+  return { ok: true, remainingCents: after.amountCents - after.refundedCents };
+}
+
+/**
+ * Give back a reservation the provider refused.
+ *
+ * Floored at zero so a double release cannot drive the figure negative,
+ * which would silently create refundable headroom that was never paid.
+ */
+export async function releaseRefundReservation(
+  paymentId: string,
+  amountCents: number,
+): Promise<void> {
+  await db.$executeRaw`
+    UPDATE "Payment"
+       SET "refundedCents" = GREATEST(0, "refundedCents" - ${amountCents})
+     WHERE "id" = ${paymentId}`;
+}
+
+/**
+ * Settle the payment's status once a reservation has been paid out.
+ *
+ * refundedCents is already correct — reserveRefund moved it — so this
+ * only brings `status` into line with it.
+ */
+export async function markRefundOutcome(paymentId: string): Promise<void> {
+  const payment = await db.payment.findUniqueOrThrow({
+    where: { id: paymentId },
+    select: { amountCents: true, refundedCents: true },
+  });
+  await db.payment.update({
+    where: { id: paymentId },
+    data: {
+      status: payment.refundedCents >= payment.amountCents ? "REFUNDED" : "PARTIALLY_REFUNDED",
+    },
+  });
+}

@@ -3,6 +3,7 @@ import { businessAllows } from "@/lib/plans";
 import { notify } from "@/lib/notifications";
 import { log } from "@/lib/logger";
 import { authorizeCron } from "@/lib/security/cron-auth";
+import { reapAbandonedPayments } from "@/lib/payments/reap";
 
 /**
  * GET /api/cron/reminders
@@ -150,7 +151,23 @@ export async function GET(req: Request) {
     }
   }
 
-  log.info(`[Reminders] Complete — ${JSON.stringify(counts)}`);
+  // ── Abandoned checkouts ──────────────────────────────
+  //
+  // Here rather than in the daily subscriptions job because a Paymob
+  // session expires after an hour, and every hour this is not run is
+  // another hour an appointment slot sits held by a checkout nobody
+  // completed. This job already runs hourly.
+  //
+  // Its own try/catch: reaping is housekeeping, and a failure in it
+  // must not lose the reminders that were already sent above.
+  let reaped = { abandoned: 0, bookingsReleased: 0, plansReleased: 0 };
+  try {
+    reaped = await reapAbandonedPayments(now);
+  } catch (e) {
+    log.error("[Reminders] abandoned-payment reap failed", e);
+  }
 
-  return Response.json({ ok: true, at: now.toISOString(), ...counts });
+  log.info(`[Reminders] Complete — ${JSON.stringify({ ...counts, ...reaped })}`);
+
+  return Response.json({ ok: true, at: now.toISOString(), ...counts, ...reaped });
 }

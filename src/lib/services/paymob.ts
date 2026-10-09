@@ -274,7 +274,13 @@ export async function refundTransaction(
 
     const text = await res.text();
     if (!res.ok) {
-      log.error("[paymob] refund refused", { transactionId, status: res.status, text });
+      log.error("[paymob] refund refused", {
+      transactionId,
+      status: res.status,
+      // Truncated: the provider decides what is in this body, and an
+      // unbounded one in a log line is content nobody reviewed.
+      text: text.slice(0, 300),
+    });
       return { ok: false, error: `paymob ${res.status}: ${text.slice(0, 300)}` };
     }
 
@@ -285,7 +291,10 @@ export async function refundTransaction(
       // Paymob answered 200 with something unparseable. The money has
       // most likely moved, so this is not reported as a failure — it is
       // reported as a refund with no id, which a human has to reconcile.
-      log.warn("[paymob] refund returned unparseable body", { transactionId, text });
+      log.warn("[paymob] refund returned unparseable body", {
+      transactionId,
+      text: text.slice(0, 300),
+    });
     }
 
     if (parsed.success === false) {

@@ -6,6 +6,11 @@ import { adminNotFound, requireAdminApi } from "@/lib/admin/guard";
 import { recordAudit } from "@/lib/admin/audit";
 import { refundTransaction } from "@/lib/services/paymob";
 import { formatCents } from "@/lib/payments/money";
+import {
+  reserveRefund,
+  releaseRefundReservation,
+  markRefundOutcome,
+} from "@/lib/payments/ledger";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -65,19 +70,27 @@ export async function POST(req: Request, { params }: Params) {
     });
     if (!payment) return err("الدفعة غير موجودة", 404);
 
-    if (payment.status !== "SUCCEEDED" && payment.status !== "PARTIALLY_REFUNDED") {
-      return err("لا يمكن استرجاع دفعة لم تنجح", 409);
+    const amount =
+      parsed.data.amountCents ?? payment.amountCents - payment.refundedCents;
+
+    // ── 1. Reserve, before the provider is asked ──
+    //
+    // Eligibility is decided inside one conditional UPDATE rather than
+    // read first and acted on after. Read-then-write let two requests
+    // arriving together — two admins, or one impatient double-click —
+    // both pass the check, both send a real refund to Paymob, and both
+    // write the same total: the money goes back twice and the ledger
+    // records it once.
+    const reservation = await reserveRefund(payment.id, amount);
+    if (!reservation.ok) {
+      const detail =
+        reservation.reason === "المبلغ أكبر من المتبقي"
+          ? `${reservation.reason} (${formatCents(reservation.remainingCents, payment.currency)})`
+          : reservation.reason;
+      return err(detail ?? "تعذّر الاسترجاع", 409);
     }
 
-    const remaining = payment.amountCents - payment.refundedCents;
-    if (remaining <= 0) return err("تم استرجاع هذه الدفعة بالكامل", 409);
-
-    const amount = parsed.data.amountCents ?? remaining;
-    if (amount > remaining) {
-      return err(`المبلغ أكبر من المتبقي (${formatCents(remaining, payment.currency)})`, 422);
-    }
-
-    // ── 1. Intent, before anything moves ────────────────────────────────────
+    // ── 2. Intent, now that the amount is held ────────────────────────────────────
     const refund = await db.refund.create({
       data: {
         paymentId: payment.id,
@@ -89,7 +102,7 @@ export async function POST(req: Request, { params }: Params) {
       },
     });
 
-    // ── 2. Ask the provider ─────────────────────────────────────────────────
+    // ── 3. Ask the provider ─────────────────────────────────────────────────
     //
     // A payment taken at the counter has no provider to ask: the money
     // goes back the same way it came, by hand, and this records it.
@@ -100,31 +113,33 @@ export async function POST(req: Request, { params }: Params) {
           ? await refundTransaction(payment.providerTransactionId, amount)
           : { ok: false as const, providerRefundId: undefined, error: "no provider transaction id" };
 
-    // ── 3. Settle the record ────────────────────────────────────────────────
+    // ── 4. Settle the record ──
     if (!outcome.ok) {
+      // Hand the reservation back: no money moved, so the headroom
+      // must not stay held against a later legitimate refund.
+      await releaseRefundReservation(payment.id, amount);
       await db.refund.update({
         where: { id: refund.id },
-        data: { status: "FAILED", failureReason: outcome.error?.slice(0, 500) ?? "refused" },
+        data: { status: "FAILED", failureReason: outcome.error?.slice(0, 500) ?? "رفض" },
       });
-      log.error("[admin refund] provider refused", { paymentId: payment.id, error: outcome.error });
+      log.error("[admin refund] provider refused", {
+        paymentId: payment.id,
+        refundId: refund.id,
+        amountCents: amount,
+        error: outcome.error,
+      });
       return err("رفض مزوّد الدفع عملية الاسترجاع", 502);
     }
 
+    // refundedCents already moved when the amount was reserved, so this
+    // only brings `status` into line with it.
     const refundedTotal = payment.refundedCents + amount;
 
-    await db.$transaction([
-      db.refund.update({
-        where: { id: refund.id },
-        data: { status: "SUCCEEDED", providerRefundId: outcome.providerRefundId ?? null },
-      }),
-      db.payment.update({
-        where: { id: payment.id },
-        data: {
-          refundedCents: refundedTotal,
-          status: refundedTotal >= payment.amountCents ? "REFUNDED" : "PARTIALLY_REFUNDED",
-        },
-      }),
-    ]);
+    await db.refund.update({
+      where: { id: refund.id },
+      data: { status: "SUCCEEDED", providerRefundId: outcome.providerRefundId ?? null },
+    });
+    await markRefundOutcome(payment.id);
 
     await recordAudit({
       actor: admin,
