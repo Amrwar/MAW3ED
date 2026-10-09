@@ -210,7 +210,7 @@ export default async function BookingPage({ params }: Params) {
             )}
 
             {cancellable && (
-              <CancelButton token={token} onCancelled={() => window.location.reload()} />
+              <CancelButton token={token} />
             )}
           </div>
         )}

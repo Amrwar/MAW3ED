@@ -1,10 +1,16 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
+import { PrismaPg } from "@prisma/adapter-pg";
 import "dotenv/config";
 
-const adapter = new PrismaNeon({
-  connectionString: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL ?? "",
-});
+// Same rule as src/lib/db.ts: Neon's adapter speaks to Neon's proxy, so
+// a local Postgres needs the plain one. Chosen by the host in the URL,
+// because what matters is which database is on the other end.
+const connectionString = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL ?? "";
+const isLocal = /^postgres(ql)?:\/\/[^@]*@(localhost|127\.0\.0\.1)[:/]/.test(connectionString);
+const adapter = isLocal
+  ? new PrismaPg({ connectionString })
+  : new PrismaNeon({ connectionString });
 const db = new PrismaClient({ adapter });
 
 async function main() {

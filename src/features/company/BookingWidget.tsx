@@ -1309,7 +1309,20 @@ export default function BookingWidget({
             <p className="text-sm text-[var(--color-subtle)] mb-6 leading-relaxed">
               يسعدنا استقبالك. سيتواصل معك الفريق قريبًا.
               <br />
-              تم إرسال تفاصيل الحجز ورابط الإدارة إلى بريدك الإلكتروني.
+              {/*
+                This line used to claim an email had been sent, always.
+                The field above it is optional, so somebody who left it
+                blank was told to go and look in an inbox for a
+                management link that was never addressed to them — and
+                that link is how they cancel.
+
+                Said only when there is an address to say it about. With
+                no address, the reference below is the thing that
+                matters, so that is what it points at.
+              */}
+              {email.trim()
+                ? "تم إرسال تفاصيل الحجز ورابط الإدارة إلى بريدك الإلكتروني."
+                : "احتفظ برقم الحجز ده — هتحتاجه لو حبيت تعدّل أو تلغي الموعد."}
             </p>
 
             <div className="text-start rounded-[var(--radius-lg)] p-4 space-y-3 mb-5" style={{ background: "rgba(14,127,94,0.06)", border: "1px solid rgba(14,127,94,0.14)" }}>

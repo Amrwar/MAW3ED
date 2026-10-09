@@ -1,15 +1,34 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 interface Props {
   token: string;
-  onCancelled: () => void;
 }
 
-export default function CancelButton({ token, onCancelled }: Props) {
+/**
+ * Cancelling, and the refresh that follows it.
+ *
+ * The refresh used to be an `onCancelled` callback passed down from
+ * the page. The page is a server component, and a function cannot
+ * cross that boundary — React refused to serialise it and the whole
+ * route answered 500. It only happened for a booking that was still
+ * cancellable, so the page worked for past appointments and broke for
+ * exactly the ones somebody opened it to change.
+ *
+ * Nothing needed to be passed. This component already knows when the
+ * cancellation succeeded, and it is already a client component, so the
+ * reload belongs here.
+ *
+ * router.refresh() rather than window.location.reload(): it re-renders
+ * the server component in place, so the page does not flash white and
+ * scroll position is kept.
+ */
+export default function CancelButton({ token }: Props) {
+  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState<string | null>(null);
@@ -25,7 +44,7 @@ export default function CancelButton({ token, onCancelled }: Props) {
         setConfirming(false);
         return;
       }
-      onCancelled();
+      router.refresh();
     } catch {
       setError("تعذّر الاتصال بالخادم، حاول مرة أخرى");
       setConfirming(false);
