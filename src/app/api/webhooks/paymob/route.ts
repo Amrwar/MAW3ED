@@ -383,12 +383,64 @@ async function handleBookingSuccess(
   return "booking-settled";
 }
 
+/**
+ * Why a payment failed, in words somebody can act on.
+ *
+ * This used to be the constant "provider-error", which is how three
+ * real subscription attempts came to be recorded with no indication of
+ * what went wrong — a wrong integration id, an expired card and a bank
+ * refusal all looked identical, and the information needed to tell them
+ * apart was discarded on arrival.
+ *
+ * Paymob puts its account of the failure in `obj.data`. None of it is
+ * card data: `message` is a sentence like "Insufficient funds" and the
+ * codes are the acquirer's. Capped, because failureReason is a column
+ * and a gateway can be verbose.
+ */
+function describeFailure(obj: PaymobTransactionObj): string {
+  const parts: string[] = [obj.error_occured ? "provider-error" : "declined"];
+
+  const message = obj.data?.message?.trim();
+  if (message) parts.push(message);
+
+  const txn = obj.data?.txn_response_code;
+  if (txn !== undefined && txn !== null && String(txn).trim()) {
+    parts.push(`txn=${String(txn).trim()}`);
+  }
+
+  const acq = obj.data?.acq_response_code;
+  if (acq !== undefined && acq !== null && String(acq).trim()) {
+    parts.push(`acq=${String(acq).trim()}`);
+  }
+
+  return parts.join(" · ").slice(0, 400);
+}
+
 async function handleFailure(
   payment: Payment,
   obj: PaymobTransactionObj,
   transactionId: string,
 ): Promise<string> {
-  const reason = obj.error_occured ? "provider-error" : "declined";
+  const reason = describeFailure(obj);
+
+  // Logged as well as stored, because the stored reason is truncated to
+  // fit a column and this is the moment somebody will be reading the
+  // logs — a customer has just told them a payment did not work.
+  log.error("[paymob webhook] payment failed", {
+    paymentId: payment.id,
+    kind: payment.kind,
+    businessId: payment.businessId,
+    transactionId,
+    amountCents: payment.amountCents,
+    errorOccured: obj.error_occured,
+    // The gateway's own words and codes. No card data: `pan` is the
+    // last four digits and is still not logged.
+    gatewayMessage: obj.data?.message ?? null,
+    txnResponseCode: obj.data?.txn_response_code ?? null,
+    acqResponseCode: obj.data?.acq_response_code ?? null,
+    integrationId: obj.integration_id,
+    sourceType: obj.source_data?.type ?? null,
+  });
 
   const { changed } = await failPayment({
     paymentId: payment.id,
