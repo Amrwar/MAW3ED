@@ -10,7 +10,18 @@ type Params = { params: Promise<{ id: string }> };
 const VALID_TRANSITIONS: Partial<Record<string, string[]>> = {
   PENDING_PAYMENT: ["CANCELLED"],                      // owner can cancel awaiting-payment bookings
   PENDING:         ["CONFIRMED", "CANCELLED"],
-  CONFIRMED:       ["COMPLETED", "CANCELLED", "NO_SHOW"],
+  // The day-of path: the customer turns up, the work starts, it ends.
+  // ARRIVED and IN_PROGRESS existed in BookingStatus, in the labels and
+  // in booking_no_overlap, but nothing could set them — so an owner
+  // could only jump straight from CONFIRMED to COMPLETED and the two
+  // states were decoration.
+  //
+  // COMPLETED stays reachable directly from CONFIRMED: a busy owner
+  // marking a finished appointment should not have to walk through two
+  // intermediate states first.
+  CONFIRMED:       ["ARRIVED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "NO_SHOW"],
+  ARRIVED:         ["IN_PROGRESS", "COMPLETED", "NO_SHOW", "CANCELLED"],
+  IN_PROGRESS:     ["COMPLETED", "CANCELLED"],
 };
 
 /**

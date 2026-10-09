@@ -1,5 +1,9 @@
 # QA pass — three roles, end to end
 
+> **Status:** every issue below is fixed. The CRITICAL and both HIGH
+> issues were fixed in the QA commit; the MEDIUM and LOW ones in the
+> follow-up. Each entry records what was done.
+
 What was actually exercised, what broke, and what was not reached.
 
 ## How this was tested
@@ -68,8 +72,10 @@ casual check on an old booking looks fine.
 **This is live in production** — the file is committed unmodified at
 `c95eaf4`.
 
-**Fix:** move the reload inside `CancelButton`, which is already a
+**Fixed.** The reload moved into `CancelButton`, which is already a
 client component and already knows when the cancellation succeeded.
+`router.refresh()` rather than a full reload, so the page keeps its
+scroll position. Verified: 200, with cancel and reschedule rendering.
 
 ---
 
@@ -94,6 +100,10 @@ The management link is how a customer cancels, which makes this worse
 than a cosmetic lie — the same defect class as the password-reset
 message fixed in Phase 17.
 
+**Fixed.** Said only when there is an address. Without one it points at
+the booking reference instead, which is what actually helps. Verified
+by booking with the email field blank.
+
 ---
 
 ### QA-H2 — HIGH — mobile offers booking actions the API rejects
@@ -116,6 +126,11 @@ transitions the API accepts.
 **Expected:** every offered action works, or is not offered.
 **Actual:** two of five buttons always fail.
 
+**Fixed — by making them work.** Removing the buttons was the wrong
+half to change: the states exist in `BookingStatus`, are labelled in
+both languages and are counted by `booking_no_overlap`. See QA-M3.
+`booking-transitions.test.ts` now compares the two lists on every run.
+
 ---
 
 ### QA-M1 — MEDIUM — raw English validation messages reach the client
@@ -130,6 +145,13 @@ transitions the API accepts.
 Zod's default messages, in English, in a product whose every other
 error is Arabic written for a person. The booking widget renders
 `{error}` directly, so these are user-visible.
+
+**Fixed.** A global error map in `zod-arabic.ts`, installed from both
+`validations.ts` and `api.ts` so a route with its own inline schema is
+covered too. Deliberately vague about which field: the message reaches
+a customer, and "serviceId is required" is a sentence about our data
+model. Verified: a malformed booking now returns
+`في بيانات ناقصة، راجع الحقول المطلوبة`.
 
 ---
 
@@ -155,8 +177,12 @@ Arabic search results and Arabic link previews.
 blocking a slot, and `BOOKING_STATUS_LABEL` names them in both
 languages — but no API can set them. Dead states that look implemented.
 
-Either wire them up or remove them; leaving them is what produced
-QA-H2.
+**Fixed by wiring them up**, which was the honest half: the data model
+and the labels already assumed they worked. `CONFIRMED → ARRIVED →
+IN_PROGRESS → COMPLETED` now works end to end, `COMPLETED` stays
+reachable directly from `CONFIRMED` so a busy owner need not walk
+through both, and terminal states still refuse. Verified against a
+running server.
 
 ---
 
@@ -175,6 +201,11 @@ customer's account page, since bookings are matched on it.
 Production is unaffected (built by migration, not by push). The hazard
 is any new environment.
 
+**Fixed.** `repair_push_gaps.sql` checks the real catalog rather than
+trusting that a guard ran, and is safe against any database. Verified
+on a fresh `db push`: Payment checks 0 → 3, `customerPhoneE164`
+`NEVER` → `ALWAYS`, and running it twice changes nothing.
+
 ## Results by area
 
 ### Customer — tested
@@ -191,8 +222,9 @@ is any new environment.
 | Bookings isolated between customers | pass |
 | Manage booking (reschedule/cancel) | **QA-C1 — blocked** |
 
-Reschedule and cancellation **could not be exercised** — QA-C1 blocks
-the only page that offers them.
+Reschedule and cancellation **could not be exercised** — QA-C1 blocked
+the only page that offers them. The page is fixed and renders both, but
+neither flow has been driven end to end. They remain untested.
 
 ### Business — tested
 

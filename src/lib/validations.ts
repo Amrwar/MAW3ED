@@ -1,4 +1,11 @@
 import { z } from "zod";
+import { installArabicZodErrors } from "./zod-arabic";
+
+// Installed here because every route that validates anything imports
+// this module, so the map is in place before the first parse. Zod's own
+// fallback messages are English, and routes hand issues[0].message
+// straight to the client.
+installArabicZodErrors();
 
 // ─── Auth ──────────────────────────────────────────────────
 export const signUpSchema = z.object({
@@ -112,7 +119,22 @@ export const availabilitySchema = z.object({
 
 // ─── Booking status update ────────────────────────────────
 export const bookingStatusSchema = z.object({
-  status: z.enum(["PENDING_PAYMENT", "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW", "FAILED_PAYMENT"]),
+  // ARRIVED and IN_PROGRESS were missing here while existing
+  // everywhere else: in BookingStatus, in the labels both languages
+  // show, and in booking_no_overlap, which counts them as holding a
+  // slot. The result was two states the database models, the UI names
+  // and no API could ever set.
+  status: z.enum([
+    "PENDING_PAYMENT",
+    "PENDING",
+    "CONFIRMED",
+    "ARRIVED",
+    "IN_PROGRESS",
+    "COMPLETED",
+    "CANCELLED",
+    "NO_SHOW",
+    "FAILED_PAYMENT",
+  ]),
 });
 
 // ─── Booking ──────────────────────────────────────────────
