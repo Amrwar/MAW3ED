@@ -25,7 +25,9 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 /** The statuses PATCH /api/business/bookings/[id] will accept. */
 function schemaStatuses(): Set<string> {
   const source = read("src/lib/validations.ts");
-  const match = source.match(/bookingStatusSchema[\s\S]{0,200}?z\.enum\(\[([^\]]+)\]\)/);
+  // A generous window: the schema is multi-line and carries a comment
+  // explaining why ARRIVED and IN_PROGRESS are in it.
+  const match = source.match(/bookingStatusSchema[\s\S]{0,800}?z\.enum\(\[([^\]]+)\]\)/);
   if (!match) throw new Error("bookingStatusSchema not found");
   return new Set([...match[1].matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]));
 }

@@ -1,7 +1,15 @@
 import { headers } from "next/headers";
+import { installArabicZodErrors } from "./zod-arabic";
 import { auth } from "@/auth";
 import { readAccessToken } from "@/lib/auth/mobile-token";
 import { db } from "@/lib/db";
+
+// Installed here as well as in validations.ts: a route with its own
+// inline z.object() need not import that module, and every API route
+// imports ok/err from this one. z.config is global and idempotent, so
+// setting it twice costs nothing and missing it once shows a customer
+// an English sentence about our data model.
+installArabicZodErrors();
 
 /** Standard JSON response helpers */
 export const ok = (data: unknown, status = 200) =>

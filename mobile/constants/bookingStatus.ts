@@ -51,14 +51,21 @@ export function statusTone(status: string): BadgeTone {
  * What an owner can do to a booking next.
  *
  * These mirror VALID_TRANSITIONS in
- * src/app/api/business/bookings/[id]/route.ts exactly. They have to:
- * this list used to be written from the BookingStatus enum instead,
- * which offered ARRIVED and IN_PROGRESS — both real statuses, both
- * refused by the API with a 422, because bookingStatusSchema does not
- * accept them and no transition reaches them. Two of the five buttons
- * on the bookings screen always failed.
+ * src/app/api/business/bookings/[id]/route.ts, and booking-transitions
+ * .test.ts fails if the two lists drift.
  *
- * A finished or cancelled appointment offers nothing: there is no
+ * They were briefly wrong in both directions. First this file offered
+ * ARRIVED and IN_PROGRESS when the API refused them, so two of five
+ * buttons returned 422. Then they were removed from here — which was
+ * the wrong half to change, because the states exist in BookingStatus,
+ * are labelled in both languages and are counted by booking_no_overlap.
+ * The API accepts them now, so the day-of path is offered again.
+ *
+ * COMPLETED stays available straight from CONFIRMED: an owner marking a
+ * finished appointment should not have to walk through two intermediate
+ * states first.
+ *
+ * A finished or cancelled appointment offers nothing — there is no
  * forward move from either, and greyed-out buttons invite people to
  * press them.
  */
@@ -73,10 +80,18 @@ export function nextActionsFor(status: string): { status: string; label: string 
       ];
     case "CONFIRMED":
       return [
+        { status: "ARRIVED", label: "وصل" },
         { status: "COMPLETED", label: "خلص" },
         { status: "NO_SHOW", label: "لم يحضر" },
         { status: "CANCELLED", label: "ألغِ" },
       ];
+    case "ARRIVED":
+      return [
+        { status: "IN_PROGRESS", label: "ابدأ" },
+        { status: "COMPLETED", label: "خلص" },
+      ];
+    case "IN_PROGRESS":
+      return [{ status: "COMPLETED", label: "خلص" }];
     default:
       return [];
   }
