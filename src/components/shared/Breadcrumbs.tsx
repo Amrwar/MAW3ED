@@ -43,7 +43,7 @@ export default function Breadcrumbs({
                 <Separator
                   size={13}
                   aria-hidden="true"
-                  className={cn("shrink-0", onDark ? "text-[var(--color-night-subtle)]" : "text-[var(--color-faint)]")}
+                  className={cn("shrink-0", onDark ? "text-[var(--color-night-subtle)]" : "text-[var(--color-subtle)]")}
                 />
               )}
               {last || !item.href ? (

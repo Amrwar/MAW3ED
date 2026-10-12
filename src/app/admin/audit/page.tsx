@@ -74,7 +74,7 @@ export default async function AdminAuditPage({
       />
 
       {entries.length === 200 && (
-        <p className="num mt-3 text-center text-[0.75rem] text-[var(--color-faint)]">
+        <p className="num mt-3 text-center text-[0.75rem] text-[var(--color-subtle)]">
           بتعرض آخر 200 إدخال
         </p>
       )}

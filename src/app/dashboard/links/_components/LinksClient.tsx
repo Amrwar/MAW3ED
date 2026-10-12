@@ -149,7 +149,7 @@ export default function LinksClient({
             </div>
 
             {report.unattributedBookings > 0 && (
-              <p className="num m-0 mt-3 text-[0.75rem] text-[var(--color-faint)]">
+              <p className="num m-0 mt-3 text-[0.75rem] text-[var(--color-subtle)]">
                 + {report.unattributedBookings} حجز من غير مصدر معروف — دول حجوزات اتعملت قبل
                 ما نبدأ نتابع، أو وصلت من رابط من غير مصدر. مش بنوزّعهم على المصادر بالتخمين.
               </p>
@@ -159,7 +159,7 @@ export default function LinksClient({
                 over the same window joined on a channel name, not one
                 person followed from a tap to a booking — because there
                 is no visitor record to follow. */}
-            <p className="m-0 mt-2 text-[0.6875rem] leading-relaxed text-[var(--color-faint)]">
+            <p className="m-0 mt-2 text-[0.6875rem] leading-relaxed text-[var(--color-subtle)]">
               النسبة دي بتقارن عدد الزيارات بعدد الحجوزات في نفس الفترة لكل مصدر. مش بنتتبّع
               أشخاص: مفيش كوكيز ولا بيانات بتتخزن عن أي زائر، فالرقم مؤشّر على المصدر مش
               حساب دقيق لكل شخص.
@@ -262,7 +262,7 @@ export default function LinksClient({
               PNG
             </a>
           </div>
-          <p className="m-0 mt-3 text-[0.6875rem] text-[var(--color-faint)]">
+          <p className="m-0 mt-3 text-[0.6875rem] text-[var(--color-subtle)]">
             الـ SVG أحسن للطباعة — بيفضل واضح مهما كبّرته.
           </p>
         </section>

@@ -136,7 +136,7 @@ export default function PaymentsClient({
           return [
             <span key="r" className="text-[0.6875rem]" dir="ltr">
               {p.receiptNumber ?? (
-                <span className="text-[var(--color-faint)]">{p.bookingRef ?? "—"}</span>
+                <span className="text-[var(--color-subtle)]">{p.bookingRef ?? "—"}</span>
               )}
             </span>,
             <span key="b" className="text-[0.78125rem]">{p.businessName}</span>,
@@ -183,7 +183,7 @@ export default function PaymentsClient({
                   استرجاع
                 </button>
               ) : p.refundedCents > 0 && remaining === 0 ? (
-                <span className="text-[0.6875rem] text-[var(--color-faint)]">مُسترجَعة</span>
+                <span className="text-[0.6875rem] text-[var(--color-subtle)]">مُسترجَعة</span>
               ) : null}
             </span>,
           ];

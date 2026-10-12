@@ -178,14 +178,14 @@ export default function BranchesClient({ initial }: { initial: BranchRow[] }) {
                   <TD>
                     <span className="font-bold text-[var(--color-ink)]">{row.nameAr}</span>
                   </TD>
-                  <TD>{row.address || <span className="text-[var(--color-faint)]">—</span>}</TD>
+                  <TD>{row.address || <span className="text-[var(--color-subtle)]">—</span>}</TD>
                   <TD>
                     {row.phone ? (
                       <span className="num" dir="ltr">
                         {row.phone}
                       </span>
                     ) : (
-                      <span className="text-[var(--color-faint)]">—</span>
+                      <span className="text-[var(--color-subtle)]">—</span>
                     )}
                   </TD>
                   <TD>

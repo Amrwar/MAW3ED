@@ -213,14 +213,14 @@ export default function ResourcesClient({ initial, branches }: Props) {
                   <TD>{kindWord(row.kind)}</TD>
                   <TD>
                     {row.capacity === null ? (
-                      <span className="text-[var(--color-faint)]">—</span>
+                      <span className="text-[var(--color-subtle)]">—</span>
                     ) : (
                       <span className="num">{num(row.capacity, lang)}</span>
                     )}
                   </TD>
-                  <TD>{row.area || <span className="text-[var(--color-faint)]">—</span>}</TD>
+                  <TD>{row.area || <span className="text-[var(--color-subtle)]">—</span>}</TD>
                   {branches.length > 0 && (
-                    <TD>{row.branch?.nameAr || <span className="text-[var(--color-faint)]">—</span>}</TD>
+                    <TD>{row.branch?.nameAr || <span className="text-[var(--color-subtle)]">—</span>}</TD>
                   )}
                   <TD>
                     <span className={cn("badge", row.isActive ? "badge-success" : "badge-default")}>

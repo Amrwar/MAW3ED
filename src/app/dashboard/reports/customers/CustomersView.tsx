@@ -66,7 +66,7 @@ export default function CustomersView({
         }
       />
 
-      <p className="m-0 text-center text-[0.75rem] text-[var(--color-faint)]">
+      <p className="m-0 text-center text-[0.75rem] text-[var(--color-subtle)]">
         <Link href="/dashboard/customers" className="font-bold text-[var(--color-jade)]">
           {ar ? "افتح كل العملاء" : "Open all customers"}
         </Link>

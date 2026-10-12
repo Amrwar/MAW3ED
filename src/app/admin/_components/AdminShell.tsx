@@ -51,7 +51,7 @@ export default function AdminShell({
           {sections.map((section) => (
             <div key={section.titleAr ?? "main"} className="mb-4">
               {section.titleAr && (
-                <p className="m-0 px-3 pb-1 text-[0.625rem] font-bold uppercase tracking-wider text-[var(--color-faint)]">
+                <p className="m-0 px-3 pb-1 text-[0.625rem] font-bold uppercase tracking-wider text-[var(--color-subtle)]">
                   {section.titleAr}
                 </p>
               )}

@@ -7,11 +7,9 @@ import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { Prisma } from "@prisma/client";
 import { notify } from "@/lib/notifications";
 import { log } from "@/lib/logger";
+import { CUTOFF_HOURS, minutesUntilStart } from "@/lib/bookings/self-service";
 
 type Params = { params: Promise<{ token: string }> };
-
-/** Minimum hours before appointment that rescheduling is allowed */
-const CUTOFF_HOURS = 2;
 
 const rescheduleSchema = z.object({
   date:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاريخ غير صحيح"),
@@ -68,17 +66,9 @@ export async function POST(req: Request, { params }: Params) {
       return err("لا يمكن إعادة جدولة هذا الحجز", 400);
     }
 
-    // ── Current booking must still be far enough in the future ──────────────
-    const [ch, cm]        = booking.startTime.split(":").map(Number);
-    const currentDateTime = new Date(booking.date);
-    currentDateTime.setUTCHours(ch, cm, 0, 0);
-    const cutoff = new Date(Date.now() + CUTOFF_HOURS * 60 * 60 * 1000);
-
-    if (currentDateTime <= cutoff) {
-      return err(
-        `لا يمكن إعادة الجدولة قبل أقل من ${CUTOFF_HOURS} ساعات من الموعد الحالي`,
-        400,
-      );
+    // ── Current booking must still be far enough ahead, on Cairo's clock ────
+    if (minutesUntilStart(booking.date, booking.startTime) <= CUTOFF_HOURS * 60) {
+      return err("لا يمكن إعادة جدولة الحجز قبل الموعد بأقل من ساعتين", 400);
     }
 
     // ── Is the new time actually available? ─────────────────────────────────

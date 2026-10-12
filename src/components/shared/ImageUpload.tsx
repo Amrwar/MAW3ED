@@ -95,8 +95,9 @@ export default function ImageUpload({
         >
           <img src={value} alt="" className="w-full h-full object-cover" />
 
-          {/* Overlay actions */}
-          <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+          {/* Overlay actions. Hover-only left them invisible on a phone,
+              which has no hover, and to a keyboard user tabbing onto them. */}
+          <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity flex items-center justify-center gap-2">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -109,9 +110,10 @@ export default function ImageUpload({
               <button
                 type="button"
                 onClick={onRemove}
+                aria-label="حذف الصورة"
                 className="text-xs bg-[var(--color-danger)] text-white px-2 py-1 rounded-lg font-medium hover:bg-[var(--color-danger)] transition-colors"
               >
-                <X size={14} />
+                <X size={14} aria-hidden="true" />
               </button>
             )}
           </div>

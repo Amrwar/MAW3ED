@@ -130,6 +130,8 @@ function IconBtn({
     <button
       onClick={onClick}
       title={title}
+      // An icon is not a name. title alone is not reliably announced.
+      aria-label={title}
       className="flex items-center justify-center transition-all duration-150 shrink-0 transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
       style={{
         width:        36,
@@ -164,13 +166,15 @@ function MobileNavGroup({
       "flex min-h-12 items-center gap-3 rounded-[var(--radius-sm)] px-4 text-[0.875rem] transition-colors",
       active
         ? "bg-[var(--color-jade)] font-bold text-white"
-        : "text-[#BACBC4] hover:bg-[var(--color-night-2)] hover:text-white",
+        // The drawer is white. These were the dark sidebar's colours —
+        // #BACBC4 on white is 1.7:1, unreadable in daylight.
+        : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]",
     );
 
   return (
     <div className="flex flex-col gap-0.5">
       {section.title && (
-        <p className="m-0 px-4 pb-1 pt-3 text-[0.625rem] font-bold uppercase tracking-wider text-[var(--color-night-subtle)]">
+        <p className="m-0 px-4 pb-1 pt-3 text-[0.625rem] font-bold uppercase tracking-wider text-[var(--color-subtle)]">
           {section.title}
         </p>
       )}
@@ -191,7 +195,7 @@ function MobileNavGroup({
                 <span
                   className={cn(
                     "num rounded-full px-2 py-0.5 text-[0.6875rem] font-bold",
-                    active ? "bg-white/22 text-white" : "bg-[var(--color-night-line)] text-white",
+                    active ? "bg-white/22 text-white" : "bg-[var(--color-ink)] text-white",
                   )}
                 >
                   {item.badge}
@@ -200,7 +204,7 @@ function MobileNavGroup({
             </Link>
 
             {item.children && isGroupOpen(item, pathname) && (
-              <div className="mb-1 ms-7 flex flex-col gap-0.5 border-s border-[var(--color-night-line)] ps-2">
+              <div className="mb-1 ms-7 flex flex-col gap-0.5 border-s border-[var(--color-line)] ps-2">
                 {item.children.map((child) => (
                   <Link
                     key={child.href}
@@ -209,8 +213,8 @@ function MobileNavGroup({
                     className={cn(
                       "flex min-h-11 items-center rounded-[var(--radius-sm)] px-4 text-[0.8125rem] transition-colors",
                       isActive(child.href, pathname)
-                        ? "bg-white/15 font-bold text-white"
-                        : "text-[var(--color-night-subtle)] hover:bg-white/8 hover:text-white",
+                        ? "bg-[var(--color-jade-soft)] font-bold text-[var(--color-jade)]"
+                        : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]",
                     )}
                   >
                     {child.label}
@@ -251,7 +255,7 @@ export default function DashboardHeader({
   /** Shows the moderation entry; nobody else sees it exists. */
   isAdmin?:      boolean;
 }) {
-  const { t }    = useLanguage();
+  const { t, lang } = useLanguage();
   const h        = t.dashboard.header;
   const s        = t.dashboard.sidebar as unknown as Record<string, string>;
   const pathname = usePathname();
@@ -463,6 +467,7 @@ export default function DashboardHeader({
                     toggle();
                   }}
                   active={open}
+                  title={h.notifications}
                 >
                   <Bell size={14} aria-hidden="true" />
                 </IconBtn>
@@ -546,9 +551,8 @@ export default function DashboardHeader({
 
       {/* ── Mobile nav drawer ────────────────────────────────── */}
       {/*
-        Positioned at start-0 which resolves to right: 0 in RTL.
-        translateX(100%) pushes it off-screen to the right when closed.
-        translateX(0) brings it back when open.
+        Positioned at start-0: the right edge in Arabic, the left in
+        English. Closed, it is translated off past that edge.
       */}
       <div
         className="fixed top-0 start-0 z-[70] h-full flex flex-col md:hidden"
@@ -556,10 +560,16 @@ export default function DashboardHeader({
           width:      280,
           background: "var(--color-surface)",
           boxShadow:  mobileOpen ? "-8px 0 40px rgba(17,32,28,0.18)" : "none",
-          transform:  mobileOpen ? "translateX(0)" : "translateX(100%)",
+          // Off past the inline start: the right edge in Arabic, the left
+          // in English. It was fixed to RTL, so the English dashboard got
+          // a right-aligned menu sliding in from the wrong side.
+          transform:  mobileOpen ? "translateX(0)" : lang === "ar" ? "translateX(100%)" : "translateX(-100%)",
           transition: "transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
-        dir="rtl"
+        // Closed, it is only moved off-screen — and every link in it stayed
+        // in the tab order and the accessibility tree: 25 invisible stops
+        // before the page. inert takes it out of both until it opens.
+        inert={!mobileOpen}
       >
         {/* ── Drawer header ─────────────────────────────────── */}
         <div

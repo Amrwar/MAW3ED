@@ -194,7 +194,7 @@ export default function OnboardingForm({ categories, cities }: Props) {
                   className={`flex h-9 w-9 items-center justify-center rounded-full text-[0.8125rem] font-bold transition-colors ${
                     done || current
                       ? "bg-[var(--color-jade)] text-white"
-                      : "border-[1.5px] border-[var(--color-line-2)] bg-[var(--color-surface)] text-[var(--color-faint)]"
+                      : "border-[1.5px] border-[var(--color-line-2)] bg-[var(--color-surface)] text-[var(--color-subtle)]"
                   }`}
                 >
                   {done ? <CheckCircle size={16} aria-hidden="true" /> : <s.Icon size={16} strokeWidth={1.9} aria-hidden="true" />}
@@ -203,7 +203,7 @@ export default function OnboardingForm({ categories, cities }: Props) {
                   className={`hidden text-[0.6875rem] sm:block ${
                     step >= s.num
                       ? "font-bold text-[var(--color-ink)]"
-                      : "text-[var(--color-faint)]"
+                      : "text-[var(--color-subtle)]"
                   }`}
                 >
                   {s.label}

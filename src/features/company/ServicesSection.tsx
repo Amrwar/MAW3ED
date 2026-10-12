@@ -58,12 +58,20 @@ export default function ServicesSection({ services, providers, nextSlot, onBook 
               className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-4"
             >
               <div className="min-w-0 flex-[1_1_16rem]">
-                <h3 className="m-0 text-base font-bold text-[var(--color-ink)]">
-                  {service.nameAr}
+                {/* English when the business gave one. Otherwise the Arabic
+                    name, marked as Arabic so it is shaped, aligned and read
+                    aloud as Arabic inside an English page. */}
+                <h3
+                  className="m-0 text-base font-bold text-[var(--color-ink)]"
+                  {...(lang === "en" && !service.nameEn ? { lang: "ar", dir: "rtl" } : {})}
+                >
+                  {lang === "en" && service.nameEn ? service.nameEn : service.nameAr}
                 </h3>
 
                 {service.descriptionAr && (
-                  <p className="m-0 mt-1.5 line-clamp-2 text-[0.84375rem] leading-relaxed text-[var(--color-subtle)]">
+                  <p
+                    {...(lang === "en" ? { lang: "ar", dir: "rtl" } : {})}
+                    className="m-0 mt-1.5 line-clamp-2 text-[0.84375rem] leading-relaxed text-[var(--color-subtle)]">
                     {service.descriptionAr}
                   </p>
                 )}

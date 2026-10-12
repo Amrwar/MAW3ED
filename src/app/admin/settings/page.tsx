@@ -61,7 +61,7 @@ export default async function AdminSettingsPage() {
       <AdminTable
         head={["الخدمة", "الحالة"]}
         rows={configured.map((c) => [
-          <span key="l">{c.label} <code className="ms-2 text-[0.625rem] text-[var(--color-faint)]" dir="ltr">{c.key}</code></span>,
+          <span key="l">{c.label} <code className="ms-2 text-[0.625rem] text-[var(--color-subtle)]" dir="ltr">{c.key}</code></span>,
           c.on ? <Pill key="s" tone="ok">متظبّطة</Pill> : <Pill key="s" tone="warn">مش متظبّطة</Pill>,
         ])}
         empty=""

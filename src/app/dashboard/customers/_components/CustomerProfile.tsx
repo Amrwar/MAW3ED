@@ -182,7 +182,7 @@ export default function CustomerProfile({
 
         <dl className="m-0 mt-4 flex flex-wrap gap-x-7 gap-y-2 border-t border-[var(--color-line)] pt-4 text-[0.8125rem]">
           <div>
-            <dt className="m-0 text-[0.6875rem] text-[var(--color-faint)]">
+            <dt className="m-0 text-[0.6875rem] text-[var(--color-subtle)]">
               {ar ? "الموبايل" : "Phone"}
             </dt>
             <dd className="num m-0 font-bold text-[var(--color-ink)]" dir="ltr">
@@ -191,7 +191,7 @@ export default function CustomerProfile({
           </div>
           {customer.email && (
             <div className="min-w-0">
-              <dt className="m-0 text-[0.6875rem] text-[var(--color-faint)]">
+              <dt className="m-0 text-[0.6875rem] text-[var(--color-subtle)]">
                 {ar ? "الإيميل" : "Email"}
               </dt>
               <dd className="m-0 truncate font-bold text-[var(--color-ink)]" dir="ltr">
@@ -200,7 +200,7 @@ export default function CustomerProfile({
             </div>
           )}
           <div>
-            <dt className="m-0 text-[0.6875rem] text-[var(--color-faint)]">
+            <dt className="m-0 text-[0.6875rem] text-[var(--color-subtle)]">
               {ar ? "الموعد الجاي" : "Next appointment"}
             </dt>
             <dd className="m-0 font-bold text-[var(--color-ink)]">{date(stats.nextVisit)}</dd>
@@ -357,7 +357,7 @@ export default function CustomerProfile({
               }
               className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] p-3 text-[0.8125rem] leading-relaxed text-[var(--color-ink)] outline-none focus:border-[var(--color-jade)]"
             />
-            <p className="m-0 mt-2 text-[0.6875rem] text-[var(--color-faint)]">
+            <p className="m-0 mt-2 text-[0.6875rem] text-[var(--color-subtle)]">
               {notes !== savedNotes
                 ? ar
                   ? "بيحفظ لما تسيب الخانة"
@@ -397,7 +397,7 @@ function Tile({
 }) {
   return (
     <li className="card p-4">
-      <p className="m-0 text-[0.6875rem] text-[var(--color-faint)]">{label}</p>
+      <p className="m-0 text-[0.6875rem] text-[var(--color-subtle)]">{label}</p>
       <p
         className="num m-0 mt-1 text-[1.375rem] font-bold leading-none"
         style={{ color: tone === "danger" ? "var(--color-danger)" : "var(--color-ink)" }}

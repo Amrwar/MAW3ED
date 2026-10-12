@@ -107,7 +107,8 @@ export default function AccountBookingCard({ booking: b, variant }: Props) {
 
           <p className="m-0 mt-1 text-[0.875rem] text-[var(--color-muted)]">{b.serviceName}</p>
 
-          <dl className="m-0 mt-3 grid gap-x-5 gap-y-1.5 text-[0.8125rem] sm:grid-cols-2">
+          {/* Not a <dl>: these rows have values but no terms. */}
+          <div className="m-0 mt-3 grid gap-x-5 gap-y-1.5 text-[0.8125rem] sm:grid-cols-2">
             <Row icon={<CalendarDays size={13} />} value={dateLabel} extra={relative} />
             <Row
               icon={<Clock size={13} />}
@@ -117,7 +118,7 @@ export default function AccountBookingCard({ booking: b, variant }: Props) {
             />
             {b.staffName && <Row icon={<User2 size={13} />} value={b.staffName} />}
             {where && <Row icon={<MapPin size={13} />} value={where} />}
-          </dl>
+          </div>
 
           {(b.branchName || b.resourceName || b.partySize !== null) && (
             <p className="m-0 mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.75rem] text-[var(--color-subtle)]">
@@ -157,13 +158,15 @@ export default function AccountBookingCard({ booking: b, variant }: Props) {
 
         {variant === "upcoming" && b.accessToken && (
           <>
-            <Link
-              href={`/booking/${b.accessToken}#reschedule`}
-              className="btn btn-outline btn-sm btn-pill"
-            >
-              <RotateCcw size={13} strokeWidth={2} aria-hidden="true" />
-              {c.reschedule}
-            </Link>
+            {b.canChange && (
+              <Link
+                href={`/booking/${b.accessToken}#reschedule`}
+                className="btn btn-outline btn-sm btn-pill"
+              >
+                <RotateCcw size={13} strokeWidth={2} aria-hidden="true" />
+                {c.reschedule}
+              </Link>
+            )}
             <a
               href={`/api/public/booking/${b.accessToken}/calendar`}
               download
@@ -172,13 +175,15 @@ export default function AccountBookingCard({ booking: b, variant }: Props) {
               <CalendarPlus size={13} strokeWidth={2} aria-hidden="true" />
               {c.calendar}
             </a>
-            <Link
-              href={`/booking/${b.accessToken}#cancel`}
-              className="btn btn-sm btn-pill border border-[var(--color-danger-line)] bg-transparent text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
-            >
-              <X size={13} strokeWidth={2.2} aria-hidden="true" />
-              {c.cancel}
-            </Link>
+            {b.canChange && (
+              <Link
+                href={`/booking/${b.accessToken}#cancel`}
+                className="btn btn-sm btn-pill border border-[var(--color-danger-line)] bg-transparent text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
+              >
+                <X size={13} strokeWidth={2.2} aria-hidden="true" />
+                {c.cancel}
+              </Link>
+            )}
           </>
         )}
 

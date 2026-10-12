@@ -14,11 +14,14 @@ interface Props {
   currency: string;
   open: OpenState;
   /**
-   * The element the bar stands in for. While it is on screen the bar
-   * stays hidden: two "book now" buttons a thumb apart is clutter, and
-   * at rest on a short phone the bar lands on top of the section tabs.
+   * The elements the bar stands in for. While any of them is on screen
+   * the bar stays hidden: two "book now" buttons a thumb apart is
+   * clutter, and at rest on a short phone the bar lands on top of the
+   * section tabs. The booking widget is one of them — once a visitor is
+   * in it, a bar saying "book now" only covers the form, and on a phone
+   * held sideways it took a fifth of the screen.
    */
-  watchId?: string;
+  watchIds?: string[];
 }
 
 /**
@@ -29,7 +32,7 @@ interface Props {
  * gain. The page reserves height for it (pb-32 on the content) so it
  * never hides the last row of a section.
  */
-export default function StickyBookingBar({ minPrice, currency, open, watchId }: Props) {
+export default function StickyBookingBar({ minPrice, currency, open, watchIds = [] }: Props) {
   const { t, lang } = useLanguage();
   const p = t.profile;
 
@@ -37,22 +40,33 @@ export default function StickyBookingBar({ minPrice, currency, open, watchId }: 
   // case distinct is what lets the bar start hidden without setting
   // state from inside the effect.
   const [heroVisible, setHeroVisible] = useState<boolean | null>(null);
+  const watchKey = watchIds.join(" ");
 
   useEffect(() => {
-    const target = watchId ? liveElementById(watchId) : null;
-    if (!target) return;
+    const targets = watchKey
+      .split(" ")
+      .map((id) => liveElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+    if (targets.length === 0) return;
 
+    const onScreen = new Set<Element>();
     const observer = new IntersectionObserver(
-      ([entry]) => setHeroVisible(entry.isIntersecting),
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) onScreen.add(e.target);
+          else onScreen.delete(e.target);
+        }
+        setHeroVisible(onScreen.size > 0);
+      },
       { threshold: 0 },
     );
-    observer.observe(target);
+    for (const t of targets) observer.observe(t);
     return () => observer.disconnect();
-  }, [watchId]);
+  }, [watchKey]);
 
   // With nothing to stand in for, the bar is simply always there.
   // Before the first report, the sentinel is on screen by definition.
-  const shown = heroVisible === null ? !watchId : !heroVisible;
+  const shown = heroVisible === null ? watchIds.length === 0 : !heroVisible;
 
   return (
     <div

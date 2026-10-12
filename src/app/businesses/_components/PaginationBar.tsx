@@ -53,7 +53,7 @@ export default function PaginationBar({ page, pageCount, hrefFor, onNavigate }: 
         className={cn(
           "flex min-h-11 items-center gap-1.5 rounded-[var(--radius-sm)] px-3.5 text-[0.875rem] font-bold transition-colors",
           page === 1
-            ? "pointer-events-none text-[var(--color-faint)]"
+            ? "pointer-events-none text-[var(--color-subtle)]"
             : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]",
         )}
       >
@@ -66,7 +66,7 @@ export default function PaginationBar({ page, pageCount, hrefFor, onNavigate }: 
           <span
             key={`gap-${i}`}
             aria-hidden="true"
-            className="flex min-h-11 w-8 items-center justify-center text-[var(--color-faint)]"
+            className="flex min-h-11 w-8 items-center justify-center text-[var(--color-subtle)]"
           >
             …
           </span>
@@ -97,7 +97,7 @@ export default function PaginationBar({ page, pageCount, hrefFor, onNavigate }: 
         className={cn(
           "flex min-h-11 items-center gap-1.5 rounded-[var(--radius-sm)] px-3.5 text-[0.875rem] font-bold transition-colors",
           page === pageCount
-            ? "pointer-events-none text-[var(--color-faint)]"
+            ? "pointer-events-none text-[var(--color-subtle)]"
             : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]",
         )}
       >

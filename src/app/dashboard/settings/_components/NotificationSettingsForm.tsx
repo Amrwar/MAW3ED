@@ -82,7 +82,7 @@ export default function NotificationSettingsForm({
         {saving && (
           <Loader2
             size={14}
-            className="animate-spin text-[var(--color-faint)]"
+            className="animate-spin text-[var(--color-subtle)]"
             aria-label={ar ? "بيحفظ" : "Saving"}
           />
         )}
@@ -160,7 +160,7 @@ export default function NotificationSettingsForm({
             checked={p.notifyPayment}
             onChange={(v) => save({ notifyPayment: v })}
           />
-          <p className="mt-2 px-2 text-[0.75rem] text-[var(--color-faint)]">
+          <p className="mt-2 px-2 text-[0.75rem] text-[var(--color-subtle)]">
             {ar
               ? "حاجات زي انتهاء الاشتراك هنبعتهالك دايمًا — صفحتك بتختفي من غيرها."
               : "Things like a lapsing subscription are always sent — your page comes down without it."}

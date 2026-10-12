@@ -113,7 +113,7 @@ export default function CustomersClient({
             <Search
               size={15}
               aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-[var(--color-faint)]"
+              className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-[var(--color-subtle)]"
             />
             <input
               value={q}
@@ -228,7 +228,7 @@ export default function CustomersClient({
                         <StickyNote
                           size={13}
                           aria-label={ar ? "فيه ملاحظات" : "Has notes"}
-                          className="text-[var(--color-faint)]"
+                          className="text-[var(--color-subtle)]"
                         />
                       )}
                       {c.noShows > 0 && (
@@ -287,7 +287,7 @@ export default function CustomersClient({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="m-0 text-[0.6875rem] text-[var(--color-faint)]">{label}</dt>
+      <dt className="m-0 text-[0.6875rem] text-[var(--color-subtle)]">{label}</dt>
       <dd className="num m-0 mt-0.5 font-bold text-[var(--color-ink)]">{value}</dd>
     </div>
   );

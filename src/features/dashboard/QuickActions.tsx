@@ -53,7 +53,7 @@ export default function QuickActions({ slug }: Props) {
                   size={15}
                   strokeWidth={2}
                   aria-hidden="true"
-                  className="shrink-0 text-[var(--color-faint)] transition-transform group-hover:-translate-x-0.5"
+                  className="shrink-0 text-[var(--color-subtle)] transition-transform group-hover:-translate-x-0.5"
                 />
               </Link>
             </li>

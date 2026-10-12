@@ -114,7 +114,7 @@ export default function ReviewsClient({
                   {ar ? "زيارة مؤكدة" : "Verified visit"}
                 </span>
               )}
-              <span className="num ms-auto text-[0.6875rem] text-[var(--color-faint)]">
+              <span className="num ms-auto text-[0.6875rem] text-[var(--color-subtle)]">
                 {date(r.createdAt)}
               </span>
             </div>
@@ -131,7 +131,7 @@ export default function ReviewsClient({
       </ul>
 
       {total > reviews.length && (
-        <p className="num m-0 text-center text-[0.75rem] text-[var(--color-faint)]">
+        <p className="num m-0 text-center text-[0.75rem] text-[var(--color-subtle)]">
           {ar
             ? `بتعرض أحدث ${num(reviews.length, lang)} من ${num(total, lang)}`
             : `Showing the latest ${num(reviews.length, lang)} of ${num(total, lang)}`}

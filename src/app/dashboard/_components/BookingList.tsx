@@ -112,7 +112,7 @@ export default function BookingList({
                   <span className="num shrink-0 text-[1.0625rem] font-bold text-[var(--color-ink)]">
                     {b.startTime}
                     {b.endTime && (
-                      <span className="block text-[0.6875rem] font-normal text-[var(--color-faint)]">
+                      <span className="block text-[0.6875rem] font-normal text-[var(--color-subtle)]">
                         {ar ? "لـ" : "to"} {b.endTime}
                       </span>
                     )}

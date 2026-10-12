@@ -123,7 +123,7 @@ export default function NotificationList({
 
       {groupByDay(rows).map((group) => (
         <section key={group.bucket}>
-          <h2 className="mb-2 mt-1 text-[0.75rem] font-bold uppercase tracking-wide text-[var(--color-faint)]">
+          <h2 className="mb-2 mt-1 text-[0.75rem] font-bold uppercase tracking-wide text-[var(--color-subtle)]">
             {group.bucket === "today"
               ? a.groupToday
               : group.bucket === "yesterday"
@@ -165,7 +165,7 @@ export default function NotificationList({
                     {r.body}
                   </span>
                 )}
-                <span className="num mt-1 block text-[0.6875rem] text-[var(--color-faint)]">
+                <span className="num mt-1 block text-[0.6875rem] text-[var(--color-subtle)]">
                   {when(r.createdAt)}
                 </span>
               </span>

@@ -16,6 +16,12 @@ interface Props {
   currentEnd:   string;   // "HH:MM"
   serviceName:  string;
   businessName: string;
+  // The booking keeps its staff member, resource and branch when it
+  // moves, and the server checks the new time against them. Asking for
+  // slots without them offered times the server then refused.
+  staffMemberId: string | null;
+  resourceId:    string | null;
+  branchId:      string | null;
 }
 
 // ── Arabic helpers ────────────────────────────────────────────────────────────
@@ -47,6 +53,9 @@ export default function RescheduleFlow({
   currentEnd,
   serviceName,
   businessName,
+  staffMemberId,
+  resourceId,
+  branchId,
 }: Props) {
   const [step,       setStep]       = useState<Step>("idle");
   const [newDate,    setNewDate]    = useState("");
@@ -64,9 +73,11 @@ export default function RescheduleFlow({
     setSlotsError("");
     setNewStart("");
     try {
-      const res  = await fetch(
-        `/api/public/${slug}/slots?serviceId=${serviceId}&date=${newDate}`
-      );
+      const query = new URLSearchParams({ serviceId, date: newDate });
+      if (staffMemberId) query.set("staffMemberId", staffMemberId);
+      if (resourceId)    query.set("resourceId", resourceId);
+      if (branchId)      query.set("branchId", branchId);
+      const res  = await fetch(`/api/public/${slug}/slots?${query}`);
       const data = await res.json();
       if (!res.ok) { setSlotsError(data.error ?? "تعذّر تحميل المواعيد"); return; }
       const available: string[] = data.slots ?? [];
@@ -178,11 +189,12 @@ export default function RescheduleFlow({
         {/* Step: date picker */}
         {(step === "date") && (
           <div className="space-y-3">
-            <label className="block text-sm font-semibold text-[var(--color-text-primary)]">
+            <label htmlFor="reschedule-date" className="block text-sm font-semibold text-[var(--color-text-primary)]">
               <CalendarDays size={14} className="inline ms-1" />
               اختر تاريخًا جديدًا
             </label>
             <input
+              id="reschedule-date"
               type="date"
               min={todayEgypt()}
               value={newDate}

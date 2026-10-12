@@ -142,7 +142,7 @@ export default function CollectBalance({ bookingId }: { bookingId: string }) {
                   {KIND_AR[p.kind] ?? p.kind}
                   {p.provider === "MANUAL" ? " · يدوي" : ""}
                   {p.receiptNumber && (
-                    <span className="num ms-1.5 text-[var(--color-faint)]" dir="ltr">
+                    <span className="num ms-1.5 text-[var(--color-subtle)]" dir="ltr">
                       {p.receiptNumber}
                     </span>
                   )}
