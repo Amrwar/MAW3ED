@@ -410,7 +410,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
         minPrice={minPrice}
         currency={services[0]?.currency ?? "EGP"}
         open={open}
-        watchId="profile-actions"
+        watchIds={["profile-actions", "booking"]}
       />
     </>
   );

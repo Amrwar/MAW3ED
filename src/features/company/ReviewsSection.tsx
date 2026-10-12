@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { BadgeCheck, MessageSquare, Star, Store } from "lucide-react";
+import Stars from "@/components/shared/Stars";
 import EmptyState from "@/components/ui/EmptyState";
 import Alert from "@/components/ui/Alert";
 import { REVIEW_SORTS, type ReviewSort } from "@/lib/review-sorts";
@@ -112,22 +113,11 @@ export default function ReviewsSection({
               {summary.average?.toFixed(1)}
             </p>
             <div
-              className="mt-2.5 flex justify-center gap-0.5"
+              className="mt-2.5 flex justify-center"
               role="img"
               aria-label={r.outOfFive.replace("{n}", String(summary.average))}
             >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Star
-                  key={n}
-                  size={15}
-                  aria-hidden="true"
-                  className={
-                    n <= Math.round(summary.average ?? 0)
-                      ? "fill-[var(--color-star)] text-[var(--color-star)]"
-                      : "fill-[var(--color-line)] text-[var(--color-line)]"
-                  }
-                />
-              ))}
+              <Stars value={Math.round(summary.average ?? 0)} size={15} />
             </div>
             <p className="m-0 mt-2 text-[0.78125rem] text-[var(--color-subtle)]">
               <span className="num">{num(summary.count, lang)}</span> {r.reviewWord}
@@ -282,22 +272,11 @@ function ReviewItem({ review }: { review: PublicReview }) {
       </div>
 
       <div
-        className="mt-2 flex gap-0.5"
+        className="mt-2 flex"
         role="img"
         aria-label={r.outOfFive.replace("{n}", String(review.rating))}
       >
-        {[1, 2, 3, 4, 5].map((n) => (
-          <Star
-            key={n}
-            size={13}
-            aria-hidden="true"
-            className={
-              n <= review.rating
-                ? "fill-[var(--color-star)] text-[var(--color-star)]"
-                : "fill-[var(--color-line)] text-[var(--color-line)]"
-            }
-          />
-        ))}
+        <Stars value={review.rating} size={13} />
       </div>
 
       {review.serviceName && (

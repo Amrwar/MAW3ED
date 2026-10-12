@@ -12,13 +12,35 @@ export function Table({
   children,
   minWidth = "40rem",
   className,
+  label,
 }: {
   children: ReactNode;
   minWidth?: string;
   className?: string;
+  /** Names the scroll region for screen readers. */
+  label?: string;
 }) {
+  // `relative` matters as much as `overflow-x-auto`. An absolutely
+  // positioned descendant — the sr-only label on an actions column — is
+  // laid out against the nearest positioned ancestor, and clipped only
+  // by scroll boxes inside that ancestor. Without it the label escaped
+  // this box and widened the page itself: /dashboard/branches was 549px
+  // wide on a 375px phone in Arabic, where that overflow is scrollable.
+  //
+  // tabIndex: on a phone the table is wider than its box, and a box that
+  // scrolls must be reachable by keyboard or its hidden columns are
+  // unreachable without a pointer (WCAG 2.1.1; axe: scrollable-region-
+  // focusable, found on /pricing at 375px).
   return (
-    <div className={cn("w-full overflow-x-auto", className)}>
+    <div
+      tabIndex={0}
+      role={label ? "region" : undefined}
+      aria-label={label}
+      className={cn(
+        "relative w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-jade)]",
+        className,
+      )}
+    >
       <table className="w-full border-collapse" style={{ minWidth }}>
         {children}
       </table>

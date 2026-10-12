@@ -39,7 +39,7 @@ export default function Step6Preview({
       <div className="border-2 border-[var(--color-border)] rounded-[var(--radius-lg)] overflow-hidden">
         {/* Cover */}
         <div className="h-28 bg-gradient-to-br from-gray-200 to-gray-300 relative">
-          <div className="absolute inset-0 flex items-center justify-center text-[var(--color-faint)] text-sm">
+          <div className="absolute inset-0 flex items-center justify-center text-[var(--color-subtle)] text-sm">
             صورة الغلاف
           </div>
         </div>

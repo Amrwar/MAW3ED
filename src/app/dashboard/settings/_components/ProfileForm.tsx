@@ -135,11 +135,16 @@ function Field({
 }) {
   return (
     <div>
-      <label style={label}>
-        {labelText}
-        {required && <span style={{ color: "var(--color-danger)", marginInlineStart: 3 }}>*</span>}
+      {/* The control sits inside the label, so the label names it. As a
+          sibling it named nothing: every field on this form, the two
+          selects included, had no accessible name. */}
+      <label style={{ display: "block" }}>
+        <span style={label}>
+          {labelText}
+          {required && <span style={{ color: "var(--color-danger)", marginInlineStart: 3 }}>*</span>}
+        </span>
+        {children}
       </label>
-      {children}
       {hintText && <p style={hint}>{hintText}</p>}
     </div>
   );

@@ -41,7 +41,7 @@ export function Tiles({
       {items.map((t) => {
         const inner = (
           <>
-            <p className="m-0 text-[0.6875rem] text-[var(--color-faint)]">{t.label}</p>
+            <p className="m-0 text-[0.6875rem] text-[var(--color-subtle)]">{t.label}</p>
             <p className="num m-0 mt-1 text-[1.375rem] font-bold leading-none text-[var(--color-ink)]">
               {t.value}
             </p>
@@ -93,7 +93,7 @@ export function AdminTable({
               <th
                 key={h + i}
                 scope="col"
-                className={`whitespace-nowrap border-b border-[var(--color-line)] px-4 py-3 text-[0.6875rem] font-bold text-[var(--color-faint)] ${
+                className={`whitespace-nowrap border-b border-[var(--color-line)] px-4 py-3 text-[0.6875rem] font-bold text-[var(--color-subtle)] ${
                   i === 0 ? "text-start" : "text-start"
                 }`}
               >

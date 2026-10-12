@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { cairoDateString, cairoMinutes } from "@/lib/bookings/instants";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
+import { customerMayChange } from "@/lib/bookings/self-service";
 
 /**
  * Everything the customer account reads.
@@ -97,6 +98,12 @@ export interface AccountBooking {
   /** True once reviewed, so the card offers it only when it can be done. */
   hasReview: boolean;
   canReview: boolean;
+  /**
+   * Whether the booking page will let them reschedule or cancel — the
+   * same rule, so the card does not offer a button that leads to a page
+   * without it (inside the two-hour window, or already in the chair).
+   */
+  canChange: boolean;
 }
 
 /** Still holding a slot — these are the ones that appear as upcoming. */
@@ -182,6 +189,7 @@ function shape(b: Row, todayDate: string, nowMin: number): AccountBooking {
     },
     hasReview: b.review !== null,
     canReview: b.status === "COMPLETED" && b.review === null,
+    canChange: customerMayChange(b),
   };
 }
 

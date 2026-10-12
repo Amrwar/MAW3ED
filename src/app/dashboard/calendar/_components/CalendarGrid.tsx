@@ -268,7 +268,7 @@ function MonthGrid({ from, to, entries, blocks, onSelect }: Props) {
                   d === today
                     ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-jade)] font-bold text-[var(--color-inverse)]"
                     : outside
-                      ? "text-[var(--color-faint)]"
+                      ? "text-[var(--color-subtle)]"
                       : "text-[var(--color-muted)]",
                 )}
               >

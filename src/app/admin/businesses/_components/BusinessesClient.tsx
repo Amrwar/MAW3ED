@@ -136,7 +136,7 @@ export default function BusinessesClient({
             <Search
               size={14}
               aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-[var(--color-faint)]"
+              className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-[var(--color-subtle)]"
             />
             <input
               value={q}
@@ -180,7 +180,7 @@ export default function BusinessesClient({
                     {b.category} · {b.city} · {b.ownerName ?? "—"}{" "}
                     <span dir="ltr">{b.ownerEmail ?? ""}</span>
                   </p>
-                  <p className="num m-0 mt-0.5 text-[0.6875rem] text-[var(--color-faint)]">
+                  <p className="num m-0 mt-0.5 text-[0.6875rem] text-[var(--color-subtle)]">
                     {b.bookings} حجز · {b.services} خدمة · انضم {when(b.createdAt)}
                     {b.statusChangedAt ? ` · آخر قرار ${when(b.statusChangedAt)}` : ""}
                   </p>

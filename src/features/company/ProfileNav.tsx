@@ -83,9 +83,19 @@ export default function ProfileNav({ sections }: { sections: NavSection[] }) {
   }, [sections]);
 
   // Keep the active tab in view on a phone, where the bar scrolls.
+  //
+  // Sideways, inside the bar only. scrollIntoView scrolls every ancestor
+  // too, so on load it scrolled the page itself down to the bar — about
+  // 120px on a phone, with nobody touching it — and moved the point the
+  // first Tab starts from past the header and the skip link.
   useEffect(() => {
-    const el = listRef.current?.querySelector<HTMLElement>(`[data-id="${active}"]`);
-    el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const list = listRef.current;
+    const el = list?.querySelector<HTMLElement>(`[data-id="${active}"]`);
+    if (!list || !el) return;
+    const bar = list.getBoundingClientRect();
+    const tab = el.getBoundingClientRect();
+    if (tab.left < bar.left) list.scrollBy({ left: tab.left - bar.left });
+    else if (tab.right > bar.right) list.scrollBy({ left: tab.right - bar.right });
   }, [active]);
 
   if (sections.length < 2) return null;

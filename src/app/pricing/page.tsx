@@ -363,14 +363,14 @@ export default function PricingPage() {
                 {/* The matrix keeps its own header and banding — it is a
                     comparison grid, not a data table — but scrolls inside
                     its own box like every other table. */}
-                <Table minWidth="32.5rem" className="text-sm">
+                <Table minWidth="32.5rem" className="text-sm" label={p.feature}>
 
                     {/* Dark navy header */}
                     <thead>
                       <tr style={{ background: "var(--color-ink)" }}>
                         <th
                           className="text-start px-6 py-5 font-semibold"
-                          style={{ color: "var(--color-muted)", width: "42%" }}
+                          style={{ color: "var(--color-night-text)", width: "42%" }}
                         >
                           {p.feature}
                         </th>

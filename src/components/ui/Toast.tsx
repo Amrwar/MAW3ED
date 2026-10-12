@@ -151,7 +151,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     type="button"
                     onClick={() => dismiss(t.id)}
                     aria-label={lang === "ar" ? "إغلاق" : "Dismiss"}
-                    className="-m-2 flex h-9 w-9 shrink-0 items-center justify-center text-[var(--color-faint)] transition-colors hover:text-[var(--color-ink)]"
+                    className="-m-2 flex h-9 w-9 shrink-0 items-center justify-center text-[var(--color-subtle)] transition-colors hover:text-[var(--color-ink)]"
                   >
                     <X size={15} strokeWidth={2.2} aria-hidden="true" />
                   </button>

@@ -16,7 +16,7 @@ export function Figures({ items }: { items: { label: string; value: string; hint
     <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0 lg:grid-cols-4">
       {items.map((f) => (
         <li key={f.label} className="card p-4">
-          <p className="m-0 text-[0.6875rem] text-[var(--color-faint)]">{f.label}</p>
+          <p className="m-0 text-[0.6875rem] text-[var(--color-subtle)]">{f.label}</p>
           <p className="num m-0 mt-1 text-[1.25rem] font-bold leading-none text-[var(--color-ink)]">
             {f.value}
           </p>
@@ -61,7 +61,7 @@ export function Bars({
                 <span className="min-w-0 truncate text-[0.8125rem] text-[var(--color-ink-2)]">
                   {r.label}
                   {r.sub && (
-                    <span className="num ms-2 text-[0.6875rem] text-[var(--color-faint)]">
+                    <span className="num ms-2 text-[0.6875rem] text-[var(--color-subtle)]">
                       {r.sub}
                     </span>
                   )}
@@ -118,7 +118,7 @@ export function Rows({
                   <th
                     key={h}
                     scope="col"
-                    className={`whitespace-nowrap border-b border-[var(--color-line)] px-5 py-2.5 text-[0.6875rem] font-bold text-[var(--color-faint)] ${
+                    className={`whitespace-nowrap border-b border-[var(--color-line)] px-5 py-2.5 text-[0.6875rem] font-bold text-[var(--color-subtle)] ${
                       i === 0 ? "text-start" : "text-end"
                     }`}
                   >

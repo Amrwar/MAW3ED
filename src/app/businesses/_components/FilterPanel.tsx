@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import { Check } from "lucide-react";
 import type { DiscoveryQuery } from "@/lib/discovery/params";
 import { RATING_FLOORS } from "@/lib/discovery/params";
@@ -87,11 +87,13 @@ export default function FilterPanel({ query, facets, priceBounds, onChange }: Pr
       {/* ── Category, with its subcategories ── */}
       <Group title={f.category}>
         <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-          <Row
-            label={f.allCategories}
-            active={!query.category && !query.subcategory}
-            onClick={() => onChange({ category: "", subcategory: "", page: 1 })}
-          />
+          <li>
+            <Row
+              label={f.allCategories}
+              active={!query.category && !query.subcategory}
+              onClick={() => onChange({ category: "", subcategory: "", page: 1 })}
+            />
+          </li>
           {facets.categories.map((c) => (
             <li key={c.id}>
               <Row
@@ -136,11 +138,13 @@ export default function FilterPanel({ query, facets, priceBounds, onChange }: Pr
       {/* ── City, and its neighbourhoods once one is picked ── */}
       <Group title={f.city}>
         <ul className="m-0 flex max-h-72 list-none flex-col gap-0.5 overflow-y-auto p-0">
-          <Row
-            label={f.allCities}
-            active={!query.city}
-            onClick={() => onChange({ city: "", neighborhood: "", page: 1 })}
-          />
+          <li>
+            <Row
+              label={f.allCities}
+              active={!query.city}
+              onClick={() => onChange({ city: "", neighborhood: "", page: 1 })}
+            />
+          </li>
           {facets.cities.map((c) => (
             <li key={c.id}>
               <Row
@@ -163,11 +167,13 @@ export default function FilterPanel({ query, facets, priceBounds, onChange }: Pr
       {facets.neighborhoods.length > 0 && (
         <Group title={f.neighborhood}>
           <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-            <Row
-              label={f.allNeighborhoods}
-              active={!query.neighborhood}
-              onClick={() => onChange({ neighborhood: "", page: 1 })}
-            />
+            <li>
+              <Row
+                label={f.allNeighborhoods}
+                active={!query.neighborhood}
+                onClick={() => onChange({ neighborhood: "", page: 1 })}
+              />
+            </li>
             {facets.neighborhoods.map((n) => (
               <li key={n.id}>
                 <Row
@@ -212,11 +218,13 @@ export default function FilterPanel({ query, facets, priceBounds, onChange }: Pr
       {/* ── Rating ── */}
       <Group title={f.rating} hint={f.ratingHint}>
         <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-          <Row
-            label={f.anyRating}
-            active={query.rating === null}
-            onClick={() => onChange({ rating: null, page: 1 })}
-          />
+          <li>
+            <Row
+              label={f.anyRating}
+              active={query.rating === null}
+              onClick={() => onChange({ rating: null, page: 1 })}
+            />
+          </li>
           {RATING_FLOORS.map((r) => (
             <li key={r}>
               <Row
@@ -283,7 +291,7 @@ function Row({
         active
           ? "bg-[var(--color-jade-soft)] font-bold text-[var(--color-ok)]"
           : dead
-            ? "text-[var(--color-faint)]"
+            ? "text-[var(--color-subtle)]"
             : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-ink)]",
       )}
     >
@@ -359,6 +367,18 @@ function NumberField({
   placeholder: string;
   onCommit: (v: number | null) => void;
 }) {
+  const shown = value === null ? "" : String(value);
+  const [draft, setDraft] = useState(shown);
+  // Follow the committed value when it changes from outside (clear all,
+  // the back button). This used to key the input on the value instead,
+  // which remounted it on every commit — and a remounted input has lost
+  // focus, so pressing Enter closed the phone keyboard.
+  const [synced, setSynced] = useState(shown);
+  if (synced !== shown) {
+    setSynced(shown);
+    setDraft(shown);
+  }
+
   function commit(raw: string) {
     const trimmed = raw.trim();
     if (!trimmed) return onCommit(null);
@@ -376,10 +396,8 @@ function NumberField({
         type="number"
         inputMode="numeric"
         min={0}
-        // Keyed on the committed value so an external reset (clear all,
-        // or the back button) is reflected in the box.
-        key={String(value)}
-        defaultValue={value ?? ""}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
         placeholder={placeholder}
         onBlur={(e) => commit(e.target.value)}
         onKeyDown={(e) => {

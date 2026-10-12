@@ -204,7 +204,9 @@ export async function POST(req: Request, { params }: Params) {
       startTime,
       endTime,
       customerName,
-      totalPrice:   Number(service.price),
+      // What was stored, after any discount — not the list price. The
+      // done screen showed the undiscounted figure as the total.
+      totalPrice:   Number(booking.totalPrice),
       depositAmount,
       currency:     service.currency,
       status:       booking.status,

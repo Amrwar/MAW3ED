@@ -2,12 +2,11 @@ import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
+import { CUTOFF_HOURS, minutesUntilStart } from "@/lib/bookings/self-service";
 
 type Params = { params: Promise<{ token: string }> };
 
 const CANCELLABLE_STATUSES = ["PENDING", "CONFIRMED"] as const;
-/** Minimum hours before appointment that cancellation is allowed */
-const CUTOFF_HOURS = 2;
 
 export async function POST(_req: Request, { params }: Params) {
   try {
@@ -25,17 +24,9 @@ export async function POST(_req: Request, { params }: Params) {
       return err("لا يمكن إلغاء هذا الحجز", 400);
     }
 
-    // Future check — booking date + startTime must be > now + CUTOFF_HOURS
-    const [h, m] = booking.startTime.split(":").map(Number);
-    const bookingDateTime = new Date(booking.date);
-    bookingDateTime.setUTCHours(h, m, 0, 0);
-    const cutoff = new Date(Date.now() + CUTOFF_HOURS * 60 * 60 * 1000);
-
-    if (bookingDateTime <= cutoff) {
-      return err(
-        `لا يمكن الإلغاء قبل أقل من ${CUTOFF_HOURS} ساعات من الموعد`,
-        400,
-      );
+    // Far enough ahead, on Cairo's clock — see self-service.ts.
+    if (minutesUntilStart(booking.date, booking.startTime) <= CUTOFF_HOURS * 60) {
+      return err("لا يمكن إلغاء الحجز قبل الموعد بأقل من ساعتين", 400);
     }
 
     await db.booking.update({

@@ -32,7 +32,7 @@ const STATUS_TONE: Record<PaymentStatus, string> = {
   FAILED: "text-[var(--color-danger)]",
   REFUNDED: "text-[var(--color-subtle)]",
   PARTIALLY_REFUNDED: "text-[var(--color-warn)]",
-  ABANDONED: "text-[var(--color-faint)]",
+  ABANDONED: "text-[var(--color-subtle)]",
 };
 
 /**
@@ -160,7 +160,7 @@ export default async function BillingPage() {
                       {p.failureReason}
                     </p>
                   )}
-                  <p className="num m-0 mt-1 text-[0.6875rem] text-[var(--color-faint)]">
+                  <p className="num m-0 mt-1 text-[0.6875rem] text-[var(--color-subtle)]">
                     {p.receiptNumber && <span dir="ltr">{p.receiptNumber}</span>}
                     {p.booking?.reference && <> · {p.booking.reference}</>}
                     {" · "}
@@ -205,7 +205,7 @@ function Tile({
       <span className="num mt-1 block text-[1.0625rem] font-bold text-[var(--color-ink)]">
         {value}
       </span>
-      {hint && <span className="mt-0.5 block text-[0.6875rem] text-[var(--color-faint)]">{hint}</span>}
+      {hint && <span className="mt-0.5 block text-[0.6875rem] text-[var(--color-subtle)]">{hint}</span>}
     </div>
   );
 }

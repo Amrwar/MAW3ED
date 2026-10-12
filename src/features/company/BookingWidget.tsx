@@ -89,6 +89,13 @@ const AR_DAYS = [
   "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت",
 ];
 
+// For the date strip, where there is room for a short name only. Not a
+// prefix of AR_DAYS: three characters of "الأحد" and "الأربعاء" are
+// both "الأ", so Sunday and Wednesday looked the same.
+const AR_DAYS_SHORT = [
+  "أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت",
+];
+
 const AR_MONTHS = [
   "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
   "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
@@ -183,7 +190,7 @@ function getUpcomingDays(count: number) {
     const day = new Date(base + i * 86_400_000);
     return {
       iso:     day.toISOString().slice(0, 10),
-      dayAr:   AR_DAYS[day.getUTCDay()],
+      dayAr:   AR_DAYS_SHORT[day.getUTCDay()],
       dayNum:  day.getUTCDate(),
       monthAr: AR_MONTHS[day.getUTCMonth()],
       dow:     day.getUTCDay(),
@@ -219,7 +226,7 @@ function SummaryRow({
         dir={ltr ? "ltr" : undefined}
         className={
           strike
-            ? "text-end font-semibold text-[var(--color-faint)] line-through"
+            ? "text-end font-semibold text-[var(--color-subtle)] line-through"
             : good
               ? "text-end font-semibold text-[var(--color-ok)]"
               : `text-end ${bold ? "font-extrabold text-[var(--color-jade)]" : "font-semibold text-[var(--color-ink)]"}`
@@ -948,7 +955,8 @@ export default function BookingWidget({
                     disabled={disabled}
                     onClick={() => setSelectedDate(d.iso)}
                     aria-pressed={selected}
-                    className={`flex flex-col items-center py-2.5 px-2.5 rounded-[var(--radius-md)] text-xs shrink-0 min-w-[46px] transition-all ${
+                    aria-label={formatDateAr(d.iso)}
+                    className={`flex flex-col items-center py-2.5 px-2 rounded-[var(--radius-md)] text-xs shrink-0 min-w-[3.25rem] transition-all ${
                       disabled
                         ? "opacity-30 cursor-not-allowed bg-[var(--color-surface-3)] text-[var(--color-faint)]"
                         : selected
@@ -956,9 +964,9 @@ export default function BookingWidget({
                         : "bg-[var(--color-surface-3)] hover:bg-[var(--color-line)] text-[var(--color-ink-2)]"
                     }`}
                   >
-                    <span className="text-[9px] opacity-70">{d.dayAr.slice(0, 3)}</span>
+                    <span className="text-[0.6875rem] opacity-80">{d.dayAr}</span>
                     <span className="font-bold text-sm mt-0.5">{d.dayNum}</span>
-                    <span className="text-[9px] mt-0.5 opacity-60">{d.monthAr.slice(0, 3)}</span>
+                    <span className="text-[0.6875rem] mt-0.5 opacity-80">{d.monthAr}</span>
                   </button>
                 );
               })}

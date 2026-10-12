@@ -41,6 +41,18 @@ export default function Modal({
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
 
+  // Callers pass inline arrow functions, so onClose is a new function on
+  // every render of the parent. Were it a dependency of the effect below,
+  // each parent re-render while open — a filter tap, a router.push —
+  // would tear the dialog down and set it up again: focus restored to the
+  // opener behind the overlay, then moved to the first control (the close
+  // button). On a phone that drops the keyboard after every keystroke
+  // that commits. Read it through a ref so setup runs once per opening.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (!open) return;
 
@@ -52,7 +64,7 @@ export default function Modal({
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab") return;
@@ -93,7 +105,7 @@ export default function Modal({
       cancelAnimationFrame(id);
       restoreTo.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || !mounted) return null;
 

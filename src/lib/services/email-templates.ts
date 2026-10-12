@@ -337,7 +337,7 @@ export function emailVerificationHtml(verifyUrl: string, name?: string | null): 
 
     <div style="margin-bottom:24px;">
       <a href="${verifyUrl}"
-         style="display:inline-block;background:#0E7F5E;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
+         style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
         أكّد بريدي ←
       </a>
     </div>
@@ -354,7 +354,7 @@ export function emailVerificationHtml(verifyUrl: string, name?: string | null): 
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
 
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0E7F5E;">موعد</strong></p>
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong></p>
   `;
   return layout(body);
 }

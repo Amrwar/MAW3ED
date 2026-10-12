@@ -76,7 +76,10 @@ export default function OffersClient({
           nameAr: form.nameAr.trim(),
           code: form.code.trim() || null,
           kind: form.kind,
-          value: Number(form.value),
+          // A fixed amount is typed in pounds, like every other money
+          // field on this form, and stored in piastres. Sending it as
+          // typed made "50" a 0.50 EGP discount.
+          value: form.kind === "FIXED" ? toCents(form.value) : Number(form.value),
           minSpendCents: toCents(form.minSpend),
           maxDiscountCents: form.kind === "PERCENT" ? toCents(form.maxDiscount) : null,
           maxRedemptions: form.maxRedemptions.trim() ? Number(form.maxRedemptions) : null,
@@ -333,13 +336,13 @@ export default function OffersClient({
                       </code>
                     )}
                     {!row.isActive && (
-                      <span className="text-[0.6875rem] font-normal text-[var(--color-faint)]">موقوف</span>
+                      <span className="text-[0.6875rem] font-normal text-[var(--color-subtle)]">موقوف</span>
                     )}
                   </p>
                   <p className="num m-0 mt-1 text-[0.78125rem] text-[var(--color-subtle)]">
                     {describe(row)}
                   </p>
-                  <p className="num m-0 mt-0.5 text-[0.6875rem] text-[var(--color-faint)]">
+                  <p className="num m-0 mt-0.5 text-[0.6875rem] text-[var(--color-subtle)]">
                     {row.code ? "العميل بيكتبه" : "بيتطبّق لوحده"}
                     {" · "}
                     اتستخدم {row.usedCount} مرة
@@ -398,7 +401,7 @@ function Field({
         {label}
       </label>
       {children}
-      {hint && <p className="m-0 mt-1 text-[0.6875rem] text-[var(--color-faint)]">{hint}</p>}
+      {hint && <p className="m-0 mt-1 text-[0.6875rem] text-[var(--color-subtle)]">{hint}</p>}
     </div>
   );
 }

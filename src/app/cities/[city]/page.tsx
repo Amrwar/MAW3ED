@@ -151,7 +151,7 @@ export default async function CityPage({ params }: Props) {
                       className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] px-4 text-[0.84375rem] text-[var(--color-muted)] transition-colors hover:border-[var(--color-jade)] hover:text-[var(--color-jade)]"
                     >
                       {c.categoryNameAr}
-                      <span className="num text-[0.75rem] text-[var(--color-faint)]">
+                      <span className="num text-[0.75rem] text-[var(--color-subtle)]">
                         {c.count}
                       </span>
                     </Link>

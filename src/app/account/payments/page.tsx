@@ -75,7 +75,7 @@ export default async function PaymentsPage() {
                       {KIND_AR[p.kind]}
                       {p.serviceAr ? ` · ${isAr ? p.serviceAr : (p.serviceEn ?? p.serviceAr)}` : ""}
                     </p>
-                    <p className="num m-0 mt-1 text-[0.6875rem] text-[var(--color-faint)]">
+                    <p className="num m-0 mt-1 text-[0.6875rem] text-[var(--color-subtle)]">
                       {p.receiptNumber && <span dir="ltr">{p.receiptNumber}</span>}
                       {p.paidAt && (
                         <> · {new Date(p.paidAt).toLocaleDateString("ar-EG-u-nu-latn")}</>

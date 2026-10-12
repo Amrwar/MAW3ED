@@ -179,7 +179,7 @@ function Card({
           {label}
         </span>
         {hint && (
-          <span className="mt-0.5 block text-[0.6875rem] leading-snug text-[var(--color-faint)]">
+          <span className="mt-0.5 block text-[0.6875rem] leading-snug text-[var(--color-subtle)]">
             {hint}
           </span>
         )}

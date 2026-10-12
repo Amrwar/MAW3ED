@@ -185,7 +185,7 @@ export default function ModerationQueue({
                         {STATUS_AR[r.status] ?? r.status}
                       </span>
                       {r.edited && (
-                        <span className="text-[0.6875rem] text-[var(--color-faint)]">معدّل</span>
+                        <span className="text-[0.6875rem] text-[var(--color-subtle)]">معدّل</span>
                       )}
                     </div>
                     <Link
@@ -195,7 +195,7 @@ export default function ModerationQueue({
                       {r.businessName}
                     </Link>
                   </div>
-                  <span className="num shrink-0 text-[0.6875rem] text-[var(--color-faint)]">
+                  <span className="num shrink-0 text-[0.6875rem] text-[var(--color-subtle)]">
                     {date(r.createdAt)}
                   </span>
                 </div>
@@ -343,7 +343,7 @@ export default function ModerationQueue({
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="m-0 text-[0.625rem] text-[var(--color-faint)]">{label}</dt>
+      <dt className="m-0 text-[0.625rem] text-[var(--color-subtle)]">{label}</dt>
       <dd className="m-0 font-bold text-[var(--color-ink-2)]">{value}</dd>
     </div>
   );

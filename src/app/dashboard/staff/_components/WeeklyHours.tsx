@@ -128,7 +128,7 @@ export default function WeeklyHours({ staffMemberId, initial, businessHours }: P
               </span>
 
               {bizClosed ? (
-                <span className="text-[0.75rem] text-[var(--color-faint)]">{h.businessClosed}</span>
+                <span className="text-[0.75rem] text-[var(--color-subtle)]">{h.businessClosed}</span>
               ) : row && !row.isOff ? (
                 <>
                   <input

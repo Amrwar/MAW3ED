@@ -127,7 +127,6 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
               somewhere to look. title= carries the full commit.
             */}
             <span
-              className="opacity-60"
               title={APP_COMMIT ? `build ${APP_COMMIT}` : undefined}
             >
               {VERSION_LABEL}

@@ -2,14 +2,16 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   CheckCircle, Clock, XCircle, AlertCircle,
-  CalendarDays, Phone, Store,
+  CalendarDays, Phone, Store, CreditCard,
 } from "lucide-react";
+import type { BookingStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import Logo from "@/components/shared/Logo";
 import CancelButton from "./_components/CancelButton";
 import RescheduleFlow from "./_components/RescheduleFlow";
 import LeaveReview from "./_components/LeaveReview";
 import { canReviewBooking } from "@/lib/reviews";
+import { CUTOFF_HOURS, customerMayChange } from "@/lib/bookings/self-service";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -27,7 +29,12 @@ function formatDateAr(date: Date): string {
   return `${AR_DAYS[dow]}، ${d} ${AR_MONTHS[m]} ${y}`;
 }
 
+// Every BookingStatus needs an entry: a missing one is a 500 for that
+// customer. The two payment states were missing, so a customer whose
+// card failed — the person most likely to open this page — got an error.
 const STATUS_CONFIG = {
+  PENDING_PAYMENT: { label: "بانتظار الدفع", icon: CreditCard, color: "text-[var(--color-star)]", bg: "bg-[var(--color-warn-soft)]", border: "border-[var(--color-warn-line)]" },
+  FAILED_PAYMENT:  { label: "لم يكتمل الدفع", icon: XCircle,   color: "text-[var(--color-danger)]", bg: "bg-[var(--color-danger-soft)]", border: "border-[var(--color-danger-line)]" },
   PENDING:     { label: "في الانتظار",  icon: Clock,        color: "text-[var(--color-star)]",  bg: "bg-[var(--color-warn-soft)]",  border: "border-[var(--color-warn-line)]" },
   CONFIRMED:   { label: "مؤكد",         icon: CheckCircle,  color: "text-[var(--color-ok)]",  bg: "bg-[var(--color-ok-soft)]",  border: "border-[var(--color-ok-line)]" },
   ARRIVED:     { label: "وصلت",         icon: CheckCircle,  color: "text-[var(--color-jade)]", bg: "bg-[var(--color-jade-soft)]", border: "border-[var(--color-jade-line)]" },
@@ -35,17 +42,7 @@ const STATUS_CONFIG = {
   COMPLETED: { label: "مكتمل",        icon: CheckCircle,  color: "text-[var(--color-jade)]",   bg: "bg-[var(--color-jade-soft)]",   border: "border-[var(--color-jade-line)]"  },
   CANCELLED: { label: "ملغي",         icon: XCircle,      color: "text-[var(--color-danger)]",    bg: "bg-[var(--color-danger-soft)]",    border: "border-[var(--color-danger-line)]"   },
   NO_SHOW:   { label: "لم يحضر",      icon: AlertCircle,  color: "text-[var(--color-subtle)]",   bg: "bg-[var(--color-surface-2)]",   border: "border-[var(--color-line)]"  },
-} as const;
-
-const CUTOFF_HOURS = 2;
-
-function canCancel(status: string, date: Date, startTime: string): boolean {
-  if (!["PENDING", "CONFIRMED"].includes(status)) return false;
-  const [h, m] = startTime.split(":").map(Number);
-  const appt = new Date(date);
-  appt.setUTCHours(h, m, 0, 0);
-  return appt > new Date(Date.now() + CUTOFF_HOURS * 60 * 60 * 1000);
-}
+} satisfies Record<BookingStatus, unknown>;
 
 export default async function BookingPage({ params }: Params) {
   const { token } = await params;
@@ -63,9 +60,9 @@ export default async function BookingPage({ params }: Params) {
 
   if (!booking) notFound();
 
-  const status     = STATUS_CONFIG[booking.status as keyof typeof STATUS_CONFIG];
+  const status     = STATUS_CONFIG[booking.status];
   const StatusIcon = status.icon;
-  const cancellable    = canCancel(booking.status, booking.date, booking.startTime);
+  const cancellable    = customerMayChange(booking);
   const reschedulable  = cancellable; // same eligibility rules
   // Only a completed appointment, and only once. The API checks this
   // again, so a page left open cannot post a second review.
@@ -76,15 +73,16 @@ export default async function BookingPage({ params }: Params) {
       {/* Navbar */}
       <header className="bg-[var(--color-surface)] border-b border-[var(--color-line)]">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center">
-          <Link href="/">
-            <Logo size="sm" />
-          </Link>
+          <Logo size="sm" />
         </div>
       </header>
 
       <main id="main" className="max-w-lg mx-auto px-4 py-8 space-y-4">
+        {/* The account pages link to #review, #reschedule and #cancel. */}
         {canReview && (
-          <LeaveReview token={token} businessName={booking.business.nameAr} />
+          <div id="review" className="scroll-mt-4">
+            <LeaveReview token={token} businessName={booking.business.nameAr} />
+          </div>
         )}
 
         {/* Status card */}
@@ -92,7 +90,9 @@ export default async function BookingPage({ params }: Params) {
           <StatusIcon size={28} className={status.color} />
           <div>
             <p className={`font-extrabold text-lg ${status.color}`}>{status.label}</p>
-            <p className="text-sm text-[var(--color-text-muted)]">
+            <p className="text-sm text-[var(--color-muted)]">
+              {booking.status === "PENDING_PAYMENT" && "الموعد محجوز لك لحين إتمام الدفع"}
+              {booking.status === "FAILED_PAYMENT"  && "لم يكتمل الدفع، ولم يتم تأكيد الموعد. يمكنك الحجز من جديد."}
               {booking.status === "PENDING"     && "حجزك قيد المراجعة، سيتواصل معك الفريق قريبًا"}
               {booking.status === "CONFIRMED"   && "حجزك مؤكد، نراك قريبًا!"}
               {booking.status === "ARRIVED"     && "تم تسجيل وصولك، استنى شوية"}
@@ -174,7 +174,7 @@ export default async function BookingPage({ params }: Params) {
 
         {/* Rebook — only once the visit is over, and pre-selecting the
             service they had rather than starting from a blank page. */}
-        {["COMPLETED", "CANCELLED", "NO_SHOW"].includes(booking.status) && (
+        {["COMPLETED", "CANCELLED", "NO_SHOW", "FAILED_PAYMENT"].includes(booking.status) && (
           <Link
             href={`/company/${booking.business.slug}?service=${booking.serviceId}#booking`}
             className="btn btn-primary w-full"
@@ -190,13 +190,14 @@ export default async function BookingPage({ params }: Params) {
               إدارة الحجز
             </p>
             <p className="text-xs text-[var(--color-text-muted)]">
-              يمكنك تعديل أو إلغاء الحجز حتى {CUTOFF_HOURS} ساعات قبل الموعد.
+              يمكنك تعديل أو إلغاء الحجز حتى {CUTOFF_HOURS === 2 ? "ساعتين" : `${CUTOFF_HOURS} ساعات`} قبل الموعد.
               {booking.depositAmount !== null && Number(booking.depositAmount) > 0
                 ? " المقدّم المدفوع غير قابل للاسترداد بعد التأكيد."
                 : ""}
             </p>
 
             {reschedulable && (
+              <div id="reschedule" className="scroll-mt-4">
               <RescheduleFlow
                 token={token}
                 slug={booking.business.slug}
@@ -206,11 +207,17 @@ export default async function BookingPage({ params }: Params) {
                 currentEnd={booking.endTime ?? booking.startTime}
                 serviceName={booking.service.nameAr}
                 businessName={booking.business.nameAr}
+                staffMemberId={booking.staffMemberId}
+                resourceId={booking.resourceId}
+                branchId={booking.branchId}
               />
+              </div>
             )}
 
             {cancellable && (
-              <CancelButton token={token} />
+              <div id="cancel" className="scroll-mt-4">
+                <CancelButton token={token} />
+              </div>
             )}
           </div>
         )}

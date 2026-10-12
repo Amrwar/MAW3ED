@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Star } from "lucide-react";
+import Stars from "@/components/shared/Stars";
 import { rating as fmtRating } from "@/lib/fmt";
 
 interface StarRatingProps {
@@ -20,8 +20,6 @@ export default function StarRating({
   showCount = true,
 }: StarRatingProps) {
   const starSize = sizeMap[size];
-  const full = Math.floor(rating);
-  const hasHalf = rating % 1 >= 0.5;
 
   const textSize =
     size === "sm" ? "text-xs" : size === "md" ? "text-sm" : "text-base";
@@ -32,21 +30,7 @@ export default function StarRating({
       role="img"
       aria-label={`${fmtRating(rating)} / 5`}
     >
-      <span className="flex items-center gap-0.5" aria-hidden="true">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Star
-            key={i}
-            size={starSize}
-            className={cn(
-              i < full
-                ? "fill-[var(--color-star)] text-[var(--color-star)]"
-                : i === full && hasHalf
-                  ? "fill-[var(--color-star)]/40 text-[var(--color-star)]"
-                  : "fill-[var(--color-line)] text-[var(--color-line)]",
-            )}
-          />
-        ))}
-      </span>
+      <Stars value={rating} size={starSize} />
 
       <span className={cn("num font-bold text-[var(--color-ink)]", textSize)}>
         {fmtRating(rating)}
