@@ -70,6 +70,10 @@ const optional = z.object({
   PAYMOB_IFRAME_ID: z.string().optional(),
   PAYMOB_INTEGRATION_ID: z.string().optional(),
 
+  // Push (Expo). Optional: with "enhanced push security" on in the Expo
+  // dashboard, Expo refuses pushes that do not carry this token.
+  EXPO_ACCESS_TOKEN: z.string().optional(),
+
   // WhatsApp Cloud API
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),

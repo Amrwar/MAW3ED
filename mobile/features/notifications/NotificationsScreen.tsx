@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Screen, Text, Button, Card, ListState, colors, spacing } from "@/design";
+import { Screen, Text, Card, ListState, colors, spacing, useLocale } from "@/design";
 import { SignInGate } from "@/features/auth/SignInGate";
 import { hrefFor } from "@/lib/links";
 import { track } from "@/lib/analytics";
 import type { AppNotification } from "@/types/api";
 import { useMarkNotificationsRead, useNotifications } from "./queries";
-import { pushStatus, registerForPush, type PushStatus } from "./push";
+import { relativeTime } from "@/lib/format";
+import { PushToggle } from "./PushToggle";
 
 /**
  * The notification feed, for every role.
@@ -18,17 +19,27 @@ import { pushStatus, registerForPush, type PushStatus } from "./push";
  * same table a push notification or a maw3ed.net link uses.
  */
 export function NotificationsScreen() {
+  const { lang } = useLocale();
+  const ar = lang === "ar";
   return (
-    <SignInGate title="الإشعارات" reason="عشان توصلك تحديثات حجوزاتك أول بأول.">
+    <SignInGate
+      title={ar ? "الإشعارات" : "Notifications"}
+      reason={ar ? "عشان توصلك تحديثات حجوزاتك أول بأول." : "To get updates about your bookings as they happen."}
+    >
       <Feed />
     </SignInGate>
   );
 }
 
 function Feed() {
+  const { lang } = useLocale();
+  const ar = lang === "ar";
+  const T = (a: string, e: string) => (ar ? a : e);
   const query = useNotifications();
   const markRead = useMarkNotificationsRead();
   const items = query.data?.notifications ?? [];
+  // "5 minutes ago" is read once per visit; it need not tick while open.
+  const [now] = useState(() => Date.now());
 
   // Opening the feed is reading it, as on the website.
   const unreadIds = items.filter((n) => !n.readAt).map((n) => n.id);
@@ -45,31 +56,32 @@ function Feed() {
 
   return (
     <Screen scroll={false}>
-      <Text variant="title">الإشعارات</Text>
+      <Text variant="title" accessibilityRole="header">
+        {T("الإشعارات", "Notifications")}
+      </Text>
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={
-          <RefreshControl
-            refreshing={query.isRefetching}
-            onRefresh={() => query.refetch()}
-            tintColor={colors.jade}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.jade} />}
       >
-        <PushCard />
+        <View style={styles.push}>
+          <Card>
+            <PushToggle />
+          </Card>
+        </View>
         <ListState
           loading={query.isLoading}
           error={query.error}
           isEmpty={items.length === 0}
-          emptyTitle="مفيش إشعارات لسه"
-          emptyBody="أول ما يحصل جديد في حجوزاتك هيظهر هنا."
+          emptyIcon="notifications-outline"
+          emptyTitle={T("مفيش إشعارات لسه", "No notifications yet")}
+          emptyBody={T("أول ما يحصل جديد في حجوزاتك هيظهر هنا.", "Anything new about your bookings will show up here.")}
           onRetry={() => query.refetch()}
         >
           {items.map((n) => (
             <Card
               key={n.id}
               onPress={n.href ? () => open(n) : undefined}
-              accessibilityLabel={`${n.readAt ? "" : "جديد: "}${n.title}${n.body ? `، ${n.body}` : ""}`}
+              accessibilityLabel={`${n.readAt ? "" : T("جديد: ", "New: ")}${n.title}${n.body ? `, ${n.body}` : ""}`}
             >
               <View style={styles.item}>
                 {/* Unread is marked by a dot and by the word in the label, not by colour alone. */}
@@ -81,6 +93,9 @@ function Feed() {
                       {n.body}
                     </Text>
                   ) : null}
+                  <Text variant="tiny" tone="subtle" style={styles.body}>
+                    {relativeTime(Math.min(0, Math.round((Date.parse(n.createdAt) - now) / 60_000)), lang)}
+                  </Text>
                 </View>
               </View>
             </Card>
@@ -91,53 +106,6 @@ function Feed() {
   );
 }
 
-const PUSH_COPY: Partial<Record<PushStatus, string>> = {
-  undetermined: "فعّل الإشعارات عشان يوصلك تنبيه بكل حجز جديد أو تغيير في موعد.",
-  denied: "الإشعارات مقفولة لموعد. تقدر تفتحها من إعدادات الموبايل.",
-};
-
-/** Asks for permission only here, when the person chooses to. */
-function PushCard() {
-  const [status, setStatus] = useState<PushStatus | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    pushStatus()
-      .then(setStatus)
-      .catch(() => setStatus(null));
-  }, []);
-
-  const copy = status ? PUSH_COPY[status] : undefined;
-  if (!copy) return null;
-
-  return (
-    <View style={styles.push}>
-      <Card>
-        <Text variant="body">{copy}</Text>
-        {status === "undetermined" ? (
-          <View style={styles.pushAction}>
-            <Button
-              label="فعّل الإشعارات"
-              loading={busy}
-              disabled={busy}
-              onPress={async () => {
-                setBusy(true);
-                try {
-                  const next = await registerForPush({ prompt: true });
-                  setStatus(next);
-                  track("push_permission", { result: next });
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            />
-          </View>
-        ) : null}
-      </Card>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   scroll: { paddingVertical: spacing.lg, gap: spacing.sm },
   item: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
@@ -145,5 +113,4 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.jade, marginTop: 7 },
   body: { marginTop: spacing.xs },
   push: { marginBottom: spacing.md },
-  pushAction: { marginTop: spacing.md },
 });

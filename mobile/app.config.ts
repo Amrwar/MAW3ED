@@ -1,4 +1,5 @@
 import type { ExpoConfig, ConfigContext } from "expo/config";
+import { existsSync } from "node:fs";
 
 /**
  * The native app's identity and capabilities.
@@ -36,6 +37,12 @@ function apiUrl(env: AppEnv): string {
   if (url) return url.replace(/\/$/, "");
   if (env === "development") return "http://localhost:3000";
   throw new Error(`EXPO_PUBLIC_API_URL is required for a ${env} build (see eas.json)`);
+}
+
+function googleServicesFile(): string | undefined {
+  const fromEnv = process.env.GOOGLE_SERVICES_JSON?.trim();
+  if (fromEnv) return fromEnv;
+  return existsSync("./google-services.json") ? "./google-services.json" : undefined;
 }
 
 /** The domain whose links open this build. Production only — see ios.associatedDomains. */
@@ -100,6 +107,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 
   android: {
     package: BUNDLE_ID[APP_ENV],
+    // Firebase config, needed for Android to issue a push token (FCM).
+    // From an EAS file variable (GOOGLE_SERVICES_JSON) in cloud builds, or
+    // a local google-services.json — never committed. Without it the app
+    // builds and runs; push reports "not available" instead of crashing.
+    // See docs/push-setup.md.
+    ...(googleServicesFile() ? { googleServicesFile: googleServicesFile() } : {}),
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#11201C",
