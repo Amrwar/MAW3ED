@@ -268,8 +268,11 @@ export interface PublicProfile {
   logoImage: string | null;
   isVerified: boolean;
   autoConfirm: boolean;
+  /** True only when a deposit really is taken online at booking. */
   acceptsOnlinePayment: boolean;
-  category: { slug: string; nameAr: string; nameEn: string };
+  businessType: "GENERAL" | "RESTAURANT" | "BARBERSHOP";
+  /** parentSlug is set for a subcategory. */
+  category: { slug: string; nameAr: string; nameEn: string; parentSlug: string | null };
   city: { slug: string; nameAr: string; nameEn: string };
   neighborhood: { slug: string; nameAr: string; nameEn: string } | null;
   address: string | null;
@@ -294,8 +297,54 @@ export interface PublicProfile {
   nextSlot: NextSlot | null;
   rating: { average: number | null; count: number; distribution: Record<"1" | "2" | "3" | "4" | "5", number> };
   reviews: PublicReview[];
-  branches: { id: string; nameAr: string; nameEn: string | null; address: string | null }[];
-  staff: { id: string; nameAr: string; nameEn: string | null; role: string | null; photo: string | null }[];
+  branches: { id: string; nameAr: string; nameEn: string | null; address: string | null; phone: string | null }[];
+  staff: PublicStaffMember[];
+  resources: PublicResource[];
+  policies: BookingPolicies;
+}
+
+export type DayHours = { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean };
+
+export interface PublicStaffMember {
+  id: string;
+  nameAr: string;
+  nameEn: string | null;
+  role: string | null;
+  photo: string | null;
+  specialties: string[];
+  /** Services they perform; empty means all of them. */
+  serviceIds: string[];
+  /** When they can be booked, already inside the business's hours. */
+  hours: DayHours[];
+  nextSlot: NextSlot | null;
+}
+
+export interface PublicResource {
+  id: string;
+  kind: "TABLE" | "ROOM" | "CHAIR" | "EQUIPMENT" | "OTHER";
+  name: string;
+  capacity: number | null;
+  area: string | null;
+  branchId: string | null;
+}
+
+export interface BookingPolicies {
+  /** Percent paid online to hold a booking; null when nothing is taken. */
+  depositPercent: number | null;
+  minNoticeMinutes: number;
+  maxAdvanceDays: number;
+  /** "HH:MM"; no more same-day bookings after it. */
+  sameDayCutoff: string | null;
+  /** Cancel or move it yourself until this many hours before. */
+  changeCutoffHours: number;
+}
+
+export interface ReviewPage {
+  reviews: PublicReview[];
+  /** How many match the current filter, across all pages. */
+  matched: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface PublicReview {
