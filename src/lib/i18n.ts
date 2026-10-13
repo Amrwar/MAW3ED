@@ -711,6 +711,8 @@ export const translations = {
         { title:"البريد الإلكتروني", value:SUPPORT_EMAIL,            sub:"نرد خلال 24 ساعة" },
         { title:"واتساب",          value:"تواصل عبر واتساب",         sub:"ردود سريعة" },
       ],
+      phone:   { title:"الهاتف",  sub:"اتصل بنا" },
+      address: { title:"العنوان", sub:"افتح على الخريطة" },
     },
     faq: {
       eyebrow:     "مساعدة",
@@ -1733,6 +1735,8 @@ export const translations = {
         { title:"Email",     value:SUPPORT_EMAIL,         sub:"We respond within 24 hours" },
         { title:"WhatsApp",  value:"Chat on WhatsApp",    sub:"Quick responses" },
       ],
+      phone:   { title:"Phone",   sub:"Call us" },
+      address: { title:"Address", sub:"Open in Maps" },
     },
     faq: {
       eyebrow:      "Help",
