@@ -1,85 +1,93 @@
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Button, Screen, Tabs, Text, TextField, spacing } from "@/design";
+import { getLocales } from "expo-localization";
+import { Button, Tabs, Text, TextField, colors, spacing, useLocale } from "@/design";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { egyptianMobile, emailLogin, loginCode } from "@/features/auth/validation";
+import { AuthShell, LegalNote, finishSignIn, openSite } from "@/features/auth/AuthShell";
+import { PhoneField } from "@/features/auth/PhoneField";
+import { countryByIso, EGYPT, type Country } from "@/features/auth/countries";
+import { emailLogin, readPhone } from "@/features/auth/validation";
 import { messageFor } from "@/lib/api/errors";
 
 /**
- * Signing in.
+ * Signing in — and signing up, which for a customer is the same thing.
  *
- * Two ways, because the platform has two kinds of account: customers
- * sign in with a code sent to their phone, as on the website; owners
- * and staff with email and password. Phone first — most people opening
- * the app are customers.
+ * Two kinds of account, two ways in. Customers prove a phone number with
+ * a code: the first time a number is confirmed, the account is created
+ * (the server does it, as on the website), so there is no separate
+ * sign-up form to fill before booking. Any country's number works.
+ * Owners and staff sign in with email and password; creating a business
+ * and resetting a password happen on the website, which has the full
+ * forms for them.
  *
- * It opens on night — Deep Anchor's colour — as the app's front door.
- * The error shown is the server's own message, written in Arabic for a
- * person.
+ * The code is entered on its own screen (verify.tsx), and a new
+ * customer is asked their name after it (profile.tsx).
  */
 
-type Mode = "phone" | "email";
+type Mode = "customer" | "business";
 
-const MODES = [
-  { value: "phone", label: "رقم الموبايل" },
-  { value: "email", label: "أصحاب الأعمال" },
-] as const;
+/** The device's country if we list it, else Egypt — the product's home. */
+function initialCountry(): Country {
+  try {
+    return countryByIso(getLocales()[0]?.regionCode) ?? EGYPT;
+  } catch {
+    return EGYPT;
+  }
+}
 
 export default function Login() {
-  const [mode, setMode] = useState<Mode>("phone");
+  const { lang } = useLocale();
+  const ar = lang === "ar";
+  const [mode, setMode] = useState<Mode>("customer");
 
   return (
-    <Screen dark edges="both">
-      <View style={styles.header}>
-        <Text variant="display" tone="inverse" accessibilityRole="header">
-          أهلًا بيك
-        </Text>
-        <Text variant="body" tone="inverseMuted">
-          سجّل دخولك عشان تشوف حجوزاتك وتدير نشاطك.
-        </Text>
-      </View>
-
-      <Tabs options={MODES} value={mode} onChange={setMode} tone="night" />
-
-      <View style={styles.form}>{mode === "phone" ? <PhoneForm /> : <EmailForm />}</View>
-    </Screen>
+    <AuthShell
+      title={mode === "customer" ? (ar ? "أهلًا بيك في مواعيد" : "Welcome to Maw3ed") : ar ? "دخول أصحاب الأعمال" : "Business sign-in"}
+      subtitle={
+        mode === "customer"
+          ? ar
+            ? "احجز مواعيدك في ثواني. ادخل أو اعمل حساب برقم موبايلك."
+            : "Book appointments in seconds. Sign in or sign up with your phone number."
+          : ar
+            ? "أدِر مواعيدك وعملاءك من مكان واحد."
+            : "Manage your bookings and customers in one place."
+      }
+      footer={<LegalNote />}
+    >
+      <Tabs
+        options={[
+          { value: "customer", label: ar ? "عميل" : "Customer" },
+          { value: "business", label: ar ? "صاحب نشاط" : "Business" },
+        ]}
+        value={mode}
+        onChange={setMode}
+      />
+      {mode === "customer" ? <PhoneStep /> : <BusinessForm />}
+    </AuthShell>
   );
 }
 
-function PhoneForm() {
-  const { requestCode, signInWithCode } = useAuth();
+function PhoneStep() {
+  const { requestCode } = useAuth();
+  const { lang } = useLocale();
+  const ar = lang === "ar";
+  const [country, setCountry] = useState<Country>(initialCountry);
   const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
-  const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const phoneOk = egyptianMobile.safeParse(phone).success;
-  const codeOk = loginCode.safeParse(code).success;
+  const parsed = readPhone(phone, country);
 
   async function send() {
+    if (!parsed.e164 || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await requestCode(phone);
-      setSent(true);
+      await requestCode(parsed.e164);
+      router.push({ pathname: "/(auth)/verify", params: { phone: parsed.e164 } });
     } catch (e) {
       setError(messageFor(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function verify() {
-    setBusy(true);
-    setError(null);
-    try {
-      await signInWithCode(phone, code);
-      router.replace("/");
-    } catch (e) {
-      setError(messageFor(e));
-      setCode("");
     } finally {
       setBusy(false);
     }
@@ -87,55 +95,43 @@ function PhoneForm() {
 
   return (
     <>
-      <TextField
-        tone="night"
-        label="رقم الموبايل"
+      <PhoneField
+        label={ar ? "رقم الموبايل" : "Mobile number"}
         value={phone}
         onChangeText={(v) => {
           setPhone(v);
-          if (sent) setSent(false);
+          setError(null);
+          // A number pasted with its own code picks its country.
+          const r = readPhone(v, country);
+          if (r.country.iso !== country.iso) setCountry(r.country);
         }}
-        keyboardType="phone-pad"
-        autoComplete="tel"
-        textContentType="telephoneNumber"
-        placeholder="01xxxxxxxxx"
-        ltr
+        country={country}
+        onCountryChange={setCountry}
         editable={!busy}
-        error={sent ? null : error}
+        error={error}
+        hint={ar ? "هنبعتلك كود تأكيد على واتساب." : "We'll send a confirmation code on WhatsApp."}
+        onSubmitEditing={send}
       />
-
-      {sent ? (
-        <TextField
-          tone="night"
-          label="الكود اللي وصلك على واتساب"
-          value={code}
-          onChangeText={setCode}
-          keyboardType="number-pad"
-          autoComplete="one-time-code"
-          textContentType="oneTimeCode"
-          maxLength={6}
-          placeholder="______"
-          ltr
-          autoFocus
-          error={error}
-          onSubmitEditing={() => codeOk && !busy && verify()}
-        />
-      ) : null}
-
-      {sent ? (
-        <>
-          <Button label="دخول" onPress={verify} disabled={!codeOk || busy} loading={busy} fullWidth />
-          <Button label="ابعت الكود تاني" variant="ghost" onPress={send} disabled={busy} fullWidth />
-        </>
-      ) : (
-        <Button label="ابعت الكود" onPress={send} disabled={!phoneOk || busy} loading={busy} fullWidth />
-      )}
+      <Button
+        label={ar ? "ابعت الكود" : "Send code"}
+        onPress={send}
+        disabled={!parsed.e164 || busy}
+        loading={busy}
+        fullWidth
+      />
+      <Text variant="caption" tone="subtle" align="center">
+        {ar
+          ? "أول مرة؟ هنعملك حساب تلقائيًا بعد ما تأكد رقمك."
+          : "New here? Your account is created as soon as you confirm your number."}
+      </Text>
     </>
   );
 }
 
-function EmailForm() {
+function BusinessForm() {
   const { signIn } = useAuth();
+  const { lang } = useLocale();
+  const ar = lang === "ar";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -144,11 +140,12 @@ function EmailForm() {
   const canSubmit = emailLogin.safeParse({ email, password }).success && !busy;
 
   async function submit() {
+    if (!canSubmit) return;
     setBusy(true);
     setError(null);
     try {
       await signIn(email.trim(), password);
-      router.replace("/");
+      finishSignIn();
     } catch (e) {
       setError(messageFor(e));
     } finally {
@@ -159,34 +156,71 @@ function EmailForm() {
   return (
     <>
       <TextField
-        tone="night"
-        label="البريد الإلكتروني"
+        label={ar ? "البريد الإلكتروني" : "Email"}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
         textContentType="emailAddress"
-        placeholder="example@email.com"
+        placeholder="name@example.com"
+        icon="mail-outline"
         ltr
+        editable={!busy}
       />
-      <TextField
-        tone="night"
-        label="كلمة المرور"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoComplete="current-password"
-        textContentType="password"
-        error={error}
-        onSubmitEditing={() => canSubmit && submit()}
+      <View style={styles.passwordBlock}>
+        <TextField
+          label={ar ? "كلمة المرور" : "Password"}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoComplete="current-password"
+          textContentType="password"
+          icon="lock-closed-outline"
+          editable={!busy}
+          error={error}
+          onSubmitEditing={submit}
+        />
+        <Text
+          variant="label"
+          tone="jade"
+          accessibilityRole="link"
+          onPress={() => openSite("/forgot-password")}
+          style={styles.forgot}
+        >
+          {ar ? "نسيت كلمة المرور؟" : "Forgot password?"}
+        </Text>
+      </View>
+      <Button
+        label={ar ? "تسجيل الدخول" : "Sign in"}
+        onPress={submit}
+        disabled={!canSubmit}
+        loading={busy}
+        fullWidth
       />
-      <Button label="تسجيل الدخول" onPress={submit} disabled={!canSubmit} loading={busy} fullWidth />
+
+      <View style={styles.or}>
+        <View style={styles.rule} />
+        <Text variant="caption" tone="subtle">
+          {ar ? "معندكش حساب؟" : "No account yet?"}
+        </Text>
+        <View style={styles.rule} />
+      </View>
+      <Button
+        label={ar ? "سجّل نشاطك على مواعيد" : "Create a business account"}
+        variant="outline"
+        icon="open-outline"
+        iconPosition="end"
+        onPress={() => openSite("/signup")}
+        fullWidth
+      />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { marginTop: spacing.xxl, marginBottom: spacing.xl, gap: spacing.sm },
-  form: { gap: spacing.lg, marginTop: spacing.xl },
+  passwordBlock: { gap: spacing.sm },
+  forgot: { alignSelf: "flex-end", paddingVertical: spacing.xs },
+  or: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  rule: { flex: 1, height: 1, backgroundColor: colors.line },
 });

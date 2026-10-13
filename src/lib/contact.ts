@@ -1,3 +1,4 @@
+import { dialable } from "@/lib/phone";
 /**
  * Turning a stored phone number into a link a device will act on.
  *
@@ -21,17 +22,16 @@ export function telHref(raw: string): string {
 /**
  * wa.me wants digits only, in international form with no plus.
  *
- * Egyptian mobiles are written locally as 01XXXXXXXXX; WhatsApp needs
- * 201XXXXXXXXX. Dropping the leading zero without adding the country
- * code produces a link that silently opens a chat with nobody.
+ * A local number (01XXXXXXXXX) is read as being in `countryCode` —
+ * dropping the leading zero without adding a country code opens a chat
+ * with nobody. A number that already carries a country code, from any
+ * country, is left as it is (src/lib/phone.ts dialable()).
  */
 export function whatsappHref(raw: string, countryCode = "20"): string {
-  let digits = raw.replace(/\D/g, "");
-
-  if (digits.startsWith("00")) digits = digits.slice(2);
-  if (digits.startsWith("0")) digits = countryCode + digits.slice(1);
-  else if (!digits.startsWith(countryCode)) digits = countryCode + digits;
-
+  // What dialable() cannot place has no country code of its own (one
+  // written with "+" or "00" it would have taken) — a local number with
+  // its trunk 0 left off, "223456789" — so it gets the home country's.
+  const digits = dialable(raw, countryCode) ?? countryCode + raw.replace(/\D/g, "").replace(/^0+/, "");
   return `https://wa.me/${digits}`;
 }
 

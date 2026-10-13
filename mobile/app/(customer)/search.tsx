@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { FlatList, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ListState, SearchField, Text, colors, spacing } from "@/design";
+import { Chip, ListState, SearchField, Text, colors, spacing } from "@/design";
 import { BusinessCard } from "@/features/discovery/BusinessCard";
-import { useBusinesses } from "@/features/customer/queries";
+import { useBusinesses, type SearchParams } from "@/features/customer/queries";
 import { num } from "@/lib/format";
 
 /**
@@ -18,11 +18,44 @@ import { num } from "@/lib/format";
  * the results instead of pinning a bar over a short list.
  */
 export default function Search() {
-  const params = useLocalSearchParams<{ q?: string }>();
+  // Home opens Search pre-filtered: a category, a city, a sort.
+  // `at` is when Home sent them: tapping the same row twice is two
+  // arrivals, so a filter cleared in between is applied again.
+  const params = useLocalSearchParams<{
+    q?: string;
+    category?: string;
+    city?: string;
+    sort?: string;
+    availability?: string;
+    label?: string;
+    at?: string;
+  }>();
   const insets = useSafeAreaInsets();
 
+  const fromParams = () => ({
+    category: params.category ?? "",
+    city: params.city ?? "",
+    sort: (params.sort ?? "recommended") as SearchParams["sort"],
+    availability: (params.availability ?? "any") as NonNullable<SearchParams["availability"]>,
+    label: params.label ?? "",
+  });
+  const [filter, setFilter] = useState(fromParams);
   const [term, setTerm] = useState(params.q ?? "");
   const [query, setQuery] = useState(params.q ?? "");
+
+  // Arriving again from Home with different parameters replaces the
+  // filter — adjusted while rendering, not in an effect, so the list
+  // never draws once with the old filter first.
+  const paramsKey = [params.q, params.category, params.city, params.sort, params.availability, params.label, params.at].join("|");
+  const [seenKey, setSeenKey] = useState(paramsKey);
+  if (seenKey !== paramsKey) {
+    setSeenKey(paramsKey);
+    setFilter(fromParams());
+    // A new arrival is a new search: the last one's words do not carry
+    // over into a category Home opened.
+    setTerm(params.q ?? "");
+    setQuery(params.q ?? "");
+  }
 
   // Debounced: typing "barber" would otherwise be six requests, five of
   // them already stale by the time they land.
@@ -31,7 +64,16 @@ export default function Search() {
     return () => clearTimeout(timer);
   }, [term]);
 
-  const results = useBusinesses({ q: query });
+  const results = useBusinesses({
+    q: query,
+    category: filter.category,
+    city: filter.city,
+    sort: filter.sort,
+    availability: filter.availability,
+  });
+  const filtered = Boolean(
+    filter.category || filter.city || filter.sort !== "recommended" || filter.availability !== "any",
+  );
   const businesses = results.data?.businesses ?? [];
 
   return (
@@ -56,6 +98,15 @@ export default function Search() {
             accessibilityLabel="ابحث عن مكان"
             onSubmit={() => setQuery(term)}
           />
+          {filtered ? (
+            <View style={styles.filters}>
+              <Chip
+                label={filter.label || "فلتر"}
+                selected
+                onPress={() => setFilter({ category: "", city: "", sort: "recommended", availability: "any", label: "" })}
+              />
+            </View>
+          ) : null}
           {!results.isLoading && results.data ? (
             <Text variant="caption" tone="subtle" style={styles.count}>
               {/* The real total from the server, not the page length. */}
@@ -89,4 +140,5 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   header: { marginBottom: spacing.lg, gap: spacing.md },
   count: { marginTop: spacing.xs },
+  filters: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
 });

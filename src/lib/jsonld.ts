@@ -1,4 +1,5 @@
 import { siteUrl } from "@/lib/env";
+import { dialable } from "@/lib/phone";
 /**
  * JSON-LD structured data builders for public Maw3ed pages.
  * Returns a plain object — the caller serialises it with JSON.stringify
@@ -160,13 +161,10 @@ function buildPriceRange(services: ServicePrice[]): string | undefined {
     : `${min}–${max} ${currency}`;
 }
 
-/** Normalise to E.164-ish format for schema.org telephone */
+/** E.164 for schema.org telephone, from any country (src/lib/phone.ts dialable()). */
 function normalisePhone(raw: string): string {
-  const digits = raw.replace(/[^\d+]/g, "");
-  if (digits.startsWith("+")) return digits;
-  if (digits.startsWith("0"))  return `+20${digits.slice(1)}`;
-  if (digits.startsWith("20")) return `+${digits}`;
-  return `+20${digits}`;
+  const digits = dialable(raw);
+  return digits ? `+${digits}` : raw.trim();
 }
 
 /* ─── Breadcrumbs ─────────────────────────────────────────── */

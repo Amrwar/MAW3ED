@@ -31,8 +31,10 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   /** Customers, step one: the code arrives by WhatsApp. */
   requestCode: (phone: string) => Promise<void>;
-  /** Customers, step two. */
-  signInWithCode: (phone: string, code: string) => Promise<void>;
+  /** Customers, step two. Answers who signed in, so a new account can be asked its name. */
+  signInWithCode: (phone: string, code: string) => Promise<AuthUser>;
+  /** After the profile is edited: the name and email the app shows, without a round trip. */
+  updateUser: (patch: Partial<Pick<AuthUser, "name" | "email">>) => void;
   signOut: () => Promise<void>;
 }
 
@@ -92,12 +94,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
       setUser(result.user);
       track("signed_in", { method, role: primaryRole(result.user) });
+      return result.user;
     },
     [queryClient],
   );
 
   const signIn = useCallback(
-    async (email: string, password: string) => accept(await loginWithPassword(email, password), "password"),
+    async (email: string, password: string) => {
+      await accept(await loginWithPassword(email, password), "password");
+    },
     [accept],
   );
 
@@ -109,6 +114,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (phone: string, code: string) => accept(await loginWithPhoneCode(phone, code), "phone"),
     [accept],
   );
+
+  const updateUser = useCallback((patch: Partial<Pick<AuthUser, "name" | "email">>) => {
+    setUser((u) => (u ? { ...u, ...patch } : u));
+  }, []);
 
   const signOut = useCallback(async () => {
     // Before the tokens go: forgetting the device needs them.
@@ -139,9 +148,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       requestCode,
       signInWithCode,
+      updateUser,
       signOut,
     }),
-    [user, restoring, signIn, requestCode, signInWithCode, signOut],
+    [user, restoring, signIn, requestCode, signInWithCode, updateUser, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

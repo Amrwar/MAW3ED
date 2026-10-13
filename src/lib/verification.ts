@@ -73,32 +73,7 @@ export function cooledDown(lastSentAt: Date, cooldownMs: number, now = Date.now(
 
 /* ─── Phone numbers ──────────────────────────────────────── */
 
-/**
- * Normalises an Egyptian mobile number to E.164 (20XXXXXXXXXX).
- * Accepts 01XXXXXXXXX, 201XXXXXXXXX, +201XXXXXXXXX and spaced forms.
- * Returns null when the number is not a valid Egyptian mobile.
- */
-export function normaliseEgyptianMobile(input: string): string | null {
-  const digits = input.replace(/\D/g, "");
-
-  let local: string;
-  if (digits.startsWith("20") && digits.length === 12) local = digits.slice(2);
-  else if (digits.startsWith("0") && digits.length === 11) local = digits.slice(1);
-  else if (digits.length === 10) local = digits;
-  else return null;
-
-  // Egyptian mobiles are 1 followed by 0, 1, 2 or 5, then eight digits.
-  if (!/^1[0125]\d{8}$/.test(local)) return null;
-
-  return `20${local}`;
-}
-
-/** "20101…" → "+20 10 1234 5678", for showing the number back to the user. */
-export function formatEgyptianMobile(e164: string): string {
-  const local = e164.startsWith("20") ? e164.slice(2) : e164;
-  if (local.length !== 10) return e164;
-  return `+20 ${local.slice(0, 2)} ${local.slice(2, 6)} ${local.slice(6)}`;
-}
+// Normalising and formatting numbers from any country: src/lib/phone.ts.
 
 /* ─── Earning the verified badge ─────────────────────────── */
 

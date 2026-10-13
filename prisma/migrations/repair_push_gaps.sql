@@ -52,11 +52,16 @@ END $$;
 -- plain column into a generated one in place. Dropping loses nothing,
 -- because the whole point is that the values were never computed.
 --
--- The expression matches normaliseEgyptianMobile() in
--- src/lib/verification.ts, same as add_booking_phone_e164.sql.
+-- Computed by maw3ed_normalise_phone(), created in international_phone.sql
+-- (src/lib/phone.ts in SQL). That file must run first; this stops with a
+-- clear message rather than re-creating the old Egypt-only expression.
 
 DO $$
 BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'maw3ed_normalise_phone') THEN
+    RAISE EXCEPTION 'Run prisma/migrations/international_phone.sql before repair_push_gaps.sql';
+  END IF;
+
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
      WHERE table_name = 'Booking'
@@ -72,17 +77,7 @@ BEGIN
   ) THEN
     ALTER TABLE "Booking"
       ADD COLUMN "customerPhoneE164" TEXT
-      GENERATED ALWAYS AS (
-        CASE
-          WHEN regexp_replace("customerPhone", '\D', '', 'g') ~ '^201[0125][0-9]{8}$'
-            THEN regexp_replace("customerPhone", '\D', '', 'g')
-          WHEN regexp_replace("customerPhone", '\D', '', 'g') ~ '^01[0125][0-9]{8}$'
-            THEN '20' || substr(regexp_replace("customerPhone", '\D', '', 'g'), 2)
-          WHEN regexp_replace("customerPhone", '\D', '', 'g') ~ '^1[0125][0-9]{8}$'
-            THEN '20' || regexp_replace("customerPhone", '\D', '', 'g')
-          ELSE NULL
-        END
-      ) STORED;
+      GENERATED ALWAYS AS (maw3ed_normalise_phone("customerPhone")) STORED;
   END IF;
 END $$;
 

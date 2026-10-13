@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { router } from "expo-router";
 import { Switch, View, StyleSheet } from "react-native";
 import { Screen, Text, Button, Card, Badge, ListState, colors, spacing } from "@/design";
 import { useProfile, useUpdateProfile } from "@/features/customer/queries";
@@ -120,8 +121,11 @@ function Account() {
             ) : null}
           </Card>
 
-          {/* ── Notifications ── */}
-          <Card>
+          {/* ── Notifications — opens the full list, which has no tab of its own ── */}
+          <Card
+            onPress={() => router.push("/(customer)/notifications")}
+            accessibilityLabel={`الإشعارات${notifications.data?.unread ? `، ${num(notifications.data.unread)} جديد` : ""}`}
+          >
             <View style={styles.switchRow}>
               <Text variant="bodyBold">الإشعارات</Text>
               {notifications.data && notifications.data.unread > 0 ? (

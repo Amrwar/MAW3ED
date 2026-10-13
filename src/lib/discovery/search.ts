@@ -443,7 +443,14 @@ export async function getFacets(citySlug?: string): Promise<Facets> {
   const [categories, cities, byCategory, byCity, neighborhoods] = await Promise.all([
     db.category.findMany({ orderBy: { nameAr: "asc" } }),
     db.city.findMany({ orderBy: { nameAr: "asc" } }),
-    db.business.groupBy({ by: ["categoryId"], where: { isPublished: true }, _count: { _all: true } }),
+    // Within the chosen city, so a category is never offered there with
+    // another city's businesses behind it. City counts stay national —
+    // they are what somebody picks a city by.
+    db.business.groupBy({
+      by: ["categoryId"],
+      where: { isPublished: true, ...(citySlug ? { city: { slug: citySlug } } : {}) },
+      _count: { _all: true },
+    }),
     db.business.groupBy({ by: ["cityId"], where: { isPublished: true }, _count: { _all: true } }),
     citySlug
       ? db.neighborhood.findMany({ where: { city: { slug: citySlug } }, orderBy: { nameAr: "asc" } })

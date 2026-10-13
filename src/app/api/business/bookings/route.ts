@@ -1,6 +1,6 @@
 import { type Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { bookingSchema } from "@/lib/validations";
+import { ownerBookingSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
   try {
     const { business } = await requireBusiness();
     const body   = await req.json();
-    const parsed = bookingSchema.safeParse(body);
+    const parsed = ownerBookingSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
     const { serviceId, date, startTime, customerName, customerPhone, notes } = parsed.data;

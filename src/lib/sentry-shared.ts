@@ -18,7 +18,16 @@ export const SENTRY_ENABLED = SENTRY_DSN.length > 0;
  * its own scrubbing before anything leaves the app.
  */
 const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
-const PHONE_RE = /(?:\+?20)?0?1[0125]\d{8}/g;
+/**
+ * Phone numbers from any country: a "+"/"00" international number, or a
+ * run of 10 to 15 digits (a local 01XXXXXXXXX, or one written without
+ * its plus), even glued to letters ("user_01012345678"). Deliberately
+ * broad: a 13-digit string ID is redacted too — losing an ID from a log
+ * line costs less than leaking a number. It used to match Egyptian
+ * mobiles only, so a customer from
+ * elsewhere would have had their number written into Sentry.
+ */
+const PHONE_RE = /(?:\+|(?<!\d)00)\d(?:[\s-]?\d){6,14}|(?<!\d)\d{10,15}(?!\d)/g;
 
 const SENSITIVE_HEADER = /authorization|cookie|x-api-key|token|secret/i;
 

@@ -23,9 +23,24 @@ describe("redact", () => {
     expect(out.note).toBe("call me on [phone] today");
   });
 
+  it("strips numbers from other countries too", () => {
+    const out = redact({ note: "+966 50 123 4567 or 00447700900123 or 14155552671" }) as Record<string, string>;
+    expect(out.note).toBe("[phone] or [phone] or [phone]");
+  });
+
+  it("leaves dates, times and short numbers alone", () => {
+    const out = redact({ note: "booked 2026-10-12 at 14:30 for 2 people, ref 4821" }) as Record<string, string>;
+    expect(out.note).toBe("booked 2026-10-12 at 14:30 for 2 people, ref 4821");
+  });
+
   it("strips phone numbers written with a country code", () => {
     const out = redact({ note: "+201112223334" }) as Record<string, string>;
     expect(out.note).toBe("[phone]");
+  });
+
+  it("strips a number glued to a word", () => {
+    const out = redact({ note: "user_01012345678 and id966501234567" }) as Record<string, string>;
+    expect(out.note).toBe("user_[phone] and id[phone]");
   });
 
   it("strips email addresses out of free text", () => {

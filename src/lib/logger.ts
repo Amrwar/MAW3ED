@@ -38,8 +38,16 @@ const SENSITIVE_KEY = /pass|secret|token|authorization|cookie|apikey|api_key|hma
 const PERSONAL_KEY = /phone|whatsapp|email|customername|customer_name|address/i;
 
 const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
-/** Egyptian mobile numbers, with or without country code. */
-const PHONE_RE = /(?:\+?20)?0?1[0125]\d{8}/g;
+/**
+ * Phone numbers from any country: a "+"/"00" international number, or a
+ * run of 10 to 15 digits (a local 01XXXXXXXXX, or one written without
+ * its plus), even glued to letters ("user_01012345678"). Deliberately
+ * broad: a 13-digit string ID is redacted too — losing an ID from a log
+ * line costs less than leaking a number. It used to match Egyptian
+ * mobiles only, so a customer from
+ * elsewhere would have had their number written into logs and Sentry.
+ */
+const PHONE_RE = /(?:\+|(?<!\d)00)\d(?:[\s-]?\d){6,14}|(?<!\d)\d{10,15}(?!\d)/g;
 
 function maskValue(value: string): string {
   if (value.length <= 4) return "***";

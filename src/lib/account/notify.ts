@@ -1,7 +1,7 @@
 import type { NotificationKind } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
-import { normaliseEgyptianMobile } from "@/lib/verification";
+import { normalisePhone } from "@/lib/phone";
 
 /**
  * Recording something a customer should know about.
@@ -27,7 +27,7 @@ export async function notifyCustomer(input: {
     // The caller passes a booking's phone, which is whatever the
     // customer typed. An account's phone is canonical, so it has to be
     // put into the same form before the two can be compared.
-    const phone = normaliseEgyptianMobile(input.phone);
+    const phone = normalisePhone(input.phone);
     if (!phone) return;
 
     const user = await db.user.findUnique({

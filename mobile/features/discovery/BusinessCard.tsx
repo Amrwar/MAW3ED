@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { BusinessCard as Card, useLocale } from "@/design";
+import { time } from "@/lib/format";
+import type { NextSlot, OpenState } from "@/types/api";
 
 export interface BusinessCardData {
   slug: string;
@@ -14,7 +16,20 @@ export interface BusinessCardData {
   city: { nameAr: string; nameEn?: string };
   minPrice?: number | null;
   currency?: string;
-  open?: { isOpen: boolean } | null;
+  open?: OpenState | null;
+  nextSlot?: NextSlot | null;
+}
+
+/** "Next free today 9:00" — from the server's own search, never estimated here. */
+export function nextFreeLabel(slot: NextSlot | null | undefined, lang: "ar" | "en"): string | null {
+  if (!slot) return null;
+  const at = time(slot.time, lang);
+  if (lang === "en") {
+    const day = slot.dayOffset === 0 ? "today" : slot.dayOffset === 1 ? "tomorrow" : `in ${slot.dayOffset} days`;
+    return `Next free ${day} ${at}`;
+  }
+  const day = slot.dayOffset === 0 ? "النهارده" : slot.dayOffset === 1 ? "بكرة" : `بعد ${slot.dayOffset} أيام`;
+  return `أقرب موعد ${day} ${at}`;
 }
 
 /**
@@ -49,7 +64,9 @@ export function BusinessCard({
       ratingCount={business.ratingCount}
       fromPrice={business.minPrice ?? null}
       currency={business.currency}
-      openNow={business.open ? business.open.isOpen : null}
+      // "unknown" (no hours set) says nothing rather than guessing.
+      openNow={business.open?.state === "open" ? true : business.open?.state === "closed" ? false : null}
+      nextFree={nextFreeLabel(business.nextSlot, lang)}
       onPress={onPress}
       trailing={trailing}
     />

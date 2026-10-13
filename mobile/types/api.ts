@@ -15,15 +15,20 @@
 
 /* ─── Discovery ──────────────────────────────────────────── */
 
-export interface OpenState {
-  isOpen: boolean;
-  /** "9:00" etc., or null when the state does not imply a time. */
-  opensAt?: string | null;
-  closesAt?: string | null;
-}
+/**
+ * Mirrors src/lib/discovery/hours.ts. "unknown" is a business with no
+ * hours set — the card stays silent rather than guessing it is closed.
+ * (An earlier copy here read `isOpen`, which the server never sends, so
+ * every business showed as closed.)
+ */
+export type OpenState =
+  | { state: "open"; closesAt: string }
+  | { state: "closed"; opensInDays: number; opensAt: string }
+  | { state: "unknown" };
 
+/** Mirrors src/lib/discovery/next-slot.ts: days from today in Cairo, and a Cairo time. */
 export interface NextSlot {
-  date: string;
+  dayOffset: number;
   time: string;
 }
 
@@ -49,6 +54,29 @@ export interface Business {
   open: OpenState;
   /** The first genuinely free appointment, or null. Never a guess. */
   nextSlot: NextSlot | null;
+}
+
+export interface FacetCategory {
+  id: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  /** Published businesses filed under it, children included. */
+  count: number;
+}
+
+export interface FacetCity {
+  id: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  count: number;
+}
+
+/** GET /api/public/facets — src/lib/discovery/search.ts getFacets(). */
+export interface Facets {
+  categories: (FacetCategory & { children: FacetCategory[] })[];
+  cities: FacetCity[];
 }
 
 export interface BusinessPage {

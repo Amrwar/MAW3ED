@@ -159,9 +159,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       // The splash moved out of the top-level config and into this
       // plugin in SDK 57. Dark, so launching the app and the app itself
       // open on the same colour instead of flashing white first.
+      //
+      // The white wordmark: splash.png is dark ink on transparent, which
+      // on this background was all but invisible — the app opened on a
+      // blank dark screen. logo-white.png is the same artwork, recoloured.
       "expo-splash-screen",
       {
-        image: "./assets/splash.png",
+        image: "./assets/logo-white.png",
+        imageWidth: 180,
         resizeMode: "contain",
         backgroundColor: "#11201C",
       },

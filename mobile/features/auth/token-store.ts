@@ -1,4 +1,6 @@
-import * as SecureStore from "expo-secure-store";
+import * as SecureStoreNative from "expo-secure-store";
+import { Platform } from "react-native";
+import { config } from "@/lib/config";
 
 /**
  * Where the tokens live.
@@ -18,7 +20,26 @@ const ACCESS_KEY = "maw3ed.access";
 const REFRESH_KEY = "maw3ed.refresh";
 const EXPIRY_KEY = "maw3ed.expiresAt";
 
-const OPTIONS: SecureStore.SecureStoreOptions = {
+/**
+ * The browser preview only. A browser has no Keychain or Keystore, so
+ * expo-secure-store does nothing there and nobody could sign in to try
+ * the app on a laptop. Outside production, the web build keeps tokens
+ * in sessionStorage — gone when the tab closes. iOS and Android always
+ * use the secure store above; a production web build never stores
+ * tokens at all.
+ */
+const previewStore = {
+  getItemAsync: async (k: string) => globalThis.sessionStorage?.getItem(k) ?? null,
+  setItemAsync: async (k: string, v: string) => globalThis.sessionStorage?.setItem(k, v),
+  deleteItemAsync: async (k: string) => globalThis.sessionStorage?.removeItem(k),
+};
+
+const SecureStore =
+  Platform.OS === "web" && config.appEnv !== "production"
+    ? { ...SecureStoreNative, ...previewStore }
+    : SecureStoreNative;
+
+const OPTIONS: SecureStoreNative.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 

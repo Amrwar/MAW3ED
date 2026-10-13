@@ -2,7 +2,7 @@ import { createLoginCode } from "@/lib/auth/login-code";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err } from "@/lib/api";
 import { sendWhatsAppMessage } from "@/lib/services/whatsapp";
-import { formatEgyptianMobile } from "@/lib/verification";
+import { formatPhone, PHONE_INVALID } from "@/lib/phone";
 import { log } from "@/lib/logger";
 
 /**
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     if (!result.ok) {
       switch (result.reason) {
         case "invalid-phone":
-          return err("رقم غير صحيح — لازم يكون رقم موبايل مصري", 422);
+          return err(PHONE_INVALID, 422);
         case "cooldown":
           return err("استنى دقيقة قبل ما تطلب كود جديد", 429);
         case "too-many":
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     });
 
     // The code is never logged, and the number is only logged masked.
-    log.info("login code sent", { phone: formatEgyptianMobile(result.phone) });
+    log.info("login code sent", { phone: formatPhone(result.phone) });
 
     return ok({ sent: true });
   } catch (e) {
