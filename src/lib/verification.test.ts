@@ -6,8 +6,6 @@ import {
   secretMatches,
   isExpired,
   cooledDown,
-  normaliseEgyptianMobile,
-  formatEgyptianMobile,
   qualifiesAsVerified,
   PHONE_CODE_LENGTH,
 } from "./verification";
@@ -94,53 +92,7 @@ describe("cooledDown", () => {
   });
 });
 
-describe("normaliseEgyptianMobile", () => {
-  it("accepts the local 011 form", () => {
-    expect(normaliseEgyptianMobile("01012345678")).toBe("201012345678");
-  });
-
-  it("accepts the international form", () => {
-    expect(normaliseEgyptianMobile("+201012345678")).toBe("201012345678");
-  });
-
-  it("accepts a spaced and dashed number", () => {
-    expect(normaliseEgyptianMobile("+20 101 234 5678")).toBe("201012345678");
-    expect(normaliseEgyptianMobile("0101-234-5678")).toBe("201012345678");
-  });
-
-  it("accepts every valid Egyptian prefix", () => {
-    for (const p of ["010", "011", "012", "015"]) {
-      expect(normaliseEgyptianMobile(`${p}12345678`)).not.toBeNull();
-    }
-  });
-
-  it("rejects an invalid prefix", () => {
-    expect(normaliseEgyptianMobile("01312345678")).toBeNull();
-  });
-
-  it("rejects a landline", () => {
-    expect(normaliseEgyptianMobile("0223456789")).toBeNull();
-  });
-
-  it("rejects a number that is too short or too long", () => {
-    expect(normaliseEgyptianMobile("0101234567")).toBeNull();
-    expect(normaliseEgyptianMobile("010123456789")).toBeNull();
-  });
-
-  it("rejects text", () => {
-    expect(normaliseEgyptianMobile("not a number")).toBeNull();
-  });
-});
-
-describe("formatEgyptianMobile", () => {
-  it("renders a readable international form", () => {
-    expect(formatEgyptianMobile("201012345678")).toBe("+20 10 1234 5678");
-  });
-
-  it("returns the input unchanged when it is not the expected length", () => {
-    expect(formatEgyptianMobile("123")).toBe("123");
-  });
-});
+// normaliseEgyptianMobile and formatEgyptianMobile became src/lib/phone.ts; their cases are in phone-cases.ts.
 
 describe("qualifiesAsVerified", () => {
   const full = {

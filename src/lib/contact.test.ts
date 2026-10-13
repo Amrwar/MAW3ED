@@ -45,6 +45,12 @@ describe("whatsappHref", () => {
 
   it("adds the country code to a bare number", () => {
     expect(whatsappHref("1111908224")).toBe("https://wa.me/201111908224");
+    // A landline with its trunk 0 left off, which dialable() cannot place.
+    expect(whatsappHref("223456789")).toBe("https://wa.me/20223456789");
+  });
+
+  it("never puts 20 in front of another country's number", () => {
+    expect(whatsappHref("+1 415 555 2671")).toBe("https://wa.me/14155552671");
   });
 
   it("never emits a plus, which wa.me rejects", () => {

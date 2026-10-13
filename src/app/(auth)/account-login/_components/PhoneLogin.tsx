@@ -140,6 +140,7 @@ export default function PhoneLogin() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="01xxxxxxxxx"
+            hint={a.phoneHint}
             required
           />
 

@@ -38,6 +38,8 @@ export interface BusinessCardProps {
   currency?: string;
   /** null when unknown — then nothing is said. */
   openNow?: boolean | null;
+  /** "Next free today 9:00", already in the reader's language; omitted when unknown. */
+  nextFree?: string | null;
   onPress?: () => void;
   /** A save button, say. Kept out of the card's own tap target. */
   trailing?: ReactNode;
@@ -50,7 +52,7 @@ export function BusinessCard(p: BusinessCardProps) {
   const price = money(p.fromPrice ?? null, p.currency, lang);
   const fromLabel = price ? (lang === "ar" ? `من ${price}` : `from ${price}`) : null;
   const openLabel = p.openNow == null ? null : p.openNow ? (lang === "ar" ? "مفتوح دلوقتي" : "Open now") : lang === "ar" ? "مقفول" : "Closed";
-  const label = joinLabel(lang, p.name, p.verified && t("verified"), p.category, p.area, fromLabel, openLabel);
+  const label = joinLabel(lang, p.name, p.verified && t("verified"), p.category, p.area, fromLabel, openLabel, p.nextFree);
 
   const meta = (
     <View style={styles.metaRow}>
@@ -64,6 +66,14 @@ export function BusinessCard(p: BusinessCardProps) {
         <Text variant="tiny" tone={p.openNow ? "ok" : "subtle"}>
           {openLabel}
         </Text>
+      ) : null}
+      {p.nextFree ? (
+        <View style={styles.nextFree}>
+          <Icon name="flash-outline" size={13} color={colors.jade} />
+          <Text variant="tiny" tone="jade" numberOfLines={1}>
+            {p.nextFree}
+          </Text>
+        </View>
       ) : null}
     </View>
   );
@@ -271,9 +281,8 @@ export function BookingCard(p: BookingCardProps) {
         </View>
         <View style={styles.when}>
           <Icon name="time-outline" size="sm" color={colors.jade} />
-          <Text variant="label" style={{ writingDirection: "ltr" }}>
-            {when}
-          </Text>
+          {/* The locale's own direction: forcing LTR here read "ص 10:30 – ص 10:00" in Arabic. */}
+          <Text variant="label">{when}</Text>
           {relative ? (
             <Text variant="caption" tone="jade">
               · {relative}
@@ -299,6 +308,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   titleRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  nextFree: { flexDirection: "row", alignItems: "center", gap: spacing.xxs },
   metaRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.xs },
   cover: { width: "100%", aspectRatio: 16 / 9, backgroundColor: colors.surface3 },
   coverFallback: { alignItems: "center", justifyContent: "center", backgroundColor: colors.jadeTint },

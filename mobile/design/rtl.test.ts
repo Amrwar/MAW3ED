@@ -53,6 +53,15 @@ describe("structural RTL", () => {
     expect(offenders).toEqual([]);
   });
 
+  // Forcing LTR on a line of Arabic scrambles it — "ص 10:30 – ص 10:00"
+  // for "10:00 ص – 10:30 ص". Numbers already read correctly inside an
+  // RTL line; direction comes from the locale (Text) or is computed.
+  it("never forces a writing direction with a literal", () => {
+    const forced = /writingDirection:\s*["'](?:ltr|rtl)["']/;
+    const offenders = sources.filter((s) => forced.test(s.code)).map((s) => s.file);
+    expect(offenders).toEqual([]);
+  });
+
   it("does not flip layout by hand with I18nManager", () => {
     const offenders = sources.filter((s) => /I18nManager/.test(s.code)).map((s) => s.file);
     expect(offenders).toEqual([]);

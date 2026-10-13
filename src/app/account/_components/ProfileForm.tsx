@@ -6,7 +6,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import type { AccountUser } from "@/lib/account/queries";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { formatEgyptianMobile } from "@/lib/verification";
+import { formatPhone } from "@/lib/phone";
 
 export default function ProfileForm({ user }: { user: AccountUser }) {
   const { t } = useLanguage();
@@ -51,7 +51,7 @@ export default function ProfileForm({ user }: { user: AccountUser }) {
           changing it here would silently detach their history. */}
       <Input
         label={p.phone}
-        value={formatEgyptianMobile(user.phone)}
+        value={formatPhone(user.phone)}
         dir="ltr"
         readOnly
         disabled

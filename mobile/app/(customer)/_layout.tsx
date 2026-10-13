@@ -1,49 +1,31 @@
 import { Tabs } from "expo-router";
-import { bottomNavOptions, tabIcon } from "@/design";
-import { useAuth } from "@/features/auth/AuthProvider";
-import { useUnreadCount } from "@/features/notifications/queries";
+import { bottomNavOptions, tabIcon, useLocale } from "@/design";
 
 /**
- * What a customer does: find a place, manage what they booked, and
- * their own account.
+ * What a customer does: find a place, book it, keep track of it.
  *
- * Six tabs. Notifications has its own, with the unread count on it:
- * booking confirmations and changes are what a customer most needs to
- * see, and a count buried inside Account is a count nobody sees. Labels
- * are short so six fit on a 320px phone.
- *
- * Outline icons that fill when active, which is the convention on both
- * platforms and means the selected tab is marked twice over — by shape
- * and by colour — rather than by colour alone.
+ * Five tabs — the most a phone bar holds before labels truncate.
+ * Notifications are reached from the bell on Home (with the unread dot)
+ * and from Account, so they do not take a sixth; the route stays, hidden
+ * from the bar (href: null), for links and push taps that open it.
  */
-
-/** One place to add a tab, so the icon and the route cannot drift. */
 const TABS = [
-  { name: "index", title: "الرئيسية", icon: "home" },
-  { name: "search", title: "ابحث", icon: "search" },
-  { name: "bookings", title: "حجوزاتي", icon: "calendar" },
-  { name: "favorites", title: "المحفوظات", icon: "heart" },
-  { name: "notifications", title: "الإشعارات", icon: "notifications" },
-  { name: "account", title: "حسابي", icon: "person" },
+  { name: "index", ar: "الرئيسية", en: "Home", icon: "home" },
+  { name: "search", ar: "ابحث", en: "Search", icon: "search" },
+  { name: "bookings", ar: "حجوزاتي", en: "Bookings", icon: "calendar" },
+  { name: "favorites", ar: "المحفوظات", en: "Favorites", icon: "heart" },
+  { name: "account", ar: "حسابي", en: "Account", icon: "person" },
 ] as const;
 
 export default function CustomerLayout() {
-  const { user } = useAuth();
-  const unread = useUnreadCount(Boolean(user));
+  const { lang } = useLocale();
 
   return (
     <Tabs screenOptions={bottomNavOptions}>
       {TABS.map((tab) => (
-        <Tabs.Screen
-          key={tab.name}
-          name={tab.name}
-          options={{
-            title: tab.title,
-            tabBarBadge: tab.name === "notifications" ? unread : undefined,
-            tabBarIcon: tabIcon(tab.icon),
-          }}
-        />
+        <Tabs.Screen key={tab.name} name={tab.name} options={{ title: tab[lang], tabBarIcon: tabIcon(tab.icon) }} />
       ))}
+      <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>
   );
 }

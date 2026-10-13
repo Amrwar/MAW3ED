@@ -25,7 +25,8 @@ model User {
   emailVerified DateTime?
   password      String?
   image         String?
-  /// E.164, e.g. "+201234567890". The key a customer's bookings are
+  /// E.164 digits without the plus, e.g. "201234567890" or
+  /// "966501234567" (src/lib/phone.ts). The key a customer's bookings are
   /// found by, which is why it only counts once verified.
   phone           String?   @unique
   phoneVerifiedAt DateTime?
@@ -695,8 +696,8 @@ model Booking {
   /// this application. customerPhone keeps whatever the customer typed,
   /// because that is what the business reads and dials; this is what an
   /// account is matched against, since a signed-in customer's phone is
-  /// always canonical. Read-only: see
-  /// prisma/migrations/add_booking_phone_e164.sql.
+  /// always canonical. Any country (src/lib/phone.ts). Read-only: see
+  /// prisma/migrations/international_phone.sql.
   customerPhoneE164      String?
   date                   DateTime
   startTime              String

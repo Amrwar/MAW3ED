@@ -1,3 +1,4 @@
+import { normalisePhone } from "@/lib/phone";
 import { db } from "@/lib/db";
 import {
   PHONE_CODE_TTL_MS,
@@ -7,7 +8,6 @@ import {
   generatePhoneCode,
   hashSecret,
   isExpired,
-  normaliseEgyptianMobile,
   secretMatches,
 } from "@/lib/verification";
 
@@ -40,7 +40,7 @@ export type SendResult =
   | { ok: false; reason: "invalid-phone" | "cooldown" | "too-many" };
 
 export async function createLoginCode(rawPhone: string): Promise<SendResult> {
-  const phone = normaliseEgyptianMobile(rawPhone);
+  const phone = normalisePhone(rawPhone);
   if (!phone) return { ok: false, reason: "invalid-phone" };
 
   const since = new Date(Date.now() - HOUR_MS);
@@ -91,7 +91,7 @@ export type VerifyResult =
  * would let somebody keep guessing against it forever.
  */
 export async function verifyLoginCode(rawPhone: string, candidate: string): Promise<VerifyResult> {
-  const phone = normaliseEgyptianMobile(rawPhone);
+  const phone = normalisePhone(rawPhone);
   if (!phone) return { ok: false, reason: "invalid-phone" };
 
   const record = await db.loginCode.findFirst({

@@ -1,3 +1,4 @@
+import { formatPhone, normalisePhone, PHONE_INVALID } from "@/lib/phone";
 import { db } from "@/lib/db";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err, requireBusiness } from "@/lib/api";
@@ -7,8 +8,6 @@ import {
   generatePhoneCode,
   hashSecret,
   cooledDown,
-  normaliseEgyptianMobile,
-  formatEgyptianMobile,
   PHONE_CODE_TTL_MS,
   PHONE_RESEND_COOLDOWN_MS,
 } from "@/lib/verification";
@@ -37,8 +36,8 @@ export async function POST(req: Request) {
     const raw = typeof body?.phone === "string" ? body.phone : business.whatsapp ?? business.phone;
     if (!raw) return err("أدخل رقم الواتساب", 422);
 
-    const phone = normaliseEgyptianMobile(raw);
-    if (!phone) return err("رقم غير صحيح — لازم يكون رقم موبايل مصري", 422);
+    const phone = normalisePhone(raw);
+    if (!phone) return err(PHONE_INVALID, 422);
 
     // Throttle per business, regardless of the number requested.
     const recent = await db.phoneVerification.findFirst({
@@ -73,7 +72,7 @@ export async function POST(req: Request) {
     // The code itself is never logged.
     log.info("phone verification code sent", { businessId: business.id });
 
-    return ok({ sent: true, phone: formatEgyptianMobile(phone) });
+    return ok({ sent: true, phone: formatPhone(phone) });
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[verify-phone/send]", e);

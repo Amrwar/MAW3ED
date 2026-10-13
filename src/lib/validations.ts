@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { installArabicZodErrors } from "./zod-arabic";
+import { dialable, normalisePhone, PHONE_INVALID } from "./phone";
 
 // Installed here because every route that validates anything imports
 // this module, so the map is in place before the first parse. Zod's own
@@ -143,10 +144,14 @@ export const bookingSchema = z.object({
   date:          z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاريخ غير صحيح"),
   startTime:     z.string().regex(/^\d{2}:\d{2}$/, "وقت غير صحيح"),
   customerName:  z.string().min(2, "أدخل اسمك الكامل"),
+  // A number normalisePhone() can read, the same rule as signing in: it
+  // is how the booking finds the customer's account (the
+  // customerPhoneE164 column) and where its confirmation goes. Any eight
+  // characters used to pass, so a booking could reach nobody.
   customerPhone: z
     .string()
-    .min(8, "أدخل رقم الهاتف")
-    .refine((v) => /^[+\d][\d\s()\-+]{6,}$/.test(v), "رقم الهاتف غير صحيح"),
+    .min(1, "أدخل رقم الهاتف")
+    .refine((v) => normalisePhone(v) !== null, PHONE_INVALID),
   customerEmail: z
     .string()
     .email("البريد الإلكتروني غير صحيح")
@@ -181,6 +186,19 @@ export const bookingSchema = z.object({
   /// A coupon the customer typed. Looked up server-side; the price is
   /// never taken from the request.
   discountCode: z.string().trim().max(40).optional(),
+});
+
+/**
+ * A booking the owner enters by hand. The customer is standing at the
+ * counter or on the phone, and the number they give may be a landline —
+ * still a number to call, so dialable() rather than normalisePhone().
+ * Such a booking simply links to no customer account.
+ */
+export const ownerBookingSchema = bookingSchema.extend({
+  customerPhone: z
+    .string()
+    .min(1, "أدخل رقم الهاتف")
+    .refine((v) => dialable(v) !== null, "رقم الهاتف غير صحيح"),
 });
 
 export type SignUpInput     = z.infer<typeof signUpSchema>;

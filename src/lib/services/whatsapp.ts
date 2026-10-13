@@ -32,6 +32,7 @@
  * All send functions NEVER throw — errors are logged, booking creation continues.
  */
 
+import { dialable } from "@/lib/phone";
 import type { BookingNotificationData } from "./whatsapp-messages";
 import { log } from "@/lib/logger";
 import { failed, sent, skipped, type SendOutcome } from "./send-outcome";
@@ -312,34 +313,13 @@ export async function sendWhatsAppMessage({
 // ─── Phone normalisation (exported for reuse) ─────────────
 
 /**
- * Converts a local or international phone number to E.164 format (digits only).
- * Defaults to Egypt country code (+20) when no international prefix is detected.
- *
- * Examples:
- *   "01012345678"    → "201012345678"
- *   "+201012345678"  → "201012345678"
- *   "1012345678"     → "201012345678"
+ * The number Meta's API wants: canonical digits, no plus. Any country;
+ * a local-format number is read as Egyptian. See src/lib/phone.ts
+ * dialable() — this used to prepend "20" to any short number, so a US
+ * customer's +1 415… went to an Egyptian number that does not exist.
  */
 export function normalisePhone(raw: string): string | null {
-  // Strip everything except digits and a leading +
-  let digits = raw.replace(/[^\d+]/g, "").replace(/^\+/, "");
-
-  if (!digits) return null;
-
-  // Egyptian local: starts with 0 (e.g. "01012345678") → strip leading 0, prepend 20
-  if (digits.startsWith("0") && digits.length <= 12) {
-    digits = "20" + digits.slice(1);
-  }
-
-  // No detectable country code on short numbers → assume Egypt
-  if (!digits.startsWith("20") && digits.length <= 11) {
-    digits = "20" + digits;
-  }
-
-  // Minimum plausible E.164 length (country code + 8 subscriber digits)
-  if (digits.length < 10) return null;
-
-  return digits;
+  return dialable(raw);
 }
 
 // ─── Local helpers ────────────────────────────────────────

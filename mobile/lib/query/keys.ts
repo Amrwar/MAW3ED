@@ -17,6 +17,8 @@ export const keys = {
       ["businesses", "search", query] as const,
   },
 
+  facets: (city: string) => ["facets", city] as const,
+
   myBookings: {
     all: ["my-bookings"] as const,
     scope: (scope: "upcoming" | "history") => ["my-bookings", scope] as const,

@@ -55,7 +55,7 @@ export function TimeSlots({
                   onPress={() => onChange(s)}
                   style={[styles.slot, { width }, selected ? styles.on : styles.off]}
                 >
-                  <Text variant="label" align="center" style={{ color: selected ? colors.inverse : colors.ink, writingDirection: "ltr" }}>
+                  <Text variant="label" align="center" style={{ color: selected ? colors.inverse : colors.ink }}>
                     {time(s, lang)}
                   </Text>
                 </Touchable>
