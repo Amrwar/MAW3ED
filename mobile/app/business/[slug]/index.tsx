@@ -158,7 +158,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
   /** Into the app's own booking flow, on whatever was chosen here. */
   const book = (choice: BookingChoice | null) => {
     setService(null);
-    const params: Record<string, string> = { slug: p.slug };
+    const params: { slug: string; service?: string; staff?: string } = { slug: p.slug };
     if (choice?.serviceId) params.service = choice.serviceId;
     if (choice?.serviceId && choice.staffId) params.staff = choice.staffId;
     router.push({ pathname: "/book/[slug]", params });

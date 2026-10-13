@@ -112,9 +112,12 @@ export interface MyBooking {
   /** Negative once it has passed. */
   minutesUntil: number;
   serviceName: string;
+  serviceNameEn: string | null;
   staffName: string | null;
+  staffNameEn: string | null;
   resourceName: string | null;
   branchName: string | null;
+  branchNameEn: string | null;
   partySize: number | null;
   totalPrice: number;
   depositAmount: number | null;
@@ -130,6 +133,7 @@ export interface MyBooking {
     coverImage: string | null;
     categorySlug: string;
     cityName: string;
+    cityNameEn: string;
     neighborhoodName: string | null;
   };
   hasReview: boolean;
@@ -445,10 +449,64 @@ export interface PublicBooking {
   payment: {
     status: "PENDING" | "SUCCEEDED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "ABANDONED";
     amount: number;
+    /** Refunded so far, from the ledger. */
+    refunded: number;
     currency: string;
     paidAt: string | null;
   } | null;
   notifications: { channel: "IN_APP" | "EMAIL" | "WHATSAPP" | "SMS" | "PUSH"; status: "SENT" | "SKIPPED" | "FAILED" }[];
   canChange: boolean;
   changeCutoffHours: number;
+  canReview: boolean;
+  reviewBlock: "not-completed" | "already-reviewed" | "too-late" | null;
+  review: {
+    rating: number;
+    comment: string | null;
+    response: string | null;
+    createdAt: string;
+    status: string;
+    canEdit: boolean;
+  } | null;
+}
+
+/* ─── Account extras ─────────────────────────────────────── */
+
+export interface MyReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  response: string | null;
+  respondedAt: string | null;
+  createdAt: string;
+  business: { slug: string; nameAr: string; logoImage: string | null };
+  date: string;
+  serviceName: string;
+}
+
+export interface AccountPayment {
+  id: string;
+  kind: string;
+  status: "SUCCEEDED" | "PARTIALLY_REFUNDED" | "REFUNDED";
+  method: string | null;
+  amountCents: number;
+  refundedCents: number;
+  currency: string;
+  receiptNumber: string | null;
+  paidAt: string | null;
+  bookingRef: string | null;
+  bookingDate: string | null;
+  startTime: string | null;
+  serviceAr: string | null;
+  serviceEn: string | null;
+  businessAr: string | null;
+  businessEn: string | null;
+  businessSlug: string | null;
+}
+
+export interface AccountSession {
+  id: string;
+  deviceName: string | null;
+  createdAt: string;
+  lastUsedAt: string;
+  current: boolean;
 }

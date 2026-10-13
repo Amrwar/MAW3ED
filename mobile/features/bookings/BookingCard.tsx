@@ -10,6 +10,7 @@ import { statusLabel, statusTone } from "@/features/bookings/status";
  */
 export function BookingCard({
   status,
+  statusLabel: label,
   meta,
   ...rest
 }: {
@@ -19,6 +20,8 @@ export function BookingCard({
   startTime: string;
   endTime?: string;
   status: string;
+  /** In the screen's language; the Arabic label when not given. */
+  statusLabel?: string;
   price?: number | null;
   currency?: string;
   minutesUntil?: number;
@@ -26,5 +29,5 @@ export function BookingCard({
   actions?: ReactNode;
   onPress?: () => void;
 }) {
-  return <Card {...rest} meta={[meta]} status={{ label: statusLabel(status), tone: statusTone(status) }} />;
+  return <Card {...rest} meta={[meta]} status={{ label: label ?? statusLabel(status), tone: statusTone(status) }} />;
 }

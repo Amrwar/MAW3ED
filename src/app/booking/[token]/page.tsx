@@ -200,16 +200,9 @@ export default async function BookingPage({ params }: Params) {
               <div id="reschedule" className="scroll-mt-4">
               <RescheduleFlow
                 token={token}
-                slug={booking.business.slug}
-                serviceId={booking.service.id}
                 currentDate={booking.date.toISOString().split("T")[0]}
                 currentStart={booking.startTime}
                 currentEnd={booking.endTime ?? booking.startTime}
-                serviceName={booking.service.nameAr}
-                businessName={booking.business.nameAr}
-                staffMemberId={booking.staffMemberId}
-                resourceId={booking.resourceId}
-                branchId={booking.branchId}
               />
               </div>
             )}

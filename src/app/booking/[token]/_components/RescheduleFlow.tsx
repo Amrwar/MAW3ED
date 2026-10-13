@@ -8,20 +8,13 @@ import { CalendarDays, Clock, Loader2, CheckCircle2, ArrowLeft, RefreshCw } from
 type Step = "idle" | "date" | "slots" | "confirm" | "done";
 
 interface Props {
+  // The token is all the slots need: the server reads the booking's own
+  // service, staff member, resource and branch from it, and leaves the
+  // booking itself out of the grid it is moving within.
   token:        string;
-  slug:         string;
-  serviceId:    string;
   currentDate:  string;   // "YYYY-MM-DD"
   currentStart: string;   // "HH:MM"
   currentEnd:   string;   // "HH:MM"
-  serviceName:  string;
-  businessName: string;
-  // The booking keeps its staff member, resource and branch when it
-  // moves, and the server checks the new time against them. Asking for
-  // slots without them offered times the server then refused.
-  staffMemberId: string | null;
-  resourceId:    string | null;
-  branchId:      string | null;
 }
 
 // ── Arabic helpers ────────────────────────────────────────────────────────────
@@ -46,16 +39,9 @@ function todayEgypt(): string {
 
 export default function RescheduleFlow({
   token,
-  slug,
-  serviceId,
   currentDate,
   currentStart,
   currentEnd,
-  serviceName,
-  businessName,
-  staffMemberId,
-  resourceId,
-  branchId,
 }: Props) {
   const [step,       setStep]       = useState<Step>("idle");
   const [newDate,    setNewDate]    = useState("");
@@ -73,11 +59,10 @@ export default function RescheduleFlow({
     setSlotsError("");
     setNewStart("");
     try {
-      const query = new URLSearchParams({ serviceId, date: newDate });
-      if (staffMemberId) query.set("staffMemberId", staffMemberId);
-      if (resourceId)    query.set("resourceId", resourceId);
-      if (branchId)      query.set("branchId", branchId);
-      const res  = await fetch(`/api/public/${slug}/slots?${query}`);
+      // This booking's own slots: it no longer blocks the times around
+      // where it sits, which the public grid could not know to ignore.
+      const query = new URLSearchParams({ date: newDate });
+      const res  = await fetch(`/api/public/booking/${token}/slots?${query}`);
       const data = await res.json();
       if (!res.ok) { setSlotsError(data.error ?? "تعذّر تحميل المواعيد"); return; }
       const available: string[] = data.slots ?? [];

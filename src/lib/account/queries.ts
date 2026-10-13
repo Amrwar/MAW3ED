@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { cairoDateString, cairoMinutes } from "@/lib/bookings/instants";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
 import { customerMayChange } from "@/lib/bookings/self-service";
+import { canReviewBooking } from "@/lib/review-policy";
 
 /**
  * Everything the customer account reads.
@@ -75,9 +76,13 @@ export interface AccountBooking {
   /** Minutes from now until it starts. Negative once it has passed. */
   minutesUntil: number;
   serviceName: string;
+  /** English names, where the business gave one; the app falls back to Arabic. */
+  serviceNameEn: string | null;
   staffName: string | null;
+  staffNameEn: string | null;
   resourceName: string | null;
   branchName: string | null;
+  branchNameEn: string | null;
   partySize: number | null;
   totalPrice: number;
   depositAmount: number | null;
@@ -93,6 +98,7 @@ export interface AccountBooking {
     coverImage: string | null;
     categorySlug: string;
     cityName: string;
+    cityNameEn: string;
     neighborhoodName: string | null;
   };
   /** True once reviewed, so the card offers it only when it can be done. */
@@ -121,10 +127,11 @@ const BOOKING_SELECT = {
   totalPrice: true,
   depositAmount: true,
   currency: true,
-  service: { select: { nameAr: true, duration: true } },
-  staffMember: { select: { nameAr: true } },
+  endsAt: true,
+  service: { select: { nameAr: true, nameEn: true, duration: true } },
+  staffMember: { select: { nameAr: true, nameEn: true } },
   resource: { select: { name: true } },
-  branch: { select: { nameAr: true, address: true } },
+  branch: { select: { nameAr: true, nameEn: true, address: true } },
   review: { select: { id: true } },
   business: {
     select: {
@@ -137,7 +144,7 @@ const BOOKING_SELECT = {
       logoImage: true,
       coverImage: true,
       category: { select: { slug: true } },
-      city: { select: { nameAr: true } },
+      city: { select: { nameAr: true, nameEn: true } },
       neighborhood: { select: { nameAr: true } },
     },
   },
@@ -167,9 +174,12 @@ function shape(b: Row, todayDate: string, nowMin: number): AccountBooking {
     durationMinutes: endMin - startMin,
     minutesUntil: dayDiff * 24 * 60 + (startMin - nowMin),
     serviceName: b.service.nameAr,
+    serviceNameEn: b.service.nameEn,
     staffName: b.staffMember?.nameAr ?? null,
+    staffNameEn: b.staffMember?.nameEn ?? null,
     resourceName: b.resource?.name ?? null,
     branchName: b.branch?.nameAr ?? null,
+    branchNameEn: b.branch?.nameEn ?? null,
     partySize: b.partySize,
     totalPrice: Number(b.totalPrice),
     depositAmount: b.depositAmount === null ? null : Number(b.depositAmount),
@@ -185,10 +195,13 @@ function shape(b: Row, todayDate: string, nowMin: number): AccountBooking {
       coverImage: b.business.coverImage,
       categorySlug: b.business.category.slug,
       cityName: b.business.city.nameAr,
+      cityNameEn: b.business.city.nameEn,
       neighborhoodName: b.business.neighborhood?.nameAr ?? null,
     },
     hasReview: b.review !== null,
-    canReview: b.status === "COMPLETED" && b.review === null,
+    // The review route's own rule, window included, so the list never
+    // offers a review the server would refuse.
+    canReview: canReviewBooking(b).allowed,
     canChange: customerMayChange(b),
   };
 }

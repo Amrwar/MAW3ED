@@ -38,6 +38,23 @@ export const BOOKING_STATUS_TONE: Record<string, BadgeTone> = {
   FAILED_PAYMENT: "danger",
 };
 
+const BOOKING_STATUS_LABEL_EN: Record<string, string> = {
+  CONFIRMED: "Confirmed",
+  PENDING: "Awaiting confirmation",
+  ARRIVED: "Checked in",
+  IN_PROGRESS: "In progress",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+  NO_SHOW: "No-show",
+  PENDING_PAYMENT: "Awaiting payment",
+  FAILED_PAYMENT: "Payment failed",
+};
+
+/** The label in the screen's language. */
+export function statusLabelFor(status: string, lang: "ar" | "en"): string {
+  return (lang === "ar" ? BOOKING_STATUS_LABEL : BOOKING_STATUS_LABEL_EN)[status] ?? status;
+}
+
 /** Unknown statuses show the raw value rather than an empty badge. */
 export function statusLabel(status: string): string {
   return BOOKING_STATUS_LABEL[status] ?? status;

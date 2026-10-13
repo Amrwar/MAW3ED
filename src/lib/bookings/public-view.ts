@@ -1,7 +1,8 @@
-import type { BookingStatus, DeliveryStatus, NotificationChannel, PaymentStatus } from "@prisma/client";
+import type { BookingStatus, DeliveryStatus, NotificationChannel, PaymentStatus, ReviewStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { minutesToTime, timeToMinutes } from "./time";
 import { CUTOFF_HOURS, customerMayChange } from "./self-service";
+import { canEditReview, canReviewBooking } from "@/lib/review-policy";
 
 /**
  * One booking as its holder may see it, for the app.
@@ -50,11 +51,30 @@ export interface PublicBooking {
   resource: { id: string; name: string; kind: string } | null;
   branch: { id: string; nameAr: string; nameEn: string | null; address: string | null } | null;
   /** The deposit, when one was asked for: where its money stands. */
-  payment: { status: PaymentStatus; amount: number; currency: string; paidAt: string | null } | null;
+  payment: {
+    status: PaymentStatus;
+    amount: number;
+    /** What has actually been refunded, from the ledger. Never a promise. */
+    refunded: number;
+    currency: string;
+    paidAt: string | null;
+  } | null;
   /** What has been sent to the customer about this booking, per channel. */
   notifications: { channel: NotificationChannel; status: DeliveryStatus }[];
-  /** The customer may still cancel or move it themselves (website link). */
+  /** The customer may still cancel or move it themselves. */
   canChange: boolean;
+  /** The server's own eligibility rule (lib/review-policy): completed, within the window, not yet reviewed. */
+  canReview: boolean;
+  /** Why not, when the app needs to say so. */
+  reviewBlock: "not-completed" | "already-reviewed" | "too-late" | null;
+  review: {
+    rating: number;
+    comment: string | null;
+    response: string | null;
+    createdAt: string;
+    status: string;
+    canEdit: boolean;
+  } | null;
   changeCutoffHours: number;
 }
 
@@ -76,6 +96,8 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
       discountCents: true,
       currency: true,
       createdAt: true,
+      endsAt: true,
+      review: { select: { id: true, rating: true, comment: true, response: true, createdAt: true, status: true } },
       business: {
         select: {
           slug: true,
@@ -96,7 +118,7 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
         where: { kind: "BOOKING_DEPOSIT" },
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { status: true, amountCents: true, currency: true, paidAt: true },
+        select: { status: true, amountCents: true, refundedCents: true, currency: true, paidAt: true },
       },
     },
   });
@@ -145,6 +167,7 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
       ? {
           status: payment.status,
           amount: payment.amountCents / 100,
+          refunded: payment.refundedCents / 100,
           currency: payment.currency,
           paidAt: payment.paidAt?.toISOString() ?? null,
         }
@@ -152,6 +175,33 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
     notifications: summariseDeliveries(deliveries),
     canChange: customerMayChange(b, now),
     changeCutoffHours: CUTOFF_HOURS,
+    ...reviewState(b, now),
+  };
+}
+
+function reviewState(
+  b: {
+    status: string;
+    endsAt: Date | null;
+    date: Date;
+    review: { id: string; rating: number; comment: string | null; response: string | null; createdAt: Date; status: ReviewStatus } | null;
+  },
+  now: Date,
+): Pick<PublicBooking, "canReview" | "reviewBlock" | "review"> {
+  const check = canReviewBooking(b, now);
+  return {
+    canReview: check.allowed,
+    reviewBlock: check.allowed ? null : check.reason === "ok" ? null : check.reason,
+    review: b.review
+      ? {
+          rating: b.review.rating,
+          comment: b.review.comment,
+          response: b.review.response,
+          createdAt: b.review.createdAt.toISOString(),
+          status: b.review.status,
+          canEdit: canEditReview(b.review, now).allowed,
+        }
+      : null,
   };
 }
 

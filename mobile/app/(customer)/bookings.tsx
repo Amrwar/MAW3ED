@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { Pressable, RefreshControl, ScrollView, View, StyleSheet } from "react-native";
-import { Screen, Text, ListState, colors, radius, spacing, touchTarget } from "@/design";
-import { BookingCard } from "@/features/bookings/BookingCard";
-import { useMyBookings } from "@/features/customer/queries";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { router } from "expo-router";
+import { Button, ListState, Screen, Tabs, Text, colors, spacing, useLocale } from "@/design";
 import { SignInGate } from "@/features/auth/SignInGate";
+import { BookingCard } from "@/features/bookings/BookingCard";
+import { statusLabelFor } from "@/features/bookings/status";
+import { useBookingHistory } from "@/features/account/queries";
+import { useMyBookings } from "@/features/customer/queries";
+import type { MyBooking } from "@/types/api";
 
 type Tab = "upcoming" | "history";
 
@@ -12,100 +16,120 @@ type Tab = "upcoming" | "history";
  *
  * Two tabs, because "upcoming" and "everything that already happened"
  * are different questions asked at different moments — one to check a
- * time, the other to find a receipt. Mixing them puts last March above
- * tomorrow.
+ * time, the other to find a receipt or leave a review. History loads a
+ * page at a time.
  *
- * Pull to refresh, since the usual reason to open this screen is to
- * check whether something changed.
+ * Every card opens the booking (app/booking/[token]), which is where it
+ * can be moved, cancelled or reviewed — whatever the server allows.
  */
 export default function MyBookingsScreen() {
+  const { lang } = useLocale();
+  const ar = lang === "ar";
   return (
-    <SignInGate title="حجوزاتي" reason="عشان تشوف مواعيدك الجاية وتديرها.">
+    <SignInGate
+      title={ar ? "حجوزاتي" : "My bookings"}
+      reason={ar ? "عشان تشوف مواعيدك الجاية وتديرها." : "To see your upcoming appointments and manage them."}
+    >
       <MyBookings />
     </SignInGate>
   );
 }
 
 function MyBookings() {
+  const { lang } = useLocale();
+  const ar = lang === "ar";
+  const T = (a: string, e: string) => (ar ? a : e);
   const [tab, setTab] = useState<Tab>("upcoming");
-  const query = useMyBookings(tab);
-  const bookings = query.data?.bookings ?? [];
+  const upcoming = useMyBookings("upcoming", tab === "upcoming");
+  const history = useBookingHistory(tab === "history");
+
+  const isUpcoming = tab === "upcoming";
+  const bookings: MyBooking[] = isUpcoming ? (upcoming.data?.bookings ?? []) : (history.data?.pages.flatMap((p) => p.bookings) ?? []);
+  const needsPhone = isUpcoming ? upcoming.data?.needsPhone : history.data?.pages[0]?.needsPhone;
+  const loading = isUpcoming ? upcoming.isLoading : history.isLoading;
+  const error = isUpcoming ? upcoming.error : history.error;
+  const refreshing = isUpcoming ? upcoming.isRefetching : history.isRefetching && !history.isFetchingNextPage;
+  const refetch = () => (isUpcoming ? upcoming.refetch() : history.refetch());
 
   return (
     <Screen scroll={false}>
-      <Text variant="title">حجوزاتي</Text>
+      <Text variant="title" accessibilityRole="header">
+        {T("حجوزاتي", "My bookings")}
+      </Text>
 
-      <View style={styles.tabs} accessibilityRole="tablist">
-        {(["upcoming", "history"] as const).map((value) => {
-          const active = tab === value;
-          return (
-            <Pressable
-              key={value}
-              onPress={() => setTab(value)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              style={[styles.tab, active && styles.tabActive]}
-            >
-              <Text variant="label" tone={active ? "inverse" : "muted"}>
-                {value === "upcoming" ? "الجاية" : "اللي فات"}
-              </Text>
-            </Pressable>
-          );
-        })}
+      <View style={styles.tabs}>
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "upcoming", label: T("الجاية", "Upcoming") },
+            { value: "history", label: T("اللي فات", "Past") },
+          ]}
+        />
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={query.isRefetching}
-            onRefresh={() => query.refetch()}
-            tintColor={colors.jade}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refetch} tintColor={colors.jade} />}
       >
         <ListState
-          loading={query.isLoading}
-          error={query.error}
+          loading={loading}
+          error={error}
           isEmpty={bookings.length === 0}
+          emptyIcon={needsPhone ? "call-outline" : "calendar-clear-outline"}
           emptyTitle={
-            query.data?.needsPhone
-              ? "محتاجين رقم موبايلك"
-              : tab === "upcoming"
-                ? "مفيش مواعيد جاية"
-                : "مفيش حاجة فاتت"
+            needsPhone
+              ? T("محتاجين رقم موبايلك", "We need your phone number")
+              : isUpcoming
+                ? T("مفيش مواعيد جاية", "No upcoming bookings")
+                : T("مفيش حاجة فاتت", "Nothing here yet")
           }
           emptyBody={
-            query.data?.needsPhone
-              ? // Not an error: the account simply has no number to
-                // match bookings against, and saying so is more use
-                // than an empty list.
-                "الحجوزات بتترّبط برقم موبايلك المتأكد منه. ضيفه من صفحة حسابك عشان تشوفها هنا."
-              : tab === "upcoming"
-                ? "لما تحجز مكان هيظهر هنا."
-                : "لسه مفيش حجوزات خلصت."
+            needsPhone
+              ? T(
+                  "الحجوزات بتترّبط برقم موبايلك المتأكد منه. ضيفه من حسابك عشان تشوفها هنا.",
+                  "Bookings are linked to your verified phone number. Add one in your account to see them here.",
+                )
+              : isUpcoming
+                ? T("لما تحجز مكان هيظهر هنا.", "When you book somewhere, it will show up here.")
+                : T("المواعيد اللي خلصت هتظهر هنا.", "Finished appointments will appear here.")
           }
-          onRetry={() => query.refetch()}
+          emptyAction={
+            isUpcoming && !needsPhone ? (
+              <Button label={T("دوّر على مكان", "Find a place")} onPress={() => router.push("/(customer)/search")} />
+            ) : undefined
+          }
+          onRetry={refetch}
         >
           <View style={styles.list}>
-            {bookings.map((booking) => (
+            {bookings.map((b) => (
               <BookingCard
-                key={booking.id}
-                title={booking.business.nameAr}
-                subtitle={booking.serviceName}
-                date={booking.date}
-                startTime={booking.startTime}
-                endTime={booking.endTime}
-                status={booking.status}
-                price={booking.totalPrice}
-                currency={booking.currency}
-                // Only on the upcoming tab: "من 7 أشهر" under every row
+                key={b.id}
+                title={(!ar && b.business.nameEn) || b.business.nameAr}
+                subtitle={(!ar && b.serviceNameEn) || b.serviceName}
+                date={b.date}
+                startTime={b.startTime}
+                endTime={b.endTime}
+                status={b.status}
+                statusLabel={statusLabelFor(b.status, lang)}
+                price={b.totalPrice}
+                currency={b.currency}
+                // Only on the upcoming tab: "7 months ago" under every row
                 // of a history list is noise, not information.
-                minutesUntil={tab === "upcoming" ? booking.minutesUntil : undefined}
-                meta={booking.staffName ?? booking.branchName}
+                minutesUntil={isUpcoming ? b.minutesUntil : undefined}
+                meta={[(!ar && b.staffNameEn) || b.staffName, (!ar && b.branchNameEn) || b.branchName].filter(Boolean).join(" · ") || null}
+                onPress={b.accessToken ? () => router.push({ pathname: "/booking/[token]", params: { token: b.accessToken as string } }) : undefined}
               />
             ))}
+            {!isUpcoming && history.hasNextPage ? (
+              <Button
+                variant="outline"
+                label={T("حمّل أكتر", "Load more")}
+                loading={history.isFetchingNextPage}
+                onPress={() => history.fetchNextPage()}
+              />
+            ) : null}
           </View>
         </ListState>
       </ScrollView>
@@ -114,20 +138,7 @@ function MyBookings() {
 }
 
 const styles = StyleSheet.create({
-  tabs: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  tab: {
-    minHeight: touchTarget - 8,
-    paddingHorizontal: spacing.xl,
-    justifyContent: "center",
-    borderRadius: radius.full,
-    backgroundColor: colors.surface3,
-  },
-  tabActive: { backgroundColor: colors.jade },
+  tabs: { marginTop: spacing.lg, marginBottom: spacing.md },
   scroll: { paddingBottom: spacing.xxl },
   list: { gap: spacing.md },
 });

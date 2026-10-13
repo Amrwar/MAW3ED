@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, View, StyleSheet } from "react-native";
-import { router } from "expo-router";
-import { Screen, Text, Button, EmptyState, colors, spacing } from "@/design";
+import { usePathname } from "expo-router";
+import { Screen, Text, Button, EmptyState, colors, spacing, useLocale } from "@/design";
 import { useAuth } from "./AuthProvider";
+import { signInThenReturn } from "./AuthShell";
 
 /**
  * For the screens that only mean something to a signed-in person —
@@ -24,6 +25,8 @@ export function SignInGate({
   children: ReactNode;
 }) {
   const { user, restoring } = useAuth();
+  const { lang } = useLocale();
+  const pathname = usePathname();
 
   if (restoring) {
     return (
@@ -40,9 +43,9 @@ export function SignInGate({
       <Text variant="title">{title}</Text>
       <View style={styles.body}>
         <EmptyState
-          title="سجّل دخولك الأول"
+          title={lang === "ar" ? "سجّل دخولك الأول" : "Sign in first"}
           body={reason}
-          action={<Button label="تسجيل الدخول" onPress={() => router.push("/(auth)/login")} />}
+          action={<Button label={lang === "ar" ? "تسجيل الدخول" : "Sign in"} onPress={() => signInThenReturn(pathname)} />}
         />
       </View>
     </Screen>

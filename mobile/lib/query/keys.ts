@@ -30,11 +30,14 @@ export const keys = {
     quote: (slug: string, serviceId: string, code: string) => ["booking", "quote", slug, serviceId, code] as const,
     /** One booking by its access token — the authoritative status. */
     one: (token: string) => ["booking", "one", token] as const,
+    /** Where an existing booking could move to. */
+    moveSlots: (token: string, date: string) => ["booking", "move", token, date] as const,
   },
 
   myBookings: {
     all: ["my-bookings"] as const,
     scope: (scope: "upcoming" | "history") => ["my-bookings", scope] as const,
+    historyPages: ["my-bookings", "history", "pages"] as const,
   },
 
   favorites: {
@@ -45,6 +48,12 @@ export const keys = {
 
   profile: {
     all: ["profile"] as const,
+  },
+
+  account: {
+    reviews: ["account", "reviews"] as const,
+    payments: ["account", "payments"] as const,
+    sessions: ["account", "sessions"] as const,
   },
 
   notifications: {

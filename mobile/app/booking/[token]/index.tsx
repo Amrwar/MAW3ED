@@ -9,6 +9,7 @@ import {
   Badge,
   Button,
   Card,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
   Header,
@@ -22,14 +23,16 @@ import {
   spacing,
   tones,
   useLocale,
+  useToast,
 } from "@/design";
-import { Notice, Row } from "@/features/booking/components";
+import { Notice, Row, Stars } from "@/features/booking/components";
 import { trackBooking } from "@/features/booking/events";
 import { OUTCOME_TONE, notificationLines, outcomeCopy, outcomeOf, shouldPoll, type Outcome } from "@/features/booking/outcome";
 import { POLL_FOR_MS, useBooking } from "@/features/booking/queries";
+import { useCancelBooking } from "@/features/booking/manage";
 import { forgetPayment, paymentPage } from "@/features/booking/storage";
 import { directionsUrl, telUrl, whatsappUrl } from "@/features/profile/profile";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError, messageFor } from "@/lib/api/errors";
 import { config } from "@/lib/config";
 import { duration, longDate, money, time } from "@/lib/format";
 import { keys } from "@/lib/query/keys";
@@ -137,6 +140,9 @@ function Details({
   const [paying, setPaying] = useState(false);
   const opened = useRef(false);
   const [stillWaiting, setStillWaiting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const cancel = useCancelBooking(token);
+  const toast = useToast();
 
   const fmt = (v: number) => money(v, b.currency, lang) ?? `${v} ${b.currency}`;
   const businessName = (!ar && b.business.nameEn) || b.business.nameAr;
@@ -321,10 +327,12 @@ function Details({
           ) : (
             <Row label={T("السعر", "Price")} value={T("بيتحدد في المكان", "Priced at the venue")} />
           )}
-          {b.payment?.status === "REFUNDED" || b.payment?.status === "PARTIALLY_REFUNDED" ? (
-            <Text variant="caption" tone="subtle">
-              {T("العربون اترجّع (كله أو جزء منه) حسب سجل الدفع.", "The deposit was refunded (fully or in part), as recorded by the payment provider.")}
-            </Text>
+          {b.payment && b.payment.refunded > 0 ? (
+            <Row
+              label={T("اترجّع", "Refunded")}
+              value={`${fmt(b.payment.refunded)}${b.payment.status === "PARTIALLY_REFUNDED" ? T(" (جزء من العربون)", " (part of the deposit)") : ""}`}
+              tone="ok"
+            />
           ) : null}
         </Card>
 
@@ -366,6 +374,63 @@ function Details({
           </Text>
         ) : null}
 
+        {/* ── Change it ── */}
+        {b.canChange ? (
+          <View style={styles.contact}>
+            <Button
+              label={T("غيّر الميعاد", "Reschedule")}
+              icon="swap-horizontal-outline"
+              variant="outline"
+              style={styles.flex}
+              onPress={() => router.push({ pathname: "/booking/[token]/reschedule", params: { token } })}
+            />
+            <Button label={T("إلغاء الحجز", "Cancel booking")} icon="close-circle-outline" variant="danger" style={styles.flex} onPress={() => setCancelling(true)} />
+          </View>
+        ) : null}
+
+        {/* ── Review: only when the server says this booking may have one ── */}
+        {b.review ? (
+          <Card>
+            <View style={styles.between}>
+              <Text variant="label" tone="ink2" accessibilityRole="header">
+                {T("تقييمك", "Your review")}
+              </Text>
+              <Stars value={b.review.rating} />
+            </View>
+            {b.review.comment ? <Text variant="body" tone="ink2">{b.review.comment}</Text> : null}
+            {b.review.status !== "PUBLISHED" ? (
+              <Text variant="caption" tone="subtle">
+                {T("التقييم ده مش ظاهر للناس حاليًا.", "This review isn't currently shown publicly.")}
+              </Text>
+            ) : null}
+            {b.review.response ? (
+              <View style={styles.response}>
+                <Text variant="caption" tone="subtle">
+                  {T("رد المكان", "Business response")}
+                </Text>
+                <Text variant="body" tone="ink2">{b.review.response}</Text>
+              </View>
+            ) : null}
+            {b.review.canEdit ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon="create-outline"
+                label={T("عدّل التقييم", "Edit review")}
+                onPress={() => router.push({ pathname: "/booking/[token]/review", params: { token } })}
+                style={styles.start}
+              />
+            ) : null}
+          </Card>
+        ) : b.canReview ? (
+          <Button
+            label={T("قيّم زيارتك", "Rate your visit")}
+            icon="star-outline"
+            fullWidth
+            onPress={() => router.push({ pathname: "/booking/[token]/review", params: { token } })}
+          />
+        ) : null}
+
         {/* ── What next ── */}
         <View style={styles.list}>
           {live ? <Button label={T("ضيفه للتقويم", "Add to calendar")} icon="calendar-outline" variant="outline" fullWidth onPress={addToCalendar} /> : null}
@@ -391,8 +456,44 @@ function Details({
           <Button label={T("حجوزاتي", "My bookings")} variant="ghost" fullWidth onPress={() => router.replace("/(customer)/bookings")} />
         </View>
       </ScrollView>
+
+      <ConfirmDialog
+        open={cancelling}
+        onClose={() => setCancelling(false)}
+        destructive
+        title={T("تلغي الحجز؟", "Cancel this booking?")}
+        body={
+          paidDeposit
+            ? T(
+                "الإلغاء مابيرجّعش العربون أوتوماتيك. لو اترجّع جزء منه أو كله، هيظهر هنا بعد ما يتعمل.",
+                "Cancelling doesn't refund the deposit automatically. If any of it is refunded, it will show here once it's issued.",
+              )
+            : T("المكان هيعرف إنك لغيت، والميعاد هيتاح لغيرك.", "The business will be told, and the time will be freed for someone else.")
+        }
+        confirmLabel={T("أيوه، الغي الحجز", "Yes, cancel it")}
+        onConfirm={async () => {
+          try {
+            await cancel.mutateAsync();
+            trackBooking("booking_cancelled", { slug: b.business.slug, reference: b.reference ?? undefined });
+            toast({ message: T("الحجز اتلغى", "Booking cancelled"), tone: "ok" });
+          } catch (e) {
+            toast({ message: cancelError(e, lang), tone: "danger" });
+          } finally {
+            setCancelling(false);
+          }
+        }}
+      />
     </View>
   );
+}
+
+/** The server's reasons, in either language. */
+function cancelError(e: unknown, lang: "ar" | "en"): string {
+  const code = e instanceof ApiError ? e.code : undefined;
+  if (lang === "ar") return messageFor(e);
+  if (code === "too-late") return "It's too close to the appointment to cancel here. Please contact the business.";
+  if (code === "not-cancellable") return "This booking can no longer be cancelled.";
+  return "We couldn't cancel the booking. Please try again.";
 }
 
 function toneKey(t: string): keyof typeof tones {
@@ -472,4 +573,7 @@ const styles = StyleSheet.create({
   biz: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.sm },
   noteLine: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   contact: { flexDirection: "row", gap: spacing.md },
+  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  response: { marginTop: spacing.sm, paddingStart: spacing.md, borderStartWidth: 2, borderStartColor: colors.line2, gap: spacing.xxs },
+  start: { alignSelf: "flex-start" },
 });
