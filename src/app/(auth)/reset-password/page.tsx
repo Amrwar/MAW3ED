@@ -5,12 +5,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Lock, CheckCircle2, Loader2 } from "lucide-react";
 import Alert from "@/components/ui/Alert";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // useSearchParams must be wrapped in Suspense (Next.js requirement)
 function ResetPasswordForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const token        = searchParams.get("token") ?? "";
+  const { lang }     = useLanguage();
+  const ar           = lang === "ar";
+  const T            = (a: string, e: string) => (ar ? a : e);
+  // An expired or used link: the way forward is a new one, not a retry.
+  const [deadLink,     setDeadLink]     = useState(false);
 
   const [password,     setPassword]     = useState("");
   const [confirm,      setConfirm]      = useState("");
@@ -29,11 +35,11 @@ function ResetPasswordForm() {
     setError("");
 
     if (password.length < 8) {
-      setError("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
+      setError(T("كلمة المرور يجب أن تكون 8 أحرف على الأقل", "Use at least 8 characters"));
       return;
     }
     if (password !== confirm) {
-      setError("كلمتا المرور غير متطابقتين");
+      setError(T("كلمتا المرور غير متطابقتين", "The passwords don't match"));
       return;
     }
 
@@ -45,11 +51,24 @@ function ResetPasswordForm() {
         body:    JSON.stringify({ token, password }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "حدث خطأ، حاول مرة أخرى"); return; }
+      if (!res.ok) {
+        const dead = data.code === "invalid-token" || data.code === "expired-token";
+        setDeadLink(dead);
+        setError(
+          ar
+            ? (data.error ?? "حدث خطأ، حاول مرة أخرى")
+            : dead
+              ? "This link has expired or was already used. Request a new one."
+              : res.status === 429
+                ? "Too many attempts. Please wait and try again."
+                : "Something went wrong. Please try again.",
+        );
+        return;
+      }
       setDone(true);
       setTimeout(() => router.push("/login"), 2500);
     } catch {
-      setError("تعذّر الاتصال بالخادم، حاول مرة أخرى");
+      setError(T("تعذّر الاتصال بالخادم، حاول مرة أخرى", "Couldn't reach the server. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -64,13 +83,13 @@ function ResetPasswordForm() {
         </div>
         <div>
           <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-1">
-            تم تغيير كلمة المرور
+            {T("تم تغيير كلمة المرور", "Password changed")}
           </h1>
           <p className="text-sm text-[var(--color-text-muted)]">
-            يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة
+            {T("يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة", "You can now sign in with your new password")}
           </p>
         </div>
-        <p className="text-xs text-[var(--color-text-muted)]">جاري التحويل لصفحة الدخول...</p>
+        <p className="text-xs text-[var(--color-text-muted)]">{T("جاري التحويل لصفحة الدخول...", "Taking you to sign in…")}</p>
       </div>
     );
   }
@@ -86,24 +105,25 @@ function ResetPasswordForm() {
           <Lock size={22} className="text-[var(--color-accent)]" />
         </div>
         <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)] mb-1">
-          كلمة مرور جديدة
+          {T("كلمة مرور جديدة", "New password")}
         </h1>
         <p className="text-sm text-[var(--color-text-muted)]">
-          أدخل كلمة مرورك الجديدة أدناه
+          {T("أدخل كلمة مرورك الجديدة أدناه", "Enter your new password below")}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         {/* New password */}
         <div>
-          <label className="field-label">
-            كلمة المرور الجديدة
+          <label className="field-label" htmlFor="rp-new">
+            {T("كلمة المرور الجديدة", "New password")}
           </label>
           <div className="relative">
             <input
+              id="rp-new"
               type={showPass ? "text" : "password"}
               autoComplete="new-password"
-              placeholder="8 أحرف على الأقل"
+              placeholder={T("8 أحرف على الأقل", "At least 8 characters")}
               className="input w-full pe-10"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError(""); }}
@@ -111,6 +131,7 @@ function ResetPasswordForm() {
             <button
               type="button"
               onClick={() => setShowPass((v) => !v)}
+              aria-label={showPass ? T("إخفاء كلمة المرور", "Hide password") : T("إظهار كلمة المرور", "Show password")}
               className="absolute inset-y-0 end-3 flex items-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
             >
               {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -120,13 +141,14 @@ function ResetPasswordForm() {
 
         {/* Confirm password */}
         <div>
-          <label className="field-label">
-            تأكيد كلمة المرور
+          <label className="field-label" htmlFor="rp-confirm">
+            {T("تأكيد كلمة المرور", "Confirm password")}
           </label>
           <input
+            id="rp-confirm"
             type={showPass ? "text" : "password"}
             autoComplete="new-password"
-            placeholder="أعد كتابة كلمة المرور"
+            placeholder={T("أعد كتابة كلمة المرور", "Type it again")}
             className="input w-full"
             value={confirm}
             onChange={(e) => { setConfirm(e.target.value); setError(""); }}
@@ -134,12 +156,19 @@ function ResetPasswordForm() {
           {/* Inline match indicator */}
           {confirm.length > 0 && (
             <p className={`mt-1 text-xs ${password === confirm ? "text-[var(--color-ok)]" : "text-[var(--color-danger)]"}`}>
-              {password === confirm ? "✓ كلمتا المرور متطابقتان" : "كلمتا المرور غير متطابقتين"}
+              {password === confirm
+                ? T("✓ كلمتا المرور متطابقتان", "✓ Passwords match")
+                : T("كلمتا المرور غير متطابقتين", "The passwords don't match")}
             </p>
           )}
         </div>
 
         {error && <Alert tone="danger">{error}</Alert>}
+        {deadLink && (
+          <Link href="/forgot-password" className="btn btn-outline w-full">
+            {T("اطلب رابط جديد", "Request a new link")}
+          </Link>
+        )}
 
         <button
           type="submit"
@@ -147,8 +176,8 @@ function ResetPasswordForm() {
           className="btn btn-primary w-full gap-2 mt-2"
         >
           {loading
-            ? <><Loader2 size={15} className="animate-spin" /> جاري التحديث...</>
-            : "تعيين كلمة المرور الجديدة"
+            ? <><Loader2 size={15} className="animate-spin" aria-hidden="true" /> {T("جاري التحديث...", "Saving…")}</>
+            : T("تعيين كلمة المرور الجديدة", "Set new password")
           }
         </button>
       </form>
@@ -158,7 +187,7 @@ function ResetPasswordForm() {
           href="/login"
           className="font-semibold text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors"
         >
-          العودة لتسجيل الدخول
+          {T("العودة لتسجيل الدخول", "Back to sign in")}
         </Link>
       </p>
     </div>

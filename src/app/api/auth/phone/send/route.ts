@@ -1,7 +1,7 @@
 import { createLoginCode } from "@/lib/auth/login-code";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err } from "@/lib/api";
-import { sendWhatsAppMessage } from "@/lib/services/whatsapp";
+import { sendCode } from "@/lib/auth/send-code";
 import { formatPhone, PHONE_INVALID } from "@/lib/phone";
 import { log } from "@/lib/logger";
 
@@ -45,12 +45,17 @@ export async function POST(req: Request) {
       }
     }
 
-    await sendWhatsAppMessage({
-      to: result.phone,
-      message:
-        `كود الدخول على موعد: ${result.code}\n\n` +
+    const delivery = await sendCode(
+      result.phone,
+      result.code,
+      `كود الدخول على موعد: ${result.code}\n\n` +
         `الكود صالح لمدة 10 دقائق. لو مش إنت اللي طلبته، تجاهل الرسالة ومتديهوش لحد.`,
-    });
+    );
+    // "Check your WhatsApp" only when a code really went out.
+    if (!delivery.ok) {
+      log.error("code not delivered", { reason: delivery.reason });
+      return err("معرفناش نبعت الكود دلوقتي. جرّب تاني بعد شوية.", 503, { code: "send-failed" });
+    }
 
     // The code is never logged, and the number is only logged masked.
     log.info("login code sent", { phone: formatPhone(result.phone) });

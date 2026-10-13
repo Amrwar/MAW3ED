@@ -641,8 +641,11 @@ function Flow({
       <EmptyState
         icon="call-outline"
         title={T("محتاجين رقم موبايل متأكد", "A verified phone number is needed")}
-        body={T("الحجز بيتسجل على رقم موبايلك، وعليه بتوصلك التأكيدات. ضيفه من حسابك.", "Bookings are made under your phone number, and confirmations go to it. Add one in your account.")}
-        action={<Button label={T("حسابي", "My account")} onPress={() => router.push("/(customer)/account")} />}
+        body={T(
+          "الحجز بيتسجل على رقم موبايلك، وعليه بتوصلك التأكيدات. ادخل برقم موبايلك عشان تحجز — اختياراتك محفوظة.",
+          "Bookings are made under your phone number, and confirmations go to it. Sign in with your phone number to book — your choices are saved.",
+        )}
+        action={<Button label={T("ادخل برقم الموبايل", "Sign in with phone")} onPress={() => signInThenReturn(`/book/${p.slug}`)} />}
       />
     ) : (
       <View style={styles.list}>
@@ -721,7 +724,8 @@ function Flow({
         resourceName={resource?.name ?? null}
         subtotalCents={quote.data?.subtotalCents ?? totalCents}
         discountCents={appliedCode || quote.data?.discount?.automatic ? (quote.data?.discount?.amountCents ?? 0) : 0}
-        discountName={quote.data?.discount?.nameAr ?? null}
+        // The offer's name exists in Arabic only; English says "Discount".
+        discountName={ar ? (quote.data?.discount?.nameAr ?? null) : null}
         totalCents={totalCents}
         depositCents={depositCents}
         priced={Boolean(svc?.price)}

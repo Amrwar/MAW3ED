@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, LogIn } from "lucide-react";
@@ -40,7 +40,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push(await homeAfterLogin());
     router.refresh();
   }
 
@@ -129,4 +129,30 @@ export default function LoginPage() {
       </p>
     </div>
   );
+}
+
+/**
+ * Where a successful login goes: back to the dashboard page that sent
+ * the person here (NextAuth's callbackUrl), else the home of what the
+ * account is — the dashboard for an owner, the admin for an
+ * administrator without a business, onboarding for an owner who has not
+ * set one up yet. Only same-site dashboard paths are honoured.
+ */
+async function homeAfterLogin(): Promise<string> {
+  const session = await getSession();
+  const user = session?.user as { businessId?: string | null; adminRole?: string | null } | undefined;
+  if (!user?.businessId) return user?.adminRole ? "/admin" : "/onboarding";
+
+  const raw = new URLSearchParams(window.location.search).get("callbackUrl");
+  if (raw) {
+    try {
+      const url = new URL(raw, window.location.origin);
+      if (url.origin === window.location.origin && url.pathname.startsWith("/dashboard")) {
+        return url.pathname + url.search;
+      }
+    } catch {
+      /* not a URL: ignored */
+    }
+  }
+  return "/dashboard";
 }

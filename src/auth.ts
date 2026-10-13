@@ -21,7 +21,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         const parsed = z
-          .object({ email: z.string().email(), password: z.string().min(1) })
+          .object({ email: z.string().trim().toLowerCase().email(), password: z.string().min(1) })
           .safeParse(credentials);
 
         if (!parsed.success) return null;
@@ -41,8 +41,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const user = await db.user.findUnique({
-          where:   { email: parsed.data.email },
+        // Case-insensitive: an address typed "Amr@X.com" at sign-up and
+        // "amr@x.com" at login is the same mailbox.
+        const user = await db.user.findFirst({
+          where:   { email: { equals: parsed.data.email, mode: "insensitive" } },
           include: { business: { select: { id: true } } },
         });
 

@@ -58,7 +58,8 @@ export function PlacesMap({
               pinColor={colors.jade}
               onCalloutPress={() => onOpen(p.slug)}
             >
-              <Callout onPress={() => onOpen(p.slug)} tooltip={false}>
+              {/* The marker's onCalloutPress opens it; a press handler here too fires twice on iOS. */}
+              <Callout tooltip={false}>
                 <View style={styles.callout}>
                   <Text variant="bodyBold" numberOfLines={1}>
                     {name}

@@ -29,7 +29,6 @@ type Variant = "fade" | "curve" | "glow" | "line";
 // ─── Brand tokens (duplicated here so the component is self-contained) ───────
 const ACCENT  = "var(--color-jade)";
 const LIGHT   = "var(--color-surface-2)";
-const DARK    = "var(--color-ink)";
 
 // ─── SectionDivider ───────────────────────────────────────────────────────────
 

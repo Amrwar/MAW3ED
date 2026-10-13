@@ -217,10 +217,15 @@ function Details({
         const at = e instanceof ApiError && typeof e.detail.retryAt === "string" ? new Date(e.detail.retryAt) : null;
         const when = at ? at.toLocaleTimeString(ar ? "ar-EG" : "en-GB", { hour: "numeric", minute: "2-digit", timeZone: "Africa/Cairo" }) : "";
         setPayNote(
-          T(
-            `في صفحة دفع لسه شغالة. لو دفعت فيها، التأكيد جاي. لو لأ، تقدر تفتح صفحة جديدة بعد ${when}.`,
-            `A payment page is still open for this booking. If you paid there, confirmation is on its way. If not, you can open a new page after ${when}.`,
-          ),
+          when
+            ? T(
+                `في صفحة دفع لسه شغالة. لو دفعت فيها، التأكيد جاي. لو لأ، تقدر تفتح صفحة جديدة بعد ${when}.`,
+                `A payment page is still open for this booking. If you paid there, confirmation is on its way. If not, you can open a new page after ${when}.`,
+              )
+            : T(
+                "في صفحة دفع لسه شغالة. لو دفعت فيها، التأكيد جاي. لو لأ، جرّب تاني بعد شوية.",
+                "A payment page is still open for this booking. If you paid there, confirmation is on its way. If not, try again shortly.",
+              ),
         );
       } else if (code === "already-paid" || code === "not-awaiting-payment") {
         onRefresh();

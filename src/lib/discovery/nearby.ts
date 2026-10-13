@@ -20,7 +20,7 @@ import { cardsForIds, type DiscoveryBusiness } from "./search";
 
 export const MAX_RADIUS_KM = 50;
 export const DEFAULT_RADIUS_KM = 10;
-const CANDIDATES = 200;
+const CANDIDATES = 400;
 
 export interface NearbyBusiness extends DiscoveryBusiness {
   distanceKm: number;
@@ -45,6 +45,18 @@ export async function findNearby(
   const limit = Math.min(Math.max(opts.limit ?? 30, 1), 50);
   const box = boundingBox(center, radiusKm);
 
+  // The category is applied here, in the query, not after it: in a dense
+  // area the nearest few hundred places are mostly salons and cafés, and
+  // filtering those afterwards dropped every clinic beyond them. The
+  // remaining filters (text, rating, availability) still run through the
+  // search's own rules in cardsForIds.
+  const category = opts.query.category
+    ? Prisma.sql`AND b."categoryId" IN (
+        SELECT c."id" FROM "Category" c
+        LEFT JOIN "Category" p ON p."id" = c."parentId"
+        WHERE c."slug" = ${opts.query.category} OR p."slug" = ${opts.query.category})`
+    : Prisma.empty;
+
   const hits = await db.$queryRaw<Hit[]>(Prisma.sql`
     WITH pts AS (
       SELECT b."id" AS "businessId", NULL::text AS "branchId", b."latitude" AS lat, b."longitude" AS lng
@@ -52,6 +64,7 @@ export async function findNearby(
       WHERE b."isPublished" = true
         AND b."latitude" BETWEEN ${box.minLat} AND ${box.maxLat}
         AND b."longitude" BETWEEN ${box.minLng} AND ${box.maxLng}
+        ${category}
       UNION ALL
       SELECT br."businessId", br."id", br."latitude", br."longitude"
       FROM "Branch" br
@@ -59,6 +72,7 @@ export async function findNearby(
       WHERE b."isPublished" = true AND br."isActive" = true
         AND br."latitude" BETWEEN ${box.minLat} AND ${box.maxLat}
         AND br."longitude" BETWEEN ${box.minLng} AND ${box.maxLng}
+        ${category}
     ),
     measured AS (
       SELECT "businessId", "branchId", lat, lng,

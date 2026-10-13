@@ -78,8 +78,21 @@ export default async function PaymentReturnPage({
         business:     { select: { nameAr: true, slug: true } },
         depositAmount: true,
         currency:      true,
+        paymobOrderId: true,
+        payments:      { select: { providerOrderId: true } },
       },
     });
+
+    // The booking id alone is not proof of anything — it travels in push
+    // payloads. The page links to the booking (its access token) only
+    // when the redirect also carries the Paymob order this booking was
+    // paid through, which only the person who paid has.
+    const order = typeof sp.order === "string" ? sp.order : null;
+    const proven =
+      booking !== null &&
+      order !== null &&
+      (booking.paymobOrderId === order || booking.payments.some((p) => p.providerOrderId === order));
+    if (booking && !proven) booking = { ...booking, accessToken: null };
   }
 
   // Determine display state from DB status (authoritative)

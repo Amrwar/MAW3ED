@@ -36,7 +36,7 @@ function layout(body: string): string {
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
 
         <!-- Logo bar -->
-        <tr><td style="background:#6366f1;border-radius:16px 16px 0 0;padding:20px 32px;">
+        <tr><td style="background:#0D7A5A;border-radius:16px 16px 0 0;padding:20px 32px;">
           <p style="margin:0;color:white;font-size:22px;font-weight:900;letter-spacing:-0.5px;">موعد</p>
         </td></tr>
 
@@ -65,7 +65,7 @@ function row(label: string, value: string, ltr = false): string {
   return `
   <tr>
     <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:14px;width:40%;">${label}</td>
-    <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:14px;font-weight:600;color:#111827;text-align:${ltr ? "left" : "right"};direction:${ltr ? "ltr" : "rtl"};">${value}</td>
+    <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:14px;font-weight:600;color:#111827;text-align:${ltr ? "left" : "right"};direction:${ltr ? "ltr" : "rtl"};">${escapeHtml(value)}</td>
   </tr>`;
 }
 
@@ -92,7 +92,7 @@ export function customerConfirmationHtml(d: BookingEmailData): string {
     <!-- Notes -->
     <div style="background:#f9fafb;border-radius:10px;padding:14px 16px;margin-bottom:24px;">
       <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;font-weight:600;">ملاحظاتك</p>
-      <p style="margin:0;font-size:14px;color:#374151;">${d.notes}</p>
+      <p style="margin:0;font-size:14px;color:#374151;">${escapeHtml(d.notes)}</p>
     </div>` : ""}
 
     <!-- Status pill -->
@@ -104,7 +104,7 @@ export function customerConfirmationHtml(d: BookingEmailData): string {
     <!-- Booking link CTA -->
     <div style="margin-bottom:24px;">
       <a href="${d.bookingUrl}"
-         style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;">
+         style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;">
         عرض الحجز وإدارته ←
       </a>
     </div>
@@ -115,7 +115,7 @@ export function customerConfirmationHtml(d: BookingEmailData): string {
     <!-- Divider -->
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
 
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#6366f1;">موعد</strong> 🙏</p>
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong> 🙏</p>
   `;
   return layout(body);
 }
@@ -150,14 +150,14 @@ export function customerReminderHtml(d: BookingEmailData): string {
     <!-- Booking management link -->
     <div style="margin-bottom:24px;">
       <a href="${d.bookingUrl}"
-         style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;">
+         style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;">
         عرض الحجز أو إلغائه ←
       </a>
     </div>` : ""}
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
 
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#6366f1;">موعد</strong> 🙏</p>
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong> 🙏</p>
   `;
   return layout(body);
 }
@@ -184,21 +184,21 @@ export function businessAlertHtml(d: BookingEmailData): string {
 
     ${d.notes ? `
     <!-- Customer notes -->
-    <div style="background:#fff7ed;border-right:3px solid var(--color-warn);border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:24px;">
+    <div style="background:#fff7ed;border-right:3px solid #d97706;border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:24px;">
       <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;font-weight:600;">ملاحظات العميل</p>
-      <p style="margin:0;font-size:14px;color:#374151;">${d.notes}</p>
+      <p style="margin:0;font-size:14px;color:#374151;">${escapeHtml(d.notes)}</p>
     </div>` : ""}
 
     <!-- CTA -->
-    <a href="${process.env.AUTH_URL ?? "https://maw3ed.net"}dashboard/bookings"
-       style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;margin-bottom:24px;">
+    <a href="${siteUrl("/dashboard/bookings")}"
+       style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;margin-bottom:24px;">
       إدارة الحجوزات ←
     </a>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
 
     <p style="margin:0;font-size:13px;color:#9ca3af;">
-      تم إرسال هذا التنبيه تلقائيًا من منصة <strong style="color:#6366f1;">موعد</strong>.
+      تم إرسال هذا التنبيه تلقائيًا من منصة <strong style="color:#0D7A5A;">موعد</strong>.
     </p>
   `;
   return layout(body);
@@ -232,13 +232,13 @@ export function subscriptionRenewalReminderHtml(params: {
 
     <div style="margin-bottom:24px;">
       <a href="${renewUrl}"
-         style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
+         style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
         تجديد الاشتراك الآن ←
       </a>
     </div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#6366f1;">موعد</strong> 🙏</p>
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong> 🙏</p>
   `;
   return layout(body);
 }
@@ -272,13 +272,13 @@ export function subscriptionExpiredHtml(params: {
 
     <div style="margin-bottom:24px;">
       <a href="${renewUrl}"
-         style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
+         style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
         تجديد الاشتراك ←
       </a>
     </div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#6366f1;">موعد</strong> 🙏</p>
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong> 🙏</p>
   `;
   return layout(body);
 }
@@ -297,7 +297,7 @@ export function passwordResetHtml(resetUrl: string): string {
     <!-- CTA -->
     <div style="margin-bottom:24px;">
       <a href="${resetUrl}"
-         style="display:inline-block;background:#6366f1;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
+         style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
         إعادة تعيين كلمة المرور ←
       </a>
     </div>
@@ -316,7 +316,7 @@ export function passwordResetHtml(resetUrl: string): string {
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
 
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#6366f1;">موعد</strong> 🙏</p>
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong> 🙏</p>
   `;
   return layout(body);
 }
@@ -388,7 +388,7 @@ export function notificationHtml(
   }
   ${
     link
-      ? `<table cellpadding="0" cellspacing="0"><tr><td style="border-radius:10px;background:#6366f1;">
+      ? `<table cellpadding="0" cellspacing="0"><tr><td style="border-radius:10px;background:#0D7A5A;">
            <a href="${escapeHtml(link)}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">عرض التفاصيل</a>
          </td></tr></table>`
       : ""

@@ -81,6 +81,10 @@ const optional = z.object({
   EXPO_ACCESS_TOKEN: z.string().optional(),
 
   // WhatsApp Cloud API
+  // An approved "authentication" template for one-time codes; without
+  // it codes go as free text, which Meta only delivers inside 24 hours
+  // of the person messaging the business number.
+  WHATSAPP_TEMPLATE_AUTH_CODE: z.string().optional(),
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
   WHATSAPP_API_VERSION: z.string().optional(),
@@ -234,10 +238,12 @@ export function getIntegrations(): Integrations {
  * must not drag secret validation into the build.
  */
 export function getSiteUrl(): string {
+  // `||`, not `??`: an empty AUTH_URL="" is "not set", and treating it
+  // as the origin made every emailed link relative — and so broken.
   const raw =
-    process.env.AUTH_URL ??
-    process.env.NEXTAUTH_URL ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.AUTH_URL?.trim() ||
+    process.env.NEXTAUTH_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
     "https://maw3ed.net";
   return raw.replace(/\/+$/, "");
 }

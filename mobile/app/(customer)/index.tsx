@@ -30,6 +30,7 @@ import { useBusinesses, useFacets, useMyBookings } from "@/features/customer/que
 import { useHomeCity } from "@/features/customer/useHomeCity";
 import { useUnreadCount } from "@/features/notifications/queries";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { startSignIn } from "@/features/auth/AuthShell";
 import { num } from "@/lib/format";
 import { api } from "@/lib/api/client";
 import { forgetPayment, unfinishedPayments } from "@/features/booking/storage";
@@ -184,7 +185,7 @@ export default function CustomerHome() {
                 label={T("دخول", "Sign in")}
                 variant="night"
                 size="sm"
-                onPress={() => router.push("/(auth)/login")}
+                onPress={() => startSignIn()}
               />
             )}
           </View>

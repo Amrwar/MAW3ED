@@ -16,14 +16,15 @@ import Alert from "@/components/ui/Alert";
 const formSchema = signUpSchema.extend({
   confirmPassword: z.string(),
 }).refine((d) => d.password === d.confirmPassword, {
-  message: "Passwords do not match",
+  // A key, worded at render time in the page's language.
+  message: "mismatch",
   path: ["confirmPassword"],
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 export default function SignupPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const s = t.auth.signup;
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -146,7 +147,13 @@ export default function SignupPage() {
             {...register("confirmPassword")}
           />
           {errors.confirmPassword && (
-            <p id="su-confirm-error" className="field-error">{errors.confirmPassword.message}</p>
+            <p id="su-confirm-error" className="field-error">
+              {errors.confirmPassword.message === "mismatch"
+                ? lang === "ar"
+                  ? "كلمتا المرور مش متطابقتين"
+                  : "Passwords do not match"
+                : errors.confirmPassword.message}
+            </p>
           )}
         </div>
 

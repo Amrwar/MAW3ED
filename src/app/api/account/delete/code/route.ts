@@ -3,7 +3,7 @@ import { ok, err, requireSession } from "@/lib/api";
 import { createLoginCode } from "@/lib/auth/login-code";
 import { deletionBlocker } from "@/lib/account/deletion";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
-import { sendWhatsAppMessage } from "@/lib/services/whatsapp";
+import { sendCode } from "@/lib/auth/send-code";
 import { formatPhone } from "@/lib/phone";
 import { log } from "@/lib/logger";
 
@@ -46,12 +46,17 @@ export async function POST() {
       return err("رقم الموبايل غير صالح", 422, { code: "invalid-phone" });
     }
 
-    await sendWhatsAppMessage({
-      to: result.phone,
-      message:
-        `كود تأكيد حذف حسابك على موعد: ${result.code}\n\n` +
+    const delivery = await sendCode(
+      result.phone,
+      result.code,
+      `كود تأكيد حذف حسابك على موعد: ${result.code}\n\n` +
         `لو مش إنت اللي طلبت حذف الحساب، متديش الكود ده لحد.`,
-    });
+    );
+    // "Check your WhatsApp" only when a code really went out.
+    if (!delivery.ok) {
+      log.error("code not delivered", { reason: delivery.reason });
+      return err("معرفناش نبعت الكود دلوقتي. جرّب تاني بعد شوية.", 503, { code: "send-failed" });
+    }
     log.info("account deletion code sent", { phone: formatPhone(result.phone) });
 
     return ok({ sent: true, phone: formatPhone(result.phone) });

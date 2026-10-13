@@ -11,12 +11,13 @@ installArabicZodErrors();
 // ─── Auth ──────────────────────────────────────────────────
 export const signUpSchema = z.object({
   name:     z.string().min(2, "الاسم قصير جدًا"),
-  email:    z.string().email("البريد الإلكتروني غير صحيح"),
+  // Stored lower-case, so every later lookup agrees with it.
+  email:    z.string().trim().toLowerCase().email("البريد الإلكتروني غير صحيح"),
   password: z.string().min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل"),
 });
 
 export const loginSchema = z.object({
-  email:    z.string().email("البريد الإلكتروني غير صحيح"),
+  email:    z.string().trim().toLowerCase().email("البريد الإلكتروني غير صحيح"),
   password: z.string().min(1, "أدخل كلمة المرور"),
 });
 

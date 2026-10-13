@@ -33,7 +33,8 @@ export type EventType = BookingEventType | SubscriptionEventType;
 export type Audience = "customer" | "business";
 
 export type NotificationEvent =
-  | { type: "booking.created"; bookingId: string }
+  /** `by: "business"` when the owner keyed it in — they need no push about their own action. */
+  | { type: "booking.created"; bookingId: string; by?: Audience }
   | { type: "booking.confirmed"; bookingId: string }
   | { type: "booking.rejected"; bookingId: string }
   | { type: "booking.cancelled"; bookingId: string; by: Audience }

@@ -52,14 +52,18 @@ export const RULES = {
   forgotPassword: { limit: 5, windowSeconds: 60 * 60 },
   resetPassword: { limit: 8, windowSeconds: 60 * 60 },
   verifyEmail: { limit: 5, windowSeconds: 60 * 60 },
-  phoneOtp: { limit: 5, windowSeconds: 60 * 60 },
+  // Per address. Generous, because Egyptian mobile carriers put many
+  // customers behind one shared IP: the real per-person limits are on
+  // the phone number (cooldown and hourly cap in lib/auth/login-code.ts)
+  // and on each code (five attempts).
+  phoneOtp: { limit: 30, windowSeconds: 60 * 60 },
   mobileRefresh: { limit: 60, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type Bucket = keyof typeof RULES;
 
 function hashIdentifier(value: string): string {
-  const secret = process.env.AUTH_SECRET ?? "";
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";
   // Without a secret the hash is still a hash, just not keyed. Better
   // than storing the raw value, and AUTH_SECRET is required in any
   // deployment that can sign in at all.

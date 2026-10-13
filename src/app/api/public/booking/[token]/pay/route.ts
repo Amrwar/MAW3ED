@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { createPaymentSession } from "@/lib/services/paymob";
-import { attachProviderOrder, openPayment } from "@/lib/payments/ledger";
+import { attachProviderOrder } from "@/lib/payments/ledger";
 import { log } from "@/lib/logger";
 
 /**
@@ -41,12 +41,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ token:
         customerName: true,
         customerPhone: true,
         customer: { select: { email: true } },
-        payments: {
-          where: { kind: "BOOKING_DEPOSIT" },
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: { status: true, createdAt: true },
-        },
       },
     });
     if (!booking) return err("لم يتم العثور على هذا الحجز", 404, { code: "not-found" });
@@ -55,26 +49,50 @@ export async function POST(_req: Request, { params }: { params: Promise<{ token:
       return err("الحجز ده مش مستني دفع", 409, { code: "not-awaiting-payment", status: booking.status });
     }
 
-    const last = booking.payments[0];
-    if (last?.status === "SUCCEEDED") {
-      return err("الدفع وصل خلاص، التأكيد جاي", 409, { code: "already-paid" });
-    }
-    if (last?.status === "PENDING" && Date.now() - last.createdAt.getTime() < PAGE_LIFETIME_MS) {
-      const retryAt = new Date(last.createdAt.getTime() + PAGE_LIFETIME_MS).toISOString();
+    const amountCents = Math.round(Number(booking.depositAmount) * 100);
+
+    // One at a time per booking: a double tap or an app retry sending two
+    // requests at once must not open two payable pages. The advisory lock
+    // serialises them; the second sees the first's new PENDING row.
+    const decision = await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${booking.id}))`;
+      const last = await tx.payment.findFirst({
+        where: { bookingId: booking.id, kind: "BOOKING_DEPOSIT" },
+        orderBy: { createdAt: "desc" },
+        select: { status: true, createdAt: true },
+      });
+      if (last?.status === "SUCCEEDED") return { refuse: "already-paid" as const };
+      if (last?.status === "PENDING" && Date.now() - last.createdAt.getTime() < PAGE_LIFETIME_MS) {
+        return { refuse: "payment-in-progress" as const, retryAt: new Date(last.createdAt.getTime() + PAGE_LIFETIME_MS) };
+      }
+      // Pages past their lifetime cannot be paid any more; closing them
+      // keeps the ledger saying so, and leaves exactly one live page.
+      await tx.payment.updateMany({
+        where: { bookingId: booking.id, kind: "BOOKING_DEPOSIT", status: "PENDING" },
+        data: { status: "ABANDONED", failureReason: "superseded by a new payment page" },
+      });
+      const payment = await tx.payment.create({
+        data: {
+          kind: "BOOKING_DEPOSIT",
+          businessId: booking.businessId,
+          bookingId: booking.id,
+          amountCents,
+          currency: booking.currency,
+          provider: "PAYMOB",
+          status: "PENDING",
+        },
+      });
+      return { payment };
+    });
+
+    if ("refuse" in decision) {
+      if (decision.refuse === "already-paid") return err("الدفع وصل خلاص، التأكيد جاي", 409, { code: "already-paid" });
       return err("في صفحة دفع لسه شغالة للحجز ده. كمّلها، أو استنى لحد ما تخلص صلاحيتها.", 409, {
         code: "payment-in-progress",
-        retryAt,
+        retryAt: decision.retryAt?.toISOString() ?? null,
       });
     }
-
-    const amountCents = Math.round(Number(booking.depositAmount) * 100);
-    const payment = await openPayment({
-      kind: "BOOKING_DEPOSIT",
-      businessId: booking.businessId,
-      bookingId: booking.id,
-      amountCents,
-      currency: booking.currency,
-    });
+    const { payment } = decision;
 
     try {
       const { paymentUrl, paymobOrderId } = await createPaymentSession({

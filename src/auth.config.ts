@@ -43,11 +43,12 @@ export const authConfig: NextAuthConfig = {
       }
       // Redirect logged-in users away from auth pages
       if (isAuthPage && isLoggedIn) {
-        const hasOnboarded = !!(auth?.user as { businessId?: string })
-          ?.businessId;
-        return Response.redirect(
-          new URL(hasOnboarded ? "/dashboard" : "/onboarding", nextUrl)
-        );
+        const u = auth?.user as { businessId?: string | null; adminRole?: string | null } | undefined;
+        // By what the account is: an owner to the dashboard, an
+        // administrator without a business to the admin, and anybody
+        // else on to setting up their business.
+        const home = u?.businessId ? "/dashboard" : u?.adminRole ? "/admin" : "/onboarding";
+        return Response.redirect(new URL(home, nextUrl));
       }
       return true;
     },

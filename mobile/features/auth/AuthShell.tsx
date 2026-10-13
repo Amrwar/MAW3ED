@@ -110,11 +110,20 @@ export function LegalNote() {
  */
 let returnTo: string | null = null;
 
+/**
+ * Open sign-in. With a path, come back to it afterwards; without one,
+ * go home. Every way into sign-in goes through here, so a return path
+ * left over from an abandoned attempt can never redirect a later one.
+ */
+export function startSignIn(path?: string) {
+  // Our own screens only: a path, never a host.
+  returnTo = path && path.startsWith("/") && !path.startsWith("//") ? path : null;
+  router.push("/(auth)/login");
+}
+
 /** Sign in, then come back here rather than to the home screen. */
 export function signInThenReturn(path: string) {
-  // Our own screens only: a path, never a host.
-  returnTo = path.startsWith("/") && !path.startsWith("//") ? path : null;
-  router.push("/(auth)/login");
+  startSignIn(path);
 }
 
 /**
