@@ -236,6 +236,11 @@ model Business {
   phone                      String?
   whatsapp                   String?
   address                    String?
+  /// Where the business is, as the owner pinned it — never geocoded or
+  /// guessed. Both or neither (a CHECK in add_business_location.sql);
+  /// a business without a pin is simply not on the map or in "nearby".
+  latitude                   Float?
+  longitude                  Float?
   about                      String?            @db.Text
   coverImage                 String?
   logoImage                  String?
@@ -377,6 +382,9 @@ model Branch {
   nameAr     String
   nameEn     String?
   address    String?
+  /// The branch's own pin, as the owner set it. Both or neither.
+  latitude   Float?
+  longitude  Float?
   phone      String?
   isActive   Boolean  @default(true)
   sortOrder  Int      @default(0)

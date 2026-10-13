@@ -31,7 +31,7 @@ import { OUTCOME_TONE, notificationLines, outcomeCopy, outcomeOf, shouldPoll, ty
 import { POLL_FOR_MS, useBooking } from "@/features/booking/queries";
 import { useCancelBooking } from "@/features/booking/manage";
 import { forgetPayment, paymentPage } from "@/features/booking/storage";
-import { directionsUrl, telUrl, whatsappUrl } from "@/features/profile/profile";
+import { directionsUrl, pinDirectionsUrl, telUrl, whatsappUrl } from "@/features/profile/profile";
 import { ApiError, messageFor } from "@/lib/api/errors";
 import { config } from "@/lib/config";
 import { duration, longDate, money, time } from "@/lib/format";
@@ -217,7 +217,9 @@ function Details({
   };
 
   const where = b.branch?.address ?? b.business.address;
-  const directions = where ? directionsUrl([where, ar ? b.business.cityNameAr : b.business.cityNameEn]) : null;
+  // The pin the owner set for the branch or business; otherwise a search for the written address.
+  const pinned = b.branch?.location ?? (b.branch ? null : b.business.location);
+  const directions = pinned ? pinDirectionsUrl(pinned) : where ? directionsUrl([where, ar ? b.business.cityNameAr : b.business.cityNameEn]) : null;
   const phone = b.business.phone ? telUrl(b.business.phone) : null;
   const wa = b.business.whatsapp ? whatsappUrl(b.business.whatsapp) : null;
   const notes = notificationLines(b.notifications, lang);

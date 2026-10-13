@@ -1,13 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
+import { DEFAULT_FILTERS, activeFilterCount, fromArrival, termProblem, toQuery } from "./searchState";
+import { MAX_RECENT, pushRecent } from "./recentSearches";
+import { mapPoints, regionFor } from "./map";
 
+// Hoisted by vitest above the imports; written here to keep imports first.
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: { getItem: async () => null, setItem: async () => undefined },
 }));
-
-import { DEFAULT_FILTERS, activeFilterCount, fromArrival, termProblem, toQuery } from "./searchState";
-import { MAX_RECENT, pushRecent } from "./recentSearches";
-import { mapPoints } from "./map";
-import type { Business } from "@/types/api";
 
 describe("toQuery — the API's parameters", () => {
   it("sends nothing for the default search, so it shares one cache entry", () => {
@@ -88,11 +87,31 @@ describe("recent searches", () => {
 });
 
 describe("map", () => {
-  const b = (location?: Business["location"]) => ({ id: "1", slug: "s", location }) as Business;
+  const pin = (lat: number, lng: number, branchId: string | null = null) => ({ lat, lng, branchId, branchNameAr: null, branchNameEn: null });
+  const b = (pins: ReturnType<typeof pin>[]) => ({ id: "1", slug: "s", pins });
 
-  it("places only businesses with real coordinates — none have them yet", () => {
-    expect(mapPoints([b(), b(null)])).toEqual([]);
-    expect(mapPoints([b({ lat: 30.04, lng: 31.23 })])).toEqual([{ id: "1", slug: "s", lat: 30.04, lng: 31.23 }]);
-    expect(mapPoints([b({ lat: 200, lng: 31 })])).toEqual([]);
+  it("places a business only where its owner pinned it, one point per pin", () => {
+    expect(mapPoints([b([])])).toEqual([]);
+    const points = mapPoints([b([pin(30.04, 31.23), pin(30.06, 31.22, "br1")])]);
+    expect(points.map((p) => [p.key, p.lat, p.lng, p.branchId])).toEqual([
+      ["1:main", 30.04, 31.23, null],
+      ["1:br1", 30.06, 31.22, "br1"],
+    ]);
+  });
+
+  it("keeps one marker where a branch sits exactly on the business's own pin", () => {
+    const points = mapPoints([b([pin(29.96, 31.25), pin(29.96, 31.25, "maadi"), pin(30.06, 31.22, "zamalek")])]);
+    expect(points.map((p) => p.branchId)).toEqual(["maadi", "zamalek"]);
+  });
+
+  it("drops impossible coordinates and the blank-form 0,0", () => {
+    expect(mapPoints([b([pin(200, 31), pin(0, 0)])])).toEqual([]);
+  });
+
+  it("frames every point, and the person when given", () => {
+    const r = regionFor([{ lat: 30, lng: 31 }, { lat: 30.1, lng: 31.2 }], { lat: 29.9, lng: 31 });
+    expect(r?.latitude).toBeCloseTo(30);
+    expect(r && r.latitudeDelta).toBeGreaterThan(0.2);
+    expect(regionFor([])).toBeNull();
   });
 });

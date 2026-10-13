@@ -88,12 +88,12 @@ describe("which steps a business asks", () => {
   });
 
   it("asks for a branch only when there are two or more, before the table", () => {
-    const one = biz({ branches: [{ id: "b1", nameAr: "", nameEn: null, address: null, phone: null }], resources: [table("t", 2)] });
+    const one = biz({ branches: [{ id: "b1", nameAr: "", nameEn: null, address: null, phone: null, location: null }], resources: [table("t", 2)] });
     expect(stepsFor(one, draft())).not.toContain("branch");
     const two = biz({
       branches: [
-        { id: "b1", nameAr: "", nameEn: null, address: null, phone: null },
-        { id: "b2", nameAr: "", nameEn: null, address: null, phone: null },
+        { id: "b1", nameAr: "", nameEn: null, address: null, phone: null, location: null },
+        { id: "b2", nameAr: "", nameEn: null, address: null, phone: null, location: null },
       ],
       resources: [table("t", 2, "b1")],
     });

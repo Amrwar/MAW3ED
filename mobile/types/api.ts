@@ -57,11 +57,28 @@ export interface Business {
   open: OpenState;
   /** The first genuinely free appointment, or null. Never a guess. */
   nextSlot: NextSlot | null;
-  /**
-   * Where it is on a map. Not sent yet — businesses have no coordinates
-   * in the schema — so the map view stays hidden (features/discovery/map.ts).
-   */
-  location?: { lat: number; lng: number } | null;
+  /** Its own pin and each active branch's, as the owner set them. Empty when none. */
+  pins: MapPin[];
+}
+
+export interface MapPin {
+  lat: number;
+  lng: number;
+  /** Null for the business's own pin. */
+  branchId: string | null;
+  branchNameAr: string | null;
+  branchNameEn: string | null;
+}
+
+/** GET /api/public/businesses/nearby — nearest first. */
+export interface NearbyBusiness extends Business {
+  distanceKm: number;
+  nearest: { lat: number; lng: number; branchId: string | null };
+}
+
+export interface NearbyResponse {
+  businesses: NearbyBusiness[];
+  radiusKm: number;
 }
 
 export interface FacetCategory {
@@ -280,6 +297,8 @@ export interface PublicProfile {
   city: { slug: string; nameAr: string; nameEn: string };
   neighborhood: { slug: string; nameAr: string; nameEn: string } | null;
   address: string | null;
+  /** The owner's pin, or null — never derived from the address. */
+  location: { lat: number; lng: number } | null;
   phone: string | null;
   whatsapp: string | null;
   images: { url: string; caption: string | null }[];
@@ -301,7 +320,14 @@ export interface PublicProfile {
   nextSlot: NextSlot | null;
   rating: { average: number | null; count: number; distribution: Record<"1" | "2" | "3" | "4" | "5", number> };
   reviews: PublicReview[];
-  branches: { id: string; nameAr: string; nameEn: string | null; address: string | null; phone: string | null }[];
+  branches: {
+    id: string;
+    nameAr: string;
+    nameEn: string | null;
+    address: string | null;
+    phone: string | null;
+    location: { lat: number; lng: number } | null;
+  }[];
   staff: PublicStaffMember[];
   resources: PublicResource[];
   policies: BookingPolicies;
@@ -438,6 +464,7 @@ export interface PublicBooking {
     phone: string | null;
     whatsapp: string | null;
     address: string | null;
+    location: { lat: number; lng: number } | null;
     logoImage: string | null;
     cityNameAr: string;
     cityNameEn: string;
@@ -445,7 +472,7 @@ export interface PublicBooking {
   service: { id: string; nameAr: string; nameEn: string | null };
   staff: { id: string; nameAr: string; nameEn: string | null } | null;
   resource: { id: string; name: string; kind: string } | null;
-  branch: { id: string; nameAr: string; nameEn: string | null; address: string | null } | null;
+  branch: { id: string; nameAr: string; nameEn: string | null; address: string | null; location: { lat: number; lng: number } | null } | null;
   payment: {
     status: "PENDING" | "SUCCEEDED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "ABANDONED";
     amount: number;

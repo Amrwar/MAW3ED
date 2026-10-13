@@ -4,7 +4,8 @@ import { Avatar, Badge, Button, Card, Icon, Text, Touchable, colors, radius, spa
 import { nextFreeLabel } from "@/features/discovery/BusinessCard";
 import { duration, num, shortDate, time } from "@/lib/format";
 import type { BookingPolicies, DayHours, PublicProfile, PublicReview, PublicStaffMember } from "@/types/api";
-import { directionsUrl, telUrl, workingDays, type ProfileKind, type Seating } from "./profile";
+import { directionsUrl, pinDirectionsUrl, profilePins, telUrl, workingDays, type ProfileKind, type Seating } from "./profile";
+import { PlacesMap } from "@/features/location/PlacesMap";
 
 /**
  * The pieces of a business profile. Each takes real data and renders
@@ -351,8 +352,12 @@ export function LocationCard({
   const area = [p.neighborhood && (ar ? p.neighborhood.nameAr : p.neighborhood.nameEn), ar ? p.city.nameAr : p.city.nameEn]
     .filter(Boolean)
     .join(ar ? "، " : ", ");
-  const directions = directionsUrl([p.address, p.neighborhood?.nameEn, p.city.nameEn]);
+  // The owner's pin when there is one; otherwise a maps search for the
+  // written address — never a pin placed from it.
+  const directions = p.location ? pinDirectionsUrl(p.location) : directionsUrl([p.address, p.neighborhood?.nameEn, p.city.nameEn]);
   const branches = p.branches;
+  const pins = profilePins(p);
+  const name = (!ar && p.nameEn) || p.nameAr;
 
   return (
     <View style={styles.list}>
@@ -375,9 +380,12 @@ export function LocationCard({
             </Text>
           </View>
         )}
-        {/* No coordinates are stored, so there is no map pin to draw:
-            directions are a maps search for the written address. */}
-        {p.address && directions ? (
+        {pins.length > 0 ? (
+          <View style={styles.map}>
+            <PlacesMap points={pins} names={{ [p.id]: name }} around={null} onOpen={() => undefined} height={200} showOpen={false} />
+          </View>
+        ) : null}
+        {(p.location || p.address) && directions ? (
           <Button
             label={ar ? "الاتجاهات" : "Directions"}
             icon="navigate-outline"
@@ -395,7 +403,7 @@ export function LocationCard({
           </Text>
           {branches.map((b) => {
             const name = (!ar && b.nameEn) || b.nameAr;
-            const to = b.address ? directionsUrl([b.address, p.city.nameEn]) : null;
+            const to = b.location ? pinDirectionsUrl(b.location) : b.address ? directionsUrl([b.address, p.city.nameEn]) : null;
             const tel = b.phone ? telUrl(b.phone) : null;
             return (
               <Card key={b.id}>
@@ -535,6 +543,7 @@ const styles = StyleSheet.create({
   hoursRow: { flexDirection: "row", paddingVertical: spacing.xs + 2, paddingHorizontal: spacing.xs, borderRadius: radius.xs },
   today: { backgroundColor: colors.jadeTint },
   breakdown: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
+  map: { marginVertical: spacing.sm },
   average: { alignItems: "center", minWidth: 88 },
   bars: { flex: 1, gap: spacing.xs },
   barRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

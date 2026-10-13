@@ -120,6 +120,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     permissions: [
       "android.permission.INTERNET",
       "android.permission.POST_NOTIFICATIONS",
+      // "Near me" — foreground only, asked when the person taps it.
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.ACCESS_FINE_LOCATION",
     ],
     // The React Native template adds these; the app reads no files and
     // draws over nothing, and Play review asks about every one.
@@ -127,7 +130,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
       "android.permission.SYSTEM_ALERT_WINDOW",
+      // Never tracked in the background.
+      "android.permission.ACCESS_BACKGROUND_LOCATION",
     ],
+    // Google Maps on Android needs a key in a store build (Expo Go has its
+    // own). From the environment; never committed. See docs/location.md.
+    ...(process.env.GOOGLE_MAPS_ANDROID_API_KEY
+      ? { config: { googleMaps: { apiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY } } }
+      : {}),
     // Android App Links, verified against /.well-known/assetlinks.json.
     // Production only, for the same reason as associatedDomains; the
     // paths match APP_LINK_PATHS in the web's src/lib/app-links.ts.
@@ -182,6 +192,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         imageWidth: 180,
         resizeMode: "contain",
         backgroundColor: "#11201C",
+      },
+    ],
+    [
+      // Foreground "when in use" only — the app never asks for "always".
+      "expo-location",
+      {
+        locationWhenInUsePermission: "مواعيد بيستخدم موقعك لما تطلب الأماكن القريبة منك بس، ومبيحفظهوش.",
+        isIosBackgroundLocationEnabled: false,
+        isAndroidBackgroundLocationEnabled: false,
       },
     ],
     [

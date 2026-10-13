@@ -40,6 +40,8 @@ export interface BusinessCardProps {
   openNow?: boolean | null;
   /** "Next free today 9:00", already in the reader's language; omitted when unknown. */
   nextFree?: string | null;
+  /** "2.4 km" from the person, already formatted; only in nearby results. */
+  distance?: string | null;
   onPress?: () => void;
   /** A save button, say. Kept out of the card's own tap target. */
   trailing?: ReactNode;
@@ -52,7 +54,8 @@ export function BusinessCard(p: BusinessCardProps) {
   const price = money(p.fromPrice ?? null, p.currency, lang);
   const fromLabel = price ? (lang === "ar" ? `من ${price}` : `from ${price}`) : null;
   const openLabel = p.openNow == null ? null : p.openNow ? (lang === "ar" ? "مفتوح دلوقتي" : "Open now") : lang === "ar" ? "مقفول" : "Closed";
-  const label = joinLabel(lang, p.name, p.verified && t("verified"), p.category, p.area, fromLabel, openLabel, p.nextFree);
+  const label = joinLabel(lang, p.name, p.verified && t("verified"), p.category, p.area, p.distance, fromLabel, openLabel, p.nextFree);
+  const where = p.distance ? `${p.category} · ${p.area} · ${p.distance}` : `${p.category} · ${p.area}`;
 
   const meta = (
     <View style={styles.metaRow}>
@@ -95,7 +98,7 @@ export function BusinessCard(p: BusinessCardProps) {
           <View style={styles.featureBody}>
             {title}
             <Text variant="caption" tone="subtle" numberOfLines={1}>
-              {p.category} · {p.area}
+              {where}
             </Text>
             {meta}
           </View>
@@ -112,7 +115,7 @@ export function BusinessCard(p: BusinessCardProps) {
         <View style={styles.flex}>
           {title}
           <Text variant="caption" tone="subtle" numberOfLines={1}>
-            {p.category} · {p.area}
+            {where}
           </Text>
           {meta}
         </View>

@@ -51,6 +51,21 @@ export interface DiscoveryBusiness {
    * inside the fortnight we look ahead. Never a guess — see next-slot.ts.
    */
   nextSlot: NextSlot | null;
+  /**
+   * Where it is on a map — the business's own pin and each active
+   * branch's, as their owner set them. Empty when none is set; never
+   * geocoded from an address.
+   */
+  pins: MapPin[];
+}
+
+export interface MapPin {
+  lat: number;
+  lng: number;
+  /** Null for the business's own pin. */
+  branchId: string | null;
+  branchNameAr: string | null;
+  branchNameEn: string | null;
 }
 
 export interface DiscoveryResult {
@@ -219,6 +234,13 @@ const SELECT = {
     select: { price: true, currency: true },
   },
   _count: { select: { bookings: true } },
+  latitude: true,
+  longitude: true,
+  branches: {
+    where: { isActive: true, latitude: { not: null }, longitude: { not: null } },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, nameAr: true, nameEn: true, latitude: true, longitude: true },
+  },
 } satisfies Prisma.BusinessSelect;
 
 type Row = Prisma.BusinessGetPayload<{ select: typeof SELECT }>;
@@ -250,7 +272,38 @@ function toBusiness(row: Row, nowDay: number, nowTime: string): DiscoveryBusines
     bookingCount: row._count.bookings,
     open: openState(rules, nowDay, nowTime),
     nextSlot: null,
+    pins: pinsOf(row),
   };
+}
+
+function pinsOf(row: Row): MapPin[] {
+  const pins: MapPin[] = [];
+  if (row.latitude !== null && row.longitude !== null) {
+    pins.push({ lat: row.latitude, lng: row.longitude, branchId: null, branchNameAr: null, branchNameEn: null });
+  }
+  for (const b of row.branches) {
+    if (b.latitude === null || b.longitude === null) continue;
+    pins.push({ lat: b.latitude, lng: b.longitude, branchId: b.id, branchNameAr: b.nameAr, branchNameEn: b.nameEn });
+  }
+  return pins;
+}
+
+/**
+ * Cards for a known set of businesses — the nearby search's candidates —
+ * through the same filters, mapping and next-free computation as the
+ * search itself, so a card is identical however it was found.
+ */
+export async function cardsForIds(ids: string[], q: DiscoveryQuery, now: Date = new Date()): Promise<DiscoveryBusiness[]> {
+  if (ids.length === 0) return [];
+  const { dayOfWeek, time } = cairoNow(now);
+  const rows = await db.business.findMany({
+    where: { AND: [buildWhere(q, now), { id: { in: ids } }] },
+    select: SELECT,
+  });
+  const rulesByBusiness = new Map<string, DayHours[]>(rows.map((r) => [r.id, r.availability]));
+  const mapped = rows.map((r) => toBusiness(r, dayOfWeek, time));
+  await attachNextSlots(mapped, rulesByBusiness, dayOfWeek, time, now);
+  return mapped;
 }
 
 /**

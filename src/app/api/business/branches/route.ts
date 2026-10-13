@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bothOrNeither, latitude, longitude } from "@/lib/validations";
 import {
   PLAN_NAMES_AR,
   cheapestPlanWith,
@@ -17,7 +18,9 @@ const branchSchema = z.object({
   phone: z.string().trim().max(30).nullable().optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().min(0).max(9999).optional(),
-});
+  latitude,
+  longitude,
+}).superRefine(bothOrNeither);
 
 export async function GET() {
   try {
@@ -67,6 +70,8 @@ export async function POST(req: Request) {
         nameEn: parsed.data.nameEn ?? null,
         address: parsed.data.address ?? null,
         phone: parsed.data.phone ?? null,
+        latitude: parsed.data.latitude ?? null,
+        longitude: parsed.data.longitude ?? null,
         isActive: parsed.data.isActive ?? true,
         sortOrder: parsed.data.sortOrder ?? 0,
       },

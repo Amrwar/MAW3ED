@@ -42,6 +42,8 @@ export interface PublicBooking {
     phone: string | null;
     whatsapp: string | null;
     address: string | null;
+    /** The owner's pin, for exact directions; null when none is set. */
+    location: { lat: number; lng: number } | null;
     logoImage: string | null;
     cityNameAr: string;
     cityNameEn: string;
@@ -49,7 +51,7 @@ export interface PublicBooking {
   service: { id: string; nameAr: string; nameEn: string | null };
   staff: { id: string; nameAr: string; nameEn: string | null } | null;
   resource: { id: string; name: string; kind: string } | null;
-  branch: { id: string; nameAr: string; nameEn: string | null; address: string | null } | null;
+  branch: { id: string; nameAr: string; nameEn: string | null; address: string | null; location: { lat: number; lng: number } | null } | null;
   /** The deposit, when one was asked for: where its money stands. */
   payment: {
     status: PaymentStatus;
@@ -106,6 +108,8 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
           phone: true,
           whatsapp: true,
           address: true,
+          latitude: true,
+          longitude: true,
           logoImage: true,
           city: { select: { nameAr: true, nameEn: true } },
         },
@@ -113,7 +117,7 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
       service: { select: { id: true, nameAr: true, nameEn: true, duration: true } },
       staffMember: { select: { id: true, nameAr: true, nameEn: true } },
       resource: { select: { id: true, name: true, kind: true } },
-      branch: { select: { id: true, nameAr: true, nameEn: true, address: true } },
+      branch: { select: { id: true, nameAr: true, nameEn: true, address: true, latitude: true, longitude: true } },
       payments: {
         where: { kind: "BOOKING_DEPOSIT" },
         orderBy: { createdAt: "desc" },
@@ -155,6 +159,7 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
       phone: b.business.phone,
       whatsapp: b.business.whatsapp,
       address: b.business.address,
+      location: pin(b.business.latitude, b.business.longitude),
       logoImage: b.business.logoImage,
       cityNameAr: b.business.city.nameAr,
       cityNameEn: b.business.city.nameEn,
@@ -162,7 +167,9 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
     service: { id: b.service.id, nameAr: b.service.nameAr, nameEn: b.service.nameEn },
     staff: b.staffMember,
     resource: b.resource,
-    branch: b.branch,
+    branch: b.branch
+      ? { id: b.branch.id, nameAr: b.branch.nameAr, nameEn: b.branch.nameEn, address: b.branch.address, location: pin(b.branch.latitude, b.branch.longitude) }
+      : null,
     payment: payment
       ? {
           status: payment.status,
@@ -203,6 +210,10 @@ function reviewState(
         }
       : null,
   };
+}
+
+function pin(lat: number | null, lng: number | null): { lat: number; lng: number } | null {
+  return lat !== null && lng !== null ? { lat, lng } : null;
 }
 
 /**

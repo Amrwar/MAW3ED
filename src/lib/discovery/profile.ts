@@ -41,6 +41,8 @@ export interface PublicProfile {
   city: { slug: string; nameAr: string; nameEn: string };
   neighborhood: { slug: string; nameAr: string; nameEn: string } | null;
   address: string | null;
+  /** The owner's pin, or null — never derived from the address. */
+  location: { lat: number; lng: number } | null;
   phone: string | null;
   whatsapp: string | null;
   images: { url: string; caption: string | null }[];
@@ -63,7 +65,15 @@ export interface PublicProfile {
   nextSlot: NextSlot | null;
   rating: RatingSummary;
   reviews: PublicReview[];
-  branches: { id: string; nameAr: string; nameEn: string | null; address: string | null; phone: string | null }[];
+  branches: {
+    id: string;
+    nameAr: string;
+    nameEn: string | null;
+    address: string | null;
+    phone: string | null;
+    /** The branch's own pin, or null. */
+    location: { lat: number; lng: number } | null;
+  }[];
   staff: PublicStaffMember[];
   /** Tables, rooms, chairs — what a booking holds, when the business uses any. */
   resources: PublicResource[];
@@ -134,6 +144,8 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
       sameDayCutoff: true,
       businessType: true,
       address: true,
+      latitude: true,
+      longitude: true,
       phone: true,
       whatsapp: true,
       category: { select: { slug: true, nameAr: true, nameEn: true, parent: { select: { slug: true } } } },
@@ -152,7 +164,7 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
       branches: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },
-        select: { id: true, nameAr: true, nameEn: true, address: true, phone: true },
+        select: { id: true, nameAr: true, nameEn: true, address: true, phone: true, latitude: true, longitude: true },
       },
       staffMembers: {
         where: { isActive: true },
@@ -261,6 +273,7 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
     city: b.city,
     neighborhood: b.neighborhood,
     address: b.address,
+    location: b.latitude !== null && b.longitude !== null ? { lat: b.latitude, lng: b.longitude } : null,
     phone: b.phone,
     whatsapp: b.whatsapp,
     images: b.images,
@@ -272,7 +285,10 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
     nextSlot,
     rating,
     reviews: reviewPage.reviews,
-    branches: b.branches,
+    branches: b.branches.map(({ latitude, longitude, ...br }) => ({
+      ...br,
+      location: latitude !== null && longitude !== null ? { lat: latitude, lng: longitude } : null,
+    })),
     staff,
     resources: b.resources,
     policies: {

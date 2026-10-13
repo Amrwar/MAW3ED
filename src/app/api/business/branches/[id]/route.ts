@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bothOrNeither, latitude, longitude } from "@/lib/validations";
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
@@ -12,7 +13,9 @@ const patchSchema = z.object({
   phone: z.string().trim().max(30).nullable().optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().min(0).max(9999).optional(),
-});
+  latitude,
+  longitude,
+}).superRefine(bothOrNeither);
 
 async function owned(id: string, businessId: string) {
   return db.branch.findFirst({ where: { id, businessId }, select: { id: true } });
