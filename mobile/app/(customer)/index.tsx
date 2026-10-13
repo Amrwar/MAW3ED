@@ -5,10 +5,10 @@ import { Text } from "@/components/ui/Typography";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ListState } from "@/components/ui/ListState";
-import { BusinessCard } from "@/components/business/BusinessCard";
-import { BookingCard } from "@/components/business/BookingCard";
-import { useBusinesses, useMyBookings } from "@/hooks/useCustomerData";
-import { useAuth } from "@/stores/auth";
+import { BusinessCard } from "@/features/discovery/BusinessCard";
+import { BookingCard } from "@/features/bookings/BookingCard";
+import { useBusinesses, useMyBookings } from "@/features/customer/queries";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { spacing } from "@/constants/theme";
 
 /**

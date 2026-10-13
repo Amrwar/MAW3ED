@@ -1,7 +1,8 @@
 import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@/stores/auth";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { colors, typography, touchTarget } from "@/constants/theme";
+import { useUnreadCount } from "@/features/notifications/queries";
 
 /**
  * The owner's space.
@@ -12,7 +13,7 @@ import { colors, typography, touchTarget } from "@/constants/theme";
  * somebody from looking at five empty screens.
  *
  * Which tabs: the things an owner does standing up, away from a desk.
- * Today's schedule, the calendar, bookings, customers. Services, staff
+ * The dashboard, the calendar, bookings, customers, and what changed. Services, staff
  * and settings are configuration — occasional, fiddly, better on the
  * web — so they sit inside Account rather than taking a tab each.
  *
@@ -22,15 +23,17 @@ import { colors, typography, touchTarget } from "@/constants/theme";
 
 /** One place to add a tab, so the icon and the route cannot drift. */
 const TABS = [
-  { name: "index", title: "اليوم", icon: "today" },
+  { name: "index", title: "الرئيسية", icon: "grid" },
   { name: "calendar", title: "التقويم", icon: "calendar" },
   { name: "bookings", title: "الحجوزات", icon: "list" },
   { name: "customers", title: "العملاء", icon: "people" },
+  { name: "notifications", title: "الإشعارات", icon: "notifications" },
   { name: "account", title: "حسابي", icon: "person" },
 ] as const;
 
 export default function BusinessLayout() {
   const { user, restoring } = useAuth();
+  const unread = useUnreadCount(Boolean(user?.businessId));
 
   if (restoring) return null;
   if (!user?.businessId) return <Redirect href="/(customer)" />;
@@ -60,6 +63,7 @@ export default function BusinessLayout() {
           name={tab.name}
           options={{
             title: tab.title,
+            tabBarBadge: tab.name === "notifications" ? unread : undefined,
             tabBarIcon: ({ color, focused, size }) => (
               <Ionicons
                 name={focused ? tab.icon : (`${tab.icon}-outline` as never)}

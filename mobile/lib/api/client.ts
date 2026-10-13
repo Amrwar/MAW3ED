@@ -1,6 +1,6 @@
-import Constants from "expo-constants";
 import { ApiError, NetworkError, UnauthorizedError } from "./errors";
-import { getTokens, setTokens, clearTokens } from "@/services/auth/token-store";
+import { getTokens, setTokens, clearTokens } from "@/features/auth/token-store";
+import { config } from "@/lib/config";
 
 /**
  * The one way the app talks to Maw3ed.
@@ -18,12 +18,21 @@ import { getTokens, setTokens, clearTokens } from "@/services/auth/token-store";
  * its own wording.
  */
 
-const BASE_URL = (Constants.expoConfig?.extra?.apiUrl as string | undefined) ?? "";
+/** Validated in lib/config.ts: a build without one never gets this far. */
+const BASE_URL = config.apiUrl;
 
-if (!BASE_URL) {
-  // Loud on purpose. An app pointed at nowhere fails on every screen
-  // with a different confusing symptom; this names the cause once.
-  console.warn("[api] no apiUrl in expo config — every request will fail");
+/**
+ * Told when the session ends underneath the app — the refresh token was
+ * refused, so the tokens are gone. The auth provider listens, so a 401
+ * in any query signs the person out in one place rather than each
+ * screen discovering it separately.
+ */
+type SessionListener = () => void;
+const sessionListeners = new Set<SessionListener>();
+
+export function onSessionExpired(listener: SessionListener): () => void {
+  sessionListeners.add(listener);
+  return () => sessionListeners.delete(listener);
 }
 
 /** A refresh in flight, so ten parallel 401s cause one refresh, not ten. */
@@ -79,11 +88,16 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   // One retry, once. A second 401 after a successful refresh means the
   // session is genuinely over, not that the token was stale.
   if (response.status === 401 && !anonymous && !_retried) {
-    const refreshed = await refreshOnce();
+    const hadSession = (await getTokens()) !== null;
+    const refreshed = hadSession && (await refreshOnce());
     if (refreshed) {
       return apiFetch<T>(path, { ...options, _retried: true });
     }
     await clearTokens();
+    // Only when a session actually ended. Somebody who was never signed
+    // in has nothing to end, and announcing it would clear the cache on
+    // every anonymous 401.
+    if (hadSession) for (const listener of sessionListeners) listener();
     throw new UnauthorizedError();
   }
 

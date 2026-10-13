@@ -4,7 +4,6 @@ import { keys } from "@/lib/query/keys";
 import type {
   BusinessPage,
   MyBookingsResponse,
-  NotificationsResponse,
   Profile,
   SavedBusiness,
 } from "@/types/api";
@@ -112,9 +111,3 @@ export function useUpdateProfile() {
   });
 }
 
-export function useNotifications() {
-  return useQuery({
-    queryKey: keys.notifications.all,
-    queryFn: () => api.get<NotificationsResponse>("/api/account/notifications"),
-  });
-}

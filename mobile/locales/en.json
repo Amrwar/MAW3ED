@@ -1,7 +1,4 @@
 {
   "CFBundleDisplayName": "Maw3ed",
-  "NSUserNotificationsUsageDescription": "So we can remind you about your appointments in good time.",
-  "NSPhotoLibraryUsageDescription": "So you can upload photos of your business or services.",
-  "NSCameraUsageDescription": "So you can photograph your business or services for your profile.",
-  "NSLocationWhenInUseUsageDescription": "So we can show you places near you."
+  "NSUserNotificationsUsageDescription": "So we can remind you about your appointments in good time."
 }

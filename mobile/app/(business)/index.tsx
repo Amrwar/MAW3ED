@@ -6,8 +6,8 @@ import { Text } from "@/components/ui/Typography";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ListState } from "@/components/ui/ListState";
-import { BookingCard } from "@/components/business/BookingCard";
-import { useAnalytics, useBusinessBookings } from "@/hooks/useBusinessData";
+import { BookingCard } from "@/features/bookings/BookingCard";
+import { useAnalytics, useBusinessBookings } from "@/features/business/queries";
 import { money, num } from "@/lib/format";
 import { colors, spacing } from "@/constants/theme";
 

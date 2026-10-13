@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ListState } from "@/components/ui/ListState";
-import { useNotifications, useProfile, useUpdateProfile } from "@/hooks/useCustomerData";
-import { useAuth } from "@/stores/auth";
+import { useProfile, useUpdateProfile } from "@/features/customer/queries";
+import { useNotifications } from "@/features/notifications/queries";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { VERSION_LABEL } from "@/constants/version";
 import { num } from "@/lib/format";
 import { colors, spacing } from "@/constants/theme";
+import { SignInGate } from "@/features/auth/SignInGate";
+import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 
 /**
  * Account.
@@ -19,7 +22,15 @@ import { colors, spacing } from "@/constants/theme";
  * notification toggles save as you flip them — a Save button for two
  * switches is a step that exists only to be forgotten.
  */
-export default function Account() {
+export default function AccountScreen() {
+  return (
+    <SignInGate title="حسابي" reason="عشان تدير بياناتك وإشعاراتك.">
+      <Account />
+    </SignInGate>
+  );
+}
+
+function Account() {
   const { user, signOut } = useAuth();
   const profile = useProfile();
   const update = useUpdateProfile();
@@ -126,6 +137,8 @@ export default function Account() {
               {notifications.data?.notifications[0]?.title ?? "مفيش إشعارات."}
             </Text>
           </Card>
+
+          <RoleSwitcher current="customer" />
 
           <Button
             label="تسجيل الخروج"

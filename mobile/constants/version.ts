@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { config } from "@/lib/config";
 
 /**
  * Which build of the app this is.
@@ -16,7 +17,7 @@ import Constants from "expo-constants";
 
 const version = Constants.expoConfig?.version ?? "0.0.0";
 const runtime = Constants.expoConfig?.runtimeVersion;
-const env = (Constants.expoConfig?.extra?.appEnv as string | undefined) ?? "development";
+const env = config.appEnv;
 
 export const APP_VERSION = version;
 

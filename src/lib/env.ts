@@ -92,6 +92,15 @@ const optional = z.object({
   SMS_API_KEY: z.string().optional(),
   SMS_SENDER_ID: z.string().optional(),
 
+  // App links. Served at /.well-known so a maw3ed.net link opens the
+  // app rather than the browser. Unset: those files answer 404 and
+  // links open in the browser, which is the correct fallback.
+  // The Apple developer team that signs the iOS app (10 characters).
+  APPLE_TEAM_ID: z.string().optional(),
+  // SHA-256 fingerprints of the Android signing certificate(s),
+  // comma-separated, as `eas credentials` prints them.
+  ANDROID_CERT_SHA256: z.string().optional(),
+
   // Error tracking. Empty leaves Sentry inert: no events, and the build
   // wrapper is a no-op. The DSN identifies a project and is safe in a
   // browser; the auth token uploads source maps and is not.

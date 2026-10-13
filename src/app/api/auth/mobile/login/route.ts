@@ -1,10 +1,9 @@
 import { z } from "zod";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
-import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { verifyEmailPassword } from "@/lib/auth/verify";
-import { claimsForUser, issueTokens, MOBILE_TOKEN_TTL } from "@/lib/auth/mobile-token";
+import { startMobileSession } from "@/lib/auth/mobile-session";
 
 const schema = z.object({
   email: z.string().email(),
@@ -44,32 +43,11 @@ export async function POST(req: Request) {
     const user = await verifyEmailPassword(parsed.data);
     if (!user) return err("البريد الإلكتروني أو كلمة المرور غير صحيحة", 401);
 
-    const claims = await claimsForUser(user.id);
-    if (!claims) return err("البريد الإلكتروني أو كلمة المرور غير صحيحة", 401);
+    const { deviceName, platform } = parsed.data;
+    const login = await startMobileSession(user.id, { deviceName, platform });
+    if (!login) return err("البريد الإلكتروني أو كلمة المرور غير صحيحة", 401);
 
-    const expiresAt = new Date(Date.now() + MOBILE_TOKEN_TTL.refreshDays * 86_400_000);
-    const session = await db.mobileSession.create({
-      data: {
-        userId: user.id,
-        deviceName: parsed.data.deviceName ?? null,
-        platform: parsed.data.platform ?? null,
-        expiresAt,
-      },
-      select: { id: true },
-    });
-
-    const tokens = await issueTokens(claims, session.id);
-
-    return ok({
-      ...tokens,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        businessId: claims.businessId,
-        adminRole: claims.adminRole,
-      },
-    });
+    return ok(login);
   } catch (e) {
     log.error("[mobile login]", e);
     return err("حدث خطأ", 500);
