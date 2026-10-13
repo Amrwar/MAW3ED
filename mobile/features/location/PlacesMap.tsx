@@ -21,6 +21,7 @@ export function PlacesMap({
   onOpen,
   height,
   showOpen = true,
+  flat = false,
 }: {
   points: MapPoint[];
   /** Business id → display name, in the reader's language. */
@@ -31,13 +32,15 @@ export function PlacesMap({
   height?: number;
   /** False where the map is already on the place's own page. */
   showOpen?: boolean;
+  /** Edge to edge, without the card's rounded corners (map-first screens). */
+  flat?: boolean;
 }) {
   const { lang } = useLocale();
   const region = useMemo(() => regionFor(points, around), [points, around]);
   if (!region) return null;
 
   return (
-    <View style={[styles.wrap, height ? { height, minHeight: height } : null]}>
+    <View style={[styles.wrap, flat && styles.flat, height ? { height, minHeight: height } : null]}>
       <MapView
         style={StyleSheet.absoluteFill}
         initialRegion={region}
@@ -55,7 +58,7 @@ export function PlacesMap({
               coordinate={{ latitude: p.lat, longitude: p.lng }}
               title={name}
               description={branch ?? undefined}
-              pinColor={colors.jade}
+              pinColor={colors.night}
               onCalloutPress={() => onOpen(p.slug)}
             >
               {/* The marker's onCalloutPress opens it; a press handler here too fires twice on iOS. */}
@@ -86,5 +89,6 @@ export function PlacesMap({
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, minHeight: 360, borderRadius: radius.lg, overflow: "hidden", backgroundColor: colors.surface3 },
+  flat: { borderRadius: 0, minHeight: 0 },
   callout: { minWidth: 160, maxWidth: 240, padding: spacing.xs, gap: 2 },
 });

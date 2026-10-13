@@ -128,7 +128,7 @@ function Showcase() {
       </Section>
 
       {/* ── Type ── */}
-      <Section title={T("الخط", "Type")} note="Almarai — العربية واللاتينية بخط واحد">
+      <Section title={T("الخط", "Type")} note="Readex Pro — العربية واللاتينية بخط واحد">
         {(Object.keys(typography) as (keyof typeof typography)[]).map((v) => (
           <Text key={v} variant={v}>
             {v} · {T("احجز موعدك في ثواني", "Book in seconds")}

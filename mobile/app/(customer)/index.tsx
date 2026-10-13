@@ -23,6 +23,7 @@ import {
   type IconName,
 } from "@/design";
 import { BusinessCard } from "@/features/discovery/BusinessCard";
+import { MapArt } from "@/features/location/MapArt";
 import { startSearch, type Arrival } from "@/features/discovery/searchState";
 import { BookingCard } from "@/features/bookings/BookingCard";
 import { statusLabelFor } from "@/features/bookings/status";
@@ -55,6 +56,8 @@ import type { Business } from "@/types/api";
  * no "recently viewed" — nothing in the app or the API records views
  * per person yet (the business profile screen does not exist).
  */
+
+const NEWLINE = String.fromCharCode(10);
 
 const CATEGORY_ICONS: Record<string, IconName> = {
   clinics: "medkit-outline",
@@ -152,6 +155,13 @@ export default function CustomerHome() {
       <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>
         <Column>
           <View style={styles.heroTop}>
+            <View style={styles.brand} accessibilityRole="header" accessibilityLabel={T("موعد", "Maw3ed")}>
+              <View style={styles.brandMark}>
+                <Text variant="heading" style={styles.brandLetter}>
+                  م
+                </Text>
+              </View>
+            </View>
             <Touchable
               accessibilityRole="button"
               accessibilityLabel={T(`المدينة: ${cityName}. غيّرها`, `City: ${cityName}. Change`)}
@@ -190,13 +200,15 @@ export default function CustomerHome() {
             )}
           </View>
 
-          <Text variant="title" tone="inverse" accessibilityRole="header" style={styles.greeting}>
-            {firstName
-              ? T(`أهلاً، ${firstName}`, `Hello, ${firstName}`)
-              : T("أهلاً بيك", "Welcome")}
+          <Text variant="label" tone="inverseMuted" style={styles.greeting}>
+            {firstName ? T(`أهلاً، ${firstName}`, `Hello, ${firstName}`) : T("أهلاً بيك", "Welcome")}
           </Text>
-          <Text variant="body" tone="inverseMuted">
-            {T("احجز موعدك في ثواني.", "Book your appointment in seconds.")}
+          <Text variant="display" tone="inverse" accessibilityRole="header" style={styles.headline}>
+            {T("احجز ميعادك", "Book your time")}
+            {NEWLINE}
+            <Text variant="display" style={styles.gold}>
+              {T("في دقيقة.", "in a minute.")}
+            </Text>
           </Text>
 
           <Touchable
@@ -205,24 +217,18 @@ export default function CustomerHome() {
             onPress={() => openSearch()}
             style={styles.searchPill}
           >
-            <Icon name="search" color={colors.subtle} />
+            <Icon name="search" color={colors.night} />
             <Text variant="body" tone="subtle" numberOfLines={1}>
-              {T("دكتور، صالون، جيم…", "Doctor, salon, gym…")}
+              {T("دكتور، صالون، أو منطقة", "Doctor, salon, or area")}
             </Text>
           </Touchable>
-
-          <Button
-            label={T("أماكن قريبة مني", "Places near me")}
-            icon="navigate-outline"
-            variant="night"
-            size="sm"
-            onPress={() => router.push("/nearby")}
-            style={styles.nearMe}
-          />
         </Column>
       </View>
 
       <Column>
+        {/* ── Map-first: the way in to places around you ── */}
+        <MapEntry />
+
         {/* ── A deposit left unfinished when the app was closed ── */}
         <UnfinishedPayment />
 
@@ -272,38 +278,38 @@ export default function CustomerHome() {
               {T("لسه مفيش أقسام فيها أماكن.", "No categories have places yet.")}
             </Text>
           ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.rail}
-            >
-              {categories.map((c) => {
+            <View style={styles.grid}>
+              {categories.slice(0, categories.length > 8 ? 7 : 8).map((c) => {
                 const name = ar ? c.nameAr : c.nameEn;
                 return (
                   <Touchable
                     key={c.id}
                     accessibilityRole="button"
-                    accessibilityLabel={T(
-                      `${name}، ${num(c.count)} مكان`,
-                      `${name}, ${c.count} places`,
-                    )}
+                    accessibilityLabel={T(`${name}، ${num(c.count)} مكان`, `${name}, ${c.count} places`)}
                     onPress={() => openSearch({ category: c.slug })}
-                    style={styles.category}
+                    style={styles.tile}
                   >
-                    <View style={styles.categoryIcon}>
-                      <Icon
-                        name={CATEGORY_ICONS[c.slug] ?? "grid-outline"}
-                        size="lg"
-                        color={colors.jade}
-                      />
-                    </View>
+                    <Icon name={CATEGORY_ICONS[c.slug] ?? "grid-outline"} size="lg" color={colors.night} />
                     <Text variant="tiny" align="center" numberOfLines={2}>
                       {name}
                     </Text>
                   </Touchable>
                 );
               })}
-            </ScrollView>
+              {categories.length > 8 ? (
+                <Touchable
+                  accessibilityRole="button"
+                  accessibilityLabel={T("كل الأقسام", "All categories")}
+                  onPress={() => openSearch()}
+                  style={[styles.tile, styles.tileMore]}
+                >
+                  <Icon name="apps-outline" size="lg" color={colors.gold} />
+                  <Text variant="tiny" tone="inverse" align="center">
+                    {T("الكل", "All")}
+                  </Text>
+                </Touchable>
+              ) : null}
+            </View>
           )}
         </Section>
 
@@ -574,9 +580,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   hero: {
     backgroundColor: colors.night,
-    paddingBottom: spacing.xl,
-    borderBottomStartRadius: radius.xl,
-    borderBottomEndRadius: radius.xl,
+    paddingBottom: spacing.xxxl,
+    borderBottomStartRadius: 32,
+    borderBottomEndRadius: 32,
   },
   heroTop: {
     flexDirection: "row",
@@ -589,7 +595,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xs + 2,
     minHeight: 40,
-    maxWidth: "70%",
+    maxWidth: "60%",
+    marginEnd: "auto",
+    marginStart: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: radius.full,
     backgroundColor: colors.night2,
@@ -609,40 +617,47 @@ const styles = StyleSheet.create({
     borderColor: colors.night,
   },
   greeting: { marginTop: spacing.xl },
-  nearMe: { alignSelf: "flex-start", marginTop: spacing.sm },
+  headline: { marginTop: spacing.xs, fontSize: 34, lineHeight: 48 },
+  gold: { color: colors.gold },
+  brand: { flexDirection: "row", alignItems: "center" },
+  brandMark: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.gold,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brandLetter: { color: colors.night, fontSize: 22, lineHeight: 28 },
   searchPill: {
     marginTop: spacing.lg,
-    minHeight: 52,
+    minHeight: 54,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-    borderRadius: radius.full,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     overflow: "hidden",
   },
   section: { marginTop: spacing.xxl, gap: spacing.md },
   sectionHead: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   rail: { gap: spacing.md, paddingVertical: spacing.xxs },
-  category: {
-    width: 76,
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.md,
-    overflow: "hidden",
-  },
-  categoryIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  categorySkeleton: { width: 76, alignItems: "center", gap: spacing.xs },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  tile: {
+    width: "23%",
+    flexGrow: 1,
+    minHeight: 84,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.jadeSoft,
-    borderWidth: 1,
-    borderColor: colors.jadeLine,
+    gap: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
   },
-  categorySkeleton: { width: 76, alignItems: "center", gap: spacing.xs },
+  tileMore: { backgroundColor: colors.night },
   list: { gap: spacing.md },
   cityOption: {
     minHeight: 52,
@@ -711,4 +726,62 @@ function UnfinishedPayment() {
 const homeStyles = StyleSheet.create({
   payRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   flex: { flex: 1 },
+});
+
+/**
+ * The map-first way in. A drawn street plan, not a real map: it only
+ * says what the next screen is. That screen asks for location when the
+ * person taps, and shows real pins — nothing here pretends to be data.
+ */
+function MapEntry() {
+  const { lang } = useLocale();
+  const ar = lang === "ar";
+  const label = ar ? "استكشف الأماكن القريبة على الخريطة" : "Explore places near you on the map";
+  return (
+    <Touchable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => router.push("/nearby")}
+      style={mapStyles.card}
+    >
+      <MapArt />
+      <View style={mapStyles.body}>
+        <View style={homeStyles.flex}>
+          <Text variant="bodyBold" tone="inverse">
+            {ar ? "قريب منك" : "Near you"}
+          </Text>
+          <Text variant="caption" tone="inverseMuted">
+            {ar ? "الأماكن على الخريطة، الأقرب الأول" : "Places on the map, nearest first"}
+          </Text>
+        </View>
+        <View style={mapStyles.go}>
+          <Icon name="navigate" size="sm" color={colors.night} />
+          <Text variant="label" style={{ color: colors.night }}>
+            {ar ? "الخريطة" : "Map"}
+          </Text>
+        </View>
+      </View>
+    </Touchable>
+  );
+}
+
+const mapStyles = StyleSheet.create({
+  card: {
+    marginTop: -spacing.xl,
+    borderRadius: radius.xl,
+    backgroundColor: colors.night,
+    overflow: "hidden",
+    borderWidth: 3,
+    borderColor: colors.ground,
+  },
+  body: { flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.lg },
+  go: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    minHeight: 40,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    backgroundColor: colors.gold,
+  },
 });
