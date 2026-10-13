@@ -1,13 +1,10 @@
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { Screen, Text, Card, Button, spacing } from "@/design";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { VERSION_LABEL } from "@/constants/version";
-import { spacing } from "@/constants/theme";
+import { DesignSystemLink } from "@/features/dev/DesignSystemLink";
 
 export default function AdminAccount() {
   const { user, signOut } = useAuth();
@@ -37,6 +34,7 @@ export default function AdminAccount() {
             }
           }}
         />
+        <DesignSystemLink />
         <Text variant="caption" tone="subtle" style={styles.version}>
           {VERSION_LABEL}
         </Text>

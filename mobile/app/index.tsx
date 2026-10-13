@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { ActivityIndicator, View, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { colors } from "@/constants/theme";
+import { colors } from "@/design/tokens";
 
 /**
  * The gate.

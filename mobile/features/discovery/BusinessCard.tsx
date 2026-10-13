@@ -1,125 +1,57 @@
-import { Image, View, StyleSheet } from "react-native";
-import { Card } from "@/components/ui/Card";
-import { Text } from "@/components/ui/Typography";
-import { Badge } from "@/components/ui/Badge";
-import { money, rating } from "@/lib/format";
-import { colors, radius, spacing } from "@/constants/theme";
+import type { ReactNode } from "react";
+import { BusinessCard as Card, useLocale } from "@/design";
 
 export interface BusinessCardData {
   slug: string;
   nameAr: string;
+  nameEn?: string | null;
   logoImage: string | null;
   coverImage: string | null;
   isVerified: boolean;
   ratingAvg: number | null;
   ratingCount: number;
-  category: { nameAr: string };
-  city: { nameAr: string };
+  category: { nameAr: string; nameEn?: string };
+  city: { nameAr: string; nameEn?: string };
   minPrice?: number | null;
   currency?: string;
   open?: { isOpen: boolean } | null;
 }
 
 /**
- * One business in a list.
- *
- * What it does NOT do is as deliberate as what it does. A business
- * nobody has reviewed shows no rating rather than "0.0 ★", and one with
- * no priced service shows no price rather than "0 ج.م" — both read as
- * a judgement on the business instead of an absence of data, and the
- * web had to have both removed after they shipped.
+ * A business from the API, drawn by the design system's BusinessCard.
+ * Picks the reader's language where the business gave one, and leaves
+ * out what is missing rather than zeroing it (no rating is "New", no
+ * price is no price) — the design system enforces the rest.
  */
 export function BusinessCard({
   business,
   onPress,
   trailing,
+  variant = "row",
 }: {
   business: BusinessCardData;
   onPress?: () => void;
-  /** A remove button on the saved list, say. */
-  trailing?: React.ReactNode;
+  trailing?: ReactNode;
+  variant?: "row" | "feature";
 }) {
-  const score = rating(business.ratingAvg, business.ratingCount);
-  const price = money(business.minPrice ?? null, business.currency ?? "EGP");
-  const image = business.logoImage ?? business.coverImage;
+  const { lang } = useLocale();
+  const en = lang === "en";
 
   return (
-    <Card onPress={onPress} accessibilityLabel={business.nameAr}>
-      <View style={styles.row}>
-        {image ? (
-          <Image
-            source={{ uri: image }}
-            style={styles.thumb}
-            // The name is beside it; announcing the logo twice adds
-            // nothing for a screen reader.
-            accessibilityElementsHidden
-            importantForAccessibility="no"
-          />
-        ) : (
-          <View style={[styles.thumb, styles.thumbFallback]}>
-            <Text variant="heading" tone="jade">
-              {business.nameAr.trim().charAt(0)}
-            </Text>
-          </View>
-        )}
-
-        <View style={styles.body}>
-          <View style={styles.titleRow}>
-            <Text variant="bodyBold" numberOfLines={1} style={styles.name}>
-              {business.nameAr}
-            </Text>
-            {business.isVerified ? <Badge label="موثّق" tone="jade" /> : null}
-          </View>
-
-          <Text variant="caption" tone="subtle" numberOfLines={1}>
-            {business.category.nameAr} · {business.city.nameAr}
-          </Text>
-
-          <View style={styles.metaRow}>
-            {/* Each of these is omitted rather than zeroed when absent. */}
-            {score ? (
-              <Text variant="caption" tone="muted">
-                ★ {score}
-              </Text>
-            ) : null}
-            {price ? (
-              <Text variant="caption" tone="muted">
-                من {price}
-              </Text>
-            ) : null}
-            {business.open ? (
-              <Badge
-                label={business.open.isOpen ? "مفتوح" : "مقفول"}
-                tone={business.open.isOpen ? "ok" : "neutral"}
-              />
-            ) : null}
-          </View>
-        </View>
-
-        {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
-      </View>
-    </Card>
+    <Card
+      variant={variant}
+      name={(en && business.nameEn) || business.nameAr}
+      category={(en && business.category.nameEn) || business.category.nameAr}
+      area={(en && business.city.nameEn) || business.city.nameAr}
+      imageUri={variant === "feature" ? (business.coverImage ?? business.logoImage) : (business.logoImage ?? business.coverImage)}
+      verified={business.isVerified}
+      rating={business.ratingAvg}
+      ratingCount={business.ratingCount}
+      fromPrice={business.minPrice ?? null}
+      currency={business.currency}
+      openNow={business.open ? business.open.isOpen : null}
+      onPress={onPress}
+      trailing={trailing}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  row: { flexDirection: "row", gap: spacing.md, alignItems: "center" },
-  thumb: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface3,
-  },
-  thumbFallback: { alignItems: "center", justifyContent: "center" },
-  body: { flex: 1, gap: 2 },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  name: { flexShrink: 1 },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    marginTop: spacing.xs,
-    flexWrap: "wrap",
-  },
-  trailing: { marginStart: spacing.sm },
-});

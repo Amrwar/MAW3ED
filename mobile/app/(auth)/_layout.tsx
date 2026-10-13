@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { colors } from "@/constants/theme";
+import { colors } from "@/design/tokens";
 
 /**
  * Signing in. Presented as a stack rather than a tab, because it is a

@@ -1,9 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Card } from "@/components/ui/Card";
-import { Text } from "@/components/ui/Typography";
-import { Button } from "@/components/ui/Button";
-import { spacing } from "@/constants/theme";
+import { Card, Text, Button, spacing } from "@/design";
 import { useAuth } from "./AuthProvider";
 import type { AppRole } from "./roles";
 

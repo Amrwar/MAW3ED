@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
-import { FlatList, TextInput, View, StyleSheet } from "react-native";
+import { FlatList, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Text } from "@/components/ui/Typography";
-import { ListState } from "@/components/ui/ListState";
+import { ListState, SearchField, Text, colors, spacing } from "@/design";
 import { BusinessCard } from "@/features/discovery/BusinessCard";
 import { useBusinesses } from "@/features/customer/queries";
 import { num } from "@/lib/format";
-import { colors, radius, spacing, touchTarget } from "@/constants/theme";
 
 /**
  * Search.
@@ -51,20 +49,12 @@ export default function Search() {
       ListHeaderComponent={
         <View style={styles.header}>
           <Text variant="title">ابحث</Text>
-          <TextInput
+          <SearchField
             value={term}
             onChangeText={setTerm}
             placeholder="اسم المكان أو الخدمة"
-            placeholderTextColor={colors.faint}
-            style={styles.input}
-            returnKeyType="search"
-            // Keeps the field clear of autocorrect suggestions that
-            // fight with Arabic input.
-            autoCorrect={false}
             accessibilityLabel="ابحث عن مكان"
-            // Submitting skips the debounce for somebody who typed the
-            // whole thing and pressed search.
-            onSubmitEditing={() => setQuery(term)}
+            onSubmit={() => setQuery(term)}
           />
           {!results.isLoading && results.data ? (
             <Text variant="caption" tone="subtle" style={styles.count}>
@@ -98,17 +88,5 @@ export default function Search() {
 const styles = StyleSheet.create({
   list: { flex: 1 },
   header: { marginBottom: spacing.lg, gap: spacing.md },
-  input: {
-    minHeight: touchTarget,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line2,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.lg,
-    fontSize: 16,
-    color: colors.ink,
-    textAlign: "right",
-    writingDirection: "rtl",
-  },
   count: { marginTop: spacing.xs },
 });

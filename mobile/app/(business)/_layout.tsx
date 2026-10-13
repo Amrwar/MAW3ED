@@ -1,7 +1,6 @@
 import { Redirect, Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { colors, typography, touchTarget } from "@/constants/theme";
+import { bottomNavOptions, tabIcon } from "@/design";
 import { useUnreadCount } from "@/features/notifications/queries";
 
 /**
@@ -39,24 +38,7 @@ export default function BusinessLayout() {
   if (!user?.businessId) return <Redirect href="/(customer)" />;
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.jade,
-        tabBarInactiveTintColor: colors.subtle,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.line,
-          height: touchTarget + 28,
-          paddingTop: 6,
-          paddingBottom: 10,
-        },
-        tabBarLabelStyle: {
-          fontSize: typography.tiny.fontSize,
-          fontWeight: typography.tiny.fontWeight,
-        },
-      }}
-    >
+    <Tabs screenOptions={bottomNavOptions}>
       {TABS.map((tab) => (
         <Tabs.Screen
           key={tab.name}
@@ -64,13 +46,7 @@ export default function BusinessLayout() {
           options={{
             title: tab.title,
             tabBarBadge: tab.name === "notifications" ? unread : undefined,
-            tabBarIcon: ({ color, focused, size }) => (
-              <Ionicons
-                name={focused ? tab.icon : (`${tab.icon}-outline` as never)}
-                size={size ?? 22}
-                color={color}
-              />
-            ),
+            tabBarIcon: tabIcon(tab.icon),
           }}
         />
       ))}

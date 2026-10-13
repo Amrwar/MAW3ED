@@ -1,13 +1,10 @@
 import { useState } from "react";
-import { View, TextInput, StyleSheet, Pressable } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { Button } from "@/components/ui/Button";
+import { Button, Screen, Tabs, Text, TextField, spacing } from "@/design";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { egyptianMobile, emailLogin, loginCode } from "@/features/auth/validation";
 import { messageFor } from "@/lib/api/errors";
-import { colors, radius, spacing, touchTarget } from "@/constants/theme";
 
 /**
  * Signing in.
@@ -17,49 +14,35 @@ import { colors, radius, spacing, touchTarget } from "@/constants/theme";
  * and staff with email and password. Phone first — most people opening
  * the app are customers.
  *
- * The error shown is the server's own message. It is written in Arabic
- * for a person, and replacing it with something of our own would be
- * both more work and less accurate.
+ * It opens on night — Deep Anchor's colour — as the app's front door.
+ * The error shown is the server's own message, written in Arabic for a
+ * person.
  */
 
 type Mode = "phone" | "email";
+
+const MODES = [
+  { value: "phone", label: "رقم الموبايل" },
+  { value: "email", label: "أصحاب الأعمال" },
+] as const;
 
 export default function Login() {
   const [mode, setMode] = useState<Mode>("phone");
 
   return (
-    <Screen dark>
+    <Screen dark edges="both">
       <View style={styles.header}>
-        <Text variant="display" tone="inverse">
+        <Text variant="display" tone="inverse" accessibilityRole="header">
           أهلًا بيك
         </Text>
-        <Text variant="body" tone="inverse" style={styles.subtitle}>
+        <Text variant="body" tone="inverseMuted">
           سجّل دخولك عشان تشوف حجوزاتك وتدير نشاطك.
         </Text>
       </View>
 
-      <View style={styles.switcher} accessibilityRole="tablist">
-        {(
-          [
-            ["phone", "رقم الموبايل"],
-            ["email", "أصحاب الأعمال"],
-          ] as const
-        ).map(([value, label]) => (
-          <Pressable
-            key={value}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: mode === value }}
-            onPress={() => setMode(value)}
-            style={[styles.tab, mode === value && styles.tabActive]}
-          >
-            <Text variant="label" tone="inverse">
-              {label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <Tabs options={MODES} value={mode} onChange={setMode} tone="night" />
 
-      {mode === "phone" ? <PhoneForm /> : <EmailForm />}
+      <View style={styles.form}>{mode === "phone" ? <PhoneForm /> : <EmailForm />}</View>
     </Screen>
   );
 }
@@ -103,13 +86,10 @@ function PhoneForm() {
   }
 
   return (
-    <View style={styles.form}>
-      <Text variant="label" tone="inverse" nativeID="phone-label">
-        رقم الموبايل
-      </Text>
-      <TextInput
-        accessibilityLabelledBy="phone-label"
-        accessibilityLabel="رقم الموبايل"
+    <>
+      <TextField
+        tone="night"
+        label="رقم الموبايل"
         value={phone}
         onChangeText={(v) => {
           setPhone(v);
@@ -119,49 +99,38 @@ function PhoneForm() {
         autoComplete="tel"
         textContentType="telephoneNumber"
         placeholder="01xxxxxxxxx"
-        placeholderTextColor={colors.nightSubtle}
-        style={[styles.input, styles.ltr]}
+        ltr
         editable={!busy}
+        error={sent ? null : error}
       />
 
       {sent ? (
-        <>
-          <Text variant="label" tone="inverse" nativeID="code-label" style={styles.spaced}>
-            الكود اللي وصلك على واتساب
-          </Text>
-          <TextInput
-            accessibilityLabelledBy="code-label"
-            accessibilityLabel="كود الدخول"
-            value={code}
-            onChangeText={setCode}
-            keyboardType="number-pad"
-            autoComplete="one-time-code"
-            textContentType="oneTimeCode"
-            maxLength={6}
-            placeholder="______"
-            placeholderTextColor={colors.nightSubtle}
-            style={[styles.input, styles.ltr, styles.code]}
-            onSubmitEditing={() => codeOk && !busy && verify()}
-            autoFocus
-          />
-        </>
-      ) : null}
-
-      {error ? (
-        <Text variant="caption" style={styles.error} accessibilityLiveRegion="polite">
-          {error}
-        </Text>
+        <TextField
+          tone="night"
+          label="الكود اللي وصلك على واتساب"
+          value={code}
+          onChangeText={setCode}
+          keyboardType="number-pad"
+          autoComplete="one-time-code"
+          textContentType="oneTimeCode"
+          maxLength={6}
+          placeholder="______"
+          ltr
+          autoFocus
+          error={error}
+          onSubmitEditing={() => codeOk && !busy && verify()}
+        />
       ) : null}
 
       {sent ? (
         <>
-          <Button label="دخول" onPress={verify} disabled={!codeOk || busy} loading={busy} style={styles.submit} />
-          <Button label="ابعت الكود تاني" variant="ghost" onPress={send} disabled={busy} />
+          <Button label="دخول" onPress={verify} disabled={!codeOk || busy} loading={busy} fullWidth />
+          <Button label="ابعت الكود تاني" variant="ghost" onPress={send} disabled={busy} fullWidth />
         </>
       ) : (
-        <Button label="ابعت الكود" onPress={send} disabled={!phoneOk || busy} loading={busy} style={styles.submit} />
+        <Button label="ابعت الكود" onPress={send} disabled={!phoneOk || busy} loading={busy} fullWidth />
       )}
-    </View>
+    </>
   );
 }
 
@@ -188,13 +157,10 @@ function EmailForm() {
   }
 
   return (
-    <View style={styles.form}>
-      <Text variant="label" tone="inverse" nativeID="email-label">
-        البريد الإلكتروني
-      </Text>
-      <TextInput
-        accessibilityLabelledBy="email-label"
-        accessibilityLabel="البريد الإلكتروني"
+    <>
+      <TextField
+        tone="night"
+        label="البريد الإلكتروني"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -202,72 +168,25 @@ function EmailForm() {
         keyboardType="email-address"
         textContentType="emailAddress"
         placeholder="example@email.com"
-        placeholderTextColor={colors.nightSubtle}
-        style={[styles.input, styles.ltr]}
+        ltr
       />
-
-      <Text variant="label" tone="inverse" nativeID="password-label" style={styles.spaced}>
-        كلمة المرور
-      </Text>
-      <TextInput
-        accessibilityLabelledBy="password-label"
-        accessibilityLabel="كلمة المرور"
+      <TextField
+        tone="night"
+        label="كلمة المرور"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
         autoComplete="current-password"
         textContentType="password"
-        placeholderTextColor={colors.nightSubtle}
-        style={styles.input}
+        error={error}
         onSubmitEditing={() => canSubmit && submit()}
       />
-
-      {error ? (
-        <Text variant="caption" style={styles.error} accessibilityLiveRegion="polite">
-          {error}
-        </Text>
-      ) : null}
-
-      <Button label="تسجيل الدخول" onPress={submit} disabled={!canSubmit} loading={busy} style={styles.submit} />
-    </View>
+      <Button label="تسجيل الدخول" onPress={submit} disabled={!canSubmit} loading={busy} fullWidth />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { marginTop: spacing.xxl, marginBottom: spacing.xl },
-  subtitle: { marginTop: spacing.sm, color: colors.nightText },
-  switcher: {
-    flexDirection: "row",
-    gap: spacing.xs,
-    padding: spacing.xs,
-    borderRadius: radius.md,
-    backgroundColor: colors.night2,
-    marginBottom: spacing.xl,
-  },
-  tab: {
-    flex: 1,
-    minHeight: touchTarget - 8,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.sm,
-  },
-  tabActive: { backgroundColor: colors.jade },
-  form: { gap: spacing.sm },
-  spaced: { marginTop: spacing.lg },
-  input: {
-    minHeight: touchTarget,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.nightLine,
-    backgroundColor: colors.night2,
-    color: colors.inverse,
-    paddingHorizontal: spacing.lg,
-    fontSize: 16,
-    writingDirection: "auto",
-  },
-  // Numbers and addresses read left to right inside the Arabic layout.
-  ltr: { writingDirection: "ltr", textAlign: "left" },
-  code: { letterSpacing: 8, fontSize: 20 },
-  error: { color: "#FCA5A5", marginTop: spacing.sm },
-  submit: { marginTop: spacing.xl },
+  header: { marginTop: spacing.xxl, marginBottom: spacing.xl, gap: spacing.sm },
+  form: { gap: spacing.lg, marginTop: spacing.xl },
 });

@@ -162,3 +162,38 @@ MAW3ED_API_URL=http://localhost:3100 npx vitest run features/auth/auth.integrati
    EAS.
 4. Store listings, privacy labels and screenshots. Not part of this
    phase.
+
+## Design system (`mobile/design/`)
+
+Screens import from `@/design` only — never a raw colour, size or font.
+The showcase at `app/dev/design-system.tsx` (development and staging
+builds; reachable from any Account screen) renders every component, and
+its language switch flips the whole app.
+
+- **Tokens** (`tokens.ts`): the web's palette by value — `tokens.test.ts`
+  fails if any colour drifts from `src/app/globals.css` or any text
+  pairing drops below 4.5:1 — plus Almarai type, spacing, radius,
+  elevation (iOS shadow + Android elevation), motion and breakpoints.
+- **Deep Anchor on mobile**: `night` is the anchor (sign-in, dark
+  headers, toasts), content lives on light `ground`, white `surface`
+  cards are the bright things, jade is the one accent.
+- **RTL is structural** (`locale.tsx`): the locale sets `direction` on
+  the root view (and on every Modal, which is a separate native root);
+  Yoga resolves every `start`/`end`. Text alignment comes from `Text`,
+  arrows from `Icon`'s directional set, built-in words from `strings.ts`.
+  `rtl.test.ts` fails on any `marginLeft`/`right:`/fixed `textAlign`,
+  any `I18nManager`, or any colour literal outside the tokens.
+- **Responsive** (`layout.ts`): one `useLayout()` — columns, gutter and a
+  capped content width — used by `Screen`, sheets and grids. Nothing is
+  built twice for phone and tablet.
+- **Accessibility**: 48pt targets everywhere (hitSlop where the visual is
+  smaller), capped Dynamic Type per text style, labels on every control,
+  state as `aria-*` (read on iOS, Android and web), one summarising label
+  per card, announced toasts, reduced-motion-aware skeletons.
+
+Components: Text, Icon, Touchable, Button, IconButton, TextField,
+SearchField, Select, Card, BusinessCard, ServiceCard, StaffCard,
+BookingCard, Tabs, Chip, Badge, Avatar, Rating, RatingInput, Header,
+Screen, bottom navigation (`bottomNavOptions`/`tabIcon`), Sheet, Dialog,
+ConfirmDialog, Toast, Loading, Skeleton, EmptyState, ErrorState,
+ListState, DateStrip, Calendar, TimeSlots.

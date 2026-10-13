@@ -1,15 +1,12 @@
 import { useMemo, useState } from "react";
 import { View, StyleSheet } from "react-native";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Screen, Text, Button, Card, spacing } from "@/design";
 import { useAnalytics } from "@/features/business/queries";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { VERSION_LABEL } from "@/constants/version";
 import { money, num } from "@/lib/format";
-import { spacing } from "@/constants/theme";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
+import { DesignSystemLink } from "@/features/dev/DesignSystemLink";
 
 /**
  * The owner's account.
@@ -112,6 +109,8 @@ export default function BusinessAccount() {
             }
           }}
         />
+
+        <DesignSystemLink />
 
         <Text variant="caption" tone="subtle" style={styles.version}>
           {VERSION_LABEL}

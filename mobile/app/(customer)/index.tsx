@@ -1,15 +1,10 @@
 import { useRouter } from "expo-router";
 import { View, StyleSheet } from "react-native";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { ListState } from "@/components/ui/ListState";
+import { Screen, Text, Button, Card, ListState, spacing } from "@/design";
 import { BusinessCard } from "@/features/discovery/BusinessCard";
 import { BookingCard } from "@/features/bookings/BookingCard";
 import { useBusinesses, useMyBookings } from "@/features/customer/queries";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { spacing } from "@/constants/theme";
 
 /**
  * Home.

@@ -1,12 +1,8 @@
 import { RefreshControl, ScrollView, View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { Button } from "@/components/ui/Button";
-import { ListState } from "@/components/ui/ListState";
+import { Screen, Text, Button, ListState, colors, spacing } from "@/design";
 import { BusinessCard } from "@/features/discovery/BusinessCard";
 import { useFavorites, useRemoveFavorite } from "@/features/customer/queries";
-import { colors, spacing } from "@/constants/theme";
 import { SignInGate } from "@/features/auth/SignInGate";
 
 /**

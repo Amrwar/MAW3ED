@@ -1,19 +1,14 @@
 import { useState } from "react";
 import { Switch, View, StyleSheet } from "react-native";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { ListState } from "@/components/ui/ListState";
+import { Screen, Text, Button, Card, Badge, ListState, colors, spacing } from "@/design";
 import { useProfile, useUpdateProfile } from "@/features/customer/queries";
 import { useNotifications } from "@/features/notifications/queries";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { VERSION_LABEL } from "@/constants/version";
 import { num } from "@/lib/format";
-import { colors, spacing } from "@/constants/theme";
 import { SignInGate } from "@/features/auth/SignInGate";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
+import { DesignSystemLink } from "@/features/dev/DesignSystemLink";
 
 /**
  * Account.
@@ -157,6 +152,7 @@ function Account() {
           />
 
           {/* Quiet, but the first thing worth knowing in a bug report. */}
+          <DesignSystemLink />
           <Text variant="caption" tone="subtle" style={styles.version}>
             {VERSION_LABEL}
           </Text>
