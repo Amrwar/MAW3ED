@@ -86,9 +86,18 @@ describe("rescheduling", () => {
 
   // The booking keeps its staff, resource and branch; slots fetched
   // without them included times the server then refused with 409.
+  // The flow now asks the booking's own slots endpoint, which reads all
+  // three from the booking itself (and leaves the booking out).
   it("asks for slots for the booking's own staff, resource and branch", () => {
-    for (const key of ["staffMemberId", "resourceId", "branchId"]) {
-      expect(source).toMatch(new RegExp(`query\\.set\\("${key}"`));
+    expect(source).toContain("/api/public/booking/${token}/slots");
+    const route = read("src/app/api/public/booking/[token]/slots/route.ts");
+    for (const key of [
+      "staffMemberId: booking.staffMemberId",
+      "resourceId: booking.resourceId",
+      "branchId: booking.branchId",
+      "excludeBookingId: booking.id",
+    ]) {
+      expect(route).toContain(key);
     }
   });
 });

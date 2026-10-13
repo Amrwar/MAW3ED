@@ -23,6 +23,7 @@ import {
 import { BusinessCard } from "@/features/discovery/BusinessCard";
 import { startSearch, type Arrival } from "@/features/discovery/searchState";
 import { BookingCard } from "@/features/bookings/BookingCard";
+import { statusLabelFor } from "@/features/bookings/status";
 import { useBusinesses, useFacets, useMyBookings } from "@/features/customer/queries";
 import { useHomeCity } from "@/features/customer/useHomeCity";
 import { useUnreadCount } from "@/features/notifications/queries";
@@ -213,15 +214,21 @@ export default function CustomerHome() {
           <Section title={T("موعدك الجاي", "Your next appointment")}>
             <BookingCard
               title={ar ? next.business.nameAr : (next.business.nameEn ?? next.business.nameAr)}
-              subtitle={next.serviceName}
+              subtitle={(!ar && next.serviceNameEn) || next.serviceName}
               date={next.date}
               startTime={next.startTime}
               endTime={next.endTime}
               status={next.status}
+              statusLabel={statusLabelFor(next.status, lang)}
               price={next.totalPrice}
               currency={next.currency}
               minutesUntil={next.minutesUntil}
-              onPress={() => router.push("/(customer)/bookings")}
+              // Straight to the booking itself — where it can be moved or cancelled.
+              onPress={() =>
+                next.accessToken
+                  ? router.push({ pathname: "/booking/[token]", params: { token: next.accessToken } })
+                  : router.push("/(customer)/bookings")
+              }
             />
           </Section>
         ) : null}

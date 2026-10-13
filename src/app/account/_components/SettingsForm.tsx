@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Alert from "@/components/ui/Alert";
 import Toggle from "@/components/ui/Toggle";
+import DeleteAccount from "./DeleteAccount";
 import type { AccountUser } from "@/lib/account/queries";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -76,6 +77,7 @@ export default function SettingsForm({ user }: { user: AccountUser }) {
         <p className="m-0 mt-2 text-[0.84375rem] leading-relaxed text-[var(--color-muted)]">
           {s.dangerBody}
         </p>
+        <DeleteAccount />
       </section>
     </div>
   );

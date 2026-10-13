@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: Params) {
 
     const body   = await req.json();
     const parsed = rescheduleSchema.safeParse(body);
-    if (!parsed.success) return err(parsed.error.issues[0].message, 422);
+    if (!parsed.success) return err(parsed.error.issues[0].message, 422, { code: "invalid" });
 
     const { date: newDate, startTime: newStartTime } = parsed.data;
 
@@ -56,19 +56,19 @@ export async function POST(req: Request, { params }: Params) {
       },
     });
 
-    if (!booking) return err("الحجز غير موجود", 404);
+    if (!booking) return err("الحجز غير موجود", 404, { code: "not-found" });
 
     // ── Status gate ──────────────────────────────────────────────────────────
     // ARRIVED and IN_PROGRESS are deliberately absent: once somebody is
     // in the building, moving the appointment is the owner's job, not a
     // self-service action.
     if (!["PENDING", "CONFIRMED"].includes(booking.status)) {
-      return err("لا يمكن إعادة جدولة هذا الحجز", 400);
+      return err("لا يمكن إعادة جدولة هذا الحجز", 400, { code: "not-changeable" });
     }
 
     // ── Current booking must still be far enough ahead, on Cairo's clock ────
     if (minutesUntilStart(booking.date, booking.startTime) <= CUTOFF_HOURS * 60) {
-      return err("لا يمكن إعادة جدولة الحجز قبل الموعد بأقل من ساعتين", 400);
+      return err("لا يمكن إعادة جدولة الحجز قبل الموعد بأقل من ساعتين", 400, { code: "too-late" });
     }
 
     // ── Is the new time actually available? ─────────────────────────────────
@@ -94,6 +94,7 @@ export async function POST(req: Request, { params }: Params) {
           ? "لا يمكن الحجز في تاريخ ماضٍ"
           : "الموعد ده مش متاح، اختر وقت تاني",
         409,
+        { code: "slot-unavailable", reason: availability.reason },
       );
     }
 
@@ -130,7 +131,7 @@ export async function POST(req: Request, { params }: Params) {
       // Somebody took the slot between the check above and this write.
       const message = e instanceof Prisma.PrismaClientKnownRequestError ? e.message : String(e);
       if (message.includes("booking_no_overlap")) {
-        return err("حد تاني حجز الموعد ده دلوقتي، اختر وقت تاني", 409);
+        return err("حد تاني حجز الموعد ده دلوقتي، اختر وقت تاني", 409, { code: "slot-taken" });
       }
       throw e;
     }

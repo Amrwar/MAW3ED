@@ -154,6 +154,16 @@ export function Counter({
   );
 }
 
+/** A given rating, read as "4 out of 5". */
+export function Stars({ value }: { value: number }) {
+  const { t } = useLocale();
+  return (
+    <Text variant="label" style={{ color: colors.star }} accessibilityLabel={t("ratingOf").replace("{n}", String(value))}>
+      {"★".repeat(value) + "☆".repeat(Math.max(0, 5 - value))}
+    </Text>
+  );
+}
+
 /** A note set apart — a warning, a policy, a hint. */
 export function Notice({ icon, tone = "info", children }: { icon: IconName; tone?: "info" | "warn" | "danger" | "ok"; children: ReactNode }) {
   const fg = tone === "danger" ? colors.danger : tone === "warn" ? colors.warn : tone === "ok" ? colors.ok : colors.info;

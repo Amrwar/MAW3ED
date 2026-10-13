@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useCallback } from "react";
 import { ActivityIndicator, View, StyleSheet } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { colors } from "@/design/tokens";
 
@@ -21,14 +21,16 @@ const SPACE = { admin: "/(admin)", business: "/(business)", customer: "/(custome
 export default function Index() {
   const { restoring, role, user } = useAuth();
 
-  useEffect(() => {
-    if (restoring) return;
-    if (!user) {
-      router.replace("/(customer)");
-      return;
-    }
-    router.replace(SPACE[role]);
-  }, [restoring, role, user]);
+  // Only while this screen is the one showing. It sits at the bottom of
+  // the stack under any deep-linked screen — a cold start on
+  // /booking/<token> or a tab's URL mounts it too — and an unconditional
+  // effect replaced that screen with the home tab.
+  useFocusEffect(
+    useCallback(() => {
+      if (restoring) return;
+      router.replace(user ? SPACE[role] : "/(customer)");
+    }, [restoring, role, user]),
+  );
 
   return (
     <View style={styles.container}>

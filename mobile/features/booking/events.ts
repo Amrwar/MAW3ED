@@ -30,7 +30,10 @@ export type BookingEvent =
   | "booking_awaiting_business"
   | "booking_payment_failed"
   | "booking_abandoned"
-  | "booking_calendar_added";
+  | "booking_calendar_added"
+  | "booking_cancelled"
+  | "booking_rescheduled"
+  | "review_submitted";
 
 export function trackBooking(event: BookingEvent, props: AnalyticsProps & { slug: string }) {
   track(event, props);

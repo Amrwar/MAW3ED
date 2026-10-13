@@ -86,7 +86,14 @@ export default function RootLayout() {
                 {/* The steps walk back with the header's back button; a stray
                     swipe must not drop somebody out of a half-made booking. */}
                 <Stack.Screen name="book/[slug]" options={{ gestureEnabled: false }} />
-                <Stack.Screen name="booking/[token]" />
+                <Stack.Screen name="booking/[token]/index" />
+                <Stack.Screen name="booking/[token]/reschedule" />
+                <Stack.Screen name="booking/[token]/review" />
+                <Stack.Screen name="me/profile" />
+                <Stack.Screen name="me/reviews" />
+                <Stack.Screen name="me/payments" />
+                <Stack.Screen name="me/security" />
+                <Stack.Screen name="me/delete" />
                 <Stack.Screen name="dev/design-system" />
               </Stack>
             </AuthProvider>

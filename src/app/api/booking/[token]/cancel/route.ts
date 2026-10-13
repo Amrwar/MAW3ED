@@ -17,16 +17,16 @@ export async function POST(_req: Request, { params }: Params) {
       include: { business: { select: { nameAr: true } } },
     });
 
-    if (!booking) return err("الحجز غير موجود", 404);
+    if (!booking) return err("الحجز غير موجود", 404, { code: "not-found" });
 
     // Status check
     if (!(CANCELLABLE_STATUSES as readonly string[]).includes(booking.status)) {
-      return err("لا يمكن إلغاء هذا الحجز", 400);
+      return err("لا يمكن إلغاء هذا الحجز", 400, { code: "not-cancellable" });
     }
 
     // Far enough ahead, on Cairo's clock — see self-service.ts.
     if (minutesUntilStart(booking.date, booking.startTime) <= CUTOFF_HOURS * 60) {
-      return err("لا يمكن إلغاء الحجز قبل الموعد بأقل من ساعتين", 400);
+      return err("لا يمكن إلغاء الحجز قبل الموعد بأقل من ساعتين", 400, { code: "too-late" });
     }
 
     await db.booking.update({
