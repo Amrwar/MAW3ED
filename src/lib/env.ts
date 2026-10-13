@@ -70,6 +70,12 @@ const optional = z.object({
   PAYMOB_IFRAME_ID: z.string().optional(),
   PAYMOB_INTEGRATION_ID: z.string().optional(),
 
+  // Local QA only: a stand-in for Paymob's hosted page (paymob-fake.ts).
+  // Ignored in production — the code checks NODE_ENV and VERCEL_ENV too.
+  PAYMOB_FAKE: z.string().optional(),
+  PAYMOB_FAKE_BASE_URL: z.string().optional(),
+  PAYMOB_FAKE_RETURN_URL: z.string().optional(),
+
   // Push (Expo). Optional: with "enhanced push security" on in the Expo
   // dashboard, Expo refuses pushes that do not carry this token.
   EXPO_ACCESS_TOKEN: z.string().optional(),

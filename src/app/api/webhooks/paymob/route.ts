@@ -320,6 +320,10 @@ async function handleBookingSuccess(
   transactionId: string,
   obj: PaymobTransactionObj,
 ): Promise<string> {
+  // What the booking was when the money landed; read inside the
+  // settlement so it is consistent with it.
+  let before: string | null = null;
+
   const { changed } = await settlePayment({
     paymentId: payment.id,
     providerTransactionId: transactionId,
@@ -332,11 +336,13 @@ async function handleBookingSuccess(
         select: { status: true },
       });
       if (!booking) return;
+      before = booking.status;
 
-      // The balance arriving does not re-confirm an already confirmed
-      // booking, and nothing drags a cancelled one back to life.
-      const terminal = ["COMPLETED", "CANCELLED", "NO_SHOW"];
-      if (terminal.includes(booking.status)) return;
+      // Only a booking waiting on this money is confirmed by it. A
+      // balance arriving for somebody already in the chair must not set
+      // them back to CONFIRMED, and nothing drags a cancelled or
+      // finished booking back to life.
+      if (booking.status !== "PENDING_PAYMENT") return;
 
       await tx.booking.update({
         where: { id: settled.bookingId },
@@ -366,6 +372,48 @@ async function handleBookingSuccess(
     method: methodOf(obj),
   });
 
+  // Paid after the hold was released — the customer closed the app and
+  // paid late, or the webhook was delayed past the reaper. The money is
+  // already recorded (above, in its own transaction, so it can never be
+  // lost to what follows). The booking is revived only if its time is
+  // still free: the exclusion constraint decides, and a time somebody
+  // else has taken since is left with them.
+  let revived = false;
+  if (payment.bookingId && before === "FAILED_PAYMENT") {
+    try {
+      const { count } = await db.booking.updateMany({
+        where: { id: payment.bookingId, status: "FAILED_PAYMENT" },
+        data: { status: "CONFIRMED", paymobTransactionId: transactionId },
+      });
+      revived = count === 1;
+    } catch (e) {
+      log.error("[paymob webhook] paid after the slot was released and retaken — needs a refund or a new time", {
+        paymentId: payment.id,
+        bookingId: payment.bookingId,
+        error: e instanceof Error ? e.message.slice(0, 120) : String(e),
+      });
+    }
+    if (!revived) {
+      await db.auditLog
+        .create({
+          data: {
+            actorName: "Paymob",
+            actorRole: "system",
+            action: "payment.paid_after_release",
+            resourceType: "Payment",
+            resourceId: payment.id,
+            summary: "Deposit paid after the booking's time was released and taken; refund or rebook needed.",
+            metadata: { bookingId: payment.bookingId, transactionId, amountCents: payment.amountCents },
+          },
+        })
+        .catch((e) => log.error("[paymob webhook] could not write audit entry", e));
+      // The customer is told the money arrived; the booking screen says
+      // the time was released and support will sort it out.
+      void notify({ type: "payment.received", bookingId: payment.bookingId, amount: payment.amountCents / 100, transactionId });
+      return "paid-after-release";
+    }
+  }
+
   if (payment.bookingId) {
     // The transaction id goes into the event so a retry computes the
     // same deduplication key and the customer is not thanked twice.
@@ -375,12 +423,12 @@ async function handleBookingSuccess(
       amount: payment.amountCents / 100,
       transactionId,
     });
-    if (payment.kind !== "BOOKING_BALANCE") {
+    if (payment.kind !== "BOOKING_BALANCE" && (before === "PENDING_PAYMENT" || revived)) {
       void notify({ type: "booking.confirmed", bookingId: payment.bookingId });
     }
   }
 
-  return "booking-settled";
+  return revived ? "booking-revived" : "booking-settled";
 }
 
 /**

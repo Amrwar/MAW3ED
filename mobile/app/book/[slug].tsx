@@ -389,7 +389,7 @@ function Flow({
         status: b.status,
         replay: Boolean(res.idempotentReplay),
       });
-      if (res.paymentUrl) await rememberPayment(b.accessToken, res.paymentUrl);
+      if (res.paymentUrl) await rememberPayment(b.accessToken, res.paymentUrl, (!ar && p.nameEn) || p.nameAr);
 
       finished.current = true;
       await clearSaved(p.slug);

@@ -30,7 +30,8 @@ import { trackBooking } from "@/features/booking/events";
 import { OUTCOME_TONE, notificationLines, outcomeCopy, outcomeOf, shouldPoll, type Outcome } from "@/features/booking/outcome";
 import { POLL_FOR_MS, useBooking } from "@/features/booking/queries";
 import { useCancelBooking } from "@/features/booking/manage";
-import { forgetPayment, paymentPage } from "@/features/booking/storage";
+import { forgetPayment, paymentPage, rememberPayment } from "@/features/booking/storage";
+import { api } from "@/lib/api/client";
 import { directionsUrl, pinDirectionsUrl, telUrl, whatsappUrl } from "@/features/profile/profile";
 import { ApiError, messageFor } from "@/lib/api/errors";
 import { config } from "@/lib/config";
@@ -180,6 +181,56 @@ function Details({
     [b.business.slug, b.reference, onRefresh],
   );
 
+  // The website's return page hands an app booking back with
+  // maw3ed://booking/<token>; when it does, the in-app browser is closed
+  // and the status re-read — the deep link itself is not trusted for it.
+  useEffect(() => {
+    const sub = Linking.addEventListener("url", ({ url }) => {
+      if (url.includes(`booking/${token}`)) {
+        WebBrowser.dismissBrowser();
+        onRefresh();
+      }
+    });
+    return () => sub.remove();
+  }, [token, onRefresh]);
+
+  /**
+   * A new payment page from the server, for a booking whose page was lost
+   * or expired. The server refuses while an earlier page could still be
+   * paid — two live pages could both be paid.
+   */
+  const [payNote, setPayNote] = useState<string | null>(null);
+  const resumePayment = async () => {
+    setPayNote(null);
+    setPaying(true);
+    try {
+      const { paymentUrl } = await api.post<{ paymentUrl: string }>(`/api/public/booking/${encodeURIComponent(token)}/pay`, undefined, {
+        anonymous: true,
+        timeoutMs: 30_000,
+      });
+      await rememberPayment(token, paymentUrl, (!ar && b.business.nameEn) || b.business.nameAr);
+      setPayUrl(paymentUrl);
+      await openPayment(paymentUrl);
+    } catch (e) {
+      const code = e instanceof ApiError ? e.code : undefined;
+      if (code === "payment-in-progress") {
+        const at = e instanceof ApiError && typeof e.detail.retryAt === "string" ? new Date(e.detail.retryAt) : null;
+        const when = at ? at.toLocaleTimeString(ar ? "ar-EG" : "en-GB", { hour: "numeric", minute: "2-digit", timeZone: "Africa/Cairo" }) : "";
+        setPayNote(
+          T(
+            `في صفحة دفع لسه شغالة. لو دفعت فيها، التأكيد جاي. لو لأ، تقدر تفتح صفحة جديدة بعد ${when}.`,
+            `A payment page is still open for this booking. If you paid there, confirmation is on its way. If not, you can open a new page after ${when}.`,
+          ),
+        );
+      } else if (code === "already-paid" || code === "not-awaiting-payment") {
+        onRefresh();
+      } else {
+        setPayNote(T("معرفناش نفتح صفحة الدفع. جرّب تاني بعد شوية.", "We couldn't open the payment page. Try again in a moment."));
+      }
+      setPaying(false);
+    }
+  };
+
   // Straight from the summary: open the payment page once, by itself.
   useEffect(() => {
     if (!autoPay || opened.current || outcome !== "awaiting-payment" || !payUrl) return;
@@ -265,23 +316,24 @@ function Details({
         {/* ── Payment that still needs doing ── */}
         {outcome === "awaiting-payment" ? (
           <View style={styles.list}>
-            {payUrl ? (
-              <Button
-                label={T("كمّل الدفع", "Continue to payment")}
-                icon="card-outline"
-                fullWidth
-                loading={paying}
-                onPress={() => openPayment(payUrl)}
-              />
-            ) : (
+            <Button
+              label={T("كمّل الدفع", "Continue to payment")}
+              icon="card-outline"
+              fullWidth
+              loading={paying}
+              onPress={() => (payUrl ? openPayment(payUrl) : resumePayment())}
+            />
+            {payNote ? (
               <Notice icon="information-circle-outline" tone="warn">
-                <Text variant="body">
-                  {T(
-                    "صفحة الدفع مش متاحة على الجهاز ده. لو مدفعتش، الميعاد هيتساب لوحده خلال ساعتين وتقدر تحجز من جديد.",
-                    "The payment page isn't available on this device. If you didn't pay, the time is released automatically within two hours and you can book again.",
-                  )}
-                </Text>
+                <Text variant="body">{payNote}</Text>
               </Notice>
+            ) : (
+              <Text variant="caption" tone="subtle">
+                {T(
+                  "الميعاد محجوز لك لحد ما تدفع. لو مدفعتش، بيتساب لوحده بعد ساعتين.",
+                  "Your time is held until you pay. If you don't, it's released automatically after two hours.",
+                )}
+              </Text>
             )}
             {stillWaiting ? (
               <Button variant="outline" icon="refresh" label={T("اتأكد تاني", "Check again")} fullWidth onPress={onRefresh} />

@@ -79,6 +79,18 @@ export function outcomeCopy(outcome: Outcome, lang: Lang, b: Pick<PublicBooking,
             ),
           };
     case "payment-failed":
+      // The deposit landed after the hold had been released (a late
+      // payment or a delayed confirmation) and the time was taken.
+      if (b.payment?.status === "SUCCEEDED") {
+        return {
+          title: T(lang, "الدفع وصل بعد ما الميعاد اتساب", "Payment arrived after your time was released"),
+          body: T(
+            lang,
+            "العربون اتسجّل، بس الميعاد كان اتحجز لحد تاني. كلّم المكان أو دعم مواعيد برقم الحجز عشان ترتّب ميعاد جديد أو استرداد.",
+            "Your deposit was recorded, but the time had been booked by someone else. Contact the business or Maw3ed support with your reference to arrange a new time or a refund.",
+          ),
+        };
+      }
       return {
         title: T(lang, "الدفع ماكملش", "Payment wasn't completed"),
         body: T(lang, "الحجز ماتأكدش ومفيش فلوس اتخصمت. تقدر تحجز من جديد.", "The booking wasn't confirmed and the deposit wasn't taken. You can book again."),

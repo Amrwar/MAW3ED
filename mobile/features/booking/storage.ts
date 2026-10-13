@@ -81,9 +81,9 @@ export async function clearSaved(slug: string): Promise<void> {
  */
 const PAY_PREFIX = "maw3ed.pay.";
 
-export async function rememberPayment(token: string, url: string): Promise<void> {
+export async function rememberPayment(token: string, url: string, label?: string): Promise<void> {
   try {
-    await AsyncStorage.setItem(PAY_PREFIX + token, JSON.stringify({ url, at: Date.now() }));
+    await AsyncStorage.setItem(PAY_PREFIX + token, JSON.stringify({ url, at: Date.now(), label: label ?? null }));
   } catch {
     /* best effort */
   }
@@ -94,13 +94,38 @@ export async function paymentPage(token: string, now = Date.now()): Promise<stri
     const raw = await AsyncStorage.getItem(PAY_PREFIX + token);
     if (!raw) return null;
     const { url, at } = JSON.parse(raw) as { url: string; at: number };
-    if (now - at > PAYMENT_TTL_MS) {
-      await AsyncStorage.removeItem(PAY_PREFIX + token);
-      return null;
-    }
+    // Past Paymob's hour the page cannot be paid; the entry stays for
+    // Home's reminder, and the booking screen asks the server for a new one.
+    if (now - at > PAYMENT_TTL_MS) return null;
     return url;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Payments this device started and has not seen finish — for Home's
+ * "finish your payment" reminder after the app was closed mid-payment.
+ * Only a reminder: the booking screen asks the server what happened.
+ */
+export async function unfinishedPayments(now = Date.now()): Promise<{ token: string; label: string | null }[]> {
+  try {
+    const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(PAY_PREFIX));
+    const out: { token: string; label: string | null }[] = [];
+    for (const k of keys) {
+      const raw = await AsyncStorage.getItem(k);
+      if (!raw) continue;
+      const { at, label } = JSON.parse(raw) as { at: number; label?: string | null };
+      // A held booking is released after two hours; past that there is nothing to finish.
+      if (now - at > 2 * 60 * 60 * 1000) {
+        await AsyncStorage.removeItem(k);
+        continue;
+      }
+      out.push({ token: k.slice(PAY_PREFIX.length), label: label ?? null });
+    }
+    return out;
+  } catch {
+    return [];
   }
 }
 

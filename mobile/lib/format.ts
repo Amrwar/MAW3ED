@@ -35,8 +35,12 @@ const CURRENCY: Record<string, Record<Lang, string>> = {
  */
 export function money(value: number | null, currency = "EGP", lang: Lang = "ar"): string | null {
   if (value === null) return null;
+  // Whole pounds without decimals; anything else to the piastre, always
+  // two places — "462.50", never "462.5".
+  const decimals = value % 1 === 0 ? 0 : 2;
   const formatted = new Intl.NumberFormat(localeFor(lang), {
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   }).format(value);
   const label = CURRENCY[currency]?.[lang] ?? currency;
   return lang === "en" ? `${label} ${formatted}` : `${formatted} ${label}`;
