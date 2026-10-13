@@ -4,11 +4,12 @@ import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Typography";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { useAnalytics } from "@/hooks/useBusinessData";
-import { useAuth } from "@/stores/auth";
+import { useAnalytics } from "@/features/business/queries";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { VERSION_LABEL } from "@/constants/version";
 import { money, num } from "@/lib/format";
 import { spacing } from "@/constants/theme";
+import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 
 /**
  * The owner's account.
@@ -23,7 +24,7 @@ import { spacing } from "@/constants/theme";
  * genuinely have both.
  */
 export default function BusinessAccount() {
-  const { user, roles, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
 
   const { monthStart, today } = useMemo(() => {
@@ -95,15 +96,8 @@ export default function BusinessAccount() {
           ) : null}
         </Card>
 
-        {/* Only for accounts that are actually both. */}
-        {roles.includes("customer") && roles.includes("business") ? (
-          <Card>
-            <Text variant="bodyBold">حجوزاتك الشخصية</Text>
-            <Text variant="caption" tone="muted" style={styles.row}>
-              نفس الحساب بيقدر يحجز زي أي عميل.
-            </Text>
-          </Card>
-        ) : null}
+        {/* The same account can book like any customer, or administer. */}
+        <RoleSwitcher current="business" />
 
         <Button
           label="تسجيل الخروج"

@@ -4,8 +4,8 @@ import { FlatList, TextInput, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/Typography";
 import { ListState } from "@/components/ui/ListState";
-import { BusinessCard } from "@/components/business/BusinessCard";
-import { useBusinesses } from "@/hooks/useCustomerData";
+import { BusinessCard } from "@/features/discovery/BusinessCard";
+import { useBusinesses } from "@/features/customer/queries";
 import { num } from "@/lib/format";
 import { colors, radius, spacing, touchTarget } from "@/constants/theme";
 

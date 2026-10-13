@@ -3,9 +3,10 @@ import { Pressable, RefreshControl, ScrollView, View, StyleSheet } from "react-n
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Typography";
 import { ListState } from "@/components/ui/ListState";
-import { BookingCard } from "@/components/business/BookingCard";
-import { useMyBookings } from "@/hooks/useCustomerData";
+import { BookingCard } from "@/features/bookings/BookingCard";
+import { useMyBookings } from "@/features/customer/queries";
 import { colors, radius, spacing, touchTarget } from "@/constants/theme";
+import { SignInGate } from "@/features/auth/SignInGate";
 
 type Tab = "upcoming" | "history";
 
@@ -20,7 +21,15 @@ type Tab = "upcoming" | "history";
  * Pull to refresh, since the usual reason to open this screen is to
  * check whether something changed.
  */
-export default function MyBookings() {
+export default function MyBookingsScreen() {
+  return (
+    <SignInGate title="حجوزاتي" reason="عشان تشوف مواعيدك الجاية وتديرها.">
+      <MyBookings />
+    </SignInGate>
+  );
+}
+
+function MyBookings() {
   const [tab, setTab] = useState<Tab>("upcoming");
   const query = useMyBookings(tab);
   const bookings = query.data?.bookings ?? [];

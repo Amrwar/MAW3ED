@@ -1,14 +1,17 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, typography, touchTarget } from "@/constants/theme";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { useUnreadCount } from "@/features/notifications/queries";
 
 /**
  * What a customer does: find a place, manage what they booked, and
  * their own account.
  *
- * Five tabs, which is the most a phone bar holds before the labels
- * start truncating. Notifications live inside Account rather than
- * taking a sixth — they are checked occasionally, not constantly.
+ * Six tabs. Notifications has its own, with the unread count on it:
+ * booking confirmations and changes are what a customer most needs to
+ * see, and a count buried inside Account is a count nobody sees. Labels
+ * are short so six fit on a 320px phone.
  *
  * Outline icons that fill when active, which is the convention on both
  * platforms and means the selected tab is marked twice over — by shape
@@ -21,10 +24,14 @@ const TABS = [
   { name: "search", title: "ابحث", icon: "search" },
   { name: "bookings", title: "حجوزاتي", icon: "calendar" },
   { name: "favorites", title: "المحفوظات", icon: "heart" },
+  { name: "notifications", title: "الإشعارات", icon: "notifications" },
   { name: "account", title: "حسابي", icon: "person" },
 ] as const;
 
 export default function CustomerLayout() {
+  const { user } = useAuth();
+  const unread = useUnreadCount(Boolean(user));
+
   return (
     <Tabs
       screenOptions={{
@@ -50,6 +57,7 @@ export default function CustomerLayout() {
           name={tab.name}
           options={{
             title: tab.title,
+            tabBarBadge: tab.name === "notifications" ? unread : undefined,
             tabBarIcon: ({ color, focused, size }) => (
               <Ionicons
                 name={focused ? tab.icon : (`${tab.icon}-outline` as never)}

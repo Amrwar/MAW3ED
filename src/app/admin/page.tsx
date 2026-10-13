@@ -4,6 +4,7 @@ import { can } from "@/lib/admin/permissions";
 import { notFound } from "next/navigation";
 import { AdminHeading, Tiles, AdminTable, Pill, when } from "./_components/AdminBits";
 import { adminMetadata } from "@/lib/admin/meta";
+import { adminOverview } from "@/lib/admin/overview";
 
 export const generateMetadata = adminMetadata("reviews.read", "نظرة عامة");
 
@@ -24,18 +25,17 @@ export default async function AdminOverview() {
   const seeMoney = can(actor.role, "payments.read");
   const seeAudit = can(actor.role, "audit.read");
 
-  const [pendingBiz, totalBiz, suspended, openReports, underReview, paidBookings, recentAudit] =
-    await Promise.all([
-      seeBusinesses ? db.business.count({ where: { status: "PENDING" } }) : 0,
-      seeBusinesses ? db.business.count() : 0,
-      seeBusinesses ? db.business.count({ where: { status: "SUSPENDED" } }) : 0,
-      seeReviews ? db.reviewReport.count({ where: { status: "OPEN" } }) : 0,
-      seeReviews ? db.review.count({ where: { status: "UNDER_REVIEW" } }) : 0,
-      seeMoney ? db.booking.count({ where: { paymobTransactionId: { not: null } } }) : 0,
-      seeAudit
-        ? db.auditLog.findMany({ orderBy: { at: "desc" }, take: 8 })
-        : Promise.resolve([]),
-    ]);
+  // The counts are shared with GET /api/admin/overview, which the app reads.
+  const [counts, recentAudit] = await Promise.all([
+    adminOverview(actor.role),
+    seeAudit ? db.auditLog.findMany({ orderBy: { at: "desc" }, take: 8 }) : Promise.resolve([]),
+  ]);
+  const pendingBiz = counts.pendingBusinesses ?? 0;
+  const totalBiz = counts.totalBusinesses ?? 0;
+  const suspended = counts.suspendedBusinesses ?? 0;
+  const openReports = counts.openReports ?? 0;
+  const underReview = counts.reviewsUnderReview ?? 0;
+  const paidBookings = counts.paidBookings ?? 0;
 
   const tiles: { label: string; value: string; hint?: string; href?: string }[] = [];
   if (seeBusinesses) {

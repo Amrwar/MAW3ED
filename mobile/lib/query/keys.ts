@@ -34,6 +34,11 @@ export const keys = {
     all: ["notifications"] as const,
   },
 
+  admin: {
+    all: ["admin"] as const,
+    overview: ["admin", "overview"] as const,
+  },
+
   business: {
     all: ["business"] as const,
     bookings: (filters: Record<string, string | number | undefined>) =>

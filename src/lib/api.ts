@@ -33,13 +33,20 @@ export const err = (message: string, status = 400) =>
  * app would not be sending both.
  */
 export async function requireSession(): Promise<CallerSession> {
+  const session = await currentCaller();
+  if (session) return session;
+  throw err("غير مصرح", 401);
+}
+
+/**
+ * Whoever is calling — cookie or bearer — or null. For callers that
+ * decide for themselves what an anonymous request gets, such as the
+ * admin guard, which answers 404 rather than 401.
+ */
+export async function currentCaller(): Promise<CallerSession | null> {
   const session = await auth();
   if (session?.user?.id) return session as CallerSession;
-
-  const bearer = await sessionFromBearer();
-  if (bearer) return bearer;
-
-  throw err("غير مصرح", 401);
+  return sessionFromBearer();
 }
 
 /**

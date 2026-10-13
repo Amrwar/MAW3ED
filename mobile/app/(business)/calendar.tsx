@@ -3,8 +3,8 @@ import { Pressable, RefreshControl, ScrollView, View, StyleSheet } from "react-n
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Typography";
 import { ListState } from "@/components/ui/ListState";
-import { BookingCard } from "@/components/business/BookingCard";
-import { useBusinessBookings } from "@/hooks/useBusinessData";
+import { BookingCard } from "@/features/bookings/BookingCard";
+import { useBusinessBookings } from "@/features/business/queries";
 import { longDate, num, shortDate } from "@/lib/format";
 import { colors, radius, spacing, touchTarget } from "@/constants/theme";
 

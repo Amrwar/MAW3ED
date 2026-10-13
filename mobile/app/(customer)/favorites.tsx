@@ -4,9 +4,10 @@ import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Typography";
 import { Button } from "@/components/ui/Button";
 import { ListState } from "@/components/ui/ListState";
-import { BusinessCard } from "@/components/business/BusinessCard";
-import { useFavorites, useRemoveFavorite } from "@/hooks/useCustomerData";
+import { BusinessCard } from "@/features/discovery/BusinessCard";
+import { useFavorites, useRemoveFavorite } from "@/features/customer/queries";
 import { colors, spacing } from "@/constants/theme";
+import { SignInGate } from "@/features/auth/SignInGate";
 
 /**
  * Saved places.
@@ -16,7 +17,15 @@ import { colors, spacing } from "@/constants/theme";
  * exactly when optimism is right; confirming a booking is not, and that
  * one waits for the server.
  */
-export default function Favorites() {
+export default function FavoritesScreen() {
+  return (
+    <SignInGate title="المحفوظات" reason="عشان تحفظ الأماكن اللي عجبتك وترجعلها بسهولة.">
+      <Favorites />
+    </SignInGate>
+  );
+}
+
+function Favorites() {
   const router = useRouter();
   const query = useFavorites();
   const remove = useRemoveFavorite();

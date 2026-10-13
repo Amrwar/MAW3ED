@@ -42,7 +42,7 @@ function reachableStatuses(): Set<string> {
 
 /** The statuses the mobile app offers as buttons. */
 function mobileOffered(): Set<string> {
-  const source = read("mobile/constants/bookingStatus.ts");
+  const source = read("mobile/features/bookings/status.ts");
   const match = source.match(/export function nextActionsFor[\s\S]*$/);
   if (!match) throw new Error("nextActionsFor not found");
   return new Set([...match[0].matchAll(/status:\s*"([A-Z_]+)"/g)].map((m) => m[1]));
@@ -72,7 +72,7 @@ describe("the booking actions the app offers", () => {
   });
 
   it("does not offer a move out of a terminal state", () => {
-    const source = read("mobile/constants/bookingStatus.ts");
+    const source = read("mobile/features/bookings/status.ts");
     for (const terminal of ["COMPLETED", "CANCELLED", "NO_SHOW", "FAILED_PAYMENT"]) {
       // A `case "COMPLETED":` in nextActionsFor would mean offering
       // somebody a way out of a state the API treats as final.

@@ -16,16 +16,30 @@ import type { ExpoConfig, ConfigContext } from "expo/config";
 
 type AppEnv = "development" | "staging" | "production";
 
+const APP_ENVS = ["development", "staging", "production"] as const;
 const APP_ENV = (process.env.APP_ENV ?? "development") as AppEnv;
+if (!APP_ENVS.includes(APP_ENV)) {
+  throw new Error(`APP_ENV must be one of ${APP_ENVS.join(", ")}; got "${APP_ENV}"`);
+}
 
-const API_URL: Record<AppEnv, string> = {
-  // A phone cannot reach "localhost" — that is the phone itself. Set
-  // EXPO_PUBLIC_API_URL to the machine's LAN address (or a tunnel) when
-  // running against a local server.
-  development: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000",
-  staging: process.env.EXPO_PUBLIC_API_URL ?? "https://maw-3-ed.vercel.app",
-  production: "https://www.maw3ed.net",
-};
+/**
+ * Where the API is, per build — from the environment, never written
+ * here. eas.json sets EXPO_PUBLIC_API_URL for the staging and production
+ * profiles; for development, set it to the machine's LAN address (a
+ * phone cannot reach "localhost" — that is the phone itself).
+ *
+ * A staging or production build without it stops here, at build time,
+ * rather than shipping an app pointed at nowhere.
+ */
+function apiUrl(env: AppEnv): string {
+  const url = process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (url) return url.replace(/\/$/, "");
+  if (env === "development") return "http://localhost:3000";
+  throw new Error(`EXPO_PUBLIC_API_URL is required for a ${env} build (see eas.json)`);
+}
+
+/** The domain whose links open this build. Production only — see ios.associatedDomains. */
+const APP_LINK_HOSTS = APP_ENV === "production" ? ["www.maw3ed.net", "maw3ed.net"] : [];
 
 const NAME: Record<AppEnv, string> = {
   development: "موعد Dev",
@@ -72,14 +86,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       CFBundleAllowMixedLocalizations: true,
       // Push on iOS needs the entitlement, which EAS adds from this.
       UIBackgroundModes: ["remote-notification"],
+      // No encryption beyond HTTPS, so App Store Connect does not ask
+      // the export-compliance question on every upload.
+      ITSAppUsesNonExemptEncryption: false,
     },
-    associatedDomains: [
-      // Universal links: tapping a maw3ed.net booking link opens the
-      // app rather than Safari. Requires apple-app-site-association to
-      // be served from the site — see docs/mobile.md.
-      "applinks:www.maw3ed.net",
-      "applinks:maw3ed.net",
-    ],
+    // Universal links: tapping a maw3ed.net link opens the app rather
+    // than Safari. The site serves apple-app-site-association naming the
+    // production bundle only (src/lib/app-links.ts), so only the
+    // production build claims the domain — a staging build on a tester's
+    // phone must not compete with the real app for customers' links.
+    associatedDomains: APP_LINK_HOSTS.map((host) => `applinks:${host}`),
   },
 
   android: {
@@ -92,25 +108,37 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "android.permission.INTERNET",
       "android.permission.POST_NOTIFICATIONS",
     ],
-    intentFilters: [
-      {
-        action: "VIEW",
-        autoVerify: true,
-        data: [{ scheme: "https", host: "www.maw3ed.net", pathPrefix: "/company" }],
-        category: ["BROWSABLE", "DEFAULT"],
-      },
-      {
-        action: "VIEW",
-        autoVerify: true,
-        data: [{ scheme: "https", host: "www.maw3ed.net", pathPrefix: "/booking" }],
-        category: ["BROWSABLE", "DEFAULT"],
-      },
+    // The React Native template adds these; the app reads no files and
+    // draws over nothing, and Play review asks about every one.
+    blockedPermissions: [
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.SYSTEM_ALERT_WINDOW",
     ],
+    // Android App Links, verified against /.well-known/assetlinks.json.
+    // Production only, for the same reason as associatedDomains; the
+    // paths match APP_LINK_PATHS in the web's src/lib/app-links.ts.
+    intentFilters:
+      APP_LINK_HOSTS.length === 0
+        ? []
+        : [
+            {
+              action: "VIEW",
+              autoVerify: true,
+              data: APP_LINK_HOSTS.flatMap((host) =>
+                ["/company", "/booking"].map((pathPrefix) => ({ scheme: "https", host, pathPrefix })),
+              ),
+              category: ["BROWSABLE", "DEFAULT"],
+            },
+          ],
   },
 
   plugins: [
     "expo-router",
-    "expo-secure-store",
+    // Tokens are stored without biometric gating, so no Face ID prompt
+    // text is needed — leaving the default would ship a permission
+    // string for something the app never asks for.
+    ["expo-secure-store", { faceIDPermission: false }],
     [
       // RTL is set natively at build time, not at runtime.
       //
@@ -142,7 +170,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "expo-notifications",
       {
         icon: "./assets/notification-icon.png",
-        color: "#0E7F5E",
+        color: "#0D7A5A",
       },
     ],
   ],
@@ -156,7 +184,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
    */
   extra: {
     appEnv: APP_ENV,
-    apiUrl: API_URL[APP_ENV],
+    apiUrl: apiUrl(APP_ENV),
     eas: {
       // Filled in by `eas init`; left null so a fresh clone does not
       // look like it belongs to somebody else's project.

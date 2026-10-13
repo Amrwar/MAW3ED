@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/Typography";
 import { Card } from "@/components/ui/Card";
 import { ListState } from "@/components/ui/ListState";
-import { useBusinessCustomers } from "@/hooks/useBusinessData";
+import { useBusinessCustomers } from "@/features/business/queries";
 import { money, num, shortDate } from "@/lib/format";
 import { colors, radius, spacing, touchTarget } from "@/constants/theme";
 

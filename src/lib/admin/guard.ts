@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { AdminRole } from "@prisma/client";
-import { auth } from "@/auth";
+import { currentCaller } from "@/lib/api";
 import { db } from "@/lib/db";
 import { can, type Permission } from "./permissions";
 
@@ -29,7 +29,10 @@ export interface AdminActor {
 
 /** Reads the current user's admin role, or null for everybody else. */
 export async function currentAdmin(): Promise<AdminActor | null> {
-  const session = await auth();
+  // Cookie or bearer, so the app's admin space can call the admin API.
+  // Only the id is taken from either: the role is read from the
+  // database below, never from the token.
+  const session = await currentCaller();
   if (!session?.user?.id) return null;
 
   const user = await db.user.findUnique({

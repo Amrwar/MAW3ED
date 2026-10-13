@@ -2,7 +2,7 @@ import { View, StyleSheet } from "react-native";
 import { Card } from "@/components/ui/Card";
 import { Text } from "@/components/ui/Typography";
 import { Badge } from "@/components/ui/Badge";
-import { statusLabel, statusTone } from "@/constants/bookingStatus";
+import { statusLabel, statusTone } from "@/features/bookings/status";
 import { longDate, money, relativeTime, time } from "@/lib/format";
 import { spacing } from "@/constants/theme";
 

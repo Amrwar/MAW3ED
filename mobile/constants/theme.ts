@@ -35,7 +35,9 @@ export const colors = {
   line2: "#D8DCD6",
 
   // Brand
-  jade: "#0E7F5E",
+  // Matches the web token (globals.css): #0E7F5E measured 4.36:1 against
+  // jade-soft; this clears 4.5:1 and looks the same.
+  jade: "#0D7A5A",
   jadeHover: "#0A5F47",
   jadeSoft: "#E9F2EE",
   jadeLine: "#CFE3DB",

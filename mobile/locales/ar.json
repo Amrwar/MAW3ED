@@ -1,7 +1,4 @@
 {
   "CFBundleDisplayName": "موعد",
-  "NSUserNotificationsUsageDescription": "عشان نفكّرك بمواعيدك قبلها بوقت كافي.",
-  "NSPhotoLibraryUsageDescription": "عشان ترفع صور لمكانك أو لخدماتك.",
-  "NSCameraUsageDescription": "عشان تصوّر مكانك أو خدماتك وترفعها على الملف الشخصي.",
-  "NSLocationWhenInUseUsageDescription": "عشان نعرض لك الأماكن القريبة منك."
+  "NSUserNotificationsUsageDescription": "عشان نفكّرك بمواعيدك قبلها بوقت كافي."
 }
