@@ -41,6 +41,9 @@ export interface Business {
   coverImage: string | null;
   logoImage: string | null;
   isVerified: boolean;
+  /** Bookings confirm without the business approving each. */
+  autoConfirm: boolean;
+  acceptsOnlinePayment: boolean;
   /** null when nobody has reviewed it. Never shown as a zero. */
   ratingAvg: number | null;
   ratingCount: number;
@@ -54,6 +57,11 @@ export interface Business {
   open: OpenState;
   /** The first genuinely free appointment, or null. Never a guess. */
   nextSlot: NextSlot | null;
+  /**
+   * Where it is on a map. Not sent yet — businesses have no coordinates
+   * in the schema — so the map view stays hidden (features/discovery/map.ts).
+   */
+  location?: { lat: number; lng: number } | null;
 }
 
 export interface FacetCategory {
@@ -77,6 +85,8 @@ export interface FacetCity {
 export interface Facets {
   categories: (FacetCategory & { children: FacetCategory[] })[];
   cities: FacetCity[];
+  /** Only when a city was asked for. */
+  neighborhoods: { id: string; slug: string; nameAr: string; nameEn: string; cityId: string }[];
 }
 
 export interface BusinessPage {
@@ -84,6 +94,8 @@ export interface BusinessPage {
   total: number;
   page: number;
   pageCount: number;
+  /** The pages end before `total`: price and "soonest" sorts rank the first 240 matches only. */
+  capped?: boolean;
 }
 
 /* ─── A customer's own bookings ──────────────────────────── */
@@ -240,4 +252,61 @@ export interface Analytics {
   revenueByPeriod: { period: string; revenue: number; bookings: number }[];
   bookingsByService: { serviceName: string; bookings: number; revenue: number }[];
   granularity: "day" | "week" | "month";
+}
+
+/* ─── One business, as the public sees it ────────────────── */
+
+/** GET /api/public/[slug] — src/lib/discovery/profile.ts getPublicProfile(). */
+export interface PublicProfile {
+  id: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string | null;
+  taglineAr: string | null;
+  about: string | null;
+  coverImage: string | null;
+  logoImage: string | null;
+  isVerified: boolean;
+  autoConfirm: boolean;
+  acceptsOnlinePayment: boolean;
+  category: { slug: string; nameAr: string; nameEn: string };
+  city: { slug: string; nameAr: string; nameEn: string };
+  neighborhood: { slug: string; nameAr: string; nameEn: string } | null;
+  address: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  images: { url: string; caption: string | null }[];
+  services: {
+    id: string;
+    nameAr: string;
+    nameEn: string | null;
+    descriptionAr: string | null;
+    durationMinutes: number;
+    /** null when unpriced — never shown as free. */
+    price: number | null;
+    currency: string;
+  }[];
+  minPrice: number | null;
+  currency: string;
+  /** dayOfWeek 0 = Sunday. */
+  hours: { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }[];
+  open: OpenState;
+  nextSlot: NextSlot | null;
+  rating: { average: number | null; count: number; distribution: Record<"1" | "2" | "3" | "4" | "5", number> };
+  reviews: PublicReview[];
+  branches: { id: string; nameAr: string; nameEn: string | null; address: string | null }[];
+  staff: { id: string; nameAr: string; nameEn: string | null; role: string | null; photo: string | null }[];
+}
+
+export interface PublicReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  /** First name only. */
+  authorName: string;
+  verifiedBooking: boolean;
+  serviceName: string | null;
+  bookedOn: string | null;
+  photos: string[];
 }

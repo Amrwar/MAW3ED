@@ -18,8 +18,7 @@ import { buildLocalBusinessJsonLd } from "@/lib/jsonld";
 import { siteUrl } from "@/lib/env";
 import { getPublishedBusinesses } from "@/lib/data";
 import { cairoNow, openState, type DayHours } from "@/lib/discovery/hours";
-import { findNextSlot } from "@/lib/discovery/next-slot";
-import { timeToMinutes } from "@/lib/bookings/time";
+import { businessNextSlot } from "@/lib/discovery/profile";
 import { getBusinessReviews, getRatingSummary } from "@/lib/reviews";
 import { translations, type Lang } from "@/lib/i18n";
 
@@ -135,7 +134,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
   const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
   const t = translations[lang] ?? translations.ar;
 
-  const [resourcesRaw, staffRaw, summary, reviewPage, bookings] = await Promise.all([
+  const [resourcesRaw, staffRaw, summary, reviewPage, nextSlot] = await Promise.all([
     // Every business, not only restaurants: a clinic schedules rooms, a
     // gym schedules equipment, a salon schedules chairs. What is offered
     // follows from what the business has configured, never from its
@@ -157,14 +156,14 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     // The one rating calculation. Nothing on this page computes its own.
     getRatingSummary(dbBusiness.id),
     getBusinessReviews(dbBusiness.id, { sort: "recent", take: 10 }),
-    db.booking.findMany({
-      where: {
-        businessId: dbBusiness.id,
-        status: { in: ["PENDING", "CONFIRMED"] },
-        date: { gte: startOfCairoDay() },
-      },
-      select: { date: true, startTime: true, endTime: true, service: { select: { duration: true } } },
-    }),
+    // The first genuinely free appointment, by the same rule the booking
+    // widget applies — not simply the next time the doors open. Shared
+    // with the app's business screen (src/lib/discovery/profile.ts).
+    businessNextSlot(
+      dbBusiness.id,
+      dbBusiness.availability,
+      dbBusiness.services.map((s) => s.duration),
+    ),
   ]);
 
   const similarBusinesses = (
@@ -197,30 +196,6 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     currency:      s.currency,
     isAvailable:   s.isAvailable,
   }));
-
-  // The first genuinely free appointment, by the same rule the booking
-  // widget applies — not simply the next time the doors open.
-  const todayUTC = startOfCairoDay();
-  const shortest = services.reduce<number | null>(
-    (min, s) => (s.duration > 0 && (min === null || s.duration < min) ? s.duration : min),
-    null,
-  );
-  const nextSlot = findNextSlot(
-    {
-      rules: hours,
-      durationMinutes: shortest,
-      booked: bookings.map((b) => {
-        const startMin = timeToMinutes(b.startTime);
-        return {
-          dayOffset: Math.round((b.date.getTime() - todayUTC.getTime()) / 86_400_000),
-          startMin,
-          endMin: b.endTime ? timeToMinutes(b.endTime) : startMin + b.service.duration,
-        };
-      }),
-    },
-    dayOfWeek,
-    time,
-  );
 
   const business: Business = {
     id:           dbBusiness.id,
@@ -417,20 +392,6 @@ export default async function CompanyPage({ params, searchParams }: Params) {
 }
 
 /* ─── Helpers ──────────────────────────────────────────────── */
-
-/** Midnight today in Cairo, expressed the way bookings are stored. */
-function startOfCairoDay(now: Date = new Date()): Date {
-  const [y, m, d] = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Africa/Cairo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  })
-    .format(now)
-    .split("-")
-    .map(Number);
-  return new Date(Date.UTC(y, m - 1, d));
-}
 
 const EN_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const AR_DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];

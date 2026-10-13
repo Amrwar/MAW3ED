@@ -65,6 +65,14 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   // Without this the UI sits on a spinner with no way out.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // A caller's own signal still cancels — TanStack Query aborts a search
+  // the person has already typed past.
+  const outer = init.signal;
+  const onOuterAbort = () => controller.abort();
+  if (outer) {
+    if (outer.aborted) controller.abort();
+    else outer.addEventListener("abort", onOuterAbort, { once: true });
+  }
 
   let response: Response;
   try {
@@ -101,9 +109,16 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     throw new UnauthorizedError();
   }
 
-  if (response.status === 204) return undefined as T;
+  if (response.status === 204) {
+    outer?.removeEventListener("abort", onOuterAbort);
+    return undefined as T;
+  }
 
   const payload = await response.json().catch(() => null);
+  outer?.removeEventListener("abort", onOuterAbort);
+  // Cancelled while the body was still arriving: the null above is not
+  // an empty answer, and must not be handed back as one.
+  if (controller.signal.aborted) throw new NetworkError(new Error("aborted"));
 
   if (!response.ok) {
     const message =

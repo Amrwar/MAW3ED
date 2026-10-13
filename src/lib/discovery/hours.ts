@@ -121,3 +121,17 @@ export function openState(rules: DayHours[], nowDay: number, nowTime: string): O
 
   return { state: "closed", opensInDays: offset, opensAt: rule.openTime };
 }
+
+/** Midnight today in Cairo, expressed the way bookings are stored (a UTC date). */
+export function startOfCairoDay(now: Date = new Date()): Date {
+  const [y, m, d] = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .format(now)
+    .split("-")
+    .map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}

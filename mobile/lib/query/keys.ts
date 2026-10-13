@@ -15,6 +15,9 @@ export const keys = {
     all: ["businesses"] as const,
     search: (query: Record<string, string | number | undefined>) =>
       ["businesses", "search", query] as const,
+    /** Search pages, loaded one after another — not the same cache shape as a single page. */
+    infinite: (query: Record<string, string>) => ["businesses", "infinite", query] as const,
+    profile: (slug: string) => ["businesses", "profile", slug] as const,
   },
 
   facets: (city: string) => ["facets", city] as const,
@@ -26,6 +29,8 @@ export const keys = {
 
   favorites: {
     all: ["favorites"] as const,
+    list: ["favorites", "list"] as const,
+    ids: ["favorites", "ids"] as const,
   },
 
   profile: {

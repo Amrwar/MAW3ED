@@ -1,6 +1,6 @@
 import { parseDiscoveryQuery } from "@/lib/discovery/params";
 import { searchBusinesses } from "@/lib/discovery/search";
-import { ok, err } from "@/lib/api";
+import { err } from "@/lib/api";
 import { log } from "@/lib/logger";
 
 /**
@@ -18,14 +18,23 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const query = parseDiscoveryQuery(Object.fromEntries(searchParams.entries()));
 
-    const result = await searchBusinesses(query);
+    // No price bounds: nothing reading this route shows a price slider,
+    // and they cost an aggregate over the whole catalogue.
+    const result = await searchBusinesses(query, new Date(), { priceBounds: false });
 
-    return ok({
-      businesses: result.businesses,
-      total: result.total,
-      page: result.page,
-      pageCount: result.pageCount,
-    });
+    return Response.json(
+      {
+        businesses: result.businesses,
+        total: result.total,
+        page: result.page,
+        pageCount: result.pageCount,
+        capped: result.capped,
+      },
+      // The same answer for everyone, so the CDN can serve repeats. Kept
+      // short: each card's next free time moves as people book, and an
+      // unpublished business must drop out of results promptly.
+      { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } },
+    );
   } catch (e) {
     log.error("[public businesses]", e);
     return err("حدث خطأ أثناء البحث", 500);
