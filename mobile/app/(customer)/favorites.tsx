@@ -1,6 +1,6 @@
 import { RefreshControl, ScrollView, View, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
-import { Screen, Text, Button, ListState, colors, spacing } from "@/design";
+import { router } from "expo-router";
+import { Screen, Text, Button, ListState, colors, spacing, useLocale } from "@/design";
 import { BusinessCard } from "@/features/discovery/BusinessCard";
 import { useFavorites, useRemoveFavorite } from "@/features/customer/queries";
 import { SignInGate } from "@/features/auth/SignInGate";
@@ -14,15 +14,22 @@ import { SignInGate } from "@/features/auth/SignInGate";
  * one waits for the server.
  */
 export default function FavoritesScreen() {
+  const { lang } = useLocale();
+  const ar = lang === "ar";
   return (
-    <SignInGate title="المحفوظات" reason="عشان تحفظ الأماكن اللي عجبتك وترجعلها بسهولة.">
+    <SignInGate
+      title={ar ? "المحفوظات" : "Favorites"}
+      reason={ar ? "عشان تحفظ الأماكن اللي عجبتك وترجعلها بسهولة." : "To save the places you like and find them again easily."}
+    >
       <Favorites />
     </SignInGate>
   );
 }
 
 function Favorites() {
-  const router = useRouter();
+  const { lang } = useLocale();
+  const ar = lang === "ar";
+  const T = (a: string, e: string) => (ar ? a : e);
   const query = useFavorites();
   const remove = useRemoveFavorite();
 
@@ -30,57 +37,58 @@ function Favorites() {
 
   return (
     <Screen scroll={false}>
-      <Text variant="title">المحفوظات</Text>
+      <Text variant="title" accessibilityRole="header">
+        {T("المحفوظات", "Favorites")}
+      </Text>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={query.isRefetching}
-            onRefresh={() => query.refetch()}
-            tintColor={colors.jade}
-          />
+          <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.jade} />
         }
       >
         <ListState
           loading={query.isLoading}
           error={query.error}
           isEmpty={favorites.length === 0}
-          emptyTitle="مفيش أماكن محفوظة"
-          emptyBody="احفظ الأماكن اللي بتحبها عشان توصلها بسرعة."
-          emptyAction={
-            <Button label="اتصفح الأماكن" onPress={() => router.push("/(customer)/search")} />
-          }
+          emptyTitle={T("مفيش أماكن محفوظة", "Nothing saved yet")}
+          emptyBody={T("دوس على القلب في أي مكان عشان تحفظه هنا.", "Tap the heart on any place to keep it here.")}
+          emptyIcon="heart-outline"
+          emptyAction={<Button label={T("اتصفح الأماكن", "Browse places")} onPress={() => router.push("/(customer)/search")} />}
           onRetry={() => query.refetch()}
         >
           <View style={styles.list}>
-            {favorites.map((saved) => (
-              <BusinessCard
-                key={saved.id}
-                business={saved}
-                trailing={
-                  <Button
-                    label="شيل"
-                    variant="ghost"
-                    onPress={() => remove.mutate(saved.id)}
-                    // Disabled only while this row's own request is in
-                    // flight, so one slow removal does not freeze the
-                    // rest of the list.
-                    disabled={remove.isPending && remove.variables === saved.id}
-                    accessibilityLabel={`شيل ${saved.nameAr} من المحفوظات`}
-                  />
-                }
-              />
-            ))}
+            {favorites.map((saved) => {
+              const name = (!ar && saved.nameEn) || saved.nameAr;
+              return (
+                <BusinessCard
+                  key={saved.id}
+                  business={saved}
+                  onPress={() => router.push({ pathname: "/business/[slug]", params: { slug: saved.slug } })}
+                  trailing={
+                    <Button
+                      label={T("شيل", "Remove")}
+                      variant="ghost"
+                      onPress={() => remove.mutate(saved.id)}
+                      // Disabled only while this row's own request is in
+                      // flight, so one slow removal does not freeze the
+                      // rest of the list.
+                      disabled={remove.isPending && remove.variables === saved.id}
+                      accessibilityLabel={T(`شيل ${name} من المحفوظات`, `Remove ${name} from favorites`)}
+                    />
+                  }
+                />
+              );
+            })}
           </View>
         </ListState>
 
         {/* The optimistic update already removed the row; this only
             appears if the server then refused and it came back. */}
         {remove.isError ? (
-          <Text variant="caption" tone="danger" style={styles.error}>
-            ما قدرناش نشيله. جرّب تاني.
+          <Text variant="caption" tone="danger" align="center" style={styles.error}>
+            {T("ما قدرناش نشيله. جرّب تاني.", "Couldn't remove it. Try again.")}
           </Text>
         ) : null}
       </ScrollView>
@@ -91,5 +99,5 @@ function Favorites() {
 const styles = StyleSheet.create({
   scroll: { paddingTop: spacing.lg, paddingBottom: spacing.xxl },
   list: { gap: spacing.md },
-  error: { marginTop: spacing.lg, textAlign: "center" },
+  error: { marginTop: spacing.lg },
 });

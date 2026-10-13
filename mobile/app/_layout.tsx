@@ -80,6 +80,8 @@ export default function RootLayout() {
                 <Stack.Screen name="(customer)" />
                 <Stack.Screen name="(business)" />
                 <Stack.Screen name="(admin)" />
+                {/* Above the tabs, so Back returns to the tab as it was left. */}
+                <Stack.Screen name="business/[slug]" />
                 <Stack.Screen name="dev/design-system" />
               </Stack>
             </AuthProvider>

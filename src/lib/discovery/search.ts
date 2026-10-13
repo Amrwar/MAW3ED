@@ -8,6 +8,7 @@ import {
   cairoNow,
   dayOffsetToWeekday,
   openState,
+  startOfCairoDay,
   type DayHours,
   type OpenState,
 } from "./hours";
@@ -57,6 +58,8 @@ export interface DiscoveryResult {
   total: number;
   page: number;
   pageCount: number;
+  /** True when a derived sort's pages end before `total` (they rank the first 240 only). */
+  capped: boolean;
   /** Cheapest and dearest bookable service across the whole catalogue. */
   priceBounds: { min: number; max: number } | null;
 }
@@ -259,6 +262,7 @@ function toBusiness(row: Row, nowDay: number, nowTime: string): DiscoveryBusines
  */
 async function attachNextSlots(
   list: DiscoveryBusiness[],
+  rulesByBusiness: Map<string, DayHours[]>,
   nowDay: number,
   nowTime: string,
   now: Date,
@@ -267,22 +271,15 @@ async function attachNextSlots(
 
   const ids = list.map((b) => b.id);
 
-  // Midnight today in Cairo, expressed the way bookings are stored.
-  const cairoDate = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Africa/Cairo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now);
-  const [y, m, d] = cairoDate.split("-").map(Number);
-  const todayUTC = new Date(Date.UTC(y, m - 1, d));
+  const todayUTC = startOfCairoDay(now);
   const horizonUTC = new Date(todayUTC.getTime() + 14 * 86_400_000);
 
   const [services, bookings] = await Promise.all([
-    db.service.findMany({
-      where: { businessId: { in: ids }, isAvailable: true },
-      orderBy: { duration: "asc" },
-      select: { businessId: true, duration: true },
+    // One row per business, not every service of every business.
+    db.service.groupBy({
+      by: ["businessId"],
+      where: { businessId: { in: ids }, isAvailable: true, duration: { gt: 0 } },
+      _min: { duration: true },
     }),
     db.booking.findMany({
       where: {
@@ -302,7 +299,7 @@ async function attachNextSlots(
 
   const shortest = new Map<string, number>();
   for (const s of services) {
-    if (!shortest.has(s.businessId)) shortest.set(s.businessId, s.duration);
+    if (s._min.duration !== null) shortest.set(s.businessId, s._min.duration);
   }
 
   const booked = new Map<string, BookedRange[]>();
@@ -313,19 +310,6 @@ async function attachNextSlots(
     const list = booked.get(b.businessId) ?? [];
     list.push({ dayOffset, startMin, endMin });
     booked.set(b.businessId, list);
-  }
-
-  // Availability rules came back with the page; refetch only because the
-  // mapped objects no longer carry them.
-  const rules = await db.availabilityRule.findMany({
-    where: { businessId: { in: ids } },
-    select: { businessId: true, dayOfWeek: true, openTime: true, closeTime: true, isClosed: true },
-  });
-  const rulesByBusiness = new Map<string, DayHours[]>();
-  for (const r of rules) {
-    const list = rulesByBusiness.get(r.businessId) ?? [];
-    list.push(r);
-    rulesByBusiness.set(r.businessId, list);
   }
 
   for (const b of list) {
@@ -360,8 +344,11 @@ function sortInMemory(list: DiscoveryBusiness[], sort: DiscoveryQuery["sort"]) {
   }
 
   if (sort === "soonest") {
+    // By the first genuinely free appointment — attachNextSlots has run
+    // over the whole capped set first. Nothing free in the fortnight
+    // ahead sorts last.
     const rank = (b: DiscoveryBusiness) =>
-      b.open.state === "open" ? -1 : b.open.state === "closed" ? b.open.opensInDays : 99;
+      b.nextSlot ? b.nextSlot.dayOffset * 1440 + timeToMinutes(b.nextSlot.time) : Number.POSITIVE_INFINITY;
     return [...list].sort((a, b) => rank(a) - rank(b));
   }
 
@@ -371,6 +358,12 @@ function sortInMemory(list: DiscoveryBusiness[], sort: DiscoveryQuery["sort"]) {
 export async function searchBusinesses(
   q: DiscoveryQuery,
   now: Date = new Date(),
+  /**
+   * The price range across the whole catalogue, for the website's price
+   * filter. An aggregate over every service, so callers that show no
+   * price filter (the app's API) skip it.
+   */
+  opts: { priceBounds?: boolean } = {},
 ): Promise<DiscoveryResult> {
   const where = buildWhere(q, now);
   const { dayOfWeek, time } = cairoNow(now);
@@ -393,28 +386,43 @@ export async function searchBusinesses(
         ? { take: DERIVED_CAP }
         : { skip: (q.page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
     }),
-    db.service.aggregate({
-      where: { ...PRICED, business: { isPublished: true } },
-      _min: { price: true },
-      _max: { price: true },
-    }),
+    opts.priceBounds === false
+      ? null
+      : db.service.aggregate({
+          where: { ...PRICED, business: { isPublished: true } },
+          _min: { price: true },
+          _max: { price: true },
+        }),
   ]);
 
+  // The rules came back with the rows; next-slot reuses them rather than
+  // reading them again.
+  const rulesByBusiness = new Map<string, DayHours[]>(rows.map((r) => [r.id, r.availability]));
   const mapped = rows.map((r) => toBusiness(r, dayOfWeek, time));
+
+  // "Soonest" ranks by the next free slot, so every candidate needs one
+  // before sorting; otherwise only the page shown does.
+  if (q.sort === "soonest") await attachNextSlots(mapped, rulesByBusiness, dayOfWeek, time, now);
   const ordered = sortInMemory(mapped, q.sort);
   const businesses = derivedSort
     ? ordered.slice((q.page - 1) * PAGE_SIZE, q.page * PAGE_SIZE)
     : ordered;
+  if (q.sort !== "soonest") await attachNextSlots(businesses, rulesByBusiness, dayOfWeek, time, now);
 
-  await attachNextSlots(businesses, dayOfWeek, time, now);
-
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   return {
     businesses,
     total,
     page: q.page,
-    pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+    // A derived sort only ranks the first DERIVED_CAP rows; offering
+    // pages past them would offer empty pages.
+    pageCount: derivedSort ? Math.min(pages, DERIVED_CAP / PAGE_SIZE) : pages,
+    // `total` stays the real number of matches, so this says when the
+    // pages stop short of it — a client can say so rather than claim it
+    // has shown everything.
+    capped: derivedSort && total > DERIVED_CAP,
     priceBounds:
-      bounds._min.price !== null && bounds._max.price !== null
+      bounds && bounds._min.price !== null && bounds._max.price !== null
         ? { min: Math.floor(Number(bounds._min.price)), max: Math.ceil(Number(bounds._max.price)) }
         : null,
   };

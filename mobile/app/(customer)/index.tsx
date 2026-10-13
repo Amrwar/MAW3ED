@@ -21,6 +21,7 @@ import {
   type IconName,
 } from "@/design";
 import { BusinessCard } from "@/features/discovery/BusinessCard";
+import { startSearch, type Arrival } from "@/features/discovery/searchState";
 import { BookingCard } from "@/features/bookings/BookingCard";
 import { useBusinesses, useFacets, useMyBookings } from "@/features/customer/queries";
 import { useHomeCity } from "@/features/customer/useHomeCity";
@@ -84,7 +85,7 @@ export default function CustomerHome() {
   const upcoming = useMyBookings("upcoming", Boolean(user));
   const unread = useUnreadCount(Boolean(user));
   const all = useBusinesses({ city: where }, ready);
-  const today = useBusinesses({ city: where, availability: "today", sort: "soonest" }, ready);
+  const today = useBusinesses({ city: where, available: "today", sort: "soonest" }, ready);
   const topRated = useBusinesses({ city: where, sort: "rating" }, ready);
   const mostBooked = useBusinesses({ city: where, sort: "most-booked" }, ready);
 
@@ -119,9 +120,13 @@ export default function CustomerHome() {
     }
   }
 
-  const openSearch = (params: Record<string, string> = {}) =>
-    router.push({ pathname: "/(customer)/search", params: { city: where, ...params, at: String(Date.now()) } });
-  const openBusiness = (b: Business) => openSearch({ q: ar ? b.nameAr : (b.nameEn ?? b.nameAr) });
+  // A new search in the home city, written to the search store before
+  // Search opens (features/discovery/searchState.ts).
+  const openSearch = (params: Arrival = {}) => {
+    startSearch({ city: where, ...params });
+    router.push("/(customer)/search");
+  };
+  const openBusiness = (b: Business) => router.push({ pathname: "/business/[slug]", params: { slug: b.slug } });
 
   return (
     <ScrollView
@@ -258,7 +263,7 @@ export default function CustomerHome() {
                       `${name}، ${num(c.count)} مكان`,
                       `${name}, ${c.count} places`,
                     )}
-                    onPress={() => openSearch({ category: c.slug, label: name })}
+                    onPress={() => openSearch({ category: c.slug })}
                     style={styles.category}
                   >
                     <View style={styles.categoryIcon}>
@@ -292,7 +297,7 @@ export default function CustomerHome() {
               items={openToday}
               onPress={openBusiness}
               onSeeAll={() =>
-                openSearch({ sort: "soonest", availability: "today", label: T("متاح النهارده", "Available today") })
+                openSearch({ sort: "soonest", available: "today" })
               }
             />
 
@@ -303,7 +308,7 @@ export default function CustomerHome() {
               items={rated}
               onPress={openBusiness}
               onSeeAll={() =>
-                openSearch({ sort: "rating", label: T("الأعلى تقييماً", "Top rated") })
+                openSearch({ sort: "rating" })
               }
             />
 
@@ -314,7 +319,7 @@ export default function CustomerHome() {
               items={booked}
               onPress={openBusiness}
               onSeeAll={() =>
-                openSearch({ sort: "most-booked", label: T("الأكثر حجزاً", "Most booked") })
+                openSearch({ sort: "most-booked" })
               }
             />
 

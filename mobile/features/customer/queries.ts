@@ -27,7 +27,8 @@ export interface SearchParams {
   page?: number;
   /** The web's discovery sorts (src/lib/discovery/params.ts SORTS). */
   sort?: "recommended" | "rating" | "most-booked" | "price-asc" | "price-desc" | "soonest";
-  availability?: "any" | "today" | "tomorrow" | "open-now";
+  /** The API's name is `available`. */
+  available?: "any" | "today" | "tomorrow" | "open-now";
 }
 
 export function useBusinesses(params: SearchParams = {}, enabled = true) {
@@ -37,7 +38,7 @@ export function useBusinesses(params: SearchParams = {}, enabled = true) {
   if (params.category) query.category = params.category;
   if (params.page && params.page > 1) query.page = String(params.page);
   if (params.sort && params.sort !== "recommended") query.sort = params.sort;
-  if (params.availability && params.availability !== "any") query.availability = params.availability;
+  if (params.available && params.available !== "any") query.available = params.available;
 
   return useQuery({
     queryKey: keys.businesses.search(query),
@@ -88,7 +89,7 @@ export function useMyBookings(scope: "upcoming" | "history", enabled = true) {
 
 export function useFavorites() {
   return useQuery({
-    queryKey: keys.favorites.all,
+    queryKey: keys.favorites.list,
     queryFn: () =>
       api.get<{ favorites: SavedBusiness[] }>("/api/account/favorites?expand=1"),
   });
@@ -103,14 +104,14 @@ export function useRemoveFavorite() {
     // idempotent, so a failure can simply put the row back.
     onMutate: async (businessId) => {
       await client.cancelQueries({ queryKey: keys.favorites.all });
-      const previous = client.getQueryData<{ favorites: SavedBusiness[] }>(keys.favorites.all);
-      client.setQueryData<{ favorites: SavedBusiness[] }>(keys.favorites.all, (old) =>
+      const previous = client.getQueryData<{ favorites: SavedBusiness[] }>(keys.favorites.list);
+      client.setQueryData<{ favorites: SavedBusiness[] }>(keys.favorites.list, (old) =>
         old ? { favorites: old.favorites.filter((f) => f.id !== businessId) } : old,
       );
       return { previous };
     },
     onError: (_error, _businessId, context) => {
-      if (context?.previous) client.setQueryData(keys.favorites.all, context.previous);
+      if (context?.previous) client.setQueryData(keys.favorites.list, context.previous);
     },
     onSettled: () => {
       client.invalidateQueries({ queryKey: keys.favorites.all });

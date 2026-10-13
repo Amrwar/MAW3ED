@@ -1,4 +1,4 @@
-import { ok, err } from "@/lib/api";
+import { err } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { getFacets } from "@/lib/discovery/search";
 
@@ -14,7 +14,12 @@ export async function GET(req: Request) {
   try {
     const city = new URL(req.url).searchParams.get("city")?.trim() || undefined;
     const facets = await getFacets(city);
-    return ok(facets);
+    // Counts move only when a business is published or unpublished —
+    // rarely, but an unpublished one should stop being offered within
+    // minutes, not an hour.
+    return Response.json(facets, {
+      headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=180" },
+    });
   } catch (e) {
     log.error("[public facets]", e);
     return err("حدث خطأ", 500);

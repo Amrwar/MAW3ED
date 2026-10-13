@@ -30,15 +30,15 @@ export type AppRoute =
   | "/(business)/customers"
   | "/(business)/notifications"
   | "/(business)/account"
-  | "/(admin)";
+  | "/(admin)"
+  | `/business/${string}`;
 
 /** The hosts whose links are ours. Anything else is not opened in the app. */
 const OUR_HOSTS = new Set(["maw3ed.net", "www.maw3ed.net"]);
 
 /** Website path prefix → app route. First match wins, so order matters. */
 const TABLE: [prefix: string, route: AppRoute][] = [
-  // Not built yet in the app — the nearest screen until they are.
-  ["/company/", "/(customer)/search"],
+  // Not built yet in the app — the nearest screen until it is.
   ["/booking/", "/(customer)/bookings"],
 
   ["/account/upcoming", "/(customer)/bookings"],
@@ -88,6 +88,12 @@ export function routeFor(input: string): AppRoute {
   const path = ourPath(input);
   if (!path || path === "/") return "/";
   const normalised = path.replace(/\/+$/, "") || "/";
+  // A business page opens the business screen. The slug may hold what
+  // the server's slugify() leaves — lowercase letters, digits, "_" and
+  // "-" — and nothing else is passed into a route.
+  const company = /^\/company\/([a-z0-9_-]{1,100})$/.exec(normalised);
+  if (company) return `/business/${company[1]}`;
+  if (normalised === "/company" || normalised.startsWith("/company/")) return "/(customer)/search";
   for (const [prefix, route] of TABLE) {
     const bare = prefix.replace(/\/$/, "");
     // Whole segments only: "/account" must not match "/accounting".

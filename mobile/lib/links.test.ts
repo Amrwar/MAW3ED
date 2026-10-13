@@ -29,8 +29,17 @@ describe("routeFor", () => {
     expect(routeFor("/account")).toBe("/(customer)/account");
   });
 
-  it("lands a business link somewhere useful until the profile screen exists", () => {
-    expect(routeFor("https://www.maw3ed.net/company/qa-salon")).toBe("/(customer)/search");
+  it("opens a business link on the business screen", () => {
+    expect(routeFor("https://www.maw3ed.net/company/qa-salon?src=qr")).toBe("/business/qa-salon");
+    expect(routeFor("maw3ed://company/qa-salon")).toBe("/business/qa-salon");
+    // slugify() keeps underscores (src/lib/utils.ts).
+    expect(routeFor("https://maw3ed.net/company/qa_salon")).toBe("/business/qa_salon");
+  });
+
+  it("never passes a malformed slug into a route", () => {
+    expect(routeFor("/company/../admin")).toBe("/(customer)/search");
+    expect(routeFor("/company/QA%20x")).toBe("/(customer)/search");
+    expect(routeFor("/company")).toBe("/(customer)/search");
   });
 
   it("matches whole segments only", () => {

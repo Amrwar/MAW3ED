@@ -1,66 +1,28 @@
-import { db } from "@/lib/db";
-import { ok, err } from "@/lib/api";
+import { err } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { getPublicProfile } from "@/lib/discovery/profile";
 
 type Params = { params: Promise<{ slug: string }> };
 
 /**
  * GET /api/public/[slug]
- * Public endpoint — returns business profile + services + availability.
- * No auth required.
+ *
+ * One published business as the public may see it — the app's business
+ * screen. Fields are listed one by one in getPublicProfile(); this used
+ * to return the whole row minus ownerId, plan and payment ids included.
+ *
+ * Cached briefly at the edge: the next free time moves as people book,
+ * and an unpublished business should stop being served within a minute
+ * or two.
  */
 export async function GET(_req: Request, { params }: Params) {
   try {
     const { slug } = await params;
-
-    const business = await db.business.findUnique({
-      where:   { slug, isPublished: true },
-      include: {
-        category: true,
-        city:     true,
-        services: {
-          where:   { isAvailable: true },
-          orderBy: { sortOrder: "asc" },
-        },
-        availability: { orderBy: { dayOfWeek: "asc" } },
-        _count: { select: { bookings: true } },
-      },
+    const profile = await getPublicProfile(slug);
+    if (!profile) return err("لم يتم العثور على هذا العمل", 404);
+    return Response.json(profile, {
+      headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" },
     });
-
-    if (!business) return err("لم يتم العثور على هذا العمل", 404);
-
-    // Fetch resource data based on businessType
-    let tables: object[] = [];
-    let staffMembers: object[] = [];
-
-    if (business.businessType === "RESTAURANT") {
-      tables = await db.table.findMany({
-        where:   { businessId: business.id, isActive: true },
-        select:  { id: true, name: true, tableType: true, capacity: true, notes: true, photo: true },
-        orderBy: { createdAt: "asc" },
-      });
-    }
-
-    if (business.businessType === "BARBERSHOP") {
-      const staff = await db.staffMember.findMany({
-        where:   { businessId: business.id, isActive: true },
-        select:  { id: true, nameAr: true, nameEn: true, role: true, photo: true, services: { select: { serviceId: true } } },
-        orderBy: { createdAt: "asc" },
-      });
-      staffMembers = staff.map((s) => ({
-        id:         s.id,
-        nameAr:     s.nameAr,
-        nameEn:     s.nameEn,
-        role:       s.role,
-        photo:      s.photo,
-        serviceIds: s.services.map((ss) => ss.serviceId),
-      }));
-    }
-
-    // Strip owner info before returning
-    const { ownerId: _, ...safe } = business as typeof business & { ownerId: string };
-
-    return ok({ ...safe, tables, staffMembers });
   } catch (e) {
     log.error("[public slug]", e);
     return err("حدث خطأ", 500);

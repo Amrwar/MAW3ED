@@ -1,0 +1,98 @@
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@react-native-async-storage/async-storage", () => ({
+  default: { getItem: async () => null, setItem: async () => undefined },
+}));
+
+import { DEFAULT_FILTERS, activeFilterCount, fromArrival, termProblem, toQuery } from "./searchState";
+import { MAX_RECENT, pushRecent } from "./recentSearches";
+import { mapPoints } from "./map";
+import type { Business } from "@/types/api";
+
+describe("toQuery — the API's parameters", () => {
+  it("sends nothing for the default search, so it shares one cache entry", () => {
+    expect(toQuery("", DEFAULT_FILTERS)).toEqual({});
+    expect(toQuery("  ", DEFAULT_FILTERS)).toEqual({});
+  });
+
+  it("uses the API's names — `available`, not `availability`", () => {
+    const q = toQuery("", { ...DEFAULT_FILTERS, available: "today" });
+    expect(q).toEqual({ available: "today" });
+  });
+
+  it("sends a subcategory instead of its parent, and a neighbourhood only with its city", () => {
+    const f = { ...DEFAULT_FILTERS, category: "beauty", subcategory: "salons", neighborhood: "zamalek" };
+    expect(toQuery("", f)).toEqual({ subcategory: "salons" });
+    expect(toQuery("", { ...f, city: "cairo" })).toEqual({ subcategory: "salons", city: "cairo", neighborhood: "zamalek" });
+  });
+
+  it("sends every narrowing filter as the API spells it", () => {
+    const q = toQuery(" barber ", {
+      ...DEFAULT_FILTERS,
+      rating: 4,
+      minPrice: 100,
+      maxPrice: 500,
+      verified: true,
+      instant: true,
+      online: true,
+      sort: "price-asc",
+    });
+    expect(q).toEqual({
+      q: "barber",
+      rating: "4",
+      minPrice: "100",
+      maxPrice: "500",
+      verified: "1",
+      instant: "1",
+      online: "1",
+      sort: "price-asc",
+    });
+  });
+
+  it("does not send a one-letter search, and caps a long one", () => {
+    expect(toQuery("a", DEFAULT_FILTERS)).toEqual({});
+    expect(termProblem("a")).toBe("too-short");
+    expect(termProblem("")).toBeNull();
+    expect(toQuery("x".repeat(150), DEFAULT_FILTERS).q).toHaveLength(100);
+  });
+});
+
+describe("filters", () => {
+  it("counts what narrows the results, not the sort", () => {
+    expect(activeFilterCount(DEFAULT_FILTERS)).toBe(0);
+    expect(activeFilterCount({ ...DEFAULT_FILTERS, sort: "rating" })).toBe(0);
+    expect(activeFilterCount({ ...DEFAULT_FILTERS, city: "cairo", minPrice: 10, maxPrice: 20, verified: true })).toBe(3);
+  });
+
+  it("a link from Home starts a new search and ignores values the API does not know", () => {
+    expect(fromArrival({ category: "salons", sort: "rating" })).toEqual({
+      term: "",
+      filters: { ...DEFAULT_FILTERS, category: "salons", sort: "rating" },
+    });
+    expect(fromArrival({ sort: "cheapest", available: "someday" }).filters).toEqual(DEFAULT_FILTERS);
+  });
+});
+
+describe("recent searches", () => {
+  it("puts the newest first, once, ignoring case and spacing", () => {
+    expect(pushRecent(["Salon", "gym"], "  salon ")).toEqual(["salon", "gym"]);
+    expect(pushRecent(["gym"], "barber  shop")).toEqual(["barber shop", "gym"]);
+  });
+
+  it("ignores what is too short to have been a search, and keeps a short list", () => {
+    const list = ["a1", "b2"];
+    expect(pushRecent(list, "x")).toBe(list);
+    const many = Array.from({ length: 20 }, (_, i) => `term ${i}`);
+    expect(pushRecent(many, "new")).toHaveLength(MAX_RECENT);
+  });
+});
+
+describe("map", () => {
+  const b = (location?: Business["location"]) => ({ id: "1", slug: "s", location }) as Business;
+
+  it("places only businesses with real coordinates — none have them yet", () => {
+    expect(mapPoints([b(), b(null)])).toEqual([]);
+    expect(mapPoints([b({ lat: 30.04, lng: 31.23 })])).toEqual([{ id: "1", slug: "s", lat: 30.04, lng: 31.23 }]);
+    expect(mapPoints([b({ lat: 200, lng: 31 })])).toEqual([]);
+  });
+});
