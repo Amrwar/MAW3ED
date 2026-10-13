@@ -117,7 +117,7 @@ async function deliver(
 ): Promise<DispatchOutcome> {
   const base = { audience: recipient.audience, channel: channel.name };
 
-  if (!allows(recipient, channel.name)) {
+  if (!allows(recipient, channel.name, event)) {
     return { ...base, status: "SKIPPED", reason: "not-allowed" };
   }
   const address = channel.address(recipient);

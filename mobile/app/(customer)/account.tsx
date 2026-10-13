@@ -4,6 +4,7 @@ import { Platform, Switch, StyleSheet, View } from "react-native";
 import { Badge, Button, Card, Icon, ListState, Screen, Text, Touchable, colors, ltr, spacing, useLocale, type IconName } from "@/design";
 import { useProfile, useUpdateProfile } from "@/features/customer/queries";
 import { useNotifications } from "@/features/notifications/queries";
+import { PushToggle } from "@/features/notifications/PushToggle";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { VERSION_LABEL } from "@/constants/version";
 import { num } from "@/lib/format";
@@ -81,6 +82,7 @@ function Account() {
             <Text variant="label" tone="ink2" accessibilityRole="header">
               {T("التنبيهات", "Alerts")}
             </Text>
+            <PushToggle compact />
             <SwitchRow
               label={T("واتساب", "WhatsApp")}
               hint={T("تأكيد الحجز والتذكير قبل الميعاد.", "Booking confirmations and a reminder before your appointment.")}

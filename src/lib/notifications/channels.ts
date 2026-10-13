@@ -4,10 +4,11 @@ import { log } from "@/lib/logger";
 import { failed, sent, skipped, type SendOutcome } from "@/lib/services/send-outcome";
 import { sendEmail } from "@/lib/services/email";
 import { sendWhatsAppMessage } from "@/lib/services/whatsapp";
+import { isExpoToken, sendExpoPush } from "@/lib/services/expo-push";
 import { notificationHtml } from "@/lib/services/email-templates";
 import { smsText, type Copy } from "./copy";
 import type { Recipient } from "./recipients";
-import type { NotificationEvent } from "./events";
+import type { Audience, EventType, NotificationEvent } from "./events";
 import { EVENT_KIND } from "./events";
 import { bespokeSender, type BespokeContext } from "./templates";
 
@@ -157,10 +158,98 @@ export const smsChannel: Channel = {
   },
 };
 
-export const CHANNELS: Channel[] = [inAppChannel, emailChannel, whatsappChannel, smsChannel];
+/* ─── Push ───────────────────────────────────────────────── */
 
-/** Whether a recipient has allowed this channel. */
-export function allows(recipient: Recipient, channel: NotificationChannel): boolean {
+/**
+ * The events worth interrupting somebody for, per audience. Everything
+ * else still lands in the in-app feed; push is kept for what the person
+ * did not just do themselves and would want to know now — a customer is
+ * not pushed "we received your booking" seconds after making it, and an
+ * owner is not pushed about a booking they confirmed.
+ */
+const PUSH_WORTHY: Record<Audience, ReadonlySet<EventType>> = {
+  customer: new Set<EventType>([
+    "booking.confirmed",
+    "booking.rejected",
+    "booking.cancelled",
+    "booking.reminder",
+    "booking.startingSoon",
+    "review.requested",
+    "payment.received",
+    "payment.failed",
+  ]),
+  business: new Set<EventType>([
+    "booking.created",
+    "booking.rescheduled",
+    "booking.cancelled",
+    "payment.received",
+    "payment.failed",
+    "subscription.renewalDue",
+    "subscription.expired",
+  ]),
+};
+
+export function pushWorthy(event: NotificationEvent, audience: Audience): boolean {
+  if (!PUSH_WORTHY[audience].has(event.type)) return false;
+  // A cancellation is news to the side that did not make it.
+  if (event.type === "booking.cancelled") return event.by !== audience;
+  return true;
+}
+
+/**
+ * Where a tap should go, as data the app routes itself. Ids only: the
+ * customer's booking link carries its access token, which is a secret
+ * and must not travel through Apple's and Google's servers. The app
+ * exchanges the booking id for it over its own signed-in connection.
+ */
+export function pushData(event: NotificationEvent, audience: Audience, bookingId: string | null): Record<string, string> {
+  const data: Record<string, string> = { kind: event.type };
+  if (audience === "customer") {
+    data.path = "/account/upcoming";
+    if (bookingId) data.bookingId = bookingId;
+  } else {
+    data.path = event.type.startsWith("subscription.") ? "/dashboard/settings" : "/dashboard/bookings";
+  }
+  return data;
+}
+
+export const pushChannel: Channel = {
+  name: "PUSH",
+  address: (r) => r.userId,
+  async send({ event, recipient, copy, bookingId }) {
+    if (!recipient.userId) return skipped("no-account");
+    try {
+      const devices = await db.deviceToken.findMany({
+        where: { userId: recipient.userId, disabledAt: null },
+        select: { token: true },
+      });
+      const tokens = devices.map((d) => d.token).filter(isExpoToken);
+      if (tokens.length === 0) return skipped("no-device");
+
+      const data = pushData(event, recipient.audience, bookingId);
+      const { tickets, deadTokens } = await sendExpoPush(
+        tokens.map((to) => ({ to, title: copy.title, body: copy.body, data, sound: "default", channelId: "default", priority: "high" })),
+      );
+
+      if (deadTokens.length > 0) {
+        await db.deviceToken.updateMany({ where: { token: { in: deadTokens } }, data: { disabledAt: new Date() } });
+      }
+
+      const delivered = tickets.filter((t) => t?.status === "ok").length;
+      if (delivered > 0) return sent(`${delivered}/${tokens.length}`);
+      if (tickets.every((t) => t === null)) return failed("expo-unreachable");
+      return failed(deadTokens.length === tokens.length ? "device-not-registered" : "expo-error");
+    } catch (e) {
+      log.error("[notify:push]", e);
+      return failed("push-error");
+    }
+  },
+};
+
+export const CHANNELS: Channel[] = [inAppChannel, pushChannel, emailChannel, whatsappChannel, smsChannel];
+
+/** Whether a recipient has allowed this channel, for this event. */
+export function allows(recipient: Recipient, channel: NotificationChannel, event?: NotificationEvent): boolean {
   switch (channel) {
     case "IN_APP":
       return recipient.allow.inApp;
@@ -171,9 +260,10 @@ export function allows(recipient: Recipient, channel: NotificationChannel): bool
     case "SMS":
       return recipient.allow.sms;
     case "PUSH":
-      // Allowed when the person has a device registered. There is no
-      // separate preference yet: installing the app and granting the
-      // permission is the opt-in, and removing it is the opt-out.
-      return recipient.allow.push;
+      // The preference is the device itself: granting the permission
+      // registers it, and the app's "push on this device" switch and
+      // signing out remove it. Business owners' per-event switches are
+      // already in allow.push. Then only events worth a push.
+      return recipient.allow.push && (event ? pushWorthy(event, recipient.audience) : true);
   }
 }

@@ -14,8 +14,9 @@ import * as Notifications from "expo-notifications";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/features/auth/AuthProvider";
-import { configureForegroundHandling, hrefOf } from "@/features/notifications/push";
+import { bookingTokenFor, configureForegroundHandling, targetOf, watchTokenChanges } from "@/features/notifications/push";
 import { createQueryClient } from "@/lib/query/client";
+import { keys } from "@/lib/query/keys";
 import { hrefFor } from "@/lib/links";
 import { screen, track } from "@/lib/analytics";
 import { Text, Button, LocaleProvider, ToastProvider, colors, spacing } from "@/design";
@@ -125,19 +126,50 @@ function useNotificationRouting(ready: boolean) {
     // Not before the navigator exists: routing then throws.
     if (!ready || Platform.OS === "web") return;
 
-    const open = (response: Notifications.NotificationResponse | null) => {
-      if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER)
-        return;
-      const href = hrefOf(response);
-      track("notification_opened", { source: "push" });
-      if (href) router.navigate(hrefFor(href));
+    // Each tap handled once: the launch response is read again on every
+    // mount, and a notification that opened the app must not re-open its
+    // screen the next time the root remounts.
+    const handled = new Set<string>();
+
+    const open = async (response: Notifications.NotificationResponse | null) => {
+      if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+      const id = response.notification.request.identifier;
+      if (handled.has(id)) return;
+      handled.add(id);
+
+      const target = targetOf(response);
+      track("notification_opened", { source: "push", booking: Boolean(target.bookingId) });
+      // A customer's booking: its id travels in the push, its token does
+      // not — fetched over the signed-in connection, only if it is theirs.
+      if (target.bookingId) {
+        const token = await bookingTokenFor(target.bookingId);
+        if (token) {
+          router.navigate({ pathname: "/booking/[token]", params: { token } });
+          return;
+        }
+      }
+      if (target.path) router.navigate(hrefFor(target.path));
     };
 
     Notifications.getLastNotificationResponseAsync()
       .then(open)
       .catch(() => undefined);
-    const subscription = Notifications.addNotificationResponseReceivedListener(open);
-    return () => subscription.remove();
+    const tapped = Notifications.addNotificationResponseReceivedListener((r) => void open(r));
+
+    // A push arriving while the app is open means something changed: the
+    // feed, the bookings and the booking itself are refetched.
+    const received = Notifications.addNotificationReceivedListener(() => {
+      void queryClient.invalidateQueries({ queryKey: keys.notifications.all });
+      void queryClient.invalidateQueries({ queryKey: keys.myBookings.all });
+      void queryClient.invalidateQueries({ queryKey: keys.booking.all });
+    });
+
+    const stopWatching = watchTokenChanges();
+    return () => {
+      tapped.remove();
+      received.remove();
+      stopWatching();
+    };
   }, [ready]);
 }
 
