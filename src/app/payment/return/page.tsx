@@ -15,6 +15,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
+import BackToApp from "./BackToApp";
 
 export const metadata: Metadata = { title: "نتيجة الدفع" };
 
@@ -68,6 +69,7 @@ export default async function PaymentReturnPage({
         id:           true,
         status:       true,
         accessToken:  true,
+        idempotencyKey: true,
         customerName: true,
         startTime:    true,
         endTime:      true,
@@ -88,6 +90,10 @@ export default async function PaymentReturnPage({
   return (
     <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        {/* Made in the app: hand the person back to it. */}
+        {booking?.accessToken && booking.idempotencyKey?.startsWith("app-") && (
+          <BackToApp token={booking.accessToken} label="ارجع لتطبيق موعد · Back to the Maw3ed app" />
+        )}
 
         {/* ── Confirmed ── */}
         {isConfirmed && booking && (

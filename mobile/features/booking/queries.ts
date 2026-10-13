@@ -79,6 +79,9 @@ export function useBooking(token: string | undefined) {
     queryKey: keys.booking.one(token ?? ""),
     queryFn: () => api.get<PublicBooking>(`/api/public/booking/${encodeURIComponent(token!)}`, { anonymous: true }),
     staleTime: 0,
+    // The payment page has the focus while the customer pays; the check
+    // must keep going underneath it, not pause until they come back.
+    refetchIntervalInBackground: true,
     refetchInterval: (q) => {
       if (!shouldPoll(q.state.data?.status)) return false;
       since.current ??= Date.now();

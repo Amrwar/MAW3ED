@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Button,
+  Card,
   EmptyState,
   ErrorState,
   Icon,
@@ -29,6 +31,8 @@ import { useHomeCity } from "@/features/customer/useHomeCity";
 import { useUnreadCount } from "@/features/notifications/queries";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { num } from "@/lib/format";
+import { api } from "@/lib/api/client";
+import { forgetPayment, unfinishedPayments } from "@/features/booking/storage";
 import type { Business } from "@/types/api";
 
 /**
@@ -218,6 +222,9 @@ export default function CustomerHome() {
       </View>
 
       <Column>
+        {/* ── A deposit left unfinished when the app was closed ── */}
+        <UnfinishedPayment />
+
         {/* ── The next appointment, when there is one ── */}
         {user && next ? (
           <Section title={T("موعدك الجاي", "Your next appointment")}>
@@ -646,4 +653,61 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   cityOptionOn: { backgroundColor: colors.jadeTint },
+});
+
+/**
+ * "Finish your payment" — for a deposit started on this phone whose
+ * booking the server still holds waiting for it. The server is asked; the
+ * reminder only shows while the booking really is waiting.
+ */
+function UnfinishedPayment() {
+  const { lang } = useLocale();
+  const ar = lang === "ar";
+  const pending = useQuery({
+    queryKey: ["booking", "unfinished"],
+    queryFn: async () => {
+      const list = await unfinishedPayments();
+      const checked = await Promise.all(
+        list.map(async (p) => {
+          try {
+            const b = await api.get<{ status: string }>(`/api/public/booking/${encodeURIComponent(p.token)}`, { anonymous: true });
+            if (b.status === "PENDING_PAYMENT") return p;
+            await forgetPayment(p.token);
+          } catch {
+            /* not reachable now: say nothing rather than guess */
+          }
+          return null;
+        }),
+      );
+      return checked.filter((x): x is { token: string; label: string | null } => x !== null);
+    },
+    staleTime: 30_000,
+  });
+  const first = pending.data?.[0];
+  if (!first) return null;
+  return (
+    <Card onPress={() => router.push({ pathname: "/booking/[token]", params: { token: first.token } })} accessibilityLabel={ar ? "كمّل الدفع" : "Finish your payment"}>
+      <View style={homeStyles.payRow}>
+        <Icon name="card-outline" color={colors.warn} />
+        <View style={homeStyles.flex}>
+          <Text variant="bodyBold">{ar ? "كمّل دفع العربون" : "Finish paying your deposit"}</Text>
+          <Text variant="caption" tone="subtle">
+            {first.label
+              ? ar
+                ? `ميعادك في ${first.label} محجوز لحد ما الدفع يتم.`
+                : `Your time at ${first.label} is held until payment is done.`
+              : ar
+                ? "ميعادك محجوز لحد ما الدفع يتم."
+                : "Your time is held until payment is done."}
+          </Text>
+        </View>
+        <Icon name={ar ? "chevron-back" : "chevron-forward"} color={colors.faint} />
+      </View>
+    </Card>
+  );
+}
+
+const homeStyles = StyleSheet.create({
+  payRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  flex: { flex: 1 },
 });

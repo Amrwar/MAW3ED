@@ -16,6 +16,7 @@
  */
 
 import { createHmac, timingSafeEqual } from "crypto";
+import { createFakeSession, fakePaymobEnabled } from "./paymob-fake";
 import { log } from "@/lib/logger";
 
 const PAYMOB_BASE = "https://accept.paymob.com/api";
@@ -247,6 +248,10 @@ export async function createPaymentSession(params: {
   customerEmail?: string;
 }): Promise<PaymentSession> {
   const { bookingId, amountCents, currency, customerName, customerPhone, customerEmail } = params;
+
+  // Local QA only (PAYMOB_FAKE=1, never in production): the real ledger,
+  // webhook and confirmation, with a stand-in for the hosted page.
+  if (fakePaymobEnabled()) return createFakeSession({ bookingId, amountCents, currency });
 
   const nameParts = customerName.trim().split(/\s+/);
   const firstName = nameParts[0];

@@ -17,7 +17,7 @@ import {
   stepsFor,
   type Draft,
 } from "./flow";
-import { notificationLines, outcomeOf, shouldPoll } from "./outcome";
+import { notificationLines, outcomeCopy, outcomeOf, shouldPoll } from "./outcome";
 
 // Hoisted by vitest above the imports; written here to keep imports first.
 vi.mock("@/lib/config", () => ({ config: { apiUrl: "https://maw3ed.net" } }));
@@ -222,6 +222,13 @@ describe("what the result screen may say", () => {
     expect(outcomeOf("PENDING")).toBe("awaiting-business");
     expect(outcomeOf("PENDING_PAYMENT")).toBe("awaiting-payment");
     expect(outcomeOf("FAILED_PAYMENT")).toBe("payment-failed");
+  });
+
+  it("says so plainly when the money arrived after the time was released", () => {
+    const paidLate = outcomeCopy("payment-failed", "en", { payment: { status: "SUCCEEDED", amount: 100, refunded: 0, currency: "EGP", paidAt: null } });
+    expect(paidLate.title).toMatch(/after your time was released/);
+    const notPaid = outcomeCopy("payment-failed", "en", { payment: { status: "FAILED", amount: 100, refunded: 0, currency: "EGP", paidAt: null } });
+    expect(notPaid.body).toMatch(/wasn't taken/);
   });
 
   it("polls only while a payment is being confirmed", () => {
