@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Avatar, Badge, Button, Icon, ServiceCard, Sheet, Text, Touchable, colors, radius, spacing, useLocale } from "@/design";
 import { nextFreeLabel } from "@/features/discovery/BusinessCard";
@@ -41,9 +41,13 @@ export function ServiceSheet({
   const ar = lang === "ar";
   const [staffId, setStaffId] = useState<string | null>(initialStaffId ?? null);
 
-  useEffect(() => {
+  // A different service, or a different person chosen to arrive with, starts over.
+  const opening = `${service?.id ?? ""}:${initialStaffId ?? ""}`;
+  const [seen, setSeen] = useState(opening);
+  if (seen !== opening) {
+    setSeen(opening);
     setStaffId(initialStaffId ?? null);
-  }, [service?.id, initialStaffId]);
+  }
 
   if (!service) return null;
   const name = (!ar && service.nameEn) || service.nameAr;
@@ -60,13 +64,12 @@ export function ServiceSheet({
         <View style={styles.footer}>
           <Button
             label={words.book[lang]}
-            icon="open-outline"
-            iconPosition="end"
+            icon="calendar-outline"
             onPress={() => onBook({ serviceId: service.id, staffId })}
-            accessibilityHint={ar ? "بيكمّل الحجز على موقع مواعيد" : "Continues booking on the Maw3ed website"}
+            accessibilityHint={ar ? "بيفتح الحجز على الخدمة دي" : "Starts booking this service"}
           />
           <Text variant="caption" tone="subtle" align="center">
-            {ar ? "هتختار اليوم والوقت في الخطوة الجاية، على موقع مواعيد." : "You'll pick a day and time next, on the Maw3ed website."}
+            {ar ? "هتختار اليوم والميعاد في الخطوة الجاية." : "You'll pick a day and time next."}
           </Text>
         </View>
       }

@@ -16,7 +16,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { configureForegroundHandling, hrefOf } from "@/features/notifications/push";
 import { createQueryClient } from "@/lib/query/client";
-import { routeFor } from "@/lib/links";
+import { hrefFor } from "@/lib/links";
 import { screen, track } from "@/lib/analytics";
 import { Text, Button, LocaleProvider, ToastProvider, colors, spacing } from "@/design";
 
@@ -83,6 +83,10 @@ export default function RootLayout() {
                 {/* Above the tabs, so Back returns to the tab as it was left. */}
                 <Stack.Screen name="business/[slug]/index" />
                 <Stack.Screen name="business/[slug]/reviews" />
+                {/* The steps walk back with the header's back button; a stray
+                    swipe must not drop somebody out of a half-made booking. */}
+                <Stack.Screen name="book/[slug]" options={{ gestureEnabled: false }} />
+                <Stack.Screen name="booking/[token]" />
                 <Stack.Screen name="dev/design-system" />
               </Stack>
             </AuthProvider>
@@ -119,7 +123,7 @@ function useNotificationRouting(ready: boolean) {
         return;
       const href = hrefOf(response);
       track("notification_opened", { source: "push" });
-      if (href) router.navigate(routeFor(href));
+      if (href) router.navigate(hrefFor(href));
     };
 
     Notifications.getLastNotificationResponseAsync()

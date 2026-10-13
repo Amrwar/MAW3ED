@@ -39,9 +39,19 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message?: string | null,
+    /**
+     * Machine-readable detail some routes send beside the message — a
+     * `code` such as "slot-taken" and anything that goes with it — so a
+     * screen can act on what happened rather than parse a sentence.
+     */
+    readonly detail: { code?: string; reason?: string | null; [key: string]: unknown } = {},
   ) {
     super(message ?? "حصل خطأ، حاول تاني");
     this.name = "ApiError";
+  }
+
+  get code(): string | undefined {
+    return typeof this.detail.code === "string" ? this.detail.code : undefined;
   }
 
   /** A 4xx is the caller's fault and retrying will not help. */

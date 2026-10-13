@@ -209,6 +209,14 @@ export const iconSize = { sm: 16, md: 20, lg: 24, xl: 32 } as const;
  */
 export const touchTarget = 48;
 
+/**
+ * Left to right whatever the language — phone numbers, codes, a photo
+ * strip. Applied inline, never inside StyleSheet.create: react-native-web
+ * validates those and rejects `direction` (it is still a valid style on
+ * both native platforms and in CSS, so inline it works everywhere).
+ */
+export const ltr = { direction: "ltr" } as const;
+
 /** Durations, so things that move together move at the same pace. */
 export const motion = {
   fast: 120,

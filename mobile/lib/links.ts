@@ -1,3 +1,5 @@
+import type { Href } from "expo-router";
+
 /**
  * Where a link lands in the app.
  *
@@ -31,16 +33,14 @@ export type AppRoute =
   | "/(business)/notifications"
   | "/(business)/account"
   | "/(admin)"
-  | `/business/${string}`;
+  | `/business/${string}`
+  | `/booking/${string}`;
 
 /** The hosts whose links are ours. Anything else is not opened in the app. */
 const OUR_HOSTS = new Set(["maw3ed.net", "www.maw3ed.net"]);
 
 /** Website path prefix → app route. First match wins, so order matters. */
 const TABLE: [prefix: string, route: AppRoute][] = [
-  // Not built yet in the app — the nearest screen until it is.
-  ["/booking/", "/(customer)/bookings"],
-
   ["/account/upcoming", "/(customer)/bookings"],
   ["/account/history", "/(customer)/bookings"],
   ["/account/favorites", "/(customer)/favorites"],
@@ -94,10 +94,25 @@ export function routeFor(input: string): AppRoute {
   const company = /^\/company\/([a-z0-9_-]{1,100})$/.exec(normalised);
   if (company) return `/business/${company[1]}`;
   if (normalised === "/company" || normalised.startsWith("/company/")) return "/(customer)/search";
+  // A booking's own page: the token is the authorisation, so only its
+  // own characters pass into the route. Anything else under /booking is
+  // not a booking the app can open.
+  const booking = /^\/booking\/([A-Za-z0-9]{16,128})$/.exec(normalised);
+  if (booking) return `/booking/${booking[1]}`;
+  if (normalised === "/booking" || normalised.startsWith("/booking/")) return "/(customer)/bookings";
   for (const [prefix, route] of TABLE) {
     const bare = prefix.replace(/\/$/, "");
     // Whole segments only: "/account" must not match "/accounting".
     if (normalised === bare || normalised.startsWith(bare + "/")) return route;
   }
   return "/";
+}
+
+/**
+ * routeFor, as the router's own type. The dynamic booking route is
+ * typed by expo-router's generated file, which this module cannot see
+ * from the vitest side; every route here is one that exists.
+ */
+export function hrefFor(input: string): Href {
+  return routeFor(input) as Href;
 }

@@ -28,7 +28,6 @@ import { useBusinessProfile } from "@/features/discovery/queries";
 import { PhotoViewer } from "@/features/profile/PhotoViewer";
 import {
   KIND_WORDS,
-  bookingUrl,
   profileKind,
   profileUrl,
   seating,
@@ -67,8 +66,8 @@ import type { PublicProfile, PublicStaffMember } from "@/types/api";
  * a clinic leads with its doctors and what they treat, a salon with its
  * team and when each is free, a restaurant with its tables and branches.
  *
- * Booking itself still finishes on the website, opened on the service
- * and person chosen here — the app's own booking flow is the next phase.
+ * Booking opens the app's own flow (app/book/[slug].tsx) on the service
+ * and person chosen here.
  */
 
 type Service = PublicProfile["services"][number];
@@ -156,23 +155,23 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
   const tags = kind === "clinic" ? specialties(p.staff) : [];
   const tables = kind === "dining" ? seating(p.resources) : null;
 
+  /** Into the app's own booking flow, on whatever was chosen here. */
   const book = (choice: BookingChoice | null) => {
     setService(null);
-    openExternal(bookingUrl(p.slug, choice ?? {}));
+    const params: Record<string, string> = { slug: p.slug };
+    if (choice?.serviceId) params.service = choice.serviceId;
+    if (choice?.serviceId && choice.staffId) params.staff = choice.staffId;
+    router.push({ pathname: "/book/[slug]", params });
   };
 
-  /** The sticky button: one service books straight away; several are chosen from. */
+  /** The sticky button: one service opens its sheet; several start booking at the choice of service. */
   const onBookPress = () => {
     const only = p.services.length === 1 ? p.services[0] : undefined;
     if (only) {
       setService({ s: only, staffId: null });
       return;
     }
-    // Clear of the solid top bar that appears once the cover is gone.
-    const bar = insets.top + 64;
-    if (servicesY.current !== null) {
-      scroll.current?.scrollTo({ y: Math.max(0, bodyY.current + servicesY.current - bar), animated: true });
-    }
+    book(null);
   };
 
   const share = async () => {
@@ -434,7 +433,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
               label={words.book[lang]}
               icon="calendar-outline"
               onPress={onBookPress}
-              accessibilityHint={p.services.length === 1 ? T("بيفتح تفاصيل الخدمة", "Opens the service") : T("بيوديك للخدمات تختار منها", "Takes you to the services to choose one")}
+              accessibilityHint={p.services.length === 1 ? T("بيفتح تفاصيل الخدمة", "Opens the service") : T("بيبدأ الحجز من اختيار الخدمة", "Starts booking with a choice of service")}
             />
           </>
         ) : (

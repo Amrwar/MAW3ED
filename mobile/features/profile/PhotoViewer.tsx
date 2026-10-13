@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { FlatList, Image, Modal, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconButton, Text, colors, spacing, useLocale } from "@/design";
@@ -28,9 +28,12 @@ export function PhotoViewer({
   const [index, setIndex] = useState(start ?? 0);
   const list = useRef<FlatList>(null);
 
-  useEffect(() => {
+  // Each opening starts on the photo that was tapped.
+  const [opened, setOpened] = useState(start);
+  if (opened !== start) {
+    setOpened(start);
     if (start !== null) setIndex(start);
-  }, [start]);
+  }
 
   const photo = photos[index];
 

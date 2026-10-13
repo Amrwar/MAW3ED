@@ -25,7 +25,11 @@ describe("routeFor", () => {
     // src/lib/notifications/recipients.ts
     expect(routeFor("/dashboard/bookings")).toBe("/(business)/bookings");
     expect(routeFor("/dashboard/settings")).toBe("/(business)/account");
+    // Too short to be a token: the nearest screen, not a broken one.
     expect(routeFor("/booking/0123abcd")).toBe("/(customer)/bookings");
+    const token = "a".repeat(64);
+    expect(routeFor(`https://maw3ed.net/booking/${token}`)).toBe(`/booking/${token}`);
+    expect(routeFor(`/booking/${token}/../x`)).toBe("/(customer)/bookings");
     expect(routeFor("/account")).toBe("/(customer)/account");
   });
 

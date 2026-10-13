@@ -1,6 +1,7 @@
-import { router } from "expo-router";
+import { usePathname } from "expo-router";
 import { IconButton, colors, useLocale } from "@/design";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { signInThenReturn } from "@/features/auth/AuthShell";
 import { useFavoriteIds, useToggleFavorite } from "./queries";
 
 /**
@@ -20,6 +21,7 @@ export function FavoriteButton({
   variant?: "plain" | "filled";
 }) {
   const { user } = useAuth();
+  const pathname = usePathname();
   const { lang } = useLocale();
   const ar = lang === "ar";
   const ids = useFavoriteIds(Boolean(user));
@@ -43,7 +45,7 @@ export function FavoriteButton({
       accessibilityState={{ selected: saved }}
       onPress={() => {
         if (!user) {
-          router.push("/(auth)/login");
+          signInThenReturn(pathname);
           return;
         }
         toggle.mutate({ businessId, save: !saved });

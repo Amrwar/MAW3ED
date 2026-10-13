@@ -24,6 +24,14 @@ export const keys = {
 
   facets: (city: string) => ["facets", city] as const,
 
+  booking: {
+    all: ["booking"] as const,
+    slots: (slug: string, q: Record<string, string | null | undefined>) => ["booking", "slots", slug, q] as const,
+    quote: (slug: string, serviceId: string, code: string) => ["booking", "quote", slug, serviceId, code] as const,
+    /** One booking by its access token — the authoritative status. */
+    one: (token: string) => ["booking", "one", token] as const,
+  },
+
   myBookings: {
     all: ["my-bookings"] as const,
     scope: (scope: "upcoming" | "history") => ["my-bookings", scope] as const,
