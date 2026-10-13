@@ -63,7 +63,7 @@ export const RULES = {
 export type Bucket = keyof typeof RULES;
 
 function hashIdentifier(value: string): string {
-  const secret = process.env.AUTH_SECRET ?? "";
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";
   // Without a secret the hash is still a hash, just not keyed. Better
   // than storing the raw value, and AUTH_SECRET is required in any
   // deployment that can sign in at all.

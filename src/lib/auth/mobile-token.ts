@@ -32,11 +32,13 @@ const ACCESS_AUDIENCE = "maw3ed-mobile-access";
 const REFRESH_AUDIENCE = "maw3ed-mobile-refresh";
 
 function secret(): Uint8Array {
-  const value = process.env.AUTH_SECRET;
+  // The same secret NextAuth signs sessions with, under either of the
+  // names it accepts (lib/env.ts); production has the v4 name.
+  const value = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
   if (!value) {
     // Refused rather than defaulted. A fallback secret would mean every
     // deployment that forgot to set one shares the same signing key.
-    throw new Error("AUTH_SECRET is required to issue mobile tokens");
+    throw new Error("AUTH_SECRET (or NEXTAUTH_SECRET) is required to issue mobile tokens");
   }
   return new TextEncoder().encode(value);
 }
