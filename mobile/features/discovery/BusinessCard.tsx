@@ -43,8 +43,11 @@ export function BusinessCard({
   onPress,
   trailing,
   variant = "row",
+  distance,
 }: {
   business: BusinessCardData;
+  /** Already formatted, e.g. "2.4 km" — nearby results only. */
+  distance?: string | null;
   onPress?: () => void;
   trailing?: ReactNode;
   variant?: "row" | "feature";
@@ -67,6 +70,7 @@ export function BusinessCard({
       // "unknown" (no hours set) says nothing rather than guessing.
       openNow={business.open?.state === "open" ? true : business.open?.state === "closed" ? false : null}
       nextFree={nextFreeLabel(business.nextSlot, lang)}
+      distance={distance}
       onPress={onPress}
       trailing={trailing}
     />

@@ -205,6 +205,15 @@ export default function CustomerHome() {
               {T("دكتور، صالون، جيم…", "Doctor, salon, gym…")}
             </Text>
           </Touchable>
+
+          <Button
+            label={T("أماكن قريبة مني", "Places near me")}
+            icon="navigate-outline"
+            variant="night"
+            size="sm"
+            onPress={() => router.push("/nearby")}
+            style={styles.nearMe}
+          />
         </Column>
       </View>
 
@@ -592,6 +601,7 @@ const styles = StyleSheet.create({
     borderColor: colors.night,
   },
   greeting: { marginTop: spacing.xl },
+  nearMe: { alignSelf: "flex-start", marginTop: spacing.sm },
   searchPill: {
     marginTop: spacing.lg,
     minHeight: 52,

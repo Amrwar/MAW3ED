@@ -83,6 +83,27 @@ const clearable = <T extends z.ZodTypeAny>(inner: T) =>
     .optional()
     .transform((v) => (v === "" ? null : v));
 
+// ─── Location ─────────────────────────────────────────────
+//
+// A pin the owner set — both coordinates or neither. The dashboard reads
+// them out of a pasted Google Maps link (lib/geo.ts); nothing is ever
+// geocoded or guessed.
+export const latitude = z.number().min(-90).max(90).nullable().optional();
+export const longitude = z.number().min(-180).max(180).nullable().optional();
+
+export function bothOrNeither(v: { latitude?: number | null; longitude?: number | null }, ctx: z.RefinementCtx) {
+  const lat = v.latitude;
+  const lng = v.longitude;
+  if (lat === undefined && lng === undefined) return;
+  if ((lat === null) !== (lng === null) || (lat === undefined) !== (lng === undefined)) {
+    ctx.addIssue({ code: "custom", message: "الموقع محتاج خط العرض وخط الطول مع بعض", path: ["latitude"] });
+    return;
+  }
+  if (lat === 0 && lng === 0) {
+    ctx.addIssue({ code: "custom", message: "الموقع ده مش صحيح", path: ["latitude"] });
+  }
+}
+
 export const businessUpdateSchema = z.object({
   // Required: a business must keep a name, a city and a category.
   nameAr:      z.string().min(2, "أدخل اسم العمل").optional(),
@@ -98,7 +119,9 @@ export const businessUpdateSchema = z.object({
   about:       clearable(z.string().max(600)),
   coverImage:  clearable(z.string().url("رابط صورة الغلاف غير صحيح")),
   logoImage:   clearable(z.string().url("رابط الشعار غير صحيح")),
-});
+  latitude,
+  longitude,
+}).superRefine(bothOrNeither);
 
 // ─── Service ──────────────────────────────────────────────
 export const serviceSchema = z.object({

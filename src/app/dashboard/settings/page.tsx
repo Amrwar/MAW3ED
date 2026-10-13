@@ -38,6 +38,10 @@ export default async function SettingsPage() {
     phone:      business.phone      ?? "",
     whatsapp:   business.whatsapp   ?? "",
     address:    business.address    ?? "",
+    location:
+      business.latitude !== null && business.longitude !== null
+        ? { lat: business.latitude, lng: business.longitude }
+        : null,
     about:      business.about      ?? "",
     cityId:     business.cityId,
     categoryId: business.categoryId,

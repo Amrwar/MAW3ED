@@ -7,6 +7,7 @@ import {
   MapPin, } from "lucide-react";
 import type { Profile, City, CategoryItem } from "./SettingsClient";
 import ImageUpload from "@/components/shared/ImageUpload";
+import LocationField from "@/components/shared/LocationField";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
@@ -168,6 +169,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
   });
   const [coverImage, setCoverImage] = useState<string | null>(profile.coverImage ?? null);
   const [logoImage,  setLogoImage]  = useState<string | null>(profile.logoImage  ?? null);
+  const [location,   setLocation]   = useState(profile.location);
   const [saving,  setSaving]  = useState(false);
   const [success, setSuccess] = useState(false);
   const [error,   setError]   = useState("");
@@ -207,6 +209,8 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
           categoryId: form.categoryId        || undefined,
           coverImage: coverImage             || null,
           logoImage:  logoImage              || null,
+          latitude:   location?.lat ?? null,
+          longitude:  location?.lng ?? null,
         }),
       });
 
@@ -475,6 +479,25 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
               style={{ insetInlineEnd: 12, color: "var(--color-subtle)", pointerEvents: "none" }}
             />
           </div>
+        </Field>
+
+        {/* Pin */}
+        <Field
+          label={isAr ? "الموقع على الخريطة" : "Location on the map"}
+          hint={
+            isAr
+              ? "افتح مكانك على Google Maps، اضغط مشاركة ← نسخ الرابط، والصقه هنا. بيظهر للعملاء على الخريطة وفي \"قريب مني\" في التطبيق."
+              : "Open your place in Google Maps, tap Share → Copy link, and paste it here. Customers see it on the app's map and in \"Near me\"."
+          }
+        >
+          <LocationField
+            value={location}
+            onChange={(next) => {
+              setLocation(next);
+              setSuccess(false);
+            }}
+            inputStyle={fieldBase}
+          />
         </Field>
       </Section>
 

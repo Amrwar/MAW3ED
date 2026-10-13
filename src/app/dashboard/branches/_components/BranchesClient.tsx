@@ -11,12 +11,16 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { num } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
+import LocationField from "@/components/shared/LocationField";
+import type { LatLng } from "@/lib/geo";
 
 export interface BranchRow {
   id: string;
   nameAr: string;
   nameEn: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   phone: string | null;
   isActive: boolean;
   _count: { bookings: number; resources: number };
@@ -39,16 +43,24 @@ export default function BranchesClient({ initial }: { initial: BranchRow[] }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    nameAr: string;
+    nameEn: string;
+    address: string;
+    phone: string;
+    isActive: boolean;
+    location: LatLng | null;
+  }>({
     nameAr: "",
     nameEn: "",
     address: "",
     phone: "",
     isActive: true,
+    location: null,
   });
 
   function startCreate() {
-    setForm({ nameAr: "", nameEn: "", address: "", phone: "", isActive: true });
+    setForm({ nameAr: "", nameEn: "", address: "", phone: "", isActive: true, location: null });
     setError(null);
     setCreating(true);
   }
@@ -60,6 +72,7 @@ export default function BranchesClient({ initial }: { initial: BranchRow[] }) {
       address: row.address ?? "",
       phone: row.phone ?? "",
       isActive: row.isActive,
+      location: row.latitude !== null && row.longitude !== null ? { lat: row.latitude, lng: row.longitude } : null,
     });
     setError(null);
     setEditing(row);
@@ -82,6 +95,8 @@ export default function BranchesClient({ initial }: { initial: BranchRow[] }) {
       address: form.address.trim() || null,
       phone: form.phone.trim() || null,
       isActive: form.isActive,
+      latitude: form.location?.lat ?? null,
+      longitude: form.location?.lng ?? null,
     };
 
     try {
@@ -264,6 +279,12 @@ export default function BranchesClient({ initial }: { initial: BranchRow[] }) {
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
           />
+          <div className="space-y-1.5">
+            <p className="m-0 text-[0.8125rem] font-semibold text-[var(--color-ink-2)]">
+              {lang === "ar" ? "الموقع على الخريطة (اختياري)" : "Location on the map (optional)"}
+            </p>
+            <LocationField value={form.location} onChange={(location) => setForm({ ...form, location })} />
+          </div>
           <Input
             label={b.phone}
             type="tel"

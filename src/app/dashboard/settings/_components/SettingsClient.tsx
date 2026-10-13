@@ -22,6 +22,8 @@ export type Profile = {
   phone:          string;
   whatsapp:       string;
   address:        string;
+  /** The owner's pin, or null when none has been set. */
+  location:       { lat: number; lng: number } | null;
   about:          string;
   cityId:         string;
   categoryId:     string;

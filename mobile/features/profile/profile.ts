@@ -130,6 +130,21 @@ export function directionsUrl(parts: (string | null | undefined)[]): string | nu
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
+/** Turn-by-turn to the owner's own pin — exact, where a written address is a search. */
+export function pinDirectionsUrl(loc: { lat: number; lng: number }): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${loc.lat},${loc.lng}`;
+}
+
+/** Every pin on a profile — the business's and each branch's — as map points. */
+export function profilePins(p: Pick<PublicProfile, "id" | "slug" | "location" | "branches">) {
+  const pins: { key: string; id: string; slug: string; lat: number; lng: number; branchId: string | null; branchNameAr: string | null; branchNameEn: string | null }[] = [];
+  if (p.location) pins.push({ key: `${p.id}:main`, id: p.id, slug: p.slug, ...p.location, branchId: null, branchNameAr: null, branchNameEn: null });
+  for (const b of p.branches) {
+    if (b.location) pins.push({ key: `${p.id}:${b.id}`, id: p.id, slug: p.slug, ...b.location, branchId: b.id, branchNameAr: b.nameAr, branchNameEn: b.nameEn });
+  }
+  return pins;
+}
+
 /** wa.me wants international digits; a local 01… number is Egyptian. */
 export function whatsappUrl(raw: string): string | null {
   const d = raw.replace(/\D/g, "");

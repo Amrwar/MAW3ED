@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Chip, Sheet, Text, TextField, Touchable, Icon, colors, radius, spacing, useLocale } from "@/design";
 import { useFacets } from "@/features/customer/queries";
@@ -31,13 +31,19 @@ export function FilterSheet({
   const [minText, setMinText] = useState("");
   const [maxText, setMaxText] = useState("");
 
-  // Each opening starts from what is applied, not from an abandoned draft.
-  useEffect(() => {
-    if (!open) return;
-    setDraft(value);
-    setMinText(value.minPrice === null ? "" : String(value.minPrice));
-    setMaxText(value.maxPrice === null ? "" : String(value.maxPrice));
-  }, [open, value]);
+  // Each opening starts from what is applied, not from an abandoned draft
+  // — adjusted while rendering, when the sheet opens or the applied
+  // filters change underneath it.
+  const opening = open ? value : null;
+  const [seen, setSeen] = useState(opening);
+  if (seen !== opening) {
+    setSeen(opening);
+    if (opening) {
+      setDraft(opening);
+      setMinText(opening.minPrice === null ? "" : String(opening.minPrice));
+      setMaxText(opening.maxPrice === null ? "" : String(opening.maxPrice));
+    }
+  }
 
   const facets = useFacets(draft.city || undefined, open);
   const name = (x: { nameAr: string; nameEn: string }) => (ar ? x.nameAr : x.nameEn);
