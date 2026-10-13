@@ -159,11 +159,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     // The first genuinely free appointment, by the same rule the booking
     // widget applies — not simply the next time the doors open. Shared
     // with the app's business screen (src/lib/discovery/profile.ts).
-    businessNextSlot(
-      dbBusiness.id,
-      dbBusiness.availability,
-      dbBusiness.services.map((s) => s.duration),
-    ),
+    businessNextSlot(dbBusiness.id, dbBusiness.services.map((s) => s.duration)),
   ]);
 
   const similarBusinesses = (
@@ -378,6 +374,8 @@ export default async function CompanyPage({ params, searchParams }: Params) {
           branches={dbBusiness.branches.map((b) => ({ id: b.id, nameAr: b.nameAr, address: b.address }))}
           depositEnabled={dbBusiness.depositEnabled}
           depositPercent={dbBusiness.depositPercent}
+          initialServiceId={typeof sp.service === "string" ? sp.service : null}
+          initialStaffId={typeof sp.staff === "string" ? sp.staff : null}
         />
       </main>
 

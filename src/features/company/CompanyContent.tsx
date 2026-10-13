@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { TrafficSource } from "@prisma/client";
 import AboutSection from "./AboutSection";
 import ServicesSection, { type ServiceProvider } from "./ServicesSection";
@@ -64,6 +64,14 @@ interface Props {
   branches:          { id: string; nameAr: string; address: string | null }[];
   depositEnabled:    boolean;
   depositPercent:    number;
+  /**
+   * A service chosen before arriving — the app's "Book this" opens
+   * /company/<slug>?service=<id> — so the widget starts on the next step
+   * instead of asking again.
+   */
+  initialServiceId?: string | null;
+  /** With it, the provider they chose: ?staff=<id>. */
+  initialStaffId?:   string | null;
 }
 
 export default function CompanyContent({
@@ -86,10 +94,22 @@ export default function CompanyContent({
   branches,
   depositEnabled,
   depositPercent,
+  initialServiceId = null,
+  initialStaffId = null,
 }: Props) {
   const { t, lang } = useLanguage();
-  const [preselected, setPreselected] = useState<Service | null>(null);
+  const [preselected, setPreselected] = useState<Service | null>(
+    () => services.find((s) => s.id === initialServiceId) ?? null,
+  );
   const widgetRef = useRef<HTMLDivElement>(null);
+
+  // Arriving with a service chosen: take the visitor to the widget once.
+  const arrivedWithService = useRef(preselected !== null);
+  useEffect(() => {
+    if (!arrivedWithService.current) return;
+    arrivedWithService.current = false;
+    widgetRef.current?.scrollIntoView({ block: "start" });
+  }, []);
 
   function handleBookService(service: Service) {
     setPreselected(service);
@@ -189,6 +209,7 @@ export default function CompanyContent({
                 slug={slug}
                 openDays={openDays}
                 preselectedService={preselected}
+                initialStaffId={initialStaffId}
                 businessType={businessType}
                 source={source}
                 resources={resources}

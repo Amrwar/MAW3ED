@@ -24,6 +24,12 @@ interface BookingWidgetProps {
   slug:                string;
   openDays:            number[];
   preselectedService?: Service | null;
+  /**
+   * A provider chosen before arriving (the app's staff list). Applied
+   * once, with the first preselected service, and only when they perform
+   * it; the provider step still shows, with them already picked.
+   */
+  initialStaffId?:     string | null;
   businessType:        "GENERAL" | "RESTAURANT" | "BARBERSHOP";
   /** The channel that brought this visitor, for attribution. */
   source?:             TrafficSource;
@@ -271,6 +277,7 @@ export default function BookingWidget({
   slug,
   openDays,
   preselectedService,
+  initialStaffId = null,
   businessType,
   resources,
   staffMembers,
@@ -383,18 +390,30 @@ export default function BookingWidget({
   const scrollRef = useRef<HTMLDivElement>(null);
   const days = getUpcomingDays(30);
 
+  // The person in the link belongs to the service in the link: applied
+  // only while that first preselection stands. Compared, not consumed, so
+  // an effect that runs twice (StrictMode) lands on the same answer, and
+  // a link whose service no longer exists never pins the person to a
+  // service the visitor picks themselves later.
+  const arrivedWith = useRef(preselectedService);
   useEffect(() => {
     if (!preselectedService) return;
+    const wanted = preselectedService === arrivedWith.current ? initialStaffId : null;
+    const staff = wanted
+      ? staffMembers.find(
+          (s) => s.id === wanted && (s.serviceIds.length === 0 || s.serviceIds.includes(preselectedService.id)),
+        )
+      : undefined;
     setSelectedService(preselectedService);
     setSelectedResource(null);
-    setSelectedStaff(null);
+    setSelectedStaff(staff ?? null);
     setSelectedDate(null);
     setSelectedTime(null);
     setSlots([]);
     setStep(
       hasStaff ? "provider" : hasResources ? "resource" : hasBranches ? "branch" : "date",
     );
-  }, [preselectedService, hasStaff, hasResources, hasBranches]);
+  }, [preselectedService, hasStaff, hasResources, hasBranches, staffMembers, initialStaffId]);
 
   // Fetch available slots when date / service / resource changes
   useEffect(() => {

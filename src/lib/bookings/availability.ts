@@ -180,6 +180,53 @@ export function subtractIntervals(base: Interval, cuts: Interval[]): Interval[] 
 
 /* ─── The engine ─────────────────────────────────────────── */
 
+/**
+ * The hours one weekday can be booked in, before blocks and bookings:
+ * the business's opening hours, narrowed by one person's own when a
+ * person is asked for. Exported so the public profile's weekly hours for
+ * a staff member are this, not a copy of it.
+ */
+export function dayWindow(
+  businessHours: DayHoursRule[],
+  dayOfWeek: number,
+  staff: { workingDays: number[]; hours: StaffDayRule[] } | null,
+): { window: Interval } | { reason: "business-closed" | "staff-off" } {
+  // ── 1. Business hours ────────────────────────────────────
+  const businessRule = businessHours.find((h) => h.dayOfWeek === dayOfWeek);
+  if (!businessRule || businessRule.isClosed) return { reason: "business-closed" };
+
+  let window: Interval = {
+    start: timeToMinutes(businessRule.openTime),
+    end: timeToMinutes(businessRule.closeTime),
+  };
+  // A business trading past midnight closes the next day; the grid works
+  // within one day, so the window stops at the end of this one.
+  if (window.end <= window.start) window = { start: window.start, end: 24 * 60 };
+
+  // ── 2. Staff hours, narrowing the window further ─────────
+  if (staff) {
+    if (staff.workingDays.length > 0 && !staff.workingDays.includes(dayOfWeek)) {
+      return { reason: "staff-off" };
+    }
+
+    const staffRule = staff.hours.find((h) => h.dayOfWeek === dayOfWeek);
+    if (staffRule) {
+      if (staffRule.isOff) return { reason: "staff-off" };
+      // The intersection: a member cannot be seen before the doors open
+      // or after they close, whatever their own hours say.
+      window = {
+        start: Math.max(window.start, timeToMinutes(staffRule.startTime)),
+        end: Math.min(window.end, timeToMinutes(staffRule.endTime)),
+      };
+      if (window.end <= window.start) return { reason: "staff-off" };
+    }
+    // No row at all: the member follows business hours, which is what
+    // every existing staff record does.
+  }
+
+  return { window };
+}
+
 export function computeAvailability(input: AvailabilityInput): AvailabilityResult {
   const empty = (reason: UnavailableReason): AvailabilityResult => ({
     slots: [],
@@ -201,38 +248,14 @@ export function computeAvailability(input: AvailabilityInput): AvailabilityResul
     return empty("same-day-cutoff");
   }
 
-  // ── 1. Business hours ────────────────────────────────────
-  const businessRule = input.businessHours.find((h) => h.dayOfWeek === input.dayOfWeek);
-  if (!businessRule || businessRule.isClosed) return empty("business-closed");
-
-  let window: Interval = {
-    start: timeToMinutes(businessRule.openTime),
-    end: timeToMinutes(businessRule.closeTime),
-  };
-  // A business trading past midnight closes the next day; the grid works
-  // within one day, so the window stops at the end of this one.
-  if (window.end <= window.start) window = { start: window.start, end: 24 * 60 };
-
-  // ── 2. Staff hours, narrowing the window further ─────────
-  if (input.staffMemberId) {
-    if (input.staffWorkingDays.length > 0 && !input.staffWorkingDays.includes(input.dayOfWeek)) {
-      return empty("staff-off");
-    }
-
-    const staffRule = input.staffHours.find((h) => h.dayOfWeek === input.dayOfWeek);
-    if (staffRule) {
-      if (staffRule.isOff) return empty("staff-off");
-      // The intersection: a member cannot be seen before the doors open
-      // or after they close, whatever their own hours say.
-      window = {
-        start: Math.max(window.start, timeToMinutes(staffRule.startTime)),
-        end: Math.min(window.end, timeToMinutes(staffRule.endTime)),
-      };
-      if (window.end <= window.start) return empty("staff-off");
-    }
-    // No row at all: the member follows business hours, which is what
-    // every existing staff record does.
-  }
+  // ── 1–2. Business hours, narrowed by the person's own ────
+  const day = dayWindow(
+    input.businessHours,
+    input.dayOfWeek,
+    input.staffMemberId ? { workingDays: input.staffWorkingDays, hours: input.staffHours } : null,
+  );
+  if ("reason" in day) return empty(day.reason);
+  const window = day.window;
 
   // ── 3–6. Blocks ──────────────────────────────────────────
   const blocks = applicableBlocks(input);

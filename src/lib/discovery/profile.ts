@@ -1,8 +1,11 @@
 import { db } from "@/lib/db";
-import { cairoNow, openState, startOfCairoDay, type DayHours, type OpenState } from "@/lib/discovery/hours";
-import { findNextSlot, type NextSlot } from "@/lib/discovery/next-slot";
-import { timeToMinutes } from "@/lib/bookings/time";
+import { cairoNow, openState, type DayHours, type OpenState } from "@/lib/discovery/hours";
+import type { NextSlot } from "@/lib/discovery/next-slot";
+import { firstFree, loadSchedule, shortest } from "@/lib/discovery/next-free";
 import { getBusinessReviews, getRatingSummary, type PublicReview, type RatingSummary } from "@/lib/reviews";
+import { canUseFeature, getEffectivePlan } from "@/lib/plans";
+import { CUTOFF_HOURS } from "@/lib/bookings/self-service";
+import { staffWeek } from "@/lib/discovery/staff";
 
 /**
  * One business as the public may see it — the app's business screen.
@@ -29,8 +32,12 @@ export interface PublicProfile {
   isVerified: boolean;
   /** Bookings are confirmed without the business approving each one. */
   autoConfirm: boolean;
+  /** A deposit is taken online when booking — true only when it really will be. */
   acceptsOnlinePayment: boolean;
-  category: { slug: string; nameAr: string; nameEn: string };
+  /** How the business schedules: tables, staff, or neither in particular. */
+  businessType: "GENERAL" | "RESTAURANT" | "BARBERSHOP";
+  /** parentSlug is set for a subcategory, so a dentist reads as medical. */
+  category: { slug: string; nameAr: string; nameEn: string; parentSlug: string | null };
   city: { slug: string; nameAr: string; nameEn: string };
   neighborhood: { slug: string; nameAr: string; nameEn: string } | null;
   address: string | null;
@@ -56,8 +63,51 @@ export interface PublicProfile {
   nextSlot: NextSlot | null;
   rating: RatingSummary;
   reviews: PublicReview[];
-  branches: { id: string; nameAr: string; nameEn: string | null; address: string | null }[];
-  staff: { id: string; nameAr: string; nameEn: string | null; role: string | null; photo: string | null }[];
+  branches: { id: string; nameAr: string; nameEn: string | null; address: string | null; phone: string | null }[];
+  staff: PublicStaffMember[];
+  /** Tables, rooms, chairs — what a booking holds, when the business uses any. */
+  resources: PublicResource[];
+  policies: BookingPolicies;
+}
+
+export interface PublicStaffMember {
+  id: string;
+  nameAr: string;
+  nameEn: string | null;
+  role: string | null;
+  photo: string | null;
+  specialties: string[];
+  /** Services this member performs. Empty means every service, as booking reads it. */
+  serviceIds: string[];
+  /** When they can be booked, already narrowed by the business's own hours. */
+  hours: DayHours[];
+  /** Their own first free appointment — their bookings, not the whole shop's. */
+  nextSlot: NextSlot | null;
+}
+
+export interface PublicResource {
+  id: string;
+  kind: "TABLE" | "ROOM" | "CHAIR" | "EQUIPMENT" | "OTHER";
+  name: string;
+  /** Seats, when it counts any. */
+  capacity: number | null;
+  /** "Garden", "First floor" — free text from the owner. */
+  area: string | null;
+  branchId: string | null;
+}
+
+/** The rules a booking here is made under. Each is a real setting, never a default dressed up. */
+export interface BookingPolicies {
+  /** Percent of the price paid online to hold the booking, or null when nothing is taken. */
+  depositPercent: number | null;
+  /** How long ahead a booking must be made, in minutes. 0 means any time left today. */
+  minNoticeMinutes: number;
+  /** How far ahead the calendar is open. */
+  maxAdvanceDays: number;
+  /** "HH:MM" Cairo; past it, no more bookings for today. */
+  sameDayCutoff: string | null;
+  /** Customers can cancel or move a booking themselves until this many hours before it. */
+  changeCutoffHours: number;
 }
 
 export async function getPublicProfile(slug: string): Promise<PublicProfile | null> {
@@ -75,10 +125,18 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
       isVerified: true,
       autoConfirm: true,
       depositEnabled: true,
+      depositPercent: true,
+      plan: true,
+      subscriptionStatus: true,
+      trialEndsAt: true,
+      minNoticeMinutes: true,
+      maxAdvanceDays: true,
+      sameDayCutoff: true,
+      businessType: true,
       address: true,
       phone: true,
       whatsapp: true,
-      category: { select: { slug: true, nameAr: true, nameEn: true } },
+      category: { select: { slug: true, nameAr: true, nameEn: true, parent: { select: { slug: true } } } },
       city: { select: { slug: true, nameAr: true, nameEn: true } },
       neighborhood: { select: { slug: true, nameAr: true, nameEn: true } },
       images: { select: { url: true, caption: true }, orderBy: { sortOrder: "asc" } },
@@ -94,23 +152,74 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
       branches: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },
-        select: { id: true, nameAr: true, nameEn: true, address: true },
+        select: { id: true, nameAr: true, nameEn: true, address: true, phone: true },
       },
       staffMembers: {
         where: { isActive: true },
         orderBy: { createdAt: "asc" },
-        select: { id: true, nameAr: true, nameEn: true, role: true, photo: true },
+        select: {
+          id: true,
+          nameAr: true,
+          nameEn: true,
+          role: true,
+          photo: true,
+          specialties: true,
+          workingDays: true,
+          hours: { select: { dayOfWeek: true, startTime: true, endTime: true, isOff: true } },
+          services: { select: { serviceId: true } },
+        },
+      },
+      resources: {
+        where: { isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: { id: true, kind: true, name: true, capacity: true, area: true, branchId: true },
       },
     },
   });
   if (!b) return null;
 
   const hours: DayHours[] = b.availability;
-  const [rating, reviewPage, nextSlot] = await Promise.all([
+  const now = new Date();
+  const [rating, reviewPage, schedule] = await Promise.all([
     getRatingSummary(b.id),
     getBusinessReviews(b.id, { sort: "recent", take: 5 }),
-    businessNextSlot(b.id, hours, b.services.map((s) => s.duration)),
+    loadSchedule(b.id, now),
   ]);
+  const { dayOfWeek, time } = cairoNow(now);
+  const durationOf = new Map(b.services.map((s) => [s.id, s.duration]));
+  const nextSlot = schedule ? firstFree(schedule, shortest(b.services.map((s) => s.duration))) : null;
+
+  const staff: PublicStaffMember[] = b.staffMembers.map((m) => {
+    // Every link, kept as it is: an empty list means "performs every
+    // service" to each reader, so a member linked only to services that
+    // are no longer offered must stay non-empty — they perform nothing.
+    const serviceIds = m.services.map((x) => x.serviceId);
+    const week = staffWeek(hours, m.workingDays, m.hours);
+    const durations =
+      m.services.length === 0
+        ? [...durationOf.values()]
+        : serviceIds.flatMap((id) => (durationOf.has(id) ? [durationOf.get(id) as number] : []));
+    return {
+      id: m.id,
+      nameAr: m.nameAr,
+      nameEn: m.nameEn,
+      role: m.role,
+      photo: m.photo,
+      specialties: m.specialties.map((x) => x.trim()).filter(Boolean),
+      serviceIds,
+      hours: week,
+      // Their own first slot, as booking with them would offer it.
+      nextSlot: schedule
+        ? firstFree(schedule, shortest(durations), { id: m.id, workingDays: m.workingDays, hours: m.hours })
+        : null,
+    };
+  });
+
+  // The booking route's own test, exactly (api/public/[slug]/bookings):
+  // a deposit is taken when it is switched on and the plan includes
+  // deposits — and only then, so the page promises nothing more.
+  const takesDeposit =
+    b.depositEnabled && canUseFeature(getEffectivePlan(b.plan, b.subscriptionStatus, b.trialEndsAt), "deposits");
 
   const services = b.services.map((s) => {
     const price = Number(s.price);
@@ -130,8 +239,6 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
     null,
   );
 
-  const { dayOfWeek, time } = cairoNow();
-
   return {
     id: b.id,
     slug: b.slug,
@@ -143,8 +250,14 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
     logoImage: b.logoImage,
     isVerified: b.isVerified,
     autoConfirm: b.autoConfirm,
-    acceptsOnlinePayment: b.depositEnabled,
-    category: b.category,
+    acceptsOnlinePayment: takesDeposit,
+    businessType: b.businessType,
+    category: {
+      slug: b.category.slug,
+      nameAr: b.category.nameAr,
+      nameEn: b.category.nameEn,
+      parentSlug: b.category.parent?.slug ?? null,
+    },
     city: b.city,
     neighborhood: b.neighborhood,
     address: b.address,
@@ -160,50 +273,29 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
     rating,
     reviews: reviewPage.reviews,
     branches: b.branches,
-    staff: b.staffMembers,
+    staff,
+    resources: b.resources,
+    policies: {
+      depositPercent: takesDeposit ? b.depositPercent : null,
+      minNoticeMinutes: b.minNoticeMinutes,
+      maxAdvanceDays: b.maxAdvanceDays,
+      sameDayCutoff: b.sameDayCutoff,
+      changeCutoffHours: CUTOFF_HOURS,
+    },
   };
 }
 
-/** How far ahead findNextSlot looks; bookings beyond it cannot matter. */
-const HORIZON_DAYS = 14;
-
 /**
  * The first genuinely free appointment at one business — the shortest
- * service fitting between its hours and its bookings over the next
- * fortnight. Shared by this profile and the website's business page
+ * service, as the booking engine would offer it (lib/discovery/next-free).
+ * Shared by this profile and the website's business page
  * (src/app/company/[slug]/page.tsx), so the two cannot disagree.
  */
 export async function businessNextSlot(
   businessId: string,
-  hours: DayHours[],
   serviceDurations: number[],
   now: Date = new Date(),
 ): Promise<NextSlot | null> {
-  const today = startOfCairoDay(now);
-  const horizon = new Date(today.getTime() + HORIZON_DAYS * 86_400_000);
-  const booked = await db.booking.findMany({
-    where: { businessId, status: { in: ["PENDING", "CONFIRMED"] }, date: { gte: today, lt: horizon } },
-    select: { date: true, startTime: true, endTime: true, service: { select: { duration: true } } },
-  });
-  const shortest = serviceDurations.reduce<number | null>(
-    (min, d) => (d > 0 && (min === null || d < min) ? d : min),
-    null,
-  );
-  const { dayOfWeek, time } = cairoNow(now);
-  return findNextSlot(
-    {
-      rules: hours,
-      durationMinutes: shortest,
-      booked: booked.map((x) => {
-        const startMin = timeToMinutes(x.startTime);
-        return {
-          dayOffset: Math.round((x.date.getTime() - today.getTime()) / 86_400_000),
-          startMin,
-          endMin: x.endTime ? timeToMinutes(x.endTime) : startMin + x.service.duration,
-        };
-      }),
-    },
-    dayOfWeek,
-    time,
-  );
+  const schedule = await loadSchedule(businessId, now);
+  return schedule ? firstFree(schedule, shortest(serviceDurations)) : null;
 }

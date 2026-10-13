@@ -18,6 +18,8 @@ export const keys = {
     /** Search pages, loaded one after another — not the same cache shape as a single page. */
     infinite: (query: Record<string, string>) => ["businesses", "infinite", query] as const,
     profile: (slug: string) => ["businesses", "profile", slug] as const,
+    reviews: (slug: string, sort: string, rating: number | null) =>
+      ["businesses", "reviews", slug, sort, rating] as const,
   },
 
   facets: (city: string) => ["facets", city] as const,

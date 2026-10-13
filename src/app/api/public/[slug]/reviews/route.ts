@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { ok, err } from "@/lib/api";
+import { err } from "@/lib/api";
 import {
   getBusinessReviews,
   parseRatingFilter,
@@ -40,7 +40,12 @@ export async function GET(req: Request, { params }: Params) {
       skip: (page - 1) * PAGE_SIZE,
     });
 
-    return ok({ reviews, matched, page, pageSize: PAGE_SIZE });
+    // The same for everyone, so a CDN may answer it; short, so a new
+    // review shows within a minute.
+    return Response.json(
+      { reviews, matched, page, pageSize: PAGE_SIZE },
+      { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } },
+    );
   } catch (e) {
     log.error("[public reviews]", e);
     return err("حدث خطأ", 500);
