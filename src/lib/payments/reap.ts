@@ -98,6 +98,20 @@ export async function reapAbandonedPayments(now = new Date()): Promise<ReapResul
 
         if (!payment.bookingId) return;
 
+        // A newer payment for the same booking — a fresh page opened
+        // after this one expired, or one already paid — means the
+        // booking is not waiting on this one. Releasing it would free a
+        // slot the customer may be paying for right now.
+        const newer = await tx.payment.count({
+          where: {
+            bookingId: payment.bookingId,
+            id: { not: payment.id },
+            createdAt: { gt: payment.createdAt },
+            status: { in: ["PENDING", "SUCCEEDED"] },
+          },
+        });
+        if (newer > 0) return;
+
         // Only a booking still waiting on this payment. One that was
         // confirmed by other means, or already cancelled, is not ours
         // to touch.

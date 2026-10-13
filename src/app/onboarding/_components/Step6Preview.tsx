@@ -4,8 +4,6 @@ import type { Category, City } from "@prisma/client";
 import type { OnboardingData } from "./OnboardingForm";
 import { SITE_HOST } from "@/lib/url";
 
-const DAY_LABELS = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
-
 interface Props {
   data:        OnboardingData;
   categories:  Category[];

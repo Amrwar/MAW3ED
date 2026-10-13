@@ -6,7 +6,7 @@ import ResendVerificationButton from "./_components/ResendVerificationButton";
 
 export const metadata: Metadata = { title: "تأكيد البريد الإلكتروني" };
 
-type Status = "success" | "expired" | "invalid" | "error" | "pending";
+type Status = "success" | "verified" | "expired" | "invalid" | "error" | "busy" | "pending";
 
 interface Props {
   searchParams: Promise<{ status?: string }>;
@@ -22,9 +22,19 @@ const COPY: Record<
     body: "صفحة نشاطك اتنشرت وبقت تقدر تستقبل حجوزات. فاضل تأكيد رقم الواتساب عشان تاخد علامة التوثيق.",
     tone: "ok",
   },
+  verified: {
+    title: "تم تأكيد بريدك",
+    body: "كمّل إعداد نشاطك، وصفحتك هتتنشر أول ما تخلص.",
+    tone: "ok",
+  },
   expired: {
     title: "الرابط انتهت صلاحيته",
-    body: "الروابط صالحة لمدة 24 ساعة. اطلب رابط جديد من لوحة التحكم.",
+    body: "الروابط صالحة لمدة 24 ساعة. سجّل دخولك واطلب رابط جديد.",
+    tone: "warn",
+  },
+  busy: {
+    title: "محاولات كتير",
+    body: "استنى شوية وافتح الرابط تاني.",
     tone: "warn",
   },
   invalid: {
@@ -60,7 +70,7 @@ const TONES = {
 
 export default async function VerifyEmailPage({ searchParams }: Props) {
   const { status } = await searchParams;
-  const known = ["success", "expired", "invalid", "error"] as const;
+  const known = ["success", "verified", "expired", "invalid", "error", "busy"] as const;
   const key: Status = known.includes(status as (typeof known)[number])
     ? (status as Status)
     : "pending";
@@ -96,13 +106,19 @@ export default async function VerifyEmailPage({ searchParams }: Props) {
               <Link href="/dashboard/settings" className="btn btn-primary w-full">
                 أكّد رقم الواتساب
               </Link>
-            ) : (
+            ) : key === "verified" ? (
+              <Link href="/onboarding" className="btn btn-primary w-full">
+                كمّل إعداد نشاطك
+              </Link>
+            ) : key === "busy" ? null : (
               <ResendVerificationButton />
             )}
 
-            <Link href="/dashboard" className="btn btn-outline w-full">
-              الذهاب للوحة التحكم
-            </Link>
+            {key !== "verified" ? (
+              <Link href="/dashboard" className="btn btn-outline w-full">
+                الذهاب للوحة التحكم
+              </Link>
+            ) : null}
           </div>
         </div>
       </main>

@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { hashSecret } from "@/lib/verification";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
       return err("خدمة البريد غير متاحة حالياً. تواصل مع الدعم.", 503);
     }
 
-    const user = await db.user.findUnique({ where: { email: normalised } });
+    const user = await db.user.findFirst({ where: { email: { equals: normalised, mode: "insensitive" } } });
 
     // Always respond with success to prevent user enumeration
     if (!user) {
@@ -59,8 +60,10 @@ export async function POST(req: Request) {
     const token     = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
 
+    // Only the hash is stored, as for every other one-time secret: a read
+    // of this table must not hand out working reset links.
     await db.passwordResetToken.create({
-      data: { email: normalised, token, expiresAt },
+      data: { email: normalised, token: hashSecret(token), expiresAt },
     });
 
     const base     = siteUrl;

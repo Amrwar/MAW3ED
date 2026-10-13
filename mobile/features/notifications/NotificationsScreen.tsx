@@ -64,9 +64,7 @@ function Feed() {
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.jade} />}
       >
         <View style={styles.push}>
-          <Card>
-            <PushToggle />
-          </Card>
+          <PushToggle card />
         </View>
         <ListState
           loading={query.isLoading}

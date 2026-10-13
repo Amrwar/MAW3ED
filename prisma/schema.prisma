@@ -370,6 +370,8 @@ model Business {
   @@index([isPublished, ratingAvg])
   @@index([isPublished, createdAt])
   @@index([referredById])
+  /// The nearby query's bounding box (add_business_location.sql).
+  @@index([latitude, longitude])
 
 }
 
@@ -397,6 +399,8 @@ model Branch {
   resources  Resource[]
 
   @@index([businessId, isActive, sortOrder])
+  /// The nearby query's bounding box (add_business_location.sql).
+  @@index([latitude, longitude])
 }
 
 /// Time removed from the calendar, for any reason.

@@ -45,7 +45,7 @@ export async function PATCH(req: Request) {
  * GET /api/business/settings/deposit
  * Returns current deposit settings for the authenticated business.
  */
-export async function GET(_req: Request) {
+export async function GET() {
   try {
     const { business } = await requireBusiness();
 

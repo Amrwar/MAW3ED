@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { getEffectivePlan, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { getCapabilities, resourceLabel } from "@/lib/scheduling/capabilities";
 import { cookies } from "next/headers";
+import VerifyEmailBanner from "@/components/dashboard/VerifyEmailBanner";
 
 export const metadata: Metadata = { title: "لوحة التحكم" };
 
@@ -64,6 +65,15 @@ export default async function DashboardLayout({
 
   const cityName = business.city?.nameAr ?? "";
 
+  // A business stays unpublished until its owner's email is confirmed,
+  // and nothing told the owner. Said here, on every dashboard page, with
+  // a way to get a new link, until it is done.
+  const owner = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { email: true, emailVerified: true },
+  });
+  const needsEmailVerification = Boolean(owner?.email && !owner.emailVerified);
+
   // What this business calls its rooms, chairs or tables — derived from
   // what it has created, not from its category.
   const capabilities = await getCapabilities(business.id);
@@ -95,7 +105,10 @@ export default async function DashboardLayout({
           hasBranches={capabilities.branches}
           isAdmin={Boolean(session.user.adminRole)}
         />
-        <main id="main" className="p-5 md:p-7 max-w-[1400px]">{children}</main>
+        <main id="main" className="p-5 md:p-7 max-w-[1400px]">
+          {needsEmailVerification ? <VerifyEmailBanner email={owner?.email ?? ""} lang={lang} /> : null}
+          {children}
+        </main>
       </div>
     </div>
   );

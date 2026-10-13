@@ -122,21 +122,24 @@ function useScreenTracking() {
  * Native only: expo-notifications has no web implementation of either,
  * and calling it there threw from the root of the app.
  */
+/**
+ * Notifications already opened, for the life of the app — module scope,
+ * because the launch response is read again whenever the root remounts
+ * and a notification that opened the app must not re-open its screen.
+ */
+const handledTaps = new Set<string>();
+
 function useNotificationRouting(ready: boolean) {
   useEffect(() => {
     // Not before the navigator exists: routing then throws.
     if (!ready || Platform.OS === "web") return;
 
-    // Each tap handled once: the launch response is read again on every
-    // mount, and a notification that opened the app must not re-open its
-    // screen the next time the root remounts.
-    const handled = new Set<string>();
 
     const open = async (response: Notifications.NotificationResponse | null) => {
       if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
       const id = response.notification.request.identifier;
-      if (handled.has(id)) return;
-      handled.add(id);
+      if (handledTaps.has(id)) return;
+      handledTaps.add(id);
 
       const target = targetOf(response);
       track("notification_opened", { source: "push", booking: Boolean(target.bookingId) });

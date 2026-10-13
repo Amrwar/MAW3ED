@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
-import { sendWhatsAppMessage } from "@/lib/services/whatsapp";
+import { sendCode } from "@/lib/auth/send-code";
 import {
   generatePhoneCode,
   hashSecret,
@@ -62,12 +62,17 @@ export async function POST(req: Request) {
       },
     });
 
-    await sendWhatsAppMessage({
-      to: phone,
-      message:
-        `كود تأكيد رقمك على موعد: ${code}\n\n` +
+    const delivery = await sendCode(
+      phone,
+      code,
+      `كود تأكيد رقمك على موعد: ${code}\n\n` +
         `الكود صالح لمدة 10 دقائق. لو مش إنت اللي طلبته، تجاهل الرسالة.`,
-    });
+    );
+    // "Check your WhatsApp" only when a code really went out.
+    if (!delivery.ok) {
+      log.error("code not delivered", { reason: delivery.reason });
+      return err("معرفناش نبعت الكود دلوقتي. جرّب تاني بعد شوية.", 503, { code: "send-failed" });
+    }
 
     // The code itself is never logged.
     log.info("phone verification code sent", { businessId: business.id });

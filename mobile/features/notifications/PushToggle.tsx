@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppState, Linking, Platform, StyleSheet, Switch, View } from "react-native";
-import { Button, Text, colors, ltr, spacing, useLocale } from "@/design";
+import { Button, Card, Text, colors, ltr, spacing, useLocale, useToast } from "@/design";
 import { track } from "@/lib/analytics";
 import { pushStatus, registerForPush, turnPushOff, type PushStatus } from "./push";
 
@@ -14,12 +14,13 @@ import { pushStatus, registerForPush, turnPushOff, type PushStatus } from "./pus
  * settings. Re-read whenever the app comes back to the foreground, since
  * that is where somebody returns from those settings.
  */
-export function PushToggle({ compact = false }: { compact?: boolean }) {
+export function PushToggle({ compact = false, card = false }: { compact?: boolean; /** Draw its own card, so nothing is left empty while it loads. */ card?: boolean }) {
   const { lang } = useLocale();
   const ar = lang === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
   const [status, setStatus] = useState<PushStatus | null>(null);
   const [busy, setBusy] = useState(false);
+  const toast = useToast();
 
   const refresh = useCallback(() => {
     pushStatus()
@@ -47,6 +48,11 @@ export function PushToggle({ compact = false }: { compact?: boolean }) {
         setStatus("off");
         track("push_turned_off");
       }
+    } catch {
+      // Offline, or the platform refused a token: say so, and show the
+      // switch as it really is.
+      toast({ message: T("معرفناش نغيّر الإشعارات دلوقتي. جرّب تاني.", "Couldn't change notifications right now. Try again."), tone: "danger" });
+      refresh();
     } finally {
       setBusy(false);
     }
@@ -67,7 +73,7 @@ export function PushToggle({ compact = false }: { compact?: boolean }) {
               "Confirmations, a reminder before your appointment, and any change by the business.",
             );
 
-  return (
+  const body = (
     <View style={[styles.wrap, compact && styles.compact]}>
       <View style={styles.row}>
         <View style={styles.flex}>
@@ -93,6 +99,7 @@ export function PushToggle({ compact = false }: { compact?: boolean }) {
       ) : null}
     </View>
   );
+  return card ? <Card>{body}</Card> : body;
 }
 
 const styles = StyleSheet.create({

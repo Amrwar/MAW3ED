@@ -30,7 +30,8 @@ export async function POST(req: Request) {
 
     const { name, email, password } = parsed.data;
 
-    const existing = await db.user.findUnique({ where: { email } });
+    // Older accounts may be stored in mixed case; one mailbox, one account.
+    const existing = await db.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
     if (existing) {
       return err("هذا البريد الإلكتروني مسجل بالفعل", 409);
     }

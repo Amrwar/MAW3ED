@@ -191,8 +191,10 @@ const PUSH_WORTHY: Record<Audience, ReadonlySet<EventType>> = {
 
 export function pushWorthy(event: NotificationEvent, audience: Audience): boolean {
   if (!PUSH_WORTHY[audience].has(event.type)) return false;
-  // A cancellation is news to the side that did not make it.
+  // A cancellation is news to the side that did not make it, and an
+  // owner keying in a booking needs no push about it.
   if (event.type === "booking.cancelled") return event.by !== audience;
+  if (event.type === "booking.created") return event.by !== audience;
   return true;
 }
 

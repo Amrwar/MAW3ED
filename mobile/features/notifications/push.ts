@@ -61,7 +61,8 @@ async function ensureAndroidChannel() {
 
 /** Where things stand, without prompting. */
 export async function pushStatus(): Promise<PushStatus> {
-  if (!Device.isDevice) return "unsupported";
+  // expo-device reports a browser as a device; the browser preview has no push.
+  if (Platform.OS === "web" || !Device.isDevice) return "unsupported";
   if (!config.easProjectId) return "not-configured";
   const { status } = await Notifications.getPermissionsAsync();
   if (status === "denied") return "denied";
@@ -77,7 +78,7 @@ export async function pushStatus(): Promise<PushStatus> {
  * only an already-granted permission is used, and "off" is respected.
  */
 export async function registerForPush({ prompt }: { prompt: boolean }): Promise<PushStatus> {
-  if (!Device.isDevice) return "unsupported";
+  if (Platform.OS === "web" || !Device.isDevice) return "unsupported";
   if (!config.easProjectId) return "not-configured";
   if (!prompt && (await AsyncStorage.getItem(OPT_OUT_KEY)) === "1") return "off";
 
@@ -120,7 +121,7 @@ export async function turnPushOff(): Promise<void> {
  * the person has turned push off. Returns the unsubscribe.
  */
 export function watchTokenChanges(): () => void {
-  if (!Device.isDevice || !config.easProjectId) return () => undefined;
+  if (Platform.OS === "web" || !Device.isDevice || !config.easProjectId) return () => undefined;
   const sub = Notifications.addPushTokenListener(async () => {
     try {
       if ((await AsyncStorage.getItem(OPT_OUT_KEY)) === "1") return;

@@ -15,8 +15,9 @@ import { syncVerifiedBadge } from "@/lib/business-verification";
 export async function GET(req: Request) {
   // An emailed link is still a token to guess at. Limited by
   // caller, since no account is named until the token resolves.
+  // A page, not raw JSON: this is a link somebody clicked.
   const limited = await rateLimit("verifyEmail");
-  if (!limited.ok) return tooManyRequests(limited);
+  if (!limited.ok) return Response.redirect(`${siteUrl}/verify-email?status=busy`, 302);
 
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
@@ -39,14 +40,15 @@ export async function GET(req: Request) {
       return to("expired");
     }
 
-    await db.$transaction([
-      db.user.update({
-        where: { id: record.userId },
-        data: { emailVerified: new Date() },
-      }),
-      // Single use: burn it, and any sibling tokens for this account.
-      db.emailVerificationToken.deleteMany({ where: { userId: record.userId } }),
-    ]);
+    // Verifying is idempotent, so the token is kept until it expires.
+    // Mail scanners (Outlook Safe Links, corporate gateways) open every
+    // link before the person does; burning the token on that first
+    // visit left the real click on "invalid link" with the email in
+    // fact already verified. A second visit just says "verified" again.
+    await db.user.updateMany({
+      where: { id: record.userId, emailVerified: null },
+      data: { emailVerified: new Date() },
+    });
 
     // A business held back at signup can now go live.
     const business = await db.business.findUnique({
@@ -62,7 +64,9 @@ export async function GET(req: Request) {
     }
 
     log.info("email verified", { userId: record.userId });
-    return to("success");
+    // "Your page is live" only when there is a page: verifying mid-onboarding
+    // is common, and the business does not exist yet.
+    return to(business ? "success" : "verified");
   } catch (e) {
     log.error("[verify-email/confirm]", e);
     return to("error");

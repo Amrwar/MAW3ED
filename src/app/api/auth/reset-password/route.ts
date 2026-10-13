@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { hashSecret } from "@/lib/verification";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
@@ -31,19 +32,27 @@ export async function POST(req: Request) {
 
     const { token, password } = parsed.data;
 
-    const record = await db.passwordResetToken.findUnique({ where: { token } });
+    const tokenHash = hashSecret(token);
+    const record = await db.passwordResetToken.findUnique({ where: { token: tokenHash } });
 
-    if (!record)                        return err("الرابط غير صالح أو منتهي الصلاحية", 400);
-    if (record.expiresAt < new Date())  return err("انتهت صلاحية هذا الرابط، أرسل طلبًا جديدًا", 400);
+    if (!record)                        return err("الرابط غير صالح أو منتهي الصلاحية", 400, { code: "invalid-token" });
+    if (record.expiresAt < new Date())  return err("انتهت صلاحية هذا الرابط، أرسل طلبًا جديدًا", 400, { code: "expired-token" });
+
+    // The account by its address, whatever case it was stored in.
+    const user = await db.user.findFirst({
+      where: { email: { equals: record.email, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (!user) return err("الرابط غير صالح أو منتهي الصلاحية", 400, { code: "invalid-token" });
 
     const hashed = await bcrypt.hash(password, 12);
 
+    // A new password ends every app session too: whoever needed the
+    // reset may be resetting because somebody else got in.
     await db.$transaction([
-      db.user.update({
-        where: { email: record.email },
-        data:  { password: hashed },
-      }),
-      db.passwordResetToken.delete({ where: { token } }),
+      db.user.update({ where: { id: user.id }, data: { password: hashed } }),
+      db.passwordResetToken.deleteMany({ where: { email: record.email } }),
+      db.mobileSession.deleteMany({ where: { userId: user.id } }),
     ]);
 
     return ok({ reset: true });

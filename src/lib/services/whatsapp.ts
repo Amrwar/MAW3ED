@@ -71,6 +71,8 @@ export interface WhatsAppTemplateSendOptions {
   languageCode?: string;                   // BCP-47 code, e.g. "ar" or "en_US"
   bodyParams?:   WhatsAppTemplateParam[];  // maps to {{1}}, {{2}}, ... in the template body
   headerParams?: WhatsAppTemplateParam[];  // maps to header placeholders if template has one
+  /** A URL button's dynamic part — an authentication template's "copy code" button takes the code. */
+  urlButtonParam?: string;
 }
 
 // ─── Core: template sender ────────────────────────────────
@@ -86,6 +88,7 @@ export async function sendWhatsAppTemplate({
   languageCode = LANG_CODE,
   bodyParams   = [],
   headerParams = [],
+  urlButtonParam,
 }: WhatsAppTemplateSendOptions): Promise<SendOutcome> {
   if (!TOKEN || !PHONE_ID) {
     log.warn(
@@ -108,6 +111,9 @@ export async function sendWhatsAppTemplate({
   }
   if (bodyParams.length > 0) {
     components.push({ type: "body", parameters: bodyParams });
+  }
+  if (urlButtonParam) {
+    components.push({ type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: urlButtonParam }] });
   }
 
   const payload = {

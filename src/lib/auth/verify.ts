@@ -25,7 +25,7 @@ export interface VerifiedUser {
 }
 
 const schema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(1),
 });
 
@@ -35,8 +35,9 @@ export async function verifyEmailPassword(
   const parsed = schema.safeParse(credentials);
   if (!parsed.success) return null;
 
-  const user = await db.user.findUnique({
-    where: { email: parsed.data.email },
+  // Case-insensitive, as an email address is.
+  const user = await db.user.findFirst({
+    where: { email: { equals: parsed.data.email, mode: "insensitive" } },
     include: { business: { select: { id: true } } },
   });
 

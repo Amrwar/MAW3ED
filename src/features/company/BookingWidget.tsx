@@ -253,14 +253,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ServiceIcon({ service }: { service: Service }) {
-  if (service.image) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={service.image} alt={service.nameAr} className="w-10 h-10 object-contain" />;
-  }
-  return <span className="text-xl font-bold text-[var(--color-jade)]">{service.nameAr.charAt(0)}</span>;
-}
-
 // ─── Main Component ───────────────────────────────────────
 
 interface Quote {

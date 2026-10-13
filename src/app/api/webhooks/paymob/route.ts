@@ -414,6 +414,25 @@ async function handleBookingSuccess(
     }
   }
 
+  // A deposit landing on a booking that was not waiting for one — it is
+  // already confirmed or finished, so this is a second payment for it.
+  // The money is recorded either way; support is told so it can refund.
+  if (payment.kind === "BOOKING_DEPOSIT" && before && before !== "PENDING_PAYMENT" && before !== "FAILED_PAYMENT") {
+    await db.auditLog
+      .create({
+        data: {
+          actorName: "Paymob",
+          actorRole: "system",
+          action: "payment.unexpected_deposit",
+          resourceType: "Payment",
+          resourceId: payment.id,
+          summary: `Deposit paid for a booking already ${before}; check for a duplicate charge and refund if so.`,
+          metadata: { bookingId: payment.bookingId, transactionId, amountCents: payment.amountCents, bookingStatus: before },
+        },
+      })
+      .catch((e) => log.error("[paymob webhook] could not write audit entry", e));
+  }
+
   if (payment.bookingId) {
     // The transaction id goes into the event so a retry computes the
     // same deduplication key and the customer is not thanked twice.

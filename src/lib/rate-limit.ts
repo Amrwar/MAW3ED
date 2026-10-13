@@ -52,7 +52,11 @@ export const RULES = {
   forgotPassword: { limit: 5, windowSeconds: 60 * 60 },
   resetPassword: { limit: 8, windowSeconds: 60 * 60 },
   verifyEmail: { limit: 5, windowSeconds: 60 * 60 },
-  phoneOtp: { limit: 5, windowSeconds: 60 * 60 },
+  // Per address. Generous, because Egyptian mobile carriers put many
+  // customers behind one shared IP: the real per-person limits are on
+  // the phone number (cooldown and hourly cap in lib/auth/login-code.ts)
+  // and on each code (five attempts).
+  phoneOtp: { limit: 30, windowSeconds: 60 * 60 },
   mobileRefresh: { limit: 60, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 

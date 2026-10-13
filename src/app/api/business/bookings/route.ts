@@ -209,7 +209,7 @@ export async function POST(req: Request) {
     // who had just created it — and tell the customer nothing at all.
     // The customer gets their confirmation now, and the owner's alert
     // is still sent, mutable from their notification settings.
-    void notify({ type: "booking.created", bookingId: booking.id });
+    void notify({ type: "booking.created", bookingId: booking.id, by: "business" });
 
     return ok(
       {
