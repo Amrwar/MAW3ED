@@ -1,11 +1,8 @@
 import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View, StyleSheet } from "react-native";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { ListState } from "@/components/ui/ListState";
+import { Screen, Text, ListState, colors, radius, spacing, touchTarget } from "@/design";
 import { BookingCard } from "@/features/bookings/BookingCard";
 import { useMyBookings } from "@/features/customer/queries";
-import { colors, radius, spacing, touchTarget } from "@/constants/theme";
 import { SignInGate } from "@/features/auth/SignInGate";
 
 type Tab = "upcoming" | "history";

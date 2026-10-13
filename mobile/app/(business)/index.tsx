@@ -1,15 +1,10 @@
 import { useMemo } from "react";
 import { useRouter } from "expo-router";
 import { RefreshControl, ScrollView, View, StyleSheet } from "react-native";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { ListState } from "@/components/ui/ListState";
+import { Screen, Text, Card, Button, ListState, colors, spacing } from "@/design";
 import { BookingCard } from "@/features/bookings/BookingCard";
 import { useAnalytics, useBusinessBookings } from "@/features/business/queries";
 import { money, num } from "@/lib/format";
-import { colors, spacing } from "@/constants/theme";
 
 /**
  * The owner's home.

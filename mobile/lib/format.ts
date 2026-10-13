@@ -1,96 +1,147 @@
 /**
  * Numbers, money, dates and times, formatted the way the web formats
- * them.
+ * them (src/lib/fmt.ts).
  *
- * The locale is "ar-EG-u-nu-latn" everywhere: Arabic Egypt, but with
- * Latin digits. Egyptian users read prices and times in 1234, not
- * ١٢٣٤, and the web settled on this after the same question came up
- * there. One decision, both products.
+ * Arabic is "ar-EG-u-nu-latn": Arabic month and day names with Latin
+ * digits. Egyptian users read prices and times in 1234, not ١٢٣٤, and
+ * the web settled on this after the same question came up there. One
+ * decision, both products.
+ *
+ * Every function takes the language last and defaults to Arabic, the
+ * product's language, so screens written before English existed keep
+ * working unchanged. New code passes `lang` from useLocale().
  */
 
-const LOCALE = "ar-EG-u-nu-latn";
+export type Lang = "ar" | "en";
 
-/** A count. Never used for money — that needs the currency. */
-export function num(value: number): string {
-  return new Intl.NumberFormat(LOCALE).format(value);
+export function localeFor(lang: Lang): string {
+  return lang === "en" ? "en-US" : "ar-EG-u-nu-latn";
 }
 
+/** A count. Never used for money — that needs the currency. */
+export function num(value: number, lang: Lang = "ar"): string {
+  return new Intl.NumberFormat(localeFor(lang)).format(value);
+}
+
+const CURRENCY: Record<string, Record<Lang, string>> = {
+  EGP: { ar: "ج.م", en: "EGP" },
+};
+
 /**
- * A price.
- *
- * Returns null for null, so a caller has to decide what "no price set"
+ * A price. null for null, so a caller has to decide what "no price set"
  * looks like rather than being handed "0 ج.م". A service priced by
  * arrangement is not a free service, and the web had to remove exactly
  * that bug.
  */
-export function money(value: number | null, currency = "EGP"): string | null {
+export function money(value: number | null, currency = "EGP", lang: Lang = "ar"): string | null {
   if (value === null) return null;
-  const formatted = new Intl.NumberFormat(LOCALE, {
+  const formatted = new Intl.NumberFormat(localeFor(lang), {
     maximumFractionDigits: value % 1 === 0 ? 0 : 2,
   }).format(value);
-  return `${formatted} ${currency === "EGP" ? "ج.م" : currency}`;
+  const label = CURRENCY[currency]?.[lang] ?? currency;
+  return lang === "en" ? `${label} ${formatted}` : `${formatted} ${label}`;
 }
 
-/** "45 دقيقة" / "ساعة ونص" is over-clever; minutes are clear. */
-export function duration(minutes: number): string {
-  if (minutes < 60) return `${num(minutes)} دقيقة`;
+/** "45 دقيقة", "ساعة و15 دقيقة" / "1 hr 15 min". Minutes are clearer than "ساعة ونص". */
+export function duration(minutes: number, lang: Lang = "ar"): string {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
+  if (lang === "en") {
+    if (hours === 0) return `${rest} min`;
+    return rest ? `${hours} hr ${rest} min` : `${hours} hr`;
+  }
+  if (minutes < 60) return `${num(minutes)} دقيقة`;
   const hoursPart = hours === 1 ? "ساعة" : hours === 2 ? "ساعتين" : `${num(hours)} ساعات`;
   return rest ? `${hoursPart} و${num(rest)} دقيقة` : hoursPart;
 }
 
 /**
- * "الأحد 12 أكتوبر" from a "YYYY-MM-DD".
- *
- * Parsed as UTC on purpose. A date string carries no timezone, and
- * `new Date("2026-10-12")` is already UTC midnight — formatting that in
- * a timezone behind UTC prints the 11th. Everything in this product is
- * Cairo time, which is ahead of UTC, but the phone decides its own
- * timezone and a traveller should not see yesterday's date.
+ * A "YYYY-MM-DD" as a Date at UTC midnight. Formatted in UTC on purpose:
+ * a date string carries no timezone, and formatting UTC midnight in a
+ * timezone behind UTC prints the day before. Everything in this product
+ * is a Cairo calendar day; the phone's own timezone must not move it.
  */
-export function longDate(isoDate: string): string {
-  const date = new Date(`${isoDate}T00:00:00Z`);
-  return new Intl.DateTimeFormat(LOCALE, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    timeZone: "UTC",
-  }).format(date);
+function day(isoDate: string): Date {
+  return new Date(`${isoDate}T00:00:00Z`);
 }
 
-/** "12 أكتوبر" — for lists, where the weekday is noise. */
-export function shortDate(isoDate: string): string {
-  const date = new Date(`${isoDate}T00:00:00Z`);
-  return new Intl.DateTimeFormat(LOCALE, {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  }).format(date);
+function fmt(isoDate: string, lang: Lang, options: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat(localeFor(lang), { ...options, timeZone: "UTC" }).format(day(isoDate));
 }
 
-/** "14:30" to "2:30 م". */
-export function time(hhmm: string): string {
+/** "الأحد 12 أكتوبر" / "Sunday, October 12". */
+export function longDate(isoDate: string, lang: Lang = "ar"): string {
+  return fmt(isoDate, lang, { weekday: "long", day: "numeric", month: "long" });
+}
+
+/** "12 أكتوبر" / "Oct 12" — for lists, where the weekday is noise. */
+export function shortDate(isoDate: string, lang: Lang = "ar"): string {
+  return fmt(isoDate, lang, { day: "numeric", month: "short" });
+}
+
+/** "الأحد" / "Sun". Whole names in Arabic: three letters of الأحد and الأربعاء are both "الأ". */
+export function weekdayShort(isoDate: string, lang: Lang = "ar"): string {
+  return fmt(isoDate, lang, { weekday: lang === "en" ? "short" : "long" });
+}
+
+/**
+ * Calendar column headings: one letter in Arabic (ح ن ث ر خ ج س — the
+ * standard abbreviation, and unambiguous, unlike three-letter prefixes
+ * where الأحد and الأربعاء are both "الأ"), "Sun" in English.
+ */
+export function weekdayHeading(isoDate: string, lang: Lang = "ar"): string {
+  return fmt(isoDate, lang, { weekday: lang === "en" ? "short" : "narrow" });
+}
+
+/** "أكتوبر" / "Oct". */
+export function monthShort(isoDate: string, lang: Lang = "ar"): string {
+  return fmt(isoDate, lang, { month: lang === "en" ? "short" : "long" });
+}
+
+/** "12". */
+export function dayOfMonth(isoDate: string, lang: Lang = "ar"): string {
+  return fmt(isoDate, lang, { day: "numeric" });
+}
+
+/** "أكتوبر 2026" / "October 2026". */
+export function monthYear(isoDate: string, lang: Lang = "ar"): string {
+  return fmt(isoDate, lang, { month: "long", year: "numeric" });
+}
+
+/** "14:30" to "2:30 م" / "2:30 PM". */
+export function time(hhmm: string, lang: Lang = "ar"): string {
   const [h, m] = hhmm.split(":").map(Number);
   // A malformed value is returned as-is rather than rendered as
   // "NaN:NaN". It comes from the database, so it should not happen —
   // but a clock that reads NaN is worse than one that reads oddly.
   if (h === undefined || m === undefined || Number.isNaN(h) || Number.isNaN(m)) return hhmm;
-  const period = h < 12 ? "ص" : "م";
   const hour12 = h % 12 === 0 ? 12 : h % 12;
+  const period = lang === "en" ? (h < 12 ? "AM" : "PM") : h < 12 ? "ص" : "م";
   return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
 /**
- * "بعد ساعتين", "النهاردة", "من 3 أيام".
+ * "بعد ساعتين", "بكرة", "من 3 أيام" / "in 2 hours", "tomorrow".
  *
  * Takes the minutesUntil the server already computed, rather than
  * comparing against the device clock — a phone with the wrong time
  * would otherwise show an appointment as missed.
  */
-export function relativeTime(minutesUntil: number): string {
+export function relativeTime(minutesUntil: number, lang: Lang = "ar"): string {
   const past = minutesUntil < 0;
   const mins = Math.abs(minutesUntil);
+
+  if (lang === "en") {
+    const say = (n: number, unit: string) => {
+      const label = `${n} ${unit}${n === 1 ? "" : "s"}`;
+      return past ? `${label} ago` : `in ${label}`;
+    };
+    if (mins < 60) return say(Math.max(1, Math.round(mins)), "minute");
+    if (mins < 60 * 24) return say(Math.round(mins / 60), "hour");
+    const days = Math.round(mins / (60 * 24));
+    if (days === 1) return past ? "yesterday" : "tomorrow";
+    return say(days, "day");
+  }
 
   if (mins < 60) {
     const label = `${num(Math.max(1, Math.round(mins)))} دقيقة`;
@@ -114,7 +165,7 @@ export function relativeTime(minutesUntil: number): string {
  * than "0.0 ★" — which reads as a terrible business instead of a new
  * one. The web removed a hardcoded 4.9 for the same reason.
  */
-export function rating(avg: number | null, count: number): string | null {
+export function rating(avg: number | null, count: number, lang: Lang = "ar"): string | null {
   if (avg === null || count === 0) return null;
-  return `${avg.toFixed(1)} (${num(count)})`;
+  return `${avg.toFixed(1)} (${num(count, lang)})`;
 }

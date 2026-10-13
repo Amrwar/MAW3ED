@@ -1,10 +1,6 @@
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { Card } from "@/components/ui/Card";
-import { ListState } from "@/components/ui/ListState";
+import { Screen, Text, Card, ListState, colors, spacing } from "@/design";
 import { useAdminOverview } from "@/features/admin/queries";
-import { colors, spacing } from "@/constants/theme";
 
 /**
  * Does anything need an admin right now? The same figures as the web

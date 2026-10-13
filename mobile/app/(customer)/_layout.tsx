@@ -1,6 +1,5 @@
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { colors, typography, touchTarget } from "@/constants/theme";
+import { bottomNavOptions, tabIcon } from "@/design";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useUnreadCount } from "@/features/notifications/queries";
 
@@ -33,24 +32,7 @@ export default function CustomerLayout() {
   const unread = useUnreadCount(Boolean(user));
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.jade,
-        tabBarInactiveTintColor: colors.subtle,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.line,
-          height: touchTarget + 28,
-          paddingTop: 6,
-          paddingBottom: 10,
-        },
-        tabBarLabelStyle: {
-          fontSize: typography.tiny.fontSize,
-          fontWeight: typography.tiny.fontWeight,
-        },
-      }}
-    >
+    <Tabs screenOptions={bottomNavOptions}>
       {TABS.map((tab) => (
         <Tabs.Screen
           key={tab.name}
@@ -58,13 +40,7 @@ export default function CustomerLayout() {
           options={{
             title: tab.title,
             tabBarBadge: tab.name === "notifications" ? unread : undefined,
-            tabBarIcon: ({ color, focused, size }) => (
-              <Ionicons
-                name={focused ? tab.icon : (`${tab.icon}-outline` as never)}
-                size={size ?? 22}
-                color={color}
-              />
-            ),
+            tabBarIcon: tabIcon(tab.icon),
           }}
         />
       ))}

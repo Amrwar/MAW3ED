@@ -1,14 +1,10 @@
 import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View, StyleSheet } from "react-native";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { Button } from "@/components/ui/Button";
-import { ListState } from "@/components/ui/ListState";
+import { Screen, Text, Button, ListState, colors, radius, spacing, touchTarget } from "@/design";
 import { BookingCard } from "@/features/bookings/BookingCard";
 import { useBusinessBookings, useUpdateBookingStatus } from "@/features/business/queries";
 import { nextActionsFor } from "@/features/bookings/status";
 import { num } from "@/lib/format";
-import { colors, radius, spacing, touchTarget } from "@/constants/theme";
 
 const FILTERS = [
   { value: "ALL", label: "الكل" },

@@ -1,4 +1,4 @@
-import type { BadgeTone } from "@/components/ui/Badge";
+import type { BadgeTone } from "@/design";
 
 /**
  * What a booking's status is called, and what colour it wears.

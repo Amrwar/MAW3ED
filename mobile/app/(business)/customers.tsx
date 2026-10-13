@@ -1,12 +1,9 @@
 import { useEffect, useState } from "react";
-import { FlatList, TextInput, View, StyleSheet } from "react-native";
+import { FlatList, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Text } from "@/components/ui/Typography";
-import { Card } from "@/components/ui/Card";
-import { ListState } from "@/components/ui/ListState";
+import { Card, ListState, SearchField, Text, colors, spacing } from "@/design";
 import { useBusinessCustomers } from "@/features/business/queries";
 import { money, num, shortDate } from "@/lib/format";
-import { colors, radius, spacing, touchTarget } from "@/constants/theme";
 
 /**
  * The customer book.
@@ -51,16 +48,12 @@ export default function Customers() {
               </Text>
             ) : null}
           </View>
-          <TextInput
+          <SearchField
             value={term}
             onChangeText={setTerm}
             placeholder="اسم أو رقم"
-            placeholderTextColor={colors.faint}
-            style={styles.input}
-            autoCorrect={false}
-            returnKeyType="search"
-            onSubmitEditing={() => setSearch(term)}
             accessibilityLabel="ابحث في العملاء"
+            onSubmit={() => setSearch(term)}
           />
         </View>
       }
@@ -128,18 +121,6 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
     justifyContent: "space-between",
     gap: spacing.sm,
-  },
-  input: {
-    minHeight: touchTarget,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line2,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.lg,
-    fontSize: 16,
-    color: colors.ink,
-    textAlign: "right",
-    writingDirection: "rtl",
   },
   row: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
   who: { flex: 1, gap: 2 },

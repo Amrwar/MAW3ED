@@ -1,12 +1,9 @@
 import { useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View, StyleSheet } from "react-native";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { ListState } from "@/components/ui/ListState";
+import { Screen, Text, ListState, colors, radius, spacing, touchTarget } from "@/design";
 import { BookingCard } from "@/features/bookings/BookingCard";
 import { useBusinessBookings } from "@/features/business/queries";
 import { longDate, num, shortDate } from "@/lib/format";
-import { colors, radius, spacing, touchTarget } from "@/constants/theme";
 
 /** How many days the strip offers at once. A fortnight fits the thumb. */
 const DAYS_SHOWN = 14;

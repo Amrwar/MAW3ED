@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { ListState } from "@/components/ui/ListState";
+import { Screen, Text, Button, Card, ListState, colors, spacing } from "@/design";
 import { SignInGate } from "@/features/auth/SignInGate";
 import { routeFor } from "@/lib/links";
 import { track } from "@/lib/analytics";
-import { colors, spacing } from "@/constants/theme";
 import type { AppNotification } from "@/types/api";
 import { useMarkNotificationsRead, useNotifications } from "./queries";
 import { pushStatus, registerForPush, type PushStatus } from "./push";

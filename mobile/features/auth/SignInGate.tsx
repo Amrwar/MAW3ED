@@ -1,11 +1,7 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, View, StyleSheet } from "react-native";
 import { router } from "expo-router";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Typography";
-import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { colors, spacing } from "@/constants/theme";
+import { Screen, Text, Button, EmptyState, colors, spacing } from "@/design";
 import { useAuth } from "./AuthProvider";
 
 /**
