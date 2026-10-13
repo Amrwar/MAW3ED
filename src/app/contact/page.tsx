@@ -3,9 +3,10 @@
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
-import { Mail, MessageCircle } from "lucide-react";
+import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { SUPPORT_WHATSAPP, whatsappHref } from "@/lib/contact";
+import { SUPPORT_WHATSAPP, telHref, whatsappHref } from "@/lib/contact";
+import { BUSINESS_ADDRESS, SUPPORT_PHONE } from "@/lib/support";
 
 /**
  * Contact.
@@ -45,6 +46,26 @@ export default function ContactPage() {
       value: whatsapp.value,
       sub: whatsapp.sub,
       href: whatsappHref(SUPPORT_WHATSAPP),
+      external: true,
+    },
+    {
+      key: "phone",
+      Icon: Phone,
+      tone: "bg-[var(--color-jade-soft)] text-[var(--color-jade)]",
+      title: c.phone.title,
+      value: SUPPORT_PHONE,
+      sub: c.phone.sub,
+      href: telHref(SUPPORT_PHONE),
+      external: false,
+    },
+    {
+      key: "address",
+      Icon: MapPin,
+      tone: "bg-[var(--color-jade-soft)] text-[var(--color-jade)]",
+      title: c.address.title,
+      value: BUSINESS_ADDRESS,
+      sub: c.address.sub,
+      href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(BUSINESS_ADDRESS)}`,
       external: true,
     },
   ].filter(Boolean) as {
@@ -90,7 +111,7 @@ export default function ContactPage() {
                     <span className="mb-1 block font-bold text-[var(--color-text-primary)]">
                       {title}
                     </span>
-                    <span className="mb-1 block text-sm font-medium text-[var(--color-accent)]">
+                    <span className="mb-1 block text-sm font-medium text-[var(--color-accent)]" dir="ltr">
                       {value}
                     </span>
                     <span className="block text-xs text-[var(--color-text-muted)]">{sub}</span>

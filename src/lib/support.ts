@@ -25,3 +25,11 @@ export const SUPPORT_EMAIL =
 
 /** `mailto:` form, for links rather than displayed text. */
 export const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}`;
+
+/**
+ * The business's own phone and address, as registered with Meta for the
+ * WhatsApp Business account. Meta reviews the website against that
+ * profile, so the contact page shows the same details.
+ */
+export const SUPPORT_PHONE = "+1 514 553 4360";
+export const BUSINESS_ADDRESS = "1445 Rue du Fort, Montréal, QC H3H 2C3, Canada";
