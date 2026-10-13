@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Image, Linking, StyleSheet, View } from "react-native";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { IconButton, Screen, Text, Touchable, colors, elevation, radius, spacing, useLocale } from "@/design";
 import { config } from "@/lib/config";
 
@@ -103,9 +103,30 @@ export function LegalNote() {
   );
 }
 
-/** Leaves sign-in for wherever the app opens — the home screen of the person's space. */
+/**
+ * Where to go back to once signed in, when sign-in interrupted something
+ * — a booking half made, a place being saved. Held in memory, not in a
+ * route param, so it never appears in a URL and dies with the app.
+ */
+let returnTo: string | null = null;
+
+/** Sign in, then come back here rather than to the home screen. */
+export function signInThenReturn(path: string) {
+  // Our own screens only: a path, never a host.
+  returnTo = path.startsWith("/") && !path.startsWith("//") ? path : null;
+  router.push("/(auth)/login");
+}
+
+/**
+ * Leaves sign-in: back to what it interrupted, or else the home screen
+ * of the person's space. dismissTo pops the sign-in screens off the
+ * stack, so Back afterwards does not lead into them again.
+ */
 export function finishSignIn() {
-  router.replace("/");
+  const target = returnTo;
+  returnTo = null;
+  if (target) router.dismissTo(target as Href);
+  else router.replace("/");
 }
 
 const styles = StyleSheet.create({

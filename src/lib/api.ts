@@ -15,8 +15,13 @@ installArabicZodErrors();
 export const ok = (data: unknown, status = 200) =>
   Response.json(data, { status });
 
-export const err = (message: string, status = 400) =>
-  Response.json({ error: message }, { status });
+/**
+ * `extra` carries machine-readable fields beside the message — a `code`
+ * the mobile app can act on and word in either language, where the
+ * Arabic sentence is all the website needs.
+ */
+export const err = (message: string, status = 400, extra?: Record<string, unknown>) =>
+  Response.json({ ...extra, error: message }, { status });
 
 /**
  * Require a signed-in caller.

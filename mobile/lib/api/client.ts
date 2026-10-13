@@ -126,7 +126,8 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
         ? String((payload as { error: unknown }).error)
         : null;
     if (response.status === 401) throw new UnauthorizedError(message ?? undefined);
-    throw new ApiError(response.status, message);
+    const detail = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+    throw new ApiError(response.status, message, detail);
   }
 
   return payload as T;

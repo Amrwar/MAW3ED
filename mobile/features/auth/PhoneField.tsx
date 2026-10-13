@@ -8,6 +8,7 @@ import {
   Touchable,
   colors,
   fonts,
+  ltr,
   radius,
   spacing,
   touchTarget,
@@ -60,7 +61,7 @@ export function PhoneField({
         {label}
       </Text>
 
-      <View style={[styles.row, { borderColor: border }, focused && styles.focused]}>
+      <View style={[styles.row, ltr, { borderColor: border }, focused && styles.focused]}>
         <Touchable
           accessibilityRole="button"
           accessibilityLabel={`${ar ? "الدولة" : "Country"}: ${name(country)} +${country.dial}`}
@@ -175,7 +176,7 @@ function CountrySheet({
               <Text variant="body" style={styles.optionName} numberOfLines={1}>
                 {ar ? c.ar : c.en}
               </Text>
-              <Text variant="label" tone="subtle" style={styles.dial}>
+              <Text variant="label" tone="subtle" style={ltr}>
                 {isolateLtr(`+${c.dial}`)}
               </Text>
               {isSelected ? <Icon name="checkmark" color={colors.jade} /> : null}
@@ -196,7 +197,6 @@ const styles = StyleSheet.create({
   wrap: { gap: spacing.xs + 2 },
   // A phone number reads left to right in every language.
   row: {
-    direction: "ltr",
     flexDirection: "row",
     alignItems: "center",
     minHeight: touchTarget,
@@ -231,5 +231,4 @@ const styles = StyleSheet.create({
   },
   optionSelected: { backgroundColor: colors.jadeSoft },
   optionName: { flex: 1 },
-  dial: { direction: "ltr" },
 });

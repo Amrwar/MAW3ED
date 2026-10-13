@@ -3,7 +3,7 @@ import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { Screen, Text, Button, Card, ListState, colors, spacing } from "@/design";
 import { SignInGate } from "@/features/auth/SignInGate";
-import { routeFor } from "@/lib/links";
+import { hrefFor } from "@/lib/links";
 import { track } from "@/lib/analytics";
 import type { AppNotification } from "@/types/api";
 import { useMarkNotificationsRead, useNotifications } from "./queries";
@@ -40,7 +40,7 @@ function Feed() {
 
   function open(n: AppNotification) {
     track("notification_opened", { kind: n.kind, source: "feed" });
-    if (n.href) router.navigate(routeFor(n.href));
+    if (n.href) router.navigate(hrefFor(n.href));
   }
 
   return (

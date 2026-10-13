@@ -23,13 +23,21 @@ type Params = { params: Promise<{ slug: string }> };
  * Otherwise creates a PENDING booking (existing manual-confirm flow).
  *
  * No auth required — public endpoint.
+ *
+ * Every refusal carries a `code` beside the Arabic `error` — slot-taken,
+ * slot-unavailable (+ reason), limit-reached, discount-gone,
+ * payment-unavailable and the rest — so the app can react to what
+ * happened and say it in English as well, without parsing a sentence.
  */
 export async function POST(req: Request, { params }: Params) {
   try {
     const { slug } = await params;
     const body   = await req.json();
     const parsed = bookingSchema.safeParse(body);
-    if (!parsed.success) return err(parsed.error.issues[0].message, 422);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      return err(issue.message, 422, { code: "invalid", field: String(issue.path[0] ?? "") });
+    }
 
     const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes,
             tableId, resourceId, staffMemberId, branchId, partySize, idempotencyKey,
@@ -40,12 +48,12 @@ export async function POST(req: Request, { params }: Params) {
       include: { owner: { select: { email: true } } },
       // include subscription fields for feature gating
     });
-    if (!business) return err("لم يتم العثور على هذا العمل", 404);
+    if (!business) return err("لم يتم العثور على هذا العمل", 404, { code: "business-not-found" });
 
     const service = await db.service.findFirst({
       where: { id: serviceId, businessId: business.id, isAvailable: true },
     });
-    if (!service) return err("الخدمة غير موجودة", 404);
+    if (!service) return err("الخدمة غير موجودة", 404, { code: "service-not-found" });
 
     // ── Upsert customer ────────────────────────────────────────────────────────
     const customer = await db.customer.upsert({
@@ -90,6 +98,7 @@ export async function POST(req: Request, { params }: Params) {
       return err(
         resolved.reason === "not-found" ? "الكود ده مش موجود" : FAILURE_AR[resolved.reason],
         422,
+        { code: "discount-invalid", reason: resolved.reason },
       );
     }
 
@@ -147,18 +156,21 @@ export async function POST(req: Request, { params }: Params) {
     if (!result.ok) {
       switch (result.failure.kind) {
         case "slot-taken":
-          return err("حد تاني حجز الموعد ده دلوقتي، اختر وقت تاني", 409);
+          return err("حد تاني حجز الموعد ده دلوقتي، اختر وقت تاني", 409, { code: "slot-taken" });
         case "slot-unavailable":
-          return err(unavailableMessage(result.failure.reason), 409);
+          return err(unavailableMessage(result.failure.reason), 409, {
+            code: "slot-unavailable",
+            reason: result.failure.reason,
+          });
         case "limit-reached":
-          return err("عذرًا، هذا العمل بلغ الحد الأقصى من الحجوزات الشهرية", 429);
+          return err("عذرًا، هذا العمل بلغ الحد الأقصى من الحجوزات الشهرية", 429, { code: "limit-reached" });
         case "service-not-found":
-          return err("الخدمة غير موجودة", 404);
+          return err("الخدمة غير موجودة", 404, { code: "service-not-found" });
         case "discount-gone":
           // Somebody took the last one while this customer was filling
           // in their name. Better to say so than to quietly charge them
           // more than the price they were quoted.
-          return err("العرض خلص دلوقتي، جرّب تحجز من غير كود", 409);
+          return err("العرض خلص دلوقتي، جرّب تحجز من غير كود", 409, { code: "discount-gone" });
       }
     }
 
@@ -265,7 +277,7 @@ export async function POST(req: Request, { params }: Params) {
           data:  { status: "FAILED", failureReason: "could not open a Paymob session" },
         });
         log.error("[booking POST] Paymob session failed:", paymobError);
-        return err("تعذّر بدء عملية الدفع، حاول مرة أخرى", 502);
+        return err("تعذّر بدء عملية الدفع، حاول مرة أخرى", 502, { code: "payment-unavailable" });
       }
     }
 
@@ -285,7 +297,7 @@ export async function POST(req: Request, { params }: Params) {
     );
   } catch (e) {
     log.error("[booking POST]", e);
-    return err("حدث خطأ أثناء الحجز، حاول مرة أخرى", 500);
+    return err("حدث خطأ أثناء الحجز، حاول مرة أخرى", 500, { code: "server-error" });
   }
 }
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { Button, Text, Touchable, colors, fonts, radius, spacing, useLocale } from "@/design";
+import { Button, Text, Touchable, colors, fonts, ltr, radius, spacing, useLocale } from "@/design";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { AuthShell, finishSignIn } from "@/features/auth/AuthShell";
 import { loginCode } from "@/features/auth/validation";
@@ -97,7 +97,7 @@ export default function Verify() {
       subtitle={
         <Text variant="body" tone="inverseMuted">
           {ar ? "بعتنا كود من 6 أرقام على واتساب لـ " : "We sent a 6-digit code on WhatsApp to "}
-          <Text variant="bodyBold" tone="inverse" style={styles.number}>
+          <Text variant="bodyBold" tone="inverse" style={ltr}>
             {isolateLtr(display)}
           </Text>
         </Text>
@@ -110,7 +110,7 @@ export default function Verify() {
         onPress={() => input.current?.focus()}
         style={styles.cellsWrap}
       >
-        <View style={styles.cells} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        <View style={[styles.cells, ltr]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
           {Array.from({ length: LENGTH }, (_, i) => {
             const char = code[i] ?? "";
             const active = focused && i === Math.min(code.length, LENGTH - 1);
@@ -191,10 +191,9 @@ export default function Verify() {
 }
 
 const styles = StyleSheet.create({
-  number: { direction: "ltr" },
   cellsWrap: { position: "relative" },
   // Digits fill left to right, as a code is read in any language.
-  cells: { direction: "ltr", flexDirection: "row", justifyContent: "space-between", gap: spacing.sm },
+  cells: { flexDirection: "row", justifyContent: "space-between", gap: spacing.sm },
   cell: {
     flex: 1,
     maxWidth: 52,

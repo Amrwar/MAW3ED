@@ -359,3 +359,96 @@ export interface PublicReview {
   bookedOn: string | null;
   photos: string[];
 }
+
+/* ─── Booking ────────────────────────────────────────────── */
+
+/** GET /api/public/[slug]/slots — the times the server will accept. */
+export interface SlotsResponse {
+  slots: string[];
+  /** Why a day is empty: business-closed, staff-off, holiday, vacation, same-day-cutoff, too-far-ahead, past. */
+  reason: string | null;
+}
+
+/** POST /api/public/[slug]/quote — what the booking costs, from the same rules that charge it. */
+export interface Quote {
+  subtotalCents: number;
+  totalCents: number;
+  currency: string;
+  discount: { nameAr: string; code: string | null; amountCents: number; automatic: boolean } | null;
+  codeError: string | null;
+}
+
+export type BookingStatus =
+  | "PENDING_PAYMENT"
+  | "PENDING"
+  | "CONFIRMED"
+  | "ARRIVED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "NO_SHOW"
+  | "FAILED_PAYMENT";
+
+/** POST /api/public/[slug]/bookings, success. */
+export interface CreateBookingResponse {
+  booking: {
+    id: string;
+    reference: string | null;
+    accessToken: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    totalPrice: number;
+    depositAmount: number | null;
+    currency: string;
+    status: BookingStatus;
+  };
+  requiresPayment: boolean;
+  /** Present when a deposit session was opened. */
+  paymentUrl?: string;
+  /** The same idempotency key was seen before; this is that booking. */
+  idempotentReplay?: boolean;
+}
+
+/** GET /api/public/booking/[token] — the authoritative state of one booking. */
+export interface PublicBooking {
+  id: string;
+  reference: string | null;
+  status: BookingStatus;
+  date: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  partySize: number | null;
+  notes: string | null;
+  customerName: string;
+  totalPrice: number;
+  depositAmount: number | null;
+  discountAmount: number;
+  currency: string;
+  createdAt: string;
+  business: {
+    slug: string;
+    nameAr: string;
+    nameEn: string | null;
+    phone: string | null;
+    whatsapp: string | null;
+    address: string | null;
+    logoImage: string | null;
+    cityNameAr: string;
+    cityNameEn: string;
+  };
+  service: { id: string; nameAr: string; nameEn: string | null };
+  staff: { id: string; nameAr: string; nameEn: string | null } | null;
+  resource: { id: string; name: string; kind: string } | null;
+  branch: { id: string; nameAr: string; nameEn: string | null; address: string | null } | null;
+  payment: {
+    status: "PENDING" | "SUCCEEDED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "ABANDONED";
+    amount: number;
+    currency: string;
+    paidAt: string | null;
+  } | null;
+  notifications: { channel: "IN_APP" | "EMAIL" | "WHATSAPP" | "SMS" | "PUSH"; status: "SENT" | "SKIPPED" | "FAILED" }[];
+  canChange: boolean;
+  changeCutoffHours: number;
+}

@@ -1,7 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
 
-vi.mock("@/lib/config", () => ({ config: { apiUrl: "https://maw3ed.net" } }));
-
 import {
   bookingUrl,
   directionsUrl,
@@ -14,6 +12,9 @@ import {
   whatsappUrl,
 } from "./profile";
 import type { PublicResource, PublicStaffMember } from "@/types/api";
+
+// Hoisted by vitest above the imports; written here to keep imports first.
+vi.mock("@/lib/config", () => ({ config: { apiUrl: "https://maw3ed.net" } }));
 
 const member = (over: Partial<PublicStaffMember> = {}): PublicStaffMember => ({
   id: "m1",

@@ -471,7 +471,7 @@ export function PolicyList({ policies, autoConfirm }: { policies: BookingPolicie
   rows.push({
     icon: "calendar-outline",
     text: ar
-      ? `تقدر تلغي أو تغيّر ميعادك بنفسك لحد ${num(policies.changeCutoffHours, lang)} ساعة قبله`
+      ? `تقدر تلغي أو تغيّر ميعادك بنفسك لحد ${duration(policies.changeCutoffHours * 60, "ar")} قبله`
       : `Cancel or reschedule yourself up to ${policies.changeCutoffHours} hours before`,
   });
   return (
