@@ -10,8 +10,8 @@
 # repository variable E2E_APK_URL (Settings → Variables), so a push that
 # changes the flows re-runs them against the last e2e build.
 #
-# The business sign-in flow needs the review account, as repository
-# secrets REVIEW_EMAIL and REVIEW_PASSWORD. Without them that flow is
+# The business flows (05, 19) need the review account, as repository
+# secrets REVIEW_EMAIL and REVIEW_PASSWORD. Without them those flows are
 # skipped (tag needs-credentials) rather than failed.
 #
 # Expo runs Maestro only on paid plans; GitHub's hosted runners have KVM,
@@ -36,7 +36,9 @@ concurrency:
 jobs:
   maestro:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # 19 flows, several of them long (09-19 walk many screens, twice for
+    # the two languages); about an hour on a hosted runner's emulator.
+    timeout-minutes: 90
     env:
       APK_URL: ${{ inputs.apk_url || vars.E2E_APK_URL }}
       REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
@@ -76,8 +78,11 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          ram-size: 4096M
-          cores: 4
+          ram-size: 3072M
+          cores: 2
+          # Two of the runner's four cores: four starved the host and the
+          # emulator never finished booting.
+          emulator-boot-timeout: 900
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           # A software-rendered emulator is slow enough that Android's own
