@@ -1,4 +1,10 @@
-# The app opens on Home (Arabic, signed out) and lists at least one place.
+# The app opens on Home (Arabic, signed out), at the top, and lists at
+# least one place.
+#
+# The first emulator run found Arabic Home scrolled down past the search
+# field with nothing having touched it (English opened at the top), so
+# this flow photographs Home as it loads and checks it is still at the
+# top once the places have arrived.
 appId: net.maw3ed.app.staging
 name: Launch and home
 tags:
@@ -8,11 +14,21 @@ tags:
     clearState: true
 - extendedWaitUntil:
     visible:
+      id: home-search
+    timeout: 30000
+    label: Home opens at the top, with the search field
+- takeScreenshot: 01-home-first-frame
+- extendedWaitUntil:
+    visible:
       id: business-card
     timeout: 30000
     label: Home lists at least one business (staging returned none?)
+- takeScreenshot: 01-home-loaded
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 01-home-settled
 - assertVisible:
     id: home-search
+    label: Still at the top after the places loaded (Home must not scroll itself)
 - assertVisible:
     id: tab-index
-- takeScreenshot: 01-home
