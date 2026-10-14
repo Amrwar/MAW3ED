@@ -281,9 +281,15 @@ export async function recordManualPayment(params: {
   method: PaymentMethod;
   recordedById: string;
   currency?: string;
+  /**
+   * What a booking still waiting on its deposit must have collected
+   * after this payment (its deposit, in piastres). Checked under the
+   * same lock, against the status read under it.
+   */
+  holdCents?: number;
 }): Promise<
   | { ok: true; payment: Payment; paidBeforeCents: number }
-  | { ok: false; outstandingCents: number }
+  | { ok: false; outstandingCents: number; belowDepositCents?: number; closed?: boolean }
 > {
   if (params.amountCents <= 0) {
     throw new Error(`refusing to record a payment for ${params.amountCents} piastres`);
@@ -299,6 +305,23 @@ export async function recordManualPayment(params: {
     const paid = rows.reduce((sum, p) => sum + p.amountCents - p.refundedCents, 0);
     const outstandingCents = Math.max(0, params.totalCents - paid);
     if (params.amountCents > outstandingCents) return { ok: false as const, outstandingCents };
+
+    // Cash below the deposit on a booking that is still waiting for it
+    // would leave money recorded against a hold that a declined card or
+    // the reaper then releases. Whatever is taken while the booking is
+    // held must cover the deposit, which moves it on.
+    if (params.holdCents !== undefined) {
+      const [row] = await tx.$queryRaw<{ status: string }[]>`
+        SELECT "status"::text AS status FROM "Booking" WHERE "id" = ${params.bookingId}`;
+      // Released or cancelled since the caller looked (a decline can land
+      // in between): its slot may already be somebody else's.
+      if (row?.status === "FAILED_PAYMENT" || row?.status === "CANCELLED") {
+        return { ok: false as const, outstandingCents, closed: true };
+      }
+      if (row?.status === "PENDING_PAYMENT" && paid + params.amountCents < params.holdCents) {
+        return { ok: false as const, outstandingCents, belowDepositCents: params.holdCents - paid };
+      }
+    }
 
     const payment = await tx.payment.create({
       data: {

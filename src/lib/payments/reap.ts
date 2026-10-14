@@ -151,15 +151,19 @@ export async function reapAbandonedPayments(now = new Date()): Promise<ReapResul
   });
   for (const b of orphans) {
     try {
-      // Re-checked in the write, so a payment opened since the query
-      // above keeps its booking.
-      const released = await db.booking.updateMany({
-        where: {
-          id: b.id,
-          status: "PENDING_PAYMENT",
-          payments: { none: { status: { in: ["PENDING", "SUCCEEDED"] } } },
-        },
-        data: { status: "FAILED_PAYMENT" },
+      // Under the lock /pay takes before it opens a new payment, and
+      // re-checked in the write: a payment being opened right now either
+      // commits first (and this leaves the booking) or waits for this.
+      const released = await db.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${b.id}))`;
+        return tx.booking.updateMany({
+          where: {
+            id: b.id,
+            status: "PENDING_PAYMENT",
+            payments: { none: { status: { in: ["PENDING", "SUCCEEDED"] } } },
+          },
+          data: { status: "FAILED_PAYMENT" },
+        });
       });
       result.bookingsReleased += released.count;
     } catch (e) {

@@ -37,7 +37,7 @@ import {
 } from "@/lib/payments/ledger";
 import { renewalPeriodEnd } from "@/lib/payments/subscription";
 import { bookingMoney, toCents } from "@/lib/payments/money";
-import { classifyCallback, shouldReleaseHold } from "@/lib/payments/webhook-rules";
+import { classifyCallback, planReversal, shouldReleaseHold } from "@/lib/payments/webhook-rules";
 import type { Plan } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
@@ -278,50 +278,89 @@ async function reconcileReversal(
 
   // Paymob reports the reversed amount on the transaction. Fall back to
   // the full payment, since a void is always for the whole of it.
-  const amountCents = Math.min(
+  const reversedCents = Math.min(
     Math.abs(obj.amount_cents || payment.amountCents),
     payment.amountCents,
   );
 
-  const already = await db.refund.findFirst({
-    where: { paymentId: payment.id, providerRefundId: transactionId },
-    select: { id: true },
-  });
-  // The webhook-event guard already stops a replay of the same
-  // delivery; this stops a second delivery with a new event id from
-  // double-counting the same reversal.
-  if (already) return "reversal-already-recorded";
-
-  await db.$transaction(async (tx) => {
-    await tx.refund.create({
-      data: {
-        paymentId: payment.id,
-        amountCents,
-        status: "SUCCEEDED",
-        providerRefundId: transactionId,
-        reason: `${kind} recorded from Paymob callback`,
-        // No actor: nobody in this system did it.
-        actorName: "Paymob",
-      },
-    });
-
-    const refundedTotal = Math.min(payment.refundedCents + amountCents, payment.amountCents);
-    await tx.payment.update({
+  // Decided and written under a lock on the payment row, so this cannot
+  // interleave with an admin refund's reservation (which updates the
+  // same row) or with a second delivery of the same reversal.
+  const plan = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Payment" WHERE "id" = ${payment.id} FOR UPDATE`;
+    const current = await tx.payment.findUniqueOrThrow({
       where: { id: payment.id },
-      data: {
-        refundedCents: refundedTotal,
-        status: refundedTotal >= payment.amountCents ? "REFUNDED" : "PARTIALLY_REFUNDED",
-      },
+      select: { status: true, amountCents: true, refundedCents: true },
     });
+    const refunds = await tx.refund.findMany({
+      where: { paymentId: payment.id },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, amountCents: true, status: true, providerRefundId: true, actorId: true },
+    });
+    const decided = planReversal({
+      paymentStatus: current.status,
+      amountCents: current.amountCents,
+      refundedCents: current.refundedCents,
+      reversedCents,
+      transactionId,
+      refunds,
+    });
+
+    if (decided.kind === "attach") {
+      // The admin route reserved this amount already; only the id was missing.
+      await tx.refund.update({ where: { id: decided.refundId }, data: { providerRefundId: transactionId } });
+    } else if (decided.kind === "record") {
+      await tx.refund.create({
+        data: {
+          paymentId: payment.id,
+          amountCents: decided.addCents,
+          status: "SUCCEEDED",
+          providerRefundId: transactionId,
+          reason: `${kind} recorded from Paymob callback`,
+          // No actor: nobody in this system did it.
+          actorName: "Paymob",
+        },
+      });
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { refundedCents: decided.refundedCents, status: decided.status },
+      });
+    }
+    return decided;
   });
 
-  log.warn("[paymob webhook] reversal reconciled from provider", {
-    paymentId: payment.id,
-    kind,
-    amountCents,
-  });
-
-  return `reversal-${kind}`;
+  switch (plan.kind) {
+    case "already-recorded":
+      return "reversal-already-recorded";
+    case "attach":
+      return "reversal-matched-admin-refund";
+    case "unsettled":
+    case "nothing-left":
+      await db.auditLog
+        .create({
+          data: {
+            actorName: "Paymob",
+            actorRole: "system",
+            action: plan.kind === "unsettled" ? "payment.reversal_on_unsettled" : "payment.reversal_beyond_amount",
+            resourceType: "Payment",
+            resourceId: payment.id,
+            summary:
+              plan.kind === "unsettled"
+                ? `Paymob reported a ${kind} on a payment that never succeeded (${payment.status}); not applied.`
+                : `Paymob reported a ${kind} on a payment already fully refunded; not applied.`,
+            metadata: { transactionId, reversedCents, paymentStatus: payment.status },
+          },
+        })
+        .catch((e) => log.error("[paymob webhook] could not write audit entry", e));
+      return plan.kind === "unsettled" ? "reversal-on-unsettled" : "reversal-nothing-left";
+    case "record":
+      log.warn("[paymob webhook] reversal reconciled from provider", {
+        paymentId: payment.id,
+        kind,
+        amountCents: plan.addCents,
+      });
+      return `reversal-${kind}`;
+  }
 }
 
 function methodOf(obj: PaymobTransactionObj) {
@@ -349,6 +388,12 @@ async function handleBookingSuccess(
     onFirstSettle: async (tx, settled) => {
       if (!settled.bookingId) return;
 
+      // Locked before it is read: a customer cancel (or anything else)
+      // committing between this read and the write below would otherwise
+      // be overwritten with CONFIRMED. Under the lock the status read is
+      // the one the write acts on; a booking cancelled first stays
+      // cancelled, and the money is flagged as unexpected below.
+      await tx.$queryRaw`SELECT "id" FROM "Booking" WHERE "id" = ${settled.bookingId} FOR UPDATE`;
       const booking = await tx.booking.findUnique({
         where: { id: settled.bookingId },
         select: { status: true },
@@ -362,8 +407,8 @@ async function handleBookingSuccess(
       // finished booking back to life.
       if (booking.status !== "PENDING_PAYMENT") return;
 
-      await tx.booking.update({
-        where: { id: settled.bookingId },
+      await tx.booking.updateMany({
+        where: { id: settled.bookingId, status: "PENDING_PAYMENT" },
         data: {
           status: "CONFIRMED",
           // Kept in step for anything still reading the old columns.
@@ -435,7 +480,12 @@ async function handleBookingSuccess(
   // A deposit landing on a booking that was not waiting for one — it is
   // already confirmed or finished, so this is a second payment for it.
   // The money is recorded either way; support is told so it can refund.
-  if (payment.kind === "BOOKING_DEPOSIT" && before && before !== "PENDING_PAYMENT" && before !== "FAILED_PAYMENT") {
+  // A cancelled booking counts whatever the payment was for: it is not
+  // revived, so the money needs a person to refund it.
+  if (
+    (payment.kind === "BOOKING_DEPOSIT" && before && before !== "PENDING_PAYMENT" && before !== "FAILED_PAYMENT") ||
+    before === "CANCELLED"
+  ) {
     await db.auditLog
       .create({
         data: {
@@ -557,6 +607,10 @@ async function failAndRelease(payment: Payment, reason: string, transactionId: s
       }
 
       if (!failed.bookingId) return;
+      // The same row lock recordManualPayment takes, so cash being
+      // recorded at this moment is either fully visible below or waits
+      // until this decision is made — never half-seen.
+      await tx.$queryRaw`SELECT "id" FROM "Booking" WHERE "id" = ${failed.bookingId} FOR UPDATE`;
       const booking = await tx.booking.findUnique({
         where: { id: failed.bookingId },
         select: { status: true, depositAmount: true, totalPrice: true },

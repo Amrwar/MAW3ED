@@ -117,6 +117,7 @@ export async function POST(req: Request, { params }: Params) {
         id: true,
         status: true,
         totalPrice: true,
+        depositAmount: true,
         currency: true,
         customerName: true,
         customerPhone: true,
@@ -167,8 +168,19 @@ export async function POST(req: Request, { params }: Params) {
         method: method!,
         recordedById: session.user.id,
         currency: booking.currency,
+        holdCents: toCents(booking.depositAmount ?? booking.totalPrice),
       });
       if (!recorded.ok) {
+        if (recorded.closed) {
+          return err("الحجز ده اتلغى أو اتفك حجزه، اعمل حجز جديد", 409, { code: "payment-failed" });
+        }
+        if (recorded.belowDepositCents !== undefined) {
+          return err(
+            `الحجز مستني العربون؛ سجّل ${formatCents(recorded.belowDepositCents, booking.currency)} على الأقل عشان يتثبّت`,
+            422,
+            { code: "below-deposit", minimumCents: recorded.belowDepositCents },
+          );
+        }
         return recorded.outstandingCents === 0
           ? err("الحجز مدفوع بالكامل", 409)
           : err(

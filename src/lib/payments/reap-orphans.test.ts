@@ -30,7 +30,19 @@ vi.mock("@/lib/db", () => ({
         return { count: 1 };
       },
     },
-    $transaction: async () => undefined,
+    $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({
+        $executeRaw: async (strings: TemplateStringsArray) => {
+          calls.push({ op: "lock", args: strings.join("?") });
+          return 1;
+        },
+        booking: {
+          updateMany: async (args: unknown) => {
+            calls.push({ op: "booking.updateMany", args });
+            return { count: 1 };
+          },
+        },
+      }),
   },
 }));
 
@@ -62,5 +74,15 @@ describe("orphaned holds", () => {
       expect(w.data).toEqual({ status: "FAILED_PAYMENT" });
     }
     expect(result.bookingsReleased).toBe(2);
+  });
+
+  it("takes the same per-booking lock /pay takes before opening a payment", async () => {
+    orphanRows.push({ id: "bk_1" });
+    await reapAbandonedPayments(new Date("2026-10-14T12:00:00Z"));
+    const ops = calls.map((c) => c.op);
+    // The lock comes first, then the conditional write.
+    expect(ops.indexOf("lock")).toBeGreaterThanOrEqual(0);
+    expect(ops.indexOf("lock")).toBeLessThan(ops.indexOf("booking.updateMany"));
+    expect(String(calls.find((c) => c.op === "lock")!.args)).toContain("pg_advisory_xact_lock(hashtext(");
   });
 });

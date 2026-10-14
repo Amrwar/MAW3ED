@@ -137,7 +137,13 @@ export async function POST(req: Request, { params }: Params) {
 
     await db.refund.update({
       where: { id: refund.id },
-      data: { status: "SUCCEEDED", providerRefundId: outcome.providerRefundId ?? null },
+      // Never clears an id: Paymob's refund callback may have attached it
+      // already (webhooks/paymob reconcileReversal), and the answer here
+      // does not always carry one.
+      data: {
+        status: "SUCCEEDED",
+        ...(outcome.providerRefundId ? { providerRefundId: outcome.providerRefundId } : {}),
+      },
     });
     await markRefundOutcome(payment.id);
 
