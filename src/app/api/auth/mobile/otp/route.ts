@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { callerKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { normalisePhone } from "@/lib/phone";
@@ -38,12 +38,14 @@ export async function POST(req: Request) {
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return err("الكود غير صحيح أو انتهت صلاحيته", 401);
 
-    // And per number, so rotating addresses does not buy more guesses at
-    // one person's codes. The web "phone-otp" provider spends the same
-    // two buckets.
+    // And per number from this address. Not per number alone: then
+    // anybody could spend a stranger's bucket with junk and lock them
+    // out of signing in. Rotating addresses buys no extra guesses at one
+    // code, which its own attempt counter caps. The web "phone-otp"
+    // provider spends the same two buckets.
     const phone = normalisePhone(parsed.data.phone);
     if (phone) {
-      const byPhone = await rateLimit("phoneOtpVerify", phone);
+      const byPhone = await rateLimit("phoneOtpVerify", `${phone}:${await callerKey()}`);
       if (!byPhone.ok) return tooManyRequests(byPhone);
     }
 

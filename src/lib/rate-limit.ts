@@ -68,12 +68,9 @@ export const RULES = {
   // one business in an hour is already an unusual household, and the
   // limit exists to stop a script filling a calendar with fake slots
   // and an owner's WhatsApp with fake alerts, not to ration customers.
-  // Shared carrier IPs are why the per-address figure is the looser one.
+  // Shared carrier IPs are why it is looser than the per-number cap (five
+  // bookings an hour, counted from real bookings in the booking route).
   publicBooking: { limit: 10, windowSeconds: 60 * 60 },
-  // Per phone number per business. Five bookings in an hour under one
-  // number is more than any person makes; past that it is somebody
-  // using a stranger's number to fill their calendar.
-  publicBookingPhone: { limit: 5, windowSeconds: 60 * 60 },
   // Helpful votes on reviews, per address. A visitor reading reviews
   // votes on a handful; sixty an hour leaves room for a whole office on
   // one NAT and still makes stuffing one review slow work.

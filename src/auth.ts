@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-import { rateLimit } from "@/lib/rate-limit";
+import { callerKey, rateLimit } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -99,9 +99,12 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           log.warn("[auth] phone sign-in rate limited (caller)");
           return null;
         }
+        // Keyed by number AND address: keyed by number alone, anybody
+        // could spend a stranger's bucket with junk and lock them out of
+        // signing in. Guesses at one code are capped by its attempts.
         const phone = normalisePhone(parsed.data.phone);
         if (phone) {
-          const byPhone = await rateLimit("phoneOtpVerify", phone);
+          const byPhone = await rateLimit("phoneOtpVerify", `${phone}:${await callerKey()}`);
           if (!byPhone.ok) {
             log.warn("[auth] phone sign-in rate limited (number)");
             return null;

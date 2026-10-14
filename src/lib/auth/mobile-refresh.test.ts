@@ -14,12 +14,17 @@ interface Session {
   lastUsedAt: Date;
 }
 let session: Session | null = null;
+/** The database before add_mobile_refresh_rotation.sql: asking for its columns fails. */
+let columnsMissing = false;
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 vi.mock("@/lib/db", () => ({
   db: {
     mobileSession: {
-      findUnique: async ({ where }: { where: { id: string } }) => {
+      findUnique: async ({ where, select }: { where: { id: string }; select?: Record<string, boolean> }) => {
+        if (columnsMissing && select?.refreshGeneration) {
+          throw Object.assign(new Error("column does not exist"), { code: "P2022" });
+        }
         const snapshot = session && session.id === where.id ? { ...session } : null;
         await tick();
         return snapshot;
@@ -82,6 +87,7 @@ describe("refresh token rotation", () => {
       lastUsedAt: new Date(),
     };
     vi.mocked(claimsForUser).mockClear();
+    columnsMissing = false;
   });
 
   it("rotates on every refresh and the new token works", async () => {
@@ -162,5 +168,16 @@ describe("refresh token rotation", () => {
     const { refreshToken } = await issueTokens(CLAIMS, "s1", 0);
     session!.expiresAt = new Date(Date.now() - 1);
     expect(await refresh(refreshToken)).toEqual({ ok: false, reason: "no-session" });
+  });
+
+  it("keeps refreshing, without rotating, when the migration has not run yet", async () => {
+    // Deployed before the column exists: failing here would sign every
+    // app user out within one access-token lifetime.
+    columnsMissing = true;
+    const { refreshToken } = await issueTokens(CLAIMS, "s1", 0);
+    const first = await refresh(refreshToken);
+    expect(first.ok).toBe(true);
+    expect((await refresh(refreshToken)).ok).toBe(true);
+    expect(session?.refreshGeneration).toBe(0);
   });
 });

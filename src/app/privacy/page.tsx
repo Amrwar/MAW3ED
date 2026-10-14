@@ -149,7 +149,7 @@ export default async function PrivacyPage({
           والبريد الإلكتروني والكوكيز ورؤوس الدخول، والتقرير بيعرّف الحساب برقمه الداخلي بس. مفيش تسجيل لجلسات الاستخدام
           (session replay).
         </p>
-        {/* VERIFY: mobile Sentry (@sentry/react-native) is being added; confirm it uses the same scrubbing (no names, phones, emails) before release. */}
+        {/* Mobile crash reports: mobile/lib/sentry.ts + mobile/lib/scrub.ts drop request bodies, headers and cookies and mask phone numbers; off until EXPO_PUBLIC_SENTRY_DSN is set. */}
         <p>مفيش أدوات تحليلات أو تتبّع من أطراف خارجية في الموقع أو التطبيق.</p>
       </LegalSection>
 
@@ -302,7 +302,7 @@ export default async function PrivacyPage({
           addresses, cookies and authorization headers are removed, and the report identifies the account only by its
           internal ID. There is no session replay.
         </p>
-        {/* VERIFY: mobile Sentry (@sentry/react-native) is being added; confirm it uses the same scrubbing (no names, phones, emails) before release. */}
+        {/* Mobile crash reports: mobile/lib/sentry.ts + mobile/lib/scrub.ts drop request bodies, headers and cookies and mask phone numbers; off until EXPO_PUBLIC_SENTRY_DSN is set. */}
         <p>There are no third-party analytics or tracking tools on the website or in the app.</p>
       </LegalSection>
 

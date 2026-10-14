@@ -35,8 +35,11 @@ export function onSessionExpired(listener: SessionListener): () => void {
   return () => sessionListeners.delete(listener);
 }
 
+/** What a refresh came to: new tokens, a definite no, or no answer. */
+type RefreshOutcome = "ok" | "ended" | "unavailable";
+
 /** A refresh in flight, so ten parallel 401s cause one refresh, not ten. */
-let refreshInFlight: Promise<boolean> | null = null;
+let refreshInFlight: Promise<RefreshOutcome> | null = null;
 
 export interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
@@ -97,10 +100,15 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   // session is genuinely over, not that the token was stale.
   if (response.status === 401 && !anonymous && !_retried) {
     const hadSession = (await getTokens()) !== null;
-    const refreshed = hadSession && (await refreshOnce());
-    if (refreshed) {
+    const refreshed = hadSession ? await refreshOnce() : "ended";
+    if (refreshed === "ok") {
       return apiFetch<T>(path, { ...options, _retried: true });
     }
+    // The refresh never got an answer (no signal, a server error): the
+    // session may be perfectly alive, so keep it and let the screen
+    // offer a retry. Signing somebody out because the lift lost signal
+    // would also throw away a rotated token the server still honours.
+    if (refreshed === "unavailable") throw new NetworkError(new Error("refresh unavailable"));
     await clearTokens();
     // Only when a session actually ended. Somebody who was never signed
     // in has nothing to end, and announcing it would clear the cache on
@@ -141,20 +149,28 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
  * and three of them would present a refresh token the first had already
  * rotated.
  */
-function refreshOnce(): Promise<boolean> {
+function refreshOnce(): Promise<RefreshOutcome> {
   if (refreshInFlight) return refreshInFlight;
 
-  refreshInFlight = (async () => {
+  refreshInFlight = (async (): Promise<RefreshOutcome> => {
     try {
       const tokens = await getTokens();
-      if (!tokens?.refreshToken) return false;
+      if (!tokens?.refreshToken) return "ended";
 
-      const res = await fetch(`${BASE_URL}/api/auth/mobile/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ refreshToken: tokens.refreshToken }),
-      });
-      if (!res.ok) return false;
+      let res: Response;
+      try {
+        res = await fetch(`${BASE_URL}/api/auth/mobile/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+        });
+      } catch {
+        return "unavailable";
+      }
+      // Only the server saying no ends the session. 5xx and anything
+      // else unexpected is an outage, not a verdict.
+      if (res.status === 400 || res.status === 401 || res.status === 403) return "ended";
+      if (!res.ok) return "unavailable";
 
       const next = (await res.json()) as {
         accessToken: string;
@@ -162,9 +178,12 @@ function refreshOnce(): Promise<boolean> {
         expiresIn: number;
       };
       await setTokens(next);
-      return true;
+      return "ok";
     } catch {
-      return false;
+      // The pair arrived but could not be stored (a locked keychain).
+      // Keep what we have: the server honours it for the grace window,
+      // and the next attempt gets another chance to store the new one.
+      return "unavailable";
     } finally {
       refreshInFlight = null;
     }

@@ -38,7 +38,18 @@ export type RefreshResult =
   | { ok: false; reason: "no-session" | "reused" };
 
 export async function rotateRefresh(read: RefreshTokenRead, now = new Date()): Promise<RefreshResult> {
-  const session = await loadSession(read, now);
+  let session: Awaited<ReturnType<typeof loadSession>>;
+  try {
+    session = await loadSession(read, now);
+  } catch (error) {
+    // P2022: the columns are not there — this code is live before
+    // add_mobile_refresh_rotation.sql ran. Refresh the old way rather
+    // than failing every refresh, which would sign out every app user
+    // within one access-token lifetime.
+    if ((error as { code?: string })?.code !== "P2022") throw error;
+    log.error("[mobile refresh] rotation columns missing; run add_mobile_refresh_rotation.sql");
+    return refreshWithoutRotation(read, now);
+  }
   if (!session) return { ok: false, reason: "no-session" };
 
   const claims = await claimsForUser(session.userId);
@@ -85,6 +96,19 @@ export async function rotateRefresh(read: RefreshTokenRead, now = new Date()): P
     sessionId: current.id,
   });
   return { ok: false, reason: "reused" };
+}
+
+/** The pre-rotation refresh, for a database the migration has not reached. */
+async function refreshWithoutRotation(read: RefreshTokenRead, now: Date): Promise<RefreshResult> {
+  const session = await db.mobileSession.findUnique({
+    where: { id: read.sessionId },
+    select: { id: true, userId: true, expiresAt: true },
+  });
+  if (!session || session.userId !== read.userId || session.expiresAt < now) return { ok: false, reason: "no-session" };
+  const claims = await claimsForUser(session.userId);
+  if (!claims) return { ok: false, reason: "no-session" };
+  await db.mobileSession.updateMany({ where: { id: session.id }, data: { lastUsedAt: now } });
+  return { ok: true, tokens: await issueTokens(claims, session.id, 0) };
 }
 
 /** The row the token names, only while it is live and belongs to the token's user. */

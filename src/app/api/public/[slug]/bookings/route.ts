@@ -48,17 +48,13 @@ export async function POST(req: Request, { params }: Params) {
     // ── Throttle ──────────────────────────────────────────────────────────────
     //
     // Anyone can call this, and every booking it creates holds a slot and
-    // sends the owner an alert. Two budgets, both per business: one per
-    // address, and one per phone number so rotating addresses does not
-    // let a script book a whole day under somebody else's number. The
-    // limits themselves, and why they are loose, are in lib/rate-limit.ts.
-    // Checked before any lookup, so a flood never reaches the booking tables.
+    // sends the owner an alert. A budget per address per business, checked
+    // before any lookup so a flood never reaches the booking tables; the
+    // limit, and why it is loose, is in lib/rate-limit.ts. The per-number
+    // cap is below, once the business is known.
     const slugKey = slug.toLowerCase();
     const byAddress = await rateLimit("publicBooking", `${await callerKey()}|${slugKey}`);
     if (!byAddress.ok) return tooManyRequests(byAddress);
-    const phoneKey = normalisePhone(customerPhone) ?? customerPhone.trim();
-    const byPhone = await rateLimit("publicBookingPhone", `${phoneKey}|${slugKey}`);
-    if (!byPhone.ok) return tooManyRequests(byPhone);
 
     const business = await db.business.findUnique({
       where:   { slug, isPublished: true },
@@ -66,6 +62,31 @@ export async function POST(req: Request, { params }: Params) {
       // include subscription fields for feature gating
     });
     if (!business) return err("لم يتم العثور على هذا العمل", 404, { code: "business-not-found" });
+
+    // Per number, so rotating addresses does not let a script fill a day
+    // under somebody else's phone. Counted from bookings actually made,
+    // not attempts: a customer who gets "slot taken" five times at a busy
+    // salon, or whose retry replays the same idempotency key, has booked
+    // nothing and must not be locked out. Five in an hour under one
+    // number at one business is more than any person makes.
+    const phoneE164 = normalisePhone(customerPhone);
+    if (phoneE164) {
+      const isReplay = idempotencyKey
+        ? (await db.booking.count({ where: { idempotencyKey } })) > 0
+        : false;
+      const recent = isReplay
+        ? 0
+        : await db.booking.count({
+            where: {
+              businessId: business.id,
+              customerPhoneE164: phoneE164,
+              createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+            },
+          });
+      if (recent >= 5) {
+        return err("حجوزات كتير بالرقم ده في ساعة واحدة. جرّب بعد شوية.", 429, { code: "rate-limited" });
+      }
+    }
 
     const service = await db.service.findFirst({
       where: { id: serviceId, businessId: business.id, isAvailable: true },

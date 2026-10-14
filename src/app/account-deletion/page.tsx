@@ -112,7 +112,7 @@ export default async function AccountDeletionPage({
         </LegalList>
         {/* VERIFY: no code deletes NotificationDelivery rows for a deleted user, and no retention job prunes them; confirm the retention period you want to state. */}
         <p>
-          بعد الحذف مفيش أي حساب أو تسجيل دخول مربوط بالسجلات دي. لو عايز تقييم معيّن يتشال، أو تطلب من نشاط يمسح
+          بعد الحذف مفيش أي حساب أو تسجيل دخول مربوط بالسجلات دي، لكن الحجوزات متسجلة برقم الموبايل: لو عملت حساب جديد بنفس الرقم، حجوزاتك القديمة هتظهر فيه تاني. لو عايز تقييم معيّن يتشال، أو تطلب من نشاط يمسح
           بياناتك عنده، تواصل معانا على {email}.
         </p>
         {/* VERIFY: removing a review or a business's customer record on request is a manual support action; there is no self-service for it. */}
@@ -197,7 +197,7 @@ export default async function AccountDeletionPage({
         </LegalList>
         {/* VERIFY: no code deletes NotificationDelivery rows for a deleted user, and no retention job prunes them; confirm the retention period you want to state. */}
         <p>
-          After deletion, none of these records is linked to any account or login. To have a particular review removed,
+          After deletion, none of these records is linked to an account or login. Bookings are kept under the phone number, though: if you create a new account with the same number, your past bookings will show in it again. To have a particular review removed,
           or to ask for a business&apos;s copy of your details to be erased, contact {email}.
         </p>
         {/* VERIFY: removing a review or a business's customer record on request is a manual support action; there is no self-service for it. */}
