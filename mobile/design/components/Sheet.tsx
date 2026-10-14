@@ -17,13 +17,14 @@ import { IconButton } from "./IconButton";
  * inside it while it is open. On a tablet it becomes a centred panel —
  * a sheet stretched across an iPad is a strip of grey.
  *
- * It keeps above the keyboard itself. A Modal is its own window: on
- * Android it does not get the activity's adjustResize, and on iOS
- * nothing resizes anyway, so a sheet with a text field (country search,
- * price filter) would sit under the keyboard. The overlap is measured
- * from where the keyboard's top is against the backdrop's own height —
- * if the window did resize, the backdrop is already short and the
- * overlap comes out zero, so the lift is never applied twice. The panel's
+ * It keeps above the keyboard itself. A Modal is its own window. On
+ * Android RN's Modal dialog does ask for SOFT_INPUT_ADJUST_RESIZE, but
+ * under edge-to-edge the window is not resized; on iOS nothing resizes
+ * at all. So a sheet with a text field (country search, price filter)
+ * would sit under the keyboard. The lift is the overlap between the
+ * keyboard's top and the backdrop's own height, max(0, rootHeight -
+ * screenY): where the window did resize, the backdrop is already short,
+ * the overlap is zero, and that guard is what stops a double lift. The panel's
  * max height follows the space left, and its list scrolls inside it.
  */
 export function Sheet({
@@ -81,7 +82,16 @@ export function Sheet({
   const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [isTablet ? 24 : 320, 0] });
 
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal
+      visible={open}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+      // Already up when the sheet opens (a focused field behind it): no
+      // show event will come, so start from where it is now.
+      onShow={() => setKeyboardTop(Platform.OS !== "web" && Keyboard.isVisible() ? (Keyboard.metrics()?.screenY ?? null) : null)}
+    >
       {/* A Modal is a separate native root and does not inherit the app's
           direction, so it is set again here. */}
       <View
@@ -96,7 +106,8 @@ export function Sheet({
             styles.panel,
             isTablet ? styles.tablet : styles.phone,
             {
-              maxHeight: lift > 0 ? room - insets.top - spacing.sm : room * (isTablet ? 0.8 : 0.9),
+              // On a tablet the centred backdrop pads xl on each side as well.
+              maxHeight: lift > 0 ? room - insets.top - spacing.sm - (isTablet ? spacing.xl * 2 : 0) : room * (isTablet ? 0.8 : 0.9),
               // Over the keyboard there is no home indicator to clear.
               paddingBottom: isTablet ? spacing.lg : lift > 0 ? spacing.md : insets.bottom + spacing.md,
             },

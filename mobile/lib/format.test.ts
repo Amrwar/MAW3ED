@@ -8,9 +8,21 @@ const RLM = "‏";
 const LRM = "‎";
 
 describe("bidi helpers", () => {
-  it("shows a phone as +digits, isolated left to right", () => {
-    expect(formatPhone("201000000777")).toBe(`${LRI}+201000000777${PDI}`);
+  it("adds + only to an international number, isolated left to right", () => {
+    expect(formatPhone("201012345678")).toBe(`${LRI}+201012345678${PDI}`);
     expect(formatPhone("+201000000777")).toBe(`${LRI}+201000000777${PDI}`);
+    expect(formatPhone("447911123456")).toBe(`${LRI}+447911123456${PDI}`);
+  });
+
+  it("shows a number as typed when it is not international", () => {
+    expect(formatPhone("01012345678")).toBe(`${LRI}01012345678${PDI}`);
+    expect(formatPhone("010 1234 5678")).toBe(`${LRI}010 1234 5678${PDI}`);
+    expect(formatPhone("12345")).toBe(`${LRI}12345${PDI}`);
+  });
+
+  it("handles an empty value", () => {
+    expect(formatPhone("")).toBe("");
+    expect(formatPhone("   ")).toBe("");
   });
 
   it("isolates each piece of a joined line and drops empty ones", () => {

@@ -197,9 +197,21 @@ export function isolate(text: string): string {
   return `⁨${text}⁩`;
 }
 
-/** A phone number for display: always "+<digits>", always left to right. */
+/**
+ * A phone number for display, always left to right. "+" is added only
+ * to what is already international: an account's verified number is
+ * stored as digits with the country code ("201012345678"), but a
+ * booking's or a business's number is kept exactly as typed
+ * ("01012345678", "010 1234 5678"), and "+0101…" would be a wrong
+ * number. Anything else is shown as typed. Links (tel:, WhatsApp) take
+ * the raw value, not this.
+ */
 export function formatPhone(raw: string): string {
-  return isolateLtr(`+${raw.replace(/^\+/, "")}`);
+  const value = raw.trim();
+  if (!value) return "";
+  if (value.startsWith("+")) return isolateLtr(value);
+  const international = /^20\d{10}$/.test(value) || /^[1-9]\d{10,14}$/.test(value);
+  return isolateLtr(international ? `+${value}` : value);
 }
 
 /**
