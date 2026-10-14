@@ -623,6 +623,7 @@ export const translations = {
       leaveNeedStar:   "اختار عدد النجوم الأول.",
       leaveError:      "مقدرناش نسجّل التقييم دلوقتي.",
       alreadyReviewed: "إنت قيّمت الحجز ده قبل كده.",
+      tooEarly:        "التقييم بيتفتح بعد ميعاد الحجز.",
     },
     gallery: {
       title:       "الصور",
@@ -925,6 +926,7 @@ export const translations = {
         NO_SHOW:   "لم يحضر",
         updatedTo: "تم تحديث الحالة إلى",
         error:     "حدث خطأ أثناء التحديث",
+        tooEarly:  "لسه بدري: \"وصل\" و\"ابدأ\" بيتفتحوا قبل الميعاد بـ 30 دقيقة، و\"تمّت\" و\"لم يحضر\" بعد ما الميعاد يبدأ.",
       },
       bookingFilters: {
         searchPlaceholder: "بحث باسم العميل أو رقم الهاتف…",
@@ -1668,6 +1670,7 @@ export const translations = {
       leaveNeedStar:   "Pick a star rating first.",
       leaveError:      "We could not record your review right now.",
       alreadyReviewed: "You have already reviewed this booking.",
+      tooEarly:        "Reviews open once the appointment has started.",
     },
     gallery: {
       title:       "Photos",
@@ -1970,6 +1973,7 @@ export const translations = {
         NO_SHOW:   "No Show",
         updatedTo: "Status updated to",
         error:     "An error occurred while updating",
+        tooEarly:  "Too early: arrived and start open 30 minutes before the appointment; complete and no-show open once it has started.",
       },
       bookingFilters: {
         searchPlaceholder: "Search by customer name or phone...",

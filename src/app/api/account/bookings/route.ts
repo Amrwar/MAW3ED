@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err, requireSession } from "@/lib/api";
-import { getUpcoming, getHistory } from "@/lib/account/queries";
+import { decodeHistoryCursor, getUpcoming, getHistory } from "@/lib/account/queries";
 import { log } from "@/lib/logger";
 import { parseQuery } from "@/lib/query-params";
 
@@ -13,10 +13,12 @@ const query = z.object({
   scope: z.enum(["upcoming", "history"]).optional(),
   take: z.coerce.number().int().min(1).transform((n) => Math.min(n, 50)).optional(),
   skip: z.coerce.number().int().min(0).max(1_000_000).optional(),
+  /** nextCursor from the previous history page; when given, skip is ignored. */
+  cursor: z.string().max(300).refine((c) => decodeHistoryCursor(c) !== null, "invalid cursor").optional(),
 });
 
 /**
- * GET /api/account/bookings?scope=upcoming|history&take=&skip=
+ * GET /api/account/bookings?scope=upcoming|history&take=&skip=&cursor=
  *
  * A customer's own appointments.
  *
@@ -65,8 +67,11 @@ export async function GET(req: Request) {
     const take = q.data.take ?? 20;
     const skip = q.data.skip ?? 0;
 
-    const { bookings, total } = await getHistory(user.phone, { take, skip });
-    return ok({ bookings, total, needsPhone: false });
+    // nextCursor is additive: a client paging by skip ignores it, one
+    // passing it back as `cursor` gets pages that do not shift when a
+    // booking moves into history mid-scroll. null on the last page.
+    const { bookings, total, nextCursor } = await getHistory(user.phone, { take, skip, cursor: q.data.cursor });
+    return ok({ bookings, total, nextCursor, needsPhone: false });
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[account bookings]", e);

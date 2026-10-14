@@ -51,8 +51,13 @@ export default function LeaveReview({ token, businessName }: Props) {
         return;
       }
 
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
       setState("idle");
+      // Worded from the code, so it reads in the visitor's language.
+      if (data.code === "too-early") {
+        setError(r.tooEarly);
+        return;
+      }
       setError(res.status === 409 ? data.error ?? r.alreadyReviewed : data.error ?? r.leaveError);
     } catch {
       setState("idle");

@@ -10,6 +10,7 @@ import {
   formatDateAr,
 } from "@/features/dashboard/bookings/types";
 import { allowedNow } from "@/lib/bookings/progress-guard";
+import { useMinuteTick } from "@/hooks/useMinuteTick";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Modal from "@/components/ui/Modal";
 import Alert from "@/components/ui/Alert";
@@ -59,12 +60,14 @@ export default function BookingDetailPanel({
   const [actionError,   setActionError]   = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const { t, lang } = useLanguage();
+  // Re-evaluated every minute: which moves are open depends on the clock.
+  const now = useMinuteTick();
   const bd     = t.dashboard.bookingDetail;
   const ba     = t.dashboard.bookingActions;
   const bs     = t.dashboard.bookingStatus;
   const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
-  const allowedNext  = allowedNow(ALLOWED_TRANSITIONS[booking.status] ?? [], { date: new Date(`${booking.date}T00:00:00Z`), startTime: booking.startTime });
+  const allowedNext  = allowedNow(ALLOWED_TRANSITIONS[booking.status] ?? [], { date: new Date(`${booking.date}T00:00:00Z`), startTime: booking.startTime }, now);
   const badge        = STATUS_BADGE[booking.status] ?? STATUS_BADGE.NO_SHOW;
   const statusLabel  = (bs as Record<string, string>)[booking.status] ?? booking.status;
 

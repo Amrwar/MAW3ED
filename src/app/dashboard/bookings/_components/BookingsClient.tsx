@@ -131,7 +131,16 @@ export default function BookingsClient({
       body:    JSON.stringify({ status }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? t.dashboard.bookingActions.error);
+    if (!res.ok) {
+      // Ahead of the clock: worded from the code in the owner's language,
+      // and the lists reloaded so the buttons match the server again.
+      if (data.code === "too-early") {
+        fetchBookings(page);
+        fetchDay(calendarDate);
+        throw new Error(t.dashboard.bookingActions.tooEarly);
+      }
+      throw new Error(data.error ?? t.dashboard.bookingActions.error);
+    }
 
     const update = (bk: DashboardBooking) => bk.id === id ? { ...bk, status } : bk;
     setBookings((prev)        => prev.map(update));
