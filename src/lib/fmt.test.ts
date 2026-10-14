@@ -89,6 +89,16 @@ describe("money", () => {
   it("defaults to Egyptian pounds", () => {
     expect(money(50, "ar")).toContain("ج.م");
   });
+
+  it("writes piastres to two places", () => {
+    // A 25% deposit on 150 is 37.50; "37.5" read like a typo in every
+    // payment message.
+    expect(money(37.5, "ar")).toBe("37.50 ج.م");
+    expect(money(37.5, "en")).toBe("37.50 EGP");
+    expect(money(462.53, "en")).toBe("462.53 EGP");
+    expect(money(1234.5, "en")).toBe("1,234.50 EGP");
+    expect(money(0.1 + 0.2, "en")).toBe("0.30 EGP");
+  });
 });
 
 describe("duration", () => {

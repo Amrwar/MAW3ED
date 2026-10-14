@@ -152,12 +152,12 @@ export async function PATCH(req: Request, { params }: Params) {
     const wasPending = booking.status === "PENDING" || booking.status === "PENDING_PAYMENT";
 
     if (newStatus === "CONFIRMED") {
-      void notify({ type: "booking.confirmed", bookingId: booking.id });
+      void notify({ type: "booking.confirmed", bookingId: booking.id, actorUserId: actor.userId });
     } else if (newStatus === "CANCELLED") {
       void notify(
         wasPending
-          ? { type: "booking.rejected", bookingId: booking.id }
-          : { type: "booking.cancelled", bookingId: booking.id, by: "business" },
+          ? { type: "booking.rejected", bookingId: booking.id, actorUserId: actor.userId }
+          : { type: "booking.cancelled", bookingId: booking.id, by: "business", actorUserId: actor.userId },
       );
     } else if (newStatus === "COMPLETED") {
       void notify({ type: "booking.completed", bookingId: booking.id });

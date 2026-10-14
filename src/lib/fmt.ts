@@ -46,7 +46,20 @@ export function money(
   lang: Lang = "ar",
   currency = "EGP",
 ): string {
-  return `${num(value, lang)} ${currencyLabel(currency, lang)}`;
+  return `${moneyFigure(value, lang)} ${currencyLabel(currency, lang)}`;
+}
+
+/**
+ * A whole amount as it is ("300"); anything with piastres always to two
+ * places ("37.50", never "37.5"), the way a price is written.
+ */
+function moneyFigure(value: number, lang: Lang): string {
+  const cents = Math.round(value * 100);
+  if (cents % 100 === 0) return num(cents / 100, lang);
+  return (cents / 100).toLocaleString(localeFor(lang), {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 /* ─── Duration ───────────────────────────────────────────── */

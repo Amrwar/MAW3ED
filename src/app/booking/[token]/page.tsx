@@ -11,7 +11,8 @@ import CancelButton from "./_components/CancelButton";
 import RescheduleFlow from "./_components/RescheduleFlow";
 import LeaveReview from "./_components/LeaveReview";
 import { canReviewBooking } from "@/lib/reviews";
-import { CUTOFF_HOURS, customerMayChange } from "@/lib/bookings/self-service";
+import { CUTOFF_HOURS, customerMayCancel, customerMayChange } from "@/lib/bookings/self-service";
+import { bookingMoney, toCents } from "@/lib/payments/money";
 import { arCount, duration, money } from "@/lib/fmt";
 
 type Params = { params: Promise<{ token: string }> };
@@ -56,6 +57,10 @@ export default async function BookingPage({ params }: Params) {
       staffMember: { select: { nameAr: true } },
       branch:      { select: { nameAr: true } },
       review:      { select: { id: true } },
+      payments:    {
+        where:  { kind: { not: "SUBSCRIPTION" } },
+        select: { status: true, amountCents: true, refundedCents: true },
+      },
     },
   });
 
@@ -63,8 +68,14 @@ export default async function BookingPage({ params }: Params) {
 
   const status     = STATUS_CONFIG[booking.status];
   const StatusIcon = status.icon;
-  const cancellable    = customerMayChange(booking);
-  const reschedulable  = cancellable; // same eligibility rules
+  // A booking still waiting on its deposit can be cancelled (it lets go
+  // of the slot) but not moved.
+  const cancellable    = customerMayCancel(booking);
+  const reschedulable  = customerMayChange(booking);
+  // Every payment against it, less refunds — the same figures the app
+  // shows (lib/bookings/public-view.ts).
+  const ledger         = bookingMoney(toCents(booking.totalPrice), booking.payments);
+  const hasMoney       = ledger.paidCents > 0;
   // Only a completed appointment, and only once. The API checks this
   // again, so a page left open cannot post a second review.
   const canReview      = canReviewBooking(booking).allowed;
@@ -155,6 +166,27 @@ export default async function BookingPage({ params }: Params) {
                 icon={<Store size={15} />}
                 label="العربون المطلوب"
                 value={money(Number(booking.depositAmount), "ar", booking.currency)}
+              />
+            )}
+            {hasMoney && (
+              <Row
+                icon={<CreditCard size={15} />}
+                label="المدفوع"
+                value={money(ledger.netPaidCents / 100, "ar", booking.currency)}
+              />
+            )}
+            {ledger.refundedCents > 0 && (
+              <Row
+                icon={<CreditCard size={15} />}
+                label="اترجّع"
+                value={money(ledger.refundedCents / 100, "ar", booking.currency)}
+              />
+            )}
+            {hasMoney && Number(booking.totalPrice) > 0 && (
+              <Row
+                icon={<CreditCard size={15} />}
+                label="الباقي في المكان"
+                value={ledger.outstandingCents === 0 ? "مدفوع بالكامل" : money(ledger.outstandingCents / 100, "ar", booking.currency)}
               />
             )}
           </div>

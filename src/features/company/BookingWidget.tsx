@@ -9,6 +9,7 @@ import {
 import type { Service } from "@/types/service";
 import type { PublicResource, PublicStaff } from "./CompanyContent";
 import { money, duration as fmtDuration, arCount } from "@/lib/fmt";
+import { depositCents } from "@/lib/payments/money";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   chooseResourceLabel,
@@ -588,8 +589,11 @@ export default function BookingWidget({
    * business both takes deposits and has a price to take one from.
    */
   const depositDue =
-    depositEnabled && depositPercent > 0 && selectedService && selectedService.price > 0
-      ? Math.round((selectedService.price * depositPercent) / 100)
+    // The server's own rule (rounded up to the piastre), so the preview
+    // and the charge agree — Math.round on pounds showed 38 for a 37.50
+    // deposit.
+    depositEnabled && depositPercent > 0 && depositPercent <= 100 && selectedService && selectedService.price > 0
+      ? depositCents(selectedService.price, depositPercent) / 100
       : null;
 
   const partyLabel = en

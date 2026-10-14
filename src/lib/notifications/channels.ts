@@ -178,9 +178,15 @@ export const smsChannel: Channel = {
  */
 const PUSH_WORTHY: Record<Audience, ReadonlySet<EventType>> = {
   customer: new Set<EventType>([
+    // Only when the business keyed it in (see pushWorthy): a customer is
+    // not pushed about a booking they just made themselves.
+    "booking.created",
     "booking.confirmed",
     "booking.rejected",
     "booking.cancelled",
+    // The business moving their appointment is exactly what a customer
+    // needs to hear now; it was missing, so a move arrived silently.
+    "booking.rescheduled",
     "booking.reminder",
     "booking.startingSoon",
     "review.requested",
@@ -200,12 +206,21 @@ const PUSH_WORTHY: Record<Audience, ReadonlySet<EventType>> = {
 
 export function pushWorthy(event: NotificationEvent, audience: Audience): boolean {
   if (!PUSH_WORTHY[audience].has(event.type)) return false;
-  // A cancellation is news to the side that did not make it, and an
-  // owner keying in a booking needs no push about it.
-  if (event.type === "booking.cancelled") return event.by !== audience;
-  if (event.type === "booking.created") return event.by !== audience;
+  // When the event says which person at the business acted, that person
+  // has already been left out of the recipients (dispatch.ts), so the
+  // rest of the business — the owner when a manager acted — is pushed.
+  // Without it, "the business did it" is all that is known and the
+  // business side is not pushed about its own action.
+  const actorKnown = audience === "business" && "actorUserId" in event && !!event.actorUserId;
+  // A cancellation is news to the side that did not make it.
+  if (event.type === "booking.cancelled") return actorKnown || event.by !== audience;
+  // A booking the business keyed in is news to the customer; one the
+  // customer made is news to the business.
+  if (event.type === "booking.created") {
+    return audience === "customer" ? event.by === "business" : actorKnown || event.by !== "business";
+  }
   // Moved by the customer unless it says otherwise.
-  if (event.type === "booking.rescheduled") return (event.by ?? "customer") !== audience;
+  if (event.type === "booking.rescheduled") return actorKnown || (event.by ?? "customer") !== audience;
   return true;
 }
 

@@ -163,10 +163,15 @@ export async function POST(req: Request, { params }: Params) {
     // Deposits require a plan that includes them, and are a share of
     // what is actually owed — a deposit computed on the pre-discount
     // price would collect more than the booking costs.
-    const requiresDeposit = business.depositEnabled && canUseFeature(effectivePlan, "deposits");
-    const depositCents    = requiresDeposit
+    //
+    // Nothing is due on a zero total — a free service, or one a discount
+    // took to nothing — so such a booking goes through as if the business
+    // took no deposits. It used to be created PENDING_PAYMENT, fail to
+    // open a 0-piastre payment, and hold its slot forever.
+    const depositCents = business.depositEnabled && canUseFeature(effectivePlan, "deposits") && totalCents > 0
       ? calcDepositCents(totalCents / 100, business.depositPercent)
       : 0;
+    const requiresDeposit = depositCents > 0;
     const depositAmount   = requiresDeposit ? depositCents / 100 : null;
 
     // autoConfirm skips the owner's review step; without it the booking
@@ -280,19 +285,25 @@ export async function POST(req: Request, { params }: Params) {
 
     // ── If deposit required: initiate Paymob payment session ─────────────────
     if (requiresDeposit) {
-      // The ledger row goes in before the customer leaves for Paymob.
-      // If they close the tab there is a PENDING payment saying what
-      // they were trying to pay and for what, rather than a booking
-      // that just sits in PENDING_PAYMENT with nothing behind it.
-      const payment = await openPayment({
-        kind:        "BOOKING_DEPOSIT",
-        businessId:  business.id,
-        bookingId:   booking.id,
-        amountCents: depositCents,
-        currency:    service.currency,
-      });
-
+      // Everything from here on is inside the try: any failure after the
+      // PENDING_PAYMENT booking exists — opening the ledger row included —
+      // must give its slot back, or nothing ever will (the reaper only
+      // finds bookings through their payments).
+      let paymentId: string | null = null;
       try {
+        // The ledger row goes in before the customer leaves for Paymob.
+        // If they close the tab there is a PENDING payment saying what
+        // they were trying to pay and for what, rather than a booking
+        // that just sits in PENDING_PAYMENT with nothing behind it.
+        const payment = await openPayment({
+          kind:        "BOOKING_DEPOSIT",
+          businessId:  business.id,
+          bookingId:   booking.id,
+          amountCents: depositCents,
+          currency:    service.currency,
+        });
+        paymentId = payment.id;
+
         const { paymentUrl, paymobOrderId } = await createPaymentSession({
           bookingId:     booking.id,
           amountCents:   depositCents,
@@ -320,17 +331,24 @@ export async function POST(req: Request, { params }: Params) {
           201,
         );
       } catch (paymobError) {
-        // Paymob session creation failed — cancel the PENDING_PAYMENT booking
-        // so the slot is freed, then return an error
-        await db.booking.update({
-          where: { id: booking.id },
-          data:  { status: "FAILED_PAYMENT" },
-        });
-        await db.payment.update({
-          where: { id: payment.id },
-          data:  { status: "FAILED", failureReason: "could not open a Paymob session" },
-        });
-        log.error("[booking POST] Paymob session failed:", paymobError);
+        // The payment could not be started — release the PENDING_PAYMENT
+        // booking so the slot is freed, then return an error. Each step
+        // is best-effort on its own: one failing must not stop the other.
+        await db.booking
+          .updateMany({
+            where: { id: booking.id, status: "PENDING_PAYMENT" },
+            data:  { status: "FAILED_PAYMENT" },
+          })
+          .catch((e) => log.error("[booking POST] could not release the hold", e));
+        if (paymentId) {
+          await db.payment
+            .updateMany({
+              where: { id: paymentId, status: "PENDING" },
+              data:  { status: "FAILED", failureReason: "could not open a Paymob session" },
+            })
+            .catch((e) => log.error("[booking POST] could not fail the payment", e));
+        }
+        log.error("[booking POST] payment could not be started:", paymobError);
         return err("تعذّر بدء عملية الدفع، حاول مرة أخرى", 502, { code: "payment-unavailable" });
       }
     }

@@ -95,8 +95,13 @@ export async function GET(req: Request) {
       // ever do become paid, this is already the one place it is
       // decided; the owner's own reminderEnabled switch is separate and
       // still has to be on.
-      if (remindersAllowed && biz.reminderEnabled && minutesAway <= biz.reminderLeadHours * 60) {
-        const results = await notify({ type: "booking.reminder", bookingId: b.id });
+      //
+      // customerReminderSentAt is reset whenever the booking is moved, so
+      // a set one means this start time has been reminded already; the
+      // start time in the event's key is what lets the new time's
+      // reminder through the ledger.
+      if (remindersAllowed && biz.reminderEnabled && !b.customerReminderSentAt && minutesAway <= biz.reminderLeadHours * 60) {
+        const results = await notify({ type: "booking.reminder", bookingId: b.id, startsAt: b.startsAt.toISOString() });
         if (results.some((r) => r.status === "SENT")) {
           counts.reminder++;
           // Kept in step for the dashboard, which still reads it. The
@@ -113,7 +118,7 @@ export async function GET(req: Request) {
       // The shorter nudge, for businesses that asked for one.
       // The same entitlement: a shorter nudge is still a reminder.
       if (remindersAllowed && biz.startingSoonEnabled && minutesAway <= biz.startingSoonLeadMins) {
-        const results = await notify({ type: "booking.startingSoon", bookingId: b.id });
+        const results = await notify({ type: "booking.startingSoon", bookingId: b.id, startsAt: b.startsAt.toISOString() });
         if (results.some((r) => r.status === "SENT")) counts.startingSoon++;
       }
     } catch (e) {

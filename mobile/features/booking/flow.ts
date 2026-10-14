@@ -235,7 +235,7 @@ export function detailsErrors(d: Pick<Draft, "name" | "email" | "notes">): Detai
  * is what is shown from then on.
  */
 export function depositPreviewCents(totalCents: number, percent: number | null): number | null {
-  if (!percent || percent <= 0 || percent >= 100 || totalCents <= 0) return null;
+  if (!percent || percent <= 0 || percent > 100 || totalCents <= 0) return null;
   return Math.ceil((totalCents * percent) / 100);
 }
 

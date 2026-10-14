@@ -11,6 +11,7 @@ import {
 } from "@/lib/payments/ledger";
 import { balanceCents, formatCents, toCents } from "@/lib/payments/money";
 import { canUseFeature, getEffectivePlan } from "@/lib/plans";
+import { notify } from "@/lib/notifications";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -127,6 +128,11 @@ export async function POST(req: Request, { params }: Params) {
     if (booking.status === "CANCELLED") {
       return err("الحجز ملغي", 409);
     }
+    // Its slot has been released — maybe already taken by somebody else
+    // — so money cannot be taken against it any more.
+    if (booking.status === "FAILED_PAYMENT") {
+      return err("الحجز ده اتلغى لأن الدفع ما اكتملش، اعمل حجز جديد", 409, { code: "payment-failed" });
+    }
 
     const paid = await paidCentsForBooking(booking.id);
     const outstanding = balanceCents(booking.totalPrice, paid);
@@ -171,7 +177,7 @@ export async function POST(req: Request, { params }: Params) {
             );
       }
 
-      await settleBookingIfPaid(booking.id, booking.totalPrice);
+      await advanceAfterManualPayment(booking.id, session.user.id);
 
       return ok({
         paymentId: recorded.payment.id,
@@ -225,19 +231,56 @@ export async function POST(req: Request, { params }: Params) {
 }
 
 /**
- * A booking that has been paid in full should not still be waiting for
- * payment. Only ever moves it forward, and never out of a state a human
+ * Money taken at the counter that covers what the booking was waiting
+ * for — its deposit, or the whole price when it had none — moves a
+ * PENDING_PAYMENT booking on, exactly as the deposit arriving online
+ * would have: to CONFIRMED, or to PENDING when the business reviews
+ * bookings itself (autoConfirm off). Without this an owner who took the
+ * deposit in cash had a booking they could neither confirm nor keep.
+ *
+ * Any payment link still open for it is closed (ABANDONED), so the
+ * customer is not asked to pay the deposit twice. If they pay through
+ * it anyway, the webhook still records the money and flags it for a
+ * refund (payment.unexpected_deposit).
+ *
+ * Only ever moves a booking forward, and never out of a state a person
  * put it in.
  */
-async function settleBookingIfPaid(bookingId: string, totalPrice: unknown): Promise<void> {
-  const paid = await paidCentsForBooking(bookingId);
-  if (balanceCents(totalPrice as never, paid) > 0) return;
-
+async function advanceAfterManualPayment(bookingId: string, actorUserId: string): Promise<void> {
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    select: { status: true },
+    select: {
+      status: true,
+      totalPrice: true,
+      depositAmount: true,
+      business: { select: { autoConfirm: true } },
+    },
   });
   if (booking?.status !== "PENDING_PAYMENT") return;
 
-  await db.booking.update({ where: { id: bookingId }, data: { status: "CONFIRMED" } });
+  const paid = await paidCentsForBooking(bookingId);
+  if (paid < toCents(booking.depositAmount ?? booking.totalPrice)) return;
+
+  const next = booking.business.autoConfirm ? "CONFIRMED" : "PENDING";
+  const moved = await db.booking.updateMany({
+    where: { id: bookingId, status: "PENDING_PAYMENT" },
+    data: { status: next },
+  });
+  if (moved.count === 0) return;
+
+  await db.payment.updateMany({
+    where: { bookingId, status: "PENDING", provider: "PAYMOB" },
+    data: { status: "ABANDONED", failureReason: "superseded: paid at the venue" },
+  });
+
+  // The booking has only now become real, so this is when the rest of
+  // the business hears about it (the owner who recorded it is the
+  // actor and is not told). Confirmed: the customer gets the
+  // confirmation; awaiting review: they get the "received" message.
+  if (next === "CONFIRMED") {
+    void notify({ type: "booking.created", bookingId, only: "business", actorUserId });
+    void notify({ type: "booking.confirmed", bookingId, actorUserId });
+  } else {
+    void notify({ type: "booking.created", bookingId, actorUserId });
+  }
 }

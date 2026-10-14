@@ -41,3 +41,22 @@ export function customerMayChange(
   if (!(CHANGEABLE as readonly string[]).includes(booking.status)) return false;
   return minutesUntilStart(booking.date, booking.startTime, now) > CUTOFF_HOURS * 60;
 }
+
+/**
+ * Whether the customer may cancel.
+ *
+ * Everything customerMayChange allows, and also a booking still waiting
+ * on its deposit: walking away from the payment page should not leave
+ * them holding a slot they no longer want until the reaper gets to it.
+ * Nothing has been paid, so there is no cutoff to protect the business —
+ * only an appointment that has not started yet.
+ */
+export function customerMayCancel(
+  booking: { status: string; date: Date; startTime: string },
+  now: Date = new Date(),
+): boolean {
+  if (booking.status === "PENDING_PAYMENT") {
+    return minutesUntilStart(booking.date, booking.startTime, now) > 0;
+  }
+  return customerMayChange(booking, now);
+}

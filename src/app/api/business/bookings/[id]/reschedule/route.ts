@@ -25,7 +25,7 @@ async function movable(id: string) {
     where: { id, ...bookingScope(business, actor) },
     include: { service: { select: { duration: true } } },
   });
-  return booking;
+  return booking ? { ...booking, actorUserId: actor.userId } : null;
 }
 
 /**
@@ -120,6 +120,7 @@ export async function POST(req: Request, { params }: Params) {
       movedTo: `${date}T${startTime}`,
       movedFrom: `${booking.date.toISOString().slice(0, 10)}T${booking.startTime}`,
       by: "business",
+      actorUserId: booking.actorUserId,
     });
 
     return ok({ id: booking.id, date, startTime, endTime, status: booking.status });

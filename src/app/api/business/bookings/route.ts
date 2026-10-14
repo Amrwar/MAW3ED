@@ -153,7 +153,7 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
-    const { business } = await requireBusiness();
+    const { session, business } = await requireBusiness();
     const body   = await req.json();
     const parsed = ownerBookingSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
@@ -244,7 +244,7 @@ export async function POST(req: Request) {
     // who had just created it — and tell the customer nothing at all.
     // The customer gets their confirmation now, and the owner's alert
     // is still sent, mutable from their notification settings.
-    void notify({ type: "booking.created", bookingId: booking.id, by: "business" });
+    void notify({ type: "booking.created", bookingId: booking.id, by: "business", actorUserId: session.user.id });
 
     return ok(
       {

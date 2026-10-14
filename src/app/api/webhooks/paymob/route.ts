@@ -15,8 +15,9 @@
  *      retries can land at once; the unique index decides which one
  *      proceeds and the other does nothing.
  *   3. Find the payment by the provider's order id.
- *   4. Check the amount is the amount we asked for.
- *   5. Settle or fail it, with the booking or the subscription moving
+ *   4. Record a refund or void as one, before anything else.
+ *   5. Check the amount (and currency) is what we asked for.
+ *   6. Settle or fail it, with the booking or the subscription moving
  *      in the same transaction.
  *
  * Configure in Paymob: Settings → Transaction processed callback →
@@ -35,6 +36,8 @@ import {
   settlePayment,
 } from "@/lib/payments/ledger";
 import { renewalPeriodEnd } from "@/lib/payments/subscription";
+import { bookingMoney, toCents } from "@/lib/payments/money";
+import { classifyCallback, shouldReleaseHold } from "@/lib/payments/webhook-rules";
 import type { Plan } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
@@ -141,52 +144,9 @@ async function handle(
     return "no-matching-payment";
   }
 
-  // ── 4. The amount is ours, not theirs ───────────────────────────────────
-  //
-  // Paymob sends what was charged. If that is not what we opened the
-  // payment for, something is wrong on one side or the other and the
-  // booking must not be confirmed on the strength of it.
-  if (obj.amount_cents !== payment.amountCents) {
-    log.error("[paymob webhook] amount mismatch", {
-      paymentId: payment.id,
-      expected: payment.amountCents,
-      received: obj.amount_cents,
-    });
-    await failPayment({
-      paymentId: payment.id,
-      reason: `amount mismatch: expected ${payment.amountCents}, got ${obj.amount_cents}`,
-      providerTransactionId: transactionId,
-    });
-    return "amount-mismatch";
-  }
+  const verdict = classifyCallback(obj, payment);
 
-  // ── 5. The currency is ours too ─────────────────────────────────────────
-  //
-  // amount_cents is a number with no unit attached. 28550 piastres and
-  // 28550 cents of something else are the same integer, so checking the
-  // amount alone would settle a 285.50 EGP booking against a payment
-  // taken in another currency.
-  //
-  // In practice Paymob charges in whatever the integration is
-  // configured for, so this should never fire. It is checked for the
-  // same reason the amount is: the field is in the HMAC-signed payload,
-  // so it is authentic and free to verify, and a confirmation is a
-  // promise to both the customer and the business.
-  if (obj.currency && obj.currency.toUpperCase() !== payment.currency.toUpperCase()) {
-    log.error("[paymob webhook] currency mismatch", {
-      paymentId: payment.id,
-      expected: payment.currency,
-      received: obj.currency,
-    });
-    await failPayment({
-      paymentId: payment.id,
-      reason: `currency mismatch: expected ${payment.currency}, got ${obj.currency}`,
-      providerTransactionId: transactionId,
-    });
-    return "currency-mismatch";
-  }
-
-  // ── 6. Money that has gone back ─────────────────────────────────────────
+  // ── 4. Money that has gone back ─────────────────────────────────────────
   //
   // Paymob sends a TRANSACTION callback for a refund or a void as well,
   // with success still true and is_refunded or is_voided set. Read as a
@@ -194,20 +154,52 @@ async function handle(
   // the Paymob dashboard, rather than through /admin/payments, never
   // reached the ledger and the payment went on reading SUCCEEDED.
   //
+  // Checked before the amount: a partial refund's amount_cents is the
+  // part refunded, not the payment, and was being turned away as an
+  // amount mismatch (lib/payments/webhook-rules.ts).
+  //
   // It is recorded rather than acted on: the booking is not cancelled
   // here, because why the money went back is a decision somebody made
   // outside this system and the ledger should reflect it, not guess at
   // its intent.
-  if (obj.is_refunded || obj.is_voided) {
+  if (verdict.kind === "reversal") {
     return reconcileReversal(payment, obj, transactionId);
   }
 
-  const succeeded = obj.success && !obj.pending && !obj.error_occured;
-
-  if (!succeeded) {
-    if (obj.pending) return "still-pending";
-    return handleFailure(payment, obj, transactionId);
+  // ── 5. The amount is ours, not theirs ───────────────────────────────────
+  //
+  // Paymob sends what was charged. If that is not what we opened the
+  // payment for, something is wrong on one side or the other and the
+  // booking must not be confirmed on the strength of it.
+  //
+  // ── 6. The currency is ours too ─────────────────────────────────────────
+  //
+  // amount_cents is a number with no unit attached. 28550 piastres and
+  // 28550 cents of something else are the same integer, so checking the
+  // amount alone would settle a 285.50 EGP booking against a payment
+  // taken in another currency.
+  //
+  // Either way the payment has failed as far as this booking is
+  // concerned, and it is handled as a decline is: the hold is released
+  // (unless other money already covers it) and both sides are told.
+  // Failing the payment and leaving the booking PENDING_PAYMENT held
+  // its slot with nothing left that could ever release it.
+  if (verdict.kind === "amount-mismatch" || verdict.kind === "currency-mismatch") {
+    const reason =
+      verdict.kind === "amount-mismatch"
+        ? `amount mismatch: expected ${payment.amountCents}, got ${obj.amount_cents}`
+        : `currency mismatch: expected ${payment.currency}, got ${obj.currency}`;
+    log.error(`[paymob webhook] ${verdict.kind}`, {
+      paymentId: payment.id,
+      expected: verdict.kind === "amount-mismatch" ? payment.amountCents : payment.currency,
+      received: verdict.kind === "amount-mismatch" ? obj.amount_cents : obj.currency,
+    });
+    await failAndRelease(payment, reason, transactionId);
+    return verdict.kind;
   }
+
+  if (verdict.kind === "pending") return "still-pending";
+  if (verdict.kind === "failed") return handleFailure(payment, obj, transactionId);
 
   return payment.kind === "SUBSCRIPTION"
     ? handleSubscriptionSuccess(payment, transactionId, obj)
@@ -469,6 +461,11 @@ async function handleBookingSuccess(
       transactionId,
     });
     if (payment.kind !== "BOOKING_BALANCE" && (before === "PENDING_PAYMENT" || revived)) {
+      // The booking only became real now, so this is when the business
+      // hears about it as a new booking — once (the key is per booking),
+      // and whatever its payment alerts are set to. The customer has the
+      // confirmation below; a "we received it" on top would be noise.
+      void notify({ type: "booking.created", bookingId: payment.bookingId, only: "business" });
       void notify({ type: "booking.confirmed", bookingId: payment.bookingId });
     }
   }
@@ -535,6 +532,16 @@ async function handleFailure(
     sourceType: obj.source_data?.type ?? null,
   });
 
+  return (await failAndRelease(payment, reason, transactionId)) ? "failed" : "already-resolved";
+}
+
+/**
+ * Fail a payment and, for a booking still waiting on it, give the slot
+ * back — unless money that already landed covers what was asked for.
+ * Tells both sides, once (only on the call that actually failed it).
+ * Returns whether this call changed anything.
+ */
+async function failAndRelease(payment: Payment, reason: string, transactionId: string): Promise<boolean> {
   const { changed } = await failPayment({
     paymentId: payment.id,
     reason,
@@ -552,27 +559,36 @@ async function handleFailure(
       if (!failed.bookingId) return;
       const booking = await tx.booking.findUnique({
         where: { id: failed.bookingId },
-        select: { status: true },
+        select: { status: true, depositAmount: true, totalPrice: true },
+      });
+      if (!booking) return;
+
+      const others = await tx.payment.findMany({
+        where: { bookingId: failed.bookingId, id: { not: failed.id } },
+        select: { status: true, amountCents: true, refundedCents: true },
       });
       // A failed balance payment does not unconfirm a booking that the
-      // deposit already paid for.
-      if (failed.kind === "BOOKING_BALANCE") return;
-      if (!booking || booking.status !== "PENDING_PAYMENT") return;
+      // deposit already paid for, and other money that covers the
+      // deposit keeps the booking.
+      const release = shouldReleaseHold({
+        bookingStatus: booking.status,
+        failedKind: failed.kind,
+        requiredCents: toCents(booking.depositAmount ?? booking.totalPrice),
+        otherPaidCents: bookingMoney(0, others).netPaidCents,
+      });
+      if (!release) return;
 
-      await tx.booking.update({
-        where: { id: failed.bookingId },
+      await tx.booking.updateMany({
+        where: { id: failed.bookingId, status: "PENDING_PAYMENT" },
         data: { status: "FAILED_PAYMENT" },
       });
     },
   });
 
-  if (!changed) return "already-resolved";
-
-  if (payment.bookingId) {
+  if (changed && payment.bookingId) {
     void notify({ type: "payment.failed", bookingId: payment.bookingId, reason });
   }
-
-  return "failed";
+  return changed;
 }
 
 // ─── Subscription ─────────────────────────────────────────────────────────────

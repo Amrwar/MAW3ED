@@ -1,7 +1,8 @@
 import type { BookingStatus, DeliveryStatus, NotificationChannel, PaymentStatus, ReviewStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { minutesToTime, timeToMinutes } from "./time";
-import { CUTOFF_HOURS, customerMayChange } from "./self-service";
+import { CUTOFF_HOURS, customerMayCancel, customerMayChange } from "./self-service";
+import { bookingMoney, toCents } from "@/lib/payments/money";
 import { canEditReview, canReviewBooking } from "@/lib/review-policy";
 
 /**
@@ -61,10 +62,18 @@ export interface PublicBooking {
     currency: string;
     paidAt: string | null;
   } | null;
+  /**
+   * Every payment against the booking, deposit, balance and cash alike,
+   * less refunds. `outstanding` is what is left to pay at the venue —
+   * zero means paid in full.
+   */
+  money: { paid: number; refunded: number; outstanding: number };
   /** What has been sent to the customer about this booking, per channel. */
   notifications: { channel: NotificationChannel; status: DeliveryStatus }[];
   /** The customer may still cancel or move it themselves. */
   canChange: boolean;
+  /** The customer may cancel — canChange, or a booking still awaiting its deposit. */
+  canCancel: boolean;
   /** The server's own eligibility rule (lib/review-policy): completed, within the window, not yet reviewed. */
   canReview: boolean;
   /** Why not, when the app needs to say so. */
@@ -119,10 +128,9 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
       resource: { select: { id: true, name: true, kind: true } },
       branch: { select: { id: true, nameAr: true, nameEn: true, address: true, latitude: true, longitude: true } },
       payments: {
-        where: { kind: "BOOKING_DEPOSIT" },
+        where: { kind: { not: "SUBSCRIPTION" } },
         orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { status: true, amountCents: true, refundedCents: true, currency: true, paidAt: true },
+        select: { kind: true, status: true, amountCents: true, refundedCents: true, currency: true, paidAt: true },
       },
     },
   });
@@ -134,7 +142,9 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
   });
 
   const endTime = b.endTime ?? minutesToTime(timeToMinutes(b.startTime) + b.service.duration);
-  const payment = b.payments[0] ?? null;
+  // `payment` stays the latest deposit, as the app has always read it.
+  const payment = b.payments.find((p) => p.kind === "BOOKING_DEPOSIT") ?? null;
+  const ledger = bookingMoney(toCents(b.totalPrice), b.payments);
 
   return {
     id: b.id,
@@ -179,8 +189,14 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
           paidAt: payment.paidAt?.toISOString() ?? null,
         }
       : null,
+    money: {
+      paid: ledger.netPaidCents / 100,
+      refunded: ledger.refundedCents / 100,
+      outstanding: ledger.outstandingCents / 100,
+    },
     notifications: summariseDeliveries(deliveries),
     canChange: customerMayChange(b, now),
+    canCancel: customerMayCancel(b, now),
     changeCutoffHours: CUTOFF_HOURS,
     ...reviewState(b, now),
   };

@@ -168,6 +168,8 @@ describe("money", () => {
     expect(depositPreviewCents(33_333, 30)).toBe(10_000);
     expect(depositPreviewCents(20_000, null)).toBeNull();
     expect(depositPreviewCents(0, 30)).toBeNull();
+    // A 100% deposit is the whole price, paid online, as the server takes it.
+    expect(depositPreviewCents(20_000, 100)).toBe(20_000);
   });
 });
 

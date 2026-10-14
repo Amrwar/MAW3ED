@@ -3,6 +3,9 @@
  *
  * Update deposit settings for the authenticated business.
  * Body: { depositEnabled: boolean, depositPercent?: number (1–100) }
+ *
+ * 100 means the whole price is paid online when booking; the deposit
+ * math (lib/payments/money.ts depositCents) accepts the same range.
  */
 
 import { z } from "zod";
@@ -12,7 +15,12 @@ import { log } from "@/lib/logger";
 
 const depositSettingsSchema = z.object({
   depositEnabled: z.boolean(),
-  depositPercent: z.number().int().min(1).max(100).optional(),
+  depositPercent: z
+    .number({ message: "نسبة العربون لازم تكون رقم من 1 لـ 100" })
+    .int("نسبة العربون لازم تكون رقم صحيح من 1 لـ 100")
+    .min(1, "نسبة العربون لازم تكون من 1 لـ 100")
+    .max(100, "نسبة العربون لازم تكون من 1 لـ 100")
+    .optional(),
 });
 
 export async function PATCH(req: Request) {
