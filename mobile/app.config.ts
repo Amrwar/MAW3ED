@@ -55,6 +55,9 @@ function googleServicesFile(): string | undefined {
  * host in a filter turns app links off for all of them. Every link the
  * system writes is www (src/lib/url.ts).
  */
+/** expo.dev/@amrwar/maw3ed — set by `eas init`. */
+const EAS_PROJECT_ID = "7f8e70ac-475d-4ce3-a89d-33f78ee86e8a";
+
 const APP_LINK_HOSTS = APP_ENV === "production" ? ["www.maw3ed.net"] : [];
 
 const NAME: Record<AppEnv, string> = {
@@ -77,6 +80,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: NAME[APP_ENV],
   slug: "maw3ed",
+  owner: "amrwar",
   scheme: "maw3ed",
   version: "0.1.0",
   orientation: "portrait",
@@ -232,10 +236,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     appEnv: APP_ENV,
     apiUrl: apiUrl(APP_ENV),
-    eas: {
-      // Filled in by `eas init`; left null so a fresh clone does not
-      // look like it belongs to somebody else's project.
-      projectId: process.env.EAS_PROJECT_ID ?? null,
-    },
+    // The EAS project (expo.dev/@amrwar/maw3ed). Not a secret: it is in
+    // every build. EAS_PROJECT_ID overrides it, for a fork.
+    ...(process.env.EAS_PROJECT_ID || EAS_PROJECT_ID ? { eas: { projectId: process.env.EAS_PROJECT_ID || EAS_PROJECT_ID } } : {}),
   },
 });
