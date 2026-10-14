@@ -122,10 +122,11 @@ tags:
     timeout: 10000
 
 # ── Home → Near me → Back ──
+# Home keeps its scroll position across tabs; the card is near the top.
 - scrollUntilVisible:
     element:
       id: home-nearby
-    direction: DOWN
+    direction: UP
     timeout: 10000
 - tapOn:
     id: home-nearby

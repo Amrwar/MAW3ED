@@ -5,10 +5,11 @@ name: Nearby, location denied
 tags:
   - android
 ---
+# No launchApp permissions: revoking one at launch kills the app process,
+# and twice that left it on the splash. A fresh install has never been
+# asked, so the system prompt appears and is answered below.
 - launchApp:
     clearState: true
-    permissions:
-      location: deny
 - extendedWaitUntil:
     visible:
       id: business-card
