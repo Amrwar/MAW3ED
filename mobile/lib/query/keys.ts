@@ -72,5 +72,13 @@ export const keys = {
       ["business", "bookings", filters] as const,
     customers: (search?: string) => ["business", "customers", search ?? ""] as const,
     analytics: (from: string, to: string) => ["business", "analytics", from, to] as const,
+    overview: ["business", "overview"] as const,
+    calendar: (filters: Record<string, string | undefined>) => ["business", "calendar", filters] as const,
+    booking: (id: string) => ["business", "booking", id] as const,
+    slots: (id: string, date: string) => ["business", "booking", id, "slots", date] as const,
+    customer: (id: string) => ["business", "customer", id] as const,
+    staff: ["business", "staff"] as const,
+    services: ["business", "services"] as const,
+    profile: ["business", "profile"] as const,
   },
 } as const;
