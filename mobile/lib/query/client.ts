@@ -27,15 +27,23 @@ export function createQueryClient(): QueryClient {
         // up when the owner opens the app.
         staleTime: 60_000,
         gcTime: 15 * 60_000,
-        // The app is reopened constantly; refetching on every focus
-        // would burn a mobile data allowance for little gain.
-        refetchOnWindowFocus: false,
+        // Coming back to the app refetches what is on screen only if it
+        // is older than staleTime (lib/query/connectivity.ts) — an owner
+        // returning to Today after an hour sees this hour's bookings,
+        // while flicking between apps costs nothing.
+        refetchOnWindowFocus: true,
+        // And when the connection comes back, the same.
+        refetchOnReconnect: true,
       },
       mutations: {
         // A mutation that failed may have succeeded on the server. Not
         // retried automatically for that reason — a double booking is
         // worse than an error message.
         retry: false,
+        // Offline, a booking or a payment fails at once and says so,
+        // rather than queueing silently and firing whenever the
+        // connection returns — perhaps long after the person gave up.
+        networkMode: "always",
       },
     },
   });

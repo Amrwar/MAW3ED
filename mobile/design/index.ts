@@ -30,6 +30,7 @@ export { Sheet } from "./components/Sheet";
 export { Dialog, ConfirmDialog } from "./components/Dialog";
 export { Select, type SelectOption } from "./components/Select";
 export { ToastProvider, useToast } from "./components/Toast";
+export { OfflineBanner } from "./components/OfflineBanner";
 export { Loading, Skeleton, SkeletonCard, EmptyState, ErrorState, ListState } from "./components/Feedback";
 export { DateStrip, Calendar } from "./components/DatePicker";
 export { TimeSlots } from "./components/TimeSlots";

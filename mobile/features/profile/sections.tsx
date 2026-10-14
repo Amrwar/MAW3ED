@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Image, Linking, ScrollView, StyleSheet, View } from "react-native";
+import { sized } from "@/lib/image";
+import { Image, Linking, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Avatar, Badge, Button, Card, Icon, Text, Touchable, colors, radius, spacing, useLocale } from "@/design";
 import { nextFreeLabel } from "@/features/discovery/BusinessCard";
 import { duration, num, shortDate, time } from "@/lib/format";
@@ -190,7 +191,7 @@ export function ReviewItem({ review }: { review: PublicReview }) {
       {review.photos.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewPhotos}>
           {review.photos.map((url) => (
-            <Image key={url} source={{ uri: url }} style={styles.reviewPhoto} accessibilityLabel={ar ? "صورة من التقييم" : "Photo from the review"} />
+            <Image key={url} source={{ uri: sized(url, 88) }} style={styles.reviewPhoto} accessibilityLabel={ar ? "صورة من التقييم" : "Photo from the review"} />
           ))}
         </ScrollView>
       ) : null}
@@ -522,9 +523,10 @@ export function Glance({ p, kind }: { p: PublicProfile; kind: ProfileKind }) {
 
 /** A tappable photo tile, for galleries. */
 export function PhotoTile({ uri, label, onPress, wide }: { uri: string; label: string; onPress: () => void; wide?: boolean }) {
+  const { width } = useWindowDimensions();
   return (
     <Touchable onPress={onPress} accessibilityRole="imagebutton" accessibilityLabel={label} style={wide ? styles.photoWide : styles.photo}>
-      <Image source={{ uri }} style={StyleSheet.absoluteFill} />
+      <Image source={{ uri: sized(uri, wide ? width : width / 2) }} style={StyleSheet.absoluteFill} />
     </Touchable>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { sized } from "@/lib/image";
 import { Image, StyleSheet, View } from "react-native";
 import { colors, fonts } from "../tokens";
 import { Text } from "./Text";
@@ -43,7 +44,7 @@ export function Avatar({
       importantForAccessibility="no-hide-descendants"
     >
       {uri && !failed ? (
-        <Image source={{ uri }} style={{ width: px, height: px }} onError={() => setFailed(true)} />
+        <Image source={{ uri: sized(uri, px) }} style={{ width: px, height: px }} onError={() => setFailed(true)} />
       ) : (
         <Text
           allowFontScaling={false}

@@ -3,23 +3,25 @@ import { Platform, StyleSheet, View } from "react-native";
 import { Stack, router, usePathname, type ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
-import {
-  useFonts,
-  ReadexPro_300Light,
-  ReadexPro_400Regular,
-  ReadexPro_600SemiBold,
-  ReadexPro_700Bold,
-} from "@expo-google-fonts/readex-pro";
+// Each weight from its own path: the package's index bundles all six
+// weights, two of which nothing uses.
+import { useFonts } from "expo-font";
+import { ReadexPro_300Light } from "@expo-google-fonts/readex-pro/300Light";
+import { ReadexPro_400Regular } from "@expo-google-fonts/readex-pro/400Regular";
+import { ReadexPro_600SemiBold } from "@expo-google-fonts/readex-pro/600SemiBold";
+import { ReadexPro_700Bold } from "@expo-google-fonts/readex-pro/700Bold";
 import * as Notifications from "expo-notifications";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { bookingTokenFor, businessBookingFor, configureForegroundHandling, targetOf, watchTokenChanges } from "@/features/notifications/push";
 import { createQueryClient } from "@/lib/query/client";
+import { installConnectivity } from "@/lib/query/connectivity";
+import { persistOptions } from "@/lib/query/persist";
 import { keys } from "@/lib/query/keys";
 import { hrefFor } from "@/lib/links";
 import { screen, track } from "@/lib/analytics";
-import { Text, Button, LocaleProvider, ToastProvider, colors, spacing } from "@/design";
+import { Text, Button, LocaleProvider, OfflineBanner, ToastProvider, colors, spacing } from "@/design";
 
 /**
  * The root of the app.
@@ -42,6 +44,7 @@ import { Text, Button, LocaleProvider, ToastProvider, colors, spacing } from "@/
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 const queryClient = createQueryClient();
+installConnectivity();
 if (Platform.OS !== "web") configureForegroundHandling();
 
 export default function RootLayout() {
@@ -67,7 +70,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <LocaleProvider>
         <ToastProvider>
-          <QueryClientProvider client={queryClient}>
+          <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
             <AuthProvider>
               <StatusBar style="light" />
               <Stack
@@ -98,8 +101,9 @@ export default function RootLayout() {
                 <Stack.Screen name="me/delete" />
                 <Stack.Screen name="dev/design-system" />
               </Stack>
+              <OfflineBanner />
             </AuthProvider>
-          </QueryClientProvider>
+          </PersistQueryClientProvider>
         </ToastProvider>
       </LocaleProvider>
     </SafeAreaProvider>
