@@ -36,11 +36,19 @@ function Favorites() {
   const favorites = query.data?.favorites ?? [];
 
   return (
-    <Screen scroll={false}>
-      <Text variant="title" accessibilityRole="header">
-        {T("المحفوظات", "Favorites")}
-      </Text>
-
+    <Screen
+      scroll={false}
+      hero={
+        <>
+          <Text variant="display" tone="inverse" accessibilityRole="header">
+            {T("المحفوظات", "Favorites")}
+          </Text>
+          <Text variant="body" tone="inverseMuted">
+            {T("الأماكن اللي حفظتها، في مكان واحد.", "The places you saved, in one place.")}
+          </Text>
+        </>
+      }
+    >
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}

@@ -44,39 +44,47 @@ function Account() {
   const unread = notifications.data?.unread ?? 0;
 
   return (
-    <Screen>
-      <Text variant="title" accessibilityRole="header">
-        {T("حسابي", "Account")}
-      </Text>
-
+    <Screen
+      hero={
+        <Touchable
+          onPress={() => router.push("/me/profile")}
+          accessibilityRole="button"
+          accessibilityLabel={T("تعديل بياناتك", "Edit your details")}
+          style={styles.identity}
+          rippleColor={colors.nightLine}
+        >
+          <View style={styles.avatar}>
+            <Text variant="title" style={styles.avatarText}>
+              {initials(data?.name ?? user?.name)}
+            </Text>
+          </View>
+          <View style={styles.flex}>
+            <Text variant="title" tone="inverse" accessibilityRole="header" numberOfLines={1}>
+              {data?.name ?? user?.name ?? T("بدون اسم", "No name yet")}
+            </Text>
+            {data?.email ? (
+              <Text variant="caption" tone="inverseMuted" style={ltr} numberOfLines={1}>
+                {data.email}
+              </Text>
+            ) : null}
+            <View style={styles.phoneRow}>
+              <Text variant="caption" tone="inverseMuted" style={ltr}>
+                {data?.phone ? `+${data.phone.replace(/^\+/, "")}` : T("مفيش رقم موبايل", "No phone number")}
+              </Text>
+              {/* Three states, not two: no number is a different problem from an unconfirmed one. */}
+              {data?.phone ? (
+                <Badge label={data.phoneVerified ? T("متأكد", "Verified") : T("محتاج تأكيد", "Needs verifying")} tone={data.phoneVerified ? "ok" : "warn"} />
+              ) : (
+                <Badge label={T("مطلوب للحجز", "Needed to book")} tone="warn" />
+              )}
+            </View>
+          </View>
+          <Icon name="chevron-forward" color={colors.gold} />
+        </Touchable>
+      }
+    >
       <ListState loading={profile.isLoading} error={profile.error} isEmpty={false} emptyTitle="" onRetry={() => profile.refetch()}>
         <View style={styles.sections}>
-          {/* ── Identity ── */}
-          <Card onPress={() => router.push("/me/profile")} accessibilityLabel={T("تعديل بياناتك", "Edit your details")}>
-            <View style={styles.between}>
-              <View style={styles.flex}>
-                <Text variant="bodyBold">{data?.name ?? user?.name ?? T("بدون اسم", "No name yet")}</Text>
-                {data?.email ? (
-                  <Text variant="caption" tone="muted" style={ltr}>
-                    {data.email}
-                  </Text>
-                ) : null}
-                <View style={styles.phoneRow}>
-                  <Text variant="caption" tone="muted" style={ltr}>
-                    {data?.phone ? `+${data.phone.replace(/^\+/, "")}` : T("مفيش رقم موبايل", "No phone number")}
-                  </Text>
-                  {/* Three states, not two: no number is a different problem from an unconfirmed one. */}
-                  {data?.phone ? (
-                    <Badge label={data.phoneVerified ? T("متأكد", "Verified") : T("محتاج تأكيد", "Needs verifying")} tone={data.phoneVerified ? "ok" : "warn"} />
-                  ) : (
-                    <Badge label={T("مطلوب للحجز", "Needed to book")} tone="warn" />
-                  )}
-                </View>
-              </View>
-              <Icon name={ar ? "chevron-back" : "chevron-forward"} color={colors.faint} />
-            </View>
-          </Card>
-
           {/* ── Preferences ── */}
           <Card>
             <Text variant="label" tone="ink2" accessibilityRole="header">
@@ -156,6 +164,17 @@ function Account() {
   );
 }
 
+/** Up to two letters from the name, for the avatar; a person icon's stand-in when there is none. */
+function initials(name: string | null | undefined): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "؟";
+  return parts
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
+}
+
 function SwitchRow({ label, hint, value, disabled, onChange }: { label: string; hint: string; value: boolean; disabled: boolean; onChange: (v: boolean) => void }) {
   return (
     <View style={styles.switchRow}>
@@ -167,28 +186,33 @@ function SwitchRow({ label, hint, value, disabled, onChange }: { label: string; 
       </View>
       {/* react-native-web draws the thumb off its track in right-to-left; native mirrors a switch itself. */}
       <View style={Platform.OS === "web" ? ltr : undefined}>
-        <Switch value={value} onValueChange={onChange} disabled={disabled} trackColor={{ true: colors.jade, false: colors.line2 }} accessibilityLabel={label} />
+        <Switch value={value} onValueChange={onChange} disabled={disabled} trackColor={{ true: colors.night, false: colors.line2 }} accessibilityLabel={label} />
       </View>
     </View>
   );
 }
 
 function LinkRow({ icon, label, href, trailing, last }: { icon: IconName; label: string; href: Href; trailing?: ReactNode; last?: boolean }) {
-  const { lang } = useLocale();
   return (
     <Touchable onPress={() => router.push(href)} accessibilityRole="link" accessibilityLabel={label} style={[styles.link, !last && styles.linkLine]}>
-      <Icon name={icon} color={colors.jade} />
+      <View style={styles.linkIcon}>
+        <Icon name={icon} color={colors.night} size="sm" />
+      </View>
       <Text variant="body" style={styles.flex}>
         {label}
       </Text>
       {trailing}
-      <Icon name={lang === "ar" ? "chevron-back" : "chevron-forward"} color={colors.faint} />
+      <Icon name="chevron-forward" color={colors.faint} />
     </Touchable>
   );
 }
 
 const styles = StyleSheet.create({
-  sections: { marginTop: spacing.lg, gap: spacing.lg },
+  sections: { gap: spacing.lg },
+  identity: { flexDirection: "row", alignItems: "center", gap: spacing.md, borderRadius: 16, overflow: "hidden" },
+  avatar: { width: 60, height: 60, borderRadius: 18, backgroundColor: colors.gold, alignItems: "center", justifyContent: "center" },
+  avatarText: { color: colors.night },
+  linkIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" },
   flex: { flex: 1 },
   between: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   phoneRow: { marginTop: spacing.sm, flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },

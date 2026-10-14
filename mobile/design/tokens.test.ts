@@ -72,6 +72,7 @@ describe("the palette is the web's", () => {
     "nightText",
     "nightSubtle",
     "nightAccent",
+    "nightOk",
     "gold",
     "goldSoft",
     "goldLine",

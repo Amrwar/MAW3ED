@@ -151,5 +151,5 @@ const styles = StyleSheet.create({
   week: { flexDirection: "row" },
   cell: { flex: 1, minHeight: touchTarget - 4, alignItems: "center", justifyContent: "center" },
   day: { borderRadius: radius.full, overflow: "hidden" },
-  today: { borderWidth: 1.5, borderColor: colors.gold },
+  today: { borderWidth: 1.5, borderColor: colors.night },
 });

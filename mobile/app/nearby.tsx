@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { Linking, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { Linking, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   Button,
   Card,
@@ -49,6 +49,8 @@ import type { NearbyResponse } from "@/types/api";
  */
 
 const RADII = [2, 5, 10, 25] as const;
+/** How much of the screen the list sheet covers in the map-first layout. */
+const SHEET_SHARE = 0.52;
 
 export default function NearbyScreen() {
   const insets = useSafeAreaInsets();
@@ -75,6 +77,8 @@ export default function NearbyScreen() {
         signal,
       }),
     staleTime: 60_000,
+    // A new radius keeps the map and list on screen while it loads.
+    placeholderData: keepPreviousData,
   });
 
   const findMe = async () => {
@@ -90,7 +94,8 @@ export default function NearbyScreen() {
   const names = useMemo(() => Object.fromEntries(list.map((b) => [b.id, (!ar && b.nameEn) || b.nameAr])), [list, ar]);
   const open = (slug: string) => router.push({ pathname: "/business/[slug]", params: { slug } });
 
-  const mapFirst = Boolean(here) && !locating && !nearby.isLoading && !nearby.error && list.length > 0;
+  const mapFirst = Boolean(here) && !locating && list.length > 0;
+  const { height: screenHeight } = useWindowDimensions();
 
   // Map-first: once there are places to show, the map is the screen and
   // the list sits over it in a sheet, nearest first.
@@ -98,12 +103,19 @@ export default function NearbyScreen() {
     return (
       <View style={styles.mapPage}>
         <View style={StyleSheet.absoluteFill}>
-          <PlacesMap points={points} names={names} around={here} onOpen={open} flat />
+          <PlacesMap
+            points={points}
+            names={names}
+            around={here}
+            onOpen={open}
+            flat
+            inset={{ top: insets.top + 72, bottom: screenHeight * SHEET_SHARE }}
+          />
         </View>
 
         <View style={[styles.mapTop, { paddingTop: insets.top + spacing.sm }]} pointerEvents="box-none">
           <IconButton
-            icon={ar ? "chevron-forward" : "chevron-back"}
+            icon="chevron-back"
             variant="filled"
             label={T("رجوع", "Back")}
             onPress={() => router.back()}
@@ -138,6 +150,7 @@ export default function NearbyScreen() {
             {list.map((b) => (
               <BusinessCard key={b.id} business={b} distance={formatDistance(b.distanceKm, lang)} onPress={() => open(b.slug)} />
             ))}
+            <Areas />
           </ScrollView>
         </View>
       </View>
@@ -237,7 +250,14 @@ function Ask({ fix, locating, onLocate }: { fix: Fix | null; locating: boolean; 
             "We use your location once, now, to sort places by distance. We don't track or keep it.",
           )}
         </Text>
-        <Touchable accessibilityRole="button" accessibilityLabel={T("استخدم موقعي", "Use my location")} onPress={onLocate} style={styles.goldButton}>
+        <Touchable
+          accessibilityRole="button"
+          accessibilityLabel={locating ? T("بنحدد موقعك", "Finding you") : T("استخدم موقعي", "Use my location")}
+          accessibilityState={{ busy: locating, disabled: locating }}
+          disabled={locating}
+          onPress={onLocate}
+          style={styles.goldButton}
+        >
           <Icon name="navigate" size="sm" color={colors.night} />
           <Text variant="label" style={{ color: colors.night }}>
             {locating ? T("بنحدد موقعك…", "Finding you…") : T("استخدم موقعي", "Use my location")}
@@ -325,7 +345,7 @@ const styles = StyleSheet.create({
     start: 0,
     end: 0,
     bottom: 0,
-    height: "52%",
+    height: `${SHEET_SHARE * 100}%`,
     backgroundColor: colors.surface,
     borderTopStartRadius: 28,
     borderTopEndRadius: 28,

@@ -17,9 +17,9 @@ interface ToastInput {
 }
 
 const ICON: Record<ToastTone, IconName> = { ok: "checkmark-circle", danger: "alert-circle", info: "information-circle" };
-// Tokens only. On night, the tones are told apart by icon shape; ok
-// alone takes the lifted jade, as success does elsewhere on dark.
-const ACCENT: Record<ToastTone, string> = { ok: colors.nightAccent, danger: colors.star, info: colors.nightText };
+// Tokens only. On night, the tones are told apart by icon shape and by
+// colour: ok takes the lifted jade, kept apart from gold.
+const ACCENT: Record<ToastTone, string> = { ok: colors.nightOk, danger: colors.star, info: colors.nightText };
 
 const ToastContext = createContext<(input: ToastInput) => void>(() => undefined);
 

@@ -155,7 +155,7 @@ export default function CustomerHome() {
       <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>
         <Column>
           <View style={styles.heroTop}>
-            <View style={styles.brand} accessibilityRole="header" accessibilityLabel={T("موعد", "Maw3ed")}>
+            <View style={styles.brand} accessible accessibilityRole="image" accessibilityLabel={T("مواعيد", "Maw3ed")}>
               <View style={styles.brandMark}>
                 <Text variant="heading" style={styles.brandLetter}>
                   م
@@ -717,7 +717,7 @@ function UnfinishedPayment() {
                 : "Your time is held until payment is done."}
           </Text>
         </View>
-        <Icon name={ar ? "chevron-back" : "chevron-forward"} color={colors.faint} />
+        <Icon name="chevron-forward" color={colors.faint} />
       </View>
     </Card>
   );

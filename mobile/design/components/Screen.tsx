@@ -20,8 +20,15 @@ export function Screen({
   dark = false,
   edges = "top",
   footer,
+  hero,
 }: {
   children: ReactNode;
+  /**
+   * A night block across the top (Bold Cairo), above the content — the
+   * tab screens' title and anything that belongs with it. It takes the
+   * top safe area, so the content under it starts with a small gap.
+   */
+  hero?: ReactNode;
   scroll?: boolean;
   dark?: boolean;
   /** Which edges to pad for. Tab screens sit above the tab bar, which owns the bottom. */
@@ -39,7 +46,7 @@ export function Screen({
     alignSelf: "center" as const,
     paddingHorizontal: layout.gutter,
   };
-  const top = edges === "none" ? 0 : insets.top + spacing.md;
+  const top = hero ? spacing.lg : edges === "none" ? 0 : insets.top + spacing.md;
   const bottom = edges === "both" ? insets.bottom + spacing.lg : spacing.xl;
 
   const body = scroll ? (
@@ -59,6 +66,11 @@ export function Screen({
       style={[styles.fill, { backgroundColor: background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      {hero ? (
+        <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>
+          <View style={column}>{hero}</View>
+        </View>
+      ) : null}
       {body}
       {footer ? (
         <View
@@ -78,4 +90,10 @@ export function Screen({
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   footer: { borderTopWidth: 1, paddingTop: spacing.md },
+  hero: {
+    backgroundColor: colors.night,
+    paddingBottom: spacing.xl,
+    borderBottomStartRadius: 28,
+    borderBottomEndRadius: 28,
+  },
 });

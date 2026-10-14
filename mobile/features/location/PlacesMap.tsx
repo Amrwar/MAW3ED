@@ -22,6 +22,7 @@ export function PlacesMap({
   height,
   showOpen = true,
   flat = false,
+  inset,
 }: {
   points: MapPoint[];
   /** Business id → display name, in the reader's language. */
@@ -34,6 +35,8 @@ export function PlacesMap({
   showOpen?: boolean;
   /** Edge to edge, without the card's rounded corners (map-first screens). */
   flat?: boolean;
+  /** Screen covered by other things (a bar, a sheet), in px: pins are fitted into what is left. */
+  inset?: { top: number; bottom: number };
 }) {
   const { lang } = useLocale();
   const region = useMemo(() => regionFor(points, around), [points, around]);
@@ -44,6 +47,8 @@ export function PlacesMap({
       <MapView
         style={StyleSheet.absoluteFill}
         initialRegion={region}
+        // mapPadding's sides are physical; nothing covers them, so both are 0 in either direction.
+        mapPadding={inset ? { top: inset.top, bottom: inset.bottom, left: NO_SIDE, right: NO_SIDE } : undefined}
         showsUserLocation={Boolean(around)}
         showsMyLocationButton={Boolean(around)}
         toolbarEnabled={false}
@@ -86,6 +91,8 @@ export function PlacesMap({
     </View>
   );
 }
+
+const NO_SIDE = 0;
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, minHeight: 360, borderRadius: radius.lg, overflow: "hidden", backgroundColor: colors.surface3 },

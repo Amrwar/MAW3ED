@@ -52,22 +52,30 @@ function MyBookings() {
   const refetch = () => (isUpcoming ? upcoming.refetch() : history.refetch());
 
   return (
-    <Screen scroll={false}>
-      <Text variant="title" accessibilityRole="header">
-        {T("حجوزاتي", "My bookings")}
-      </Text>
-
-      <View style={styles.tabs}>
-        <Tabs
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: "upcoming", label: T("الجاية", "Upcoming") },
-            { value: "history", label: T("اللي فات", "Past") },
-          ]}
-        />
-      </View>
-
+    <Screen
+      scroll={false}
+      hero={
+        <>
+          <Text variant="display" tone="inverse" accessibilityRole="header">
+            {T("حجوزاتي", "My bookings")}
+          </Text>
+          <Text variant="body" tone="inverseMuted">
+            {isUpcoming ? T("مواعيدك الجاية، الأقرب الأول.", "Your upcoming times, soonest first.") : T("كل اللي فات، تقدر تقيّمه.", "Everything past, ready to review.")}
+          </Text>
+          <View style={styles.tabs}>
+            <Tabs
+              tone="night"
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: "upcoming", label: T("الجاية", "Upcoming") },
+                { value: "history", label: T("اللي فات", "Past") },
+              ]}
+            />
+          </View>
+        </>
+      }
+    >
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -138,7 +146,7 @@ function MyBookings() {
 }
 
 const styles = StyleSheet.create({
-  tabs: { marginTop: spacing.lg, marginBottom: spacing.md },
+  tabs: { marginTop: spacing.lg },
   scroll: { paddingBottom: spacing.xxl },
   list: { gap: spacing.md },
 });

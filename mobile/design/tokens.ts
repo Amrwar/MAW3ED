@@ -55,6 +55,7 @@ export const colors = {
   nightText: "#B9CBC4",
   nightSubtle: "#8FAAA0",
   nightAccent: "#D9B45A", // gold: icons and highlights on night
+  nightOk: "#4FA98B", // jade lifted to read on night: success, apart from gold
 
   // Gold — the second accent, only ever on night or as a fill under night text.
   gold: "#D9B45A",
