@@ -65,7 +65,7 @@ export function BookingRow({
       style={[styles.row, highlight && styles.rowOn, dim && styles.rowDim]}
       testID="booking-row"
     >
-      <View style={[styles.when, highlight && styles.whenOn]}>
+      <View style={[styles.when, highlight && styles.whenOn, dim && !highlight && styles.whenDim]}>
         <Text variant="bodyBold" style={{ color: highlight ? colors.gold : colors.night }}>
           {time(startTime, lang)}
         </Text>
@@ -77,7 +77,7 @@ export function BookingRow({
         ) : null}
       </View>
       <View style={styles.flex}>
-        <Text variant="bodyBold" tone={highlight ? "inverse" : "ink"} numberOfLines={1} style={dim ? styles.struck : undefined}>
+        <Text variant="bodyBold" tone={highlight ? "inverse" : dim ? "muted" : "ink"} numberOfLines={1} style={dim ? styles.struck : undefined}>
           {customerName}
         </Text>
         <Text variant="caption" tone={highlight ? "inverseMuted" : "subtle"} numberOfLines={1}>
@@ -145,7 +145,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   rowOn: { backgroundColor: colors.night },
-  rowDim: { opacity: 0.6 },
+  // A cancelled or no-show booking stays fully readable (fading the row took
+  // its text under 4.5:1): the badge names the state, the name is struck
+  // through, the time box turns neutral, and the row sits on a grey ground.
+  rowDim: { backgroundColor: colors.surface2 },
+  whenDim: { backgroundColor: colors.surface },
   struck: { textDecorationLine: "line-through" },
   when: {
     width: 64,

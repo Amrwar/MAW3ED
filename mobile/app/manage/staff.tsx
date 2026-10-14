@@ -213,7 +213,8 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.ground },
   flex: { flex: 1 },
   body: { padding: spacing.lg, gap: spacing.md },
-  inactive: { opacity: 0.6 },
+  // Not faded: the badge says inactive; fading took the text under 4.5:1.
+  inactive: { backgroundColor: colors.surface2 },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   days: { flexDirection: "row", gap: spacing.xs, marginTop: spacing.md },
   day: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 },

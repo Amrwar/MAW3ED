@@ -66,5 +66,6 @@ const styles = StyleSheet.create({
   body: { padding: spacing.lg, gap: spacing.md },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   desc: { marginTop: spacing.sm },
-  off: { opacity: 0.6 },
+  // Not faded: the badge says it isn't offered; fading took the text under 4.5:1.
+  off: { backgroundColor: colors.surface2 },
 });
