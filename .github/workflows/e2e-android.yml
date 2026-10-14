@@ -76,9 +76,18 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          ram-size: 4096M
+          cores: 4
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          # A software-rendered emulator is slow enough that Android's own
+          # System UI raises "isn't responding" over the app, and every flow
+          # fails behind it. Hide crash/ANR dialogs, and let the system
+          # finish starting before the first flow.
           script: |
+            adb shell settings put global hide_error_dialogs 1
+            adb shell settings put secure anr_show_background 0
+            sleep 45
             adb install -r app.apk
             mkdir -p maestro-out
             if [ -n "$REVIEW_EMAIL" ] && [ -n "$REVIEW_PASSWORD" ]; then maestro test --format junit --output maestro-out/report.xml --test-output-dir maestro-out -e REVIEW_EMAIL="$REVIEW_EMAIL" -e REVIEW_PASSWORD="$REVIEW_PASSWORD" mobile/.maestro; else echo "No review account set: skipping the business sign-in flow."; maestro test --format junit --output maestro-out/report.xml --test-output-dir maestro-out --exclude-tags needs-credentials mobile/.maestro; fi
