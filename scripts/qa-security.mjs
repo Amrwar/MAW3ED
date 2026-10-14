@@ -257,23 +257,23 @@ async function main() {
       `got ${forgedAdmin.status} ${forgedAdmin.text.slice(0, 60)}`,
     );
 
-    // A real SUPER_ADMIN's BEARER token is refused too, and that is
-    // correct rather than a defect: currentAdmin() reads the cookie
-    // session only, so no bearer token authenticates as an admin. The
-    // mobile app has no admin screens, so nothing needs it to.
+    // A real SUPER_ADMIN's bearer token gets through the gate. Since
+    // Phase 21 currentAdmin() accepts cookie or bearer, so the app's
+    // admin space can call the admin API; only the user id comes from
+    // the token and the role is read from the database (the forged
+    // claim above proves the token's own claim counts for nothing).
     //
-    // It does mean these bearer probes cannot tell one admin role from
-    // another — every admin token is refused for the same reason. The
-    // role matrix is therefore tested with real cookie sessions
-    // instead; see docs/qa-phase19.md.
+    // Through the gate, the route itself answers: the probe payment
+    // never succeeded, so refunding it is refused on its merits (409),
+    // not hidden (404).
     const realAdmin = await req(`/api/admin/payments/${probePayment.id}/refund`, {
       token: superadmin,
       method: "POST",
       body: { reason: "qa probe" },
     });
     check(
-      "admin API refuses bearer tokens entirely, even a real admin's",
-      realAdmin.status === 404,
+      "a real admin's bearer token passes the gate; the route refuses an unpaid refund",
+      realAdmin.status === 409,
       `got ${realAdmin.status} ${realAdmin.text.slice(0, 60)}`,
     );
   }

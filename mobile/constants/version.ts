@@ -19,7 +19,7 @@ const version = Constants.expoConfig?.version ?? "0.0.0";
 const runtime = Constants.expoConfig?.runtimeVersion;
 const env = config.appEnv;
 
-export const APP_VERSION = version;
+
 
 /**
  * "v0.1.0" in production, "v0.1.0 · staging" elsewhere.

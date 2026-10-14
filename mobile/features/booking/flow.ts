@@ -1,4 +1,4 @@
-import { addDays, cairoToday, weekdayOf } from "@/design/calendar";
+import { cairoToday, weekdayOf } from "@/design/calendar";
 import { staffFor, profileKind } from "@/features/profile/profile";
 import { ApiError, NetworkError, UnauthorizedError } from "@/lib/api/errors";
 import type { DayHours, PublicProfile, PublicResource, PublicStaffMember } from "@/types/api";
@@ -211,10 +211,7 @@ export function mightBeOpen(iso: string, businessHours: DayHours[], staff: Publi
   return Boolean(day && !day.isClosed);
 }
 
-/** The next `n` days from `from`, for tests and for the strip. */
-export function dayList(from: string, n: number): string[] {
-  return Array.from({ length: n }, (_, i) => addDays(from, i));
-}
+
 
 /* ─── Details ────────────────────────────────────────────── */
 

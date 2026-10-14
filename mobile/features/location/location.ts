@@ -20,15 +20,7 @@ export type Fix =
   | { ok: true; lat: number; lng: number; /** metres, when the OS says */ accuracy: number | null }
   | { ok: false; reason: "denied" | "blocked" | "services-off" | "unavailable" | "timeout" };
 
-/** Without prompting: has the person already said yes? */
-export async function locationAllowed(): Promise<boolean> {
-  try {
-    const { status } = await Location.getForegroundPermissionsAsync();
-    return status === "granted";
-  } catch {
-    return false;
-  }
-}
+
 
 /**
  * Ask (if needed) and read. `blocked` means the system will not show the
