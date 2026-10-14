@@ -215,6 +215,9 @@ const styles = StyleSheet.create({
   divider: { width: 1, alignSelf: "stretch", marginVertical: spacing.sm, backgroundColor: colors.line2 },
   input: {
     flex: 1,
+    // A browser gives <input> an intrinsic width; without this the web
+    // build pushes the field past the card on a 320 pt screen.
+    minWidth: 0,
     minHeight: touchTarget - 4,
     paddingHorizontal: spacing.md,
     fontFamily: fonts.regular,
