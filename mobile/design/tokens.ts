@@ -22,8 +22,8 @@
 
 /** The palette. Matches src/app/globals.css — keep the two in step. */
 export const colors = {
-  // Surfaces
-  ground: "#FAFAF7",
+  // Surfaces. Ground is warm sand — the app's own (Bold Cairo), not the web's.
+  ground: "#F8F5EC",
   surface: "#FFFFFF",
   surface2: "#F4F5F1",
   surface3: "#EFF1EC",
@@ -47,13 +47,25 @@ export const colors = {
   jadeLine: "#CFE3DB",
   jadeTint: "#F4F9F7",
 
-  // Night — the anchor
-  night: "#11201C",
-  night2: "#19302A",
-  nightLine: "#27403A",
-  nightText: "#A9BAB3",
-  nightSubtle: "#7F9C92",
-  nightAccent: "#4FA98B", // jade lifted to read on night
+  // Night — the anchor. In the app it is Cairo green (the redesign's
+  // "Bold Cairo"), deeper and greener than the web's near-black.
+  night: "#0B3A2E",
+  night2: "#0F4537",
+  nightLine: "#2D5A4D",
+  nightText: "#B9CBC4",
+  nightSubtle: "#8FAAA0",
+  nightAccent: "#D9B45A", // gold: icons and highlights on night
+  nightOk: "#4FA98B", // jade lifted to read on night: success, apart from gold
+
+  // Gold — the second accent, only ever on night or as a fill under night text.
+  gold: "#D9B45A",
+  goldSoft: "#F5ECD3",
+  goldLine: "#E6D3A1",
+
+  // The drawn street plan on the map-first ways in (features/location/MapArt.tsx).
+  mapLand: "#E4E9DF",
+  mapWater: "#C9DCE8",
+  mapPark: "#CFE2C7",
 
   // Status — independent of the brand hue
   ok: "#0A5F47",
@@ -95,15 +107,16 @@ export type Tone = keyof typeof tones;
 /* ─── Type ───────────────────────────────────────────────── */
 
 /**
- * Almarai, the web's Arabic face, which also carries Latin — one family
- * for both languages, so a mixed line does not change typeface mid-word.
- * Loaded in app/_layout.tsx before the first screen draws.
+ * Readex Pro: one family drawn for Arabic and Latin together, so a mixed
+ * line does not change typeface mid-word. Rounder and more confident
+ * than the web's Almarai — the app's own voice (Bold Cairo). Loaded in
+ * app/_layout.tsx before the first screen draws.
  */
 export const fonts = {
-  light: "Almarai_300Light",
-  regular: "Almarai_400Regular",
-  bold: "Almarai_700Bold",
-  extraBold: "Almarai_800ExtraBold",
+  light: "ReadexPro_300Light",
+  regular: "ReadexPro_400Regular",
+  bold: "ReadexPro_600SemiBold",
+  extraBold: "ReadexPro_700Bold",
 } as const;
 
 /**

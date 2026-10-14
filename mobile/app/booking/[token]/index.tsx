@@ -12,7 +12,7 @@ import {
   ConfirmDialog,
   EmptyState,
   ErrorState,
-  Header,
+  TopBar,
   Icon,
   Skeleton,
   SkeletonCard,
@@ -80,8 +80,8 @@ export default function BookingScreen() {
   if (!booking.data) {
     const missing = booking.error instanceof ApiError && (booking.error.status === 404 || booking.error.status === 400);
     return (
-      <View style={[styles.page, { paddingTop: insets.top }]}>
-        <Header title={ar ? "الحجز" : "Booking"} back onBack={close} />
+      <View style={styles.page}>
+        <TopBar title={ar ? "الحجز" : "Booking"} back onBack={close} />
         {missing ? (
           <EmptyState
             icon="calendar-clear-outline"
@@ -283,8 +283,8 @@ function Details({
   const paidDeposit = b.payment?.status === "SUCCEEDED" || b.payment?.status === "PARTIALLY_REFUNDED" || b.payment?.status === "REFUNDED";
 
   return (
-    <View style={[styles.page, { paddingTop: insets.top }]}>
-      <Header title={T("الحجز", "Booking")} back onBack={onClose} />
+    <View style={styles.page}>
+      <TopBar title={T("الحجز", "Booking")} back onBack={onClose} />
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.jade} />}

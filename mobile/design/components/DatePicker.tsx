@@ -50,13 +50,13 @@ export function DateStrip({ value, onChange, isAvailable, days = 30, from }: Day
             onPress={() => onChange(iso)}
             style={[styles.stripDay, selected ? styles.dayOn : styles.dayOff, !available && styles.dayDisabled]}
           >
-            <Text variant="tiny" align="center" style={{ color: selected ? colors.jadeSoft : colors.subtle }} numberOfLines={1}>
+            <Text variant="tiny" align="center" style={{ color: selected ? colors.gold : colors.subtle }} numberOfLines={1}>
               {relative ?? weekdayShort(iso, lang)}
             </Text>
             <Text variant="heading" align="center" style={{ color: selected ? colors.inverse : colors.ink }}>
               {dayOfMonth(iso, lang)}
             </Text>
-            <Text variant="tiny" align="center" style={{ color: selected ? colors.jadeSoft : colors.subtle }} numberOfLines={1}>
+            <Text variant="tiny" align="center" style={{ color: selected ? colors.gold : colors.subtle }} numberOfLines={1}>
               {monthShort(iso, lang)}
             </Text>
           </Touchable>
@@ -133,16 +133,16 @@ export function Calendar({ value, onChange, isAvailable, min }: DayChoice & { mi
 const styles = StyleSheet.create({
   strip: { gap: spacing.sm, paddingVertical: spacing.xs },
   stripDay: {
-    width: 64,
-    minHeight: 84,
+    width: 66,
+    minHeight: 86,
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xxs,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     overflow: "hidden",
   },
-  dayOn: { backgroundColor: colors.jade, borderColor: colors.jade },
+  dayOn: { backgroundColor: colors.night, borderColor: colors.night },
   dayOff: { backgroundColor: colors.surface, borderColor: colors.line },
   dayDisabled: { opacity: 0.4 },
   calendar: { gap: spacing.xs },
@@ -151,5 +151,5 @@ const styles = StyleSheet.create({
   week: { flexDirection: "row" },
   cell: { flex: 1, minHeight: touchTarget - 4, alignItems: "center", justifyContent: "center" },
   day: { borderRadius: radius.full, overflow: "hidden" },
-  today: { borderWidth: 1.5, borderColor: colors.jade },
+  today: { borderWidth: 1.5, borderColor: colors.night },
 });

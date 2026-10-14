@@ -89,13 +89,14 @@ const styles = StyleSheet.create({
   group: { gap: spacing.sm },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   slot: {
-    minHeight: touchTarget,
+    minHeight: touchTarget + 6,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.md,
     borderWidth: 1,
     overflow: "hidden",
   },
-  on: { backgroundColor: colors.jade, borderColor: colors.jade },
-  off: { backgroundColor: colors.surface, borderColor: colors.line2 },
+  // Bold Cairo: the chosen time is night, the others white tiles on sand.
+  on: { backgroundColor: colors.night, borderColor: colors.night },
+  off: { backgroundColor: colors.surface, borderColor: colors.line },
 });

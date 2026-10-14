@@ -1,29 +1,33 @@
 import { useMemo, useState } from "react";
-import { Linking, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { router } from "expo-router";
+import { Linking, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   Button,
   Card,
   Chip,
   EmptyState,
   ErrorState,
-  Header,
+  TopBar,
   Icon,
+  IconButton,
   SkeletonCard,
-  Tabs,
   Text,
+  Touchable,
   colors,
+  elevation,
+  radius as radii,
   spacing,
   useLocale,
 } from "@/design";
 import { BusinessCard } from "@/features/discovery/BusinessCard";
-import { mapPoints, type ResultsMode } from "@/features/discovery/map";
+import { mapPoints } from "@/features/discovery/map";
 import { startSearch } from "@/features/discovery/searchState";
 import { useFacets } from "@/features/customer/queries";
 import { formatDistance, locate, ROUGH_ACCURACY_M, type Fix } from "@/features/location/location";
 import { PlacesMap } from "@/features/location/PlacesMap";
+import { MapArt } from "@/features/location/MapArt";
 import { api } from "@/lib/api/client";
 import { track } from "@/lib/analytics";
 import { num } from "@/lib/format";
@@ -45,6 +49,8 @@ import type { NearbyResponse } from "@/types/api";
  */
 
 const RADII = [2, 5, 10, 25] as const;
+/** How much of the screen the list sheet covers in the map-first layout. */
+const SHEET_SHARE = 0.52;
 
 export default function NearbyScreen() {
   const insets = useSafeAreaInsets();
@@ -52,10 +58,12 @@ export default function NearbyScreen() {
   const ar = lang === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
 
-  const [fix, setFix] = useState<Fix | null>(null);
+  // Development only: /nearby?at=lat,lng stands in for the phone's
+  // location, so the map-first screen can be checked from anywhere.
+  const { at } = useLocalSearchParams<{ at?: string }>();
+  const [fix, setFix] = useState<Fix | null>(() => devFix(at));
   const [locating, setLocating] = useState(false);
   const [radius, setRadius] = useState<(typeof RADII)[number]>(5);
-  const [mode, setMode] = useState<ResultsMode>("list");
 
   const here = fix?.ok ? { lat: fix.lat, lng: fix.lng } : null;
 
@@ -69,6 +77,8 @@ export default function NearbyScreen() {
         signal,
       }),
     staleTime: 60_000,
+    // A new radius keeps the map and list on screen while it loads.
+    placeholderData: keepPreviousData,
   });
 
   const findMe = async () => {
@@ -84,81 +94,105 @@ export default function NearbyScreen() {
   const names = useMemo(() => Object.fromEntries(list.map((b) => [b.id, (!ar && b.nameEn) || b.nameAr])), [list, ar]);
   const open = (slug: string) => router.push({ pathname: "/business/[slug]", params: { slug } });
 
+  const mapFirst = Boolean(here) && !locating && list.length > 0;
+  const { height: screenHeight } = useWindowDimensions();
+
+  // Map-first: once there are places to show, the map is the screen and
+  // the list sits over it in a sheet, nearest first.
+  if (mapFirst) {
+    return (
+      <View style={styles.mapPage}>
+        <View style={StyleSheet.absoluteFill}>
+          <PlacesMap
+            points={points}
+            names={names}
+            around={here}
+            onOpen={open}
+            flat
+            inset={{ top: insets.top + 72, bottom: screenHeight * SHEET_SHARE }}
+          />
+        </View>
+
+        <View style={[styles.mapTop, { paddingTop: insets.top + spacing.sm }]} pointerEvents="box-none">
+          <IconButton
+            icon="chevron-back"
+            variant="filled"
+            label={T("رجوع", "Back")}
+            onPress={() => router.back()}
+          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+            {RADII.map((r) => (
+              <Chip key={r} label={formatDistance(r, lang)} selected={radius === r} onPress={() => setRadius(r)} />
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
+          <View style={styles.handle} />
+          <View style={styles.sheetHead}>
+            <Text variant="title" accessibilityRole="header">
+              {T(`${num(list.length, lang)} مكان قريب`, `${list.length} places nearby`)}
+            </Text>
+            <Button variant="ghost" size="sm" icon="locate-outline" label={T("حدّث", "Refresh")} onPress={findMe} />
+          </View>
+          {fix?.ok && (fix.accuracy ?? 0) > ROUGH_ACCURACY_M ? (
+            <Text variant="caption" tone="subtle">
+              {T(
+                `موقعك تقريبي (في حدود ${formatDistance((fix.accuracy ?? 0) / 1000, lang)})، فالمسافات تقريبية.`,
+                `Your location is approximate (within ${formatDistance((fix.accuracy ?? 0) / 1000, lang)}), so distances are too.`,
+              )}
+            </Text>
+          ) : null}
+          <ScrollView
+            contentContainerStyle={styles.list}
+            refreshControl={<RefreshControl refreshing={nearby.isRefetching} onRefresh={() => nearby.refetch()} tintColor={colors.jade} />}
+          >
+            {list.map((b) => (
+              <BusinessCard key={b.id} business={b} distance={formatDistance(b.distanceKm, lang)} onPress={() => open(b.slug)} />
+            ))}
+            <Areas />
+          </ScrollView>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.page, { paddingTop: insets.top }]}>
-      <Header title={T("قريب مني", "Near me")} back />
+    <View style={styles.page}>
+      <TopBar title={T("قريب مني", "Near me")} back />
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}
         refreshControl={here ? <RefreshControl refreshing={nearby.isRefetching} onRefresh={() => nearby.refetch()} tintColor={colors.jade} /> : undefined}
       >
         {!fix || (!fix.ok && !locating) ? (
           <Ask fix={fix} locating={locating} onLocate={findMe} />
-        ) : locating ? (
-          <SkeletonCard />
+        ) : locating || nearby.isLoading ? (
+          <View style={styles.list}>
+            <SkeletonCard />
+            <SkeletonCard />
+          </View>
+        ) : nearby.error ? (
+          <ErrorState error={nearby.error} onRetry={() => nearby.refetch()} />
         ) : (
           <>
-            {fix.ok && (fix.accuracy ?? 0) > ROUGH_ACCURACY_M ? (
-              <Card tone="tint">
-                <Text variant="caption" tone="ink2">
-                  {T(
-                    `موقعك تقريبي (في حدود ${formatDistance((fix.accuracy ?? 0) / 1000, lang)})، فالمسافات تقريبية.`,
-                    `Your location is approximate (within ${formatDistance((fix.accuracy ?? 0) / 1000, lang)}), so distances are too.`,
-                  )}
-                </Text>
-              </Card>
-            ) : null}
-
             <View style={styles.row}>
               {RADII.map((r) => (
                 <Chip key={r} label={formatDistance(r, lang)} selected={radius === r} onPress={() => setRadius(r)} />
               ))}
             </View>
-
-            {list.length > 0 ? (
-              <Tabs
-                value={mode}
-                onChange={setMode}
-                options={[
-                  { value: "list", label: T("قائمة", "List") },
-                  { value: "map", label: T("خريطة", "Map") },
-                ]}
-              />
-            ) : null}
-
-            {nearby.isLoading ? (
-              <View style={styles.list}>
-                <SkeletonCard />
-                <SkeletonCard />
-              </View>
-            ) : nearby.error ? (
-              <ErrorState error={nearby.error} onRetry={() => nearby.refetch()} />
-            ) : list.length === 0 ? (
-              <EmptyState
-                icon="location-outline"
-                title={T(`مفيش أماكن في حدود ${formatDistance(radius, lang)}`, `Nothing within ${formatDistance(radius, lang)}`)}
-                body={T(
-                  "الأماكن بتظهر هنا لما أصحابها يحددوا موقعهم على الخريطة. وسّع المسافة أو دوّر بالمنطقة.",
-                  "Places appear here once their owners pin them on the map. Widen the distance or search by area.",
-                )}
-                action={
-                  radius < RADII[RADII.length - 1]! ? (
-                    <Button label={T("وسّع المسافة", "Widen the distance")} onPress={() => setRadius(RADII[RADII.indexOf(radius) + 1] ?? radius)} />
-                  ) : undefined
-                }
-              />
-            ) : mode === "map" ? (
-              <PlacesMap points={points} names={names} around={here} onOpen={open} />
-            ) : (
-              <View style={styles.list}>
-                <Text variant="caption" tone="subtle">
-                  {T(`${num(list.length, lang)} مكان، الأقرب الأول`, `${list.length} places, nearest first`)}
-                </Text>
-                {list.map((b) => (
-                  <BusinessCard key={b.id} business={b} distance={formatDistance(b.distanceKm, lang)} onPress={() => open(b.slug)} />
-                ))}
-              </View>
-            )}
-
+            <EmptyState
+              icon="location-outline"
+              title={T(`مفيش أماكن في حدود ${formatDistance(radius, lang)}`, `Nothing within ${formatDistance(radius, lang)}`)}
+              body={T(
+                "الأماكن بتظهر هنا لما أصحابها يحددوا موقعهم على الخريطة. وسّع المسافة أو دوّر بالمنطقة.",
+                "Places appear here once their owners pin them on the map. Widen the distance or search by area.",
+              )}
+              action={
+                radius < RADII[RADII.length - 1]! ? (
+                  <Button label={T("وسّع المسافة", "Widen the distance")} onPress={() => setRadius(RADII[RADII.indexOf(radius) + 1] ?? radius)} />
+                ) : undefined
+              }
+            />
             <Button variant="ghost" icon="locate-outline" label={T("حدّث موقعي", "Update my location")} onPress={findMe} />
           </>
         )}
@@ -201,21 +235,36 @@ function Ask({ fix, locating, onLocate }: { fix: Fix | null; locating: boolean; 
   }
 
   return (
-    <Card>
-      <View style={styles.askRow}>
-        <Icon name="navigate-circle-outline" color={colors.jade} size="lg" />
-        <View style={styles.flex}>
-          <Text variant="bodyBold">{T("شوف الأماكن القريبة منك", "See places close to you")}</Text>
-          <Text variant="caption" tone="subtle">
-            {T(
-              "بنستخدم موقعك مرة واحدة دلوقتي عشان نرتب الأماكن بالمسافة. مش بنتابعك ولا بنحفظه.",
-              "We use your location once, now, to sort places by distance. We don't track or keep it.",
-            )}
+    <View style={styles.askHero}>
+      <MapArt height={150} />
+      <View style={styles.askBody}>
+        <Text variant="title" tone="inverse" accessibilityRole="header">
+          {T("شوف اللي ", "See what's ")}
+          <Text variant="title" style={{ color: colors.gold }}>
+            {T("قريب منك", "near you")}
           </Text>
-        </View>
+        </Text>
+        <Text variant="caption" tone="inverseMuted">
+          {T(
+            "بنستخدم موقعك مرة واحدة دلوقتي عشان نرتب الأماكن بالمسافة. مش بنتابعك ولا بنحفظه.",
+            "We use your location once, now, to sort places by distance. We don't track or keep it.",
+          )}
+        </Text>
+        <Touchable
+          accessibilityRole="button"
+          accessibilityLabel={locating ? T("بنحدد موقعك", "Finding you") : T("استخدم موقعي", "Use my location")}
+          accessibilityState={{ busy: locating, disabled: locating }}
+          disabled={locating}
+          onPress={onLocate}
+          style={styles.goldButton}
+        >
+          <Icon name="navigate" size="sm" color={colors.night} />
+          <Text variant="label" style={{ color: colors.night }}>
+            {locating ? T("بنحدد موقعك…", "Finding you…") : T("استخدم موقعي", "Use my location")}
+          </Text>
+        </Touchable>
       </View>
-      <Button label={T("استخدم موقعي", "Use my location")} icon="locate-outline" loading={locating} onPress={onLocate} style={styles.gap} />
-    </Card>
+    </View>
   );
 }
 
@@ -247,6 +296,12 @@ function Areas() {
   );
 }
 
+function devFix(at: string | undefined): Fix | null {
+  if (!__DEV__ || !at) return null;
+  const [lat, lng] = at.split(",").map(Number);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { ok: true, lat: lat!, lng: lng!, accuracy: 10 } : null;
+}
+
 function round(n: number) {
   return Math.round(n * 1000) / 1000;
 }
@@ -261,4 +316,44 @@ const styles = StyleSheet.create({
   askRow: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
   gap: { marginTop: spacing.md },
   areas: { gap: spacing.sm, marginTop: spacing.md },
+  askHero: { borderRadius: radii.xl, overflow: "hidden", backgroundColor: colors.night },
+  askBody: { padding: spacing.lg, gap: spacing.sm },
+  goldButton: {
+    marginTop: spacing.sm,
+    minHeight: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    borderRadius: radii.lg,
+    backgroundColor: colors.gold,
+    overflow: "hidden",
+  },
+  mapPage: { flex: 1, backgroundColor: colors.surface3 },
+  mapTop: {
+    position: "absolute",
+    top: 0,
+    start: 0,
+    end: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  sheet: {
+    position: "absolute",
+    start: 0,
+    end: 0,
+    bottom: 0,
+    height: `${SHEET_SHARE * 100}%`,
+    backgroundColor: colors.surface,
+    borderTopStartRadius: 28,
+    borderTopEndRadius: 28,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    gap: spacing.sm,
+    ...elevation.float,
+  },
+  handle: { alignSelf: "center", width: 40, height: 5, borderRadius: radii.full, backgroundColor: colors.line2 },
+  sheetHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
 });

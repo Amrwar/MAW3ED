@@ -5,11 +5,11 @@ import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import {
   useFonts,
-  Almarai_300Light,
-  Almarai_400Regular,
-  Almarai_700Bold,
-  Almarai_800ExtraBold,
-} from "@expo-google-fonts/almarai";
+  ReadexPro_300Light,
+  ReadexPro_400Regular,
+  ReadexPro_600SemiBold,
+  ReadexPro_700Bold,
+} from "@expo-google-fonts/readex-pro";
 import * as Notifications from "expo-notifications";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -35,7 +35,7 @@ import { Text, Button, LocaleProvider, ToastProvider, colors, spacing } from "@/
  * view from the chosen language, so English lays out left-to-right
  * without a restart. See design/locale.tsx.
  *
- * The splash stays up until Almarai has loaded, so no screen is ever
+ * The splash stays up until Readex Pro has loaded, so no screen is ever
  * drawn in the system font and then redrawn.
  */
 
@@ -47,10 +47,10 @@ if (Platform.OS !== "web") configureForegroundHandling();
 export default function RootLayout() {
   useScreenTracking();
   const [fontsLoaded, fontError] = useFonts({
-    Almarai_300Light,
-    Almarai_400Regular,
-    Almarai_700Bold,
-    Almarai_800ExtraBold,
+    ReadexPro_300Light,
+    ReadexPro_400Regular,
+    ReadexPro_600SemiBold,
+    ReadexPro_700Bold,
   });
   // A font that fails to load is not a reason to show nothing: the
   // system font is an acceptable fallback, a blank app is not.

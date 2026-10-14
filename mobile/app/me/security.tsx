@@ -35,8 +35,9 @@ function Security() {
   const ago = (iso: string) => relativeTime(Math.min(0, Math.round((new Date(iso).getTime() - now) / 60_000)), lang);
 
   return (
-    <Screen scroll={false} edges="both">
-      <Header title={T("الأمان والأجهزة", "Security & devices")} back />
+    <Screen scroll={false} edges="both"
+      hero={<Header title={T("الأمان والأجهزة", "Security & devices")} back tone="night" />}
+    >
       <ScrollView
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.jade} />}

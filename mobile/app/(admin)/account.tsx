@@ -11,8 +11,13 @@ export default function AdminAccount() {
   const [busy, setBusy] = useState(false);
 
   return (
-    <Screen>
-      <Text variant="title">حسابي</Text>
+    <Screen
+      hero={
+        <Text variant="display" tone="inverse" accessibilityRole="header">
+          حسابي
+        </Text>
+      }
+    >
       <View style={styles.stack}>
         <Card>
           <Text variant="bodyBold">{user?.name ?? user?.email ?? "—"}</Text>

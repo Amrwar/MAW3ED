@@ -22,11 +22,19 @@ export default function AdminOverviewScreen() {
   const visible = tiles.filter((t): t is { label: string; value: number } => typeof t.value === "number");
 
   return (
-    <Screen scroll={false}>
-      <Text variant="title">نظرة عامة</Text>
-      <Text variant="caption" tone="subtle">
-        التفاصيل والإجراءات على لوحة الإدارة في الموقع.
-      </Text>
+    <Screen
+      scroll={false}
+      hero={
+        <>
+          <Text variant="display" tone="inverse" accessibilityRole="header">
+            نظرة عامة
+          </Text>
+          <Text variant="caption" tone="inverseMuted">
+            التفاصيل والإجراءات على لوحة الإدارة في الموقع.
+          </Text>
+        </>
+      }
+    >
       <ScrollView
         contentContainerStyle={styles.grid}
         refreshControl={

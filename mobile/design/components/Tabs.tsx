@@ -39,7 +39,7 @@ export function Tabs<T extends string>({
               variant="label"
               align="center"
               numberOfLines={1}
-              style={{ color: selected ? (night ? colors.inverse : colors.ink) : night ? colors.nightText : colors.muted }}
+              style={{ color: selected ? (night ? colors.night : colors.ink) : night ? colors.nightText : colors.muted }}
             >
               {o.label}
             </Text>
@@ -71,5 +71,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
   },
-  selectedNight: { backgroundColor: colors.jade },
+  selectedNight: { backgroundColor: colors.gold },
 });

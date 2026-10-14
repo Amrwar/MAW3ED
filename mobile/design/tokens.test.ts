@@ -33,6 +33,11 @@ describe("text contrast", () => {
     ["jade on jadeSoft (avatar initials)", "jade", "jadeSoft"],
     ["jade on jadeTint (selected card)", "jade", "jadeTint"],
     ["jadeSoft on jade (selected chip count)", "jadeSoft", "jade"],
+    ["muted on ground", "muted", "ground"],
+    ["gold on night (highlights)", "gold", "night"],
+    ["night on gold (gold buttons)", "night", "gold"],
+    ["nightText on nightLine-free night2 cards", "nightText", "night2"],
+    ["night on goldSoft (gold badges)", "night", "goldSoft"],
   ];
 
   it.each(pairs)("%s reaches 4.5:1", (_, fg, bg) => {
@@ -43,7 +48,7 @@ describe("text contrast", () => {
     expect(contrast(t.fg, t.bg)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("the lifted jade used for icons on night reaches 3:1, the non-text minimum", () => {
+  it("the gold used for icons on night reaches 3:1, the non-text minimum", () => {
     expect(contrast(colors.nightAccent, colors.night)).toBeGreaterThanOrEqual(3);
   });
 });
@@ -56,7 +61,25 @@ describe("the palette is the web's", () => {
   const web = new Map([...css.matchAll(/--color-([a-z0-9-]+):\s*(#[0-9A-Fa-f]{6})/g)].map((m) => [m[1]!, m[2]!.toUpperCase()]));
   const kebab = (name: string) => name.replace(/([a-z])([A-Z0-9])/g, "$1-$2").toLowerCase();
 
-  const appOnly = new Set(["scrim"]);
+  // The app's own brand layer (the Bold Cairo redesign): its ground,
+  // night and gold. Everything else still has to match the web.
+  const appOnly = new Set([
+    "scrim",
+    "ground",
+    "night",
+    "night2",
+    "nightLine",
+    "nightText",
+    "nightSubtle",
+    "nightAccent",
+    "nightOk",
+    "gold",
+    "goldSoft",
+    "goldLine",
+    "mapLand",
+    "mapWater",
+    "mapPark",
+  ]);
 
   it.each(Object.entries(colors).filter(([k]) => !appOnly.has(k)))("%s matches globals.css", (name, value) => {
     expect(web.get(kebab(name)), `--color-${kebab(name)}`).toBe(value.toUpperCase());

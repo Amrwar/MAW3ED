@@ -28,8 +28,9 @@ function Reviews() {
   const reviews = query.data?.reviews ?? [];
 
   return (
-    <Screen scroll={false} edges="both">
-      <Header title={T("تقييماتي", "My reviews")} back />
+    <Screen scroll={false} edges="both"
+      hero={<Header title={T("تقييماتي", "My reviews")} back tone="night" />}
+    >
       <ScrollView
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.jade} />}

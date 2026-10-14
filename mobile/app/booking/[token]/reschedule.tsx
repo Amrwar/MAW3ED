@@ -9,7 +9,7 @@ import {
   DateStrip,
   EmptyState,
   ErrorState,
-  Header,
+  TopBar,
   Skeleton,
   Text,
   TimeSlots,
@@ -73,8 +73,8 @@ export default function RescheduleScreen() {
 
   if (!b) {
     return (
-      <View style={[styles.page, { paddingTop: insets.top }]}>
-        <Header title={T("غيّر الميعاد", "Reschedule")} back onBack={back} />
+      <View style={styles.page}>
+        <TopBar title={T("غيّر الميعاد", "Reschedule")} back onBack={back} />
         <ErrorState error={booking.error} onRetry={() => booking.refetch()} />
       </View>
     );
@@ -82,8 +82,8 @@ export default function RescheduleScreen() {
 
   if (!b.canChange) {
     return (
-      <View style={[styles.page, { paddingTop: insets.top }]}>
-        <Header title={T("غيّر الميعاد", "Reschedule")} back onBack={back} />
+      <View style={styles.page}>
+        <TopBar title={T("غيّر الميعاد", "Reschedule")} back onBack={back} />
         <EmptyState
           icon="time-outline"
           title={T("مينفعش تغيّر الميعاد ده", "This booking can't be moved")}
@@ -120,8 +120,8 @@ export default function RescheduleScreen() {
   };
 
   return (
-    <View style={[styles.page, { paddingTop: insets.top }]}>
-      <Header title={T("غيّر الميعاد", "Reschedule")} subtitle={(!ar && b.service.nameEn) || b.service.nameAr} back onBack={back} />
+    <View style={styles.page}>
+      <TopBar title={T("غيّر الميعاد", "Reschedule")} subtitle={(!ar && b.service.nameEn) || b.service.nameAr} back onBack={back} />
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: 140 + insets.bottom }]}>
         <Card tone="tint">
           <Row label={T("الميعاد الحالي", "Current time")} value={`${longDate(b.date, lang)} · ${time(b.startTime, lang)}`} />

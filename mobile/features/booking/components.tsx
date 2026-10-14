@@ -67,15 +67,15 @@ export function Choice({
 }
 
 /** How far along, as a bar and in words — "Step 3 of 6". */
-export function Progress({ index, total, label }: { index: number; total: number; label: string }) {
+export function Progress({ index, total, label, night = false }: { index: number; total: number; label: string; /** On a night header. */ night?: boolean }) {
   const { lang } = useLocale();
   const words = lang === "ar" ? `خطوة ${num(index + 1, lang)} من ${num(total, lang)}` : `Step ${index + 1} of ${total}`;
   return (
     <View style={styles.progress} accessibilityLabel={`${words}: ${label}`} accessible>
-      <View style={styles.track}>
-        <View style={[styles.fill, { width: `${((index + 1) / total) * 100}%` }]} />
+      <View style={[styles.track, night && styles.trackNight]}>
+        <View style={[styles.fill, night && styles.fillNight, { width: `${((index + 1) / total) * 100}%` }]} />
       </View>
-      <Text variant="caption" tone="subtle">
+      <Text variant="caption" tone={night ? "inverseMuted" : "subtle"}>
         {words} · {label}
       </Text>
     </View>
@@ -191,6 +191,8 @@ const styles = StyleSheet.create({
   progress: { gap: spacing.xs },
   track: { height: 4, borderRadius: radius.full, backgroundColor: colors.surface3, overflow: "hidden" },
   fill: { height: 4, backgroundColor: colors.jade },
+  trackNight: { backgroundColor: colors.nightLine },
+  fillNight: { backgroundColor: colors.gold },
   line: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md, paddingVertical: spacing.xs },
   lineLabel: { flexShrink: 0, minWidth: 96 },
   lineValue: { flex: 1, textAlign: "auto" },

@@ -33,8 +33,14 @@ export default function BusinessHome() {
   const kpis = analytics.data?.kpis;
 
   return (
-    <Screen scroll={false}>
-      <Text variant="title">النهاردة</Text>
+    <Screen
+      scroll={false}
+      hero={
+        <Text variant="display" tone="inverse" accessibilityRole="header">
+          النهاردة
+        </Text>
+      }
+    >
 
       <ScrollView
         contentContainerStyle={styles.scroll}

@@ -18,16 +18,17 @@ type TabOptions = Exclude<NonNullable<ComponentProps<typeof Tabs>["screenOptions
  * free. Order follows the layout direction: the first tab sits at the
  * reading start, on the right in Arabic.
  *
- * The selected tab is marked by a filled icon as well as the jade
- * colour, so it is not signalled by colour alone.
+ * Bold Cairo: the bar sits on night, the way the screens open on it,
+ * with gold for the selected tab. It is marked by a filled icon as well
+ * as the colour, so it is not signalled by colour alone.
  */
 export const bottomNavOptions: TabOptions = {
   headerShown: false,
-  tabBarActiveTintColor: colors.jade,
-  tabBarInactiveTintColor: colors.subtle,
+  tabBarActiveTintColor: colors.gold,
+  tabBarInactiveTintColor: colors.nightText,
   tabBarStyle: {
-    backgroundColor: colors.surface,
-    borderTopColor: colors.line,
+    backgroundColor: colors.night,
+    borderTopColor: colors.nightLine,
     minHeight: touchTarget + 16,
     paddingTop: 6,
   },

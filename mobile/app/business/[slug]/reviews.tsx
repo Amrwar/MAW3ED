@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FlatList, ScrollView, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button, Chip, EmptyState, ErrorState, IconButton, Loading, SkeletonCard, Text, colors, spacing, useLocale } from "@/design";
+import { Button, Chip, EmptyState, ErrorState, Loading, SkeletonCard, Text, TopBar, colors, spacing, useLocale } from "@/design";
 import { useBusinessProfile } from "@/features/discovery/queries";
 import { useBusinessReviews, type ReviewSort } from "@/features/profile/queries";
 import { RatingBreakdown, ReviewItem } from "@/features/profile/sections";
@@ -37,20 +37,8 @@ export default function ReviewsScreen() {
   const back = () => (router.canGoBack() ? router.back() : router.replace({ pathname: "/business/[slug]", params: { slug: slug ?? "" } }));
 
   return (
-    <View style={[styles.page, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <IconButton icon="chevron-back" label={ar ? "رجوع" : "Back"} onPress={back} />
-        <View style={styles.flex}>
-          <Text variant="heading" accessibilityRole="header" numberOfLines={1}>
-            {ar ? "التقييمات" : "Reviews"}
-          </Text>
-          {name ? (
-            <Text variant="caption" tone="subtle" numberOfLines={1}>
-              {name}
-            </Text>
-          ) : null}
-        </View>
-      </View>
+    <View style={styles.page}>
+      <TopBar title={ar ? "التقييمات" : "Reviews"} subtitle={name || undefined} back onBack={back} />
 
       <FlatList
         // A new sort or filter is a new list, from the top.
@@ -129,8 +117,6 @@ export default function ReviewsScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.ground },
-  flex: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
   head: { gap: spacing.md, marginBottom: spacing.xs },
   chips: { gap: spacing.sm },
   list: { paddingHorizontal: spacing.lg, gap: spacing.md },

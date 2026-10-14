@@ -55,10 +55,14 @@ function Feed() {
   }
 
   return (
-    <Screen scroll={false}>
-      <Text variant="title" accessibilityRole="header">
-        {T("الإشعارات", "Notifications")}
-      </Text>
+    <Screen
+      scroll={false}
+      hero={
+        <Text variant="display" tone="inverse" accessibilityRole="header">
+          {T("الإشعارات", "Notifications")}
+        </Text>
+      }
+    >
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.jade} />}

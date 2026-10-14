@@ -39,8 +39,13 @@ export function SignInGate({
   if (user) return <>{children}</>;
 
   return (
-    <Screen>
-      <Text variant="title">{title}</Text>
+    <Screen
+      hero={
+        <Text variant="display" tone="inverse" accessibilityRole="header">
+          {title}
+        </Text>
+      }
+    >
       <View style={styles.body}>
         <EmptyState
           title={lang === "ar" ? "سجّل دخولك الأول" : "Sign in first"}

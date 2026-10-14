@@ -33,15 +33,21 @@ export default function BusinessBookings() {
   const bookings = query.data?.bookings ?? [];
 
   return (
-    <Screen scroll={false}>
-      <View style={styles.header}>
-        <Text variant="title">الحجوزات</Text>
-        {query.data ? (
-          <Text variant="caption" tone="subtle">
-            {num(query.data.total)}
+    <Screen
+      scroll={false}
+      hero={
+        <View style={styles.header}>
+          <Text variant="display" tone="inverse" accessibilityRole="header">
+            الحجوزات
           </Text>
-        ) : null}
-      </View>
+          {query.data ? (
+            <Text variant="title" style={{ color: colors.gold }}>
+              {num(query.data.total)}
+            </Text>
+          ) : null}
+        </View>
+      }
+    >
 
       <ScrollView
         horizontal
