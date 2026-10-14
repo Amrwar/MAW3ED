@@ -117,7 +117,6 @@ export default function ReviewsScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.ground },
-  flex: { flex: 1 },
   head: { gap: spacing.md, marginBottom: spacing.xs },
   chips: { gap: spacing.sm },
   list: { paddingHorizontal: spacing.lg, gap: spacing.md },

@@ -1,7 +1,21 @@
 import { useState, type ReactNode } from "react";
 import { router, type Href } from "expo-router";
 import { Platform, Switch, StyleSheet, View } from "react-native";
-import { Badge, Button, Card, Icon, ListState, Screen, Text, Touchable, colors, ltr, spacing, useLocale, type IconName } from "@/design";
+import {
+  Badge,
+  Button,
+  Card,
+  Icon,
+  ListState,
+  Screen,
+  Text,
+  Touchable,
+  colors,
+  ltr,
+  spacing,
+  useLocale,
+  type IconName,
+} from "@/design";
 import { useProfile, useUpdateProfile } from "@/features/customer/queries";
 import { useNotifications } from "@/features/notifications/queries";
 import { PushToggle } from "@/features/notifications/PushToggle";
@@ -24,7 +38,10 @@ export default function AccountScreen() {
   const { lang } = useLocale();
   const ar = lang === "ar";
   return (
-    <SignInGate title={ar ? "حسابي" : "Account"} reason={ar ? "عشان تدير بياناتك وإشعاراتك." : "To manage your details and notifications."}>
+    <SignInGate
+      title={ar ? "حسابي" : "Account"}
+      reason={ar ? "عشان تدير بياناتك وإشعاراتك." : "To manage your details and notifications."}
+    >
       <Account />
     </SignInGate>
   );
@@ -46,44 +63,69 @@ function Account() {
   return (
     <Screen
       hero={
-        <Touchable
-          onPress={() => router.push("/me/profile")}
-          accessibilityRole="button"
-          accessibilityLabel={T("تعديل بياناتك", "Edit your details")}
-          style={styles.identity}
-          rippleColor={colors.nightLine}
-        >
-          <View style={styles.avatar}>
-            <Text variant="title" style={styles.avatarText}>
-              {initials(data?.name ?? user?.name)}
-            </Text>
-          </View>
-          <View style={styles.flex}>
-            <Text variant="title" tone="inverse" accessibilityRole="header" numberOfLines={1}>
-              {data?.name ?? user?.name ?? T("بدون اسم", "No name yet")}
-            </Text>
-            {data?.email ? (
-              <Text variant="caption" tone="inverseMuted" style={ltr} numberOfLines={1}>
-                {data.email}
+        <>
+          <Text
+            variant="display"
+            tone="inverse"
+            accessibilityRole="header"
+            style={styles.heroTitle}
+          >
+            {T("حسابي", "Account")}
+          </Text>
+          <Touchable
+            onPress={() => router.push("/me/profile")}
+            accessibilityRole="button"
+            accessibilityLabel={T("تعديل بياناتك", "Edit your details")}
+            style={styles.identity}
+            rippleColor={colors.nightLine}
+          >
+            <View style={styles.avatar}>
+              <Text variant="title" style={styles.avatarText}>
+                {initials(data?.name ?? user?.name)}
               </Text>
-            ) : null}
-            <View style={styles.phoneRow}>
-              <Text variant="caption" tone="inverseMuted" style={ltr}>
-                {data?.phone ? `+${data.phone.replace(/^\+/, "")}` : T("مفيش رقم موبايل", "No phone number")}
-              </Text>
-              {/* Three states, not two: no number is a different problem from an unconfirmed one. */}
-              {data?.phone ? (
-                <Badge label={data.phoneVerified ? T("متأكد", "Verified") : T("محتاج تأكيد", "Needs verifying")} tone={data.phoneVerified ? "ok" : "warn"} />
-              ) : (
-                <Badge label={T("مطلوب للحجز", "Needed to book")} tone="warn" />
-              )}
             </View>
-          </View>
-          <Icon name="chevron-forward" color={colors.gold} />
-        </Touchable>
+            <View style={styles.flex}>
+              <Text variant="title" tone="inverse" numberOfLines={1}>
+                {data?.name ?? user?.name ?? T("بدون اسم", "No name yet")}
+              </Text>
+              {data?.email ? (
+                <Text variant="caption" tone="inverseMuted" style={ltr} numberOfLines={1}>
+                  {data.email}
+                </Text>
+              ) : null}
+              <View style={styles.phoneRow}>
+                <Text variant="caption" tone="inverseMuted" style={ltr}>
+                  {data?.phone
+                    ? `+${data.phone.replace(/^\+/, "")}`
+                    : T("مفيش رقم موبايل", "No phone number")}
+                </Text>
+                {/* Three states, not two: no number is a different problem from an unconfirmed one. */}
+                {data?.phone ? (
+                  <Badge
+                    label={
+                      data.phoneVerified
+                        ? T("متأكد", "Verified")
+                        : T("محتاج تأكيد", "Needs verifying")
+                    }
+                    tone={data.phoneVerified ? "ok" : "warn"}
+                  />
+                ) : (
+                  <Badge label={T("مطلوب للحجز", "Needed to book")} tone="warn" />
+                )}
+              </View>
+            </View>
+            <Icon name="chevron-forward" color={colors.gold} />
+          </Touchable>
+        </>
       }
     >
-      <ListState loading={profile.isLoading} error={profile.error} isEmpty={false} emptyTitle="" onRetry={() => profile.refetch()}>
+      <ListState
+        loading={profile.isLoading}
+        error={profile.error}
+        isEmpty={false}
+        emptyTitle=""
+        onRetry={() => profile.refetch()}
+      >
         <View style={styles.sections}>
           {/* ── Preferences ── */}
           <Card>
@@ -93,14 +135,24 @@ function Account() {
             <PushToggle compact />
             <SwitchRow
               label={T("واتساب", "WhatsApp")}
-              hint={T("تأكيد الحجز والتذكير قبل الميعاد.", "Booking confirmations and a reminder before your appointment.")}
+              hint={T(
+                "تأكيد الحجز والتذكير قبل الميعاد.",
+                "Booking confirmations and a reminder before your appointment.",
+              )}
               value={data?.notifyByWhatsApp ?? false}
               disabled={!data || update.isPending}
               onChange={(v) => update.mutate({ notifyByWhatsApp: v })}
             />
             <SwitchRow
               label={T("إيميل", "Email")}
-              hint={data?.email ? T("نسخة من تفاصيل الحجز على إيميلك.", "A copy of your booking details by email.") : T("ضيف إيميل عشان تستقبل عليه.", "Add an email to receive these.")}
+              hint={
+                data?.email
+                  ? T(
+                      "نسخة من تفاصيل الحجز على إيميلك.",
+                      "A copy of your booking details by email.",
+                    )
+                  : T("ضيف إيميل عشان تستقبل عليه.", "Add an email to receive these.")
+              }
               // Shown off when there is no address: "on" for an email that cannot be sent is a lie.
               value={Boolean(data?.email) && (data?.notifyByEmail ?? false)}
               // An account with no email cannot be emailed.
@@ -117,8 +169,18 @@ function Account() {
               {T("اللغة", "Language")}
             </Text>
             <View style={styles.langRow}>
-              <Button size="sm" variant={ar ? "primary" : "outline"} label="العربية" onPress={() => setLang("ar")} />
-              <Button size="sm" variant={!ar ? "primary" : "outline"} label="English" onPress={() => setLang("en")} />
+              <Button
+                size="sm"
+                variant={ar ? "primary" : "outline"}
+                label="العربية"
+                onPress={() => setLang("ar")}
+              />
+              <Button
+                size="sm"
+                variant={!ar ? "primary" : "outline"}
+                label="English"
+                onPress={() => setLang("en")}
+              />
             </View>
           </Card>
 
@@ -127,12 +189,25 @@ function Account() {
             <LinkRow
               icon="notifications-outline"
               label={T("الإشعارات", "Notifications")}
-              trailing={unread > 0 ? <Badge label={T(`${num(unread, lang)} جديد`, `${unread} new`)} tone="jade" /> : null}
+              trailing={
+                unread > 0 ? (
+                  <Badge label={T(`${num(unread, lang)} جديد`, `${unread} new`)} tone="jade" />
+                ) : null
+              }
               href="/(customer)/notifications"
             />
             <LinkRow icon="star-outline" label={T("تقييماتي", "My reviews")} href="/me/reviews" />
-            <LinkRow icon="receipt-outline" label={T("المدفوعات", "Payments")} href="/me/payments" />
-            <LinkRow icon="shield-checkmark-outline" label={T("الأمان والأجهزة", "Security & devices")} href="/me/security" last />
+            <LinkRow
+              icon="receipt-outline"
+              label={T("المدفوعات", "Payments")}
+              href="/me/payments"
+            />
+            <LinkRow
+              icon="shield-checkmark-outline"
+              label={T("الأمان والأجهزة", "Security & devices")}
+              href="/me/security"
+              last
+            />
           </Card>
 
           <RoleSwitcher current="customer" />
@@ -151,7 +226,11 @@ function Account() {
             }}
           />
 
-          <Button label={T("حذف الحساب", "Delete account")} variant="ghost" onPress={() => router.push("/me/delete")} />
+          <Button
+            label={T("حذف الحساب", "Delete account")}
+            variant="ghost"
+            onPress={() => router.push("/me/delete")}
+          />
 
           {/* Quiet, but the first thing worth knowing in a bug report. */}
           <DesignSystemLink />
@@ -175,7 +254,19 @@ function initials(name: string | null | undefined): string {
     .toUpperCase();
 }
 
-function SwitchRow({ label, hint, value, disabled, onChange }: { label: string; hint: string; value: boolean; disabled: boolean; onChange: (v: boolean) => void }) {
+function SwitchRow({
+  label,
+  hint,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: boolean;
+  disabled: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <View style={styles.switchRow}>
       <View style={styles.flex}>
@@ -186,15 +277,38 @@ function SwitchRow({ label, hint, value, disabled, onChange }: { label: string; 
       </View>
       {/* react-native-web draws the thumb off its track in right-to-left; native mirrors a switch itself. */}
       <View style={Platform.OS === "web" ? ltr : undefined}>
-        <Switch value={value} onValueChange={onChange} disabled={disabled} trackColor={{ true: colors.night, false: colors.line2 }} accessibilityLabel={label} />
+        <Switch
+          value={value}
+          onValueChange={onChange}
+          disabled={disabled}
+          trackColor={{ true: colors.night, false: colors.line2 }}
+          accessibilityLabel={label}
+        />
       </View>
     </View>
   );
 }
 
-function LinkRow({ icon, label, href, trailing, last }: { icon: IconName; label: string; href: Href; trailing?: ReactNode; last?: boolean }) {
+function LinkRow({
+  icon,
+  label,
+  href,
+  trailing,
+  last,
+}: {
+  icon: IconName;
+  label: string;
+  href: Href;
+  trailing?: ReactNode;
+  last?: boolean;
+}) {
   return (
-    <Touchable onPress={() => router.push(href)} accessibilityRole="link" accessibilityLabel={label} style={[styles.link, !last && styles.linkLine]}>
+    <Touchable
+      onPress={() => router.push(href)}
+      accessibilityRole="link"
+      accessibilityLabel={label}
+      style={[styles.link, !last && styles.linkLine]}
+    >
       <View style={styles.linkIcon}>
         <Icon name={icon} color={colors.night} size="sm" />
       </View>
@@ -209,17 +323,55 @@ function LinkRow({ icon, label, href, trailing, last }: { icon: IconName; label:
 
 const styles = StyleSheet.create({
   sections: { gap: spacing.lg },
-  identity: { flexDirection: "row", alignItems: "center", gap: spacing.md, borderRadius: 16, overflow: "hidden" },
-  avatar: { width: 60, height: 60, borderRadius: 18, backgroundColor: colors.gold, alignItems: "center", justifyContent: "center" },
+  identity: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: colors.gold,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   avatarText: { color: colors.night },
-  linkIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" },
+  linkIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.goldSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   flex: { flex: 1 },
-  between: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  phoneRow: { marginTop: spacing.sm, flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
-  switchRow: { marginTop: spacing.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
+  heroTitle: { marginBottom: spacing.md },
+  phoneRow: {
+    marginTop: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flexWrap: "wrap",
+  },
+  switchRow: {
+    marginTop: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
   divider: { height: 1, backgroundColor: colors.line, marginVertical: spacing.md },
   langRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
-  link: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.lg, minHeight: 56 },
+  link: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minHeight: 56,
+  },
   linkLine: { borderBottomWidth: 1, borderBottomColor: colors.line },
   version: { textAlign: "center", marginTop: spacing.sm },
 });
