@@ -230,10 +230,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     // Crash reports. The plugin uploads source maps and debug symbols at
-    // build time, which needs SENTRY_ORG (and SENTRY_AUTH_TOKEN as an EAS
-    // secret); without them it is left out so a build never fails on it.
+    // build time, which needs SENTRY_ORG and SENTRY_AUTH_TOKEN (an EAS
+    // secret). Both, not just the org: with the plugin in and no token,
+    // its upload step fails the build — e.g. a preview build, when only
+    // production has the secret. Without them it is left out.
     // The runtime SDK still reports when EXPO_PUBLIC_SENTRY_DSN is set.
-    ...(process.env.SENTRY_ORG
+    ...(process.env.SENTRY_ORG && process.env.SENTRY_AUTH_TOKEN
       ? [
           [
             "@sentry/react-native/expo",

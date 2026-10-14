@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { redactPhones, scrubBreadcrumb, scrubEvent } from "./scrub";
+import { redactPhones, redactText, scrubBreadcrumb, scrubEvent } from "./scrub";
 
 describe("crash report scrubbing", () => {
   it("redacts phone numbers in free text", () => {
@@ -44,5 +44,22 @@ describe("crash report scrubbing", () => {
       data: { url: "/api/a", method: "POST", request_body: "{...}", Authorization: "Bearer x", status_code: 200 },
     });
     expect(crumb).toEqual({ message: "sent to [phone]", data: { url: "/api/a", method: "POST", status_code: 200 } });
+  });
+
+  it("removes booking tokens, which are bearer secrets, from URLs everywhere", () => {
+    const token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0123456789abcdef0123456789abcdef";
+    expect(redactText(`https://www.maw3ed.net/api/public/booking/${token}`)).toBe("https://www.maw3ed.net/api/public/booking/[token]");
+    expect(redactText(`/api/booking/${token}/cancel`)).toBe("/api/booking/[token]/cancel");
+    expect(redactText(`failed for ${token}`)).toBe("failed for [secret]");
+
+    const crumb = scrubBreadcrumb({ data: { url: `/api/booking/${token}/reschedule`, method: "POST" } });
+    expect(crumb.data).toEqual({ url: "/api/booking/[token]/reschedule", method: "POST" });
+
+    const event = scrubEvent({
+      request: { url: `maw3ed://booking/${token}` },
+      tags: { screen: `/booking/${token}` },
+      contexts: { route: { path: `/booking/${token}#review` } },
+    });
+    expect(JSON.stringify(event)).not.toContain(token);
   });
 });

@@ -1,6 +1,5 @@
 import type { ComponentType } from "react";
 import { Platform } from "react-native";
-import Constants from "expo-constants";
 import * as Sentry from "@sentry/react-native";
 import { config } from "@/lib/config";
 import { scrubBreadcrumb, scrubEvent } from "@/lib/scrub";
@@ -16,12 +15,10 @@ import { scrubBreadcrumb, scrubEvent } from "@/lib/scrub";
  *
  * No personal data: sendDefaultPii is off, and every event and
  * breadcrumb goes through lib/scrub.ts, which drops request bodies and
- * headers and redacts anything that looks like a phone number.
+ * headers and redacts phone numbers and booking tokens.
  */
 
 const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() || undefined;
-const version = Constants.expoConfig?.version ?? "0.0.0";
-const runtime = Constants.expoConfig?.runtimeVersion;
 
 export const sentryEnabled = Boolean(dsn) && config.appEnv !== "development" && Platform.OS !== "web";
 
@@ -31,10 +28,14 @@ export function initSentry(): void {
     dsn,
     enabled: sentryEnabled,
     environment: config.appEnv,
-    release: `maw3ed-mobile@${version}`,
-    ...(typeof runtime === "string" ? { dist: runtime } : {}),
+    // Release and dist are left to the SDK, which reads them from the
+    // native app: the same names the build plugin uploads source maps
+    // and debug files under. A hand-made name here would not match.
     sendDefaultPii: false,
-    tracesSampleRate: 0.1,
+    // No performance tracing: transactions skip beforeSend, and their
+    // http spans carry request URLs, booking tokens included. Errors
+    // only, until spans are scrubbed too.
+    tracesSampleRate: 0,
     beforeSend: (event) => scrubEvent(event),
     beforeBreadcrumb: (crumb) => scrubBreadcrumb(crumb),
   });

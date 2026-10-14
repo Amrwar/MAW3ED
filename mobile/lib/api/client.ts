@@ -35,8 +35,8 @@ export function onSessionExpired(listener: SessionListener): () => void {
   return () => sessionListeners.delete(listener);
 }
 
-/** What a refresh came to: new tokens, a definite no, or no answer. */
-type RefreshOutcome = "ok" | "ended" | "unavailable";
+/** What a refresh came to: new tokens, a definite no, no answer, or a failing server. */
+type RefreshOutcome = "ok" | "ended" | "unavailable" | "server-error";
 
 /** A refresh in flight, so ten parallel 401s cause one refresh, not ten. */
 let refreshInFlight: Promise<RefreshOutcome> | null = null;
@@ -109,6 +109,9 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     // offer a retry. Signing somebody out because the lift lost signal
     // would also throw away a rotated token the server still honours.
     if (refreshed === "unavailable") throw new NetworkError(new Error("refresh unavailable"));
+    // Online, but our server failed: say so, rather than "you're offline".
+    // Not a 4xx, so screens still retry it.
+    if (refreshed === "server-error") throw new ApiError(503, null, {});
     await clearTokens();
     // Only when a session actually ended. Somebody who was never signed
     // in has nothing to end, and announcing it would clear the cache on
@@ -170,7 +173,7 @@ function refreshOnce(): Promise<RefreshOutcome> {
       // Only the server saying no ends the session. 5xx and anything
       // else unexpected is an outage, not a verdict.
       if (res.status === 400 || res.status === 401 || res.status === 403) return "ended";
-      if (!res.ok) return "unavailable";
+      if (!res.ok) return "server-error";
 
       const next = (await res.json()) as {
         accessToken: string;
