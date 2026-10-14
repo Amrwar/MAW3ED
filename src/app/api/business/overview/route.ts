@@ -64,7 +64,9 @@ export async function GET() {
         take: 10,
         select: { id: true, date: true, startTime: true, customerName: true, service: { select: { nameAr: true, nameEn: true } } },
       }),
-      db.notification.count({ where: { userId: actor.userId, readAt: null } }),
+      // Business notifications go to the owner's account; a staff member's
+      // own feed is their customer one, which is not the business's news.
+      actor.role === "OWNER" ? db.notification.count({ where: { userId: actor.userId, readAt: null } }) : 0,
       actor.staffMemberId
         ? db.staffMember.findUnique({ where: { id: actor.staffMemberId }, select: { nameAr: true, nameEn: true } })
         : null,

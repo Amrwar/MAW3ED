@@ -28,7 +28,6 @@ export type AppRoute =
   | "/(customer)/account"
   | "/(business)"
   | "/(business)/calendar"
-  | "/(business)/bookings"
   | "/(business)/customers"
   | "/(business)/notifications"
   | "/(business)/account"
@@ -50,7 +49,8 @@ const TABLE: [prefix: string, route: AppRoute][] = [
   ["/businesses", "/(customer)/search"],
 
   ["/dashboard/calendar", "/(business)/calendar"],
-  ["/dashboard/bookings", "/(business)/bookings"],
+  // The app has no bookings list: the calendar is where they are.
+  ["/dashboard/bookings", "/(business)/calendar"],
   ["/dashboard/customers", "/(business)/customers"],
   ["/dashboard/settings", "/(business)/account"],
   ["/dashboard", "/(business)"],

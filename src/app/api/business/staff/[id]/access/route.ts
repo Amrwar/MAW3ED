@@ -8,6 +8,9 @@ import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
+/** One answer for every reason a number cannot be used, so none is revealed. */
+const unavailable = () => err("الرقم ده مينفعش يتستخدم، اكتب رقم تاني", 409, { code: "phone-unavailable" });
+
 const schema = z.object({
   /** Null takes access away. */
   access: z.enum(["MANAGER", "PROVIDER"]).nullable(),
@@ -42,14 +45,26 @@ export async function PUT(req: Request, { params }: Params) {
     const phone = normalisePhone(parsed.data.phone ?? member.loginPhone);
     if (!phone) return err(PHONE_INVALID, 422, { code: "phone-invalid" });
 
-    // The owner's own number would make the owner their own staff.
+    // A business's number — this one's or anybody else's — is not a staff
+    // login: it would make an owner somebody's staff. Owners sign up by
+    // email, so their account often has no phone; the business's own
+    // phone and WhatsApp are what identify them. Stored as typed, so the
+    // candidates are found by their last digits and compared normalised.
+    const tail = phone.slice(-9);
+    const businesses = await db.business.findMany({
+      where: { OR: [{ phone: { contains: tail } }, { whatsapp: { contains: tail } }] },
+      select: { id: true, phone: true, whatsapp: true },
+    });
+    const isBusinessNumber = businesses.filter((b) => normalisePhone(b.phone) === phone || normalisePhone(b.whatsapp) === phone);
     const owner = await db.user.findUnique({ where: { id: actor.userId }, select: { phone: true } });
-    if (owner?.phone === phone) return err("ده رقمك إنت، اكتب رقم الموظف", 422, { code: "own-phone" });
-
-    // A number that already signs in as somebody's staff — or owns a
-    // business — cannot be given a second place.
-    const owns = await db.user.findFirst({ where: { phone, business: { isNot: null } }, select: { id: true } });
-    if (owns) return err("الرقم ده بتاع صاحب نشاط تاني", 409, { code: "phone-owner" });
+    if (owner?.phone === phone || isBusinessNumber.some((b) => b.id === business.id)) {
+      return err("ده رقم النشاط أو رقمك إنت، اكتب رقم الموظف", 422, { code: "own-phone" });
+    }
+    // Another owner's number, by account or by business: refused with the
+    // same answer as a number already in use, so this form cannot be used
+    // to find out whose number is whose.
+    const ownsAccount = await db.user.findFirst({ where: { phone, business: { isNot: null } }, select: { id: true } });
+    if (ownsAccount || isBusinessNumber.length > 0) return unavailable();
 
     const samePhone = phone === member.loginPhone;
     try {
@@ -65,9 +80,7 @@ export async function PUT(req: Request, { params }: Params) {
       });
       return ok({ id: updated.id, access: updated.access, loginPhone: updated.loginPhone, linked: Boolean(updated.userId) });
     } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-        return err("الرقم ده مستخدم لموظف تاني", 409, { code: "phone-taken" });
-      }
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return unavailable();
       throw e;
     }
   } catch (e) {

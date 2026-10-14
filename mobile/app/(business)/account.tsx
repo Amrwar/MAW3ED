@@ -1,7 +1,19 @@
 import { useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { router, type Href } from "expo-router";
-import { Badge, Button, Card, Icon, Screen, Text, Touchable, colors, spacing, useLocale, type IconName } from "@/design";
+import {
+  Badge,
+  Button,
+  Card,
+  Icon,
+  Screen,
+  Text,
+  Touchable,
+  colors,
+  spacing,
+  useLocale,
+  type IconName,
+} from "@/design";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { useBusinessAccess } from "@/features/business/access";
@@ -29,7 +41,9 @@ export default function More() {
   const overview = useOverview();
   const [signingOut, setSigningOut] = useState(false);
   const o = overview.data;
-  const business = o ? (lang === "en" && o.business.nameEn) || o.business.nameAr : (user?.staff?.businessName ?? "");
+  const business = o
+    ? (lang === "en" && o.business.nameEn) || o.business.nameAr
+    : (user?.staff?.businessName ?? "");
   const unread = o?.counts.unreadNotifications ?? 0;
 
   return (
@@ -50,17 +64,42 @@ export default function More() {
     >
       <View style={styles.sections}>
         <Card padded={false}>
-          <Link icon="storefront-outline" label={T("صفحة النشاط", "Business profile")} href="/manage/profile" />
-          {access.can("staff.read") ? <Link icon="people-outline" label={T("الفريق", "Staff")} href="/manage/staff" /> : null}
-          {access.can("services.read") ? <Link icon="pricetags-outline" label={T("الخدمات", "Services")} href="/manage/services" /> : null}
-          {access.can("reports.read") ? <Link icon="stats-chart-outline" label={T("التقارير", "Reports")} href="/manage/reports" /> : null}
           <Link
-            icon="notifications-outline"
-            label={T("الإشعارات", "Notifications")}
-            href="/(business)/notifications"
-            trailing={unread > 0 ? <Badge label={T(`${num(unread, lang)} جديد`, `${unread} new`)} tone="jade" /> : null}
-            last
+            icon="storefront-outline"
+            label={T("صفحة النشاط", "Business profile")}
+            href="/manage/profile"
           />
+          {access.can("staff.read") ? (
+            <Link icon="people-outline" label={T("الفريق", "Staff")} href="/manage/staff" />
+          ) : null}
+          {access.can("services.read") ? (
+            <Link
+              icon="pricetags-outline"
+              label={T("الخدمات", "Services")}
+              href="/manage/services"
+            />
+          ) : null}
+          {access.can("reports.read") ? (
+            <Link
+              icon="stats-chart-outline"
+              label={T("التقارير", "Reports")}
+              href="/manage/reports"
+            />
+          ) : null}
+          {/* Business notifications go to the owner; staff have none here. */}
+          {access.role === "OWNER" ? (
+            <Link
+              icon="notifications-outline"
+              label={T("الإشعارات", "Notifications")}
+              href="/(business)/notifications"
+              trailing={
+                unread > 0 ? (
+                  <Badge label={T(`${num(unread, lang)} جديد`, `${unread} new`)} tone="jade" />
+                ) : null
+              }
+              last
+            />
+          ) : null}
         </Card>
 
         <Card>
@@ -73,8 +112,18 @@ export default function More() {
             {T("اللغة", "Language")}
           </Text>
           <View style={styles.langRow}>
-            <Button size="sm" variant={ar ? "primary" : "outline"} label="العربية" onPress={() => setLang("ar")} />
-            <Button size="sm" variant={!ar ? "primary" : "outline"} label="English" onPress={() => setLang("en")} />
+            <Button
+              size="sm"
+              variant={ar ? "primary" : "outline"}
+              label="العربية"
+              onPress={() => setLang("ar")}
+            />
+            <Button
+              size="sm"
+              variant={!ar ? "primary" : "outline"}
+              label="English"
+              onPress={() => setLang("en")}
+            />
           </View>
         </Card>
 
@@ -113,9 +162,26 @@ export default function More() {
   );
 }
 
-function Link({ icon, label, href, trailing, last }: { icon: IconName; label: string; href: Href; trailing?: ReactNode; last?: boolean }) {
+function Link({
+  icon,
+  label,
+  href,
+  trailing,
+  last,
+}: {
+  icon: IconName;
+  label: string;
+  href: Href;
+  trailing?: ReactNode;
+  last?: boolean;
+}) {
   return (
-    <Touchable onPress={() => router.push(href)} accessibilityRole="link" accessibilityLabel={label} style={[styles.link, !last && styles.linkLine]}>
+    <Touchable
+      onPress={() => router.push(href)}
+      accessibilityRole="link"
+      accessibilityLabel={label}
+      style={[styles.link, !last && styles.linkLine]}
+    >
       <View style={styles.linkIcon}>
         <Icon name={icon} color={colors.night} size="sm" />
       </View>
@@ -132,9 +198,22 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   hero: { gap: spacing.xs },
   sections: { gap: spacing.lg },
-  link: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.lg, minHeight: 56 },
+  link: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minHeight: 56,
+  },
   linkLine: { borderBottomWidth: 1, borderBottomColor: colors.line },
-  linkIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: colors.goldSoft, alignItems: "center", justifyContent: "center" },
+  linkIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.goldSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   divider: { height: 1, backgroundColor: colors.line, marginVertical: spacing.md },
   langRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
   version: { textAlign: "center", marginTop: spacing.sm },

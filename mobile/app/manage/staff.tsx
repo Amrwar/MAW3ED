@@ -156,13 +156,11 @@ function AccessSheet({ member, onClose }: { member: StaffRow; onClose: () => voi
         onError: (e) => {
           const code = e instanceof ApiError ? e.code : undefined;
           setError(
-            code === "phone-taken"
-              ? T("الرقم ده مستخدم لموظف تاني.", "That number is already used by another staff member.")
+            code === "phone-unavailable"
+              ? T("الرقم ده مينفعش يتستخدم. اكتب رقم الموظف الشخصي.", "That number can't be used. Enter the person's own mobile.")
               : code === "own-phone"
-                ? T("ده رقمك إنت، اكتب رقم الموظف.", "That's your own number — enter theirs.")
-                : code === "phone-owner"
-                  ? T("الرقم ده بتاع صاحب نشاط تاني.", "That number belongs to another business owner.")
-                  : code === "phone-invalid"
+                ? T("ده رقم النشاط أو رقمك إنت، اكتب رقم الموظف.", "That's the business's or your own number — enter theirs.")
+                : code === "phone-invalid"
                     ? T("الرقم مش صحيح. اكتبه بكود الدولة.", "That number isn't valid. Include the country code.")
                     : T("معرفناش نحفظ. جرّب تاني.", "Couldn't save. Try again."),
           );

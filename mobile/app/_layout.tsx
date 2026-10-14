@@ -14,7 +14,7 @@ import * as Notifications from "expo-notifications";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/features/auth/AuthProvider";
-import { bookingTokenFor, configureForegroundHandling, targetOf, watchTokenChanges } from "@/features/notifications/push";
+import { bookingTokenFor, businessBookingFor, configureForegroundHandling, targetOf, watchTokenChanges } from "@/features/notifications/push";
 import { createQueryClient } from "@/lib/query/client";
 import { keys } from "@/lib/query/keys";
 import { hrefFor } from "@/lib/links";
@@ -149,6 +149,13 @@ function useNotificationRouting(ready: boolean) {
         const token = await bookingTokenFor(target.bookingId);
         if (token) {
           router.navigate({ pathname: "/booking/[token]", params: { token } });
+          return;
+        }
+        // Not their own booking as a customer: the business's, for its
+        // owner or staff, opened on the business side.
+        const managed = await businessBookingFor(target.bookingId);
+        if (managed) {
+          router.navigate({ pathname: "/manage/booking/[id]", params: { id: managed } });
           return;
         }
       }

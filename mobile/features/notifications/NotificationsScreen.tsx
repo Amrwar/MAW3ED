@@ -51,6 +51,12 @@ function Feed() {
 
   function open(n: AppNotification) {
     track("notification_opened", { kind: n.kind, source: "feed" });
+    // A business notification about a booking opens that booking, not
+    // the calendar its web link would lead to.
+    if (n.bookingId && n.href?.startsWith("/dashboard")) {
+      router.navigate({ pathname: "/manage/booking/[id]", params: { id: n.bookingId } });
+      return;
+    }
     if (n.href) router.navigate(hrefFor(n.href));
   }
 

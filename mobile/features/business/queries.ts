@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { keys } from "@/lib/query/keys";
-import type { Analytics, BusinessBookingsResponse, CustomersResponse } from "@/types/api";
+import type { Analytics, CustomersResponse } from "@/types/api";
 import type { BookingDetail, BusinessProfile, CalendarResponse, CustomerDetail, Overview, ServiceRow, StaffRow } from "./types";
 
 /**
@@ -14,33 +14,6 @@ import type { BookingDetail, BusinessProfile, CalendarResponse, CustomerDetail, 
  */
 
 /* ─── Bookings ───────────────────────────────────────────── */
-
-export interface BookingFilters {
-  /** "YYYY-MM-DD". Omitted means every date. */
-  date?: string;
-  status?: string;
-  page?: number;
-}
-
-export function useBusinessBookings(filters: BookingFilters = {}) {
-  const query: Record<string, string> = {};
-  if (filters.date) query.date = filters.date;
-  if (filters.status && filters.status !== "ALL") query.status = filters.status;
-  if (filters.page && filters.page > 1) query.page = String(filters.page);
-
-  return useQuery({
-    queryKey: keys.business.bookings(query),
-    queryFn: () => {
-      const search = new URLSearchParams(query).toString();
-      return api.get<BusinessBookingsResponse>(
-        `/api/business/bookings${search ? `?${search}` : ""}`,
-      );
-    },
-    // An owner watching today's list wants it current; somebody books
-    // while they are looking at it.
-    staleTime: 30_000,
-  });
-}
 
 export function useUpdateBookingStatus() {
   const client = useQueryClient();

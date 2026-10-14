@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
-import { requireBusinessAccess } from "@/lib/business-access";
+import { can, requireBusinessAccess } from "@/lib/business-access";
 import { log } from "@/lib/logger";
 
 export type CustomerRow = {
@@ -11,7 +11,8 @@ export type CustomerRow = {
   notes:           string | null;
   createdAt:       string;
   bookingCount:    number;
-  totalSpend:      number;
+  /** Null for a manager: spend is the owner's to see. */
+  totalSpend:      number | null;
   lastBookingDate: string | null;
   currency:        string;
 };
@@ -26,7 +27,10 @@ export type CustomerRow = {
  */
 export async function GET(req: Request) {
   try {
-    const { business } = await requireBusinessAccess("customers.read");
+    const { business, actor } = await requireBusinessAccess("customers.read");
+    // Spend is money, and money is the owner's: managers get the customer
+    // book without it.
+    const seeMoney = can(actor, "reports.read");
     const { searchParams } = new URL(req.url);
 
     const search = searchParams.get("search")?.trim() ?? "";
@@ -71,7 +75,7 @@ export async function GET(req: Request) {
         notes:           c.notes,
         createdAt:       c.createdAt.toISOString(),
         bookingCount:    active.length,
-        totalSpend:      revenue,
+        totalSpend:      seeMoney ? revenue : null,
         lastBookingDate: lastDate,
         currency,
       };
@@ -83,7 +87,7 @@ export async function GET(req: Request) {
       switch (sort) {
         case "name":         return dir * a.name.localeCompare(b.name, "ar");
         case "bookingCount": return dir * (a.bookingCount - b.bookingCount);
-        case "totalSpend":   return dir * (a.totalSpend   - b.totalSpend);
+        case "totalSpend":   return dir * ((a.totalSpend ?? 0) - (b.totalSpend ?? 0));
         case "lastVisit": {
           const da = a.lastBookingDate ?? "0000-00-00";
           const db = b.lastBookingDate ?? "0000-00-00";

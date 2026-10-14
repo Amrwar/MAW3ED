@@ -68,8 +68,6 @@ export const keys = {
 
   business: {
     all: ["business"] as const,
-    bookings: (filters: Record<string, string | number | undefined>) =>
-      ["business", "bookings", filters] as const,
     customers: (search?: string) => ["business", "customers", search ?? ""] as const,
     analytics: (from: string, to: string) => ["business", "analytics", from, to] as const,
     overview: ["business", "overview"] as const,

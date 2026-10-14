@@ -111,7 +111,7 @@ export default function CustomerDetailPanel({ customer, onClose, onNotesSaved }:
             icon={<DollarSign size={13} style={{ color: "var(--color-ok)" }} />}
             iconBg="var(--color-ok-soft)"
             label="الإنفاق"
-            value={`${customer.totalSpend.toLocaleString("ar-EG-u-nu-latn")} ${customer.currency}`}
+            value={customer.totalSpend === null ? "—" : `${customer.totalSpend.toLocaleString("ar-EG-u-nu-latn")} ${customer.currency}`}
             separator
           />
           <StatCell

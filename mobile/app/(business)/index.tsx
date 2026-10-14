@@ -20,7 +20,14 @@ import {
   useToast,
 } from "@/design";
 import { useBusinessAccess } from "@/features/business/access";
-import { BookingRow, SectionHead, Stat, nameOf, openBooking, roleLabel } from "@/features/business/components";
+import {
+  BookingRow,
+  SectionHead,
+  Stat,
+  nameOf,
+  openBooking,
+  roleLabel,
+} from "@/features/business/components";
 import { useOverview, useUpdateBookingStatus } from "@/features/business/queries";
 import { longDate, shortDate, time } from "@/lib/format";
 
@@ -50,22 +57,45 @@ export default function Today() {
     confirm.mutate(
       { id, status: "CONFIRMED" },
       {
-        onSuccess: () => toast({ message: T("اتأكد الحجز، والعميل هيوصله إشعار.", "Confirmed — the customer will be told."), tone: "ok" }),
-        onError: () => toast({ message: T("معرفناش نأكد الحجز. جرّب تاني.", "Couldn't confirm. Try again."), tone: "danger" }),
+        onSuccess: () =>
+          toast({
+            message: T(
+              "اتأكد الحجز، والعميل هيوصله إشعار.",
+              "Confirmed — the customer will be told.",
+            ),
+            tone: "ok",
+          }),
+        onError: () =>
+          toast({
+            message: T("معرفناش نأكد الحجز. جرّب تاني.", "Couldn't confirm. Try again."),
+            tone: "danger",
+          }),
         onSettled: () => setBusyId(null),
       },
     );
   };
 
-  const column = { width: "100%" as const, maxWidth: contentWidth + gutter * 2, alignSelf: "center" as const, paddingHorizontal: gutter };
-  const greeting = new Date().getHours() < 12 ? T("صباح الخير", "Good morning") : T("مساء الخير", "Good evening");
+  const column = {
+    width: "100%" as const,
+    maxWidth: contentWidth + gutter * 2,
+    alignSelf: "center" as const,
+    paddingHorizontal: gutter,
+  };
+  const greeting =
+    new Date().getHours() < 12 ? T("صباح الخير", "Good morning") : T("مساء الخير", "Good evening");
   const who = o?.actor.staffName ? nameOf(lang, o.actor.staffName) : null;
 
   return (
     <ScrollView
       style={styles.page}
       contentContainerStyle={{ paddingBottom: spacing.xxxl }}
-      refreshControl={<RefreshControl refreshing={overview.isRefetching} onRefresh={() => overview.refetch()} tintColor={colors.inverse} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={overview.isRefetching}
+          onRefresh={() => overview.refetch()}
+          tintColor={colors.inverse}
+        />
+      }
     >
       {/* ── Night hero: who, where, today's date ── */}
       <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>
@@ -76,24 +106,37 @@ export default function Today() {
                 {who ? `${greeting}، ${who}` : greeting}
               </Text>
               <Text variant="title" tone="inverse" accessibilityRole="header" numberOfLines={2}>
-                {o ? nameOf(lang, { nameAr: o.business.nameAr, nameEn: o.business.nameEn }) : T("النهاردة", "Today")}
+                {o
+                  ? nameOf(lang, { nameAr: o.business.nameAr, nameEn: o.business.nameEn })
+                  : T("النهاردة", "Today")}
               </Text>
             </View>
-            <View>
-              <IconButton
-                icon="notifications-outline"
-                variant="night"
-                label={o?.counts.unreadNotifications ? T(`الإشعارات، ${o.counts.unreadNotifications} جديد`, `Notifications, ${o.counts.unreadNotifications} new`) : T("الإشعارات", "Notifications")}
-                onPress={() => router.push("/(business)/notifications")}
-              />
-              {o?.counts.unreadNotifications ? <View style={styles.dot} /> : null}
-            </View>
+            {access.role === "OWNER" ? (
+              <View>
+                <IconButton
+                  icon="notifications-outline"
+                  variant="night"
+                  label={
+                    o?.counts.unreadNotifications
+                      ? T(
+                          `الإشعارات، ${o.counts.unreadNotifications} جديد`,
+                          `Notifications, ${o.counts.unreadNotifications} new`,
+                        )
+                      : T("الإشعارات", "Notifications")
+                  }
+                  onPress={() => router.push("/(business)/notifications")}
+                />
+                {o?.counts.unreadNotifications ? <View style={styles.dot} /> : null}
+              </View>
+            ) : null}
           </View>
           <View style={styles.heroMeta}>
             <Text variant="body" style={{ color: colors.gold }}>
               {o ? longDate(o.today, lang) : " "}
             </Text>
-            {access.role !== "OWNER" ? <Badge label={roleLabel(access.role, lang)} tone="neutral" /> : null}
+            {access.role !== "OWNER" ? (
+              <Badge label={roleLabel(access.role, lang)} tone="neutral" />
+            ) : null}
           </View>
         </View>
       </View>
@@ -110,14 +153,31 @@ export default function Today() {
           <>
             {/* ── The numbers that start the day ── */}
             <View style={styles.stats}>
-              <Stat value={o.counts.today} label={T("حجز النهارده", "today")} onPress={() => router.push("/(business)/calendar")} />
-              <Stat value={o.counts.pending} label={T("مستني تأكيد", "awaiting confirmation")} tone={o.counts.pending ? "warn" : "plain"} />
-              <Stat value={o.counts.cancelledRecent} label={T("اتلغى آخر ٢٤ ساعة", "cancelled, last 24h")} tone={o.counts.cancelledRecent ? "danger" : "plain"} />
+              <Stat
+                value={o.counts.today}
+                label={T("حجز النهارده", "today")}
+                onPress={() => router.push("/(business)/calendar")}
+              />
+              <Stat
+                value={o.counts.pending}
+                label={T("مستني تأكيد", "awaiting confirmation")}
+                tone={o.counts.pending ? "warn" : "plain"}
+              />
+              <Stat
+                value={o.counts.cancelledRecent}
+                label={T("اتلغى آخر ٢٤ ساعة", "cancelled, last 24h")}
+                tone={o.counts.cancelledRecent ? "danger" : "plain"}
+              />
             </View>
 
             {/* ── Who is next ── */}
             {o.next ? (
-              <Card onPress={() => openBooking(o.next!.id)} accessibilityLabel={T("الميعاد الجاي", "Next appointment")} tone="night" style={styles.next}>
+              <Card
+                onPress={() => openBooking(o.next!.id)}
+                accessibilityLabel={T("الميعاد الجاي", "Next appointment")}
+                tone="night"
+                style={styles.next}
+              >
                 <Text variant="label" style={{ color: colors.gold }}>
                   {T("الميعاد الجاي", "Next appointment")}
                 </Text>
@@ -130,7 +190,9 @@ export default function Today() {
                       {o.next.customerName}
                     </Text>
                     <Text variant="caption" tone="inverseMuted" numberOfLines={1}>
-                      {[nameOf(lang, o.next.service), nameOf(lang, o.next.staffMember)].filter(Boolean).join(" · ")}
+                      {[nameOf(lang, o.next.service), nameOf(lang, o.next.staffMember)]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </Text>
                   </View>
                   <Icon name="chevron-forward" color={colors.gold} />
@@ -161,7 +223,13 @@ export default function Today() {
                       </Text>
                     </Touchable>
                     {access.can("bookings.confirm") ? (
-                      <Button size="sm" label={T("أكّد", "Confirm")} loading={busyId === p.id} onPress={() => confirmOne(p.id)} style={styles.pendingButton} />
+                      <Button
+                        size="sm"
+                        label={T("أكّد", "Confirm")}
+                        loading={busyId === p.id}
+                        onPress={() => confirmOne(p.id)}
+                        style={styles.pendingButton}
+                      />
                     ) : null}
                   </Card>
                 ))}
@@ -173,7 +241,12 @@ export default function Today() {
               <View style={styles.section}>
                 <SectionHead title={T("اتلغى مؤخراً", "Recently cancelled")} />
                 {o.cancelled.map((c) => (
-                  <Card key={c.id} onPress={() => openBooking(c.id)} accessibilityLabel={c.customerName} style={styles.cancelled}>
+                  <Card
+                    key={c.id}
+                    onPress={() => openBooking(c.id)}
+                    accessibilityLabel={c.customerName}
+                    style={styles.cancelled}
+                  >
                     <Icon name="close-circle-outline" color={colors.danger} />
                     <Text variant="body" numberOfLines={1} style={styles.flex}>
                       {`${c.customerName} · ${shortDate(c.date, lang)} ${time(c.startTime, lang)}`}
@@ -185,9 +258,20 @@ export default function Today() {
 
             {/* ── The whole day ── */}
             <View style={styles.section}>
-              <SectionHead title={T("جدول النهارده", "Today's schedule")} action={T("التقويم", "Calendar")} onAction={() => router.push("/(business)/calendar")} />
+              <SectionHead
+                title={T("جدول النهارده", "Today's schedule")}
+                action={T("التقويم", "Calendar")}
+                onAction={() => router.push("/(business)/calendar")}
+              />
               {o.todays.length === 0 ? (
-                <EmptyState icon="sunny-outline" title={T("مفيش حجوزات النهارده", "Nothing booked today")} body={T("أي حجز جديد هيظهر هنا على طول.", "New bookings show up here as they come in.")} />
+                <EmptyState
+                  icon="sunny-outline"
+                  title={T("مفيش حجوزات النهارده", "Nothing booked today")}
+                  body={T(
+                    "أي حجز جديد هيظهر هنا على طول.",
+                    "New bookings show up here as they come in.",
+                  )}
+                />
               ) : (
                 o.todays.map((b) => (
                   <BookingRow

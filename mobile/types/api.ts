@@ -204,6 +204,8 @@ export interface AppNotification {
   title: string;
   body: string | null;
   href: string | null;
+  /** The booking it is about, if any — the business side opens it directly. */
+  bookingId?: string | null;
   readAt: string | null;
   createdAt: string;
 }

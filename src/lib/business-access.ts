@@ -101,7 +101,13 @@ export async function resolveBusinessAccess(userId: string): Promise<{ business:
       if (waiting && !waiting.userId && waiting.access) {
         // Conditional on still being unclaimed, so two sign-ins racing
         // for the same place cannot both take it.
-        const claimed = await db.staffMember.updateMany({ where: { id: waiting.id, userId: null }, data: { userId } });
+        // The phone and access are checked again in the write: if the
+        // owner changed the number since the read, this person no longer
+        // matches and must not take the place meant for the new one.
+        const claimed = await db.staffMember.updateMany({
+          where: { id: waiting.id, userId: null, loginPhone: user.phone, access: { not: null } },
+          data: { userId },
+        });
         if (claimed.count === 1) staff = { ...waiting, userId };
       }
     }

@@ -55,7 +55,10 @@ export async function GET(req: Request) {
       where.branchId = branchId;
     }
     if (calendar) {
-      const days = dateFrom && dateTo ? (Date.parse(dateTo) - Date.parse(dateFrom)) / 86_400_000 : NaN;
+      // Both dates in the one format the filter below reads, or the range
+      // would be checked and then not applied.
+      const iso = /^\d{4}-\d{2}-\d{2}$/;
+      const days = dateFrom && dateTo && iso.test(dateFrom) && iso.test(dateTo) ? (Date.parse(dateTo) - Date.parse(dateFrom)) / 86_400_000 : NaN;
       if (!(days >= 0 && days <= 31)) return err("حدد فترة من يوم لـ ٣١ يوم", 422, { code: "range" });
     }
 

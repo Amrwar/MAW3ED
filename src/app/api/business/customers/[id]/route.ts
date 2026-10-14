@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
-import { requireBusinessAccess } from "@/lib/business-access";
+import { can, requireBusinessAccess } from "@/lib/business-access";
 import { z } from "zod";
 import { log } from "@/lib/logger";
 
@@ -12,7 +12,7 @@ type Params = { params: Promise<{ id: string }> };
  */
 export async function GET(_req: Request, { params }: Params) {
   try {
-    const { business } = await requireBusinessAccess("customers.read");
+    const { business, actor } = await requireBusinessAccess("customers.read");
     const { id } = await params;
 
     const customer = await db.customer.findFirst({
@@ -42,7 +42,8 @@ export async function GET(_req: Request, { params }: Params) {
       notes:           customer.notes,
       createdAt:       customer.createdAt.toISOString(),
       bookingCount:    activeBookings.length,
-      totalSpend,
+      // Money is the owner's; a manager sees the visits, not the spend.
+      totalSpend: can(actor, "reports.read") ? totalSpend : null,
       currency,
       lastBookingDate: lastBooking?.date.toISOString().split("T")[0] ?? null,
       bookings: customer.bookings.map((b) => ({
