@@ -108,20 +108,25 @@ export function BusinessCard(p: BusinessCardProps) {
     );
   }
 
+  // The trailing control (a save heart) sits beside the card's button,
+  // not inside it: a button in a button is invalid on the web and is
+  // announced as one control by screen readers.
   return (
-    <Card onPress={p.onPress} accessibilityLabel={label}>
-      <View style={styles.row}>
-        <Avatar name={p.name} uri={p.imageUri} size="lg" shape="rounded" />
-        <View style={styles.flex}>
-          {title}
-          <Text variant="caption" tone="subtle" numberOfLines={1}>
-            {where}
-          </Text>
-          {meta}
+    <View>
+      <Card onPress={p.onPress} accessibilityLabel={label}>
+        <View style={[styles.row, p.trailing ? styles.rowWithTrailing : null]}>
+          <Avatar name={p.name} uri={p.imageUri} size="lg" shape="rounded" />
+          <View style={styles.flex}>
+            {title}
+            <Text variant="caption" tone="subtle" numberOfLines={1}>
+              {where}
+            </Text>
+            {meta}
+          </View>
         </View>
-        {p.trailing}
-      </View>
-    </Card>
+      </Card>
+      {p.trailing ? <View style={styles.rowTrailing}>{p.trailing}</View> : null}
+    </View>
   );
 }
 
@@ -316,6 +321,8 @@ const styles = StyleSheet.create({
   cover: { width: "100%", aspectRatio: 16 / 9, backgroundColor: colors.surface3 },
   coverFallback: { alignItems: "center", justifyContent: "center", backgroundColor: colors.jadeTint },
   featureBody: { padding: spacing.lg, gap: spacing.xxs },
+  rowWithTrailing: { paddingEnd: 44 },
+  rowTrailing: { position: "absolute", top: 0, bottom: 0, end: spacing.sm, justifyContent: "center" },
   featureTrailing: { position: "absolute", top: spacing.sm, end: spacing.sm },
   serviceRow: { flexDirection: "row", gap: spacing.md },
   priceCol: { alignItems: "flex-end", justifyContent: "space-between", gap: spacing.sm },

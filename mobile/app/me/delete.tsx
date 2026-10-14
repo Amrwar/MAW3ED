@@ -86,8 +86,9 @@ function Delete() {
   };
 
   return (
-    <Screen edges="both">
-      <Header title={T("حذف الحساب", "Delete account")} back />
+    <Screen edges="both"
+      hero={<Header title={T("حذف الحساب", "Delete account")} back tone="night" />}
+    >
       <View style={styles.body}>
         <Card>
           <Text variant="label" tone="danger" accessibilityRole="header">

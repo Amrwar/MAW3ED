@@ -29,8 +29,14 @@ export default function Calendar() {
   const bookings = query.data?.bookings ?? [];
 
   return (
-    <Screen scroll={false}>
-      <Text variant="title">التقويم</Text>
+    <Screen
+      scroll={false}
+      hero={
+        <Text variant="display" tone="inverse" accessibilityRole="header">
+          التقويم
+        </Text>
+      }
+    >
 
       <ScrollView
         horizontal

@@ -27,95 +27,101 @@ export default function Customers() {
   const customers = query.data?.customers ?? [];
 
   return (
-    <FlatList
-      style={[styles.list, { backgroundColor: colors.ground }]}
-      contentContainerStyle={{
-        paddingTop: insets.top + spacing.lg,
-        paddingBottom: spacing.xxl,
-        paddingHorizontal: spacing.lg,
-      }}
-      keyboardShouldPersistTaps="handled"
-      data={customers}
-      keyExtractor={(item) => item.id}
-      ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
-      ListHeaderComponent={
-        <View style={styles.header}>
-          <View style={styles.titleRow}>
-            <Text variant="title">العملاء</Text>
-            {query.data ? (
-              <Text variant="caption" tone="subtle">
-                {num(query.data.total)}
+    <View style={[styles.list, { backgroundColor: colors.ground }]}>
+      {/* Bold Cairo: title, count and search on a night block that stays put. */}
+      <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>
+        <View style={styles.titleRow}>
+          <Text variant="display" tone="inverse" accessibilityRole="header">
+            العملاء
+          </Text>
+          {query.data ? (
+            <Text variant="title" style={{ color: colors.gold }}>
+              {num(query.data.total)}
+            </Text>
+          ) : null}
+        </View>
+        <SearchField
+          value={term}
+          onChangeText={setTerm}
+          placeholder="اسم أو رقم"
+          accessibilityLabel="ابحث في العملاء"
+          onSubmit={() => setSearch(term)}
+        />
+      </View>
+      <FlatList
+        style={styles.list}
+        contentContainerStyle={{
+          paddingTop: spacing.lg,
+          paddingBottom: spacing.xxl,
+          paddingHorizontal: spacing.lg,
+        }}
+        keyboardShouldPersistTaps="handled"
+        data={customers}
+        keyExtractor={(item) => item.id}
+        ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+        ListEmptyComponent={
+          <ListState
+            loading={query.isLoading}
+            error={query.error}
+            isEmpty
+            emptyTitle={search ? "مفيش نتايج" : "لسه مفيش عملاء"}
+            emptyBody={search ? "جرّب اسم أو رقم تاني." : "أول ما حد يحجز هيتسجل هنا تلقائي."}
+            onRetry={() => query.refetch()}
+          >
+            <></>
+          </ListState>
+        }
+        renderItem={({ item }) => (
+          <Card>
+            <View style={styles.row}>
+              <View style={styles.who}>
+                <Text variant="bodyBold" numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text variant="caption" tone="subtle">
+                  {item.phone}
+                </Text>
+              </View>
+              <View style={styles.stats}>
+                <Text variant="label" tone="jade">
+                  {/* Spend can be zero and that is a real number here —
+                    unlike a price, where zero would be a lie. */}
+                  {money(item.totalSpend, item.currency) ?? "—"}
+                </Text>
+                <Text variant="caption" tone="subtle">
+                  {num(item.bookingCount)} حجز
+                </Text>
+              </View>
+            </View>
+
+            {item.lastBookingDate ? (
+              <Text variant="caption" tone="muted" style={styles.last}>
+                آخر زيارة: {shortDate(item.lastBookingDate)}
               </Text>
             ) : null}
-          </View>
-          <SearchField
-            value={term}
-            onChangeText={setTerm}
-            placeholder="اسم أو رقم"
-            accessibilityLabel="ابحث في العملاء"
-            onSubmit={() => setSearch(term)}
-          />
-        </View>
-      }
-      ListEmptyComponent={
-        <ListState
-          loading={query.isLoading}
-          error={query.error}
-          isEmpty
-          emptyTitle={search ? "مفيش نتايج" : "لسه مفيش عملاء"}
-          emptyBody={
-            search
-              ? "جرّب اسم أو رقم تاني."
-              : "أول ما حد يحجز هيتسجل هنا تلقائي."
-          }
-          onRetry={() => query.refetch()}
-        >
-          <></>
-        </ListState>
-      }
-      renderItem={({ item }) => (
-        <Card>
-          <View style={styles.row}>
-            <View style={styles.who}>
-              <Text variant="bodyBold" numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text variant="caption" tone="subtle">
-                {item.phone}
-              </Text>
-            </View>
-            <View style={styles.stats}>
-              <Text variant="label" tone="jade">
-                {/* Spend can be zero and that is a real number here —
-                    unlike a price, where zero would be a lie. */}
-                {money(item.totalSpend, item.currency) ?? "—"}
-              </Text>
-              <Text variant="caption" tone="subtle">
-                {num(item.bookingCount)} حجز
-              </Text>
-            </View>
-          </View>
 
-          {item.lastBookingDate ? (
-            <Text variant="caption" tone="muted" style={styles.last}>
-              آخر زيارة: {shortDate(item.lastBookingDate)}
-            </Text>
-          ) : null}
-
-          {item.notes ? (
-            <Text variant="caption" tone="muted" style={styles.notes} numberOfLines={2}>
-              {item.notes}
-            </Text>
-          ) : null}
-        </Card>
-      )}
-    />
+            {item.notes ? (
+              <Text variant="caption" tone="muted" style={styles.notes} numberOfLines={2}>
+                {item.notes}
+              </Text>
+            ) : null}
+          </Card>
+        )}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   list: { flex: 1 },
-  header: { marginBottom: spacing.lg, gap: spacing.md },
+  hero: {
+    backgroundColor: colors.night,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
+    borderBottomStartRadius: 28,
+    borderBottomEndRadius: 28,
+  },
   titleRow: {
     flexDirection: "row",
     alignItems: "baseline",

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button, EmptyState, ErrorState, Header, RatingInput, Skeleton, Text, TextField, colors, spacing, useLocale, useToast } from "@/design";
+import { Button, EmptyState, ErrorState, TopBar, RatingInput, Skeleton, Text, TextField, colors, spacing, useLocale, useToast } from "@/design";
 import { Notice } from "@/features/booking/components";
 import { trackBooking } from "@/features/booking/events";
 import { useSubmitReview } from "@/features/booking/manage";
@@ -51,8 +51,8 @@ export default function ReviewScreen() {
   }
   if (!b) {
     return (
-      <View style={[styles.page, { paddingTop: insets.top }]}>
-        <Header title={T("التقييم", "Review")} back onBack={back} />
+      <View style={styles.page}>
+        <TopBar title={T("التقييم", "Review")} back onBack={back} />
         <ErrorState error={booking.error} onRetry={() => booking.refetch()} />
       </View>
     );
@@ -67,8 +67,8 @@ export default function ReviewScreen() {
           ? T("فات وقت التقييم على الحجز ده.", "The review window for this booking has closed.")
           : T("مينفعش تعدّل التقييم ده دلوقتي.", "This review can't be edited now.");
     return (
-      <View style={[styles.page, { paddingTop: insets.top }]}>
-        <Header title={T("التقييم", "Review")} back onBack={back} />
+      <View style={styles.page}>
+        <TopBar title={T("التقييم", "Review")} back onBack={back} />
         <EmptyState icon="star-outline" title={T("التقييم مش متاح", "Reviews aren't available")} body={why} action={<Button label={T("رجوع", "Back")} onPress={back} />} />
       </View>
     );
@@ -92,8 +92,8 @@ export default function ReviewScreen() {
   };
 
   return (
-    <View style={[styles.page, { paddingTop: insets.top }]}>
-      <Header title={editing ? T("عدّل تقييمك", "Edit your review") : T("قيّم زيارتك", "Rate your visit")} subtitle={name} back onBack={back} />
+    <View style={styles.page}>
+      <TopBar title={editing ? T("عدّل تقييمك", "Edit your review") : T("قيّم زيارتك", "Rate your visit")} subtitle={name} back onBack={back} />
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]} keyboardShouldPersistTaps="handled">
         <Text variant="body" tone="muted">
           {T(`زيارتك يوم ${longDate(b.date, lang)}`, `Your visit on ${longDate(b.date, lang)}`)}

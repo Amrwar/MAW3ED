@@ -9,7 +9,7 @@ import {
   Chip,
   EmptyState,
   ErrorState,
-  Header,
+  TopBar,
   Icon,
   IconButton,
   SkeletonCard,
@@ -158,8 +158,8 @@ export default function NearbyScreen() {
   }
 
   return (
-    <View style={[styles.page, { paddingTop: insets.top }]}>
-      <Header title={T("قريب مني", "Near me")} back />
+    <View style={styles.page}>
+      <TopBar title={T("قريب مني", "Near me")} back />
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}
         refreshControl={here ? <RefreshControl refreshing={nearby.isRefetching} onRefresh={() => nearby.refetch()} tintColor={colors.jade} /> : undefined}

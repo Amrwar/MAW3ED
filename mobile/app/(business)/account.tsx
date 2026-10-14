@@ -33,8 +33,13 @@ export default function BusinessAccount() {
   const kpis = analytics.data?.kpis;
 
   return (
-    <Screen>
-      <Text variant="title">حسابي</Text>
+    <Screen
+      hero={
+        <Text variant="display" tone="inverse" accessibilityRole="header">
+          حسابي
+        </Text>
+      }
+    >
 
       <View style={styles.sections}>
         <Card>

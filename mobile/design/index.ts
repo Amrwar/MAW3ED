@@ -23,6 +23,7 @@ export { Avatar } from "./components/Avatar";
 export { Rating, RatingInput } from "./components/Rating";
 export { Tabs } from "./components/Tabs";
 export { Header } from "./components/Header";
+export { TopBar } from "./components/TopBar";
 export { Screen } from "./components/Screen";
 export { bottomNavOptions, tabIcon } from "./components/BottomNav";
 export { Sheet } from "./components/Sheet";

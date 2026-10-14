@@ -101,10 +101,10 @@ export default function Search() {
   };
 
   return (
-    <View style={[styles.page, { paddingTop: insets.top + spacing.md }]}>
-      {/* ── Fixed top: the field and one row of controls ── */}
-      <View style={styles.top}>
-        <Text variant="title" accessibilityRole="header">
+    <View style={styles.page}>
+      {/* ── Fixed top: the field on night, then one row of controls ── */}
+      <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>
+        <Text variant="display" tone="inverse" accessibilityRole="header">
           {T("ابحث", "Search")}
         </Text>
         <SearchField
@@ -121,6 +121,8 @@ export default function Search() {
           onBlur={() => setTimeout(() => setFocused(false), 150)}
           maxLength={MAX_TERM}
         />
+      </View>
+      <View style={styles.top}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.controls} keyboardShouldPersistTaps="handled">
           <Chip
             label={filterCount > 0 ? T(`الفلاتر (${filterCount})`, `Filters (${filterCount})`) : T("الفلاتر", "Filters")}
@@ -344,7 +346,15 @@ function useActiveChips(f: Filters, lang: "ar" | "en") {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.ground },
-  top: { paddingHorizontal: spacing.lg, gap: spacing.md, paddingBottom: spacing.sm },
+  hero: {
+    backgroundColor: colors.night,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
+    borderBottomStartRadius: 28,
+    borderBottomEndRadius: 28,
+  },
+  top: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
   controls: { gap: spacing.sm, paddingVertical: spacing.xs },
   flex: { flex: 1 },
   hidden: { display: "none" },

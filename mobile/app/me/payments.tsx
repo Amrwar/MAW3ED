@@ -29,8 +29,9 @@ function Payments() {
   const fmt = (cents: number, currency: string) => money(cents / 100, currency, lang) ?? `${cents / 100} ${currency}`;
 
   return (
-    <Screen scroll={false} edges="both">
-      <Header title={T("المدفوعات", "Payments")} back />
+    <Screen scroll={false} edges="both"
+      hero={<Header title={T("المدفوعات", "Payments")} back tone="night" />}
+    >
       <ScrollView
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.jade} />}

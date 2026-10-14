@@ -57,8 +57,8 @@ function EditProfile() {
     <Screen
       edges="both"
       footer={<Button fullWidth label={T("احفظ", "Save")} disabled={!nameOk || !emailOk || !data} loading={update.isPending} onPress={save} />}
+      hero={<Header title={T("بياناتك", "Your details")} back tone="night" />}
     >
-      <Header title={T("بياناتك", "Your details")} back />
       <ListState loading={profile.isLoading} error={profile.error} isEmpty={false} emptyTitle="" onRetry={() => profile.refetch()}>
         <View style={styles.form}>
           <TextField
