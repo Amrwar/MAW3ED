@@ -54,7 +54,7 @@ export const ROUGH_ACCURACY_M = 1_000;
 export function formatDistance(km: number, lang: "ar" | "en"): string {
   if (km < 1) {
     const m = Math.max(50, Math.round((km * 1000) / 50) * 50);
-    return lang === "ar" ? `${num(m, lang)} م` : `${m} m`;
+    return lang === "ar" ? `${num(m, lang)} متر` : `${m} m`;
   }
   const v = km < 10 ? Math.round(km * 10) / 10 : Math.round(km);
   return lang === "ar" ? `${num(v, lang)} كم` : `${v} km`;

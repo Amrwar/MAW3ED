@@ -24,7 +24,7 @@ import { pick, roleLabel } from "@/features/business/components";
 import { useSetStaffAccess, useStaff } from "@/features/business/queries";
 import type { StaffRow } from "@/features/business/types";
 import { ApiError } from "@/lib/api/errors";
-import { num } from "@/lib/format";
+import { count } from "@/lib/plural";
 
 /**
  * The team: who works here, what they do, and — for the owner — who may
@@ -52,7 +52,7 @@ export default function StaffScreen() {
 
   return (
     <View style={styles.page}>
-      <TopBar title={T("الفريق", "Staff")} subtitle={staff.data ? T(`${num(staff.data.length, lang)} شخص`, `${staff.data.length} people`) : undefined} back />
+      <TopBar title={T("الفريق", "Staff")} subtitle={staff.data ? count(staff.data.length, "person", lang) : undefined} back />
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}
         refreshControl={<RefreshControl refreshing={staff.isRefetching} onRefresh={() => staff.refetch()} tintColor={colors.jade} />}

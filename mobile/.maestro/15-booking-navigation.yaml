@@ -1,0 +1,151 @@
+# Moving around the booking flow as a guest, without booking: Back keeps
+# what was chosen (the service, the time), the day strip scrolls both
+# ways, and choosing another service clears the time picked for the old
+# one. Uses the first business on Home; the service-change part needs
+# it to offer two services, and is skipped when it has one. Never gets
+# past "Sign in to book"; booking-submit is never tapped.
+appId: net.maw3ed.app.staging
+name: Booking flow navigation (nothing booked)
+tags:
+  - deep
+---
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: ar
+- runFlow: subflows/open-first-business.yaml
+- runFlow: subflows/open-booking.yaml
+- takeScreenshot: 15-first-step
+
+# ── The service step (a place with several services starts here) ──
+- runFlow:
+    when:
+      visible:
+        id: service-option
+    commands:
+      - assertVisible:
+          id: booking-next
+          enabled: false
+          label: Continue is off until a service is chosen
+      - tapOn:
+          id: service-option
+          index: 0
+      - assertVisible:
+          id: booking-next
+          enabled: true
+      - tapOn:
+          id: booking-next
+      - extendedWaitUntil:
+          visible:
+            id: booking-picked
+          timeout: 10000
+          label: The next step shows the service chosen
+      - pressKey: back
+      - extendedWaitUntil:
+          visible:
+            id: service-option
+          timeout: 5000
+          label: Back returns to the service step...
+      - assertVisible:
+          id: booking-next
+          enabled: true
+          label: ...with the service still chosen
+
+# ── On to the day and time ──
+- repeat:
+    times: 6
+    while:
+      notVisible:
+        id: day-option
+    commands:
+      - runFlow: subflows/booking-step.yaml
+- assertVisible:
+    id: day-option
+    label: The day and time step (the first business has one)
+- assertVisible:
+    id: booking-picked
+
+# The day strip scrolls, forwards and back.
+- swipe:
+    from:
+      id: day-option
+      index: 1
+    direction: LEFT
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 15-days-swiped-left
+- swipe:
+    from:
+      id: day-option
+      index: 1
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 15-days-swiped-right
+
+# Pick a time, go on, come back: the time is still chosen.
+- runFlow: subflows/pick-time.yaml
+- assertVisible:
+    id: booking-next
+    enabled: true
+- tapOn:
+    id: booking-next
+# After the time comes "your details", which asks a guest to sign in.
+- extendedWaitUntil:
+    visible:
+      id: booking-sign-in
+    timeout: 10000
+- pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: day-option
+    timeout: 5000
+    label: Back returns to the day and time...
+- assertVisible:
+    id: booking-next
+    enabled: true
+    label: ...with the time still chosen
+- takeScreenshot: 15-time-kept
+
+# ── Another service clears the time ──
+- repeat:
+    times: 6
+    while:
+      notVisible:
+        id: "service-option|share-business"
+    commands:
+      - pressKey: back
+      - waitForAnimationToEnd:
+          timeout: 3000
+- runFlow:
+    when:
+      visible:
+        id: service-option
+        index: 1
+    commands:
+      - tapOn:
+          id: service-option
+          index: 1
+      - tapOn:
+          id: booking-next
+      - repeat:
+          times: 6
+          while:
+            notVisible:
+              id: day-option
+          commands:
+            - runFlow: subflows/booking-step.yaml
+      - assertVisible:
+          id: booking-next
+          enabled: false
+          label: The time chosen for the first service is gone
+      - takeScreenshot: 15-service-changed
+
+# ── Out, step by step ──
+- runFlow:
+    file: subflows/leave-to.yaml
+    env: { TARGET: share-business }
+- assertNotVisible:
+    id: booking-submit

@@ -49,7 +49,7 @@ function EditProfile() {
       toast({ message: T("اتحفظ", "Saved"), tone: "ok" });
       router.back();
     } catch (err) {
-      setError(ar ? messageFor(err) : "We couldn't save that. If the email is used by another account, try a different one.");
+      setError(ar ? messageFor(err, lang) : "We couldn't save that. If the email is used by another account, try a different one.");
     }
   };
 
@@ -81,7 +81,7 @@ function EditProfile() {
           />
           <Card tone="tint">
             <Text variant="label" tone="ink2">
-              {T("رقم الموبايل", "Phone number")}
+              {T("رقم الموبايل", "Mobile number")}
             </Text>
             <Text variant="bodyBold" style={ltr}>
               {data?.phone ? `+${data.phone.replace(/^\+/, "")}` : "—"}

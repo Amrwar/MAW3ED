@@ -4,6 +4,7 @@ import { Badge, Button, Card, ConfirmDialog, Header, Icon, ListState, Screen, Te
 import { SignInGate } from "@/features/auth/SignInGate";
 import { useEndSession, useSessions } from "@/features/account/queries";
 import { relativeTime } from "@/lib/format";
+import { count } from "@/lib/plural";
 
 /**
  * Where the account is signed in through the app, and the way to end
@@ -113,7 +114,7 @@ function Security() {
         onConfirm={async () => {
           try {
             const res = await end.mutateAsync("others");
-            toast({ message: T(`اتقفل ${res.ended} جهاز`, `Signed out ${res.ended} device(s)`), tone: "ok" });
+            toast({ message: T(`اتقفل ${count(res.ended, "device", "ar")}`, `Signed out ${count(res.ended, "device", "en")}`), tone: "ok" });
           } catch {
             toast({ message: T("معرفناش نقفلهم. حاول تاني.", "Couldn't sign them out. Try again."), tone: "danger" });
           } finally {

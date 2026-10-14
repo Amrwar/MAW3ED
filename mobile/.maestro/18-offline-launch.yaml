@@ -1,0 +1,84 @@
+# Starting the app with no connection. After one online visit, Home
+# opens offline from the saved copy, with the offline banner; with
+# nothing saved (a fresh install), it shows the banner and no places,
+# and fills in by itself once the connection is back. Android only
+# (setAirplaneMode). Complements 06, which goes offline mid-session.
+appId: net.maw3ed.app.staging
+name: Offline at launch
+tags:
+  - deep
+  - android
+onFlowComplete:
+  # Never leave the emulator offline for the next flow, pass or fail.
+  - setAirplaneMode: disabled
+---
+# ── Online once, so there is a saved copy ──
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: ar
+# The saved copy is written about a second after the places arrive
+# (lib/query/persist.ts throttles it): give it a few seconds before the
+# app is killed. (Maestro has no sleep; this waits on an id that never exists.)
+- extendedWaitUntil:
+    visible:
+      id: e2e-never-shown
+    timeout: 4000
+    optional: true
+    label: Pause while the places are saved
+- stopApp
+
+# ── Offline, from the saved copy ──
+- setAirplaneMode: enabled
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: offline-banner
+    timeout: 20000
+    label: The offline banner shows at launch
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 15000
+    label: Home shows the places saved from the last visit
+- takeScreenshot: 18-offline-from-cache
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    notVisible:
+      id: offline-banner
+    timeout: 30000
+    label: The banner goes when the connection returns
+
+# ── Offline on a fresh install: nothing saved ──
+- setAirplaneMode: enabled
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: offline-banner
+    timeout: 20000
+    label: The offline banner shows on a fresh install with no connection
+- assertNotVisible:
+    id: business-card
+- takeScreenshot: 18-offline-fresh
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    notVisible:
+      id: offline-banner
+    timeout: 30000
+# The paused requests go out by themselves; a stuck error offers Retry.
+- runFlow:
+    when:
+      visible:
+        id: retry
+    commands:
+      - tapOn:
+          id: retry
+          index: 0
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 30000
+    label: Home fills in once the connection is back
+- takeScreenshot: 18-recovered

@@ -25,8 +25,9 @@ import { emptyDayReason } from "@/features/booking/flow";
 import { useReschedule, useRescheduleSlots } from "@/features/booking/manage";
 import { useBooking } from "@/features/booking/queries";
 import { ApiError, NetworkError, messageFor } from "@/lib/api/errors";
-import { duration, longDate, time } from "@/lib/format";
+import { longDate, time } from "@/lib/format";
 import { keys } from "@/lib/query/keys";
+import { hoursSpan } from "@/lib/plural";
 
 /**
  * Moving a booking.
@@ -88,8 +89,8 @@ export default function RescheduleScreen() {
           icon="time-outline"
           title={T("مينفعش تغيّر الميعاد ده", "This booking can't be moved")}
           body={T(
-            `التغيير بيقفل قبل الميعاد بـ${duration(b.changeCutoffHours * 60, "ar")}، أو الحجز خلص أو اتلغى. كلّم المكان لو محتاج حاجة.`,
-            `Changes close ${b.changeCutoffHours} hours before, or the booking has ended or been cancelled. Contact the business if you need help.`,
+            `التغيير بيقفل قبل الميعاد بـ${hoursSpan(b.changeCutoffHours, "ar")}، أو الحجز خلص أو اتلغى. كلّم المكان لو محتاج حاجة.`,
+            `Changes close ${hoursSpan(b.changeCutoffHours, "en")} before, or the booking has ended or been cancelled. Contact the business if you need help.`,
           )}
           action={<Button label={T("رجوع", "Back")} onPress={back} />}
         />
@@ -114,7 +115,13 @@ export default function RescheduleScreen() {
       } else if (e instanceof NetworkError) {
         setError(T("الاتصال وقع. افتح الحجز تاني واتأكد هو اتغيّر ولا لأ قبل ما تحاول.", "Connection lost. Reopen the booking to check whether it moved before trying again."));
       } else {
-        setError(ar ? messageFor(e) : "We couldn't move the booking. Please try again.");
+        setError(
+          messageFor(e, lang, {
+            "not-changeable": "This booking can't be moved any more. Contact the business if you need help.",
+            "too-late": "It's too close to the appointment to change it here. Please contact the business.",
+            "422": "We couldn't move the booking. Please try again.",
+          }),
+        );
       }
     }
   };

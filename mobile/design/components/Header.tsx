@@ -44,10 +44,11 @@ export function Header({
             label={t("back")}
             variant={night ? "night" : "plain"}
             onPress={onBack ?? (() => router.back())}
+            testID="back"
           />
         ) : null}
         <View style={styles.titles}>
-          <Text variant={large ? "title" : "heading"} tone={night ? "inverse" : "ink"} accessibilityRole="header" numberOfLines={2}>
+          <Text variant={large ? "title" : "heading"} tone={night ? "inverse" : "ink"} accessibilityRole="header" numberOfLines={2} testID="screen-title">
             {title}
           </Text>
           {subtitle ? (

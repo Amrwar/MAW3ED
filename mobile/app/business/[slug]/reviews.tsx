@@ -8,6 +8,7 @@ import { useBusinessReviews, useReportReview, type ReviewSort } from "@/features
 import { REPORT_REASONS, reportErrorMessage, type ReportReason } from "@/features/profile/report";
 import { RatingBreakdown, ReviewItem } from "@/features/profile/sections";
 import { num } from "@/lib/format";
+import { count } from "@/lib/plural";
 
 /**
  * Every review for one business: sorted, filtered by stars, ten at a
@@ -83,12 +84,12 @@ export default function ReviewsScreen() {
                 <Touchable
                   onPress={() => setReporting(item.id)}
                   accessibilityRole="button"
-                  accessibilityLabel={ar ? `ابلغ عن تقييم ${item.authorName}` : `Report ${item.authorName}'s review`}
+                  accessibilityLabel={ar ? `بلّغ عن تقييم ${item.authorName}` : `Report ${item.authorName}'s review`}
                   hitSlop={8}
                   style={styles.report}
                 >
                   <Text variant="caption" tone="subtle">
-                    {ar ? "ابلغ عن التقييم" : "Report"}
+                    {ar ? "بلّغ عن التقييم" : "Report"}
                   </Text>
                 </Touchable>
               )
@@ -104,11 +105,11 @@ export default function ReviewsScreen() {
             {profile.data ? <RatingBreakdown rating={profile.data.rating} /> : null}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
               {SORTS.map((s) => (
-                <Chip key={s.value} label={ar ? s.ar : s.en} selected={sort === s.value} onPress={() => setSort(s.value)} />
+                <Chip key={s.value} label={ar ? s.ar : s.en} selected={sort === s.value} onPress={() => setSort(s.value)} testID={`review-sort-${s.value}`} />
               ))}
             </ScrollView>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-              <Chip label={ar ? "كل النجوم" : "All stars"} selected={stars === null} onPress={() => setStars(null)} />
+              <Chip label={ar ? "كل النجوم" : "All stars"} selected={stars === null} onPress={() => setStars(null)} testID="review-stars-all" />
               {[5, 4, 3, 2, 1].map((n) => (
                 <Chip
                   key={n}
@@ -116,12 +117,13 @@ export default function ReviewsScreen() {
                   count={profile.data?.rating.distribution[String(n) as "1"]}
                   selected={stars === n}
                   onPress={() => setStars(stars === n ? null : n)}
+                  testID={`review-stars-${n}`}
                 />
               ))}
             </ScrollView>
             {reviews.isSuccess && matched > 0 ? (
               <Text variant="caption" tone="subtle">
-                {ar ? `${num(matched, lang)} تقييم` : `${matched} ${matched === 1 ? "review" : "reviews"}`}
+                {count(matched, "review", lang)}
               </Text>
             ) : null}
           </View>

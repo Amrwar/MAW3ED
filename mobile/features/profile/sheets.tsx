@@ -59,6 +59,7 @@ export function ServiceSheet({
     <Sheet
       open
       onClose={onClose}
+      testID="service-sheet"
       title={name}
       footer={
         <View style={styles.footer}>
@@ -196,7 +197,7 @@ export function StaffSheet({
   const works = member.hours.some((h) => !h.isClosed);
 
   return (
-    <Sheet open onClose={onClose} title={name}>
+    <Sheet open onClose={onClose} title={name} testID="staff-sheet">
       <View style={styles.body}>
         <View style={styles.who}>
           <Avatar name={name} uri={member.photo} size="xl" />

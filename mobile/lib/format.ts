@@ -12,6 +12,8 @@
  * working unchanged. New code passes `lang` from useLocale().
  */
 
+import { count } from "./plural";
+
 export type Lang = "ar" | "en";
 
 export function localeFor(lang: Lang): string {
@@ -54,9 +56,9 @@ export function duration(minutes: number, lang: Lang = "ar"): string {
     if (hours === 0) return `${rest} min`;
     return rest ? `${hours} hr ${rest} min` : `${hours} hr`;
   }
-  if (minutes < 60) return `${num(minutes)} دقيقة`;
-  const hoursPart = hours === 1 ? "ساعة" : hours === 2 ? "ساعتين" : `${num(hours)} ساعات`;
-  return rest ? `${hoursPart} و${num(rest)} دقيقة` : hoursPart;
+  if (minutes < 60) return count(minutes, "minute", "ar");
+  const hoursPart = count(hours, "hour", "ar");
+  return rest ? `${hoursPart} و${count(rest, "minute", "ar")}` : hoursPart;
 }
 
 /**
@@ -148,17 +150,17 @@ export function relativeTime(minutesUntil: number, lang: Lang = "ar"): string {
   }
 
   if (mins < 60) {
-    const label = `${num(Math.max(1, Math.round(mins)))} دقيقة`;
+    const label = count(Math.max(1, Math.round(mins)), "minute", "ar");
     return past ? `من ${label}` : `بعد ${label}`;
   }
   if (mins < 60 * 24) {
     const hours = Math.round(mins / 60);
-    const label = hours === 1 ? "ساعة" : hours === 2 ? "ساعتين" : `${num(hours)} ساعات`;
+    const label = count(hours, "hour", "ar");
     return past ? `من ${label}` : `بعد ${label}`;
   }
   const days = Math.round(mins / (60 * 24));
   if (days === 1) return past ? "إمبارح" : "بكرة";
-  const label = days === 2 ? "يومين" : `${num(days)} أيام`;
+  const label = count(days, "day", "ar");
   return past ? `من ${label}` : `بعد ${label}`;
 }
 

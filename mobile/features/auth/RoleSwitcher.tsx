@@ -1,13 +1,13 @@
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Card, Text, Button, spacing } from "@/design";
+import { Card, Text, Button, spacing, useLocale } from "@/design";
 import { useAuth } from "./AuthProvider";
 import type { AppRole } from "./roles";
 
-const SPACE: Record<AppRole, { label: string; href: "/(customer)" | "/(business)" | "/(admin)" }> = {
-  customer: { label: "مساحة العميل", href: "/(customer)" },
-  business: { label: "إدارة نشاطك", href: "/(business)" },
-  admin: { label: "الإدارة", href: "/(admin)" },
+const SPACE: Record<AppRole, { ar: string; en: string; href: "/(customer)" | "/(business)" | "/(admin)" }> = {
+  customer: { ar: "مساحة العميل", en: "Customer space", href: "/(customer)" },
+  business: { ar: "إدارة نشاطك", en: "Manage your business", href: "/(business)" },
+  admin: { ar: "الإدارة", en: "Admin", href: "/(admin)" },
 };
 
 /**
@@ -18,19 +18,20 @@ const SPACE: Record<AppRole, { label: string; href: "/(customer)" | "/(business)
  */
 export function RoleSwitcher({ current }: { current: AppRole }) {
   const { roles } = useAuth();
+  const { lang } = useLocale();
   const others = roles.filter((r) => r !== current);
   if (others.length === 0) return null;
 
   return (
     <Card>
       <Text variant="label" tone="subtle">
-        تبديل المساحة
+        {lang === "ar" ? "تبديل المساحة" : "Switch space"}
       </Text>
       <View style={styles.row}>
         {others.map((role) => (
           <Button
             key={role}
-            label={SPACE[role].label}
+            label={SPACE[role][lang]}
             variant="outline"
             onPress={() => router.replace(SPACE[role].href)}
             style={styles.button}

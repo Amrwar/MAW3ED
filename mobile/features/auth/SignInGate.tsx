@@ -40,6 +40,7 @@ export function SignInGate({
 
   return (
     <Screen
+      testID="guest-gate"
       hero={
         <Text variant="display" tone="inverse" accessibilityRole="header">
           {title}

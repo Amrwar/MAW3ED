@@ -1,0 +1,18 @@
+# Arabic, everywhere a guest can go: Home, Search and its sheets, the
+# signed-out Bookings, Favorites and Account tabs, sign-in (customer and
+# business tabs, and the language switch there and back), a business
+# page, the first booking step, and Near me. Each screen shows its own
+# Arabic words (subflows/strings.js), its chrome holds no Latin letters,
+# and it is laid out right to left. Read-only.
+appId: net.maw3ed.app.staging
+name: Arabic on every main screen
+tags:
+  - i18n
+env:
+  APP_LANG: ar
+---
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: ar
+- runFlow: subflows/i18n-tour.yaml

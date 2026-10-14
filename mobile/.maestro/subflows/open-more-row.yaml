@@ -1,0 +1,32 @@
+# On the business More tab: open ROW (a testID) when this account may
+# see it, check the screen is TITLE, and come back. Rows a role cannot
+# use are not shown, and are skipped.
+appId: net.maw3ed.app.staging
+---
+- scrollUntilVisible:
+    element:
+      id: ${ROW}
+    direction: DOWN
+    timeout: 5000
+    optional: true
+    label: ${ROW} (shown only to roles that may use it)
+- runFlow:
+    when:
+      visible:
+        id: ${ROW}
+    commands:
+      - tapOn:
+          id: ${ROW}
+      - extendedWaitUntil:
+          visible:
+            id: screen-title
+            text: ${TITLE}
+          timeout: 20000
+          label: ${ROW} opens ${TITLE}
+      - takeScreenshot: biz-${ROW}-${output.lang}
+      - tapOn:
+          id: back
+      - extendedWaitUntil:
+          visible:
+            id: biz-tab-account
+          timeout: 10000

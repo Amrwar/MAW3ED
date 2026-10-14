@@ -65,6 +65,7 @@ import { KIND_WORDS, profileKind } from "@/features/profile/profile";
 import { duration, longDate, money, num, time } from "@/lib/format";
 import { keys } from "@/lib/query/keys";
 import type { PublicProfile } from "@/types/api";
+import { count, hoursSpan } from "@/lib/plural";
 
 /**
  * Booking, in the app — from a business's profile to a booking the
@@ -458,7 +459,7 @@ function Flow({
 
   const stepTitle: Record<Step, string> = {
     service: words.services[lang],
-    staff: kind === "clinic" ? T("اختار الدكتور", "Choose a doctor") : T("مع مين؟", "Choose who"),
+    staff: kind === "clinic" ? T("اختار الدكتور", "Choose a doctor") : T("مع مين؟", "Who with?"),
     branch: T("اختار الفرع", "Choose a branch"),
     resource: resourceTitle(resources[0]?.kind, lang),
     when: T("اليوم والميعاد", "Date & time"),
@@ -560,7 +561,7 @@ function Flow({
                 disabled={small}
                 icon={r.kind === "TABLE" ? "restaurant-outline" : r.kind === "ROOM" ? "business-outline" : "cube-outline"}
                 title={r.name}
-                subtitle={[r.area, r.capacity !== null ? T(`${num(r.capacity, lang)} أشخاص`, `Seats ${r.capacity}`) : null].filter(Boolean).join(" · ") || null}
+                subtitle={[r.area, r.capacity !== null ? T(`لحد ${count(r.capacity, "person", "ar")}`, `Seats ${r.capacity}`) : null].filter(Boolean).join(" · ") || null}
                 note={small ? T("مش هتكفي العدد ده", "Too small for your party") : null}
                 onPress={() => {
                   update({ resourceId: r.id });
@@ -679,9 +680,9 @@ function Flow({
           textContentType="name"
           error={errors.includes("name") ? T("اكتب اسمك (حرفين على الأقل)", "Enter your name (at least 2 letters)") : null}
         />
-        <View style={styles.phone} accessible accessibilityLabel={`${T("رقم الموبايل", "Phone")}: ${phone}`}>
+        <View style={styles.phone} accessible accessibilityLabel={`${T("رقم الموبايل", "Mobile number")}: ${phone}`}>
           <Text variant="label" tone="ink2">
-            {T("رقم الموبايل", "Phone")}
+            {T("رقم الموبايل", "Mobile number")}
           </Text>
           <Text variant="bodyBold" style={ltr}>
             +{phone.replace(/^\+/, "")}
@@ -716,7 +717,7 @@ function Flow({
               onChangeText={setCodeInput}
               autoCapitalize="characters"
               ltr
-              error={d.code && codeRejected ? (ar ? codeRejected : "This code can't be used") : null}
+              error={d.code && codeRejected ? (ar ? codeRejected : "That code can't be used") : null}
               hint={appliedCode && quote.data?.discount ? T(`اتطبق: ${fmt(quote.data.discount.amountCents)} خصم`, `Applied: ${fmt(quote.data.discount.amountCents)} off`) : undefined}
             />
           </View>
@@ -765,7 +766,7 @@ function Flow({
       : p.autoConfirm
         ? T("أكّد الحجز", "Confirm booking")
         : T("ابعت طلب الحجز", "Send booking request")
-    : T("التالي", "Continue");
+    : T("كمّل", "Continue");
 
   return (
     <View style={styles.page}>
@@ -926,7 +927,7 @@ function Picked({ p, d }: { p: PublicProfile; d: Draft }) {
     d.time ? time(d.time, lang) : null,
   ].filter(Boolean);
   return (
-    <View style={styles.picked}>
+    <View style={styles.picked} testID="booking-picked">
       {bits.map((b) => (
         <Badge key={b as string} tone="neutral" label={b as string} />
       ))}
@@ -1021,8 +1022,8 @@ function Summary({
         </Text>
         <Text variant="body" tone="ink2">
           {T(
-            `تقدر تلغي أو تغيّر ميعادك بنفسك لحد ${duration(p.policies.changeCutoffHours * 60, "ar")} قبل الميعاد.`,
-            `You can cancel or reschedule yourself up to ${p.policies.changeCutoffHours} hours before the appointment.`,
+            `تقدر تلغي أو تغيّر ميعادك بنفسك لحد ${hoursSpan(p.policies.changeCutoffHours, "ar")} قبل الميعاد.`,
+            `You can cancel or reschedule yourself up to ${hoursSpan(p.policies.changeCutoffHours, "en")} before the appointment.`,
           )}
         </Text>
         <Text variant="body" tone="ink2">
@@ -1039,7 +1040,7 @@ function Summary({
 
       <Card>
         <Row label={T("باسم", "Name")} value={d.name.trim()} />
-        {phone ? <Row label={T("الموبايل", "Phone")} value={`+${phone.replace(/^\+/, "")}`} ltrValue /> : null}
+        {phone ? <Row label={T("الموبايل", "Mobile number")} value={`+${phone.replace(/^\+/, "")}`} ltrValue /> : null}
         {d.email.trim() ? <Row label={T("الإيميل", "Email")} value={d.email.trim()} ltrValue /> : null}
         {d.notes.trim() ? <Row label={T("ملاحظات", "Notes")} value={d.notes.trim()} /> : null}
         <Button size="sm" variant="ghost" icon="create-outline" label={T("عدّل البيانات", "Edit details")} onPress={() => onEdit("details")} style={styles.edit} />

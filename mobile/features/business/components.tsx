@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Badge, Icon, Text, Touchable, colors, radius, spacing, useLocale } from "@/design";
+import { Badge, Icon, Text, Touchable, colors, radius, spacing, useLocale, joinLabel } from "@/design";
 import { BOOKING_STATUS_TONE, statusLabelFor } from "@/features/bookings/status";
 import { time } from "@/lib/format";
 import type { BookingStatus } from "./types";
@@ -60,7 +60,7 @@ export function BookingRow({
   return (
     <Touchable
       accessibilityRole="button"
-      accessibilityLabel={`${time(startTime, lang)}، ${customerName}، ${meta}، ${statusLabelFor(status, lang)}`}
+      accessibilityLabel={joinLabel(lang, time(startTime, lang), customerName, meta, statusLabelFor(status, lang))}
       onPress={() => openBooking(id)}
       style={[styles.row, highlight && styles.rowOn, dim && styles.rowDim]}
       testID="booking-row"

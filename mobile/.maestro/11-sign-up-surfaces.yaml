@@ -1,0 +1,23 @@
+# Every way into an account, in Arabic and then English: the sign-in
+# prompts, the customer tab (which is also sign-up), the country picker
+# (opens, searches, selects, closes), the number checked as typed (Send
+# code off for a short number, on for an Egyptian one — never tapped),
+# Terms and Privacy, and the business tab (form checked locally, never
+# sent; Forgot password and Create a business account open the website).
+# Sends no code, makes no account, signs nobody in.
+appId: net.maw3ed.app.staging
+name: Sign-up surfaces (nothing sent)
+tags:
+  - i18n
+  - auth
+---
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: ar
+- runFlow: subflows/sign-up-surfaces.yaml
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: en
+- runFlow: subflows/sign-up-surfaces.yaml

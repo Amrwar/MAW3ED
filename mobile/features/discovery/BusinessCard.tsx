@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { BusinessCard as Card, useLocale } from "@/design";
 import { time } from "@/lib/format";
 import type { NextSlot, OpenState } from "@/types/api";
+import { count } from "@/lib/plural";
 
 export interface BusinessCardData {
   slug: string;
@@ -25,11 +26,11 @@ export function nextFreeLabel(slot: NextSlot | null | undefined, lang: "ar" | "e
   if (!slot) return null;
   const at = time(slot.time, lang);
   if (lang === "en") {
-    const day = slot.dayOffset === 0 ? "today" : slot.dayOffset === 1 ? "tomorrow" : `in ${slot.dayOffset} days`;
+    const day = slot.dayOffset === 0 ? "today" : slot.dayOffset === 1 ? "tomorrow" : `in ${count(slot.dayOffset, "day", "en")}`;
     return `Next free ${day} ${at}`;
   }
-  const day = slot.dayOffset === 0 ? "النهارده" : slot.dayOffset === 1 ? "بكرة" : `بعد ${slot.dayOffset} أيام`;
-  return `أقرب موعد ${day} ${at}`;
+  const day = slot.dayOffset === 0 ? "النهارده" : slot.dayOffset === 1 ? "بكرة" : `بعد ${count(slot.dayOffset, "day", "ar")}`;
+  return `أقرب ميعاد ${day} ${at}`;
 }
 
 /**

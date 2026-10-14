@@ -1,5 +1,7 @@
 # Maestro workspace config: `maestro test .maestro` runs these, in this
 # order. Subflows (subflows/) are only ever run from inside a flow.
+# Tags: smoke (01-04, 07), i18n (09-11), deep (12-19), android (airplane
+# mode, permissions, Back/Home keys), auth (11), needs-credentials (05, 19).
 flows:
   - 01-launch-home.yaml
   - 02-search.yaml
@@ -9,6 +11,17 @@ flows:
   - 06-offline.yaml
   - 07-english.yaml
   - 08-nearby-denied.yaml
+  - 09-i18n-arabic.yaml
+  - 10-i18n-english.yaml
+  - 11-sign-up-surfaces.yaml
+  - 12-tabs-and-back.yaml
+  - 13-search-filters.yaml
+  - 14-business-page.yaml
+  - 15-booking-navigation.yaml
+  - 16-deep-links.yaml
+  - 17-background-relaunch.yaml
+  - 18-offline-launch.yaml
+  - 19-business-tour.yaml
 
 executionOrder:
   continueOnFailure: true
@@ -21,3 +34,14 @@ executionOrder:
     - 06-offline
     - 07-english
     - 08-nearby-denied
+    - 09-i18n-arabic
+    - 10-i18n-english
+    - 11-sign-up-surfaces
+    - 12-tabs-and-back
+    - 13-search-filters
+    - 14-business-page
+    - 15-booking-navigation
+    - 16-deep-links
+    - 17-background-relaunch
+    - 18-offline-launch
+    - 19-business-tour

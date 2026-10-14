@@ -71,6 +71,7 @@ export function PhoneField({
           onPress={() => setPicking(true)}
           disabled={!editable}
           style={styles.country}
+          testID="country-picker"
         >
           <Text variant="body">{flagOf(country.iso)}</Text>
           <Text variant="bodyBold">{isolateLtr(`+${country.dial}`)}</Text>
@@ -153,12 +154,14 @@ function CountrySheet({
         setQuery("");
         onClose();
       }}
-      title={ar ? "اختر الدولة" : "Choose your country"}
+      title={ar ? "اختار الدولة" : "Choose your country"}
+      testID="country-sheet"
     >
       <SearchField
         value={query}
         onChangeText={setQuery}
         placeholder={ar ? "ابحث باسم الدولة أو الكود" : "Search by country or code"}
+        testID="country-search"
       />
       <View accessibilityRole="radiogroup">
         {list.map((c) => {
@@ -174,6 +177,7 @@ function CountrySheet({
                 onSelect(c);
               }}
               style={[styles.option, isSelected && styles.optionSelected]}
+              testID="country-option"
             >
               <Text variant="heading">{flagOf(c.iso)}</Text>
               <Text variant="body" style={styles.optionName} numberOfLines={1}>

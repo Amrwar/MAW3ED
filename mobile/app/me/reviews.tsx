@@ -1,6 +1,6 @@
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Avatar, Card, Header, ListState, Screen, Text, colors, spacing, useLocale } from "@/design";
+import { Avatar, Card, Header, ListState, Screen, Text, colors, fill, joinLabel, spacing, useLocale } from "@/design";
 import { SignInGate } from "@/features/auth/SignInGate";
 import { useMyReviews } from "@/features/account/queries";
 import { Stars } from "@/features/booking/components";
@@ -21,7 +21,7 @@ export default function MyReviewsScreen() {
 }
 
 function Reviews() {
-  const { lang } = useLocale();
+  const { lang, t } = useLocale();
   const ar = lang === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
   const query = useMyReviews();
@@ -48,7 +48,7 @@ function Reviews() {
           onRetry={() => query.refetch()}
         >
           {reviews.map((r) => (
-            <Card key={r.id} onPress={() => router.push(`/business/${r.business.slug}`)} accessibilityLabel={`${r.business.nameAr}, ${r.rating}/5`}>
+            <Card key={r.id} onPress={() => router.push(`/business/${r.business.slug}`)} accessibilityLabel={joinLabel(lang, r.business.nameAr, fill(t("ratingOf"), { n: r.rating }))}>
               <View style={styles.head}>
                 <Avatar name={r.business.nameAr} uri={r.business.logoImage} size="sm" shape="rounded" />
                 <View style={styles.flex}>

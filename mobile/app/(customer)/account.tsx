@@ -82,7 +82,7 @@ function Account() {
           >
             <View style={styles.avatar}>
               <Text variant="title" style={styles.avatarText}>
-                {initials(data?.name ?? user?.name)}
+                {initials(data?.name ?? user?.name, lang)}
               </Text>
             </View>
             <View style={styles.flex}>
@@ -105,7 +105,7 @@ function Account() {
                   <Badge
                     label={
                       data.phoneVerified
-                        ? T("متأكد", "Verified")
+                        ? T("متأكَّد منه", "Verified")
                         : T("محتاج تأكيد", "Needs verifying")
                     }
                     tone={data.phoneVerified ? "ok" : "warn"}
@@ -252,9 +252,9 @@ function Account() {
 }
 
 /** Up to two letters from the name, for the avatar; a person icon's stand-in when there is none. */
-function initials(name: string | null | undefined): string {
+function initials(name: string | null | undefined, lang: "ar" | "en"): string {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "؟";
+  if (parts.length === 0) return lang === "ar" ? "؟" : "?";
   return parts
     .slice(0, 2)
     .map((p) => p[0])

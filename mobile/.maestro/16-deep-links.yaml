@@ -1,0 +1,117 @@
+# Links into the app (maw3ed://, the scheme of staging builds), each
+# landing on the right screen, warm and from a cold start, and never on
+# a crash or a blank screen: search, near me, favourites and bookings
+# (signed out: their sign-in prompt), a place that does not exist (says
+# so, and Back leaves), and a path the app does not know (Home).
+#
+# https://www.maw3ed.net/... links open the app only in production
+# builds (the Android intent filter is production-only, app.config.ts),
+# so on this staging build they would open the browser; they are not
+# tested here. A link to a real place needs its slug, which the app does
+# not show anywhere a test can read it, so the existing-place case is
+# covered by opening it from Home (03, 14) instead.
+appId: net.maw3ed.app.staging
+name: Deep links
+tags:
+  - deep
+---
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: ar
+
+- openLink: maw3ed://search
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+    label: maw3ed://search opens Search
+
+- openLink: maw3ed://nearby
+- extendedWaitUntil:
+    visible:
+      id: use-location
+    timeout: 15000
+    label: maw3ed://nearby opens Near me
+- tapOn:
+    id: back
+
+- openLink: maw3ed://account/favorites
+- extendedWaitUntil:
+    visible:
+      id: guest-gate
+    timeout: 15000
+    label: maw3ed://account/favorites opens Favorites (the sign-in prompt, signed out)
+- assertVisible:
+    id: gate-sign-in
+
+# A booking link with a malformed token goes to the bookings list.
+# (From Home, so the prompt below is the link's doing.)
+- tapOn:
+    id: tab-index
+- extendedWaitUntil:
+    visible:
+      id: home-search
+    timeout: 10000
+- openLink: maw3ed://booking/not-a-token
+- extendedWaitUntil:
+    visible:
+      id: guest-gate
+    timeout: 15000
+    label: A malformed booking link opens Bookings, not an error
+
+# A place that does not exist: a clear message and a way out.
+- openLink: maw3ed://company/zz-e2e-no-such-place
+- extendedWaitUntil:
+    visible:
+      id: business-missing
+    timeout: 20000
+    label: A link to a missing place says the place isn't available
+- assertVisible:
+    text: ${output.s.placeMissing}
+- takeScreenshot: 16-missing-place
+- tapOn:
+    id: back
+- extendedWaitUntil:
+    visible:
+      id: tab-index
+    timeout: 10000
+
+# A path the app has no screen for lands on Home. (From Search, so
+# Home showing is the link's doing.)
+- tapOn:
+    id: tab-search
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 10000
+- openLink: maw3ed://zz-no-such-page
+- extendedWaitUntil:
+    visible:
+      id: home-search
+    timeout: 15000
+    label: An unknown path opens Home
+
+# From a cold start.
+- stopApp
+- openLink: maw3ed://search
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 30000
+    label: A link opens Search from a cold start
+- takeScreenshot: 16-cold-search
+- stopApp
+- openLink: maw3ed://company/zz-e2e-no-such-place
+- extendedWaitUntil:
+    visible:
+      id: business-missing
+    timeout: 30000
+    label: A place link from a cold start
+- tapOn:
+    id: back
+- extendedWaitUntil:
+    visible:
+      id: tab-index
+    timeout: 15000
+    label: With nothing underneath, Back goes Home rather than out of the app

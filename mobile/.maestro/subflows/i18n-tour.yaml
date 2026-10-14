@@ -1,0 +1,344 @@
+# Every main screen a guest can reach, in one language (APP_LANG, set up
+# by start.yaml): its own words are that language's, the chrome holds no
+# word of the other, and the layout runs the right way. Read-only: opens
+# sheets and screens, chooses nothing that is saved, requests no code.
+#
+# Screenshots are named <screen>-<lang>, so the Arabic and English runs
+# (09, 10) sit side by side in the results.
+appId: net.maw3ed.app.staging
+---
+# ── Home ──
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: home-search, WORD: "${output.s.homeSearchLabel}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: home-sign-in, WORD: "${output.s.homeSignIn}" }
+- runFlow:
+    file: tab-label.yaml
+    env: { ID: tab-index, WORD: "${output.s.tabHome}" }
+- runFlow:
+    file: tab-label.yaml
+    env: { ID: tab-search, WORD: "${output.s.tabSearch}" }
+- runFlow:
+    file: tab-label.yaml
+    env: { ID: tab-bookings, WORD: "${output.s.tabBookings}" }
+- runFlow:
+    file: tab-label.yaml
+    env: { ID: tab-favorites, WORD: "${output.s.tabFavorites}" }
+- runFlow:
+    file: tab-label.yaml
+    env: { ID: tab-account, WORD: "${output.s.tabAccount}" }
+# The city button starts the row; Sign in ends it.
+- runFlow:
+    file: reading-order.yaml
+    env: { FIRST: city-picker, LAST: home-sign-in }
+# The first tab (Home) starts the bar.
+- runFlow:
+    file: reading-order.yaml
+    env: { FIRST: tab-index, LAST: tab-account }
+- takeScreenshot: home-${output.lang}
+- tapOn:
+    id: city-picker
+- extendedWaitUntil:
+    visible:
+      id: city-sheet
+    timeout: 5000
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: sheet-title, WORD: "${output.s.chooseCity}" }
+- tapOn:
+    id: sheet-close
+- extendedWaitUntil:
+    notVisible:
+      id: city-sheet
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      text: ${output.s.homeCategories}
+    direction: DOWN
+    timeout: 10000
+    label: The categories heading
+
+# ── Search ──
+- tapOn:
+    id: tab-search
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 20000
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: search-input, WORD: "${output.s.searchPlaceholder}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: open-filters, WORD: "${output.s.filters}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: open-sort, WORD: "${output.s.sortRecommended}" }
+- runFlow:
+    file: reading-order.yaml
+    env: { FIRST: open-filters, LAST: open-sort }
+- extendedWaitUntil:
+    visible:
+      id: "business-card|search-empty"
+    timeout: 20000
+- takeScreenshot: search-${output.lang}
+- tapOn:
+    id: open-filters
+- extendedWaitUntil:
+    visible:
+      id: filter-sheet
+    timeout: 5000
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: sheet-title, WORD: "${output.s.filters}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: apply-filters, WORD: "${output.s.showResults}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: clear-filters, WORD: "${output.s.clearAll}" }
+- takeScreenshot: filters-${output.lang}
+- tapOn:
+    id: sheet-close
+- extendedWaitUntil:
+    notVisible:
+      id: filter-sheet
+    timeout: 5000
+- tapOn:
+    id: open-sort
+- extendedWaitUntil:
+    visible:
+      id: sort-sheet
+    timeout: 5000
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: sheet-title, WORD: "${output.s.sortBy}" }
+- tapOn:
+    id: sheet-close
+
+# ── Bookings, Favorites and Account, signed out: a way in, in this language ──
+- tapOn:
+    id: tab-bookings
+- extendedWaitUntil:
+    visible:
+      id: guest-gate
+    timeout: 10000
+- assertVisible:
+    text: ${output.s.gateBookings}
+- assertVisible:
+    text: ${output.s.signInFirst}
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: gate-sign-in, WORD: "${output.s.gateSignIn}" }
+- takeScreenshot: guest-bookings-${output.lang}
+- tapOn:
+    id: tab-favorites
+- extendedWaitUntil:
+    visible:
+      text: ${output.s.gateFavorites}
+    timeout: 10000
+- assertVisible:
+    text: ${output.s.signInFirst}
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: gate-sign-in, WORD: "${output.s.gateSignIn}" }
+- tapOn:
+    id: tab-account
+- extendedWaitUntil:
+    visible:
+      text: ${output.s.gateAccount}
+    timeout: 10000
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: gate-sign-in, WORD: "${output.s.gateSignIn}" }
+- takeScreenshot: guest-account-${output.lang}
+# The prompt's button opens sign-in, in the same language.
+- tapOn:
+    id: gate-sign-in
+- extendedWaitUntil:
+    visible:
+      id: login-tab-customer
+    timeout: 10000
+- assertVisible:
+    id: login-submit
+    text: ${output.s.sendCode}
+    label: Sign-in opens on the customer tab, in this language
+- back
+- extendedWaitUntil:
+    visible:
+      id: guest-gate
+    timeout: 10000
+    label: Back from sign-in to the Account tab
+- tapOn:
+    id: tab-index
+- extendedWaitUntil:
+    visible:
+      id: home-sign-in
+    timeout: 10000
+
+# ── Sign-in: the customer tab ──
+- tapOn:
+    id: home-sign-in
+- extendedWaitUntil:
+    visible:
+      id: login-tab-customer
+    timeout: 10000
+- assertVisible:
+    id: login-submit
+    text: ${output.s.sendCode}
+    label: Sign-in opens on the customer tab, in this language
+- assertVisible:
+    text: ${output.s.mobileNumber}
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: login-tab-customer, WORD: "${output.s.customerTab}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: login-tab-business, WORD: "${output.s.businessTab}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: login-submit, WORD: "${output.s.sendCode}" }
+- assertVisible:
+    id: legal-note
+    text: "(?s).*${output.s.terms}.*${output.s.privacy}.*"
+    label: The terms note names both documents
+- runFlow:
+    file: reading-order.yaml
+    env: { FIRST: login-tab-customer, LAST: login-tab-business }
+- takeScreenshot: login-customer-${output.lang}
+
+# ── Sign-in: the business tab ──
+- tapOn:
+    id: login-tab-business
+- extendedWaitUntil:
+    visible:
+      text: ${output.s.businessSignIn}
+    timeout: 5000
+- assertVisible:
+    text: ${output.s.email}
+- assertVisible:
+    text: ${output.s.password}
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: forgot-password, WORD: "${output.s.forgotPassword}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: login-submit, WORD: "${output.s.signInButton}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: business-sign-up, WORD: "${output.s.createBusiness}" }
+- takeScreenshot: login-business-${output.lang}
+
+# ── The language switch, there and back, without a restart ──
+- tapOn:
+    id: lang-toggle
+- extendedWaitUntil:
+    visible:
+      text: ${output.other.businessSignIn}
+    timeout: 5000
+    label: The switch changes the screen's language at once
+- assertVisible:
+    id: login-submit
+    text: ${output.other.signInButton}
+- takeScreenshot: login-switched-from-${output.lang}
+- tapOn:
+    id: lang-toggle
+- extendedWaitUntil:
+    visible:
+      text: ${output.s.businessSignIn}
+    timeout: 5000
+    label: And back again
+- tapOn:
+    id: login-tab-customer
+- back
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 10000
+- runFlow:
+    file: tab-label.yaml
+    env: { ID: tab-index, WORD: "${output.s.tabHome}" }
+
+# ── A business page ──
+- runFlow: open-first-business.yaml
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: back, WORD: "${output.s.back}" }
+# Back starts the top bar, Share ends it.
+- runFlow:
+    file: reading-order.yaml
+    env: { FIRST: back, LAST: share-business }
+- takeScreenshot: business-${output.lang}
+- scrollUntilVisible:
+    element:
+      text: ${output.s.reviews}
+    direction: DOWN
+    timeout: 20000
+    label: The reviews section, titled in this language
+- scrollUntilVisible:
+    element:
+      text: ${output.s.bookingPolicy}
+    direction: DOWN
+    timeout: 20000
+    label: The booking policy section, titled in this language
+- takeScreenshot: business-lower-${output.lang}
+
+# ── The booking flow's first step ──
+- runFlow:
+    when:
+      visible:
+        id: book-button
+    commands:
+      - runFlow: open-booking.yaml
+      - runFlow:
+          file: chrome-words.yaml
+          env: { ID: back, WORD: "${output.s.back}" }
+      - runFlow:
+          file: chrome-words.yaml
+          env: { ID: booking-next, WORD: "${output.s.continue}" }
+      - runFlow:
+          file: reading-order.yaml
+          env: { FIRST: back, LAST: screen-title }
+      - takeScreenshot: booking-${output.lang}
+- runFlow:
+    file: leave-to.yaml
+    env: { TARGET: share-business }
+- back
+- extendedWaitUntil:
+    visible:
+      id: tab-index
+    timeout: 10000
+
+# ── Near me (location refused by start.yaml) ──
+- scrollUntilVisible:
+    element:
+      id: home-nearby
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: home-nearby
+- extendedWaitUntil:
+    visible:
+      id: use-location
+    timeout: 15000
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: screen-title, WORD: "${output.s.nearMe}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: use-location, WORD: "${output.s.useMyLocation}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: back, WORD: "${output.s.back}" }
+- runFlow:
+    file: reading-order.yaml
+    env: { FIRST: back, LAST: screen-title }
+- takeScreenshot: nearby-${output.lang}
+- tapOn:
+    id: back
+- extendedWaitUntil:
+    visible:
+      id: home-search
+    timeout: 10000

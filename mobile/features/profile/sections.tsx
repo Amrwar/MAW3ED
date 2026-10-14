@@ -7,6 +7,7 @@ import { duration, num, shortDate, time } from "@/lib/format";
 import type { BookingPolicies, DayHours, PublicProfile, PublicReview, PublicStaffMember } from "@/types/api";
 import { directionsUrl, pinDirectionsUrl, profilePins, telUrl, workingDays, type ProfileKind, type Seating } from "./profile";
 import { PlacesMap } from "@/features/location/PlacesMap";
+import { count, hoursSpan } from "@/lib/plural";
 
 /**
  * The pieces of a business profile. Each takes real data and renders
@@ -121,7 +122,7 @@ export function RatingBreakdown({ rating }: { rating: PublicProfile["rating"] })
           <Text variant="display">{num(rating.average, lang)}</Text>
           <Stars value={rating.average} />
           <Text variant="caption" tone="subtle" align="center">
-            {ar ? `${num(rating.count, lang)} تقييم` : `${num(rating.count, lang)} ${rating.count === 1 ? "review" : "reviews"}`}
+            {count(rating.count, "review", lang)}
           </Text>
         </View>
         <View style={styles.bars}>
@@ -169,7 +170,7 @@ export function ReviewItem({ review, action }: { review: PublicReview; action?: 
   const { lang } = useLocale();
   const ar = lang === "ar";
   return (
-    <Card>
+    <Card testID="review-item">
       <View style={styles.reviewHead}>
         <Avatar name={review.authorName} size="sm" />
         <View style={styles.flex}>
@@ -215,7 +216,7 @@ export function TeamStrip({ staff, onOpen }: { staff: PublicStaffMember[]; onOpe
         const name = (lang === "en" && m.nameEn) || m.nameAr;
         const next = nextFreeLabel(m.nextSlot, lang);
         return (
-          <Card key={m.id} onPress={() => onOpen(m)} style={styles.member} accessibilityLabel={[name, m.role, next].filter(Boolean).join(", ")}>
+          <Card key={m.id} onPress={() => onOpen(m)} style={styles.member} testID="staff-member" accessibilityLabel={[name, m.role, next].filter(Boolean).join(", ")}>
             <Avatar name={name} uri={m.photo} size="lg" />
             <Text variant="label" align="center" numberOfLines={2}>
               {name}
@@ -250,7 +251,7 @@ export function ProviderList({ staff, onOpen }: { staff: PublicStaffMember[]; on
         const next = nextFreeLabel(m.nextSlot, lang);
         const days = daysLabel(m.hours, lang);
         return (
-          <Card key={m.id} onPress={() => onOpen(m)} accessibilityLabel={[name, m.role, ...m.specialties, days, next].filter(Boolean).join(", ")}>
+          <Card key={m.id} onPress={() => onOpen(m)} testID="staff-member" accessibilityLabel={[name, m.role, ...m.specialties, days, next].filter(Boolean).join(", ")}>
             <View style={styles.provider}>
               <Avatar name={name} uri={m.photo} size="md" />
               <View style={[styles.flex, styles.providerText]}>
@@ -301,16 +302,16 @@ export function SeatingCard({ seating }: { seating: Seating }) {
       text:
         min === max
           ? ar
-            ? `ترابيزات لـ ${num(max, lang)} أشخاص`
+            ? `ترابيزات لـ ${count(max, "person", "ar")}`
             : `Tables for ${max}`
           : ar
-            ? `ترابيزات من ${num(min, lang)} لـ ${num(max, lang)} أشخاص`
+            ? `ترابيزات من ${num(min, lang)} لـ ${count(max, "person", "ar")}`
             : `Tables for ${min} to ${max} guests`,
     });
   }
   lines.push({
     icon: "restaurant-outline",
-    text: ar ? `${num(seating.count, lang)} ترابيزة بتتحجز` : `${seating.count} bookable ${seating.count === 1 ? "table" : "tables"}`,
+    text: ar ? `${count(seating.count, "table", "ar")} بتتحجز` : `${seating.count} bookable ${seating.count === 1 ? "table" : "tables"}`,
   });
   return (
     <Card>
@@ -394,6 +395,7 @@ export function LocationCard({
             icon="navigate-outline"
             variant="outline"
             onPress={() => onOpenUrl(directions)}
+            testID="directions"
             accessibilityHint={ar ? "بيفتح العنوان في الخرايط" : "Opens the address in Maps"}
           />
         ) : null}
@@ -467,7 +469,7 @@ export function PolicyList({ policies, autoConfirm }: { policies: BookingPolicie
     rows.push({
       icon: "time-outline",
       text: ar
-        ? `الحجز قبلها بـ ${duration(policies.minNoticeMinutes, lang)} على الأقل`
+        ? `لازم تحجز قبل الميعاد بـ ${duration(policies.minNoticeMinutes, lang)} على الأقل`
         : `Book at least ${duration(policies.minNoticeMinutes, lang)} ahead`,
     });
   }
@@ -482,8 +484,8 @@ export function PolicyList({ policies, autoConfirm }: { policies: BookingPolicie
   rows.push({
     icon: "calendar-outline",
     text: ar
-      ? `تقدر تلغي أو تغيّر ميعادك بنفسك لحد ${duration(policies.changeCutoffHours * 60, "ar")} قبله`
-      : `Cancel or reschedule yourself up to ${policies.changeCutoffHours} hours before`,
+      ? `تقدر تلغي أو تغيّر ميعادك بنفسك لحد ${hoursSpan(policies.changeCutoffHours, "ar")} قبله`
+      : `Cancel or reschedule yourself up to ${hoursSpan(policies.changeCutoffHours, "en")} before`,
   });
   return (
     <Card>
@@ -517,7 +519,7 @@ export function Glance({ p, kind }: { p: PublicProfile; kind: ProfileKind }) {
       {p.autoConfirm ? <Badge tone="info" icon="checkmark-done-outline" label={ar ? "تأكيد فوري" : "Instant confirmation"} /> : null}
       {p.acceptsOnlinePayment ? <Badge tone="neutral" icon="card-outline" label={ar ? "دفع أونلاين" : "Pay online"} /> : null}
       {kind === "dining" && p.branches.length > 1 ? (
-        <Badge tone="neutral" icon="business-outline" label={ar ? `${num(p.branches.length, lang)} فروع` : `${p.branches.length} branches`} />
+        <Badge tone="neutral" icon="business-outline" label={count(p.branches.length, "branch", lang)} />
       ) : null}
     </View>
   );
@@ -527,7 +529,7 @@ export function Glance({ p, kind }: { p: PublicProfile; kind: ProfileKind }) {
 export function PhotoTile({ uri, label, onPress, wide }: { uri: string; label: string; onPress: () => void; wide?: boolean }) {
   const { width } = useWindowDimensions();
   return (
-    <Touchable onPress={onPress} accessibilityRole="imagebutton" accessibilityLabel={label} style={wide ? styles.photoWide : styles.photo}>
+    <Touchable onPress={onPress} accessibilityRole="imagebutton" accessibilityLabel={label} testID="photo-tile" style={wide ? styles.photoWide : styles.photo}>
       <Image source={{ uri: sized(uri, wide ? width : width / 2) }} style={StyleSheet.absoluteFill} />
     </Touchable>
   );

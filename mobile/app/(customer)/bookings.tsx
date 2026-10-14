@@ -60,7 +60,7 @@ function MyBookings() {
             {T("حجوزاتي", "My bookings")}
           </Text>
           <Text variant="body" tone="inverseMuted">
-            {isUpcoming ? T("مواعيدك الجاية، الأقرب الأول.", "Your upcoming times, soonest first.") : T("كل اللي فات، تقدر تقيّمه.", "Everything past, ready to review.")}
+            {isUpcoming ? T("مواعيدك الجاية، الأقرب الأول.", "Your upcoming appointments, soonest first.") : T("كل اللي فات، تقدر تقيّمه.", "Everything past, ready to review.")}
           </Text>
           <View style={styles.tabs}>
             <Tabs
@@ -96,7 +96,7 @@ function MyBookings() {
           emptyBody={
             needsPhone
               ? T(
-                  "الحجوزات بتترّبط برقم موبايلك المتأكد منه. ضيفه من حسابك عشان تشوفها هنا.",
+                  "الحجوزات بتتربط برقم موبايلك المتأكد منه. ضيفه من حسابك عشان تشوفها هنا.",
                   "Bookings are linked to your verified phone number. Add one in your account to see them here.",
                 )
               : isUpcoming

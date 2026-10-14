@@ -69,15 +69,17 @@ export default function More() {
             icon="storefront-outline"
             label={T("صفحة النشاط", "Business profile")}
             href="/manage/profile"
+            testID="more-profile"
           />
           {access.can("staff.read") ? (
-            <Link icon="people-outline" label={T("الفريق", "Staff")} href="/manage/staff" />
+            <Link icon="people-outline" label={T("الفريق", "Staff")} href="/manage/staff" testID="more-staff" />
           ) : null}
           {access.can("services.read") ? (
             <Link
               icon="pricetags-outline"
               label={T("الخدمات", "Services")}
               href="/manage/services"
+              testID="more-services"
             />
           ) : null}
           {access.can("reports.read") ? (
@@ -85,6 +87,7 @@ export default function More() {
               icon="stats-chart-outline"
               label={T("التقارير", "Reports")}
               href="/manage/reports"
+              testID="more-reports"
             />
           ) : null}
           {/* Business notifications go to the owner; staff have none here. */}
@@ -93,6 +96,7 @@ export default function More() {
               icon="notifications-outline"
               label={T("الإشعارات", "Notifications")}
               href="/(business)/notifications"
+              testID="more-notifications"
               trailing={
                 unread > 0 ? (
                   <Badge label={T(`${num(unread, lang)} جديد`, `${unread} new`)} tone="jade" />
@@ -118,12 +122,14 @@ export default function More() {
               variant={ar ? "primary" : "outline"}
               label="العربية"
               onPress={() => setLang("ar")}
+              testID="lang-ar"
             />
             <Button
               size="sm"
               variant={!ar ? "primary" : "outline"}
               label="English"
               onPress={() => setLang("en")}
+              testID="lang-en"
             />
           </View>
         </Card>
@@ -131,7 +137,7 @@ export default function More() {
         {access.role === "OWNER" ? (
           <Text variant="caption" tone="subtle">
             {T(
-              "تعديل الخدمات والفريق والإعدادات والفلوس من لوحة التحكم على الموقع.",
+              "عدّل الخدمات والفريق والإعدادات والمدفوعات من لوحة التحكم على الموقع.",
               "Services, staff, settings and payments are edited on the web dashboard.",
             )}
           </Text>
@@ -142,11 +148,12 @@ export default function More() {
             icon="document-lock-outline"
             label={T("سياسة الخصوصية", "Privacy policy")}
             onPress={() => openExternal(PRIVACY_URL)}
+            testID="more-privacy"
             external
           />
           <Link
             icon="trash-outline"
-            label={T("احذف الحساب", "Delete account")}
+            label={T("حذف الحساب", "Delete account")}
             href="/manage/delete-account"
             last
           />
@@ -187,11 +194,13 @@ function Link({
   external,
   trailing,
   last,
+  testID,
 }: {
   icon: IconName;
   label: string;
   trailing?: ReactNode;
   last?: boolean;
+  testID?: string;
   /** Opens outside the app (a web page): an arrow out instead of a chevron. */
   external?: boolean;
 } & ({ href: Href; onPress?: never } | { href?: never; onPress: () => void })) {
@@ -201,6 +210,7 @@ function Link({
       accessibilityRole="link"
       accessibilityLabel={label}
       style={[styles.link, !last && styles.linkLine]}
+      testID={testID}
     >
       <View style={styles.linkIcon}>
         <Icon name={icon} color={colors.night} size="sm" />

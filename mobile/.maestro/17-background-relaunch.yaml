@@ -1,0 +1,113 @@
+# The app's life outside the screen: sent to the background (Home key)
+# and brought back, it is where it was — the same page, the same typed
+# search, the same booking step. Killed and opened again, Home shows
+# places straight away from what was saved, before the network answers.
+appId: net.maw3ed.app.staging
+name: Background, foreground, kill and relaunch
+tags:
+  - deep
+  - android
+---
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: ar
+
+# ── A business page survives the background ──
+- runFlow: subflows/open-first-business.yaml
+- scroll
+- pressKey: home
+- waitForAnimationToEnd:
+    timeout: 3000
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: share-business
+    timeout: 10000
+    label: Back from the background on the same business page
+- takeScreenshot: 17-business-resumed
+- tapOn:
+    id: back
+- extendedWaitUntil:
+    visible:
+      id: tab-index
+    timeout: 10000
+
+# ── A typed search survives the background ──
+- tapOn:
+    id: tab-search
+- tapOn:
+    id: search-input
+- inputText: zzzzqqq
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: search-empty
+    timeout: 20000
+- pressKey: home
+- waitForAnimationToEnd:
+    timeout: 3000
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: search-input
+      text: zzzzqqq
+    timeout: 10000
+    label: The search field still holds what was typed
+- assertVisible:
+    id: search-empty
+- tapOn:
+    id: search-input
+- eraseText: 10
+- hideKeyboard
+
+# ── A booking step survives the background ──
+- tapOn:
+    id: tab-index
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 10000
+- runFlow: subflows/open-first-business.yaml
+- runFlow: subflows/open-booking.yaml
+- pressKey: home
+- waitForAnimationToEnd:
+    timeout: 3000
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: booking-step-title
+    timeout: 10000
+    label: Back from the background on the same booking step
+- takeScreenshot: 17-booking-resumed
+- runFlow:
+    file: subflows/leave-to.yaml
+    env: { TARGET: share-business }
+- tapOn:
+    id: back
+
+# ── Killed and opened again: Home from what was saved ──
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: e2e-never-shown
+    timeout: 4000
+    optional: true
+    label: Pause while the places are saved (lib/query/persist.ts throttles writes)
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 8000
+    label: Home shows places within seconds of a cold start (from the saved copy)
+- takeScreenshot: 17-relaunched
+- assertVisible:
+    id: home-search

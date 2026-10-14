@@ -30,6 +30,7 @@ import type { BookingStatus } from "@/features/business/types";
 import { telUrl, whatsappUrl } from "@/features/profile/profile";
 import { ApiError } from "@/lib/api/errors";
 import { duration, longDate, money, num, time } from "@/lib/format";
+import { count } from "@/lib/plural";
 
 /**
  * One booking, for the business: everything about it, the customer to
@@ -42,9 +43,9 @@ import { duration, longDate, money, num, time } from "@/lib/format";
 
 const ACTION: Partial<Record<BookingStatus, { ar: string; en: string; icon: IconName; variant: ButtonVariant }>> = {
   CONFIRMED: { ar: "أكّد الحجز", en: "Confirm", icon: "checkmark-circle-outline", variant: "primary" },
-  ARRIVED: { ar: "العميل وصل", en: "Checked in", icon: "enter-outline", variant: "primary" },
-  IN_PROGRESS: { ar: "بدأ", en: "Start", icon: "play-outline", variant: "outline" },
-  COMPLETED: { ar: "خلص", en: "Complete", icon: "checkmark-done-outline", variant: "primary" },
+  ARRIVED: { ar: "العميل وصل", en: "Check in", icon: "enter-outline", variant: "primary" },
+  IN_PROGRESS: { ar: "ابدأ", en: "Start", icon: "play-outline", variant: "outline" },
+  COMPLETED: { ar: "خلّص", en: "Complete", icon: "checkmark-done-outline", variant: "primary" },
   NO_SHOW: { ar: "مجاش", en: "No-show", icon: "person-remove-outline", variant: "outline" },
 };
 
@@ -112,7 +113,7 @@ export default function ManageBooking() {
     b.staffMember ? { icon: "person-outline" as IconName, text: nameOf(lang, b.staffMember) ?? "" } : null,
     b.branch ? { icon: "location-outline" as IconName, text: nameOf(lang, b.branch) ?? "" } : null,
     b.resourceName ? { icon: "cube-outline" as IconName, text: b.resourceName } : null,
-    b.partySize ? { icon: "people-outline" as IconName, text: T(`${num(b.partySize, lang)} أشخاص`, `${b.partySize} people`) } : null,
+    b.partySize ? { icon: "people-outline" as IconName, text: count(b.partySize, "person", lang) } : null,
   ].filter(Boolean) as { icon: IconName; text: string }[];
 
   const hasFooter = main.length > 0 || canCancel || b.canReschedule;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Screen, Text, Card, ListState, colors, spacing, useLocale } from "@/design";
+import { Screen, Text, Card, ListState, colors, spacing, useLocale, joinLabel } from "@/design";
 import { SignInGate } from "@/features/auth/SignInGate";
 import { hrefFor } from "@/lib/links";
 import { track } from "@/lib/analytics";
@@ -89,7 +89,7 @@ function Feed() {
             <Card
               key={n.id}
               onPress={n.href ? () => open(n) : undefined}
-              accessibilityLabel={`${n.readAt ? "" : T("جديد: ", "New: ")}${n.title}${n.body ? `, ${n.body}` : ""}`}
+              accessibilityLabel={`${n.readAt ? "" : T("جديد: ", "New: ")}${joinLabel(lang, n.title, n.body)}`}
             >
               <View style={styles.item}>
                 {/* Unread is marked by a dot and by the word in the label, not by colour alone. */}

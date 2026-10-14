@@ -18,6 +18,7 @@ import {
   useLayout,
   useLocale,
   useToast,
+  joinLabel,
 } from "@/design";
 import { useBusinessAccess } from "@/features/business/access";
 import {
@@ -103,12 +104,12 @@ export default function Today() {
           <View style={styles.heroTop}>
             <View style={styles.flex}>
               <Text variant="label" tone="inverseMuted">
-                {who ? `${greeting}، ${who}` : greeting}
+                {who ? joinLabel(lang, greeting, who) : greeting}
               </Text>
               <Text variant="title" tone="inverse" accessibilityRole="header" numberOfLines={2}>
                 {o
                   ? nameOf(lang, { nameAr: o.business.nameAr, nameEn: o.business.nameEn })
-                  : T("النهاردة", "Today")}
+                  : T("النهارده", "Today")}
               </Text>
             </View>
             {access.role === "OWNER" ? (
@@ -160,12 +161,12 @@ export default function Today() {
               />
               <Stat
                 value={o.counts.pending}
-                label={T("مستني تأكيد", "awaiting confirmation")}
+                label={T("مستني تأكيد", "Awaiting confirmation")}
                 tone={o.counts.pending ? "warn" : "plain"}
               />
               <Stat
                 value={o.counts.cancelledRecent}
-                label={T("اتلغى آخر ٢٤ ساعة", "cancelled, last 24h")}
+                label={T("اتلغى في آخر ٢٤ ساعة", "Cancelled (last 24h)")}
                 tone={o.counts.cancelledRecent ? "danger" : "plain"}
               />
             </View>
@@ -203,7 +204,7 @@ export default function Today() {
             {/* ── Waiting on the business ── */}
             {o.pending.length > 0 ? (
               <View style={styles.section}>
-                <SectionHead title={T("مستني تأكيدك", "Waiting for you")} />
+                <SectionHead title={T("مستني تأكيدك", "Awaiting your confirmation")} />
                 {o.pending.map((p) => (
                   // The row opens the booking; Confirm sits beside it, not
                   // inside it — a button within a button is one control to
@@ -211,7 +212,7 @@ export default function Today() {
                   <Card key={p.id} padded={false} style={styles.pendingRow}>
                     <Touchable
                       accessibilityRole="button"
-                      accessibilityLabel={`${p.customerName}، ${shortDate(p.date, lang)} ${time(p.startTime, lang)}`}
+                      accessibilityLabel={joinLabel(lang, p.customerName, `${shortDate(p.date, lang)} ${time(p.startTime, lang)}`)}
                       onPress={() => openBooking(p.id)}
                       style={styles.pendingOpen}
                     >
@@ -239,7 +240,7 @@ export default function Today() {
             {/* ── Changed since yesterday ── */}
             {o.cancelled.length > 0 ? (
               <View style={styles.section}>
-                <SectionHead title={T("اتلغى مؤخراً", "Recently cancelled")} />
+                <SectionHead title={T("اتلغى مؤخرًا", "Recently cancelled")} />
                 {o.cancelled.map((c) => (
                   <Card
                     key={c.id}

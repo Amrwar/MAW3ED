@@ -35,7 +35,7 @@ export default function Profile() {
       updateUser(patch);
       finishSignIn();
     } catch (e) {
-      setError(messageFor(e));
+      setError(messageFor(e, lang, { "409": "That email is already used by another account." }));
     } finally {
       setBusy(false);
     }
@@ -51,7 +51,7 @@ export default function Profile() {
       }
     >
       <TextField
-        label={ar ? "الاسم" : "Full name"}
+        label={ar ? "الاسم" : "Name"}
         value={name}
         onChangeText={setName}
         autoComplete="name"
@@ -63,7 +63,7 @@ export default function Profile() {
         autoFocus
       />
       <TextField
-        label={ar ? "البريد الإلكتروني (اختياري)" : "Email (optional)"}
+        label={ar ? "الإيميل (اختياري)" : "Email (optional)"}
         hint={ar ? "لتأكيدات الحجز والتذكيرات." : "For booking confirmations and reminders."}
         value={email}
         onChangeText={setEmail}
@@ -75,7 +75,7 @@ export default function Profile() {
         icon="mail-outline"
         ltr
         editable={!busy}
-        error={!emailOk && email.length > 3 ? (ar ? "البريد الإلكتروني غير صحيح" : "That email doesn't look right") : error}
+        error={!emailOk && email.length > 3 ? (ar ? "الإيميل مش مظبوط" : "That email doesn't look right") : error}
         onSubmitEditing={save}
       />
       <Button

@@ -1,0 +1,259 @@
+# The ways into an account, in one language (APP_LANG; start.yaml has
+# run). A customer signs up by confirming a phone number on the sign-in
+# screen (the account is made with the first confirmed code); a business
+# signs up on the website.
+#
+# Nothing is sent: Send code is checked to turn on and off and is never
+# tapped, and the business form is never submitted. The fields are
+# emptied again before leaving.
+appId: net.maw3ed.app.staging
+---
+# ── Every entry point reaches sign-in, labelled in this language ──
+# From a signed-out tab's prompt.
+- tapOn:
+    id: tab-favorites
+- extendedWaitUntil:
+    visible:
+      id: gate-sign-in
+    timeout: 10000
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: gate-sign-in, WORD: "${output.s.gateSignIn}" }
+- tapOn:
+    id: gate-sign-in
+- extendedWaitUntil:
+    visible:
+      id: login-tab-customer
+    timeout: 10000
+- assertVisible:
+    id: login-submit
+    text: ${output.s.sendCode}
+    label: Sign-in opens on the customer tab, in this language
+- back
+- tapOn:
+    id: tab-index
+# From Home's own button.
+- extendedWaitUntil:
+    visible:
+      id: home-sign-in
+    timeout: 10000
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: home-sign-in, WORD: "${output.s.homeSignIn}" }
+- tapOn:
+    id: home-sign-in
+- extendedWaitUntil:
+    visible:
+      id: login-tab-customer
+    timeout: 10000
+# Signing up as a customer is this same screen: it says so.
+- assertVisible:
+    text: ${output.s.newHere}
+    label: The customer tab explains that confirming a number creates the account
+
+# ── The country picker: opens, searches, selects, closes ──
+- tapOn:
+    id: country-picker
+- extendedWaitUntil:
+    visible:
+      id: country-sheet
+    timeout: 5000
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: sheet-title, WORD: "${output.s.chooseCountry}" }
+- tapOn:
+    id: country-search
+- inputText: zzzz
+- extendedWaitUntil:
+    visible:
+      text: ${output.s.noCountry}
+    timeout: 5000
+    label: A search that matches nothing says so
+- eraseText: 10
+# Typed in Latin letters in both languages (Maestro cannot type Arabic on
+# Android); the list matches the English name and shows the Arabic one.
+- inputText: Egypt
+- extendedWaitUntil:
+    visible:
+      id: country-option
+      text: ${output.s.egyptOption}
+    timeout: 5000
+    label: Egypt is found, named in this language
+- takeScreenshot: country-search-${output.lang}
+- tapOn:
+    id: country-option
+    text: ${output.s.egyptOption}
+- extendedWaitUntil:
+    notVisible:
+      id: country-sheet
+    timeout: 5000
+    label: Choosing a country closes the list
+- assertVisible:
+    id: country-picker
+    text: ".*\\+20"
+    label: The number field now uses +20
+# Android Back closes the list too, without leaving sign-in.
+- tapOn:
+    id: country-picker
+- extendedWaitUntil:
+    visible:
+      id: country-sheet
+    timeout: 5000
+- pressKey: back
+- extendedWaitUntil:
+    notVisible:
+      id: country-sheet
+    timeout: 5000
+- assertVisible:
+    id: login-tab-customer
+
+# ── The number is checked as it is typed; Send code is never tapped ──
+- assertVisible:
+    id: login-submit
+    enabled: false
+    label: Send code starts off
+- tapOn:
+    id: login-phone
+- inputText: "12345"
+- hideKeyboard
+- assertVisible:
+    id: login-submit
+    enabled: false
+    label: Too short for an Egyptian mobile number, so Send code stays off
+- tapOn:
+    id: login-phone
+- eraseText: 20
+- inputText: "01012345678"
+- hideKeyboard
+- assertVisible:
+    id: login-submit
+    enabled: true
+    label: An Egyptian mobile number (010…) turns Send code on
+- takeScreenshot: phone-valid-${output.lang}
+- tapOn:
+    id: login-phone
+- eraseText: 20
+- hideKeyboard
+- assertVisible:
+    id: login-submit
+    enabled: false
+
+# ── Terms and Privacy open the website, and the app is still there after ──
+# The two links are spans inside one line of text. Android exposes them
+# as separate nodes in recent React Native versions; if this build does
+# not, the tap is skipped (optional) and only the wording is checked (09/10).
+- tapOn:
+    text: ${output.s.terms}
+    optional: true
+    label: Open the terms (a link inside the note)
+- runFlow:
+    when:
+      notVisible:
+        id: login-tab-customer
+    commands:
+      - takeScreenshot: terms-opened-${output.lang}
+      - launchApp:
+          stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: login-tab-customer
+    timeout: 15000
+    label: Back in the app, on sign-in
+- tapOn:
+    text: ${output.s.privacy}
+    optional: true
+    label: Open the privacy policy (a link inside the note)
+- runFlow:
+    when:
+      notVisible:
+        id: login-tab-customer
+    commands:
+      - takeScreenshot: privacy-opened-${output.lang}
+      - launchApp:
+          stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: login-tab-customer
+    timeout: 15000
+
+# ── Business tab: the form is checked here; it is never sent ──
+- tapOn:
+    id: login-tab-business
+- extendedWaitUntil:
+    visible:
+      id: login-email
+    timeout: 5000
+- assertVisible:
+    id: login-submit
+    enabled: false
+    label: Sign in starts off with the form empty
+- tapOn:
+    id: login-email
+- inputText: not-an-email
+- tapOn:
+    id: login-password
+- inputText: x
+- hideKeyboard
+- assertVisible:
+    id: login-submit
+    enabled: false
+    label: An address without @ keeps Sign in off
+- takeScreenshot: business-invalid-${output.lang}
+- tapOn:
+    id: login-email
+- eraseText: 30
+- inputText: e2e@example.com
+- hideKeyboard
+- assertVisible:
+    id: login-submit
+    enabled: true
+    label: A real-looking address and a password turn Sign in on (not tapped)
+- tapOn:
+    id: login-email
+- eraseText: 30
+- tapOn:
+    id: login-password
+- eraseText: 10
+- hideKeyboard
+- assertVisible:
+    id: login-submit
+    enabled: false
+
+# Forgot password and Create a business account open the website.
+- tapOn:
+    id: forgot-password
+- extendedWaitUntil:
+    notVisible:
+      id: forgot-password
+    timeout: 15000
+    label: The browser opens the website's password reset
+- takeScreenshot: forgot-password-${output.lang}
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: login-email
+    timeout: 15000
+    label: Back in the app, still on the business tab
+- tapOn:
+    id: business-sign-up
+- extendedWaitUntil:
+    notVisible:
+      id: business-sign-up
+    timeout: 15000
+    label: The browser opens the website's business sign-up
+- takeScreenshot: business-sign-up-${output.lang}
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: business-sign-up
+    timeout: 15000
+
+- tapOn:
+    id: login-tab-customer
+- back
+- extendedWaitUntil:
+    visible:
+      id: tab-index
+    timeout: 10000

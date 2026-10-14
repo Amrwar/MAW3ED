@@ -56,6 +56,7 @@ import { ServiceSheet, StaffSheet, type BookingChoice } from "@/features/profile
 import { ApiError } from "@/lib/api/errors";
 import { money, num } from "@/lib/format";
 import type { PublicProfile, PublicStaffMember } from "@/types/api";
+import { count } from "@/lib/plural";
 
 /**
  * One business.
@@ -112,10 +113,11 @@ export default function BusinessScreen() {
     return (
       <View style={[styles.page, styles.centre, { paddingTop: insets.top }]}>
         <View style={styles.topBar}>
-          <IconButton icon="chevron-back" label={ar ? "رجوع" : "Back"} onPress={back} variant="filled" />
+          <IconButton icon="chevron-back" label={ar ? "رجوع" : "Back"} onPress={back} variant="filled" testID="back" />
         </View>
         {missing ? (
           <EmptyState
+            testID="business-missing"
             icon="storefront-outline"
             title={ar ? "المكان ده مش متاح" : "This place isn't available"}
             body={ar ? "يمكن اتشال أو اتقفل. دوّر على مكان تاني." : "It may have been removed. Try searching for another."}
@@ -185,7 +187,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
 
   const share = async () => {
     const url = profileUrl(p.slug);
-    const message = T(`${name} على مواعيد: ${url}`, `${name} on Maw3ed: ${url}`);
+    const message = T(`${name} على موعد: ${url}`, `${name} on Maw3ed: ${url}`);
     try {
       if (Platform.OS === "web") {
         const nav = globalThis.navigator as Navigator | undefined;
@@ -222,6 +224,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
               price={s.price}
               currency={s.currency}
               onPress={() => setService({ s, staffId: null })}
+              testID="service-card"
             />
           ))}
         </Section>
@@ -254,7 +257,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
         title={T("صور", "Photos")}
         action={
           photos.length > 1 ? (
-            <Button size="sm" variant="ghost" label={T(`الكل (${num(photos.length, lang)})`, `All (${photos.length})`)} onPress={() => setViewerAt(0)} />
+            <Button size="sm" variant="ghost" label={T(`الكل (${num(photos.length, lang)})`, `All (${photos.length})`)} onPress={() => setViewerAt(0)} testID="all-photos" />
           ) : undefined
         }
       >
@@ -280,7 +283,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
 
   const hoursSection =
     p.hours.length > 0 ? (
-      <Section key="hours" title={T("مواعيد العمل", "Opening hours")}>
+      <Section key="hours" title={T("مواعيد الشغل", "Opening hours")}>
         <HoursTable hours={p.hours} />
       </Section>
     ) : null;
@@ -403,7 +406,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
         style={[styles.topBar, styles.floating, { paddingTop: insets.top + spacing.sm }, compact && styles.topBarSolid]}
         pointerEvents="box-none"
       >
-        <IconButton icon="chevron-back" label={T("رجوع", "Back")} onPress={onBack} variant="filled" />
+        <IconButton icon="chevron-back" label={T("رجوع", "Back")} onPress={onBack} variant="filled" testID="back" />
         {compact ? (
           <Text variant="bodyBold" numberOfLines={1} style={[styles.flex, styles.compactTitle]}>
             {name}
@@ -441,7 +444,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
                 <Text variant="caption" tone="subtle">
                   {p.services.length === 1 && p.services[0]
                     ? (!ar && p.services[0].nameEn) || p.services[0].nameAr
-                    : T(`${num(p.services.length, lang)} خدمات`, `${p.services.length} services`)}
+                    : count(p.services.length, "service", lang)}
                 </Text>
               )}
             </View>
@@ -495,7 +498,7 @@ function Cover({ uri, count, onOpen }: { uri: string | null; count: number; onOp
     );
   if (!onOpen) return image;
   return (
-    <Touchable onPress={onOpen} accessibilityRole="button" accessibilityLabel={lang === "ar" ? `شوف الصور (${num(count, lang)})` : `View photos (${count})`}>
+    <Touchable onPress={onOpen} testID="cover-photos" accessibilityRole="button" accessibilityLabel={lang === "ar" ? `شوف الصور (${num(count, lang)})` : `View photos (${count})`}>
       {image}
       <View style={styles.photoCount}>
         <Icon name="images-outline" color={colors.inverse} size="sm" />

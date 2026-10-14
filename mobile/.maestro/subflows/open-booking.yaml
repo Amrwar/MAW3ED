@@ -1,0 +1,24 @@
+# On a business page: Book, through the service sheet when the place has
+# one service, to the first step of the booking flow. Fails if the first
+# business on Home has nothing to book (staging data).
+appId: net.maw3ed.app.staging
+---
+- assertVisible:
+    id: book-button
+    label: The first business on Home has services to book (staging data)
+- tapOn:
+    id: book-button
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    when:
+      visible:
+        id: service-sheet-book
+    commands:
+      - tapOn:
+          id: service-sheet-book
+- extendedWaitUntil:
+    visible:
+      id: booking-step-title
+    timeout: 20000
+    label: The booking flow opens

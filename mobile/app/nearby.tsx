@@ -33,6 +33,7 @@ import { track } from "@/lib/analytics";
 import { num } from "@/lib/format";
 import { keys } from "@/lib/query/keys";
 import type { NearbyResponse } from "@/types/api";
+import { count } from "@/lib/plural";
 
 /**
  * Places near me.
@@ -119,6 +120,7 @@ export default function NearbyScreen() {
             variant="filled"
             label={T("رجوع", "Back")}
             onPress={() => router.back()}
+            testID="back"
           />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
             {RADII.map((r) => (
@@ -131,7 +133,7 @@ export default function NearbyScreen() {
           <View style={styles.handle} />
           <View style={styles.sheetHead}>
             <Text variant="title" accessibilityRole="header">
-              {T(`${num(list.length, lang)} مكان قريب`, `${list.length} places nearby`)}
+              {T(`${count(list.length, "place", "ar")} جنبك`, `${count(list.length, "place", "en")} nearby`)}
             </Text>
             <Button variant="ghost" size="sm" icon="locate-outline" label={T("حدّث", "Refresh")} onPress={findMe} />
           </View>

@@ -1,0 +1,50 @@
+# A fresh start: the app with no saved state, signed out, location
+# refused, on Home in the language APP_LANG ("ar", the default, or "en"),
+# and the app's own words for that language loaded into output.s
+# (strings.js). Every new flow (09+) begins here.
+#
+#   - runFlow:
+#       file: subflows/start.yaml
+#       env:
+#         APP_LANG: en
+appId: net.maw3ed.app.staging
+---
+- runScript:
+    file: strings.js
+    env:
+      APP_LANG: "${typeof APP_LANG === 'undefined' ? 'ar' : APP_LANG}"
+- launchApp:
+    clearState: true
+    permissions:
+      location: deny
+- extendedWaitUntil:
+    visible:
+      id: home-sign-in
+    timeout: 30000
+    label: Home opens, signed out
+# Arabic is what a fresh install shows; English is chosen on the sign-in
+# screen, the one place a guest can choose it.
+- runFlow:
+    when:
+      true: ${output.lang === 'en'}
+    commands:
+      - tapOn:
+          id: home-sign-in
+      - extendedWaitUntil:
+          visible:
+            id: lang-toggle
+          timeout: 10000
+      - tapOn:
+          id: lang-toggle
+      - extendedWaitUntil:
+          visible:
+            id: login-submit
+            text: ${output.s.sendCode}
+          timeout: 5000
+          label: The sign-in screen is in English
+      - back
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 30000
+    label: Home lists at least one business (staging returned none?)

@@ -1,0 +1,15 @@
+# A bottom tab (ID) is labelled WORD, and nothing in it is in the other
+# language's script. The tab button itself has no label on Android, so
+# the text is looked for inside it. Needs strings.js loaded.
+appId: net.maw3ed.app.staging
+---
+- assertVisible:
+    text: ${WORD}
+    childOf:
+      id: ${ID}
+    label: "Tab ${ID} reads '${WORD}'"
+- assertNotVisible:
+    text: ${output.s.otherScript}
+    childOf:
+      id: ${ID}
+    label: "Tab ${ID} has no word of the other language"

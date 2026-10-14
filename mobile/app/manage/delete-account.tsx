@@ -37,7 +37,7 @@ export default function DeleteBusinessAccountScreen() {
             </View>
             <Text variant="body" tone="ink2">
               {T(
-                "قبل ما نحذف الحساب لازم نقفل النشاط الأول: الحجوزات الجاية، المدفوعات، وسجلات العملاء. ده بيتعمل مع فريق الدعم عشان محدش يتأذي.",
+                "قبل ما نحذف الحساب لازم نقفل النشاط الأول: الحجوزات الجاية، المدفوعات، وسجلات العملاء. ده بيتعمل مع فريق الدعم عشان محدش يتأذّى.",
                 "Before the account can be deleted the business has to be closed: upcoming bookings, payments and customers' records. Support does this with you so no one is left with a booking that won't happen.",
               )}
             </Text>

@@ -23,6 +23,7 @@ export function Sheet({
   title,
   children,
   footer,
+  testID,
 }: {
   open: boolean;
   onClose: () => void;
@@ -30,6 +31,8 @@ export function Sheet({
   children: ReactNode;
   /** Actions pinned under the content, always in reach. */
   footer?: ReactNode;
+  /** For the end-to-end tests (.maestro/): the panel gets this id. */
+  testID?: string;
 }) {
   const insets = useSafeAreaInsets();
   const { isTablet, height } = useLayout();
@@ -57,6 +60,7 @@ export function Sheet({
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={t("close")} accessibilityRole="button" />
         <Animated.View
           accessibilityViewIsModal
+          testID={testID}
           style={[
             styles.panel,
             isTablet ? styles.tablet : styles.phone,
@@ -66,10 +70,10 @@ export function Sheet({
         >
           {!isTablet ? <View style={styles.grabber} /> : null}
           <View style={styles.head}>
-            <Text variant="heading" accessibilityRole="header" style={styles.title} numberOfLines={2}>
+            <Text variant="heading" accessibilityRole="header" style={styles.title} numberOfLines={2} testID="sheet-title">
               {title}
             </Text>
-            <IconButton icon="close" label={t("close")} onPress={onClose} />
+            <IconButton icon="close" label={t("close")} onPress={onClose} testID="sheet-close" />
           </View>
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             {children}

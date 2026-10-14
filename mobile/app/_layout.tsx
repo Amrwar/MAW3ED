@@ -22,7 +22,7 @@ import { keys } from "@/lib/query/keys";
 import { hrefFor } from "@/lib/links";
 import { screen, track } from "@/lib/analytics";
 import { initSentry, reportError, withSentry } from "@/lib/sentry";
-import { Text, Button, LocaleProvider, OfflineBanner, ToastProvider, colors, spacing } from "@/design";
+import { Text, Button, LocaleProvider, OfflineBanner, ToastProvider, colors, spacing, useLocale } from "@/design";
 
 /**
  * The root of the app.
@@ -201,6 +201,10 @@ function useNotificationRouting(ready: boolean) {
  * could, to Sentry explicitly.
  */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  // Rendered in place of the root layout, so outside its LocaleProvider:
+  // useLocale answers with the language the app was last showing.
+  const { lang } = useLocale();
+  const T = (a: string, e: string) => (lang === "ar" ? a : e);
   useEffect(() => {
     track("render_error", { message: error.message.slice(0, 120) });
     reportError(error);
@@ -209,12 +213,12 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return (
     <View style={styles.crash}>
       <Text variant="heading" style={styles.center}>
-        حصل خطأ غير متوقع
+        {T("حصل خطأ غير متوقع", "Something unexpected went wrong")}
       </Text>
       <Text variant="body" tone="subtle" style={styles.center}>
-        جرّب تاني. لو المشكلة فضلت، اقفل التطبيق وافتحه من جديد.
+        {T("جرّب تاني. لو المشكلة فضلت، اقفل التطبيق وافتحه من جديد.", "Try again. If it keeps happening, close the app and open it again.")}
       </Text>
-      <Button label="حاول تاني" onPress={retry} style={styles.retry} />
+      <Button label={T("حاول تاني", "Try again")} onPress={retry} style={styles.retry} />
     </View>
   );
 }

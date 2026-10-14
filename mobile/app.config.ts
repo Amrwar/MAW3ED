@@ -217,7 +217,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       // Foreground "when in use" only — the app never asks for "always".
       "expo-location",
       {
-        locationWhenInUsePermission: "مواعيد بيستخدم موقعك لما تطلب الأماكن القريبة منك بس، ومبيحفظهوش.",
+        locationWhenInUsePermission: "موعد بيستخدم موقعك بس لما تطلب الأماكن القريبة منك، ومش بيحفظه.",
         isIosBackgroundLocationEnabled: false,
         isAndroidBackgroundLocationEnabled: false,
       },

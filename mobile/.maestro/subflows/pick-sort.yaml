@@ -1,0 +1,39 @@
+# On Search: open the sort sheet, choose SORT (a value of SORTS in
+# features/discovery/searchState.ts), and wait for the list to answer.
+# Reopening the sheet then shows that order marked as chosen.
+appId: net.maw3ed.app.staging
+---
+- tapOn:
+    id: open-sort
+- extendedWaitUntil:
+    visible:
+      id: sort-sheet
+    timeout: 5000
+- tapOn:
+    id: sort-option-${SORT}
+- extendedWaitUntil:
+    notVisible:
+      id: sort-sheet
+    timeout: 5000
+    label: Choosing an order closes the sheet
+- extendedWaitUntil:
+    visible:
+      id: "business-card|search-empty"
+    timeout: 20000
+    label: Results (or none) in the order ${SORT}
+- tapOn:
+    id: open-sort
+- extendedWaitUntil:
+    visible:
+      id: sort-sheet
+    timeout: 5000
+- assertVisible:
+    id: sort-option-${SORT}
+    selected: true
+    label: ${SORT} is marked as the chosen order
+- tapOn:
+    id: sheet-close
+- extendedWaitUntil:
+    notVisible:
+      id: sort-sheet
+    timeout: 5000

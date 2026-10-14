@@ -6,6 +6,7 @@ import { BookingRow, SectionHead } from "@/features/business/components";
 import { useBusinessCustomer } from "@/features/business/queries";
 import { telUrl, whatsappUrl } from "@/features/profile/profile";
 import { money, num, shortDate } from "@/lib/format";
+import { unitFor } from "@/lib/plural";
 
 /**
  * A customer's file, for the owner and managers: how to reach them, what
@@ -46,19 +47,19 @@ export default function ManageCustomer() {
           <Card style={styles.stat}>
             <Text variant="title">{num(c.bookingCount, lang)}</Text>
             <Text variant="caption" tone="subtle">
-              {T("حجز", "bookings")}
+              {unitFor(c.bookingCount, "booking", lang)}
             </Text>
           </Card>
           <Card style={styles.stat}>
             <Text variant="title">{money(c.totalSpend, c.currency, lang) ?? "—"}</Text>
             <Text variant="caption" tone="subtle">
-              {T("إجمالي الصرف", "total spend")}
+              {T("إجمالي الصرف", "Total spend")}
             </Text>
           </Card>
           <Card style={styles.stat}>
             <Text variant="title">{c.lastBookingDate ? shortDate(c.lastBookingDate, lang) : "—"}</Text>
             <Text variant="caption" tone="subtle">
-              {T("آخر زيارة", "last visit")}
+              {T("آخر زيارة", "Last visit")}
             </Text>
           </Card>
         </View>

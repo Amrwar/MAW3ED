@@ -1,0 +1,11 @@
+# From Home: the first business card, and wait for its page.
+appId: net.maw3ed.app.staging
+---
+- tapOn:
+    id: business-card
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: share-business
+    timeout: 20000
+    label: The business page loads

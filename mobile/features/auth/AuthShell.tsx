@@ -32,7 +32,7 @@ export function AuthShell({
     <Screen dark edges="both">
       <View style={styles.top}>
         {onBack ? (
-          <IconButton icon="chevron-back" label={lang === "ar" ? "رجوع" : "Back"} onPress={onBack} variant="night" />
+          <IconButton icon="chevron-back" label={lang === "ar" ? "رجوع" : "Back"} onPress={onBack} variant="night" testID="back" />
         ) : (
           <View />
         )}
@@ -56,7 +56,7 @@ export function AuthShell({
           resizeMode="contain"
           accessibilityIgnoresInvertColors
           accessible
-          accessibilityLabel={lang === "ar" ? "مواعيد" : "Maw3ed"}
+          accessibilityLabel={lang === "ar" ? "موعد" : "Maw3ed"}
         />
       </View>
 
@@ -90,14 +90,14 @@ export function LegalNote() {
   const { lang } = useLocale();
   const ar = lang === "ar";
   return (
-    <Text variant="caption" tone="inverseMuted" align="center">
-      {ar ? "بالمتابعة إنت موافق على " : "By continuing you agree to the "}
-      <Text variant="caption" tone="inverse" onPress={() => openSite("/terms")} accessibilityRole="link">
-        {ar ? "الشروط والأحكام" : "Terms"}
+    <Text variant="caption" tone="inverseMuted" align="center" testID="legal-note">
+      {ar ? "بالمتابعة، إنت موافق على " : "By continuing you agree to the "}
+      <Text variant="caption" tone="inverse" onPress={() => openSite("/terms")} accessibilityRole="link" testID="terms-link">
+        {ar ? "الشروط والأحكام" : "Terms & Conditions"}
       </Text>
       {ar ? " و" : " and "}
-      <Text variant="caption" tone="inverse" onPress={() => openSite("/privacy")} accessibilityRole="link">
-        {ar ? "سياسة الخصوصية" : "Privacy Policy"}
+      <Text variant="caption" tone="inverse" onPress={() => openSite("/privacy")} accessibilityRole="link" testID="privacy-link">
+        {ar ? "سياسة الخصوصية" : "Privacy policy"}
       </Text>
       .
     </Text>

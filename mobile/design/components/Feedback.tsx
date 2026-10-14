@@ -131,7 +131,7 @@ export function EmptyState({
  * 4xx sends the same wrong request again.
  */
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const { t } = useLocale();
+  const { t, lang } = useLocale();
   // No error at all while offline is a request waiting for the connection
   // (paused, not failed — lib/query/connectivity.ts): say so, rather than
   // a generic "something went wrong".
@@ -147,7 +147,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
         {offline ? t("offlineTitle") : t("errorTitle")}
       </Text>
       <Text variant="body" tone="muted" align="center">
-        {offline ? t("offlineBody") : error ? messageFor(error) : t("errorBody")}
+        {offline ? t("offlineBody") : error ? messageFor(error, lang) : t("errorBody")}
       </Text>
       {onRetry && retryable ? (
         <View style={styles.stateAction}>
