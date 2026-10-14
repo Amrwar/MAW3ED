@@ -19,6 +19,7 @@ import {
   TextField,
   TimeSlots,
   colors,
+  elevation,
   ltr,
   spacing,
   useLocale,
@@ -747,10 +748,13 @@ function Flow({
     : T("التالي", "Continue");
 
   return (
-    <View style={[styles.page, { paddingTop: insets.top }]}>
-      <Header title={name} subtitle={stepTitle[step]} back onBack={back} />
-      <View style={styles.progressWrap}>
-        <Progress index={index} total={steps.length} label={stepTitle[step]} />
+    <View style={styles.page}>
+      {/* Bold Cairo: the flow opens on a night header with gold progress. */}
+      <View style={[styles.top, { paddingTop: insets.top }]}>
+        <Header title={name} subtitle={stepTitle[step]} back onBack={back} tone="night" />
+        <View style={styles.progressWrap}>
+          <Progress index={index} total={steps.length} label={stepTitle[step]} night />
+        </View>
       </View>
 
       <ScrollView
@@ -791,6 +795,10 @@ function Flow({
               {depositCents
                 ? T("هتدفع العربون في صفحة دفع آمنة. الحجز بيتأكد بعد ما الدفع يتم.", "You'll pay on a secure payment page. The booking is confirmed once payment succeeds.")
                 : T("مش هتدفع حاجة دلوقتي.", "Nothing is charged now.")}
+            </Text>
+          ) : step === "when" && d.date && d.time ? (
+            <Text variant="bodyBold" align="center">
+              {`${longDate(d.date, lang)} · ${time(d.time, lang)}`}
             </Text>
           ) : step === "when" && !ready && d.date ? (
             <Text variant="caption" tone="subtle" align="center">
@@ -1015,7 +1023,14 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.ground },
   flex: { flex: 1 },
   body: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.lg },
-  progressWrap: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
+  top: {
+    backgroundColor: colors.night,
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.lg,
+    borderBottomStartRadius: 28,
+    borderBottomEndRadius: 28,
+  },
+  progressWrap: { paddingHorizontal: spacing.sm },
   list: { gap: spacing.sm },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   picked: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
@@ -1033,7 +1048,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopStartRadius: 24,
+    borderTopEndRadius: 24,
+    ...elevation.raised,
   },
 });

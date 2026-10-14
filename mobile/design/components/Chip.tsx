@@ -43,7 +43,7 @@ export function Chip({
         {label}
       </Text>
       {count !== undefined ? (
-        <Text variant="tiny" style={{ color: selected ? colors.jadeSoft : colors.subtle }}>
+        <Text variant="tiny" style={{ color: selected ? colors.gold : colors.subtle }}>
           {count}
         </Text>
       ) : null}
@@ -62,6 +62,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md + 2,
     overflow: "hidden",
   },
-  on: { backgroundColor: colors.jade, borderColor: colors.jade },
+  on: { backgroundColor: colors.night, borderColor: colors.night },
   off: { backgroundColor: colors.surface, borderColor: colors.line2 },
 });
