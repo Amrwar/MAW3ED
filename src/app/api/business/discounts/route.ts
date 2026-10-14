@@ -75,7 +75,7 @@ export async function GET() {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[discounts GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 
@@ -139,6 +139,6 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[discounts POST]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

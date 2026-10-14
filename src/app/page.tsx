@@ -26,7 +26,7 @@ import { getSiteUrl } from "@/lib/env";
 import { translations, type Lang } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "موعد | MAW3ED — احجز موعدك في ثوانٍ",
+  title: "موعد | Maw3ed — احجز ميعادك في ثواني",
   description:
     "ابحث عن عيادة، صالون، جيم أو مركز قريب منك في مصر، شوف المواعيد المتاحة واحجز في ثوانٍ. الحجز مجاني والتأكيد فوري.",
   alternates: { canonical: canonicalFor("/") },

@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, MessageSquare, Star, Trash2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { num } from "@/lib/fmt";
+import { arCount, enCount, num } from "@/lib/fmt";
 import type { PublicReview, RatingSummary } from "@/lib/reviews";
+
+const REVIEW = { one: "تقييم واحد", two: "تقييمين", few: "تقييمات", many: "تقييم" };
 
 /**
  * The business's own view of its reviews.
@@ -62,7 +64,7 @@ export default function ReviewsClient({
             ))}
           </div>
           <p className="num m-0 mt-1.5 text-[0.75rem] text-[var(--color-subtle)]">
-            {ar ? `${num(summary.count, lang)} تقييم` : `${num(summary.count, lang)} reviews`}
+            {ar ? arCount(summary.count, REVIEW) : enCount(summary.count, "review")}
           </p>
         </div>
 

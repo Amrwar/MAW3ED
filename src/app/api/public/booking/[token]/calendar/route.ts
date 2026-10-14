@@ -88,6 +88,6 @@ export async function GET(_req: Request, { params }: Params) {
     });
   } catch (e) {
     log.error("[booking calendar]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

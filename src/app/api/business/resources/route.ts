@@ -39,7 +39,7 @@ export async function GET() {
     return ok({ resources });
   } catch (e) {
     log.error("[resources GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 

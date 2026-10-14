@@ -10,6 +10,9 @@ import { getCategoryBySlug, getPublishedBusinesses } from "@/lib/data";
 import { MIN_BUSINESSES, getLandingCategories, prerenderHints } from "@/lib/seo/landing";
 import { buildMetadata } from "@/lib/seo/meta";
 import { db } from "@/lib/db";
+import { arCount } from "@/lib/fmt";
+
+const BIZ = { one: "نشاط واحد", two: "نشاطين", few: "أنشطة", many: "نشاط" };
 
 type Props = { params: Promise<{ category: string }> };
 
@@ -39,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description:
       count === 1
         ? `نشاط واحد في ${category.nameAr} بيستقبل حجوزات أونلاين على موعد.`
-        : `${count} من ${category.nameAr} بيستقبلوا حجوزات أونلاين على موعد. قارن واحجز في ثوانٍ.`,
+        : `${arCount(count, BIZ)} في ${category.nameAr} بيستقبلوا حجوزات أونلاين على موعد. قارن واحجز في ثوانٍ.`,
     path: `/categories/${category.slug}`,
   });
 }
@@ -93,7 +96,7 @@ export default async function CategoryPage({ params }: Props) {
                 </h1>
                 <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
                   {businesses.length > 0
-                    ? `${businesses.length} عمل متاح للحجز الآن`
+                    ? `${arCount(businesses.length, BIZ)} ${businesses.length === 2 ? "متاحين" : businesses.length > 2 && businesses.length <= 10 ? "متاحة" : "متاح"} للحجز دلوقتي`
                     : "لا توجد أعمال حتى الآن"}
                 </p>
               </div>
@@ -162,7 +165,7 @@ function EmptyState({ categoryName, categoryIcon }: { categoryName: string; cate
         لا توجد أعمال في {categoryName} حتى الآن
       </h2>
       <p className="text-sm text-[var(--color-text-muted)] mb-6 max-w-xs mx-auto">
-        كن أول من يضيف عملك في هذا التخصص ويبدأ باستقبال حجوزات على الفور.
+        كن أول من يضيف نشاطه في الفئة دي ويبدأ يستقبل حجوزات على طول.
       </p>
       <div className="flex items-center justify-center gap-3">
         <Link href="/signup" className="btn btn-primary btn-sm">

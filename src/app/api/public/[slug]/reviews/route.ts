@@ -48,6 +48,6 @@ export async function GET(req: Request, { params }: Params) {
     );
   } catch (e) {
     log.error("[public reviews]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

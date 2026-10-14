@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import type { Service } from "@/types/service";
 import type { PublicResource, PublicStaff } from "./CompanyContent";
-import { money, duration as fmtDuration } from "@/lib/fmt";
+import { money, duration as fmtDuration, arCount } from "@/lib/fmt";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   chooseResourceLabel,
@@ -41,6 +41,13 @@ interface BookingWidgetProps {
   /** Only for the summary's preview; the server decides what is owed. */
   depositEnabled?:     boolean;
   depositPercent?:     number;
+  /**
+   * Customers can cancel or move a booking themselves until this many
+   * hours before it (CUTOFF_HOURS in lib/bookings/self-service.ts, which
+   * the cancel and reschedule routes enforce). Passed in so the policy
+   * shown here is the one the API applies.
+   */
+  changeCutoffHours?:  number;
 }
 
 export type PublicBranch = {
@@ -62,7 +69,10 @@ type BookingConfirmation = {
   totalPrice:    number;
   depositAmount: number | null;
   currency:      string;
+  status?:       string;
 };
+
+type Lang = "ar" | "en";
 
 /**
  * The steps, in the order a person answers them.
@@ -99,7 +109,16 @@ const AR_DAYS = [
 // prefix of AR_DAYS: three characters of "الأحد" and "الأربعاء" are
 // both "الأ", so Sunday and Wednesday looked the same.
 const AR_DAYS_SHORT = [
-  "أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت",
+  "أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت",
+];
+
+const EN_DAYS = [
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+];
+const EN_DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const EN_MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
 const AR_MONTHS = [
@@ -122,16 +141,17 @@ function newIdempotencyKey(): string {
 }
 
 /** What the server said about an empty day, in words. */
-function emptyDayMessage(reason: string | null): string {
+function emptyDayMessage(reason: string | null, lang: Lang): string {
+  const en = lang === "en";
   switch (reason) {
-    case "business-closed": return "المكان مقفول في اليوم ده";
-    case "staff-off":       return "مقدّم الخدمة ده مش متاح في اليوم ده";
-    case "holiday":         return "أجازة رسمية";
-    case "vacation":        return "مقدّم الخدمة في أجازة";
-    case "same-day-cutoff": return "قفل الحجز لليوم";
-    case "too-far-ahead":   return "الحجز مش مفتوح للتاريخ ده لسه";
-    case "past":            return "اليوم ده عدّى";
-    default:                return "لا توجد مواعيد متاحة";
+    case "business-closed": return en ? "Closed on this day" : "المكان مقفول في اليوم ده";
+    case "staff-off":       return en ? "This provider isn't available on this day" : "مقدّم الخدمة ده مش متاح في اليوم ده";
+    case "holiday":         return en ? "Public holiday" : "إجازة رسمية";
+    case "vacation":        return en ? "The provider is on leave" : "مقدّم الخدمة في إجازة";
+    case "same-day-cutoff": return en ? "Booking for today has closed" : "الحجز قفل للنهارده";
+    case "too-far-ahead":   return en ? "Booking isn't open for this date yet" : "الحجز مش مفتوح للتاريخ ده لسه";
+    case "past":            return en ? "This day has passed" : "اليوم ده عدّى";
+    default:                return en ? "No available times" : "مفيش مواعيد متاحة";
   }
 }
 
@@ -140,20 +160,23 @@ function StepButtons({
   onBack,
   onNext,
   nextEnabled,
-  nextLabel = "التالي",
+  nextLabel,
+  lang,
 }: {
   onBack: () => void;
   onNext: () => void;
   nextEnabled: boolean;
   nextLabel?: string;
+  lang: Lang;
 }) {
+  const en = lang === "en";
   return (
     <div className="flex gap-2 mt-5">
       <button
         onClick={onBack}
         className="flex-1 py-3.5 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-muted)] font-bold text-sm flex items-center justify-center gap-1 transition-all"
       >
-        <ChevronRight size={15} aria-hidden="true" /> رجوع
+        <ChevronRight size={15} aria-hidden="true" className={en ? "rotate-180" : undefined} /> {en ? "Back" : "رجوع"}
       </button>
       <button
         disabled={!nextEnabled}
@@ -164,7 +187,7 @@ function StepButtons({
             : "bg-[var(--color-surface-3)] text-[var(--color-faint)] cursor-not-allowed"
         }`}
       >
-        {nextLabel} <span className="text-base leading-none" aria-hidden="true">←</span>
+        {nextLabel ?? (en ? "Next" : "التالي")} <span className="text-base leading-none" aria-hidden="true">{en ? "→" : "←"}</span>
       </button>
     </div>
   );
@@ -197,18 +220,41 @@ function getUpcomingDays(count: number) {
     return {
       iso:     day.toISOString().slice(0, 10),
       dayAr:   AR_DAYS_SHORT[day.getUTCDay()],
+      dayEn:   EN_DAYS_SHORT[day.getUTCDay()],
       dayNum:  day.getUTCDate(),
       monthAr: AR_MONTHS[day.getUTCMonth()],
+      monthEn: EN_MONTHS[day.getUTCMonth()],
       dow:     day.getUTCDay(),
     };
   });
 }
 
-function formatDateAr(iso: string): string {
+function formatDateAr(iso: string, lang: Lang = "ar"): string {
   const [y, m, d] = iso.split("-").map(Number);
   // UTC, to match how the strip above builds its days.
   const date = new Date(Date.UTC(y, m - 1, d));
+  if (lang === "en") return `${EN_DAYS[date.getUTCDay()]}, ${d} ${EN_MONTHS[m - 1]} ${y}`;
   return `${AR_DAYS[date.getUTCDay()]}، ${d} ${AR_MONTHS[m - 1]} ${y}`;
+}
+
+/** "ساعتين" / "3 ساعات" / "2 hours". */
+function hoursPhrase(h: number, lang: Lang): string {
+  if (lang === "en") return `${h} ${h === 1 ? "hour" : "hours"}`;
+  return arCount(h, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" });
+}
+
+/**
+ * The self-service rule, as the cancel and reschedule routes apply it.
+ * Nothing refunds a deposit when a customer cancels (refunds are a
+ * manual support action), so the text does not promise one.
+ */
+export function changePolicyText(hours: number, lang: Lang, deposit: boolean): string {
+  if (lang === "en") {
+    return `You can cancel or change this booking yourself, from its booking page, up to ${hoursPhrase(hours, lang)} before the appointment.` +
+      (deposit ? " A deposit is not refunded automatically when you cancel; contact the business about it." : "");
+  }
+  return `تقدر تلغي أو تغيّر ميعاد الحجز بنفسك من صفحة الحجز لحد ${hoursPhrase(hours, lang)} قبل الميعاد.` +
+    (deposit ? " العربون مش بيترجع تلقائيًا لو لغيت، كلّم المكان بخصوصه." : "");
 }
 
 // ─── Sub-components ───────────────────────────────────────
@@ -246,7 +292,7 @@ function SummaryRow({
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 mb-4" dir="rtl">
+    <div className="flex items-center gap-2 mb-4">
       <div className="w-1 h-5 bg-[var(--color-jade)] rounded-full" />
       <h3 className="text-base font-bold text-[var(--color-jade)]">{children}</h3>
     </div>
@@ -277,6 +323,7 @@ export default function BookingWidget({
   source,
   depositEnabled = false,
   depositPercent = 0,
+  changeCutoffHours = 2,
 }: BookingWidgetProps) {
   // Ids for the details step. The four fields had visible <label>s with
   // no htmlFor and no id to point at, and a label that neither wraps
@@ -294,6 +341,10 @@ export default function BookingWidget({
   const [quoting, setQuoting] = useState(false);
 
   const { t, lang } = useLanguage();
+  const en = lang === "en";
+  /** Arabic or English, by the page's language. */
+  const tr = (ar: string, enText: string) => (en ? enText : ar);
+  const staffName = (s: PublicStaff) => (en && s.nameEn ? s.nameEn : s.nameAr);
   // What this business schedules on, read off what it has rather than
   // off what it is. Both, either or neither is a valid answer.
   const hasStaff     = staffMembers.length > 0;
@@ -322,14 +373,14 @@ export default function BookingWidget({
   ];
 
   const stepLabel = (s: Step): string => {
-    if (s === "service")  return "الخدمة";
+    if (s === "service")  return tr("الخدمة", "Service");
     if (s === "provider") return providerLabel(lang);
     if (s === "resource") return resourceLabel(resourceKind, lang, true);
-    if (s === "branch")   return "الفرع";
-    if (s === "date")     return "اليوم";
-    if (s === "time")     return "الوقت";
-    if (s === "summary")  return "المراجعة";
-    return "بياناتك";
+    if (s === "branch")   return tr("الفرع", "Branch");
+    if (s === "date")     return tr("اليوم", "Day");
+    if (s === "time")     return tr("الوقت", "Time");
+    if (s === "summary")  return tr("المراجعة", "Review");
+    return tr("بياناتك", "Details");
   };
 
   const [step, setStep] = useState<Step>("service");
@@ -433,20 +484,21 @@ export default function BookingWidget({
         setSlotsReason(data.reason ?? null);
         setSlotsLoading(false);
       })
-      .catch(() => { setSlotsError("تعذّر تحميل المواعيد، حاول مرة أخرى"); setSlotsLoading(false); });
+      .catch(() => { setSlotsError(tr("معرفناش نحمّل المواعيد، جرّب تاني", "Couldn't load the times. Try again.")); setSlotsLoading(false); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, selectedService, selectedStaff, selectedResource, selectedBranch, slug]);
 
   function validate(): boolean {
     const errs: typeof errors = {};
     if (name.trim().length < 2)
-      errs.name = "أدخل اسمك الكامل";
+      errs.name = tr("اكتب اسمك بالكامل", "Enter your full name");
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 8)
-      errs.phone = "أدخل رقم الهاتف";
+      errs.phone = tr("اكتب رقم موبايلك", "Enter your mobile number");
     else if (digits.length > 15)
-      errs.phone = "رقم الهاتف غير صحيح";
+      errs.phone = tr("رقم الموبايل ده مش صحيح", "That mobile number isn't valid");
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-      errs.email = "البريد الإلكتروني غير صحيح";
+      errs.email = tr("الإيميل ده مش صحيح", "That email isn't valid");
     setErrors(errs);
     return !errs.name && !errs.phone && !errs.email;
   }
@@ -491,7 +543,7 @@ export default function BookingWidget({
 
       const data = await res.json();
       if (!res.ok) {
-        setSubmitError(data.error ?? "حدث خطأ أثناء الحجز");
+        setSubmitError(data.error ?? tr("حصلت مشكلة في الحجز، جرّب تاني", "Something went wrong with the booking. Try again."));
         return;
       }
 
@@ -503,7 +555,7 @@ export default function BookingWidget({
       setConfirmation(data.booking);
       setStep("done");
     } catch {
-      setSubmitError("تعذّر الاتصال بالخادم، تحقق من الإنترنت وحاول مرة أخرى");
+      setSubmitError(tr("معرفناش نوصل للسيرفر، اتأكد من النت وجرّب تاني", "Couldn't reach the server. Check your connection and try again."));
     } finally {
       setSubmitting(false);
     }
@@ -539,6 +591,10 @@ export default function BookingWidget({
     depositEnabled && depositPercent > 0 && selectedService && selectedService.price > 0
       ? Math.round((selectedService.price * depositPercent) / 100)
       : null;
+
+  const partyLabel = en
+    ? `${partySize} ${partySize === 1 ? "person" : "people"}`
+    : arCount(partySize, { one: "شخص واحد", two: "شخصين", few: "أشخاص", many: "شخص" });
 
   // For barbershop: filter staff to those who offer the selected service
   const availableStaff = selectedService
@@ -589,7 +645,7 @@ export default function BookingWidget({
   return (
     <div
       className="overflow-hidden rounded-[var(--radius-xl)] bg-white"
-      dir="rtl"
+      dir={en ? "ltr" : "rtl"}
       style={{
         boxShadow:  "0 4px 32px rgba(17,32,28,0.10), 0 1px 8px rgba(17,32,28,0.06)",
         border:     "1px solid var(--color-line)",
@@ -602,7 +658,7 @@ export default function BookingWidget({
         style={{ background: "var(--color-night)" }}
       >
         <div>
-          <h2 className="text-white text-xl font-bold leading-tight">احجز موعدك</h2>
+          <h2 className="text-white text-xl font-bold leading-tight">{tr("احجز ميعادك", "Book an appointment")}</h2>
           <p className="text-[var(--color-jade-line)] text-sm mt-0.5">{businessName}</p>
         </div>
         <div className="w-11 h-11 rounded-[var(--radius-md)] flex items-center justify-center bg-white/20 shrink-0">
@@ -645,11 +701,11 @@ export default function BookingWidget({
         {step === "service" && (
           <div>
             <SectionTitle>
-              {businessType === "RESTAURANT" ? "اختر نوع الجلسة" : "اختر الخدمة"}
+              {businessType === "RESTAURANT" ? tr("اختار نوع الجلسة", "Choose a seating") : tr("اختار الخدمة", "Choose a service")}
             </SectionTitle>
 
             {services.length === 0 ? (
-              <p className="text-sm text-[var(--color-subtle)] text-center py-6">لا توجد خدمات متاحة حاليًا</p>
+              <p className="text-sm text-[var(--color-subtle)] text-center py-6">{tr("مفيش خدمات متاحة دلوقتي", "No services available right now")}</p>
             ) : (
               <div className="space-y-3">
                 {services.map((service) => {
@@ -712,7 +768,7 @@ export default function BookingWidget({
                 selectedService ? "bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)]" : "bg-[var(--color-surface-3)] text-[var(--color-faint)] cursor-not-allowed"
               }`}
             >
-              التالي <span className="text-lg leading-none">←</span>
+              {tr("التالي", "Next")} <span className="text-lg leading-none" aria-hidden="true">{en ? "→" : "←"}</span>
             </button>
           </div>
         )}
@@ -720,11 +776,11 @@ export default function BookingWidget({
         {/* ═══ STEP: provider ═══ */}
         {step === "provider" && (
           <div>
-            <SectionTitle>اختر {providerLabel(lang)}</SectionTitle>
+            <SectionTitle>{tr(`اختار ${providerLabel(lang)}`, `Choose a ${providerLabel(lang).toLowerCase()}`)}</SectionTitle>
 
             {availableStaff.length === 0 ? (
               <p className="text-sm text-[var(--color-subtle)] text-center py-6">
-                لا يوجد {providerLabel(lang)} متاح للخدمة دي
+                {tr(`مفيش ${providerLabel(lang)} متاح للخدمة دي`, `No ${providerLabel(lang).toLowerCase()} available for this service`)}
               </p>
             ) : (
               <div className="space-y-3">
@@ -749,10 +805,10 @@ export default function BookingWidget({
                     </div>
                     <div>
                       <p className="text-[15px] font-bold text-[var(--color-ink)]">
-                        أي {providerLabel(lang)} متاح
+                        {tr(`أي ${providerLabel(lang)} متاح`, `Any available ${providerLabel(lang).toLowerCase()}`)}
                       </p>
                       <p className="text-xs text-[var(--color-subtle)] mt-0.5">
-                        سيتم تخصيص أقرب موعد
+                        {tr("أي حد فاضي في الوقت اللي هتختاره", "Whoever is free at the time you pick")}
                       </p>
                     </div>
                   </div>
@@ -780,12 +836,12 @@ export default function BookingWidget({
                         <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-jade-soft)] flex items-center justify-center shrink-0 overflow-hidden">
                           {staff.photo
                             // eslint-disable-next-line @next/next/no-img-element
-                            ? <img src={staff.photo} alt={staff.nameAr} className="w-full h-full object-cover" />
-                            : <span className="text-xl font-bold text-[var(--color-jade)]">{staff.nameAr.charAt(0)}</span>
+                            ? <img src={staff.photo} alt={staffName(staff)} className="w-full h-full object-cover" />
+                            : <span className="text-xl font-bold text-[var(--color-jade)]">{staffName(staff).charAt(0)}</span>
                           }
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[15px] font-bold text-[var(--color-ink)]">{staff.nameAr}</p>
+                          <p className="text-[15px] font-bold text-[var(--color-ink)]">{staffName(staff)}</p>
                           {staff.role && (
                             <p className="text-xs text-[var(--color-subtle)] mt-0.5">{staff.role}</p>
                           )}
@@ -797,7 +853,7 @@ export default function BookingWidget({
               </div>
             )}
 
-            <StepButtons onBack={goBack} onNext={goNext} nextEnabled />
+            <StepButtons lang={lang} onBack={goBack} onNext={goNext} nextEnabled />
           </div>
         )}
 
@@ -811,12 +867,12 @@ export default function BookingWidget({
               <div className="mb-4 flex items-center justify-between rounded-[var(--radius-lg)] border border-[var(--color-line-2)] px-4 py-3 bg-[var(--color-surface-2)]">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink-2)]">
                   <Users size={15} className="text-[var(--color-jade)]" />
-                  عدد الأشخاص
+                  {tr("عدد الأشخاص", "Party size")}
                 </div>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    aria-label="أقل"
+                    aria-label={tr("أقل", "Fewer")}
                     onClick={() => setPartySize((n) => Math.max(1, n - 1))}
                     className="w-9 h-9 rounded-full bg-white border border-[var(--color-line-2)] text-[var(--color-muted)] font-bold flex items-center justify-center hover:border-[var(--color-jade)] transition-all text-lg leading-none"
                   >−</button>
@@ -825,7 +881,7 @@ export default function BookingWidget({
                   </span>
                   <button
                     type="button"
-                    aria-label="أكثر"
+                    aria-label={tr("أكتر", "More")}
                     onClick={() => setPartySize((n) => Math.min(50, n + 1))}
                     className="w-9 h-9 rounded-full bg-white border border-[var(--color-line-2)] text-[var(--color-muted)] font-bold flex items-center justify-center hover:border-[var(--color-jade)] transition-all text-lg leading-none"
                   >+</button>
@@ -835,7 +891,7 @@ export default function BookingWidget({
 
             {resources.length === 0 ? (
               <p className="text-sm text-[var(--color-subtle)] text-center py-6">
-                لا توجد {resourceLabel(resourceKind, lang)} متاحة حاليًا
+                {tr(`مفيش ${resourceLabel(resourceKind, lang)} متاحة دلوقتي`, `No ${resourceLabel(resourceKind, lang).toLowerCase()} available right now`)}
               </p>
             ) : (
               <div className="space-y-3">
@@ -887,7 +943,7 @@ export default function BookingWidget({
                               <Users size={12} /> {resource.capacity}
                             </p>
                             {tooSmall && (
-                              <p className="text-[10px] text-[var(--color-danger)] mt-0.5">صغيرة</p>
+                              <p className="text-[10px] text-[var(--color-danger)] mt-0.5">{tr("صغيرة", "Too small")}</p>
                             )}
                           </div>
                         )}
@@ -907,7 +963,7 @@ export default function BookingWidget({
               without one would offer times when every room is already
               taken and fail at the last step instead of the first.
             */}
-            <StepButtons onBack={goBack} onNext={goNext} nextEnabled={!!selectedResource} />
+            <StepButtons lang={lang} onBack={goBack} onNext={goNext} nextEnabled={!!selectedResource} />
           </div>
         )}
 
@@ -915,7 +971,7 @@ export default function BookingWidget({
         {/* ═══ STEP: branch ═══ */}
         {step === "branch" && (
           <div>
-            <SectionTitle>اختر الفرع</SectionTitle>
+            <SectionTitle>{tr("اختار الفرع", "Choose a branch")}</SectionTitle>
             <div className="flex flex-col gap-2">
               {branches.map((b) => {
                 const selected = selectedBranch?.id === b.id;
@@ -940,6 +996,7 @@ export default function BookingWidget({
             </div>
 
             <StepButtons
+              lang={lang}
               onBack={goBack}
               onNext={goNext}
               nextEnabled={!!selectedBranch}
@@ -950,7 +1007,7 @@ export default function BookingWidget({
         {/* ═══ STEP: date ═══ */}
         {step === "date" && (
           <div>
-            <SectionTitle>اختر اليوم</SectionTitle>
+            <SectionTitle>{tr("اختار اليوم", "Choose a day")}</SectionTitle>
 
             <div
               ref={scrollRef}
@@ -966,7 +1023,7 @@ export default function BookingWidget({
                     disabled={disabled}
                     onClick={() => setSelectedDate(d.iso)}
                     aria-pressed={selected}
-                    aria-label={formatDateAr(d.iso)}
+                    aria-label={formatDateAr(d.iso, lang)}
                     className={`flex flex-col items-center py-2.5 px-2 rounded-[var(--radius-md)] text-xs shrink-0 min-w-[3.25rem] transition-all ${
                       disabled
                         ? "opacity-30 cursor-not-allowed bg-[var(--color-surface-3)] text-[var(--color-faint)]"
@@ -975,9 +1032,9 @@ export default function BookingWidget({
                         : "bg-[var(--color-surface-3)] hover:bg-[var(--color-line)] text-[var(--color-ink-2)]"
                     }`}
                   >
-                    <span className="text-[0.6875rem] opacity-80">{d.dayAr}</span>
+                    <span className="text-[0.6875rem] opacity-80">{en ? d.dayEn : d.dayAr}</span>
                     <span className="font-bold text-sm mt-0.5">{d.dayNum}</span>
-                    <span className="text-[0.6875rem] mt-0.5 opacity-80">{d.monthAr}</span>
+                    <span className="text-[0.6875rem] mt-0.5 opacity-80">{en ? d.monthEn : d.monthAr}</span>
                   </button>
                 );
               })}
@@ -985,11 +1042,11 @@ export default function BookingWidget({
 
             {!selectedDate && (
               <p className="text-xs text-[var(--color-subtle)] mt-4 text-center">
-                اختر يومًا للمتابعة
+                {tr("اختار يوم عشان تكمّل", "Pick a day to continue")}
               </p>
             )}
 
-            <StepButtons onBack={goBack} onNext={goNext} nextEnabled={!!selectedDate} />
+            <StepButtons lang={lang} onBack={goBack} onNext={goNext} nextEnabled={!!selectedDate} />
           </div>
         )}
 
@@ -997,13 +1054,13 @@ export default function BookingWidget({
         {step === "time" && (
           <div>
             <SectionTitle>
-              اختر الوقت{selectedDate ? ` — ${formatDateAr(selectedDate)}` : ""}
+              {tr("اختار الوقت", "Choose a time")}{selectedDate ? ` — ${formatDateAr(selectedDate, lang)}` : ""}
             </SectionTitle>
 
             {slotsLoading && (
               <div className="flex items-center justify-center py-8 gap-2">
                 <Loader2 size={20} className="animate-spin text-[var(--color-jade)]" />
-                <span className="text-sm text-[var(--color-subtle)]">جارٍ التحميل…</span>
+                <span className="text-sm text-[var(--color-subtle)]">{tr("جارٍ التحميل…", "Loading…")}</span>
               </div>
             )}
 
@@ -1016,8 +1073,8 @@ export default function BookingWidget({
                 <CalendarDays size={28} className="mx-auto text-[var(--color-faint)] mb-2" />
                 {/* The server says why the day is empty rather than
                     leaving a blank grid to be puzzled over. */}
-                <p className="text-sm text-[var(--color-subtle)]">{emptyDayMessage(slotsReason)}</p>
-                <p className="text-xs text-[var(--color-subtle)] mt-1">اختر يومًا آخر</p>
+                <p className="text-sm text-[var(--color-subtle)]">{emptyDayMessage(slotsReason, lang)}</p>
+                <p className="text-xs text-[var(--color-subtle)] mt-1">{tr("اختار يوم تاني", "Pick another day")}</p>
               </div>
             )}
 
@@ -1041,7 +1098,7 @@ export default function BookingWidget({
               </div>
             )}
 
-            <StepButtons onBack={goBack} onNext={goNext} nextEnabled={!!selectedTime} />
+            <StepButtons lang={lang} onBack={goBack} onNext={goNext} nextEnabled={!!selectedTime} />
           </div>
         )}
 
@@ -1050,9 +1107,9 @@ export default function BookingWidget({
           <div>
             {/* Mini summary */}
             <div className="rounded-[var(--radius-lg)] px-4 py-3 mb-5 space-y-1.5" style={{ background: "rgba(14,127,94,0.06)", border: "1px solid rgba(14,127,94,0.14)" }}>
-              <SummaryRow label={businessType === "RESTAURANT" ? "الجلسة" : "الخدمة"} value={selectedService?.nameAr ?? ""} />
+              <SummaryRow label={businessType === "RESTAURANT" ? tr("الجلسة", "Seating") : tr("الخدمة", "Service")} value={selectedService?.nameAr ?? ""} />
               {selectedStaff && (
-                <SummaryRow label={providerLabel(lang)} value={selectedStaff.nameAr} />
+                <SummaryRow label={providerLabel(lang)} value={staffName(selectedStaff)} />
               )}
               {selectedResource && (
                 <SummaryRow
@@ -1060,14 +1117,14 @@ export default function BookingWidget({
                   value={selectedResource.name}
                 />
               )}
-              <SummaryRow label="اليوم"  value={selectedDate ? formatDateAr(selectedDate) : ""} />
-              <SummaryRow label="الوقت"  value={selectedTime ?? ""} ltr />
+              <SummaryRow label={tr("اليوم", "Day")}  value={selectedDate ? formatDateAr(selectedDate, lang) : ""} />
+              <SummaryRow label={tr("الوقت", "Time")}  value={selectedTime ?? ""} ltr />
               {selectedResource?.capacity != null && (
-                <SummaryRow label="الأشخاص" value={`${partySize} أشخاص`} />
+                <SummaryRow label={tr("الأشخاص", "Party")} value={partyLabel} />
               )}
             </div>
 
-            <SectionTitle>بياناتك</SectionTitle>
+            <SectionTitle>{tr("بياناتك", "Your details")}</SectionTitle>
 
             <div className="space-y-4">
               <div>
@@ -1075,7 +1132,7 @@ export default function BookingWidget({
                   htmlFor={`${fid}-name`}
                   className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5"
                 >
-                  الاسم الكامل <span className="text-[var(--color-danger)]">*</span>
+                  {tr("الاسم بالكامل", "Full name")} <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <input
                   id={`${fid}-name`}
@@ -1084,7 +1141,7 @@ export default function BookingWidget({
                   aria-required="true"
                   aria-invalid={errors.name ? true : undefined}
                   aria-describedby={errors.name ? `${fid}-name-err` : undefined}
-                  placeholder="محمد أحمد"
+                  placeholder={tr("محمد أحمد", "Mohamed Ahmed")}
                   value={name}
                   onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: undefined })); }}
                   className={`w-full rounded-[var(--radius-md)] border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.name ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
@@ -1097,7 +1154,7 @@ export default function BookingWidget({
                   htmlFor={`${fid}-phone`}
                   className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5"
                 >
-                  رقم الهاتف <span className="text-[var(--color-danger)]">*</span>
+                  {tr("رقم الموبايل", "Mobile number")} <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <input
                   id={`${fid}-phone`}
@@ -1121,7 +1178,7 @@ export default function BookingWidget({
                   htmlFor={`${fid}-email`}
                   className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5"
                 >
-                  البريد الإلكتروني <span className="text-[var(--color-subtle)] font-normal">(اختياري)</span>
+                  {tr("الإيميل", "Email")} <span className="text-[var(--color-subtle)] font-normal">{tr("(اختياري)", "(optional)")}</span>
                 </label>
                 <input
                   id={`${fid}-email`}
@@ -1143,11 +1200,11 @@ export default function BookingWidget({
                   htmlFor={`${fid}-notes`}
                   className="block text-xs font-semibold text-[var(--color-subtle)] mb-1.5"
                 >
-                  ملاحظات <span className="text-[var(--color-subtle)] font-normal">(اختياري)</span>
+                  {tr("ملاحظات", "Notes")} <span className="text-[var(--color-subtle)] font-normal">{tr("(اختياري)", "(optional)")}</span>
                 </label>
                 <textarea
                   id={`${fid}-notes`}
-                  placeholder="أي معلومات إضافية…"
+                  placeholder={tr("أي معلومات إضافية…", "Anything the business should know…")}
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -1163,10 +1220,11 @@ export default function BookingWidget({
             )}
 
             <StepButtons
+              lang={lang}
               onBack={goBack}
               onNext={() => { if (validate()) goNext(); }}
               nextEnabled
-              nextLabel="مراجعة الحجز"
+              nextLabel={tr("مراجعة الحجز", "Review booking")}
             />
           </div>
         )}
@@ -1174,20 +1232,20 @@ export default function BookingWidget({
         {/* ═══ STEP: summary ═══ */}
         {step === "summary" && selectedService && (
           <div>
-            <SectionTitle>راجع التفاصيل قبل التأكيد</SectionTitle>
+            <SectionTitle>{tr("راجع التفاصيل قبل التأكيد", "Check the details before you confirm")}</SectionTitle>
 
             <div
               className="rounded-[var(--radius-lg)] px-4 py-3.5 space-y-2"
               style={{ background: "var(--color-jade-tint)", border: "1px solid var(--color-jade-line)" }}
             >
-              <SummaryRow label="المكان" value={businessName} />
-              {selectedBranch && <SummaryRow label="الفرع" value={selectedBranch.nameAr} />}
+              <SummaryRow label={tr("المكان", "Business")} value={businessName} />
+              {selectedBranch && <SummaryRow label={tr("الفرع", "Branch")} value={selectedBranch.nameAr} />}
               <SummaryRow
-                label={businessType === "RESTAURANT" ? "الجلسة" : "الخدمة"}
+                label={businessType === "RESTAURANT" ? tr("الجلسة", "Seating") : tr("الخدمة", "Service")}
                 value={selectedService.nameAr}
               />
               {selectedStaff && (
-                <SummaryRow label={providerLabel(lang)} value={selectedStaff.nameAr} />
+                <SummaryRow label={providerLabel(lang)} value={staffName(selectedStaff)} />
               )}
               {selectedResource && (
                 <SummaryRow
@@ -1196,11 +1254,11 @@ export default function BookingWidget({
                 />
               )}
               {selectedResource?.capacity != null && (
-                <SummaryRow label="عدد الأشخاص" value={`${partySize}`} />
+                <SummaryRow label={tr("عدد الأشخاص", "Party size")} value={partyLabel} />
               )}
-              <SummaryRow label="التاريخ" value={selectedDate ? formatDateAr(selectedDate) : ""} />
-              <SummaryRow label="الوقت" value={selectedTime ?? ""} ltr />
-              <SummaryRow label="المدة" value={`${selectedService.duration} دقيقة`} />
+              <SummaryRow label={tr("التاريخ", "Date")} value={selectedDate ? formatDateAr(selectedDate, lang) : ""} />
+              <SummaryRow label={tr("الوقت", "Time")} value={selectedTime ?? ""} ltr />
+              <SummaryRow label={tr("المدة", "Duration")} value={fmtDuration(selectedService.duration, lang)} />
 
               <div className="pt-2.5 border-t border-[var(--color-jade-line)]">
                 {/* The struck-through original only appears when
@@ -1209,7 +1267,7 @@ export default function BookingWidget({
                 {quote?.discount ? (
                   <>
                     <SummaryRow
-                      label="السعر"
+                      label={tr("السعر", "Price")}
                       value={money(quote.subtotalCents / 100, lang, selectedService.currency)}
                       strike
                     />
@@ -1219,18 +1277,18 @@ export default function BookingWidget({
                       good
                     />
                     <SummaryRow
-                      label="الإجمالي"
+                      label={tr("الإجمالي", "Total")}
                       value={money(quote.totalCents / 100, lang, selectedService.currency)}
                       bold
                     />
                   </>
                 ) : (
                   <SummaryRow
-                    label="السعر"
+                    label={tr("السعر", "Price")}
                     value={
                       selectedService.price > 0
                         ? money(selectedService.price, lang, selectedService.currency)
-                        : "السعر غير محدد"
+                        : t.services.priceUnset
                     }
                     bold
                   />
@@ -1239,7 +1297,7 @@ export default function BookingWidget({
                 {/* Shown only where the business actually takes one. */}
                 {depositDue !== null && (
                   <SummaryRow
-                    label="المقدّم المطلوب الآن"
+                    label={tr("العربون المطلوب دلوقتي (أونلاين)", "Deposit due now (online)")}
                     value={money(depositDue, lang, selectedService.currency)}
                   />
                 )}
@@ -1253,14 +1311,14 @@ export default function BookingWidget({
                       htmlFor={`${fid}-code`}
                       className="mb-1.5 block text-xs font-semibold text-[var(--color-subtle)]"
                     >
-                      عندك كود خصم؟
+                      {tr("عندك كود خصم؟", "Have a discount code?")}
                     </label>
                     <div className="flex gap-2">
                       <input
                         id={`${fid}-code`}
                         value={codeInput}
                         onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-                        placeholder="اكتب الكود"
+                        placeholder={tr("اكتب الكود", "Enter code")}
                         dir="ltr"
                         autoComplete="off"
                         aria-invalid={quote?.codeError ? true : undefined}
@@ -1272,7 +1330,7 @@ export default function BookingWidget({
                         disabled={quoting || !codeInput.trim()}
                         className="shrink-0 rounded-[var(--radius-md)] border-2 border-[var(--color-jade)] px-4 text-sm font-bold text-[var(--color-jade)] transition-colors disabled:opacity-50"
                       >
-                        {quoting ? "..." : "فعّل"}
+                        {quoting ? "…" : tr("طبّق", "Apply")}
                       </button>
                     </div>
                     {quote?.codeError && <p className="field-error mt-1.5">{quote.codeError}</p>}
@@ -1280,16 +1338,15 @@ export default function BookingWidget({
                 )}
               </div>
 
-              <SummaryRow label="الاسم" value={name.trim()} />
-              <SummaryRow label="الهاتف" value={phone.trim()} ltr />
+              <SummaryRow label={tr("الاسم", "Name")} value={name.trim()} />
+              <SummaryRow label={tr("الموبايل", "Mobile")} value={phone.trim()} ltr />
             </div>
 
             {/* The policy, stated before they commit rather than after. */}
             <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface-2)] px-4 py-3">
-              <p className="m-0 text-xs font-bold text-[var(--color-ink)]">سياسة الإلغاء</p>
+              <p className="m-0 text-xs font-bold text-[var(--color-ink)]">{tr("الإلغاء والتعديل", "Cancelling and changing")}</p>
               <p className="m-0 mt-1.5 text-xs leading-relaxed text-[var(--color-subtle)]">
-                يمكنك تعديل أو إلغاء الحجز مجانًا حتى ساعتين قبل الموعد.
-                {depositDue !== null ? " المقدّم غير قابل للاسترداد بعد تأكيد الحجز." : ""}
+                {changePolicyText(changeCutoffHours, lang, depositDue !== null)}
               </p>
             </div>
 
@@ -1305,14 +1362,14 @@ export default function BookingWidget({
                 disabled={submitting}
                 className="flex-1 py-3.5 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-muted)] font-bold text-sm flex items-center justify-center gap-1 transition-all disabled:opacity-50"
               >
-                <ChevronRight size={15} /> رجوع
+                <ChevronRight size={15} aria-hidden="true" className={en ? "rotate-180" : undefined} /> {tr("رجوع", "Back")}
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
                 className="flex-1 py-3.5 rounded-[var(--radius-lg)] bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)] text-[var(--color-inverse)] font-bold text-sm flex items-center justify-center gap-2 shadow-[var(--shadow-raised)] transition-all disabled:opacity-60"
               >
-                {submitting ? <><Loader2 size={14} className="animate-spin" /> جارٍ الحجز…</> : depositDue !== null ? "تأكيد والدفع" : "تأكيد الحجز"}
+                {submitting ? <><Loader2 size={14} className="animate-spin" /> {tr("جارٍ الحجز…", "Booking…")}</> : depositDue !== null ? tr("أكّد وادفع", "Confirm and pay") : tr("أكّد الحجز", "Confirm booking")}
               </button>
             </div>
           </div>
@@ -1324,9 +1381,17 @@ export default function BookingWidget({
             <div className="w-20 h-20 bg-[var(--color-ok-soft)] rounded-full flex items-center justify-center mx-auto mt-2 mb-4">
               <CheckCircle size={40} className="text-[var(--color-ok)]" />
             </div>
-            <h3 className="font-extrabold text-xl text-[var(--color-ink)] mb-1">تم حجز موعدك!</h3>
+            <h3 className="font-extrabold text-xl text-[var(--color-ink)] mb-1">
+              {confirmation.status === "PENDING"
+                ? tr("وصل طلب حجزك!", "Booking request sent!")
+                : tr("حجزك اتأكد!", "You're booked!")}
+            </h3>
             <p className="text-sm text-[var(--color-subtle)] mb-6 leading-relaxed">
-              يسعدنا استقبالك. سيتواصل معك الفريق قريبًا.
+              {/* PENDING: the business confirms it from its dashboard, and
+                  the confirmed (or declined) notification follows. */}
+              {confirmation.status === "PENDING"
+                ? tr(`${confirmation.businessName} هيراجع الحجز ويأكده، وهيوصلك إشعار.`, `${confirmation.businessName} will review and confirm it, and you'll be notified.`)
+                : tr("هيوصلك تذكير قبل الميعاد.", "You'll get a reminder before the appointment.")}
               <br />
               {/*
                 This line used to claim an email had been sent, always.
@@ -1340,22 +1405,22 @@ export default function BookingWidget({
                 matters, so that is what it points at.
               */}
               {email.trim()
-                ? "تم إرسال تفاصيل الحجز ورابط الإدارة إلى بريدك الإلكتروني."
-                : "احتفظ برقم الحجز ده — هتحتاجه لو حبيت تعدّل أو تلغي الموعد."}
+                ? tr("بعتنا تفاصيل الحجز ورابط إدارته على إيميلك.", "We've emailed you the booking details and a link to manage it.")
+                : tr("احتفظ برقم الحجز ده، هتحتاجه لو حبيت تعدّل أو تلغي الميعاد.", "Keep this booking number — you'll need it to change or cancel.")}
             </p>
 
             <div className="text-start rounded-[var(--radius-lg)] p-4 space-y-3 mb-5" style={{ background: "rgba(14,127,94,0.06)", border: "1px solid rgba(14,127,94,0.14)" }}>
               <div className="flex items-center justify-between pb-3 border-b border-[rgba(14,127,94,0.14)]">
-                <p className="text-xs font-medium text-[var(--color-subtle)]">رقم الحجز</p>
+                <p className="text-xs font-medium text-[var(--color-subtle)]">{tr("رقم الحجز", "Booking number")}</p>
                 {/* The reference, which is what support asks for. */}
                 <p className="num text-sm font-extrabold tracking-wide text-[var(--color-ink)]" dir="ltr">
                   {confirmation.reference ?? confirmation.id.slice(-8).toUpperCase()}
                 </p>
               </div>
-              <SummaryRow label="العميل"  value={confirmation.customerName} />
-              <SummaryRow label="الخدمة"  value={confirmation.serviceName} />
-              <SummaryRow label="التاريخ" value={formatDateAr(confirmation.date)} />
-              <SummaryRow label="الوقت"   value={`${confirmation.startTime} – ${confirmation.endTime}`} ltr />
+              <SummaryRow label={tr("العميل", "Customer")}  value={confirmation.customerName} />
+              <SummaryRow label={tr("الخدمة", "Service")}  value={confirmation.serviceName} />
+              <SummaryRow label={tr("التاريخ", "Date")} value={formatDateAr(confirmation.date, lang)} />
+              <SummaryRow label={tr("الوقت", "Time")}   value={`${confirmation.startTime} – ${confirmation.endTime}`} ltr />
               {selectedResource && (
                 <SummaryRow
                   label={resourceLabel(selectedResource.kind, lang, true)}
@@ -1363,11 +1428,11 @@ export default function BookingWidget({
                 />
               )}
               {selectedStaff && (
-                <SummaryRow label={providerLabel(lang)} value={selectedStaff.nameAr} />
+                <SummaryRow label={providerLabel(lang)} value={staffName(selectedStaff)} />
               )}
               <div className="pt-3 border-t border-[rgba(14,127,94,0.14)]">
                 <SummaryRow
-                  label="الإجمالي"
+                  label={tr("الإجمالي", "Total")}
                   value={money(confirmation.totalPrice, lang, confirmation.currency)}
                   bold
                 />
@@ -1382,7 +1447,7 @@ export default function BookingWidget({
                   className="mb-3 flex w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] border-2 border-[var(--color-jade)] py-3 text-sm font-bold text-[var(--color-jade)] transition-colors hover:bg-[var(--color-jade-soft)]"
                 >
                   <CalendarDays size={15} aria-hidden="true" />
-                  أضف الموعد للتقويم
+                  {tr("ضيف الميعاد للتقويم", "Add to calendar")}
                 </a>
                 <a
                   href={`/booking/${confirmation.accessToken}`}
@@ -1390,7 +1455,7 @@ export default function BookingWidget({
                   rel="noreferrer"
                   className="mb-3 block w-full rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] py-3 text-center text-sm font-bold text-[var(--color-muted)] transition-colors hover:border-[var(--color-jade)]"
                 >
-                  عرض تفاصيل الحجز
+                  {tr("عرض تفاصيل الحجز", "View booking")}
                 </a>
               </>
             )}
@@ -1399,7 +1464,7 @@ export default function BookingWidget({
               onClick={reset}
               className="w-full py-3 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-[var(--color-subtle)] font-bold text-sm hover:border-[var(--color-line-2)] transition-all"
             >
-              حجز موعد آخر
+              {tr("احجز ميعاد تاني", "Book another")}
             </button>
           </div>
         )}

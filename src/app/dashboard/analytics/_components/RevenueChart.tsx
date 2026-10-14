@@ -1,5 +1,6 @@
 "use client";
 
+import { arCount } from "@/lib/fmt";
 import {
   AreaChart,
   Area,
@@ -10,6 +11,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { RevenuePoint } from "@/app/api/business/analytics/route";
+
+const BOOKING = { one: "حجز واحد", two: "حجزين", few: "حجوزات", many: "حجز" };
 
 interface Props {
   data:     RevenuePoint[];
@@ -31,7 +34,7 @@ function CustomTooltip({ active, payload, label, currency }: {
       </p>
       {payload[1] && (
         <p className="text-[var(--color-text-muted)] text-xs mt-1">
-          {payload[1].value.toLocaleString("ar-EG-u-nu-latn")} حجز
+          {arCount(payload[1].value, BOOKING)}
         </p>
       )}
     </div>

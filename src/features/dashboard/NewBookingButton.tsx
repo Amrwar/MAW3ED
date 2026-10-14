@@ -20,7 +20,7 @@ export default function NewBookingButton({
   onCreated,
   className = "btn btn-primary gap-2",
   style,
-  label = "موعد جديد",
+  label = "حجز جديد",
 }: Props) {
   const [open, setOpen] = useState(false);
 

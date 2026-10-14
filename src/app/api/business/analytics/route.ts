@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     const fromStr = searchParams.get("from");
     const toStr   = searchParams.get("to");
 
-    if (!fromStr || !toStr) return err("from و to مطلوبان", 400);
+    if (!fromStr || !toStr) return err("حدد بداية ونهاية الفترة", 400);
 
     const [fy, fm, fd] = fromStr.split("-").map(Number);
     const [ty, tm, td] = toStr.split("-").map(Number);
@@ -207,6 +207,6 @@ export async function GET(req: Request) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[analytics GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

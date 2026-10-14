@@ -118,6 +118,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ token:
     }
   } catch (e) {
     log.error("[booking pay]", e instanceof Error ? { message: e.message } : undefined);
-    return err("حدث خطأ", 500, { code: "server-error" });
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500, { code: "server-error" });
   }
 }

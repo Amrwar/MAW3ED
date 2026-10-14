@@ -45,5 +45,7 @@ export function providerLabel(lang: "ar" | "en"): string {
  */
 export function chooseResourceLabel(kind: ResourceKind | null, lang: "ar" | "en"): string {
   const one = resourceLabel(kind, lang, true);
-  return lang === "ar" ? `اختر ${one}` : `Choose a ${one.toLowerCase()}`;
+  if (lang === "ar") return `اختار ${one}`;
+  // "Equipment" is a mass noun: "Choose equipment", not "Choose a equipment".
+  return kind === "EQUIPMENT" ? "Choose equipment" : `Choose a ${one.toLowerCase()}`;
 }

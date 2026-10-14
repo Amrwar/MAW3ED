@@ -105,7 +105,7 @@ export function UserMenu({ user }: UserMenuProps) {
     dashboard: lang === "ar" ? "لوحة التحكم"  : "Dashboard",
     business:  lang === "ar" ? "إدارة نشاطي"   : "My Business",
     settings:  lang === "ar" ? "الإعدادات"     : "Settings",
-    logout:    lang === "ar" ? "تسجيل الخروج"  : "Log out",
+    logout:    lang === "ar" ? "تسجيل الخروج"  : "Sign out",
   };
 
   return (

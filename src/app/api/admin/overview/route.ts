@@ -18,6 +18,6 @@ export async function GET() {
     return ok({ role: actor.role, ...(await adminOverview(actor.role)) });
   } catch (e) {
     log.error("[admin overview]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

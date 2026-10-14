@@ -102,6 +102,6 @@ export async function GET(req: Request) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[customers GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

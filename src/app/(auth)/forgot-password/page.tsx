@@ -34,7 +34,11 @@ export default function ForgotPasswordPage() {
         // The server's words are Arabic; in English, say what kind of failure it was.
         setError(
           ar
-            ? (data.error ?? "حدث خطأ، حاول مرة أخرى")
+            ? res.status === 429
+              ? "طلبات كتير، استنى شوية وجرّب تاني."
+              : res.status === 503
+                ? "الإيميل مش شغال دلوقتي، كلّم الدعم."
+                : (data.error ?? "حصلت مشكلة، جرّب تاني.")
             : res.status === 429
               ? "Too many requests. Please wait a while and try again."
               : res.status === 503

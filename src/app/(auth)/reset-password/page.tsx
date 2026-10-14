@@ -56,7 +56,11 @@ function ResetPasswordForm() {
         setDeadLink(dead);
         setError(
           ar
-            ? (data.error ?? "حدث خطأ، حاول مرة أخرى")
+            ? dead
+              ? "الرابط ده انتهى أو اتستخدم قبل كده، اطلب رابط جديد."
+              : res.status === 429
+                ? "محاولات كتير، استنى شوية وجرّب تاني."
+                : (data.error ?? "حصلت مشكلة، جرّب تاني.")
             : dead
               ? "This link has expired or was already used. Request a new one."
               : res.status === 429

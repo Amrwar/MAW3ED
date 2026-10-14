@@ -46,6 +46,6 @@ export async function POST(req: Request) {
     return ok(result.tokens);
   } catch (e) {
     log.error("[mobile refresh]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

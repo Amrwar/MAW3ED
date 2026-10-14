@@ -22,6 +22,6 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     log.error("[public facets]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

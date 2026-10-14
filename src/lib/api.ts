@@ -40,7 +40,7 @@ export const err = (message: string, status = 400, extra?: Record<string, unknow
 export async function requireSession(): Promise<CallerSession> {
   const session = await currentCaller();
   if (session) return session;
-  throw err("غير مصرح", 401);
+  throw err("سجّل دخولك الأول", 401);
 }
 
 /**

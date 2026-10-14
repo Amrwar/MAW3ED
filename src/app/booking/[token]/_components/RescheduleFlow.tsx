@@ -133,11 +133,13 @@ export default function RescheduleFlow({
     return (
       <div className="rounded-[var(--radius-lg)] bg-[var(--color-ok-soft)] border border-[var(--color-ok-line)] p-5 text-center space-y-2">
         <CheckCircle2 size={32} className="mx-auto text-[var(--color-ok)]" />
-        <p className="font-bold text-[var(--color-ok)]">تم إعادة الجدولة بنجاح</p>
+        <p className="font-bold text-[var(--color-ok)]">اتغيّر ميعادك</p>
         <p className="text-sm text-[var(--color-ok)]">
           {formatDateAr(newDate)} · {newStart}
         </p>
-        <p className="text-xs text-[var(--color-ok)]">جاري تحديث الصفحة...</p>
+        {/* The reschedule route puts the booking back to PENDING for the
+            business to confirm the new time. */}
+        <p className="text-xs text-[var(--color-ok)]">المكان هيأكد الميعاد الجديد وهيوصلك إشعار. جارٍ تحديث الصفحة…</p>
       </div>
     );
   }
@@ -198,7 +200,7 @@ export default function RescheduleFlow({
               className="w-full py-2.5 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:bg-[var(--color-primary-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {slotsLoading
-                ? <><Loader2 size={15} className="animate-spin" /> جاري التحميل...</>
+                ? <><Loader2 size={15} className="animate-spin" /> جارٍ التحميل…</>
                 : <>عرض المواعيد المتاحة <ArrowLeft size={14} /></>
               }
             </button>
@@ -283,7 +285,7 @@ export default function RescheduleFlow({
                 className="flex-1 py-2.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white text-sm font-bold hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {submitting
-                  ? <><Loader2 size={15} className="animate-spin" /> جاري...</>
+                  ? <><Loader2 size={15} className="animate-spin" /> جارٍ التأكيد…</>
                   : "تأكيد إعادة الجدولة"
                 }
               </button>

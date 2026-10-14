@@ -6,6 +6,7 @@ import {
   sendBookingConfirmationToCustomer,
   sendBookingReminderToCustomer,
   sendNewBookingAlertToBusiness,
+  sendPaymentReceivedToBusiness,
   sendRescheduleAlertToBusiness,
   sendRescheduleConfirmationToCustomer,
   sendSubscriptionExpiredEmail,
@@ -94,7 +95,7 @@ export function bespokeSender(
     case "payment.received|business|WHATSAPP":
       return (to, c) => (c.whatsapp ? sendBusinessBookingTemplate(to, c.whatsapp) : null);
     case "payment.received|business|EMAIL":
-      return (to, c) => (c.email ? sendNewBookingAlertToBusiness(to, c.email) : null);
+      return (to, c) => (c.email ? sendPaymentReceivedToBusiness(to, c.email) : null);
     case "payment.received|customer|WHATSAPP":
       return (to, c) => (c.whatsapp ? sendCustomerConfirmationTemplate(to, c.whatsapp) : null);
 

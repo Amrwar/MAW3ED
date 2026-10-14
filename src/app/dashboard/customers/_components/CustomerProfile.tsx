@@ -15,8 +15,10 @@ import {
 import Alert from "@/components/ui/Alert";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { money, num } from "@/lib/fmt";
+import { arCount, money, num } from "@/lib/fmt";
 import { telHref, whatsappHref } from "@/lib/contact";
+
+const APPT_UP = { one: "ميعاد واحد جاي", two: "ميعادين جايين", few: "مواعيد جاية", many: "ميعاد جاي" };
 
 interface Customer {
   id: string;
@@ -373,7 +375,7 @@ export default function CustomerProfile({
               <Calendar size={16} className="text-[var(--color-jade)]" aria-hidden="true" />
               <p className="num m-0 text-[0.8125rem] text-[var(--color-ink-2)]">
                 {ar
-                  ? `${num(stats.upcoming, lang)} موعد جاي`
+                  ? arCount(stats.upcoming, APPT_UP)
                   : `${num(stats.upcoming, lang)} upcoming`}
               </p>
             </div>

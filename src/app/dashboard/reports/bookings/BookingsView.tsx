@@ -1,8 +1,10 @@
 "use client";
 
 import { useLanguage } from "@/contexts/LanguageContext";
-import { num } from "@/lib/fmt";
+import { arCount, enCount, num } from "@/lib/fmt";
 import { Bars, Figures } from "../_components/ReportBits";
+
+const DAYS = { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" };
 
 /** How many appointments, when, and for what. */
 export default function BookingsView({
@@ -40,7 +42,7 @@ export default function BookingsView({
           {
             label: ar ? "كل الحجوزات" : "All bookings",
             value: num(total, lang),
-            hint: ar ? `آخر ${num(days, lang)} يوم` : `last ${num(days, lang)} days`,
+            hint: ar ? `آخر ${arCount(days, DAYS)}` : `last ${enCount(days, "day")}`,
           },
           { label: ar ? "تمّت" : "Completed", value: num(completed, lang) },
           { label: ar ? "اتلغت" : "Cancelled", value: num(cancelled, lang) },

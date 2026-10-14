@@ -76,6 +76,20 @@ async function dispatch(event: NotificationEvent): Promise<DispatchOutcome[]> {
   if (event.type === "subscription.renewalDue" && loaded.bespoke.subscription) {
     loaded.bespoke.subscription.daysLeft = event.daysLeft;
   }
+  // What only the event knows: where a moved booking was, and how much
+  // a payment was for.
+  if (event.type === "booking.rescheduled" && event.movedFrom) {
+    const [d, t] = event.movedFrom.split("T");
+    if (d && t) {
+      context.previousWhen = formatWhen(new Date(`${d}T00:00:00Z`), t);
+      if (loaded.bespoke.email) loaded.bespoke.email.previous = { date: d, startTime: t };
+    }
+  }
+  if (event.type === "payment.received") {
+    // The amount that actually arrived — a balance is not the deposit.
+    context.amount = money(event.amount, "ar", loaded.bespoke.email?.currency ?? "EGP");
+    if (loaded.bespoke.email) loaded.bespoke.email.paidAmount = event.amount;
+  }
 
   // Events a business has switched off entirely never leave here.
   if (!businessWantsEvent(business, event)) {
@@ -270,6 +284,7 @@ async function loadBooking(bookingId: string): Promise<Loaded | null> {
     select: {
       id: true,
       accessToken: true,
+      status: true,
       customerName: true,
       customerPhone: true,
       customerPhoneE164: true,
@@ -312,6 +327,7 @@ async function loadBooking(bookingId: string): Promise<Loaded | null> {
       when: formatWhen(b.date, b.startTime),
       customerName: b.customerName,
       amount: money(Number(b.depositAmount ?? b.totalPrice), "ar", b.currency),
+      status: b.status,
     },
     bespoke: {
       // Exactly what the existing templates have always been given.
@@ -338,6 +354,7 @@ async function loadBooking(bookingId: string): Promise<Loaded | null> {
         currency: b.currency,
         notes: b.notes,
         bookingUrl: b.accessToken ? bookingPageUrl(b.accessToken) : null,
+        status: b.status,
       },
       subscription: null,
     },

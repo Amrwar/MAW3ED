@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { arCount } from "@/lib/fmt";
 import { Zap, CheckCircle, Loader2, Crown, Star, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
 import {
   PLANS,
@@ -107,7 +108,7 @@ export default function SubscriptionPanel({
             <AlertTriangle size={20} className="text-[var(--color-star)] mt-0.5 shrink-0" />
             <div className="flex-1">
               <p className="font-bold text-[var(--color-warn)]">
-                اشتراكك سينتهي خلال {daysUntilExpiry} {daysUntilExpiry === 1 ? "يوم" : "أيام"}
+                اشتراكك هينتهي خلال {arCount(daysUntilExpiry ?? 0, { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" })}
               </p>
               <p className="text-sm text-[var(--color-warn)] mt-0.5">
                 تاريخ الانتهاء: <span dir="ltr" className="font-medium">{currentPeriodEnd}</span>
@@ -134,8 +135,8 @@ export default function SubscriptionPanel({
           <div>
             <h2 className="font-bold text-[var(--color-text-primary)]">اشتراكك الحالي</h2>
             <p className="text-xs text-[var(--color-text-muted)]">
-              خطة {PLAN_NAMES_AR[effectivePlan]}
-              {isTrial && " (تجريبي)"}
+              باقة {PLAN_NAMES_AR[effectivePlan]}
+              {isTrial && " (فترة تجريبية)"}
             </p>
           </div>
           <span className={`ms-auto text-xs font-bold px-2.5 py-1 rounded-full ${PLAN_COLORS[effectivePlan]}`}>
@@ -258,7 +259,7 @@ export default function SubscriptionPanel({
             <div>
               <p className="font-bold text-[var(--color-warn)]">أنت على أعلى خطة</p>
               <p className="text-xs text-[var(--color-warn)] mt-0.5">
-                تستمتع بجميع مميزات موعد المميزة
+                معاك كل مميزات موعد
               </p>
             </div>
           </div>

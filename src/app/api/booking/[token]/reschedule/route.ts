@@ -63,12 +63,12 @@ export async function POST(req: Request, { params }: Params) {
     // in the building, moving the appointment is the owner's job, not a
     // self-service action.
     if (!["PENDING", "CONFIRMED"].includes(booking.status)) {
-      return err("لا يمكن إعادة جدولة هذا الحجز", 400, { code: "not-changeable" });
+      return err("الحجز ده مينفعش يتغيّر ميعاده", 400, { code: "not-changeable" });
     }
 
     // ── Current booking must still be far enough ahead, on Cairo's clock ────
     if (minutesUntilStart(booking.date, booking.startTime) <= CUTOFF_HOURS * 60) {
-      return err("لا يمكن إعادة جدولة الحجز قبل الموعد بأقل من ساعتين", 400, { code: "too-late" });
+      return err("مينفعش تغيّر الميعاد لما يكون فاضل عليه ساعتين أو أقل", 400, { code: "too-late" });
     }
 
     // ── Is the new time actually available? ─────────────────────────────────
@@ -143,6 +143,7 @@ export async function POST(req: Request, { params }: Params) {
       type: "booking.rescheduled",
       bookingId: booking.id,
       movedTo: `${newDate}T${newStartTime}`,
+      movedFrom: `${booking.date.toISOString().slice(0, 10)}T${booking.startTime}`,
     });
 
     return ok({
@@ -153,6 +154,6 @@ export async function POST(req: Request, { params }: Params) {
     });
   } catch (e) {
     log.error("[booking reschedule]", e);
-    return err("حدث خطأ أثناء إعادة الجدولة", 500);
+    return err("حصلت مشكلة وإحنا بنغيّر الميعاد، جرّب تاني بعد شوية", 500);
   }
 }

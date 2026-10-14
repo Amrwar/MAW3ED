@@ -107,8 +107,8 @@ export default function NotificationSettingsForm({
               whatsappAvailable
                 ? undefined
                 : ar
-                  ? "الواتساب متاح في باقة Growth وما فوقها."
-                  : "WhatsApp is available on Growth and above."
+                  ? "الواتساب متاح في باقة الاحترافي (Pro) وما فوقها."
+                  : "WhatsApp is available on Pro and above."
             }
             checked={p.notifyByWhatsApp && whatsappAvailable}
             disabled={!whatsappAvailable}
@@ -162,8 +162,8 @@ export default function NotificationSettingsForm({
           />
           <p className="mt-2 px-2 text-[0.75rem] text-[var(--color-subtle)]">
             {ar
-              ? "حاجات زي انتهاء الاشتراك هنبعتهالك دايمًا — صفحتك بتختفي من غيرها."
-              : "Things like a lapsing subscription are always sent — your page comes down without it."}
+              ? "تنبيهات الاشتراك بتوصلك دايمًا، عشان تعرف قبل ما باقتك ترجع للمجانية."
+              : "Subscription alerts are always sent, so you know before your plan drops to Free."}
           </p>
         </div>
 

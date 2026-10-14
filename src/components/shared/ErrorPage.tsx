@@ -237,7 +237,7 @@ export default function ErrorPage({
         className="py-6 text-xs text-center"
         style={{ color: "var(--color-subtle)", borderTop: "1px solid var(--color-surface-3)" }}
       >
-        © {new Date().getFullYear()} موعد · MAW3ED — جميع الحقوق محفوظة
+        © {new Date().getFullYear()} موعد · Maw3ed — جميع الحقوق محفوظة
       </footer>
     </div>
   );
@@ -395,10 +395,10 @@ function ErrorIllustration({ code }: { code: string }) {
             </div>
             <div>
               <p style={{ color: "var(--color-surface)", fontSize: 12, fontWeight: 700, lineHeight: 1.25 }}>
-                احجز موعدك
+                احجز ميعادك
               </p>
               <p style={{ color: "rgba(255,255,255,0.62)", fontSize: 10, marginTop: 2 }}>
-                موعد · MAW3ED
+                موعد · Maw3ed
               </p>
             </div>
             <div

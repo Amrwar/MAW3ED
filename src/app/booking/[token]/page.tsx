@@ -12,6 +12,7 @@ import RescheduleFlow from "./_components/RescheduleFlow";
 import LeaveReview from "./_components/LeaveReview";
 import { canReviewBooking } from "@/lib/reviews";
 import { CUTOFF_HOURS, customerMayChange } from "@/lib/bookings/self-service";
+import { arCount, duration, money } from "@/lib/fmt";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -41,7 +42,7 @@ const STATUS_CONFIG = {
   IN_PROGRESS: { label: "جاري التنفيذ", icon: Clock,        color: "text-[var(--color-info)]", bg: "bg-[var(--color-info-soft)]", border: "border-[var(--color-info-line)]" },
   COMPLETED: { label: "مكتمل",        icon: CheckCircle,  color: "text-[var(--color-jade)]",   bg: "bg-[var(--color-jade-soft)]",   border: "border-[var(--color-jade-line)]"  },
   CANCELLED: { label: "ملغي",         icon: XCircle,      color: "text-[var(--color-danger)]",    bg: "bg-[var(--color-danger-soft)]",    border: "border-[var(--color-danger-line)]"   },
-  NO_SHOW:   { label: "لم يحضر",      icon: AlertCircle,  color: "text-[var(--color-subtle)]",   bg: "bg-[var(--color-surface-2)]",   border: "border-[var(--color-line)]"  },
+  NO_SHOW:   { label: "محضرتش",      icon: AlertCircle,  color: "text-[var(--color-subtle)]",   bg: "bg-[var(--color-surface-2)]",   border: "border-[var(--color-line)]"  },
 } satisfies Record<BookingStatus, unknown>;
 
 export default async function BookingPage({ params }: Params) {
@@ -93,13 +94,13 @@ export default async function BookingPage({ params }: Params) {
             <p className="text-sm text-[var(--color-muted)]">
               {booking.status === "PENDING_PAYMENT" && "الموعد محجوز لك لحين إتمام الدفع"}
               {booking.status === "FAILED_PAYMENT"  && "لم يكتمل الدفع، ولم يتم تأكيد الموعد. يمكنك الحجز من جديد."}
-              {booking.status === "PENDING"     && "حجزك قيد المراجعة، سيتواصل معك الفريق قريبًا"}
-              {booking.status === "CONFIRMED"   && "حجزك مؤكد، نراك قريبًا!"}
-              {booking.status === "ARRIVED"     && "تم تسجيل وصولك، استنى شوية"}
+              {booking.status === "PENDING"     && `حجزك مستني تأكيد من ${booking.business.nameAr}، وهيوصلك إشعار لما يتأكد`}
+              {booking.status === "CONFIRMED"   && "حجزك مؤكد، المكان مستنيك!"}
+              {booking.status === "ARRIVED"     && "سجّلنا وصولك، استنى شوية"}
               {booking.status === "IN_PROGRESS" && "الخدمة شغالة دلوقتي"}
               {booking.status === "COMPLETED" && "شكرًا لزيارتك"}
               {booking.status === "CANCELLED" && "تم إلغاء هذا الحجز"}
-              {booking.status === "NO_SHOW"   && "لم يتم الحضور في هذا الموعد"}
+              {booking.status === "NO_SHOW"   && "مجيتش في الميعاد ده"}
             </p>
           </div>
         </div>
@@ -119,7 +120,7 @@ export default async function BookingPage({ params }: Params) {
           </div>
 
           <div className="divide-y divide-[var(--color-line)]">
-            <Row icon={<Store size={15} />}      label="المنشأة"  value={booking.business.nameAr} />
+            <Row icon={<Store size={15} />}      label="المكان"    value={booking.business.nameAr} />
             <Row icon={<Clock size={15} />}       label="الخدمة"   value={booking.service.nameAr} />
             <Row icon={<CalendarDays size={15} />} label="التاريخ" value={formatDateAr(booking.date)} />
             <Row
@@ -131,7 +132,7 @@ export default async function BookingPage({ params }: Params) {
             <Row
               icon={<Clock size={15} />}
               label="المدة"
-              value={`${booking.service.duration} دقيقة`}
+              value={duration(booking.service.duration, "ar")}
             />
             {booking.staffMember && (
               <Row icon={<Store size={15} />} label="مقدّم الخدمة" value={booking.staffMember.nameAr} />
@@ -145,15 +146,15 @@ export default async function BookingPage({ params }: Params) {
               label="السعر"
               value={
                 Number(booking.totalPrice) > 0
-                  ? `${Number(booking.totalPrice).toLocaleString("ar-EG-u-nu-latn")} ${booking.currency}`
+                  ? money(Number(booking.totalPrice), "ar", booking.currency)
                   : "السعر غير محدد"
               }
             />
             {booking.depositAmount !== null && Number(booking.depositAmount) > 0 && (
               <Row
                 icon={<Store size={15} />}
-                label="المقدّم المطلوب"
-                value={`${Number(booking.depositAmount).toLocaleString("ar-EG-u-nu-latn")} ${booking.currency}`}
+                label="العربون المطلوب"
+                value={money(Number(booking.depositAmount), "ar", booking.currency)}
               />
             )}
           </div>
@@ -168,7 +169,7 @@ export default async function BookingPage({ params }: Params) {
             download
           >
             <CalendarDays size={16} strokeWidth={1.9} aria-hidden="true" />
-            أضف الموعد للتقويم
+            ضيف الميعاد للتقويم
           </a>
         )}
 
@@ -190,9 +191,11 @@ export default async function BookingPage({ params }: Params) {
               إدارة الحجز
             </p>
             <p className="text-xs text-[var(--color-text-muted)]">
-              يمكنك تعديل أو إلغاء الحجز حتى {CUTOFF_HOURS === 2 ? "ساعتين" : `${CUTOFF_HOURS} ساعات`} قبل الموعد.
+              {/* The rule the cancel and reschedule routes enforce. Nothing
+                  refunds a deposit automatically, so nothing promises it. */}
+              تقدر تلغي أو تغيّر ميعاد الحجز لحد {arCount(CUTOFF_HOURS, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" })} قبل الميعاد.
               {booking.depositAmount !== null && Number(booking.depositAmount) > 0
-                ? " المقدّم المدفوع غير قابل للاسترداد بعد التأكيد."
+                ? " العربون مش بيترجع تلقائيًا لو لغيت، كلّم المكان بخصوصه."
                 : ""}
             </p>
 

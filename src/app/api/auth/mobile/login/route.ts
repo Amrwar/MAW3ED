@@ -50,6 +50,6 @@ export async function POST(req: Request) {
     return ok(login);
   } catch (e) {
     log.error("[mobile login]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

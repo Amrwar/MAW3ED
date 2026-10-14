@@ -18,9 +18,14 @@ These drafts use **موعد**. Pick one before screenshots are taken.
 | Field | Limit | Arabic | English |
 |---|---|---|---|
 | App name | 30 | موعد - احجز ميعادك (18) | Maw3ed - Book Appointments (26) |
-| Subtitle (iOS) | 30 | احجز صالونك أو دكتورك بسهولة (28) | Book salons, clinics and more (29) |
-| Short description (Play) | 80 | دوّر على صالون أو عيادة أو جيم، اختار الخدمة والميعاد واحجز من موبايلك. (71) | Find a salon, clinic or gym, pick a service and time, and book from your phone. (78) |
-| Keywords (iOS) | 100 | حجز,ميعاد,مواعيد,صالون,كوافير,حلاقة,عيادة,دكتور,اسنان,تجميل,سبا,جيم,تحاليل,مصر,اونلاين (86) | booking,appointment,salon,barber,clinic,doctor,dentist,spa,beauty,gym,lab,egypt,cairo,reserve (93) |
+| Subtitle (iOS) | 30 | احجز صالون أو عيادة وأكتر (25) | Book salons, clinics and more (29) |
+| Short description (Play) | 80 | دوّر على صالون أو عيادة أو جيم، اختار الخدمة والميعاد واحجز من موبايلك. (71) | Find a salon, clinic or gym, pick a service and time, and book from your phone. (79) |
+| Keywords (iOS) | 100 bytes | حجز,ميعاد,صالون,كوافير,حلاقة,عيادة,دكتور,اسنان,سبا,جيم (54 chars = 99 bytes UTF-8) | booking,appointment,salon,barber,clinic,doctor,dentist,spa,beauty,gym,lab,egypt,cairo,reserve (93) |
+
+The iOS keyword limit is 100 **bytes**, not characters: an Arabic letter
+is 2 bytes in UTF-8, a comma 1. Words already in the app name (موعد، احجز،
+ميعادك) are indexed from the name and left out. "اسنان" is spelled without
+the hamza on purpose — that is how people type it in search.
 
 Categories in the subtitle/keywords come from the seeded category list
 (`prisma/seed.ts`). Whether live businesses exist in each one is **[VERIFY]**.
@@ -36,17 +41,17 @@ Categories in the subtitle/keywords come from the seeded category list
 - "الأماكن القريبة مني": لو حبيت، بنستخدم موقعك مرة واحدة عشان نرتب الأماكن حسب قربها منك، وتقدر تشوفها على الخريطة. مش بنتابع موقعك ولا بنحفظه.
 - اختار الخدمة والشخص اللي هيقدمها والميعاد المناسب ليك من المواعيد الفاضية.
 - ادفع العربون أونلاين بأمان عن طريق Paymob لو المكان طالب عربون، والباقي في المكان. بيانات الكارت مش بتعدي على التطبيق خالص.
-- حجوزاتك كلها في مكان واحد: تقدر تلغي أو تغيّر الميعاد في حدود الوقت اللي المكان حدده.
+- حجوزاتك كلها في مكان واحد: تقدر تلغي الحجز أو تغيّر ميعاده بنفسك لحد ساعتين قبل الميعاد.
 - تنبيهات على الموبايل وعلى واتساب أو الإيميل بحالة حجزك [VERIFY: تفاصيل التذكير قبل الميعاد].
 - احفظ الأماكن اللي بتحبها في "المحفوظات".
-- قيّم زيارتك بعد ما الموعد يخلص، والتقييمات بتيجي بس من حجوزات حصلت فعلًا.
+- قيّم زيارتك بعد ما الميعاد يخلص، والتقييمات بتيجي بس من حجوزات حصلت فعلًا.
 - تابع مدفوعاتك وأي مبلغ اترجعلك من صفحة "المدفوعات".
 
 **لأصحاب الأعمال وفريق العمل**
 - شوف مواعيد النهارده والتقويم.
 - أكّد الحجوزات وغيّر مواعيدها وتابع العملاء.
-- عدّل الخدمات والفريق وبيانات النشاط، وشوف التقارير (حسب صلاحيات كل حساب).
-- تسجيل نشاط جديد بيتم من الموقع، وبعدها تدخل من التطبيق بالإيميل والباسورد.
+- شوف صفحة النشاط ومواعيد الشغل والتقارير (حسب صلاحيات كل حساب). تعديل الخدمات والفريق وبيانات النشاط بيتم من لوحة التحكم على الموقع.
+- تسجيل نشاط جديد بيتم من الموقع، وبعدها تدخل من التطبيق بالإيميل وكلمة المرور.
 
 **الدخول**
 العميل بيدخل أو بيعمل حساب برقم موبايله، وبيوصله كود تأكيد على واتساب. تقدر تتصفح الأماكن من غير ما تسجل.
@@ -63,7 +68,7 @@ Maw3ed lets you book an appointment at a salon, clinic, gym or any place that wo
 - "Places near me": only when you ask, the app reads your location once to sort places by distance and show them on a map. Your location is not tracked or stored.
 - Pick the service, the staff member and a free time.
 - If the place asks for a deposit, pay it online through Paymob; the rest is paid at the venue. Card details never pass through the app.
-- All your bookings in one place: cancel or reschedule within the window the business sets.
+- All your bookings in one place: cancel or reschedule a booking yourself up to 2 hours before it.
 - Push, WhatsApp or email updates about your booking [VERIFY: reminder timing].
 - Save the places you like.
 - Review a visit once the appointment is completed — reviews come only from real bookings.
@@ -72,7 +77,7 @@ Maw3ed lets you book an appointment at a salon, clinic, gym or any place that wo
 **For business owners and staff**
 - See today's appointments and the calendar.
 - Confirm and reschedule bookings and look up customers.
-- Edit services, staff and the business profile, and view reports (depending on each account's permissions).
+- View the business profile, opening hours and reports (depending on each account's permissions). Services, staff and the profile are edited on the web dashboard.
 - New businesses register on the website, then sign in to the app with email and password.
 
 **Signing in**
@@ -94,7 +99,7 @@ App Store (all "None"/"No" except where noted) → expected **4+** [VERIFY on su
 - Violence, sexual content, profanity, horror, drugs/alcohol/tobacco, gambling, contests: **None**.
 - Medical/treatment information: **None** (the app books clinic appointments; it gives no medical advice).
 - Unrestricted web access: **No** (in-app browser opens only Paymob's payment page and maw3ed.net pages).
-- User-generated content: **Yes** — public text reviews with star rating, from completed bookings only; moderated by admins (`src/app/api/admin/reviews`). Readers can report any review from the reviews list ("ابلغ عن التقييم" / "Report", with a reason) — `mobile/app/business/[slug]/reviews.tsx` → `POST /api/public/reviews/[id]/report`; a report queues the review for moderation.
+- User-generated content: **Yes** — public text reviews with star rating, from completed bookings only; moderated by admins (`src/app/api/admin/reviews`). Readers can report any review from the reviews list ("بلّغ عن التقييم" / "Report", with a reason) — `mobile/app/business/[slug]/reviews.tsx` → `POST /api/public/reviews/[id]/report`; a report queues the review for moderation.
 - Messaging/chat between users: **No**.
 - Location sharing with other users: **No**.
 
@@ -267,7 +272,7 @@ for everything behind sign-in.
   > complete, reschedule, cancel), customers, and settings.
   >
   > Account deletion: customers delete from Account → Delete account;
-  > business owners are directed to support (Account → Delete account)
+  > business owners are directed to support (More → Delete account)
   > because a business has bookings and payments other people depend on.
   > Public page: https://www.maw3ed.net/account-deletion
   >

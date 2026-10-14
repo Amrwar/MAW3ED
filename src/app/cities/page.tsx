@@ -8,7 +8,9 @@ import PageHero from "@/components/shared/PageHero";
 import { getFacets } from "@/lib/discovery/search";
 import { buildMetadata } from "@/lib/seo/meta";
 import { translations, type Lang } from "@/lib/i18n";
-import { num } from "@/lib/fmt";
+import { arCount, num } from "@/lib/fmt";
+
+const BIZ = { one: "نشاط واحد", two: "نشاطين", few: "أنشطة", many: "نشاط" };
 
 export const metadata: Metadata = buildMetadata({
   title: "تصفح حسب المدينة",
@@ -56,7 +58,7 @@ export default async function CitiesPage() {
             {cities.length === 0 ? (
               <p className="m-0 py-10 text-center text-[0.9375rem] text-[var(--color-subtle)]">
                 {isAr
-                  ? "لسه مفيش مدن فيها أنشطة. تابعنا قريب."
+                  ? "لسه مفيش مدن فيها أنشطة. ارجع بص تاني قريب."
                   : "No cities have businesses yet. Check back soon."}
               </p>
             ) : (
@@ -86,7 +88,7 @@ export default async function CitiesPage() {
                                 ? "نشاط واحد"
                                 : "1 business"
                               : isAr
-                                ? `${num(city.count, lang)} أنشطة`
+                                ? arCount(city.count, BIZ)
                                 : `${num(city.count, lang)} businesses`}
                           </span>
                         </span>

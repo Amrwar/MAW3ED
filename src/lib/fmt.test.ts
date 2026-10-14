@@ -14,6 +14,9 @@ import {
   rating,
   plural,
   countLabel,
+  arCount,
+  enCount,
+  countIn,
   daysUntil,
 } from "./fmt";
 
@@ -226,5 +229,33 @@ describe("daysUntil", () => {
 
   it("goes negative for a past date", () => {
     expect(daysUntil(new Date(Date.UTC(2026, 9, 7)), now)).toBe(-2);
+  });
+});
+
+describe("arCount", () => {
+  const place = { one: "مكان واحد", two: "مكانين", few: "أماكن", many: "مكان" };
+
+  it("follows the Arabic counted-noun rules", () => {
+    expect(arCount(1, place)).toBe("مكان واحد");
+    expect(arCount(2, place)).toBe("مكانين");
+    expect(arCount(3, place)).toBe("3 أماكن");
+    expect(arCount(10, place)).toBe("10 أماكن");
+    expect(arCount(11, place)).toBe("11 مكان");
+    expect(arCount(100, place)).toBe("100 مكان");
+    expect(arCount(105, place)).toBe("105 أماكن");
+  });
+});
+
+describe("enCount / countIn", () => {
+  it("pluralises English", () => {
+    expect(enCount(1, "place")).toBe("1 place");
+    expect(enCount(4, "place")).toBe("4 places");
+    expect(enCount(2, "business", "businesses")).toBe("2 businesses");
+  });
+
+  it("picks the language", () => {
+    const ar = { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" };
+    expect(countIn("ar", 7, ar, { one: "day" })).toBe("7 أيام");
+    expect(countIn("en", 7, ar, { one: "day" })).toBe("7 days");
   });
 });

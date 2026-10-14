@@ -99,7 +99,7 @@ export default async function AccountDeletionPage({
           </li>
           <li>
             <strong>سجل العميل عند النشاط</strong>: الاسم ورقم الموبايل والبريد الإلكتروني (لو كتبته وقت الحجز)، وأي ملاحظات
-            أو تصنيفات النشاط ضافها.
+            أو تصنيفات ضافها النشاط.
           </li>
           <li>
             <strong>التقييمات</strong> اللي كتبتها بتفضل منشورة على صفحة النشاط، باسمك الأول وأول حرف من اسم العيلة،
@@ -166,7 +166,7 @@ export default async function AccountDeletionPage({
       <LegalSection title="4. What is deleted">
         <LegalList>
           <li>The account itself: name, mobile number, email address, password (if any) and notification preferences.</li>
-          <li>Your saved places (favourites) and your in-account notification feed.</li>
+          <li>Your saved places (favorites) and your in-account notification feed.</li>
           <li>Every app session and every push-notification registration, so the app signs out on every device; the website signs you out after deleting.</li>
           <li>Any sign-in codes or password-reset links still outstanding for your number or email.</li>
         </LegalList>
@@ -175,7 +175,7 @@ export default async function AccountDeletionPage({
       <LegalSection title="5. What stays with the businesses">
         <p>
           Bookings are not linked to the account: each one records the name and mobile number it was made under. So after
-          the account is deleted, the following remain as they are — they are not erased or anonymised:
+          the account is deleted, the following remain as they are — they are not erased or anonymized:
         </p>
         <LegalList>
           <li>

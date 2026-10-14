@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { num } from "@/lib/fmt";
+import { arCount, enCount, num } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
+
+const DAYS = { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" };
+const APPT = { one: "ميعاد واحد", two: "ميعادين", few: "مواعيد", many: "ميعاد" };
 
 const TABS = [
   { href: "/dashboard/reports/revenue", ar: "الإيرادات", en: "Revenue" },
@@ -92,7 +95,7 @@ export default function ReportShell({
                   ? "سنة"
                   : "1 year"
                 : ar
-                  ? `${num(d, lang)} يوم`
+                  ? arCount(d, DAYS)
                   : `${num(d, lang)} days`}
             </button>
           ))}
@@ -102,8 +105,8 @@ export default function ReportShell({
       {sampleSize !== undefined && sampleSize > 0 && sampleSize < 10 && (
         <p className="m-0 rounded-[var(--radius-md)] border border-[var(--color-warn-line)] bg-[var(--color-warn-soft)] px-4 py-3 text-[0.78125rem] leading-relaxed text-[var(--color-ink-2)]">
           {ar
-            ? `النسب دي محسوبة من ${num(sampleSize, lang)} موعد بس — رقم صغير، فاقرأها على إنها مؤشر مش حكم.`
-            : `These rates come from just ${num(sampleSize, lang)} appointments — too few to read much into yet.`}
+            ? `النسب دي محسوبة من ${arCount(sampleSize, APPT)} بس — رقم صغير، فاقرأها على إنها مؤشر مش حكم.`
+            : `These rates come from just ${enCount(sampleSize, "appointment")} — too few to read much into yet.`}
         </p>
       )}
 

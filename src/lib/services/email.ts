@@ -13,13 +13,17 @@ import { Resend } from "resend";
 import {
   customerConfirmationHtml,
   customerReminderHtml,
+  customerRescheduleHtml,
   businessAlertHtml,
+  businessRescheduleHtml,
+  businessPaymentHtml,
   passwordResetHtml,
   subscriptionRenewalReminderHtml,
   subscriptionExpiredHtml,
   emailVerificationHtml,
 } from "./email-templates";
 import { log } from "@/lib/logger";
+import { arCount, money } from "@/lib/fmt";
 import { failed, sent, skipped, type SendOutcome } from "./send-outcome";
 
 const client  = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -93,6 +97,12 @@ export interface BookingEmailData {
   currency:      string;
   notes?:        string | null;
   bookingUrl?:   string | null;
+  /** The booking's status as the email is written — "PENDING" reads differently from "CONFIRMED". */
+  status?:       string;
+  /** Where a rescheduled booking was before. */
+  previous?:     { date: string; startTime: string } | null;
+  /** The amount a payment.received email is about (a balance is not the deposit). */
+  paidAmount?:   number | null;
 }
 
 // ── Public API ────────────────────────────────────────────────
@@ -109,7 +119,10 @@ export async function sendBookingConfirmationToCustomer(
 
   return sendEmail({
     to:      customerEmail.trim(),
-    subject: `✅ تم تسجيل حجزك في ${data.businessName}`,
+    subject:
+      data.status === "PENDING"
+        ? `📩 وصل طلب حجزك في ${data.businessName}`
+        : `✅ تم تأكيد حجزك في ${data.businessName}`,
     html:    customerConfirmationHtml(data),
   });
 }
@@ -126,7 +139,7 @@ export async function sendBookingReminderToCustomer(
 
   return sendEmail({
     to:      customerEmail.trim(),
-    subject: `⏰ تذكير: موعدك في ${data.businessName} غداً`,
+    subject: `⏰ تذكير بميعادك في ${data.businessName}`,
     html:    customerReminderHtml(data),
   });
 }
@@ -141,7 +154,7 @@ export async function sendPasswordResetEmail(
   if (!to?.trim()) return skipped("no-address");
   return sendEmail({
     to:      to.trim(),
-    subject: "🔐 إعادة تعيين كلمة المرور — موعد",
+    subject: "🔐 تغيير كلمة المرور — موعد",
     html:    passwordResetHtml(resetUrl),
   });
 }
@@ -156,8 +169,8 @@ export async function sendRescheduleConfirmationToCustomer(
   if (!customerEmail?.trim()) return skipped("no-address");
   return sendEmail({
     to:      customerEmail.trim(),
-    subject: `📅 تم إعادة جدولة حجزك في ${data.businessName}`,
-    html:    customerConfirmationHtml(data),
+    subject: `📅 اتغيّر ميعادك في ${data.businessName}`,
+    html:    customerRescheduleHtml(data),
   });
 }
 
@@ -171,8 +184,8 @@ export async function sendRescheduleAlertToBusiness(
   if (!ownerEmail?.trim()) return skipped("no-address");
   return sendEmail({
     to:      ownerEmail.trim(),
-    subject: `🔄 إعادة جدولة حجز من ${data.customerName}`,
-    html:    businessAlertHtml(data),
+    subject: `🔄 ${data.customerName} غيّر ميعاده`,
+    html:    businessRescheduleHtml(data),
   });
 }
 
@@ -192,7 +205,7 @@ export async function sendSubscriptionRenewalReminder(
   if (!ownerEmail?.trim()) return skipped("no-address");
   return sendEmail({
     to:      ownerEmail.trim(),
-    subject: `⏰ اشتراكك في موعد سينتهي خلال ${params.daysLeft} أيام`,
+    subject: `⏰ اشتراكك في موعد هينتهي خلال ${arCount(params.daysLeft, { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" })}`,
     html:    subscriptionRenewalReminderHtml(params),
   });
 }
@@ -211,7 +224,7 @@ export async function sendSubscriptionExpiredEmail(
   if (!ownerEmail?.trim()) return skipped("no-address");
   return sendEmail({
     to:      ownerEmail.trim(),
-    subject: "😔 انتهى اشتراكك في موعد — جدِّد الآن",
+    subject: "انتهى اشتراكك في موعد — جدّد عشان ترجع مميزات باقتك",
     html:    subscriptionExpiredHtml(params),
   });
 }
@@ -228,8 +241,24 @@ export async function sendNewBookingAlertToBusiness(
 
   return sendEmail({
     to:      ownerEmail.trim(),
-    subject: `🗓️ موعد جديد من ${data.customerName}`,
+    subject: `🗓️ حجز جديد من ${data.customerName}`,
     html:    businessAlertHtml(data),
+  });
+}
+
+/**
+ * Tell the business owner a payment arrived.
+ */
+export async function sendPaymentReceivedToBusiness(
+  ownerEmail: string,
+  data: BookingEmailData,
+): Promise<SendOutcome> {
+  if (!ownerEmail?.trim()) return skipped("no-address");
+  const amount = data.paidAmount != null ? `${money(data.paidAmount, "ar", data.currency)} ` : "";
+  return sendEmail({
+    to:      ownerEmail.trim(),
+    subject: `💰 وصلت دفعة ${amount}من ${data.customerName}`,
+    html:    businessPaymentHtml(data),
   });
 }
 
@@ -244,7 +273,7 @@ export async function sendEmailVerification(
   if (!to?.trim()) return skipped("no-address");
   return sendEmail({
     to:      to.trim(),
-    subject: "أكّد بريدك الإلكتروني — موعد",
+    subject: "أكّد إيميلك — موعد",
     html:    emailVerificationHtml(verifyUrl, name),
   });
 }

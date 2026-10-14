@@ -69,7 +69,7 @@ export default function PerformanceView({
         ])}
         empty={
           ar
-            ? "مفيش مواعيد متخصصة لحد من الفريق في المدة دي"
+            ? "مفيش مواعيد متسجّلة على حد من الفريق في المدة دي"
             : "No appointments assigned to a staff member in this period"
         }
       />

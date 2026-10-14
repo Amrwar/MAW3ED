@@ -107,7 +107,7 @@ export async function POST(_req: Request, { params }: Params) {
     return ok({ voted: !already, helpfulCount });
   } catch (e) {
     log.error("[review helpful]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 

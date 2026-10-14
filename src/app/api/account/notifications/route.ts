@@ -29,7 +29,7 @@ export async function PATCH(req: Request) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[notifications PATCH]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 
@@ -53,6 +53,6 @@ export async function GET() {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[notifications GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

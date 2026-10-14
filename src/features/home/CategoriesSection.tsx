@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { coverClassFor } from "@/lib/category-cover";
-import { num } from "@/lib/fmt";
+import { countText } from "@/lib/i18n";
 import type { CategoryWithCount } from "@/lib/data";
 
 interface Props {
@@ -69,9 +69,7 @@ export default function CategoriesSection({ categories, limit = 8 }: Props) {
                     </span>
                     <span className="mt-1 block text-[0.78125rem] text-[var(--color-subtle)]">
                       {cat.count > 0 ? (
-                        <>
-                          <span className="num">{num(cat.count, lang)}</span> {c.countSuffix}
-                        </>
+                        countText(lang, cat.count, c.countSuffix)
                       ) : (
                         // Honest about a category nobody has listed in
                         // yet — and it reads as an invitation.

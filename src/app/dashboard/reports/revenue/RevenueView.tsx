@@ -1,8 +1,11 @@
 "use client";
 
 import { useLanguage } from "@/contexts/LanguageContext";
-import { money, num } from "@/lib/fmt";
+import { arCount, enCount, money, num } from "@/lib/fmt";
 import { Bars, Figures } from "../_components/ReportBits";
+
+const DAYS = { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" };
+const APPT = { one: "ميعاد واحد", two: "ميعادين", few: "مواعيد", many: "ميعاد" };
 
 /**
  * Money that came in.
@@ -47,7 +50,7 @@ export default function RevenueView({
           {
             label: ar ? "مواعيد تمّت" : "Completed",
             value: num(completedCount, lang),
-            hint: ar ? `آخر ${num(days, lang)} يوم` : `last ${num(days, lang)} days`,
+            hint: ar ? `آخر ${arCount(days, DAYS)}` : `last ${enCount(days, "day")}`,
           },
           {
             label: ar ? "متوسط الموعد" : "Average appointment",
@@ -73,7 +76,7 @@ export default function RevenueView({
         rows={byService.map((s) => ({
           label: s.name,
           value: s.amount,
-          sub: ar ? `${num(s.count, lang)} موعد` : `${num(s.count, lang)}`,
+          sub: ar ? arCount(s.count, APPT) : enCount(s.count, "appointment"),
         }))}
         empty={ar ? "لسه مفيش" : "Nothing yet"}
       />

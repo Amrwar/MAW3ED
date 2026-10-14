@@ -57,7 +57,7 @@ export async function GET(req: Request, { params }: Params) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[business reschedule slots]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 
@@ -114,12 +114,18 @@ export async function POST(req: Request, { params }: Params) {
       throw e;
     }
 
-    void notify({ type: "booking.rescheduled", bookingId: booking.id, movedTo: `${date}T${startTime}`, by: "business" });
+    void notify({
+      type: "booking.rescheduled",
+      bookingId: booking.id,
+      movedTo: `${date}T${startTime}`,
+      movedFrom: `${booking.date.toISOString().slice(0, 10)}T${booking.startTime}`,
+      by: "business",
+    });
 
     return ok({ id: booking.id, date, startTime, endTime, status: booking.status });
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[business reschedule]", e);
-    return err("حدث خطأ أثناء إعادة الجدولة", 500);
+    return err("حصلت مشكلة وإحنا بنغيّر الميعاد، جرّب تاني بعد شوية", 500);
   }
 }

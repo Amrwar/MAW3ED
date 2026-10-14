@@ -167,6 +167,6 @@ export async function POST(req: Request, { params }: Params) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[admin refund]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

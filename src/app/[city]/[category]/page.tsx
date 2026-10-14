@@ -15,6 +15,9 @@ import { getLandingCombos, resolveCombo, prerenderHints } from "@/lib/seo/landin
 import { buildMetadata, parsePage } from "@/lib/seo/meta";
 import { EMPTY_QUERY } from "@/lib/discovery/params";
 import { searchBusinesses } from "@/lib/discovery/search";
+import { arCount } from "@/lib/fmt";
+
+const BIZ = { one: "نشاط واحد", two: "نشاطين", few: "أنشطة", many: "نشاط" };
 
 type Props = {
   params: Promise<{ city: string; category: string }>;
@@ -58,7 +61,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     description:
       combo.count === 1
         ? `${where}: نشاط واحد بيستقبل حجوزات أونلاين على موعد. شوف المواعيد المتاحة واحجز في ثوانٍ.`
-        : `${combo.count} من ${where} بيستقبلوا حجوزات أونلاين على موعد. قارن المواعيد والأسعار واحجز في ثوانٍ.`,
+        : `${arCount(combo.count, BIZ)} في ${combo.category.nameAr} – ${combo.city.nameAr} ${combo.count === 2 || combo.count > 10 ? "بيستقبلوا" : "بتستقبل"} حجوزات أونلاين على موعد. قارن المواعيد والأسعار واحجز في ثوانٍ.`,
     path: `/${combo.city.slug}/${combo.category.slug}`,
     page,
   });
@@ -130,7 +133,7 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
                     ? "نشاط واحد بيستقبل حجوزات"
                     : "1 business taking bookings"
                   : isAr
-                    ? `${total} أنشطة بتستقبل حجوزات`
+                    ? `${arCount(total, BIZ)} ${total === 2 ? "بيستقبلوا" : total > 10 ? "بيستقبل" : "بتستقبل"} حجوزات`
                     : `${total} businesses taking bookings`}
               </p>
             </header>
@@ -248,7 +251,7 @@ async function RelatedLinks({
     return (
       <p className="mt-10 text-center text-[0.8125rem] text-[var(--color-subtle)]">
         <Link href="/businesses" className="font-bold text-[var(--color-jade)]">
-          {isAr ? "تصفّح كل الأعمال" : "Browse all businesses"}
+          {isAr ? "تصفّح كل الأنشطة" : "Browse all businesses"}
         </Link>
       </p>
     );

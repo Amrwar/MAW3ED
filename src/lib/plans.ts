@@ -21,6 +21,8 @@
  *            API access, priority support, own branding
  */
 
+import { arCount } from "@/lib/fmt";
+
 export type Plan = "FREE" | "PRO" | "PREMIUM";
 export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "INACTIVE";
 
@@ -349,11 +351,11 @@ function countLabel(key: PlanFeature, value: number, lang: "ar" | "en"): string 
 
   if (key === "monthlyBookings") {
     if (value === Infinity) return lang === "ar" ? "حجوزات غير محدودة" : "Unlimited bookings";
-    return lang === "ar" ? `${value} حجز شهريًا` : `${value} bookings / month`;
+    return lang === "ar" ? `${arCount(value, { one: "حجز واحد", two: "حجزين", few: "حجوزات", many: "حجز" })} شهريًا` : `${value} bookings / month`;
   }
   if (key === "staffMembers") {
     if (value === Infinity) return lang === "ar" ? "فريق غير محدود" : "Unlimited staff";
-    return lang === "ar" ? `حتى ${value} أفراد` : `Up to ${value} staff`;
+    return lang === "ar" ? `حتى ${arCount(value, { one: "فرد واحد", two: "فردين", few: "أفراد", many: "فرد" })}` : `Up to ${value} staff`;
   }
   if (key === "branches") {
     if (value === Infinity) return lang === "ar" ? "فروع غير محدودة" : "Unlimited branches";

@@ -68,6 +68,6 @@ export async function DELETE(_req: Request, { params }: Params) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[review response DELETE]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

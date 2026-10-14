@@ -12,6 +12,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import Modal from "@/components/ui/Modal";
 import Alert from "@/components/ui/Alert";
+import { providerLabel } from "@/lib/scheduling/resource-labels";
 
 const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
   PENDING:         { bg: "var(--color-warn-soft)", color: "var(--color-warn)" },
@@ -163,7 +164,7 @@ export default function BookingDetailPanel({
           </div>
 
           {/* Booking details */}
-          <Section icon={<Calendar size={14} style={{ color: "var(--color-jade)" }} />} title={lang === "ar" ? "تفاصيل الموعد" : "Booking Details"}>
+          <Section icon={<Calendar size={14} style={{ color: "var(--color-jade)" }} />} title={lang === "ar" ? "تفاصيل الحجز" : "Booking details"}>
             <InfoRow label={bd.service}  value={booking.serviceName} />
             <InfoRow label={bd.duration} value={`${booking.serviceDuration} ${bd.minutes}`} />
             <InfoRow label={bd.date}     value={formatDateAr(booking.date)} />
@@ -172,7 +173,8 @@ export default function BookingDetailPanel({
               value={booking.endTime ? `${booking.startTime} – ${booking.endTime}` : booking.startTime}
               ltr
             />
-            {booking.staffName  && <InfoRow label={lang === "ar" ? "الحلاق"    : "Barber"}      value={booking.staffName}        />}
+            {/* The same neutral label the booking widget uses, whatever the business does. */}
+            {booking.staffName  && <InfoRow label={providerLabel(lang)} value={booking.staffName} />}
             {booking.tableName  && <InfoRow label={lang === "ar" ? "الطاولة"   : "Table"}       value={booking.tableName}        />}
             {booking.partySize  && <InfoRow label={lang === "ar" ? "الأشخاص"  : "Party size"}  value={String(booking.partySize)} />}
           </Section>

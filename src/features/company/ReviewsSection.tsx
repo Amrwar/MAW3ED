@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { countText } from "@/lib/i18n";
 import { BadgeCheck, MessageSquare, Star, Store } from "lucide-react";
 import Stars from "@/components/shared/Stars";
 import EmptyState from "@/components/ui/EmptyState";
@@ -120,7 +121,7 @@ export default function ReviewsSection({
               <Stars value={Math.round(summary.average ?? 0)} size={15} />
             </div>
             <p className="m-0 mt-2 text-[0.78125rem] text-[var(--color-subtle)]">
-              <span className="num">{num(summary.count, lang)}</span> {r.reviewWord}
+              {countText(lang, summary.count, r.reviewWord)}
             </p>
           </div>
 
@@ -180,10 +181,8 @@ export default function ReviewsSection({
         <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--color-line)] pt-5">
           <p className="m-0 text-[0.8125rem] text-[var(--color-muted)]" aria-live="polite">
             {starFilter
-              ? r.showingFiltered
-                  .replace("{n}", num(matched, lang))
-                  .replace("{s}", num(starFilter, lang))
-              : r.showingAll.replace("{n}", num(matched, lang))}
+              ? countText(lang, matched, r.showingFiltered).replace("{s}", r.starsAt[starFilter - 1] ?? "")
+              : countText(lang, matched, r.showingAll)}
           </p>
 
           {starFilter && (

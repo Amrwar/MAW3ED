@@ -1,13 +1,17 @@
+"use client";
+
 import type { Business } from "@/types/business";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function AboutSection({ business }: { business: Business }) {
+  const { lang } = useLanguage();
   const text = business.about || business.taglineAr;
   if (!text) return null;
 
   return (
     <section id="about">
       <h2 className="mb-4 text-[1.5rem] font-bold text-[var(--color-ink)]">
-        عن {business.nameAr}
+        {lang === "en" ? `About ${business.nameEn || business.nameAr}` : `عن ${business.nameAr}`}
       </h2>
 
       <p className="m-0 max-w-[62ch] text-[0.96875rem] leading-[1.95] text-[var(--color-muted)]">

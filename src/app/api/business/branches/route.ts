@@ -36,7 +36,7 @@ export async function GET() {
     return ok({ branches });
   } catch (e) {
     log.error("[branches GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 

@@ -215,6 +215,6 @@ export async function DELETE(_req: Request, { params }: Params) {
     return ok({ withdrawn: true });
   } catch (e) {
     log.error("[booking review DELETE]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

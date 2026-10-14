@@ -36,7 +36,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   const { id } = await params;
   const existing = await getOwned(id, guard.id);
-  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!existing) return NextResponse.json({ error: "الطاولة دي مش موجودة" }, { status: 404 });
 
   const body = await req.json();
   const table = await db.table.update({
@@ -60,7 +60,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const existing = await getOwned(id, guard.id);
-  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!existing) return NextResponse.json({ error: "الطاولة دي مش موجودة" }, { status: 404 });
 
   await db.table.delete({ where: { id } });
   return NextResponse.json({ ok: true });

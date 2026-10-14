@@ -1,9 +1,13 @@
 "use client";
 
+import { arCount, enCount } from "@/lib/fmt";
 import { useState } from "react";
 import { Loader2, Check, X, Clock, CalendarDays } from "lucide-react";
 import type { AvailabilityDay } from "./SettingsClient";
 import { useLanguage } from "@/contexts/LanguageContext";
+
+const WORKDAY = { zero: "أيام عمل", one: "يوم عمل واحد", two: "يومين عمل", few: "أيام عمل", many: "يوم عمل" };
+const DAYOFF = { zero: "أيام إجازة", one: "يوم إجازة واحد", two: "يومين إجازة", few: "أيام إجازة", many: "يوم إجازة" };
 
 const DAY_NAMES_AR = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -138,10 +142,13 @@ export default function AvailabilityForm({ initialAvailability }: Props) {
           </div>
           <div>
             <p style={{ fontSize: 13, fontWeight: 700, color: "var(--color-ink)" }}>
-              <span style={{ color: "var(--color-jade)" }}>{openCount}</span>
-              {isAr ? ` أيام عمل · ` : ` working day(s) · `}
-              <span style={{ color: "var(--color-subtle)" }}>{7 - openCount}</span>
-              {isAr ? " أيام إجازة" : " day(s) off"}
+              <span style={{ color: "var(--color-jade)" }}>
+                {isAr ? arCount(openCount, WORKDAY) : enCount(openCount, "working day")}
+              </span>
+              {" · "}
+              <span style={{ color: "var(--color-subtle)" }}>
+                {isAr ? arCount(7 - openCount, DAYOFF) : enCount(7 - openCount, "day off", "days off")}
+              </span>
             </p>
             <p style={{ fontSize: 11, color: "var(--color-subtle)", marginTop: 1 }}>
               {isAr ? "التغييرات تؤثر فورًا على الحجوزات الجديدة" : "Changes take effect immediately on new bookings"}

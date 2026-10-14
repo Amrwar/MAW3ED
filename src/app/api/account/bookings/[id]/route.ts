@@ -36,6 +36,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[account booking link]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

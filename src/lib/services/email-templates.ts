@@ -1,10 +1,16 @@
 /**
  * Arabic HTML email templates for Maw3ed booking notifications.
+ * One per event — received, confirmed, reminder, rescheduled, new
+ * booking, customer moved it, payment received — in the same colloquial
+ * register as the push and in-app copy.
  * Plain HTML — no React, no external renderer. Works in all email clients.
  */
 
 import type { BookingEmailData } from "./email";
 import { siteUrl } from "@/lib/url";
+import { arCount, money } from "@/lib/fmt";
+import { PLAN_FEATURES } from "@/lib/plans";
+import { CUTOFF_HOURS } from "@/lib/bookings/self-service";
 
 const AR_DAYS: string[] = [
   "الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت",
@@ -48,7 +54,7 @@ function layout(body: string): string {
         <!-- Footer -->
         <tr><td style="padding:20px 0 0;text-align:center;">
           <p style="margin:0;font-size:12px;color:#9ca3af;">
-            أُرسلت هذه الرسالة تلقائيًا من منصة <strong>موعد</strong> · لا تردّ على هذا البريد
+            الرسالة دي اتبعتت تلقائيًا من <strong>موعد</strong> · متردّش على الإيميل ده
           </p>
         </td></tr>
 
@@ -69,138 +75,236 @@ function row(label: string, value: string, ltr = false): string {
   </tr>`;
 }
 
-// ── Customer confirmation template ────────────────────────────
+// ── Shared booking pieces ─────────────────────────────────────
 
-export function customerConfirmationHtml(d: BookingEmailData): string {
-  const body = `
-    <!-- Heading -->
-    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">تم تسجيل حجزك ✅</p>
-    <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
-      أهلًا <strong>${escapeHtml(d.customerName)}</strong>، تم استلام حجزك بنجاح. سيتواصل معك الفريق قريبًا لتأكيده.
-    </p>
+function priceOf(d: BookingEmailData): string {
+  return money(d.totalPrice, "ar", d.currency);
+}
 
-    <!-- Details table -->
+function timeOf(startTime: string, endTime?: string | null): string {
+  return endTime ? `${startTime} – ${endTime}` : startTime;
+}
+
+/** The appointment laid out as a table, for the customer. */
+function customerDetails(d: BookingEmailData): string {
+  return `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-      ${row("المنشأة",   d.businessName)}
+      ${row("المكان",   d.businessName)}
       ${row("الخدمة",   d.serviceName)}
       ${row("التاريخ",  formatDateAr(d.date))}
-      ${row("الوقت",    `${d.startTime} – ${d.endTime}`, true)}
-      ${row("الإجمالي", `${d.totalPrice.toLocaleString("ar-EG-u-nu-latn")} ${d.currency}`)}
-    </table>
+      ${row("الوقت",    timeOf(d.startTime, d.endTime), true)}
+      ${row("الإجمالي", priceOf(d))}
+    </table>`;
+}
 
-    ${d.notes ? `
-    <!-- Notes -->
+/** The same, for the business: who is coming and how to reach them. */
+function businessDetails(d: BookingEmailData): string {
+  return `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+      ${row("العميل",       d.customerName)}
+      ${row("رقم الموبايل", d.customerPhone, true)}
+      ${row("الخدمة",       d.serviceName)}
+      ${row("التاريخ",      formatDateAr(d.date))}
+      ${row("الوقت",        timeOf(d.startTime, d.endTime), true)}
+      ${row("الإجمالي",     priceOf(d))}
+    </table>`;
+}
+
+/** Old and new time of a moved booking, when the old one is known. */
+function movedRows(d: BookingEmailData): string {
+  if (!d.previous) return "";
+  return `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+      ${row("الميعاد القديم", `${formatDateAr(d.previous.date)} — ${d.previous.startTime}`)}
+      ${row("الميعاد الجديد", `${formatDateAr(d.date)} — ${timeOf(d.startTime, d.endTime)}`)}
+    </table>`;
+}
+
+/** `title` and `intro` are trusted markup: callers escape what they interpolate. */
+function heading(title: string, intro: string): string {
+  return `
+    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">${title}</p>
+    <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">${intro}</p>`;
+}
+
+function pill(text: string, tone: "ok" | "wait"): string {
+  const [bg, fg] = tone === "ok" ? ["#dcfce7", "#15803d"] : ["#fef3c7", "#d97706"];
+  return `
+    <div style="display:inline-block;background:${bg};color:${fg};padding:6px 16px;border-radius:999px;font-size:13px;font-weight:700;margin-bottom:24px;">
+      ${text}
+    </div>`;
+}
+
+function note(text: string): string {
+  return `
+    <div style="background:#eff6ff;border-right:3px solid #3b82f6;border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:24px;">
+      <p style="margin:0;font-size:14px;color:#1d4ed8;font-weight:600;">${text}</p>
+    </div>`;
+}
+
+function notesBlock(d: BookingEmailData, label: string): string {
+  return d.notes
+    ? `
     <div style="background:#f9fafb;border-radius:10px;padding:14px 16px;margin-bottom:24px;">
-      <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;font-weight:600;">ملاحظاتك</p>
+      <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;font-weight:600;">${label}</p>
       <p style="margin:0;font-size:14px;color:#374151;">${escapeHtml(d.notes)}</p>
-    </div>` : ""}
+    </div>`
+    : "";
+}
 
-    <!-- Status pill -->
-    <div style="display:inline-block;background:#fef3c7;color:#d97706;padding:6px 16px;border-radius:999px;font-size:13px;font-weight:700;margin-bottom:24px;">
-      ⏳ في انتظار التأكيد
-    </div>
-
-    ${d.bookingUrl ? `
-    <!-- Booking link CTA -->
+function button(href: string, label: string): string {
+  return `
     <div style="margin-bottom:24px;">
-      <a href="${escapeHtml(d.bookingUrl)}"
+      <a href="${escapeHtml(href)}"
          style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;">
-        عرض الحجز وإدارته ←
+        ${label}
       </a>
-    </div>
+    </div>`;
+}
+
+const CUTOFF_TEXT = arCount(CUTOFF_HOURS, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" });
+
+/** The booking link, and what it lets the customer do (self-service.ts). */
+function manageLink(d: BookingEmailData): string {
+  return d.bookingUrl
+    ? `${button(d.bookingUrl, "شوف الحجز ←")}
     <p style="margin:0 0 20px;font-size:12px;color:#9ca3af;">
-      احتفظ بهذا الرابط للرجوع إليه في أي وقت وإلغاء الحجز إذا لزم الأمر.
-    </p>` : ""}
+      من الرابط ده تقدر تشوف حجزك، وتغيّر ميعاده أو تلغيه بنفسك لحد ${CUTOFF_TEXT} قبل الميعاد.
+    </p>`
+    : "";
+}
 
-    <!-- Divider -->
+const THANKS = `
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا إنك استخدمت <strong style="color:#0D7A5A;">موعد</strong> 🙏</p>`;
 
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong> 🙏</p>
-  `;
+const OWNER_FOOTER = `
+    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
+    <p style="margin:0;font-size:13px;color:#9ca3af;">
+      تقدر تتحكم في التنبيهات اللي بتوصلك من إعدادات الإشعارات في لوحة التحكم.
+    </p>`;
+
+function dashboardButton(): string {
+  return button(siteUrl("/dashboard/bookings"), "افتح الحجوزات ←");
+}
+
+// ── Customer: booking received / confirmed ────────────────────
+
+/**
+ * The customer's copy of a new or confirmed booking. A booking still
+ * waiting for the business says so; anything else (confirmed by the
+ * business, or made at a business that confirms automatically) says it
+ * is confirmed — a confirmed booking must never read as pending.
+ */
+export function customerConfirmationHtml(d: BookingEmailData): string {
+  const name = `<strong>${escapeHtml(d.customerName)}</strong>`;
+  const biz = `<strong>${escapeHtml(d.businessName)}</strong>`;
+  const body =
+    d.status === "PENDING"
+      ? `${heading("وصل طلب حجزك 📩", `أهلًا ${name}، طلب حجزك في ${biz} وصل. ${biz} هيراجعه ويأكده، وهيوصلك إشعار أول ما يتأكد.`)}
+    ${customerDetails(d)}
+    ${notesBlock(d, "ملاحظاتك")}
+    ${pill("⏳ مستني تأكيد", "wait")}
+    ${manageLink(d)}
+    ${THANKS}`
+      : `${heading("حجزك اتأكد ✅", `أهلًا ${name}، حجزك في ${biz} مؤكَّد.`)}
+    ${customerDetails(d)}
+    ${notesBlock(d, "ملاحظاتك")}
+    ${pill("✅ مؤكَّد", "ok")}
+    ${manageLink(d)}
+    ${THANKS}`;
   return layout(body);
 }
 
-// ── Customer reminder template ────────────────────────────────
+// ── Customer: reminder ────────────────────────────────────────
 
+/**
+ * Sent `reminderLeadHours` before the appointment — which a business
+ * sets anywhere from hours to days — so it names the date and never
+ * says "tomorrow". Only confirmed bookings are reminded.
+ */
 export function customerReminderHtml(d: BookingEmailData): string {
   const body = `
-    <!-- Heading -->
-    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">تذكير بموعدك غداً ⏰</p>
-    <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
-      أهلًا <strong>${escapeHtml(d.customerName)}</strong>، هذا تذكير بموعدك المحجوز غداً.
-    </p>
-
-    <!-- Details table -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-      ${row("المنشأة",   d.businessName)}
-      ${row("الخدمة",   d.serviceName)}
-      ${row("التاريخ",  formatDateAr(d.date))}
-      ${row("الوقت",    `${d.startTime} – ${d.endTime}`, true)}
-      ${row("الإجمالي", `${d.totalPrice.toLocaleString("ar-EG-u-nu-latn")} ${d.currency}`)}
-    </table>
-
-    <!-- Reminder note -->
-    <div style="background:#eff6ff;border-right:3px solid #3b82f6;border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:24px;">
-      <p style="margin:0;font-size:14px;color:#1d4ed8;font-weight:600;">
-        📅 موعدك مؤكد — نراك غداً!
-      </p>
-    </div>
-
-    ${d.bookingUrl ? `
-    <!-- Booking management link -->
-    <div style="margin-bottom:24px;">
-      <a href="${escapeHtml(d.bookingUrl)}"
-         style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;">
-        عرض الحجز أو إلغائه ←
-      </a>
-    </div>` : ""}
-
-    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
-
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong> 🙏</p>
-  `;
+    ${heading("تذكير بميعادك ⏰", `أهلًا <strong>${escapeHtml(d.customerName)}</strong>، ده تذكير بميعادك في <strong>${escapeHtml(d.businessName)}</strong>.`)}
+    ${customerDetails(d)}
+    ${note(`📅 ميعادك مؤكَّد — ${escapeHtml(formatDateAr(d.date))}، الساعة <span dir="ltr">${escapeHtml(d.startTime)}</span>.`)}
+    ${d.bookingUrl ? button(d.bookingUrl, "شوف الحجز أو الغيه ←") : ""}
+    ${THANKS}`;
   return layout(body);
 }
 
-// ── Business owner alert template ─────────────────────────────
+// ── Customer: rescheduled ─────────────────────────────────────
+
+/**
+ * The booking moved. Shows the old and the new time. When the customer
+ * moved it, the booking goes back to the business to confirm (the
+ * reschedule route resets it to PENDING), and the email says so.
+ */
+export function customerRescheduleHtml(d: BookingEmailData): string {
+  const biz = `<strong>${escapeHtml(d.businessName)}</strong>`;
+  const status =
+    d.status === "PENDING"
+      ? `${pill("⏳ الميعاد الجديد مستني تأكيد", "wait")}
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">${biz} هيراجع الميعاد الجديد ويأكده، وهيوصلك إشعار.</p>`
+      : pill("✅ مؤكَّد", "ok");
+  const body = `
+    ${heading("اتغيّر ميعادك 📅", `أهلًا <strong>${escapeHtml(d.customerName)}</strong>، ميعاد حجزك في ${biz} اتغيّر.`)}
+    ${movedRows(d)}
+    ${customerDetails(d)}
+    ${status}
+    ${manageLink(d)}
+    ${THANKS}`;
+  return layout(body);
+}
+
+// ── Business: new booking ─────────────────────────────────────
 
 export function businessAlertHtml(d: BookingEmailData): string {
+  const who = `<strong>${escapeHtml(d.customerName)}</strong>`;
   const body = `
-    <!-- Heading -->
-    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">موعد جديد 🗓️</p>
-    <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
-      لديك حجز جديد ينتظر تأكيدك في لوحة التحكم.
-    </p>
+    ${heading("حجز جديد 🗓️", d.status === "PENDING"
+      ? `${who} حجز عندك، والحجز مستني تأكيدك من لوحة التحكم.`
+      : `${who} حجز عندك، والحجز مؤكَّد.`)}
+    ${businessDetails(d)}
+    ${notesBlock(d, "ملاحظات العميل")}
+    ${dashboardButton()}
+    ${OWNER_FOOTER}`;
+  return layout(body);
+}
 
-    <!-- Details table -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-      ${row("العميل",     d.customerName)}
-      ${row("الهاتف",     d.customerPhone, true)}
-      ${row("الخدمة",     d.serviceName)}
-      ${row("التاريخ",    formatDateAr(d.date))}
-      ${row("الوقت",      `${d.startTime} – ${d.endTime}`, true)}
-      ${row("الإجمالي",   `${d.totalPrice.toLocaleString("ar-EG-u-nu-latn")} ${d.currency}`)}
-    </table>
+// ── Business: the customer moved their booking ───────────────
 
-    ${d.notes ? `
-    <!-- Customer notes -->
-    <div style="background:#fff7ed;border-right:3px solid #d97706;border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:24px;">
-      <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;font-weight:600;">ملاحظات العميل</p>
-      <p style="margin:0;font-size:14px;color:#374151;">${escapeHtml(d.notes)}</p>
-    </div>` : ""}
+export function businessRescheduleHtml(d: BookingEmailData): string {
+  const who = `<strong>${escapeHtml(d.customerName)}</strong>`;
+  const body = `
+    ${heading("عميل غيّر ميعاده 🔄", d.status === "PENDING"
+      ? `${who} غيّر ميعاد حجزه، والميعاد الجديد مستني تأكيدك.`
+      : `${who} غيّر ميعاد حجزه.`)}
+    ${movedRows(d)}
+    ${businessDetails(d)}
+    ${dashboardButton()}
+    ${OWNER_FOOTER}`;
+  return layout(body);
+}
 
-    <!-- CTA -->
-    <a href="${escapeHtml(siteUrl("/dashboard/bookings"))}"
-       style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;margin-bottom:24px;">
-      إدارة الحجوزات ←
-    </a>
+// ── Business: a payment arrived ───────────────────────────────
 
-    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
-
-    <p style="margin:0;font-size:13px;color:#9ca3af;">
-      تم إرسال هذا التنبيه تلقائيًا من منصة <strong style="color:#0D7A5A;">موعد</strong>.
-    </p>
-  `;
+/**
+ * A deposit or a balance landed. For a booking that needed a deposit
+ * this is also the business's first word of it — that booking is only
+ * announced once it is paid — so the appointment is laid out too.
+ */
+export function businessPaymentHtml(d: BookingEmailData): string {
+  const who = `<strong>${escapeHtml(d.customerName)}</strong>`;
+  const paid = d.paidAmount != null ? money(d.paidAmount, "ar", d.currency) : null;
+  const body = `
+    ${heading("وصلتك دفعة 💰", paid
+      ? `${who} دفع <strong>${escapeHtml(paid)}</strong> أونلاين.`
+      : `${who} دفع أونلاين.`)}
+    ${businessDetails(d)}
+    ${d.status === "CONFIRMED" ? pill("✅ الحجز مؤكَّد", "ok") : ""}
+    ${dashboardButton()}
+    ${OWNER_FOOTER}`;
   return layout(body);
 }
 
@@ -214,37 +318,36 @@ export function subscriptionRenewalReminderHtml(params: {
   daysLeft:     number;
 }): string {
   const { businessName, planName, expiryDate, renewUrl, daysLeft } = params;
+  const days = arCount(daysLeft, { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" });
   const body = `
-    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">تذكير بتجديد اشتراكك ⏰</p>
+    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">جدّد اشتراكك ⏰</p>
     <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
-      مرحبًا، اشتراكك في منصة <strong>موعد</strong> لعملك
-      <strong>${escapeHtml(businessName)}</strong> سينتهي خلال <strong>${escapeHtml(String(daysLeft))} أيام</strong>.
+      أهلًا، اشتراك <strong>${escapeHtml(businessName)}</strong> في <strong>موعد</strong>
+      هينتهي خلال <strong>${escapeHtml(days)}</strong>.
     </p>
 
     <div style="background:#fef3c7;border-radius:10px;padding:16px;margin-bottom:24px;">
       <p style="margin:0;font-size:14px;color:#92400e;">
-        📅 تاريخ انتهاء خطة <strong>${escapeHtml(planName)}</strong>: <strong dir="ltr">${escapeHtml(expiryDate)}</strong>
+        📅 باقة <strong>${escapeHtml(planName)}</strong> بتنتهي يوم <strong dir="ltr">${escapeHtml(expiryDate)}</strong>
       </p>
       <p style="margin:8px 0 0;font-size:13px;color:#b45309;">
-        بعد الانتهاء، سيتم التحويل تلقائيًا إلى الخطة المجانية وستفقد مميزات خطتك الحالية.
+        لو ماجدّدتش، نشاطك هيرجع للباقة المجانية تلقائيًا ومميزات باقتك الحالية هتقف.
       </p>
     </div>
 
-    <div style="margin-bottom:24px;">
-      <a href="${escapeHtml(renewUrl)}"
-         style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
-        تجديد الاشتراك الآن ←
-      </a>
-    </div>
-
-    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong> 🙏</p>
+    ${button(renewUrl, "جدّد الاشتراك ←")}
+    ${THANKS}
   `;
   return layout(body);
 }
 
 // ── Subscription expired template ─────────────────────────────
 
+/**
+ * A lapsed subscription falls back to FREE (plans.ts getEffectivePlan);
+ * the page stays published. The list is what every paid plan has and
+ * FREE does not, so it is true whichever plan lapsed.
+ */
 export function subscriptionExpiredHtml(params: {
   businessName: string;
   planName:     string;
@@ -252,33 +355,27 @@ export function subscriptionExpiredHtml(params: {
 }): string {
   const { businessName, planName, renewUrl } = params;
   const body = `
-    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">انتهى اشتراكك 😔</p>
+    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">انتهى اشتراكك</p>
     <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
-      للأسف، انتهت صلاحية اشتراك عملك <strong>${escapeHtml(businessName)}</strong>
-      في خطة <strong>${escapeHtml(planName)}</strong>.
-      تم التحويل تلقائيًا إلى الخطة المجانية.
+      اشتراك <strong>${escapeHtml(businessName)}</strong> في باقة <strong>${escapeHtml(planName)}</strong> انتهى،
+      ونشاطك رجع للباقة المجانية. صفحتك لسه ظاهرة وبتستقبل حجوزات.
     </p>
 
     <div style="background:#fee2e2;border-radius:10px;padding:16px;margin-bottom:24px;">
       <p style="margin:0;font-size:14px;color:#991b1b;">
-        ⚠️ المميزات التالية أصبحت غير متاحة:
+        ⚠️ اللي وقف لحد ما تجدّد:
       </p>
       <ul style="margin:8px 0 0;padding-right:20px;font-size:13px;color:#b91c1c;">
+        <li>الحجوزات غير المحدودة (المجانية: ${PLAN_FEATURES.FREE.monthlyBookings} حجز في الشهر)</li>
         <li>إشعارات واتساب</li>
         <li>لوحة الإحصائيات</li>
-        ${planName === "الاحترافي" ? "<li>دفع العربون من العملاء</li>" : ""}
+        <li>استلام العربون والمدفوعات أونلاين</li>
+        <li>إدارة الفريق</li>
       </ul>
     </div>
 
-    <div style="margin-bottom:24px;">
-      <a href="${escapeHtml(renewUrl)}"
-         style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
-        تجديد الاشتراك ←
-      </a>
-    </div>
-
-    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong> 🙏</p>
+    ${button(renewUrl, "جدّد الاشتراك ←")}
+    ${THANKS}
   `;
   return layout(body);
 }
@@ -287,36 +384,24 @@ export function subscriptionExpiredHtml(params: {
 
 export function passwordResetHtml(resetUrl: string): string {
   const body = `
-    <!-- Heading -->
-    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">إعادة تعيين كلمة المرور 🔐</p>
+    <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">تغيير كلمة المرور 🔐</p>
     <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
-      تلقّينا طلبًا لإعادة تعيين كلمة المرور لحسابك في <strong>موعد</strong>.
-      انقر على الزر أدناه لاختيار كلمة مرور جديدة.
+      وصلنا طلب لتغيير كلمة المرور بتاعة حسابك على <strong>موعد</strong>.
+      اضغط على الزرار اللي تحت واختار كلمة مرور جديدة.
     </p>
 
-    <!-- CTA -->
-    <div style="margin-bottom:24px;">
-      <a href="${escapeHtml(resetUrl)}"
-         style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
-        إعادة تعيين كلمة المرور ←
-      </a>
-    </div>
+    ${button(resetUrl, "اختار كلمة مرور جديدة ←")}
 
-    <!-- Expiry note -->
     <div style="background:#fef3c7;border-radius:10px;padding:12px 16px;margin-bottom:24px;">
       <p style="margin:0;font-size:13px;color:#92400e;">
-        ⏳ هذا الرابط صالح لمدة <strong>ساعة واحدة</strong> فقط.
+        ⏳ الرابط شغال لمدة <strong>ساعة واحدة</strong> بس.
       </p>
     </div>
 
-    <!-- Security note -->
     <p style="margin:0 0 16px;font-size:13px;color:#9ca3af;">
-      إذا لم تطلب إعادة تعيين كلمة المرور، تجاهل هذا البريد — حسابك بأمان تام.
+      لو مش إنت اللي طلبت ده، تجاهل الإيميل — كلمة المرور بتاعتك مش هتتغيّر.
     </p>
-
-    <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
-
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong> 🙏</p>
+    ${THANKS}
   `;
   return layout(body);
 }
@@ -327,34 +412,34 @@ export function passwordResetHtml(resetUrl: string): string {
  * unpublished, so this email is the gate on the public marketplace.
  */
 export function emailVerificationHtml(verifyUrl: string, name?: string | null): string {
-  const greeting = name ? `أهلًا ${escapeHtml(name)}،` : "أهلًا بك،";
+  const greeting = name ? `أهلًا ${escapeHtml(name)}،` : "أهلًا بيك،";
   const body = `
     <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">${greeting}</p>
     <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
-      فضلًا أكّد بريدك الإلكتروني عشان نقدر ننشر صفحة نشاطك على
+      أكّد إيميلك عشان نقدر ننشر صفحة نشاطك على
       <strong>موعد</strong> وتبدأ تستقبل حجوزات.
     </p>
 
     <div style="margin-bottom:24px;">
       <a href="${escapeHtml(verifyUrl)}"
          style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
-        أكّد بريدي ←
+        أكّد إيميلي ←
       </a>
     </div>
 
     <div style="background:#E9F2EE;border-radius:10px;padding:12px 16px;margin-bottom:24px;">
       <p style="margin:0;font-size:13px;color:#0A5F47;">
-        الرابط صالح لمدة <strong>24 ساعة</strong>.
+        الرابط شغال لمدة <strong>24 ساعة</strong>.
       </p>
     </div>
 
     <p style="margin:0 0 16px;font-size:13px;color:#9ca3af;">
-      لو مش إنت اللي أنشأت الحساب، تجاهل البريد ده — مفيش حاجة هتحصل.
+      لو مش إنت اللي عملت الحساب، تجاهل الإيميل ده — مفيش حاجة هتحصل.
     </p>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 20px;" />
 
-    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا لاستخدامك <strong style="color:#0D7A5A;">موعد</strong></p>
+    <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا إنك اخترت <strong style="color:#0D7A5A;">موعد</strong></p>
   `;
   return layout(body);
 }

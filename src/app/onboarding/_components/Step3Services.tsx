@@ -11,7 +11,7 @@ const DURATION_OPTIONS = [
   { value: 45,  label: "45 دقيقة" },
   { value: 60,  label: "ساعة" },
   { value: 90,  label: "ساعة ونص" },
-  { value: 120, label: "ساعتان" },
+  { value: 120, label: "ساعتين" },
   { value: 180, label: "3 ساعات" },
 ];
 

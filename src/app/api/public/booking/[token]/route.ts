@@ -25,6 +25,6 @@ export async function GET(_req: Request, { params }: Params) {
     return Response.json(booking, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     log.error("[public booking GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

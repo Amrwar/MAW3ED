@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { money, num } from "@/lib/fmt";
+import { arCount, enCount, money, num } from "@/lib/fmt";
 import { Figures, Rows } from "../_components/ReportBits";
+
+const DAYS = { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" };
 
 /** Who comes, and who comes back. */
 export default function CustomersView({
@@ -25,7 +27,7 @@ export default function CustomersView({
 }) {
   const { lang } = useLanguage();
   const ar = lang === "ar";
-  const period = ar ? `آخر ${num(days, lang)} يوم` : `last ${num(days, lang)} days`;
+  const period = ar ? `آخر ${arCount(days, DAYS)}` : `last ${enCount(days, "day")}`;
 
   return (
     <div className="space-y-5">

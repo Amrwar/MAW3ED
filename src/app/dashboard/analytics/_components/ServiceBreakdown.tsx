@@ -1,7 +1,10 @@
 "use client";
 
+import { arCount } from "@/lib/fmt";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import type { ServiceSlice } from "@/app/api/business/analytics/route";
+
+const BOOKING = { one: "حجز واحد", two: "حجزين", few: "حجوزات", many: "حجز" };
 
 interface Props {
   data:     ServiceSlice[];
@@ -18,7 +21,7 @@ function CustomTooltip({ active, payload, currency }: {
   return (
     <div className="bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-[var(--shadow-float)] px-4 py-3 text-sm min-w-[160px]">
       <p className="font-semibold text-[var(--color-text-primary)] mb-2">{s.serviceName}</p>
-      <p className="text-[var(--color-text-secondary)]">{s.bookings.toLocaleString("ar-EG-u-nu-latn")} حجز</p>
+      <p className="text-[var(--color-text-secondary)]">{arCount(s.bookings, BOOKING)}</p>
       <p className="font-bold mt-1" style={{ color: s.color }}>
         {s.revenue.toLocaleString("ar-EG-u-nu-latn")} {currency}
       </p>

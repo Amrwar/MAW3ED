@@ -12,7 +12,9 @@ import {
   Wallet,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { money, num } from "@/lib/fmt";
+import { arCount, enCount, money, num } from "@/lib/fmt";
+
+const DAYS = { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" };
 
 export interface Kpis {
   todayTotal: number;
@@ -62,7 +64,7 @@ export default function KpiGrid({ kpis }: { kpis: Kpis }) {
     );
   }
 
-  const period = ar ? `آخر ${n(kpis.windowDays)} يوم` : `Last ${n(kpis.windowDays)} days`;
+  const period = ar ? `آخر ${arCount(kpis.windowDays, DAYS)}` : `Last ${enCount(kpis.windowDays, "day")}`;
 
   return (
     <div className="space-y-3">

@@ -53,11 +53,11 @@ export default function Navbar() {
   ];
 
   const ML = {
-    profile:   lang === "ar" ? "الملف الشخصي" : "Profile",
+    profile:   lang === "ar" ? "بياناتي" : "Profile",
     dashboard: lang === "ar" ? "لوحة التحكم"  : "Dashboard",
     business:  lang === "ar" ? "إدارة نشاطي"   : "My Business",
     settings:  lang === "ar" ? "الإعدادات"     : "Settings",
-    logout:    lang === "ar" ? "تسجيل الخروج"  : "Log out",
+    logout:    lang === "ar" ? "تسجيل الخروج"  : "Sign out",
   };
 
   return (

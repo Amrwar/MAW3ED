@@ -1,8 +1,12 @@
+import { arCount } from "@/lib/fmt";
 import { MapPin, Phone, Clock, CheckCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import type { Category, City } from "@prisma/client";
 import type { OnboardingData } from "./OnboardingForm";
 import { SITE_HOST } from "@/lib/url";
+
+const SERVICE = { one: "خدمة واحدة", two: "خدمتين", few: "خدمات", many: "خدمة" };
+const WORKDAY = { zero: "أيام عمل", one: "يوم عمل واحد", two: "يومين عمل", few: "أيام عمل", many: "يوم عمل" };
 
 interface Props {
   data:        OnboardingData;
@@ -80,7 +84,7 @@ export default function Step6Preview({
             {openDays.length > 0 && (
               <div className="flex items-center gap-1">
                 <Clock size={12} />
-                <span>{openDays.length} أيام عمل</span>
+                <span>{arCount(openDays.length, WORKDAY)}</span>
               </div>
             )}
           </div>
@@ -137,8 +141,8 @@ export default function Step6Preview({
           { label: "اسم العمل", done: !!data.nameAr },
           { label: "التخصص والمدينة", done: !!data.categoryId && !!data.cityId },
           { label: "رقم الهاتف", done: !!data.phone },
-          { label: `${data.services.length} خدمة`, done: data.services.length > 0 },
-          { label: `${openDays.length} أيام عمل`, done: openDays.length > 0 },
+          { label: arCount(data.services.length, SERVICE), done: data.services.length > 0 },
+          { label: arCount(openDays.length, WORKDAY), done: openDays.length > 0 },
           { label: `الرابط: /${data.slug}`, done: !!data.slug },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-2 text-sm">

@@ -217,7 +217,7 @@ export async function POST(req: Request, { params }: Params) {
             reason: result.failure.reason,
           });
         case "limit-reached":
-          return err("عذرًا، هذا العمل بلغ الحد الأقصى من الحجوزات الشهرية", 429, { code: "limit-reached" });
+          return err("المكان ده مش بيستقبل حجوزات أونلاين دلوقتي. كلّمهم مباشرة عشان تحجز.", 429, { code: "limit-reached" });
         case "service-not-found":
           return err("الخدمة غير موجودة", 404, { code: "service-not-found" });
         case "discount-gone":
@@ -369,9 +369,9 @@ function unavailableMessage(reason: string | null): string {
     case "staff-off":
       return "الموظف ده مش متاح في الوقت ده";
     case "holiday":
-      return "النشاط مقفول في اليوم ده (أجازة)";
+      return "النشاط مقفول في اليوم ده (إجازة)";
     case "vacation":
-      return "الموظف ده في أجازة";
+      return "الموظف ده في إجازة";
     default:
       return "الموعد ده مش متاح، اختر وقت تاني";
   }

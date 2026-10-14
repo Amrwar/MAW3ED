@@ -1,3 +1,5 @@
+import { arCount, dateFull } from "@/lib/fmt";
+import { PLAN_FEATURES } from "@/lib/plans";
 import type { Audience, NotificationEvent } from "./events";
 
 /**
@@ -24,6 +26,10 @@ export interface CopyContext {
   when: string;
   customerName: string;
   amount?: string;
+  /** The booking's status when the message is written, e.g. "PENDING". */
+  status?: string;
+  /** The old time of a rescheduled booking, formatted like `when`. */
+  previousWhen?: string;
 }
 
 export function copyFor(
@@ -32,17 +38,26 @@ export function copyFor(
   c: CopyContext,
 ): Copy {
   const forCustomer = audience === "customer";
+  const pending = c.status === "PENDING";
+  const was = c.previousWhen ? ` (كان ${c.previousWhen})` : "";
 
   switch (event.type) {
     case "booking.created":
       return forCustomer
-        ? {
-            title: `وصل طلب حجزك في ${c.businessName}`,
-            body: `${c.serviceName} — ${c.when}. هنأكدلك قريب.`,
-          }
+        ? pending
+          ? {
+              title: `وصل طلب حجزك في ${c.businessName}`,
+              body: `${c.serviceName} — ${c.when}. ${c.businessName} هيراجع الحجز ويأكده، وهيوصلك إشعار.`,
+            }
+          : {
+              title: `تم تأكيد حجزك في ${c.businessName}`,
+              body: `${c.serviceName} — ${c.when}.`,
+            }
         : {
             title: `حجز جديد من ${c.customerName}`,
-            body: `${c.serviceName} — ${c.when}.`,
+            body: pending
+              ? `${c.serviceName} — ${c.when}. مستني تأكيدك.`
+              : `${c.serviceName} — ${c.when}.`,
           };
 
     case "booking.confirmed":
@@ -54,7 +69,7 @@ export function copyFor(
     case "booking.rejected":
       return {
         title: `معلش، ${c.businessName} مش هيقدر ياخد الحجز ده`,
-        body: "تقدر تجرب معاد تاني، والمكان لسه متاح للحجز.",
+        body: "تقدر تجرّب ميعاد تاني، والمكان لسه متاح للحجز.",
       };
 
     case "booking.cancelled":
@@ -63,7 +78,7 @@ export function copyFor(
             title: `تم إلغاء حجزك في ${c.businessName}`,
             body:
               event.by === "business"
-                ? "المكان ألغى الموعد. تقدر تحجز تاني في أي وقت."
+                ? "المكان ألغى الميعاد. تقدر تحجز تاني في أي وقت."
                 : "لو ده مكانش قصدك، تقدر تحجز تاني في أي وقت.",
           }
         : {
@@ -74,23 +89,30 @@ export function copyFor(
     case "booking.rescheduled":
       return forCustomer
         ? {
-            title: `اتغيّر موعدك في ${c.businessName}`,
-            body: `الموعد الجديد ${c.when}.`,
+            title:
+              event.by === "business"
+                ? `${c.businessName} غيّر ميعادك`
+                : `اتغيّر ميعادك في ${c.businessName}`,
+            body: pending
+              ? `الميعاد الجديد ${c.when}${was}. ${c.businessName} هيأكده، وهيوصلك إشعار.`
+              : `الميعاد الجديد ${c.when}${was}.`,
           }
         : {
-            title: `${c.customerName} غيّر موعده`,
-            body: `${c.serviceName} — الموعد الجديد ${c.when}.`,
+            title: `${c.customerName} غيّر ميعاده`,
+            body: pending
+              ? `${c.serviceName} — الميعاد الجديد ${c.when}${was}. مستني تأكيدك.`
+              : `${c.serviceName} — الميعاد الجديد ${c.when}${was}.`,
           };
 
     case "booking.reminder":
       return {
-        title: `فاكر موعدك في ${c.businessName}؟`,
+        title: `فاكر ميعادك في ${c.businessName}؟`,
         body: `${c.serviceName} — ${c.when}.`,
       };
 
     case "booking.startingSoon":
       return {
-        title: `موعدك في ${c.businessName} قرّب`,
+        title: `ميعادك في ${c.businessName} قرّب`,
         body: `${c.serviceName} — ${c.when}.`,
       };
 
@@ -119,33 +141,43 @@ export function copyFor(
 
     case "payment.failed":
       return forCustomer
-        ? {
-            title: "الدفع ما تمّش",
-            body: `حجزك في ${c.businessName} لسه محجوز. جرّب تدفع تاني من صفحة الحجز.`,
-          }
+        ? c.status === "FAILED_PAYMENT"
+          ? {
+              title: "الدفع ماتمّش",
+              body: `حجزك في ${c.businessName} ماتأكدش والميعاد مابقاش محجوز لك. تقدر تحجز تاني من صفحة المكان.`,
+            }
+          : {
+              title: "الدفع ماتمّش",
+              body: `ميعادك في ${c.businessName} لسه محجوز لك.`,
+            }
         : {
-            title: `دفعة ${c.customerName} ما تمّتش`,
+            title: `دفعة ${c.customerName} ماتمّتش`,
             body: `${c.serviceName} — ${c.when}.`,
           };
 
     case "subscription.renewalDue":
       return {
-        title: `اشتراكك هينتهي خلال ${event.daysLeft} يوم`,
-        body: "جدّد عشان صفحتك تفضل ظاهرة والحجوزات تفضل شغالة.",
+        title: `اشتراكك هينتهي خلال ${daysAr(event.daysLeft)}`,
+        body: "جدّد عشان تفضل معاك مميزات باقتك ومترجعش للباقة المجانية.",
       };
 
     case "subscription.expired":
       return {
         title: "انتهى اشتراكك في موعد",
-        body: "صفحتك مش ظاهرة للعملاء دلوقتي. جدّد عشان ترجع تستقبل حجوزات.",
+        body: `رجعت للباقة المجانية: صفحتك لسه ظاهرة، بس بحد ${PLAN_FEATURES.FREE.monthlyBookings} حجز في الشهر ومن غير واتساب ولا إحصائيات ولا عربون. جدّد عشان ترجع مميزات باقتك.`,
       };
 
     case "subscription.renewed":
       return {
         title: "تم تجديد اشتراكك",
-        body: `اشتراكك ساري لحد ${event.until.toISOString().slice(0, 10)}.`,
+        body: `اشتراكك ساري لحد ${dateFull(event.until, "ar")}.`,
       };
   }
+}
+
+/** "يوم واحد" · "يومين" · "5 أيام" · "14 يوم" */
+export function daysAr(n: number): string {
+  return arCount(n, { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" });
 }
 
 /** The subject line, when the channel needs one of its own. */

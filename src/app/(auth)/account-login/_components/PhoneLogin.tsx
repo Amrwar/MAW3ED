@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { countText } from "@/lib/i18n";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -25,7 +26,7 @@ const RESEND_SECONDS = 60;
  * nobody is ever staring at a field they have nothing to put in.
  */
 export default function PhoneLogin() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const a = t.accountLogin;
   const router = useRouter();
   const params = useSearchParams();
@@ -196,7 +197,7 @@ export default function PhoneLogin() {
               disabled={cooldown > 0 || busy}
               className="min-h-11 text-[0.8125rem] font-bold text-[var(--color-jade)] disabled:text-[var(--color-faint)]"
             >
-              {cooldown > 0 ? a.resendIn.replace("{n}", String(cooldown)) : a.resend}
+              {cooldown > 0 ? countText(lang, cooldown, a.resendIn) : a.resend}
             </button>
           </div>
         </form>

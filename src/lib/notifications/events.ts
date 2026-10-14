@@ -43,6 +43,8 @@ export type NotificationEvent =
       bookingId: string;
       /** Included in the key so a second move sends a second message. */
       movedTo: string;
+      /** Where it was before, "YYYY-MM-DDTHH:MM" — shown as the old time. Not part of the key. */
+      movedFrom?: string;
       /** `"business"` when the business moved it (absent: the customer did). */
       by?: Audience;
     }

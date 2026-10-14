@@ -71,8 +71,16 @@ export const inAppChannel: Channel = {
 export const emailChannel: Channel = {
   name: "EMAIL",
   address: (r) => r.email,
-  async send({ recipient, copy }) {
+  async send({ event, recipient, copy, bespoke }) {
     if (!recipient.email) return skipped("no-address");
+
+    // The hand-written email for this event where one exists (the
+    // appointment laid out in full, worded for exactly this event — see
+    // templates.ts); the general-purpose one for the rest.
+    const hand = bespokeSender(event, recipient.audience, "EMAIL");
+    const handled = hand?.(recipient.email, bespoke);
+    if (handled) return handled;
+
     return sendEmail({
       to: recipient.email,
       subject: copy.title,

@@ -152,7 +152,7 @@ export default function DayCalendar({
         : "Pick any free time to add a booking.",
     prev: lang === "ar" ? "اليوم السابق" : "Previous day",
     next: lang === "ar" ? "اليوم التالي" : "Next day",
-    today: lang === "ar" ? "النهاردة" : "Today",
+    today: lang === "ar" ? "النهارده" : "Today",
   };
 
   return (

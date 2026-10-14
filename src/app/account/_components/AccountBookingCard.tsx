@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { countText } from "@/lib/i18n";
 import {
   CalendarDays,
   CalendarPlus,
@@ -61,10 +62,10 @@ export default function AccountBookingCard({ booking: b, variant }: Props) {
     const mins = b.minutesUntil;
     if (mins <= 0) return c.soon;
     if (mins < 60) return c.soon;
-    if (mins < 24 * 60) return c.inHours.replace("{n}", num(Math.round(mins / 60), lang));
+    if (mins < 24 * 60) return countText(lang, Math.round(mins / 60), c.inHours);
     const days = Math.round(mins / (24 * 60));
     if (days === 1) return c.tomorrow;
-    return c.inDays.replace("{n}", num(days, lang));
+    return countText(lang, days, c.inDays);
   })();
 
   const directions = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(

@@ -126,7 +126,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
       open={open}
       onClose={onClose}
       variant="sheet"
-      title="موعد جديد"
+      title="حجز جديد"
       footer={
         created ? (
           <Button type="button" variant="primary" fullWidth onClick={onClose}>

@@ -3,7 +3,7 @@
 import { MapPin, Share2, Heart, BadgeCheck, Star } from "lucide-react";
 import type { Business } from "@/types/business";
 import { getInitials } from "@/lib/utils";
-import { rating as fmtRating, num } from "@/lib/fmt";
+import { rating as fmtRating, countIn } from "@/lib/fmt";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { coverClassFor } from "@/lib/category-cover";
 
@@ -114,7 +114,7 @@ export default function CompanyHero({ business }: { business: Business }) {
                     <Star size={15} className="fill-[var(--color-star)] text-[var(--color-star)]" aria-hidden="true" />
                     <span className="num">{fmtRating(business.rating)}</span>
                     <span className="font-normal text-[var(--color-subtle)]">
-                      (<span className="num">{num(business.reviewCount, lang)}</span> تقييم)
+                      ({countIn(lang, business.reviewCount, { one: "تقييم واحد", two: "تقييمين", few: "تقييمات", many: "تقييم" }, { one: "review" })})
                     </span>
                   </span>
                 )}

@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       // would be checked and then not applied.
       const iso = /^\d{4}-\d{2}-\d{2}$/;
       const days = dateFrom && dateTo && iso.test(dateFrom) && iso.test(dateTo) ? (Date.parse(dateTo) - Date.parse(dateFrom)) / 86_400_000 : NaN;
-      if (!(days >= 0 && days <= 31)) return err("حدد فترة من يوم لـ ٣١ يوم", 422, { code: "range" });
+      if (!(days >= 0 && days <= 31)) return err("حدد فترة من يوم لـ 31 يوم", 422, { code: "range" });
     }
 
     if (status && status !== "ALL") {
@@ -142,7 +142,7 @@ export async function GET(req: Request) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[bookings GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 
@@ -179,7 +179,7 @@ export async function POST(req: Request) {
         },
       });
       if (count >= monthlyLimit) {
-        return err(`بلغت الحد الأقصى (${monthlyLimit}) من الحجوزات الشهرية. يرجى الترقية للاستمرار`, 429);
+        return err(`وصلت لأقصى عدد حجوزات في باقتك الشهر ده (${monthlyLimit}). رقّي باقتك عشان تكمّل تستقبل حجوزات.`, 429);
       }
     }
 

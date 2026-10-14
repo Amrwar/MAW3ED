@@ -19,6 +19,7 @@ import { siteUrl } from "@/lib/env";
 import { getPublishedBusinesses } from "@/lib/data";
 import { cairoNow, openState, type DayHours } from "@/lib/discovery/hours";
 import { businessNextSlot } from "@/lib/discovery/profile";
+import { CUTOFF_HOURS } from "@/lib/bookings/self-service";
 import { getBusinessReviews, getRatingSummary } from "@/lib/reviews";
 import { translations, type Lang } from "@/lib/i18n";
 
@@ -374,6 +375,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
           branches={dbBusiness.branches.map((b) => ({ id: b.id, nameAr: b.nameAr, address: b.address }))}
           depositEnabled={dbBusiness.depositEnabled}
           depositPercent={dbBusiness.depositPercent}
+          changeCutoffHours={CUTOFF_HOURS}
           initialServiceId={typeof sp.service === "string" ? sp.service : null}
           initialStaffId={typeof sp.staff === "string" ? sp.staff : null}
         />

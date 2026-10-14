@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { countText } from "@/lib/i18n";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
@@ -241,7 +242,7 @@ export default function ForBusinessContent({ businesses }: { businesses: RealBus
                     {[
                       { label: isAr ? "الحجوزات"  : "Bookings", value: isAr ? "124" : "124", delta: "+12%", color: "var(--color-jade)" },
                       { label: isAr ? "التقييم"   : "Rating",   value: "4.9 ★",               delta: "+0.2",  color: "var(--color-star)" },
-                      { label: isAr ? "العملاء"   : "Clients",  value: isAr ? "89"  : "89",   delta: "+8",    color: "var(--color-ok)" },
+                      { label: isAr ? "العملاء"   : "Customers", value: isAr ? "89"  : "89",   delta: "+8",    color: "var(--color-ok)" },
                     ].map((s) => (
                       <div
                         key={s.label}
@@ -333,7 +334,7 @@ export default function ForBusinessContent({ businesses }: { businesses: RealBus
                       <p style={{ color: "var(--color-muted)", fontSize: 10 }}>
                         {isAr
                           ? "3 عملاء · مواعيد الغد"
-                          : "3 clients · tomorrow's appointments"}
+                          : "3 customers · tomorrow's appointments"}
                       </p>
                     </div>
                   </div>
@@ -411,7 +412,7 @@ export default function ForBusinessContent({ businesses }: { businesses: RealBus
               <div className="text-center max-w-xl mx-auto mb-10">
                 <p className="section-eyebrow mb-2">{fb.realEyebrow}</p>
                 <h2 className="section-title mb-4">
-                  {fb.realTitle.replace("{n}", String(businesses.length))}
+                  {countText(lang, businesses.length, fb.realTitle)}
                 </h2>
               </div>
 

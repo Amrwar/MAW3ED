@@ -1,11 +1,14 @@
 "use client";
 
+import { arCount } from "@/lib/fmt";
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Scissors, Loader2 } from "lucide-react";
 import StaffPanel from "./StaffPanel";
 import type { TimeBlockRow } from "./TimeBlocks";
 import type { StaffHoursRow } from "./WeeklyHours";
 import { useLanguage } from "@/contexts/LanguageContext";
+
+const STAFF = { one: "موظف واحد", two: "موظفين اتنين", few: "موظفين", many: "موظف" };
 
 export type StaffMember = {
   id:           string;
@@ -97,8 +100,8 @@ export default function StaffClient({
           </h1>
           <p style={{ fontSize: 13, color: "var(--color-muted)" }}>
             {isAr
-              ? `${staff.length} موظف · ${active.length} نشط`
-              : `${staff.length} members · ${active.length} active`}
+              ? `${arCount(staff.length, STAFF)} · ${active.length} نشط`
+              : `${staff.length} staff · ${active.length} active`}
           </p>
         </div>
         <button

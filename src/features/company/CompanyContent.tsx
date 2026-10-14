@@ -64,6 +64,8 @@ interface Props {
   branches:          { id: string; nameAr: string; address: string | null }[];
   depositEnabled:    boolean;
   depositPercent:    number;
+  /** Hours before the appointment until which a customer can cancel or move it themselves. */
+  changeCutoffHours: number;
   /**
    * A service chosen before arriving — the app's "Book this" opens
    * /company/<slug>?service=<id> — so the widget starts on the next step
@@ -94,6 +96,7 @@ export default function CompanyContent({
   branches,
   depositEnabled,
   depositPercent,
+  changeCutoffHours,
   initialServiceId = null,
   initialStaffId = null,
 }: Props) {
@@ -179,7 +182,11 @@ export default function CompanyContent({
                 hours={hours}
               />
 
-              <FAQSection />
+              <FAQSection
+                changeCutoffHours={changeCutoffHours}
+                depositEnabled={depositEnabled}
+                depositPercent={depositPercent}
+              />
 
               {similarBusinesses.length > 0 && (
                 <section>
@@ -217,6 +224,7 @@ export default function CompanyContent({
                 branches={branches}
                 depositEnabled={depositEnabled}
                 depositPercent={depositPercent}
+                changeCutoffHours={changeCutoffHours}
               />
             </div>
 

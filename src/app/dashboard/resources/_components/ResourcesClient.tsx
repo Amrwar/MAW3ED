@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { countText } from "@/lib/i18n";
 import { Armchair, Pencil, Plus, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
@@ -148,7 +149,7 @@ export default function ResourcesClient({ initial, branches }: Props) {
       if (data.deactivated) {
         // Kept, because bookings point at it.
         setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, isActive: false } : x)));
-        setNotice(r.deactivated.replace("{n}", num(data.bookings, lang)));
+        setNotice(countText(lang, data.bookings, r.deactivated));
       } else {
         setRows((prev) => prev.filter((x) => x.id !== row.id));
       }

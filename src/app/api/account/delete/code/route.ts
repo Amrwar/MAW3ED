@@ -33,7 +33,7 @@ export async function POST() {
       select: { phone: true, phoneVerifiedAt: true },
     });
     if (!user?.phone || !user.phoneVerifiedAt) {
-      return err("محتاجين رقم موبايل متأكد عشان نتأكد إنه إنت", 409, { code: "no-phone" });
+      return err("محتاجين رقم موبايل متأكَّد منه عشان نتأكد إنه إنت", 409, { code: "no-phone" });
     }
 
     const limited = await rateLimit("phoneOtp");
@@ -63,6 +63,6 @@ export async function POST() {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[account delete code]", e);
-    return err("تعذّر إرسال الكود، حاول تاني", 500);
+    return err("معرفناش نبعت الكود دلوقتي. جرّب تاني بعد شوية.", 500);
   }
 }

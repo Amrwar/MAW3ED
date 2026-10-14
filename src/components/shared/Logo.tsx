@@ -35,7 +35,7 @@ export default function Logo({
   const imgEl = (
     <Image
       src="/logo.png"
-      alt="موعد - MAW3ED"
+      alt="موعد - Maw3ed"
       width={dims.width}
       height={dims.height}
       className={cn(

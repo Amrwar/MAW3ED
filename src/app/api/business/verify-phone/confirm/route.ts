@@ -3,6 +3,7 @@ import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { syncVerifiedBadge } from "@/lib/business-verification";
 import { secretMatches, isExpired, PHONE_MAX_ATTEMPTS } from "@/lib/verification";
+import { arCount } from "@/lib/fmt";
 
 /**
  * POST /api/business/verify-phone/confirm
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
         select: { attempts: true },
       });
       const left = Math.max(0, PHONE_MAX_ATTEMPTS - (after?.attempts ?? PHONE_MAX_ATTEMPTS));
-      return err(`الكود غير صحيح — باقي ${left} محاولات`, 400);
+      return err(`الكود غير صحيح — باقي ${arCount(left, { zero: "محاولات", one: "محاولة واحدة", two: "محاولتين", few: "محاولات", many: "محاولة" })}`, 400);
     }
 
     await db.$transaction([

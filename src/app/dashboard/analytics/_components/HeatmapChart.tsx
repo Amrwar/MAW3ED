@@ -1,9 +1,12 @@
 "use client";
 
+import { arCount } from "@/lib/fmt";
 import type { HeatCell } from "@/app/api/business/analytics/route";
 
+const BOOKING = { one: "حجز واحد", two: "حجزين", few: "حجوزات", many: "حجز" };
+
 const HOURS    = Array.from({ length: 15 }, (_, i) => i + 7); // 07:00 → 21:00
-const DAYS_AR  = ["أحد","اثن","ثلا","أرب","خمي","جمع","سبت"];
+const DAYS_AR  = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 
 function opacity(count: number, max: number): string {
   if (max === 0 || count === 0) return "0";
@@ -55,7 +58,7 @@ export default function HeatmapChart({ data }: { data: HeatCell[] }) {
               {DAYS_AR.map((dayLabel, day) => (
                 <div key={day} className="flex items-center gap-1">
                   {/* Day label */}
-                  <div className="w-9 text-[11px] font-medium text-[var(--color-text-muted)] text-center shrink-0">
+                  <div className="w-14 text-[11px] font-medium text-[var(--color-text-muted)] text-center shrink-0">
                     {dayLabel}
                   </div>
                   {/* Cells */}
@@ -64,7 +67,7 @@ export default function HeatmapChart({ data }: { data: HeatCell[] }) {
                     return (
                       <div
                         key={hour}
-                        title={count > 0 ? `${dayLabel} ${String(hour).padStart(2,"0")}:00 — ${count} حجز` : undefined}
+                        title={count > 0 ? `${dayLabel} ${String(hour).padStart(2,"0")}:00 — ${arCount(count, BOOKING)}` : undefined}
                         className="flex-1 aspect-square rounded-sm transition-all cursor-default"
                         style={{
                           backgroundColor: count > 0 ? "var(--color-jade)" : "var(--color-border)",
