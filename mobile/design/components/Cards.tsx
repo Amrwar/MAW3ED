@@ -48,6 +48,7 @@ export interface BusinessCardProps {
   trailing?: ReactNode;
   /** `feature` puts the picture on top, for a highlighted place; `row` is for lists. */
   variant?: "row" | "feature";
+  testID?: string;
 }
 
 export function BusinessCard(p: BusinessCardProps) {
@@ -94,7 +95,7 @@ export function BusinessCard(p: BusinessCardProps) {
   if (p.variant === "feature") {
     return (
       <View>
-        <Card onPress={p.onPress} accessibilityLabel={label} padded={false}>
+        <Card onPress={p.onPress} accessibilityLabel={label} padded={false} testID={p.testID}>
           <Cover uri={p.imageUri} name={p.name} />
           <View style={styles.featureBody}>
             {title}
@@ -114,7 +115,7 @@ export function BusinessCard(p: BusinessCardProps) {
   // announced as one control by screen readers.
   return (
     <View>
-      <Card onPress={p.onPress} accessibilityLabel={label}>
+      <Card onPress={p.onPress} accessibilityLabel={label} testID={p.testID}>
         <View style={[styles.row, p.trailing ? styles.rowWithTrailing : null]}>
           <Avatar name={p.name} uri={p.imageUri} size="lg" shape="rounded" />
           <View style={styles.flex}>
@@ -166,6 +167,7 @@ export interface ServiceCardProps {
   selected?: boolean;
   onPress?: () => void;
   actionLabel?: string;
+  testID?: string;
 }
 
 export function ServiceCard(p: ServiceCardProps) {
@@ -174,7 +176,7 @@ export function ServiceCard(p: ServiceCardProps) {
   const label = joinLabel(lang, p.name, duration(p.durationMinutes, lang), price, p.nextFree);
 
   return (
-    <Card onPress={p.onPress} accessibilityLabel={label} tone={p.selected ? "tint" : "surface"}>
+    <Card onPress={p.onPress} accessibilityLabel={label} tone={p.selected ? "tint" : "surface"} testID={p.testID}>
       <View style={styles.serviceRow}>
         <View style={styles.flex}>
           <Text variant="bodyBold">{p.name}</Text>

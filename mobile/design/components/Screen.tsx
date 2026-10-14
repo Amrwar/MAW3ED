@@ -21,6 +21,7 @@ export function Screen({
   edges = "top",
   footer,
   hero,
+  testID,
 }: {
   children: ReactNode;
   /**
@@ -35,6 +36,7 @@ export function Screen({
   edges?: "top" | "both" | "none";
   /** Pinned under the content — a primary action that must stay in reach. */
   footer?: ReactNode;
+  testID?: string;
 }) {
   const insets = useSafeAreaInsets();
   const layout = useLayout();
@@ -65,6 +67,7 @@ export function Screen({
     <KeyboardAvoidingView
       style={[styles.fill, { backgroundColor: background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
+      testID={testID}
     >
       {hero ? (
         <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>

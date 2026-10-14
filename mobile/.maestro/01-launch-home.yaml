@@ -1,0 +1,18 @@
+# The app opens on Home (Arabic, signed out) and lists at least one place.
+appId: net.maw3ed.app.staging
+name: Launch and home
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 30000
+    label: Home lists at least one business (staging returned none?)
+- assertVisible:
+    id: home-search
+- assertVisible:
+    id: tab-index
+- takeScreenshot: 01-home

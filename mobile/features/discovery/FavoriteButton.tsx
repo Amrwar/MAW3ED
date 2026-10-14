@@ -43,6 +43,7 @@ export function FavoriteButton({
             : `Save ${name}`
       }
       accessibilityState={{ selected: saved }}
+      testID="save-business"
       onPress={() => {
         if (!user) {
           signInThenReturn(pathname);

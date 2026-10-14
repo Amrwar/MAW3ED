@@ -63,6 +63,7 @@ export function BookingRow({
       accessibilityLabel={`${time(startTime, lang)}، ${customerName}، ${meta}، ${statusLabelFor(status, lang)}`}
       onPress={() => openBooking(id)}
       style={[styles.row, highlight && styles.rowOn, dim && styles.rowDim]}
+      testID="booking-row"
     >
       <View style={[styles.when, highlight && styles.whenOn]}>
         <Text variant="bodyBold" style={{ color: highlight ? colors.gold : colors.night }}>

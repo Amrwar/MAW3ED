@@ -37,7 +37,7 @@ export default function Customers() {
   const customers = allowed ? (query.data?.customers ?? []) : [];
 
   return (
-    <View style={styles.list}>
+    <View style={styles.list} testID="customers-screen">
       {/* Title, count and search on a night block that stays put. */}
       <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>
         <View style={styles.titleRow}>

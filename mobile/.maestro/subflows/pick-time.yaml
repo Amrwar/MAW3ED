@@ -1,0 +1,26 @@
+# The "when" step: tries the open days in the strip in turn until one has
+# free times, then takes the first time. Gives up after four days — a
+# failure here means the first business has no free time this week.
+appId: net.maw3ed.app.staging
+---
+- evalScript: ${output.dayIndex = 0}
+- repeat:
+    times: 4
+    while:
+      notVisible:
+        id: time-slot
+    commands:
+      - tapOn:
+          id: day-option
+          enabled: true
+          index: ${output.dayIndex}
+          label: Tap open day number ${output.dayIndex + 1}
+      - extendedWaitUntil:
+          visible:
+            id: "time-slot|no-times|retry"
+          timeout: 20000
+      - evalScript: ${output.dayIndex = output.dayIndex + 1}
+- tapOn:
+    id: time-slot
+    index: 0
+    label: Pick the first free time (none in the first four open days?)

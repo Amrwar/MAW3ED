@@ -196,6 +196,7 @@ export default function CustomerHome() {
                 variant="night"
                 size="sm"
                 onPress={() => startSignIn()}
+                testID="home-sign-in"
               />
             )}
           </View>
@@ -216,6 +217,7 @@ export default function CustomerHome() {
             accessibilityLabel={T("ابحث عن مكان أو خدمة", "Search for a place or service")}
             onPress={() => openSearch()}
             style={styles.searchPill}
+            testID="home-search"
           >
             <Icon name="search" color={colors.night} />
             <Text variant="body" tone="subtle" numberOfLines={1}>
@@ -743,6 +745,7 @@ function MapEntry() {
       accessibilityLabel={label}
       onPress={() => router.push("/nearby")}
       style={mapStyles.card}
+      testID="home-nearby"
     >
       <MapArt />
       <View style={mapStyles.body}>

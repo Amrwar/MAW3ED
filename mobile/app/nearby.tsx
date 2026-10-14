@@ -219,7 +219,7 @@ function Ask({ fix, locating, onLocate }: { fix: Fix | null; locating: boolean; 
             ? T("خدمة الموقع مقفولة في الموبايل. افتحها وجرّب تاني.", "Location services are off on your phone. Turn them on and try again.")
             : T("معرفناش نحدد موقعك دلوقتي. جرّب تاني في مكان مفتوح، أو دوّر بالمنطقة.", "We couldn't get your location just now. Try again in the open, or search by area.");
     return (
-      <Card>
+      <Card testID="location-denied">
         <View style={styles.askRow}>
           <Icon name="location-outline" color={colors.warn} />
           <Text variant="body" tone="ink2" style={styles.flex}>
@@ -257,6 +257,7 @@ function Ask({ fix, locating, onLocate }: { fix: Fix | null; locating: boolean; 
           disabled={locating}
           onPress={onLocate}
           style={styles.goldButton}
+          testID="use-location"
         >
           <Icon name="navigate" size="sm" color={colors.night} />
           <Text variant="label" style={{ color: colors.night }}>
@@ -276,7 +277,7 @@ function Areas() {
   const cities = (facets.data?.cities ?? []).filter((c) => c.count > 0);
   if (cities.length === 0) return null;
   return (
-    <View style={styles.areas}>
+    <View style={styles.areas} testID="area-picker">
       <Text variant="label" tone="ink2" accessibilityRole="header">
         {ar ? "أو دوّر بالمنطقة" : "Or search by area"}
       </Text>

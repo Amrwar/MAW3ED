@@ -62,6 +62,7 @@ export default function Login() {
         ]}
         value={mode}
         onChange={setMode}
+        testIDPrefix="login-tab"
       />
       {mode === "customer" ? <PhoneStep /> : <BusinessForm />}
     </AuthShell>
@@ -111,6 +112,7 @@ function PhoneStep() {
         error={error}
         hint={ar ? "هنبعتلك كود تأكيد على واتساب." : "We'll send a confirmation code on WhatsApp."}
         onSubmitEditing={send}
+        testID="login-phone"
       />
       <Button
         label={ar ? "ابعت الكود" : "Send code"}
@@ -118,6 +120,7 @@ function PhoneStep() {
         disabled={!parsed.e164 || busy}
         loading={busy}
         fullWidth
+        testID="login-submit"
       />
       <Text variant="caption" tone="subtle" align="center">
         {ar
@@ -167,6 +170,7 @@ function BusinessForm() {
         icon="mail-outline"
         ltr
         editable={!busy}
+        testID="login-email"
       />
       <View style={styles.passwordBlock}>
         <TextField
@@ -180,6 +184,7 @@ function BusinessForm() {
           editable={!busy}
           error={error}
           onSubmitEditing={submit}
+          testID="login-password"
         />
         <Text
           variant="label"
@@ -197,6 +202,7 @@ function BusinessForm() {
         disabled={!canSubmit}
         loading={busy}
         fullWidth
+        testID="login-submit"
       />
 
       <View style={styles.or}>

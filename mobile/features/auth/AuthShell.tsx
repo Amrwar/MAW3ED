@@ -41,6 +41,7 @@ export function AuthShell({
           accessibilityLabel={lang === "ar" ? "Switch to English" : "التحويل للعربية"}
           onPress={() => setLang(lang === "ar" ? "en" : "ar")}
           style={styles.lang}
+          testID="lang-toggle"
         >
           <Text variant="label" tone="inverse">
             {lang === "ar" ? "English" : "العربية"}

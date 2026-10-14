@@ -118,7 +118,7 @@ export default function ManageBooking() {
   const hasFooter = main.length > 0 || canCancel || b.canReschedule;
 
   return (
-    <View style={styles.page}>
+    <View style={styles.page} testID="manage-booking">
       <TopBar title={T("الحجز", "Booking")} subtitle={b.reference ?? undefined} back>
         <View style={styles.heroRow}>
           <Text variant="title" tone="inverse" numberOfLines={1} style={styles.flex}>

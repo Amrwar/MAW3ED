@@ -1,0 +1,23 @@
+# Maestro workspace config: `maestro test .maestro` runs these, in this
+# order. Subflows (subflows/) are only ever run from inside a flow.
+flows:
+  - 01-launch-home.yaml
+  - 02-search.yaml
+  - 03-business-profile.yaml
+  - 04-booking-guest.yaml
+  - 05-business-login.yaml
+  - 06-offline.yaml
+  - 07-english.yaml
+  - 08-nearby-denied.yaml
+
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - 01-launch-home
+    - 02-search
+    - 03-business-profile
+    - 04-booking-guest
+    - 05-business-login
+    - 06-offline
+    - 07-english
+    - 08-nearby-denied

@@ -1,0 +1,36 @@
+# The first business on Home opens its page, which can be scrolled
+# through and left. Read-only: nothing is saved, shared or booked.
+appId: net.maw3ed.app.staging
+name: Business profile
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 30000
+- tapOn:
+    id: business-card
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: share-business
+    timeout: 20000
+    label: The business page loads
+# The book bar, or its "nothing to book yet" note for a place with no services.
+- assertVisible:
+    id: "book-button|no-services"
+- takeScreenshot: 03-business-top
+- repeat:
+    times: 5
+    commands:
+      - scroll
+- takeScreenshot: 03-business-bottom
+- back
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 10000
+    label: Back on Home

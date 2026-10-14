@@ -1,0 +1,48 @@
+# "Near me" with location refused: the app explains and offers the area
+# picker instead, without crashing. Android permission dialog.
+appId: net.maw3ed.app.staging
+name: Nearby, location denied
+tags:
+  - android
+---
+- launchApp:
+    clearState: true
+    permissions:
+      location: deny
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: home-nearby
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: home-nearby
+- extendedWaitUntil:
+    visible:
+      id: use-location
+    timeout: 15000
+- tapOn:
+    id: use-location
+# The system prompt, if Android shows it (it may not, once denied).
+- tapOn:
+    id: com.android.permissioncontroller:id/permission_deny_button
+    optional: true
+- tapOn:
+    text: "Don.t allow|Deny"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: location-denied
+    timeout: 20000
+    label: The app explains that location was refused
+# The area picker, offered only when staging has cities with places.
+- scrollUntilVisible:
+    element:
+      id: area-picker
+    direction: DOWN
+    timeout: 10000
+    optional: true
+- takeScreenshot: 08-nearby-denied

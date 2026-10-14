@@ -98,14 +98,16 @@ export function EmptyState({
   body,
   icon = "file-tray-outline",
   action,
+  testID,
 }: {
   title: string;
   body?: string;
   icon?: IconName;
   action?: ReactNode;
+  testID?: string;
 }) {
   return (
-    <View style={styles.state}>
+    <View style={styles.state} testID={testID}>
       <View style={styles.stateIcon}>
         <Icon name={icon} size="xl" color={colors.jade} />
       </View>
@@ -149,7 +151,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
       </Text>
       {onRetry && retryable ? (
         <View style={styles.stateAction}>
-          <Button label={t("retry")} variant="outline" icon="refresh" onPress={onRetry} />
+          <Button label={t("retry")} variant="outline" icon="refresh" onPress={onRetry} testID="retry" />
         </View>
       ) : null}
     </View>

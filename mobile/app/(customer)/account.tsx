@@ -223,6 +223,7 @@ function Account() {
             label={T("تسجيل الخروج", "Sign out")}
             variant="outline"
             loading={signingOut}
+            testID="sign-out"
             onPress={async () => {
               setSigningOut(true);
               try {

@@ -50,7 +50,7 @@ export function SignInGate({
         <EmptyState
           title={lang === "ar" ? "سجّل دخولك الأول" : "Sign in first"}
           body={reason}
-          action={<Button label={lang === "ar" ? "تسجيل الدخول" : "Sign in"} onPress={() => signInThenReturn(pathname)} />}
+          action={<Button label={lang === "ar" ? "تسجيل الدخول" : "Sign in"} onPress={() => signInThenReturn(pathname)} testID="gate-sign-in" />}
         />
       </View>
     </Screen>

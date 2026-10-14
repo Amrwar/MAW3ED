@@ -480,6 +480,7 @@ function Flow({
             price={s.price}
             currency={s.currency}
             selected={d.serviceId === s.id}
+            testID="service-option"
             onPress={() => {
               update({ serviceId: s.id });
               trackBooking("booking_service_selected", { slug: p.slug, serviceId: s.id });
@@ -603,7 +604,12 @@ function Flow({
         ) : slots.error ? (
           <ErrorState error={slots.error} onRetry={() => slots.refetch()} />
         ) : slots.data && slots.data.slots.length === 0 ? (
-          <EmptyState icon="time-outline" title={T("مفيش مواعيد", "No times")} body={emptyDayReason(slots.data.reason, lang)} />
+          <EmptyState
+            icon="time-outline"
+            title={T("مفيش مواعيد", "No times")}
+            body={emptyDayReason(slots.data.reason, lang)}
+            testID="no-times"
+          />
         ) : slots.data ? (
           <>
             <View style={styles.between}>
@@ -636,6 +642,7 @@ function Flow({
     const errors = touched ? detailsErrors(d) : [];
     content = !user ? (
       <EmptyState
+        testID="booking-sign-in"
         icon="person-circle-outline"
         title={T("سجّل دخولك عشان تحجز", "Sign in to book")}
         body={T(
@@ -803,7 +810,7 @@ function Flow({
 
         {svc && step !== "service" && step !== "summary" ? <Picked p={p} d={d} /> : null}
 
-        <Text variant="title" accessibilityRole="header">
+        <Text variant="title" accessibilityRole="header" testID="booking-step-title">
           {stepTitle[step]}
         </Text>
         {content}
@@ -833,6 +840,7 @@ function Flow({
             loading={submitting}
             disabled={isSummary ? submitting || !phone : !ready && step !== "details"}
             onPress={isSummary ? submit : onNext}
+            testID={isSummary ? "booking-submit" : "booking-next"}
           />
         </View>
       ) : null}

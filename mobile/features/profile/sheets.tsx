@@ -67,6 +67,7 @@ export function ServiceSheet({
             icon="calendar-outline"
             onPress={() => onBook({ serviceId: service.id, staffId })}
             accessibilityHint={ar ? "بيفتح الحجز على الخدمة دي" : "Starts booking this service"}
+            testID="service-sheet-book"
           />
           <Text variant="caption" tone="subtle" align="center">
             {ar ? "هتختار اليوم والميعاد في الخطوة الجاية." : "You'll pick a day and time next."}

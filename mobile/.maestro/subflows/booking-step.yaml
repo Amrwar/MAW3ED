@@ -1,0 +1,35 @@
+# One step of the booking flow: choose the first option on offer, pick a
+# day with free times and the first time, then Continue.
+appId: net.maw3ed.app.staging
+---
+- runFlow:
+    when:
+      visible:
+        id: service-option
+    commands:
+      - tapOn:
+          id: service-option
+          index: 0
+- runFlow:
+    when:
+      visible:
+        id: choice-option
+    commands:
+      - tapOn:
+          id: choice-option
+          enabled: true
+          index: 0
+- runFlow:
+    when:
+      visible:
+        id: day-option
+    file: pick-time.yaml
+- runFlow:
+    when:
+      visible:
+        id: booking-next
+    commands:
+      - tapOn:
+          id: booking-next
+- waitForAnimationToEnd:
+    timeout: 3000

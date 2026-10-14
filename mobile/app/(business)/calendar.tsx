@@ -84,6 +84,7 @@ export default function Calendar() {
   return (
     <Screen
       scroll={false}
+      testID="calendar-screen"
       hero={
         <View style={styles.heroBody}>
           <View style={styles.heroTop}>

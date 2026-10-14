@@ -120,6 +120,7 @@ export default function Search() {
           // recent search, which would hide the row being tapped.
           onBlur={() => setTimeout(() => setFocused(false), 150)}
           maxLength={MAX_TERM}
+          testID="search-input"
         />
       </View>
       <View style={styles.top}>
@@ -191,7 +192,7 @@ export default function Search() {
           !problem && results.data ? (
             <View>
               <View style={styles.countRow} accessibilityLiveRegion="polite">
-                <Text variant="caption" tone="subtle">
+                <Text variant="caption" tone="subtle" testID="results-count">
                   {/* The server's total, not the length of what has loaded. */}
                   {T(`${num(total, lang)} مكان`, `${num(total, lang)} ${total === 1 ? "place" : "places"}`)}
                 </Text>
@@ -216,6 +217,7 @@ export default function Search() {
             </View>
           ) : (
             <EmptyState
+              testID="search-empty"
               icon="search-outline"
               title={T("مفيش أماكن مطابقة", "No places match")}
               body={

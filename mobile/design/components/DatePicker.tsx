@@ -49,6 +49,7 @@ export function DateStrip({ value, onChange, isAvailable, days = 30, from }: Day
             disabled={!available}
             onPress={() => onChange(iso)}
             style={[styles.stripDay, selected ? styles.dayOn : styles.dayOff, !available && styles.dayDisabled]}
+            testID="day-option"
           >
             <Text variant="tiny" align="center" style={{ color: selected ? colors.gold : colors.subtle }} numberOfLines={1}>
               {relative ?? weekdayShort(iso, lang)}

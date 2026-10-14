@@ -28,7 +28,7 @@ export function OfflineBanner() {
   if (isOnline) return null;
   return (
     <View pointerEvents="none" style={[styles.wrap, { top: insets.top + spacing.xs }]}>
-      <View style={styles.pill} accessibilityRole="alert" accessibilityLiveRegion="polite">
+      <View style={styles.pill} accessibilityRole="alert" accessibilityLiveRegion="polite" testID="offline-banner">
         <Icon name="cloud-offline-outline" size="sm" color={colors.night} />
         <Text variant="label" style={{ color: colors.night }}>
           {lang === "ar" ? "مفيش إنترنت — بنعرض آخر حاجة اتحمّلت" : "You're offline — showing what was last loaded"}

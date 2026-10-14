@@ -303,6 +303,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
             variant="ghost"
             label={T(`الكل (${num(p.rating.count, lang)})`, `All (${p.rating.count})`)}
             onPress={() => router.push({ pathname: "/business/[slug]/reviews", params: { slug: p.slug } })}
+            testID="all-reviews"
           />
         ) : undefined
       }
@@ -411,7 +412,13 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
           <View style={styles.flex} />
         )}
         <View style={styles.actions}>
-          <IconButton icon="share-social-outline" label={T(`شارك ${name}`, `Share ${name}`)} onPress={share} variant="filled" />
+          <IconButton
+            icon="share-social-outline"
+            label={T(`شارك ${name}`, `Share ${name}`)}
+            onPress={share}
+            variant="filled"
+            testID="share-business"
+          />
           <View style={styles.filled}>
             <FavoriteButton businessId={p.id} name={name} />
           </View>
@@ -442,11 +449,12 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
               label={words.book[lang]}
               icon="calendar-outline"
               onPress={onBookPress}
+              testID="book-button"
               accessibilityHint={p.services.length === 1 ? T("بيفتح تفاصيل الخدمة", "Opens the service") : T("بيبدأ الحجز من اختيار الخدمة", "Starts booking with a choice of service")}
             />
           </>
         ) : (
-          <Text variant="body" tone="muted" style={styles.flex}>
+          <Text variant="body" tone="muted" style={styles.flex} testID="no-services">
             {T("المكان لسه ماضافش خدمات تتحجز. تقدر تتواصل معاهم.", "Nothing to book here yet. You can still contact them.")}
           </Text>
         )}

@@ -35,6 +35,7 @@ export function PhoneField({
   hint,
   editable = true,
   onSubmitEditing,
+  testID,
 }: {
   label: string;
   value: string;
@@ -45,6 +46,7 @@ export function PhoneField({
   hint?: string;
   editable?: boolean;
   onSubmitEditing?: () => void;
+  testID?: string;
 }) {
   const { lang } = useLocale();
   const ar = lang === "ar";
@@ -92,6 +94,7 @@ export function PhoneField({
           onSubmitEditing={onSubmitEditing}
           returnKeyType="next"
           style={styles.input}
+          testID={testID}
         />
       </View>
 

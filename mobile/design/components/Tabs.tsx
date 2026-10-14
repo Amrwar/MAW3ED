@@ -15,11 +15,14 @@ export function Tabs<T extends string>({
   value,
   onChange,
   tone = "light",
+  testIDPrefix,
 }: {
   options: readonly { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
   tone?: "light" | "night";
+  /** Each option gets `${testIDPrefix}-${value}`, for end-to-end tests. */
+  testIDPrefix?: string;
 }) {
   const night = tone === "night";
   return (
@@ -33,6 +36,7 @@ export function Tabs<T extends string>({
             accessibilityState={{ selected }}
             accessibilityLabel={o.label}
             onPress={() => onChange(o.value)}
+            testID={testIDPrefix ? `${testIDPrefix}-${o.value}` : undefined}
             style={[styles.tab, selected && (night ? styles.selectedNight : styles.selectedLight)]}
           >
             <Text

@@ -1,0 +1,33 @@
+# Search opens on results (or its empty state), and a term that matches
+# nothing says so. Data-agnostic: never assumes what staging contains.
+appId: net.maw3ed.app.staging
+name: Search
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: tab-search
+    timeout: 30000
+- tapOn:
+    id: tab-search
+- extendedWaitUntil:
+    visible:
+      id: "business-card|search-empty"
+    timeout: 20000
+    label: Search shows results or its empty state
+- takeScreenshot: 02-search-initial
+- tapOn:
+    id: search-input
+- inputText: zzzzqqq
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: search-empty
+    timeout: 20000
+    label: A nonsense term shows "no places match"
+- assertNotVisible:
+    id: business-card
+- takeScreenshot: 02-search-empty

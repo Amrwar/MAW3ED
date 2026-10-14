@@ -73,6 +73,7 @@ export function BusinessCard({
       distance={distance}
       onPress={onPress}
       trailing={trailing}
+      testID="business-card"
     />
   );
 }
