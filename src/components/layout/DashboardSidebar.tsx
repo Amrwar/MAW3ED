@@ -192,7 +192,7 @@ export default function DashboardSidebar({
           </div>
 
           <span className={cn("shrink-0 rounded-full px-2 py-1 text-[0.625rem] font-bold", planStyle.cls)}>
-            {planStyle.label}
+            {t.dashboard.sidebar.planBadge[plan] ?? planStyle.label}
           </span>
         </div>
       </div>
@@ -221,9 +221,9 @@ export default function DashboardSidebar({
               <ArrowUpRight size={16} strokeWidth={2.2} className="text-white" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[0.75rem] font-bold text-white">ترقية الخطة</span>
+              <span className="block text-[0.75rem] font-bold text-white">{s.upgradeTitle}</span>
               <span className="mt-1 block text-[0.6875rem] leading-relaxed text-[var(--color-night-subtle)]">
-                حجوزات غير محدودة ومميزات احترافية
+                {s.upgradeBody}
               </span>
             </span>
           </Link>

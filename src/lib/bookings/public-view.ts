@@ -207,6 +207,7 @@ function reviewState(
     status: string;
     endsAt: Date | null;
     date: Date;
+    startTime: string;
     review: { id: string; rating: number; comment: string | null; response: string | null; createdAt: Date; status: ReviewStatus } | null;
   },
   now: Date,
@@ -214,7 +215,10 @@ function reviewState(
   const check = canReviewBooking(b, now);
   return {
     canReview: check.allowed,
-    reviewBlock: check.allowed ? null : check.reason === "ok" ? null : check.reason,
+    // "too-early" (marked completed before the appointment started) is
+    // reported as "not-completed": to the customer the visit has not
+    // happened yet, and the app's reviewBlock union stays unchanged.
+    reviewBlock: check.allowed || check.reason === "ok" ? null : check.reason === "too-early" ? "not-completed" : check.reason,
     review: b.review
       ? {
           rating: b.review.rating,

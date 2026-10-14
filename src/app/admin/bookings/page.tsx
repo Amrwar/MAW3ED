@@ -3,6 +3,10 @@ import { requireAdminPage } from "@/lib/admin/guard";
 import { AdminHeading, AdminTable, Pill } from "../_components/AdminBits";
 import { money } from "@/lib/fmt";
 import { adminMetadata } from "@/lib/admin/meta";
+import LinkPager from "@/components/ui/LinkPager";
+import { ADMIN_PAGER_LABELS, readPage } from "@/lib/admin/paging";
+
+const PER_PAGE = 50;
 
 export const generateMetadata = adminMetadata("bookings.read", "الحجوزات");
 
@@ -12,13 +16,22 @@ const TONE: Record<string, "ok" | "warn" | "danger" | "muted"> = {
   CANCELLED: "danger", NO_SHOW: "danger", FAILED_PAYMENT: "danger",
 };
 
-export default async function AdminBookingsPage() {
+export default async function AdminBookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdminPage("bookings.read");
+
+  const total = await db.booking.count();
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const page = Math.min(readPage((await searchParams).page), totalPages);
 
   const [bookings, byStatus] = await Promise.all([
     db.booking.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 200,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: PER_PAGE,
+      skip: (page - 1) * PER_PAGE,
       select: {
         id: true, reference: true, status: true, date: true, startTime: true,
         totalPrice: true, currency: true, customerName: true, createdAt: true,
@@ -50,6 +63,7 @@ export default async function AdminBookingsPage() {
         ])}
         empty="لسه مفيش حجوزات."
       />
+      <LinkPager className="mt-5" page={page} totalPages={totalPages} basePath="/admin/bookings" labels={ADMIN_PAGER_LABELS} />
     </div>
   );
 }

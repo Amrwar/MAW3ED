@@ -26,7 +26,7 @@ export default function RevenueView({
   completedCount: number;
   average: number | null;
   byDay: { day: string; amount: number }[];
-  byService: { name: string; amount: number; count: number }[];
+  byService: { name: string; nameEn?: string | null; amount: number; count: number }[];
   days: number;
 }) {
   const { lang } = useLanguage();
@@ -74,7 +74,7 @@ export default function RevenueView({
         title={ar ? "الإيراد بالخدمة" : "Revenue by service"}
         kind="money"
         rows={byService.map((s) => ({
-          label: s.name,
+          label: lang === "en" && s.nameEn ? s.nameEn : s.name,
           value: s.amount,
           sub: ar ? arCount(s.count, APPT) : enCount(s.count, "appointment"),
         }))}

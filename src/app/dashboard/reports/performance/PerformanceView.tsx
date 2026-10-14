@@ -24,8 +24,8 @@ export default function PerformanceView({
   cancellationRate: number | null;
   noShowRate: number | null;
   sampleSize: number;
-  byStaff: { id: string; name: string; completed: number; noShows: number; revenue: number }[];
-  byService: { name: string; completed: number; cancelled: number }[];
+  byStaff: { id: string; name: string; nameEn?: string | null; completed: number; noShows: number; revenue: number }[];
+  byService: { name: string; nameEn?: string | null; completed: number; cancelled: number }[];
 }) {
   const { lang } = useLanguage();
   const ar = lang === "ar";
@@ -62,7 +62,7 @@ export default function PerformanceView({
           ar ? "إيراد" : "Revenue",
         ]}
         rows={byStaff.map((s) => [
-          s.name,
+          !ar && s.nameEn ? s.nameEn : s.name,
           num(s.completed, lang),
           num(s.noShows, lang),
           money(s.revenue, lang),
@@ -77,7 +77,7 @@ export default function PerformanceView({
       <Rows
         title={ar ? "الخدمات" : "By service"}
         head={[ar ? "الخدمة" : "Service", ar ? "تمّت" : "Completed", ar ? "اتلغت" : "Cancelled"]}
-        rows={byService.map((s) => [s.name, num(s.completed, lang), num(s.cancelled, lang)])}
+        rows={byService.map((s) => [!ar && s.nameEn ? s.nameEn : s.name, num(s.completed, lang), num(s.cancelled, lang)])}
         empty={ar ? "لسه مفيش" : "Nothing yet"}
       />
     </div>

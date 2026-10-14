@@ -137,7 +137,8 @@ export default function AccountBookingCard({ booking: b, variant }: Props) {
             )}
             {b.depositAmount !== null && b.depositAmount > 0 && (
               <span className="text-[var(--color-subtle)]">
-                {money(b.depositAmount, lang, b.currency)}
+                {/* A second bare amount beside the price read as a second price. */}
+                {c.deposit}: <span className="num">{money(b.depositAmount, lang, b.currency)}</span>
               </span>
             )}
             {b.reference && (

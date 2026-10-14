@@ -1,5 +1,6 @@
 "use client";
 
+import { useMounted } from "@/hooks/useMounted";
 import { useEffect, useRef, useState } from "react";
 import { countText } from "@/lib/i18n";
 import Link from "next/link";
@@ -27,6 +28,11 @@ const RESEND_SECONDS = 60;
  */
 export default function PhoneLogin() {
   const { t, lang } = useLanguage();
+  // The submit stays disabled until React has hydrated. Before then a
+  // press would be a native form submission that never reaches
+  // onSubmit; with method="post" nothing would land in the URL anyway,
+  // but the credentials should not leave the page at all.
+  const hydrated = useMounted();
   const a = t.accountLogin;
   const router = useRouter();
   const params = useSearchParams();
@@ -131,7 +137,7 @@ export default function PhoneLogin() {
       </header>
 
       {step === "phone" ? (
-        <form onSubmit={sendCode} className="flex flex-col gap-4">
+        <form method="post" onSubmit={sendCode} className="flex flex-col gap-4">
           <Input
             label={a.phoneLabel}
             type="tel"
@@ -147,7 +153,7 @@ export default function PhoneLogin() {
 
           {error && <Alert tone="danger">{error}</Alert>}
 
-          <Button type="submit" variant="primary" fullWidth isLoading={busy}>
+          <Button type="submit" variant="primary" fullWidth isLoading={busy} disabled={!hydrated}>
             {a.sendCode}
             <ArrowRight size={16} aria-hidden="true" className="rtl:rotate-180" />
           </Button>
@@ -157,7 +163,7 @@ export default function PhoneLogin() {
           </p>
         </form>
       ) : (
-        <form onSubmit={verify} className="flex flex-col gap-4">
+        <form method="post" onSubmit={verify} className="flex flex-col gap-4">
           <Input
             ref={codeRef}
             label={a.codeLabel}
@@ -174,7 +180,7 @@ export default function PhoneLogin() {
 
           {error && <Alert tone="danger">{error}</Alert>}
 
-          <Button type="submit" variant="primary" fullWidth isLoading={busy} disabled={code.length < 4}>
+          <Button type="submit" variant="primary" fullWidth isLoading={busy} disabled={!hydrated || code.length < 4}>
             {a.verify}
           </Button>
 

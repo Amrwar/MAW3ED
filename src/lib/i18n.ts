@@ -39,6 +39,8 @@ export const translations = {
       addBusiness:   "أضف نشاطك",
       dashboard:     "لوحة التحكم",
       completeSetup: "إكمال الإعداد",
+      myAccount:     "حسابي",
+      myBookings:    "مواعيدي",
       langToggle:    "EN",
     },
     footer: {
@@ -403,6 +405,8 @@ export const translations = {
       title:          "حسابي",
       greeting:       "أهلًا {name}",
       greetingNoName: "أهلًا بيك",
+      noBusinessNotice: "لوحة التحكم للأنشطة التجارية بس، وحسابك ده حساب عميل — فوديناك لحسابك. عايز تضيف نشاطك؟ سجّل بحساب نشاط من صفحة \"أضف نشاطك\".",
+      dismiss:          "إغلاق",
       nav: {
         overview:      "نظرة عامة",
         upcoming:      "مواعيدي الجاية",
@@ -442,6 +446,7 @@ export const translations = {
         provider:    "مقدّم الخدمة",
         branch:      "الفرع",
         reference:   "رقم الحجز",
+        deposit:     "العربون",
       },
       emptyUpcoming:      "مفيش مواعيد جاية",
       emptyUpcomingBody:  "لما تحجز، الموعد هيظهر هنا وتقدر تغيّره أو تلغيه من هنا.",
@@ -775,6 +780,17 @@ export const translations = {
     auth: {
       backToHome: "← العودة للرئيسية",
       copyright:  "© 2026 موعد (Maw3ed). جميع الحقوق محفوظة.",
+      showPassword: "إظهار كلمة المرور",
+      hidePassword: "إخفاء كلمة المرور",
+      verifyEmail: {
+        resend:          "ابعت رابط جديد",
+        sent:            "تم الإرسال",
+        alreadyVerified: "بريدك مؤكّد بالفعل.",
+        linkSent:        "بعتنالك رابط جديد — شوف بريدك.",
+        signInFirst:     "سجّل دخولك الأول عشان نبعتلك الرابط.",
+        sendFailed:      "مقدرناش نبعت الرابط دلوقتي.",
+        offline:         "مفيش اتصال بالسيرفر. حاول تاني.",
+      },
       login: {
         title:              "أهلًا بعودتك",
         subtitle:           "سجّل دخولك للوصول للوحة التحكم",
@@ -842,6 +858,8 @@ export const translations = {
         signOut:      "تسجيل الخروج",
         yourBusiness: "عملك",
         planBadge: { FREE: "مجاني", PRO: "احترافي", PREMIUM: "مميز" },
+        upgradeTitle: "ترقية الخطة",
+        upgradeBody:  "حجوزات غير محدودة ومميزات احترافية",
       },
       header: {
         searchPlaceholder: "ابحث عن حجز أو عميل...",
@@ -1066,6 +1084,8 @@ export const translations = {
       addBusiness:   "List Your Business",
       dashboard:     "Dashboard",
       completeSetup: "Complete Setup",
+      myAccount:     "My account",
+      myBookings:    "My bookings",
       langToggle:    "عربي",
     },
     footer: {
@@ -1430,6 +1450,8 @@ export const translations = {
       title:          "My account",
       greeting:       "Hello {name}",
       greetingNoName: "Hello",
+      noBusinessNotice: "The dashboard is for businesses, and this is a customer account — so we brought you to your account instead. Want to list a business? Use \"List your business\" with a business account.",
+      dismiss:          "Dismiss",
       nav: {
         overview:      "Overview",
         upcoming:      "Upcoming",
@@ -1469,6 +1491,7 @@ export const translations = {
         provider:    "Provider",
         branch:      "Branch",
         reference:   "Reference",
+        deposit:     "Deposit",
       },
       emptyUpcoming:      "No upcoming bookings",
       emptyUpcomingBody:  "Once you book, it appears here and you can move or cancel it from here.",
@@ -1802,6 +1825,17 @@ export const translations = {
     auth: {
       backToHome: "← Back to Home",
       copyright:  "© 2026 Maw3ed. All rights reserved.",
+      showPassword: "Show password",
+      hidePassword: "Hide password",
+      verifyEmail: {
+        resend:          "Send a new link",
+        sent:            "Sent",
+        alreadyVerified: "Your email is already verified.",
+        linkSent:        "We sent you a new link — check your inbox.",
+        signInFirst:     "Sign in first so we can send you the link.",
+        sendFailed:      "We couldn't send the link right now.",
+        offline:         "Can't reach the server. Try again.",
+      },
       login: {
         title:              "Welcome Back",
         subtitle:           "Sign in to access your dashboard",
@@ -1869,6 +1903,8 @@ export const translations = {
         signOut:      "Sign out",
         yourBusiness: "Your Business",
         planBadge: { FREE: "Free", PRO: "Pro", PREMIUM: "Premium" },
+        upgradeTitle: "Upgrade your plan",
+        upgradeBody:  "Unlimited bookings and pro features",
       },
       header: {
         searchPlaceholder: "Search for a booking or customer...",

@@ -1,4 +1,6 @@
 import type { ReviewStatus } from "@prisma/client";
+import { cairoWallClock } from "@/lib/bookings/instants";
+import { timeToMinutes } from "@/lib/bookings/time";
 
 /**
  * Who may write, change or withdraw a review, and until when.
@@ -31,12 +33,15 @@ export type EligibilityReason =
   | "ok"
   | "not-completed"
   | "already-reviewed"
+  | "too-early"
   | "too-late";
 
 /**
  * Whether this booking may be reviewed.
  *
- * Completed, not already reviewed, and not too long ago. The unique
+ * Completed, not already reviewed, the appointment's start has passed
+ * (an owner marking a future booking COMPLETED must not open a review
+ * of a visit that has not happened), and not too long ago. The unique
  * constraint on Review.bookingId enforces the second of those whatever
  * this says; this exists to tell somebody before they type.
  */
@@ -47,11 +52,23 @@ export function canReviewBooking(
     /** The appointment's end, or its date when there is no instant. */
     endsAt?: Date | null;
     date?: Date | null;
+    /** The start, in the startsAt frame; else derived from date + startTime. */
+    startsAt?: Date | null;
+    startTime?: string | null;
   },
   now: Date = new Date(),
 ): { allowed: boolean; reason: EligibilityReason } {
   if (b.review) return { allowed: false, reason: "already-reviewed" };
   if (b.status !== "COMPLETED") return { allowed: false, reason: "not-completed" };
+
+  // startsAt is Cairo wall clock written as UTC, so it is compared with
+  // the wall clock, not with `now` directly.
+  const start =
+    b.startsAt ??
+    (b.date && b.startTime ? new Date(b.date.getTime() + timeToMinutes(b.startTime) * 60_000) : null);
+  if (start && cairoWallClock(now).getTime() < start.getTime()) {
+    return { allowed: false, reason: "too-early" };
+  }
 
   const finished = b.endsAt ?? b.date ?? null;
   if (finished) {

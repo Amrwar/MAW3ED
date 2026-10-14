@@ -5,6 +5,10 @@ import { can } from "@/lib/admin/permissions";
 import { AdminHeading } from "../_components/AdminBits";
 import BusinessesClient from "./_components/BusinessesClient";
 import { adminMetadata } from "@/lib/admin/meta";
+import LinkPager from "@/components/ui/LinkPager";
+import { ADMIN_PAGER_LABELS, readPage } from "@/lib/admin/paging";
+
+const PER_PAGE = 50;
 
 export const generateMetadata = adminMetadata("businesses.read", "الأعمال");
 
@@ -41,11 +45,16 @@ export default async function AdminBusinessesPage({
       : {}),
   };
 
+  const total = await db.business.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const page = Math.min(readPage(one("page")), totalPages);
+
   const [businesses, counts] = await Promise.all([
     db.business.findMany({
       where,
-      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-      take: 100,
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }, { id: "desc" }],
+      take: PER_PAGE,
+      skip: (page - 1) * PER_PAGE,
       select: {
         id: true,
         slug: true,
@@ -82,6 +91,16 @@ export default async function AdminBusinessesPage({
         activeStatus={status ?? ""}
         query={q ?? ""}
         tally={tally}
+        pager={
+          <LinkPager
+            className="mt-5"
+            page={page}
+            totalPages={totalPages}
+            basePath="/admin/businesses"
+            query={{ status, q }}
+            labels={ADMIN_PAGER_LABELS}
+          />
+        }
         rows={businesses.map((b) => ({
           id: b.id,
           slug: b.slug,

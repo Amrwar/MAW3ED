@@ -31,17 +31,17 @@ export default async function AccountDeletionPage({
 }) {
   const forced = parseLangParam((await searchParams).lang);
   const email = (
-    <a href={SUPPORT_MAILTO} dir="ltr" className="text-[var(--color-jade)] hover:underline">
+    <a href={SUPPORT_MAILTO} dir="ltr" className="text-[var(--color-jade)] underline underline-offset-2 hover:text-[var(--color-jade-hover)]">
       {SUPPORT_EMAIL}
     </a>
   );
   const settings = (
-    <Link href="/account/settings" className="text-[var(--color-jade)] hover:underline">
+    <Link href="/account/settings" className="text-[var(--color-jade)] underline underline-offset-2 hover:text-[var(--color-jade-hover)]">
       maw3ed.net/account/settings
     </Link>
   );
   const privacy = (label: string) => (
-    <Link href="/privacy" className="text-[var(--color-jade)] hover:underline">
+    <Link href="/privacy" className="text-[var(--color-jade)] underline underline-offset-2 hover:text-[var(--color-jade-hover)]">
       {label}
     </Link>
   );

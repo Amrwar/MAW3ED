@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { siteUrl } from "@/lib/url";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { requestNonce } from "@/lib/security/nonce";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -57,6 +58,13 @@ export default async function BusinessesPage({ searchParams }: Props) {
     searchBusinesses(query),
     getFacets(query.city || undefined),
   ]);
+
+  // Past the last page — an old link, a hand-edited URL — the grid was
+  // empty with no pager and nothing said why. The last real page is
+  // what that visitor was after.
+  if (result.pageCount > 0 && query.page > result.pageCount) {
+    redirect(discoveryHref({ ...query, page: result.pageCount }));
+  }
 
   return (
     <>

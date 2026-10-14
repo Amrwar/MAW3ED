@@ -34,22 +34,44 @@ export async function PATCH(req: Request) {
 }
 
 /**
- * GET /api/account/notifications
+ * GET /api/account/notifications?cursor=&take=
  *
  * The list the bell opens, newest first, with how many are unread.
+ *
+ * Paged by cursor, and backwards compatible: with no parameters it is
+ * the newest 50, in `notifications`, exactly as before. `nextCursor` is
+ * the id to pass as `cursor` for the next page, and null on the last
+ * one; a client that ignores it still gets the first page it always got.
+ * `take` is 1..100 (default 50).
  *
  * The website reads this through a server component; the app has to ask
  * for it. Same query either way.
  */
-export async function GET() {
+const getSchema = z.object({
+  cursor: z.string().min(1).max(64).optional(),
+  take: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+export async function GET(req: Request) {
   try {
     const session = await requireSession();
 
+    const url = new URL(req.url);
+    const parsed = getSchema.safeParse({
+      cursor: url.searchParams.get("cursor") || undefined,
+      take: url.searchParams.get("take") || undefined,
+    });
+    if (!parsed.success) return err("بيانات غير صالحة", 400, { code: "bad-params" });
+
     // getNotifications already counts the unread ones; recounting here
     // would be a second answer to the same question.
-    const { items, unread } = await getNotifications(session.user.id);
+    const { items, unread, nextCursor } = await getNotifications(
+      session.user.id,
+      parsed.data.take ?? 50,
+      parsed.data.cursor,
+    );
 
-    return ok({ notifications: items, unread });
+    return ok({ notifications: items, unread, nextCursor });
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[notifications GET]", e);

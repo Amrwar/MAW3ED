@@ -135,7 +135,10 @@ export async function POST(req: Request) {
     // Clear referral cookie so it isn't accidentally reused
     if (refCode) cookieStore.delete("maw3ed_ref");
 
-    return ok({ business: { id: business.id, slug: business.slug } }, 201);
+    // isPublished tells the success screen whether the page is live or
+    // still waiting on the email to be verified; it must not claim either
+    // one by guessing.
+    return ok({ business: { id: business.id, slug: business.slug, isPublished: business.isPublished } }, 201);
   } catch (e) {
     log.error("[onboarding]", e);
     return err("حدث خطأ أثناء حفظ البيانات", 500);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMounted } from "@/hooks/useMounted";
 import { useState } from "react";
 import Link from "next/link";
 import { Mail, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
@@ -8,6 +9,11 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function ForgotPasswordPage() {
   const { lang } = useLanguage();
+  // The submit stays disabled until React has hydrated. Before then a
+  // press would be a native form submission that never reaches
+  // onSubmit; with method="post" nothing would land in the URL anyway,
+  // but the credentials should not leave the page at all.
+  const hydrated = useMounted();
   const ar = lang === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
 
@@ -103,7 +109,7 @@ export default function ForgotPasswordPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <form method="post" onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
           <label className="field-label" htmlFor="fp-email">
             {T("البريد الإلكتروني", "Email")}
@@ -124,7 +130,7 @@ export default function ForgotPasswordPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={!hydrated || loading}
           className="btn btn-primary w-full gap-2 mt-2"
         >
           {loading

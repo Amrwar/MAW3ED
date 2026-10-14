@@ -1,7 +1,7 @@
-import type { BookingStatus } from "@prisma/client";
+import type { BookingStatus, Notification, Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { cairoDateString, cairoMinutes } from "@/lib/bookings/instants";
+import { cairoDateString, cairoMinutes, cairoWallClock, dateToUTC } from "@/lib/bookings/instants";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
 import { customerMayChange } from "@/lib/bookings/self-service";
 import { canReviewBooking } from "@/lib/review-policy";
@@ -237,25 +237,46 @@ export async function getHistory(
   phone: string,
   opts: { take?: number; skip?: number } = {},
 ): Promise<{ bookings: AccountBooking[]; total: number }> {
-  const today = cairoDateString();
-  const nowMin = cairoMinutes();
+  const now = new Date();
+  const today = cairoDateString(now);
+  const nowMin = cairoMinutes(now);
+  const where = historyWhere(phone, now);
 
+  // The filter is in the query, and the count is over the same set, so
+  // skip/take page through exactly the rows a client is shown. (Skipping
+  // raw rows and filtering afterwards repeated some and lost others.)
+  // id breaks ties so two bookings at the same minute keep their order
+  // from one page to the next.
   const [rows, total] = await Promise.all([
     db.booking.findMany({
-      where: { customerPhoneE164: phone },
-      orderBy: [{ date: "desc" }, { startTime: "desc" }],
-      take: (opts.take ?? 20) + 40,
+      where,
+      orderBy: [{ date: "desc" }, { startTime: "desc" }, { id: "desc" }],
+      take: opts.take ?? 20,
       skip: opts.skip ?? 0,
       select: BOOKING_SELECT,
     }),
-    db.booking.count({ where: { customerPhoneE164: phone } }),
+    db.booking.count({ where }),
   ]);
 
-  const shaped = rows
-    .map((r) => shape(r, today, nowMin))
-    .filter((b) => !(LIVE.includes(b.status as BookingStatus) && b.minutesUntil > -b.durationMinutes));
+  return { bookings: rows.map((r) => shape(r, today, nowMin)), total };
+}
 
-  return { bookings: shaped.slice(0, opts.take ?? 20), total };
+/**
+ * What counts as history, as a where clause: anything no longer holding
+ * a slot, plus a live booking whose appointment has ended. The exact
+ * complement of getUpcoming. endsAt is in the Cairo wall-clock frame
+ * (lib/bookings/instants), so it is compared with cairoWallClock. A row
+ * written before endsAt existed is history once its day has passed.
+ */
+export function historyWhere(phone: string, now: Date = new Date()): Prisma.BookingWhereInput {
+  return {
+    customerPhoneE164: phone,
+    OR: [
+      { status: { notIn: LIVE } },
+      { endsAt: { lte: cairoWallClock(now) } },
+      { endsAt: null, date: { lt: dateToUTC(cairoDateString(now)) } },
+    ],
+  };
 }
 
 export async function getFavorites(userId: string) {
@@ -302,16 +323,37 @@ export async function getMyReviews(phone: string) {
   });
 }
 
-export async function getNotifications(userId: string, take = 50) {
-  const [items, unread] = await Promise.all([
+/**
+ * A page of notifications, newest first, and how many are unread.
+ *
+ * Cursor-paged: `cursor` is the id of the last item of the previous page
+ * and `nextCursor` is null on the last page. A cursor rather than an
+ * offset because new notifications arrive at the top while somebody is
+ * reading, which would shift every offset by one. A cursor that is not
+ * this user's (or no longer exists) is treated as the start.
+ */
+export async function getNotifications(
+  userId: string,
+  take = 50,
+  cursor?: string | null,
+): Promise<{ items: Notification[]; unread: number; nextCursor: string | null }> {
+  const from = cursor
+    ? await db.notification.findFirst({ where: { id: cursor, userId }, select: { id: true } })
+    : null;
+
+  const [rows, unread] = await Promise.all([
     db.notification.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
-      take,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: take + 1,
+      ...(from ? { cursor: { id: from.id }, skip: 1 } : {}),
     }),
     db.notification.count({ where: { userId, readAt: null } }),
   ]);
-  return { items, unread };
+
+  const items = rows.slice(0, take);
+  const nextCursor = rows.length > take ? items[items.length - 1].id : null;
+  return { items, unread, nextCursor };
 }
 
 /**

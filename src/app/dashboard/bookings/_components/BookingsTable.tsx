@@ -8,6 +8,7 @@ import {
   ALLOWED_TRANSITIONS,
   formatDateAr,
 } from "@/features/dashboard/bookings/types";
+import { allowedNow } from "@/lib/bookings/progress-guard";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Pagination from "@/components/ui/Pagination";
 
@@ -157,7 +158,7 @@ export default function BookingsTable({
               bookings.map((b) => {
                 const badge          = STATUS_BADGE[b.status] ?? STATUS_BADGE.NO_SHOW;
                 const statusLabel    = (bs as Record<string, string>)[b.status] ?? b.status;
-                const nextStatuses   = ALLOWED_TRANSITIONS[b.status] ?? [];
+                const nextStatuses   = allowedNow(ALLOWED_TRANSITIONS[b.status] ?? [], { date: new Date(`${b.date}T00:00:00Z`), startTime: b.startTime });
                 const primaryAction  = nextStatuses[0] ?? null;
                 const isActionLoading = actionLoadingId === b.id;
                 const actionStyle    = primaryAction ? (ACTION_STYLE[primaryAction] ?? ACTION_STYLE.NO_SHOW) : null;

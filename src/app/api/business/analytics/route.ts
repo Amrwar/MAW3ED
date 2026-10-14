@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { isoDate } from "@/lib/query-params";
 
 export type RevenuePoint = { period: string; revenue: number; bookings: number };
 export type ServiceSlice  = { serviceName: string; bookings: number; revenue: number; color: string };
@@ -46,13 +47,17 @@ export async function GET(req: Request) {
     const toStr   = searchParams.get("to");
 
     if (!fromStr || !toStr) return err("حدد بداية ونهاية الفترة", 400);
+    if (!isoDate.safeParse(fromStr).success || !isoDate.safeParse(toStr).success) {
+      return err("تاريخ غير صحيح", 400, { code: "bad-params" });
+    }
+    // A range that ends before it starts has no answer; saying so beats
+    // an empty report that looks like a bad month.
+    if (fromStr > toStr) return err("بداية الفترة لازم تكون قبل نهايتها", 400, { code: "range" });
 
     const [fy, fm, fd] = fromStr.split("-").map(Number);
     const [ty, tm, td] = toStr.split("-").map(Number);
     const fromDate = new Date(Date.UTC(fy, fm - 1, fd));
     const toDate   = new Date(Date.UTC(ty, tm - 1, td, 23, 59, 59));
-
-    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) return err("تاريخ غير صحيح", 400);
 
     // ── Fetch bookings in range ──────────────────────────────
     const bookings = await db.booking.findMany({

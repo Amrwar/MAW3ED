@@ -374,7 +374,7 @@ export default function DashboardHeader({
     <>
       {/* ── Top navbar ──────────────────────────────────────── */}
       <header
-        className="sticky top-0 z-30 flex items-center gap-3 px-4 md:px-5"
+        className="sticky top-0 z-30 flex items-center gap-2 px-4 md:gap-3 md:px-5"
         style={{
           height:       68,
           background:   "var(--color-surface)",
@@ -395,14 +395,17 @@ export default function DashboardHeader({
             cursor:       "pointer",
           }}
           onClick={() => setMobileOpen(true)}
-          aria-label="فتح القائمة"
+          aria-label={lang === "ar" ? "فتح القائمة" : "Open menu"}
         >
           <Menu size={17} strokeWidth={2} />
         </button>
 
         {/* Mobile logo */}
-        <div className="md:hidden shrink-0">
-          <Logo size="sm" />
+        {/* Sized by height so it gives way at 320 px: at its natural
+            130 px the row was wider than the screen and the avatar was
+            pushed past the edge. */}
+        <div className="md:hidden min-w-0 shrink">
+          <Logo size="sm" className="h-9 w-auto max-w-full" />
         </div>
 
         {/* Desktop search bar */}
@@ -438,7 +441,7 @@ export default function DashboardHeader({
         </div>
 
         {/* Right action cluster */}
-        <div className="ms-auto flex items-center gap-2">
+        <div className="ms-auto flex shrink-0 items-center gap-2">
           <IconBtn
             onClick={handleSoundToggle}
             title={soundEnabled ? h.disableSound : h.enableSound}
@@ -498,6 +501,8 @@ export default function DashboardHeader({
           </Dropdown>
 
           <div
+            aria-hidden="true"
+            className="hidden md:block"
             style={{
               width: 1, height: 22,
               background: "var(--color-line)", flexShrink: 0, marginInline: 2,
@@ -589,7 +594,7 @@ export default function DashboardHeader({
               background: "var(--color-surface-2)", border: "1.5px solid var(--color-line)",
               color: "var(--color-muted)", cursor: "pointer",
             }}
-            aria-label="إغلاق القائمة"
+            aria-label={lang === "ar" ? "إغلاق القائمة" : "Close menu"}
           >
             <X size={14} strokeWidth={2} />
           </button>
@@ -626,7 +631,7 @@ export default function DashboardHeader({
                 padding: "3px 8px", borderRadius: 100,
                 background: planStyle.bg, color: planStyle.text }}
             >
-              {planStyle.label}
+              {t.dashboard.sidebar.planBadge[plan] ?? planStyle.label}
             </span>
           </div>
         </div>
@@ -671,10 +676,10 @@ export default function DashboardHeader({
               </div>
               <div className="flex-1 min-w-0">
                 <p style={{ fontSize: 12, fontWeight: 700, color: "var(--color-surface)", marginBottom: 2 }}>
-                  ترقية الخطة
+                  {t.dashboard.sidebar.upgradeTitle}
                 </p>
                 <p style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>
-                  حجوزات غير محدودة ومميزات احترافية
+                  {t.dashboard.sidebar.upgradeBody}
                 </p>
               </div>
               <ArrowUpRight

@@ -8,6 +8,7 @@ import { getEffectivePlan, type Plan, type SubscriptionStatus } from "@/lib/plan
 import { getCapabilities, resourceLabel } from "@/lib/scheduling/capabilities";
 import { cookies } from "next/headers";
 import VerifyEmailBanner from "@/components/dashboard/VerifyEmailBanner";
+import { noBusinessDestination } from "@/lib/dashboard/guard";
 
 export const metadata: Metadata = { title: "لوحة التحكم" };
 
@@ -27,18 +28,18 @@ export default async function DashboardLayout({
   let business = tokenBusinessId
     ? await db.business.findUnique({
         where:  { id: tokenBusinessId },
-        select: { id: true, nameAr: true, businessType: true, city: { select: { nameAr: true } } },
+        select: { id: true, nameAr: true, nameEn: true, businessType: true, city: { select: { nameAr: true, nameEn: true } } },
       })
     : null;
 
   if (!business) {
     business = await db.business.findUnique({
       where:  { ownerId: session.user.id },
-      select: { id: true, nameAr: true, businessType: true, city: { select: { nameAr: true } } },
+      select: { id: true, nameAr: true, nameEn: true, businessType: true, city: { select: { nameAr: true, nameEn: true } } },
     });
   }
 
-  if (!business) redirect("/onboarding");
+  if (!business) redirect(await noBusinessDestination(session.user.id));
 
   const pendingCount = await db.booking.count({
     where: { businessId: business.id, status: "PENDING" },
@@ -63,7 +64,6 @@ export default async function DashboardLayout({
     // Prisma client not yet regenerated — fall back to FREE badge
   }
 
-  const cityName = business.city?.nameAr ?? "";
 
   // A business stays unpublished until its owner's email is confirmed,
   // and nothing told the owner. Said here, on every dashboard page, with
@@ -80,11 +80,13 @@ export default async function DashboardLayout({
   const cookieStore = await cookies();
   const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as "ar" | "en";
   const resourceWord = resourceLabel(capabilities.resourceKind, lang);
+  const businessName = (lang === "en" ? business.nameEn : null) || business.nameAr;
+  const cityName = (lang === "en" ? business.city?.nameEn : null) || business.city?.nameAr || "";
 
   return (
     <div className="min-h-screen" style={{ background: "var(--color-surface-2)" }}>
       <DashboardSidebar
-        businessName={business.nameAr}
+        businessName={businessName}
         cityName={cityName}
         pendingCount={pendingCount}
         plan={effectivePlan}
@@ -96,7 +98,7 @@ export default async function DashboardLayout({
 
       <div className="md:ms-64">
         <DashboardHeader
-          businessName={business.nameAr}
+          businessName={businessName}
           cityName={cityName}
           pendingCount={pendingCount}
           plan={effectivePlan}

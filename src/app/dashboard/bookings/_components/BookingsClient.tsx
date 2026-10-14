@@ -180,7 +180,9 @@ export default function BookingsClient({
           </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        {/* Wraps on a phone: the tabs and the button side by side were
+            wider than 390 px, and the button sat flush on the edge. */}
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
           <div
             role="tablist"
             aria-label={b.title}

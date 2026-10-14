@@ -82,7 +82,9 @@ export default async function BookingsPage() {
   return (
     <BookingsClient
       initialTodayBookings={initialTodayBookings}
-      services={services}
+      // Only what the filter needs: a Prisma Decimal (price) cannot cross
+      // into a client component.
+      services={services.map((s) => ({ id: s.id, nameAr: s.nameAr }))}
       serviceOptions={serviceOptions}
       slug={business?.slug ?? ""}
       totalBookings={totalBookings}

@@ -84,8 +84,8 @@ export default function ErrorPage({
         }}
       >
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/">
-            <Image src="/logo.png" alt="موعد" width={110} height={46} className="object-contain" priority />
+          <Link href="/" aria-label="موعد — الصفحة الرئيسية">
+            <Image src="/logo.png" alt="" width={110} height={46} className="object-contain" priority />
           </Link>
           <Link
             href="/"
@@ -484,7 +484,9 @@ function ErrorIllustration({ code }: { code: string }) {
                   style={{
                     fontSize:           11,
                     fontWeight:         800,
-                    color:              "var(--color-line-2)",
+                    // --color-line-2 is a border tone (1.38:1 on white);
+                    // text, even placeholder text, needs the subtle token.
+                    color:              "var(--color-subtle)",
                     letterSpacing:      "0.06em",
                     fontVariantNumeric: "tabular-nums",
                   }}
@@ -604,7 +606,7 @@ function ErrorIllustration({ code }: { code: string }) {
             boxShadow:    "0 0 0 3px rgba(158,59,46,0.22)",
           }}
         />
-        <p style={{ fontSize: 10, fontWeight: 700, color: "var(--color-muted)", letterSpacing: "0.07em" }}>
+        <p style={{ fontSize: 10, fontWeight: 700, color: "var(--color-night-text)", letterSpacing: "0.07em" }}>
           route · not · found
         </p>
         <div

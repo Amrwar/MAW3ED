@@ -22,7 +22,7 @@ export default function BookingsView({
   cancelled: number;
   noShows: number;
   byDay: { day: string; count: number }[];
-  byService: { name: string; count: number }[];
+  byService: { name: string; nameEn?: string | null; count: number }[];
   byHour: { hour: number; count: number }[];
   days: number;
 }) {
@@ -67,7 +67,7 @@ export default function BookingsView({
 
       <Bars
         title={ar ? "الحجوزات بالخدمة" : "Bookings by service"}
-        rows={byService.map((s) => ({ label: s.name, value: s.count }))}
+        rows={byService.map((s) => ({ label: !ar && s.nameEn ? s.nameEn : s.name, value: s.count }))}
         empty={ar ? "لسه مفيش" : "Nothing yet"}
       />
     </div>

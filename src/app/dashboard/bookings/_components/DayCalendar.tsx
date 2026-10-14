@@ -167,7 +167,7 @@ export default function DayCalendar({
             onClick={() => onDateChange(shiftDate(date, -1))}
             className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-ink)]"
           >
-            <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+            <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" className="rtl:rotate-180" />
           </button>
           <button
             type="button"
@@ -175,7 +175,7 @@ export default function DayCalendar({
             onClick={() => onDateChange(shiftDate(date, 1))}
             className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-ink)]"
           >
-            <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" />
+            <ChevronRight size={16} strokeWidth={2} aria-hidden="true" className="rtl:rotate-180" />
           </button>
         </div>
 

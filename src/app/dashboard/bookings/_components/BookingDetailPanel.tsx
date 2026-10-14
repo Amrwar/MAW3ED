@@ -9,6 +9,7 @@ import {
   ALLOWED_TRANSITIONS,
   formatDateAr,
 } from "@/features/dashboard/bookings/types";
+import { allowedNow } from "@/lib/bookings/progress-guard";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Modal from "@/components/ui/Modal";
 import Alert from "@/components/ui/Alert";
@@ -63,7 +64,7 @@ export default function BookingDetailPanel({
   const bs     = t.dashboard.bookingStatus;
   const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
-  const allowedNext  = ALLOWED_TRANSITIONS[booking.status] ?? [];
+  const allowedNext  = allowedNow(ALLOWED_TRANSITIONS[booking.status] ?? [], { date: new Date(`${booking.date}T00:00:00Z`), startTime: booking.startTime });
   const badge        = STATUS_BADGE[booking.status] ?? STATUS_BADGE.NO_SHOW;
   const statusLabel  = (bs as Record<string, string>)[booking.status] ?? booking.status;
 

@@ -32,8 +32,8 @@ const SELECT = {
   customerId: true,
   createdAt: true,
   currency: true,
-  service: { select: { id: true, nameAr: true } },
-  staffMember: { select: { id: true, nameAr: true } },
+  service: { select: { id: true, nameAr: true, nameEn: true } },
+  staffMember: { select: { id: true, nameAr: true, nameEn: true } },
 } as const;
 
 async function load(businessId: string, period: Period) {
@@ -64,7 +64,7 @@ export interface RevenueReport {
   average: number | null;
   /** Money by day, oldest first, for the period. */
   byDay: { day: string; amount: number }[];
-  byService: { name: string; amount: number; count: number }[];
+  byService: { name: string; nameEn: string | null; amount: number; count: number }[];
   period: Period;
 }
 
@@ -76,7 +76,7 @@ export async function getRevenueReport(
   const completed = rows.filter((b) => b.status === "COMPLETED");
 
   const byDay = new Map<string, number>();
-  const byService = new Map<string, { name: string; amount: number; count: number }>();
+  const byService = new Map<string, { name: string; nameEn: string | null; amount: number; count: number }>();
   let total = 0;
 
   for (const b of completed) {
@@ -89,6 +89,7 @@ export async function getRevenueReport(
     const prev = byService.get(b.service.id);
     byService.set(b.service.id, {
       name: b.service.nameAr,
+      nameEn: b.service.nameEn,
       amount: (prev?.amount ?? 0) + amount,
       count: (prev?.count ?? 0) + 1,
     });
@@ -116,7 +117,7 @@ export interface BookingsReport {
   noShows: number;
   upcoming: number;
   byDay: { day: string; count: number }[];
-  byService: { name: string; count: number }[];
+  byService: { name: string; nameEn: string | null; count: number }[];
   /** Busiest hours, as "HH" → count, over completed and live bookings. */
   byHour: { hour: number; count: number }[];
   period: Period;
@@ -131,7 +132,7 @@ export async function getBookingsReport(
   const t = tally(countable(rows), now);
 
   const byDay = new Map<string, number>();
-  const byService = new Map<string, { name: string; count: number }>();
+  const byService = new Map<string, { name: string; nameEn: string | null; count: number }>();
   const byHour = new Map<number, number>();
 
   for (const b of rows) {
@@ -144,6 +145,7 @@ export async function getBookingsReport(
     const prev = byService.get(b.service.id);
     byService.set(b.service.id, {
       name: b.service.nameAr,
+      nameEn: b.service.nameEn,
       count: (prev?.count ?? 0) + 1,
     });
 
@@ -256,11 +258,12 @@ export interface PerformanceReport {
   byStaff: {
     id: string;
     name: string;
+    nameEn: string | null;
     completed: number;
     noShows: number;
     revenue: number;
   }[];
-  byService: { name: string; completed: number; cancelled: number }[];
+  byService: { name: string; nameEn: string | null; completed: number; cancelled: number }[];
   period: Period;
 }
 
@@ -284,13 +287,14 @@ export async function getPerformanceReport(
   const n = settled.length;
 
   const byStaff = new Map<string, PerformanceReport["byStaff"][number]>();
-  const byService = new Map<string, { name: string; completed: number; cancelled: number }>();
+  const byService = new Map<string, { name: string; nameEn: string | null; completed: number; cancelled: number }>();
 
   for (const b of settled) {
     if (b.staffMember) {
       const prev = byStaff.get(b.staffMember.id) ?? {
         id: b.staffMember.id,
         name: b.staffMember.nameAr,
+        nameEn: b.staffMember.nameEn,
         completed: 0,
         noShows: 0,
         revenue: 0,
@@ -305,6 +309,7 @@ export async function getPerformanceReport(
 
     const s = byService.get(b.service.id) ?? {
       name: b.service.nameAr,
+      nameEn: b.service.nameEn,
       completed: 0,
       cancelled: 0,
     };

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMounted } from "@/hooks/useMounted";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -25,6 +26,11 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function SignupPage() {
   const { t, lang } = useLanguage();
+  // The submit stays disabled until React has hydrated. Before then a
+  // press would be a native form submission that never reaches
+  // onSubmit; with method="post" nothing would land in the URL anyway,
+  // but the credentials should not leave the page at all.
+  const hydrated = useMounted();
   const s = t.auth.signup;
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -77,7 +83,7 @@ export default function SignupPage() {
         <p className="m-0 mt-2 text-[0.875rem] text-[var(--color-subtle)]">{s.subtitle}</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+      <form method="post" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
 
         <div>
           <label htmlFor="su-name" className="field-label">{s.fullName}</label>
@@ -125,7 +131,7 @@ export default function SignupPage() {
             />
             <button
               type="button"
-              aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+              aria-label={showPassword ? t.auth.hidePassword : t.auth.showPassword}
               className="absolute inset-y-0 end-1 flex w-11 items-center justify-center text-[var(--color-subtle)] transition-colors hover:text-[var(--color-ink)]"
               onClick={() => setShowPassword(!showPassword)}
             >
@@ -159,7 +165,7 @@ export default function SignupPage() {
 
         {serverError && <Alert tone="danger">{serverError}</Alert>}
 
-        <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting} className="mt-1">
+        <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting} disabled={!hydrated} className="mt-1">
           <UserPlus size={16} aria-hidden="true" />
           {s.submit}
         </Button>

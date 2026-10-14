@@ -43,12 +43,12 @@ export default async function PrivacyPage({
 }) {
   const forced = parseLangParam((await searchParams).lang);
   const email = (
-    <a href={SUPPORT_MAILTO} dir="ltr" className="text-[var(--color-jade)] hover:underline">
+    <a href={SUPPORT_MAILTO} dir="ltr" className="text-[var(--color-jade)] underline underline-offset-2 hover:text-[var(--color-jade-hover)]">
       {SUPPORT_EMAIL}
     </a>
   );
   const deletion = (label: string) => (
-    <Link href="/account-deletion" className="text-[var(--color-jade)] hover:underline">
+    <Link href="/account-deletion" className="text-[var(--color-jade)] underline underline-offset-2 hover:text-[var(--color-jade-hover)]">
       {label}
     </Link>
   );

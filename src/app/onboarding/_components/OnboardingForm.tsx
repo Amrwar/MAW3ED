@@ -84,7 +84,7 @@ export default function OnboardingForm({ categories, cities }: Props) {
   const [data,         setData]         = useState<OnboardingData>(DEFAULT_DATA);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError,  setSubmitError]  = useState<string | null>(null);
-  const [submitted,    setSubmitted]    = useState<{ slug: string; nameAr: string } | null>(null);
+  const [submitted,    setSubmitted]    = useState<{ slug: string; nameAr: string; published: boolean } | null>(null);
 
   // Restore from localStorage on mount
   useEffect(() => {
@@ -149,7 +149,7 @@ export default function OnboardingForm({ categories, cities }: Props) {
       // Clear saved progress
       localStorage.removeItem(STORAGE_KEY);
       // Show success screen
-      setSubmitted({ slug: finalData.slug, nameAr: finalData.nameAr });
+      setSubmitted({ slug: finalData.slug, nameAr: finalData.nameAr, published: json.business?.isPublished === true });
     } catch {
       setSubmitError("حدث خطأ في الاتصال بالسيرفر");
     } finally {
@@ -163,6 +163,7 @@ export default function OnboardingForm({ categories, cities }: Props) {
       <SuccessScreen
         slug={submitted.slug}
         nameAr={submitted.nameAr}
+        published={submitted.published}
         onDashboard={() => router.push("/dashboard")}
       />
     );

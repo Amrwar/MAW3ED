@@ -110,6 +110,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
                   المدة
                 </label>
                 <select
+                  aria-label="المدة"
                   value={service.duration}
                   onChange={(e) => updateService(i, "duration", Number(e.target.value))}
                   className="input text-sm"

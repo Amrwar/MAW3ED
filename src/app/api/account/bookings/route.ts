@@ -1,7 +1,19 @@
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err, requireSession } from "@/lib/api";
 import { getUpcoming, getHistory } from "@/lib/account/queries";
 import { log } from "@/lib/logger";
+import { parseQuery } from "@/lib/query-params";
+
+/**
+ * take is 1..50 (more is clamped to 50, as it always was); skip is a
+ * whole number. Anything else is a 400 rather than a silent default.
+ */
+const query = z.object({
+  scope: z.enum(["upcoming", "history"]).optional(),
+  take: z.coerce.number().int().min(1).transform((n) => Math.min(n, 50)).optional(),
+  skip: z.coerce.number().int().min(0).max(1_000_000).optional(),
+});
 
 /**
  * GET /api/account/bookings?scope=upcoming|history&take=&skip=
@@ -37,8 +49,9 @@ export async function GET(req: Request) {
       return ok({ bookings: [], total: 0, needsPhone: true });
     }
 
-    const url = new URL(req.url);
-    const scope = url.searchParams.get("scope") === "history" ? "history" : "upcoming";
+    const q = parseQuery(new URL(req.url).searchParams, query);
+    if (!q.ok) return q.response;
+    const scope = q.data.scope ?? "upcoming";
 
     if (scope === "upcoming") {
       const bookings = await getUpcoming(user.phone);
@@ -49,8 +62,8 @@ export async function GET(req: Request) {
     // History can be long, so it pages. The ceiling is here rather than
     // trusting the caller: an app asking for everything at once is a
     // bug on a phone, and a stranger asking for it is worse.
-    const take = Math.min(Math.max(Number(url.searchParams.get("take")) || 20, 1), 50);
-    const skip = Math.max(Number(url.searchParams.get("skip")) || 0, 0);
+    const take = q.data.take ?? 20;
+    const skip = q.data.skip ?? 0;
 
     const { bookings, total } = await getHistory(user.phone, { take, skip });
     return ok({ bookings, total, needsPhone: false });

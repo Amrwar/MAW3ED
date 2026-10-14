@@ -7,7 +7,9 @@ import Footer from "@/components/layout/Footer";
 import Alert from "@/components/ui/Alert";
 import { getAccountUser, getNotifications } from "@/lib/account/queries";
 import { translations, type Lang } from "@/lib/i18n";
+import { Suspense } from "react";
 import AccountNav from "./_components/AccountNav";
+import NoBusinessNotice from "./_components/NoBusinessNotice";
 
 /**
  * The customer area.
@@ -60,6 +62,9 @@ export default async function AccountLayout({ children }: { children: React.Reac
       <Navbar />
       <main id="main" className="min-h-screen bg-[var(--color-ground)] pt-20">
         <div className="container-app py-8">
+          <Suspense fallback={null}>
+            <NoBusinessNotice />
+          </Suspense>
           <header className="mb-6">
             <h1 className="m-0 text-[1.5rem] font-light tracking-tight text-[var(--color-ink)]">
               {user.name

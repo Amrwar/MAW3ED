@@ -56,16 +56,43 @@ const ICONS: Record<string, typeof Bell> = {
 export default function NotificationList({
   initial,
   initialUnread,
+  initialCursor = null,
 }: {
   initial: NotificationRow[];
   initialUnread: number;
+  /** Where the next page starts; null when the first page is all there is. */
+  initialCursor?: string | null;
 }) {
   const { t, lang } = useLanguage();
   const a = t.account;
+  const b = t.businesses;
 
   const [rows, setRows] = useState(initial);
   const [unread, setUnread] = useState(initialUnread);
+  const [cursor, setCursor] = useState(initialCursor);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState(false);
   const [, startTransition] = useTransition();
+
+  async function loadMore() {
+    if (!cursor || loadingMore) return;
+    setLoadingMore(true);
+    setMoreError(false);
+    try {
+      const res = await fetch(`/api/account/notifications?cursor=${encodeURIComponent(cursor)}`);
+      if (!res.ok) throw new Error(String(res.status));
+      const data = (await res.json()) as { notifications: NotificationRow[]; nextCursor: string | null };
+      setRows((prev) => {
+        const seen = new Set(prev.map((r) => r.id));
+        return [...prev, ...data.notifications.filter((r) => !seen.has(r.id))];
+      });
+      setCursor(data.nextCursor);
+    } catch {
+      setMoreError(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   async function markRead(ids: string[]) {
     if (ids.length === 0) return;
@@ -203,6 +230,22 @@ export default function NotificationList({
           </ul>
         </section>
       ))}
+
+      {cursor && (
+        <div className="flex flex-col items-center gap-2 pt-2">
+          {moreError && (
+            <p role="alert" className="m-0 text-[0.8125rem] text-[var(--color-danger)]">{b.loadMoreError}</p>
+          )}
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="btn btn-outline btn-sm min-h-11"
+          >
+            {loadingMore ? b.loadingMore : b.loadMore}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -84,10 +84,10 @@ export default function Step1BasicInfo({ data, categories, cities, onNext }: Pro
       {/* Category + City */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="field-label">
+          <label htmlFor="ob-category" className="field-label">
             التخصص <span className="text-[var(--color-danger)]">*</span>
           </label>
-          <select className="select w-full" {...register("categoryId")}>
+          <select id="ob-category" className="select w-full" {...register("categoryId")}>
             <option value="">-- اختر التخصص --</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -101,10 +101,10 @@ export default function Step1BasicInfo({ data, categories, cities, onNext }: Pro
         </div>
 
         <div>
-          <label className="field-label">
+          <label htmlFor="ob-city" className="field-label">
             المدينة <span className="text-[var(--color-danger)]">*</span>
           </label>
-          <select className="select w-full" {...register("cityId")}>
+          <select id="ob-city" className="select w-full" {...register("cityId")}>
             <option value="">-- اختر المدينة --</option>
             {cities.map((c) => (
               <option key={c.id} value={c.id}>

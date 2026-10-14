@@ -84,10 +84,10 @@ export default async function CityPage({ params }: Props) {
         <div className="bg-white border-b border-[var(--color-border)]">
           <Container className="py-10">
             {/* Breadcrumb */}
-            <nav className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] mb-6">
-              <Link href="/" className="hover:text-[var(--color-accent)] transition-colors">الرئيسية</Link>
+            <nav aria-label="مسار التنقل" className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] mb-3">
+              <Link href="/" className="inline-flex min-h-11 items-center hover:text-[var(--color-accent)] transition-colors">الرئيسية</Link>
               <span>/</span>
-              <Link href="/businesses" className="hover:text-[var(--color-accent)] transition-colors">تصفح الأعمال</Link>
+              <Link href="/businesses" className="inline-flex min-h-11 items-center hover:text-[var(--color-accent)] transition-colors">تصفح الأعمال</Link>
               <span>/</span>
               <span className="text-[var(--color-text-primary)] font-medium">{city.nameAr}</span>
             </nav>
