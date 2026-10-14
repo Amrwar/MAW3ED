@@ -220,14 +220,64 @@ Tracking: **No** (no ad SDKs, no analytics vendor; `mobile/lib/analytics.ts` is 
 
 ## 9. Reviewer access (App Review / Play pre-launch)
 
-Customer sign-in is phone + WhatsApp code only, and booking requires it.
-There is **no reviewer bypass in the code** (`src/lib/auth/send-code.ts`).
-Before external TestFlight or public release provide either:
-- a demo customer number whose code is fixed server-side (allow-listed,
-  production-safe), or
-- a real WhatsApp number the team monitors during review (codes expire —
-  unreliable).
-Plus a demo **business** account (email + password) with sample bookings.
+**Decision (14 Oct 2026): reviewers sign in with a business account
+(email + password).** Customer sign-in stays phone + WhatsApp code only,
+with no reviewer bypass in the code (`src/lib/auth/send-code.ts`).
+Reviewers browse the customer side as guests (home, search, near me,
+business pages, reviews, starting a booking) and use the business account
+for everything behind sign-in.
+
+### Setting up the review account (once, on production)
+
+1. On https://www.maw3ed.net/signup create a business with an address the
+   team reads, e.g. `appreview@maw3ed.net`, and a long unique password.
+2. Finish onboarding: a name that says what it is ("Maw3ed App Review"),
+   two or three services, one or two staff, opening hours.
+3. **Do not click the email verification link.** Onboarding publishes a
+   business only once its owner's email is verified
+   (`src/app/api/onboarding/route.ts`), so this one stays unpublished: it
+   never appears in search, near me or at /company/<slug>, and no customer
+   can book it. That keeps a demo business out of what customers see.
+   Checked on the local stack: such an owner still signs in on the app,
+   loads Today, adds a booking by hand and opens it, while the public
+   page answers 404 and search leaves it out.
+4. In the app, sign in on the **Business** tab and add three or four
+   bookings by hand for the coming days (customer name "App Review",
+   any number), so Today and the calendar have something to show.
+5. Never put real customers' data in this account. Delete it after
+   launch, or keep it unpublished for later reviews.
+
+### What to paste
+
+**App Store Connect → App Review Information → Sign-in required**
+- User name: the review email · Password: its password
+- Notes:
+
+  > Maw3ed is an appointment booking app for businesses in Egypt
+  > (salons, clinics, studios). Customer sign-in uses a one-time code
+  > sent by WhatsApp to an Egyptian mobile number, so please browse the
+  > customer side without signing in: Home, Search, "Near me", any
+  > business page and its reviews, and the booking screens up to the
+  > sign-in step.
+  >
+  > To see the signed-in side, open the sign-in screen, choose
+  > **Business** ("صاحب نشاط"), and use the account above. It is a
+  > test business that is not visible to the public. There you can see
+  > today's bookings, the calendar, booking details (confirm, check in,
+  > complete, reschedule, cancel), customers, and settings.
+  >
+  > Account deletion: customers delete from Account → Delete account;
+  > business owners are directed to support (Account → Delete account)
+  > because a business has bookings and payments other people depend on.
+  > Public page: https://www.maw3ed.net/account-deletion
+  >
+  > Payments for appointments are for services delivered in person at
+  > the business and are processed by Paymob on its hosted page.
+
+**Google Play Console → App content → App access**
+- "All or some functionality is restricted" → add instructions:
+  name "Business account", the same email and password, and the first two
+  paragraphs of the notes above.
 
 ## 10. Build operations (EAS environment)
 
