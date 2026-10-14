@@ -1,5 +1,5 @@
 // Learn more https://docs.expo.dev/guides/customizing-metro
-const { getDefaultConfig } = require("expo/metro-config");
+const { getSentryExpoConfig } = require("@sentry/react-native/metro");
 
 /**
  * Metro, with Expo's defaults.
@@ -13,8 +13,9 @@ const { getDefaultConfig } = require("expo/metro-config");
  *
  * leaving a blank screen with the failure only in the Metro log.
  *
- * getDefaultConfig returns Expo's config, which lists font extensions
- * among assetExts. Exported unmodified — this file exists so the
- * defaults are actually applied, not to change them.
+ * getSentryExpoConfig is Expo's getDefaultConfig (which lists font
+ * extensions among assetExts) plus Sentry's serializer, which stamps a
+ * debug id into each bundle so uploaded source maps match crash reports.
+ * Nothing else is changed.
  */
-module.exports = getDefaultConfig(__dirname);
+module.exports = getSentryExpoConfig(__dirname);

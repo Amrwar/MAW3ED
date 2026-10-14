@@ -1,7 +1,8 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { keys } from "@/lib/query/keys";
 import type { ReviewPage } from "@/types/api";
+import { reportPath, type ReportReason } from "./report";
 
 /** The reviews endpoint's own cap. */
 const MAX_PAGE = 100;
@@ -33,5 +34,17 @@ export function useBusinessReviews(slug: string, sort: ReviewSort, rating: numbe
         : undefined,
     enabled: Boolean(slug),
     staleTime: 60_000,
+  });
+}
+
+/**
+ * Reports one review to the moderators. Anonymous on purpose: the
+ * server limits reports per device, not per account, and a signed-out
+ * reader can report too.
+ */
+export function useReportReview() {
+  return useMutation({
+    mutationFn: ({ reviewId, reason }: { reviewId: string; reason: ReportReason }) =>
+      api.post<{ reported: true }>(reportPath(reviewId), { reason }, { anonymous: true }),
   });
 }

@@ -25,6 +25,7 @@ import { num } from "@/lib/format";
 import { SignInGate } from "@/features/auth/SignInGate";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { DesignSystemLink } from "@/features/dev/DesignSystemLink";
+import { PRIVACY_URL, openExternal } from "@/constants/support";
 
 /**
  * Account.
@@ -206,6 +207,12 @@ function Account() {
               icon="shield-checkmark-outline"
               label={T("الأمان والأجهزة", "Security & devices")}
               href="/me/security"
+            />
+            <LinkRow
+              icon="document-lock-outline"
+              label={T("سياسة الخصوصية", "Privacy policy")}
+              onPress={() => openExternal(PRIVACY_URL)}
+              external
               last
             />
           </Card>
@@ -293,18 +300,21 @@ function LinkRow({
   icon,
   label,
   href,
+  onPress,
+  external,
   trailing,
   last,
 }: {
   icon: IconName;
   label: string;
-  href: Href;
   trailing?: ReactNode;
   last?: boolean;
-}) {
+  /** Opens outside the app (a web page): an arrow out instead of a chevron. */
+  external?: boolean;
+} & ({ href: Href; onPress?: never } | { href?: never; onPress: () => void })) {
   return (
     <Touchable
-      onPress={() => router.push(href)}
+      onPress={onPress ?? (() => router.push(href))}
       accessibilityRole="link"
       accessibilityLabel={label}
       style={[styles.link, !last && styles.linkLine]}
@@ -316,7 +326,7 @@ function LinkRow({
         {label}
       </Text>
       {trailing}
-      <Icon name="chevron-forward" color={colors.faint} />
+      <Icon name={external ? "open-outline" : "chevron-forward"} color={colors.faint} />
     </Touchable>
   );
 }

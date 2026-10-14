@@ -23,6 +23,7 @@ import { DesignSystemLink } from "@/features/dev/DesignSystemLink";
 import { PushToggle } from "@/features/notifications/PushToggle";
 import { VERSION_LABEL } from "@/constants/version";
 import { num } from "@/lib/format";
+import { PRIVACY_URL, openExternal } from "@/constants/support";
 
 /**
  * More: everything that is not the day itself.
@@ -136,6 +137,21 @@ export default function More() {
           </Text>
         ) : null}
 
+        <Card padded={false}>
+          <Link
+            icon="document-lock-outline"
+            label={T("سياسة الخصوصية", "Privacy policy")}
+            onPress={() => openExternal(PRIVACY_URL)}
+            external
+          />
+          <Link
+            icon="trash-outline"
+            label={T("احذف الحساب", "Delete account")}
+            href="/manage/delete-account"
+            last
+          />
+        </Card>
+
         {/* The same account can book like any customer, or administer. */}
         <RoleSwitcher current="business" />
 
@@ -166,18 +182,21 @@ function Link({
   icon,
   label,
   href,
+  onPress,
+  external,
   trailing,
   last,
 }: {
   icon: IconName;
   label: string;
-  href: Href;
   trailing?: ReactNode;
   last?: boolean;
-}) {
+  /** Opens outside the app (a web page): an arrow out instead of a chevron. */
+  external?: boolean;
+} & ({ href: Href; onPress?: never } | { href?: never; onPress: () => void })) {
   return (
     <Touchable
-      onPress={() => router.push(href)}
+      onPress={onPress ?? (() => router.push(href))}
       accessibilityRole="link"
       accessibilityLabel={label}
       style={[styles.link, !last && styles.linkLine]}
@@ -189,7 +208,7 @@ function Link({
         {label}
       </Text>
       {trailing}
-      <Icon name="chevron-forward" color={colors.faint} />
+      <Icon name={external ? "open-outline" : "chevron-forward"} color={colors.faint} />
     </Touchable>
   );
 }

@@ -94,7 +94,7 @@ App Store (all "None"/"No" except where noted) → expected **4+** [VERIFY on su
 - Violence, sexual content, profanity, horror, drugs/alcohol/tobacco, gambling, contests: **None**.
 - Medical/treatment information: **None** (the app books clinic appointments; it gives no medical advice).
 - Unrestricted web access: **No** (in-app browser opens only Paymob's payment page and maw3ed.net pages).
-- User-generated content: **Yes** — public text reviews with star rating, from completed bookings only; moderated by admins (`src/app/api/admin/reviews`). The report endpoint exists (`src/app/api/public/reviews/[id]/report`) but the mobile app has **no report button** — see blockers.
+- User-generated content: **Yes** — public text reviews with star rating, from completed bookings only; moderated by admins (`src/app/api/admin/reviews`). Readers can report any review from the reviews list ("ابلغ عن التقييم" / "Report", with a reason) — `mobile/app/business/[slug]/reviews.tsx` → `POST /api/public/reviews/[id]/report`; a report queues the review for moderation.
 - Messaging/chat between users: **No**.
 - Location sharing with other users: **No**.
 
@@ -142,8 +142,12 @@ retention periods, provider regions, minimum age, mobile Sentry scrubbing).
 - **What is kept:** bookings, reviews and payment records, as the businesses'
   records (the booking keeps the customer's name and phone). Reviews stay public with first name + last initial.
 - **Refused:** accounts that own a business (must contact support) and admin
-  accounts. Business owners/staff have **no deletion entry** in the business
-  app (`mobile/app/(business)/account.tsx`).
+  accounts. In the business app, More (المزيد) → Delete account (احذف الحساب)
+  (`mobile/app/manage/delete-account.tsx`) tells an owner to email
+  support@maw3ed.net (shown, selectable) or use the contact page; a staff
+  member is sent on to the normal in-app deletion.
+- **Privacy policy in app:** a "Privacy policy" row in Account (customer) and
+  More (business) opens https://www.maw3ed.net/privacy.
 - **Public deletion page (Google Play "delete account URL"):**
   https://www.maw3ed.net/account-deletion (`?lang=en` for English). No sign-in;
   covers the app and web steps, emailing support@maw3ed.net from the account's
@@ -158,7 +162,7 @@ retention periods, provider regions, minimum age, mobile Sentry scrubbing).
 
 Sizes:
 - iPhone 6.9": **1320 × 2868** (required). 6.5": **1284 × 2778** (or 1242 × 2688) — optional now that 6.9" scales down, but provide if available.
-- iPad 13": **2064 × 2752** — required while `supportsTablet: true` (`mobile/app.config.ts:102`). Turn it off, or capture iPad too.
+- iPad: not needed — `ios.supportsTablet` is `false` (`mobile/app.config.ts`), iPhone only.
 - Android phone: 1080 × 1920 to 1080 × 2400, 9:16 or taller, 2–8 images.
 - Play also needs: app icon 512 × 512 PNG, feature graphic **1024 × 500**.
 
@@ -192,7 +196,7 @@ Tracking: **No** (no ad SDKs, no analytics vendor; `mobile/lib/analytics.ts` is 
 | Other user content | Yes | Yes | App Functionality | Reviews, booking notes |
 | User ID | Yes | Yes | App Functionality | Account id |
 | Device ID | No [VERIFY] | — | — | Push token and device name are stored for push/session list; Apple does not usually count push tokens |
-| Crash / performance data | No today | — | — | Becomes **Yes, not linked, App Functionality** if Sentry is added |
+| Crash / performance data | **Yes** once `EXPO_PUBLIC_SENTRY_DSN` is set for the build | No | App Functionality | `@sentry/react-native`; no PII (`sendDefaultPii: false`, bodies/headers dropped, phone numbers redacted — `mobile/lib/scrub.ts`); 10% performance traces |
 | Usage data, browsing, contacts, photos, health, financial info, sensitive info | No | — | — | — |
 
 ## 8. Google Play Data safety
@@ -211,7 +215,7 @@ Tracking: **No** (no ad SDKs, no analytics vendor; `mobile/lib/analytics.ts` is 
 | Financial info → Payment info | No | — | — | Card entered on Paymob's page |
 | App activity → Other user-generated content | Yes | Optional | No | App functionality (reviews, booking notes) |
 | App activity → App interactions | No | — | — | No analytics vendor |
-| App info & performance → Crash logs / Diagnostics | No today | — | — | Yes if Sentry is added |
+| App info & performance → Crash logs / Diagnostics | **Yes** once `EXPO_PUBLIC_SENTRY_DSN` is set | No (collected automatically) | No | App functionality, Analytics (stability) |
 | Device or other IDs | Yes | Optional (push permission) | No | App functionality (Expo push token, device name for the sessions list) |
 
 ## 9. Reviewer access (App Review / Play pre-launch)
@@ -224,3 +228,25 @@ Before external TestFlight or public release provide either:
 - a real WhatsApp number the team monitors during review (codes expire —
   unreliable).
 Plus a demo **business** account (email + password) with sample bookings.
+
+## 10. Build operations (EAS environment)
+
+Set in the EAS project (expo.dev → Project → Environment variables), per
+environment (preview / production). Nothing here is committed.
+
+| Variable | Kind | Needed for |
+|---|---|---|
+| `EXPO_PUBLIC_SENTRY_DSN` | plain text (public — compiled into the app) | Crash reports. Unset → the SDK stays off. Never on in development builds or on web. |
+| `SENTRY_ORG` | plain text | Adds the `@sentry/react-native/expo` plugin, which uploads source maps / dSYMs at build time. Unset → plugin left out, build unaffected. |
+| `SENTRY_PROJECT_MOBILE` | plain text | Sentry project slug; defaults to `maw3ed-mobile`. |
+| `SENTRY_AUTH_TOKEN` | **secret** | Required by the plugin's upload step when `SENTRY_ORG` is set. |
+| `GOOGLE_SERVICES_JSON` | file | Android push (FCM) — see `docs/push-setup.md`. |
+| `GOOGLE_MAPS_ANDROID_API_KEY` | secret | Android map in store builds — see `docs/location.md`. |
+
+`APP_ENV` and `EXPO_PUBLIC_API_URL` are already set per profile in `mobile/eas.json`.
+
+Icons: `mobile/assets/icon.png` (1024, opaque) and `adaptive-icon.png`
+(1024, transparent foreground on `#0B3A2E`) are rendered from the largest
+existing raster of the Arabic wordmark (`public/logo.png`, ~345 px wide), so
+they are upscaled. **[VERIFY]** Replace with a designer's 1024 px vector-
+exported master before public release; the Play 512 px icon can be cut from it.

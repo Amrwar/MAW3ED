@@ -21,6 +21,7 @@ import { persistOptions } from "@/lib/query/persist";
 import { keys } from "@/lib/query/keys";
 import { hrefFor } from "@/lib/links";
 import { screen, track } from "@/lib/analytics";
+import { initSentry, reportError, withSentry } from "@/lib/sentry";
 import { Text, Button, LocaleProvider, OfflineBanner, ToastProvider, colors, spacing } from "@/design";
 
 /**
@@ -41,13 +42,15 @@ import { Text, Button, LocaleProvider, OfflineBanner, ToastProvider, colors, spa
  * drawn in the system font and then redrawn.
  */
 
+// First, so a crash anywhere below is reported (a no-op without a DSN).
+initSentry();
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 const queryClient = createQueryClient();
 installConnectivity();
 if (Platform.OS !== "web") configureForegroundHandling();
 
-export default function RootLayout() {
+function RootLayout() {
   useScreenTracking();
   const [fontsLoaded, fontError] = useFonts({
     ReadexPro_300Light,
@@ -109,6 +112,8 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+export default withSentry(RootLayout);
 
 function useScreenTracking() {
   const pathname = usePathname();
@@ -191,11 +196,14 @@ function useNotificationRouting(ready: boolean) {
 /**
  * What a crash in any screen shows instead of a white screen. Expo
  * Router renders this for an error thrown while rendering a route; the
- * person can try again, and the error is reported once.
+ * person can try again, and the error is reported once — to analytics
+ * and, since Expo Router catches it before Sentry's global handler
+ * could, to Sentry explicitly.
  */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   useEffect(() => {
     track("render_error", { message: error.message.slice(0, 120) });
+    reportError(error);
   }, [error]);
 
   return (

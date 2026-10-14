@@ -2,9 +2,10 @@ import { useState } from "react";
 import { FlatList, ScrollView, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button, Chip, EmptyState, ErrorState, Loading, SkeletonCard, Text, TopBar, colors, spacing, useLocale } from "@/design";
+import { Button, Chip, Dialog, EmptyState, ErrorState, Loading, SkeletonCard, Text, TopBar, Touchable, colors, spacing, useLocale, useToast } from "@/design";
 import { useBusinessProfile } from "@/features/discovery/queries";
-import { useBusinessReviews, type ReviewSort } from "@/features/profile/queries";
+import { useBusinessReviews, useReportReview, type ReviewSort } from "@/features/profile/queries";
+import { REPORT_REASONS, reportErrorMessage, type ReportReason } from "@/features/profile/report";
 import { RatingBreakdown, ReviewItem } from "@/features/profile/sections";
 import { num } from "@/lib/format";
 
@@ -30,6 +31,30 @@ export default function ReviewsScreen() {
   const [stars, setStars] = useState<number | null>(null);
   const profile = useBusinessProfile(slug);
   const reviews = useBusinessReviews(slug ?? "", sort, stars);
+  const toast = useToast();
+  const report = useReportReview();
+  // The review being reported, and the reason picked for it.
+  const [reporting, setReporting] = useState<string | null>(null);
+  const [reason, setReason] = useState<ReportReason | null>(null);
+  // Reported this session — the button turns into a quiet "Reported".
+  const [reported, setReported] = useState<ReadonlySet<string>>(new Set());
+  const closeReport = () => {
+    if (report.isPending) return;
+    setReporting(null);
+    setReason(null);
+  };
+  const sendReport = async () => {
+    if (!reporting || !reason) return;
+    try {
+      await report.mutateAsync({ reviewId: reporting, reason });
+      setReported((prev) => new Set(prev).add(reporting));
+      setReporting(null);
+      setReason(null);
+      toast({ message: ar ? "وصلنا البلاغ، هنراجع التقييم." : "Thanks — we'll review it.", tone: "ok" });
+    } catch (e) {
+      toast({ message: reportErrorMessage(e, lang), tone: "danger" });
+    }
+  };
 
   const rows = reviews.data?.pages.flatMap((pg) => pg.reviews) ?? [];
   const matched = reviews.data?.pages[0]?.matched ?? 0;
@@ -46,7 +71,30 @@ export default function ReviewsScreen() {
         data={rows}
         keyExtractor={(r) => r.id}
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + spacing.xl }]}
-        renderItem={({ item }) => <ReviewItem review={item} />}
+        renderItem={({ item }) => (
+          <ReviewItem
+            review={item}
+            action={
+              reported.has(item.id) ? (
+                <Text variant="caption" tone="subtle" style={styles.report}>
+                  {ar ? "اتبلّغ عنه" : "Reported"}
+                </Text>
+              ) : (
+                <Touchable
+                  onPress={() => setReporting(item.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={ar ? `ابلغ عن تقييم ${item.authorName}` : `Report ${item.authorName}'s review`}
+                  hitSlop={8}
+                  style={styles.report}
+                >
+                  <Text variant="caption" tone="subtle">
+                    {ar ? "ابلغ عن التقييم" : "Report"}
+                  </Text>
+                </Touchable>
+              )
+            }
+          />
+        )}
         onEndReachedThreshold={0.5}
         onEndReached={() => {
           if (reviews.hasNextPage && !reviews.isFetchingNextPage && !reviews.isFetchNextPageError) reviews.fetchNextPage();
@@ -111,6 +159,37 @@ export default function ReviewsScreen() {
           ) : null
         }
       />
+
+      <Dialog
+        open={reporting !== null}
+        onClose={closeReport}
+        icon="flag-outline"
+        tone="warn"
+        title={ar ? "تبلّغ عن التقييم ده؟" : "Report this review?"}
+        body={
+          ar
+            ? "فريق موعد هيراجعه. التقييم مش هيتشال إلا لو خالف القواعد."
+            : "Maw3ed's team will look at it. It is only removed if it breaks the rules."
+        }
+        actions={
+          <>
+            <Button
+              label={ar ? "ابعت البلاغ" : "Send report"}
+              fullWidth
+              disabled={!reason}
+              loading={report.isPending}
+              onPress={sendReport}
+            />
+            <Button label={ar ? "إلغاء" : "Cancel"} variant="outline" fullWidth disabled={report.isPending} onPress={closeReport} />
+          </>
+        }
+      >
+        <View style={styles.reasons} accessibilityRole="radiogroup">
+          {REPORT_REASONS.map((r) => (
+            <Chip key={r.value} label={ar ? r.ar : r.en} selected={reason === r.value} onPress={() => setReason(r.value)} />
+          ))}
+        </View>
+      </Dialog>
     </View>
   );
 }
@@ -122,4 +201,6 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: spacing.lg, gap: spacing.md },
   footer: { gap: spacing.sm, alignItems: "center", paddingVertical: spacing.lg },
   end: { paddingVertical: spacing.lg },
+  report: { alignSelf: "flex-end" },
+  reasons: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" },
 });

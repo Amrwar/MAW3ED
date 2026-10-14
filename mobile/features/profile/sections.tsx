@@ -164,7 +164,8 @@ function Stars({ value }: { value: number }) {
   );
 }
 
-export function ReviewItem({ review }: { review: PublicReview }) {
+/** `action` is a quiet control under the review — the reviews screen puts "Report" there. */
+export function ReviewItem({ review, action }: { review: PublicReview; action?: ReactNode }) {
   const { lang } = useLocale();
   const ar = lang === "ar";
   return (
@@ -195,6 +196,7 @@ export function ReviewItem({ review }: { review: PublicReview }) {
           ))}
         </ScrollView>
       ) : null}
+      {action}
     </Card>
   );
 }
