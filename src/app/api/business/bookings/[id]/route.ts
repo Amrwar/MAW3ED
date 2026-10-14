@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { bookingStatusSchema } from "@/lib/validations";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
+import { bookingScope, can, permissionsOf, requireBusinessAccess, type BusinessAction } from "@/lib/business-access";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
 
@@ -24,31 +25,71 @@ const VALID_TRANSITIONS: Partial<Record<string, string[]>> = {
   IN_PROGRESS:     ["COMPLETED", "CANCELLED"],
 };
 
+/** The permission a move to `status` needs (lib/business-access.ts). */
+function actionFor(status: string): BusinessAction {
+  if (status === "CONFIRMED") return "bookings.confirm";
+  if (status === "CANCELLED") return "bookings.cancel";
+  return "bookings.progress";
+}
+
 /**
  * GET /api/business/bookings/[id]
  * Returns full booking details including customer record.
+ *
+ * Found within what the caller may see — a provider's own bookings, the
+ * owner's or a manager's whole business — so an id from anywhere else
+ * is simply not found. `actions` is the statuses this caller may move it
+ * to, so the app offers exactly those; the PATCH checks again anyway.
  */
 export async function GET(_req: Request, { params }: Params) {
   try {
-    const { business } = await requireBusiness();
+    const { business, actor } = await requireBusinessAccess("bookings.read");
     const { id } = await params;
 
     const booking = await db.booking.findFirst({
-      where:   { id, businessId: business.id },
+      where:   { id, ...bookingScope(business, actor) },
       include: {
-        service:  { select: { nameAr: true, nameEn: true, duration: true, price: true } },
-        customer: { select: { id: true, name: true, phone: true, notes: true } },
+        service:     { select: { nameAr: true, nameEn: true, duration: true, price: true } },
+        customer:    { select: { id: true, name: true, phone: true, notes: true } },
+        staffMember: { select: { id: true, nameAr: true, nameEn: true } },
+        branch:      { select: { id: true, nameAr: true, nameEn: true } },
+        resource:    { select: { name: true } },
       },
     });
 
     if (!booking) return err("الحجز غير موجود", 404);
 
+    const seeCustomers = can(actor, "customers.read");
+    const visits = seeCustomers && booking.customerId
+      ? await db.booking.count({ where: { businessId: business.id, customerId: booking.customerId, status: "COMPLETED" } })
+      : null;
+
     return ok({
-      ...booking,
-      date:       booking.date.toISOString().split("T")[0],
-      totalPrice: Number(booking.totalPrice),
-      createdAt:  booking.createdAt.toISOString(),
-      updatedAt:  booking.updatedAt.toISOString(),
+      id:            booking.id,
+      reference:     booking.reference,
+      status:        booking.status,
+      date:          booking.date.toISOString().split("T")[0],
+      startTime:     booking.startTime,
+      endTime:       booking.endTime,
+      customerName:  booking.customerName,
+      customerPhone: booking.customerPhone,
+      notes:         booking.notes,
+      partySize:     booking.partySize,
+      totalPrice:    Number(booking.totalPrice),
+      depositAmount: booking.depositAmount !== null ? Number(booking.depositAmount) : null,
+      currency:      booking.currency,
+      service:       booking.service ? { ...booking.service, price: Number(booking.service.price) } : null,
+      staffMember:   booking.staffMember,
+      branch:        booking.branch,
+      resourceName:  booking.resource?.name ?? null,
+      // The customer record — notes, history — is the customer book,
+      // which a provider does not have.
+      customer:      seeCustomers && booking.customer ? { ...booking.customer, completedVisits: visits } : null,
+      createdAt:     booking.createdAt.toISOString(),
+      updatedAt:     booking.updatedAt.toISOString(),
+      actions:       (VALID_TRANSITIONS[booking.status] ?? []).filter((s) => can(actor, actionFor(s))),
+      canReschedule: can(actor, "bookings.reschedule") && ["PENDING", "CONFIRMED"].includes(booking.status),
+      permissions:   permissionsOf(actor),
     });
   } catch (e) {
     if (e instanceof Response) return e;
@@ -65,7 +106,7 @@ export async function GET(_req: Request, { params }: Params) {
  */
 export async function PATCH(req: Request, { params }: Params) {
   try {
-    const { business } = await requireBusiness();
+    const { business, actor } = await requireBusinessAccess("bookings.read");
     const { id } = await params;
 
     const body   = await req.json();
@@ -74,11 +115,16 @@ export async function PATCH(req: Request, { params }: Params) {
 
     const { status: newStatus } = parsed.data;
 
-    // Verify ownership
+    // Within what this caller may see: another business's booking, or a
+    // colleague's for a provider, is not found.
     const booking = await db.booking.findFirst({
-      where: { id, businessId: business.id },
+      where: { id, ...bookingScope(business, actor) },
     });
     if (!booking) return err("الحجز غير موجود", 404);
+
+    if (!can(actor, actionFor(newStatus))) {
+      return err("مش مسموح لك بالإجراء ده", 403, { code: "forbidden" });
+    }
 
     // Check transition is valid
     const allowed = VALID_TRANSITIONS[booking.status] ?? [];

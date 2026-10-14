@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
+import { requireBusinessAccess } from "@/lib/business-access";
 import { log } from "@/lib/logger";
 
 export type CustomerRow = {
@@ -25,7 +26,7 @@ export type CustomerRow = {
  */
 export async function GET(req: Request) {
   try {
-    const { business } = await requireBusiness();
+    const { business } = await requireBusinessAccess("customers.read");
     const { searchParams } = new URL(req.url);
 
     const search = searchParams.get("search")?.trim() ?? "";

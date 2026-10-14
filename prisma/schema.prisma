@@ -52,6 +52,9 @@ model User {
   favorites     Favorite[]
   notifications Notification[]
 
+  /// The staff member this account signs in as, if any.
+  staffMember    StaffMember?
+
   /// Native app sessions and the devices push goes to.
   mobileSessions MobileSession[]
   deviceTokens   DeviceToken[]
@@ -898,10 +901,20 @@ model StaffMember {
   isActive    Boolean  @default(true)
   workingDays Int[] // dayOfWeek 0-6
   specialties String[] // free-text tags
+  /// What this person may do in the business's app, when they sign in
+  /// (prisma/migrations/add_staff_access.sql). Null: no app access.
+  access      StaffAccess?
+  /// The phone that signs in as this staff member, E.164 digits without
+  /// the plus. Set by the owner; claimed by the first verified sign-in.
+  loginPhone  String?      @unique
+  /// The account linked to this staff member. Cleared when the owner
+  /// changes the phone or removes access.
+  userId      String?      @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   business   Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user       User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   services   StaffService[]
   bookings   Booking[]
   hours      StaffHours[]
@@ -1001,6 +1014,12 @@ enum TableType {
   PRIVATE
   BAR
   BOOTH
+}
+
+/// What a signed-in staff member may do (StaffMember.access).
+enum StaffAccess {
+  MANAGER
+  PROVIDER
 }
 
 enum BookingStatus {

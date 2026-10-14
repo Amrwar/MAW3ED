@@ -1,12 +1,13 @@
 import { db } from "@/lib/db";
 import { serviceSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { requireBusinessAccess } from "@/lib/business-access";
 import { log } from "@/lib/logger";
 
 /** GET /api/business/services */
 export async function GET() {
   try {
-    const { business } = await requireBusiness();
+    const { business } = await requireBusinessAccess("services.read");
 
     const services = await db.service.findMany({
       where:   { businessId: business.id },

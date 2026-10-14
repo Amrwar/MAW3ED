@@ -195,6 +195,8 @@ export function pushWorthy(event: NotificationEvent, audience: Audience): boolea
   // owner keying in a booking needs no push about it.
   if (event.type === "booking.cancelled") return event.by !== audience;
   if (event.type === "booking.created") return event.by !== audience;
+  // Moved by the customer unless it says otherwise.
+  if (event.type === "booking.rescheduled") return (event.by ?? "customer") !== audience;
   return true;
 }
 

@@ -43,6 +43,8 @@ export type NotificationEvent =
       bookingId: string;
       /** Included in the key so a second move sends a second message. */
       movedTo: string;
+      /** `"business"` when the business moved it (absent: the customer did). */
+      by?: Audience;
     }
   | { type: "booking.reminder"; bookingId: string }
   | { type: "booking.startingSoon"; bookingId: string }

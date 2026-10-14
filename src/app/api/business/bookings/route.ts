@@ -2,6 +2,7 @@ import { type Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { ownerBookingSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { bookingScope, can, requireBusinessAccess } from "@/lib/business-access";
 import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { generateReference } from "@/lib/bookings/reference";
@@ -18,10 +19,17 @@ import { notify } from "@/lib/notifications";
  *   serviceId — filter by service
  *   date      — filter by date YYYY-MM-DD
  *   search    — filter by customer name or phone (case-insensitive)
+ *   staffId   — one staff member's bookings (owner and manager only)
+ *   branchId  — one branch's bookings
+ *   view      — "calendar": every booking in dateFrom..dateTo (at most
+ *               31 days, up to 500), unpaged, in time order
+ *
+ * The owner and managers see the whole business; a provider sees only
+ * the bookings with them (lib/business-access.ts), whatever they ask for.
  */
 export async function GET(req: Request) {
   try {
-    const { business } = await requireBusiness();
+    const { business, actor } = await requireBusinessAccess("bookings.read");
     const { searchParams } = new URL(req.url);
 
     const status    = searchParams.get("status");
@@ -30,10 +38,26 @@ export async function GET(req: Request) {
     const dateFrom  = searchParams.get("dateFrom");
     const dateTo    = searchParams.get("dateTo");
     const search    = searchParams.get("search")?.trim();
+    const staffId   = searchParams.get("staffId");
+    const branchId  = searchParams.get("branchId");
+    const calendar  = searchParams.get("view") === "calendar";
     const page      = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
-    const limit     = 25;
+    const limit     = calendar ? 500 : 25;
 
-    const where: Prisma.BookingWhereInput = { businessId: business.id };
+    // Built on the actor's scope: a provider's query cannot be widened by
+    // any parameter, because their own staff id is part of every where.
+    const where: Prisma.BookingWhereInput = { ...bookingScope(business, actor) };
+
+    if (staffId && can(actor, "bookings.readAll")) {
+      where.staffMemberId = staffId;
+    }
+    if (branchId) {
+      where.branchId = branchId;
+    }
+    if (calendar) {
+      const days = dateFrom && dateTo ? (Date.parse(dateTo) - Date.parse(dateFrom)) / 86_400_000 : NaN;
+      if (!(days >= 0 && days <= 31)) return err("حدد فترة من يوم لـ ٣١ يوم", 422, { code: "range" });
+    }
 
     if (status && status !== "ALL") {
       where.status = status as Prisma.EnumBookingStatusFilter;
@@ -70,12 +94,13 @@ export async function GET(req: Request) {
       db.booking.findMany({
         where,
         include: {
-          service:     { select: { nameAr: true, duration: true } },
+          service:     { select: { nameAr: true, nameEn: true, duration: true } },
           customer:    { select: { notes: true } },
           table:       { select: { name: true } },
-          staffMember: { select: { nameAr: true } },
+          staffMember: { select: { id: true, nameAr: true, nameEn: true } },
+          branch:      { select: { id: true, nameAr: true, nameEn: true } },
         },
-        orderBy: [{ date: "desc" }, { startTime: "asc" }],
+        orderBy: calendar ? [{ date: "asc" }, { startTime: "asc" }] : [{ date: "desc" }, { startTime: "asc" }],
         take:    limit,
         skip:    (page - 1) * limit,
       }),
@@ -87,6 +112,8 @@ export async function GET(req: Request) {
       customerName:    b.customerName,
       customerPhone:   b.customerPhone,
       serviceName:     b.service.nameAr,
+      serviceNameEn:   b.service.nameEn ?? null,
+      reference:       b.reference ?? null,
       serviceDuration: b.service.duration,
       date:            b.date.toISOString().split("T")[0],
       startTime:       b.startTime,
@@ -100,6 +127,11 @@ export async function GET(req: Request) {
       createdAt:       b.createdAt.toISOString(),
       tableName:       b.table?.name        ?? null,
       staffName:       b.staffMember?.nameAr ?? null,
+      staffNameEn:     b.staffMember?.nameEn ?? null,
+      staffMemberId:   b.staffMember?.id ?? null,
+      branchId:        b.branch?.id ?? null,
+      branchName:      b.branch?.nameAr ?? null,
+      branchNameEn:    b.branch?.nameEn ?? null,
       partySize:       b.partySize           ?? null,
     }));
 

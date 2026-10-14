@@ -1,5 +1,6 @@
 import { err, requireSession } from "@/lib/api";
 import { claimsForUser } from "@/lib/auth/mobile-token";
+import { staffSummaryFor } from "@/lib/business-access";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 
@@ -54,6 +55,9 @@ export async function GET() {
         email: user.email,
         businessId: claims.businessId,
         adminRole: claims.adminRole,
+        // Staff at a business: re-read like the rest, so access the owner
+        // took away is gone on the next launch.
+        staff: await staffSummaryFor(user.id),
       },
       { status: 200, headers: { "Cache-Control": "no-store" } },
     );

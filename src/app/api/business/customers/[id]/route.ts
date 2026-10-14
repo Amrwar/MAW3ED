@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { requireBusinessAccess } from "@/lib/business-access";
 import { z } from "zod";
 import { log } from "@/lib/logger";
 
@@ -11,7 +12,7 @@ type Params = { params: Promise<{ id: string }> };
  */
 export async function GET(_req: Request, { params }: Params) {
   try {
-    const { business } = await requireBusiness();
+    const { business } = await requireBusinessAccess("customers.read");
     const { id } = await params;
 
     const customer = await db.customer.findFirst({
