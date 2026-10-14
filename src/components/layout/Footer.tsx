@@ -36,6 +36,7 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
         { label: f.links.contact, href: "/contact" },
         { label: f.links.faq,     href: "/faq" },
         { label: f.links.privacy, href: "/privacy" },
+        { label: f.links.accountDeletion, href: "/account-deletion" },
         { label: f.links.terms,   href: "/terms" },
       ],
     },
