@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Animated, Easing, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, View, type KeyboardEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, elevation, motion, radius, spacing } from "../tokens";
 import { useLayout } from "../layout";
@@ -16,6 +16,15 @@ import { IconButton } from "./IconButton";
  * (onRequestClose). `accessibilityViewIsModal` keeps a screen reader
  * inside it while it is open. On a tablet it becomes a centred panel —
  * a sheet stretched across an iPad is a strip of grey.
+ *
+ * It keeps above the keyboard itself. A Modal is its own window: on
+ * Android it does not get the activity's adjustResize, and on iOS
+ * nothing resizes anyway, so a sheet with a text field (country search,
+ * price filter) would sit under the keyboard. The overlap is measured
+ * from where the keyboard's top is against the backdrop's own height —
+ * if the window did resize, the backdrop is already short and the
+ * overlap comes out zero, so the lift is never applied twice. The panel's
+ * max height follows the space left, and its list scrolls inside it.
  */
 export function Sheet({
   open,
@@ -38,6 +47,25 @@ export function Sheet({
   const { isTablet, height } = useLayout();
   const { t, dir } = useLocale();
   const [progress] = useState(() => new Animated.Value(0));
+  const [rootHeight, setRootHeight] = useState(0);
+  const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!open || Platform.OS === "web") return;
+    // iOS announces before it moves (so the sheet moves with it); Android only after.
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvent, (e: KeyboardEvent) => setKeyboardTop(e.endCoordinates.screenY));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardTop(null));
+    return () => {
+      show.remove();
+      hide.remove();
+      setKeyboardTop(null);
+    };
+  }, [open]);
+
+  const lift = keyboardTop !== null && rootHeight > 0 ? Math.max(0, rootHeight - keyboardTop) : 0;
+  const room = (rootHeight || height) - lift;
 
   useEffect(() => {
     if (!open) return;
@@ -56,7 +84,10 @@ export function Sheet({
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       {/* A Modal is a separate native root and does not inherit the app's
           direction, so it is set again here. */}
-      <View style={[styles.backdrop, isTablet && styles.centred, { direction: dir }]}>
+      <View
+        style={[styles.backdrop, isTablet && styles.centred, { direction: dir, paddingBottom: lift + (isTablet ? spacing.xl : 0) }]}
+        onLayout={(e) => setRootHeight(e.nativeEvent.layout.height)}
+      >
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={t("close")} accessibilityRole="button" />
         <Animated.View
           accessibilityViewIsModal
@@ -64,7 +95,11 @@ export function Sheet({
           style={[
             styles.panel,
             isTablet ? styles.tablet : styles.phone,
-            { maxHeight: height * (isTablet ? 0.8 : 0.9), paddingBottom: isTablet ? spacing.lg : insets.bottom + spacing.md },
+            {
+              maxHeight: lift > 0 ? room - insets.top - spacing.sm : room * (isTablet ? 0.8 : 0.9),
+              // Over the keyboard there is no home indicator to clear.
+              paddingBottom: isTablet ? spacing.lg : lift > 0 ? spacing.md : insets.bottom + spacing.md,
+            },
             { transform: [{ translateY }], opacity: progress },
           ]}
         >

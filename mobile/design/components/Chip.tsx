@@ -12,7 +12,7 @@ import { joinLabel } from "../strings";
  * than relying on the colour change.
  *
  * Visually 36pt tall, as chips should be in a dense row; the hit area
- * is padded out to the 48pt target.
+ * is padded out to the 48pt target (hitSlop natively, a 44pt box on web).
  */
 export function Chip({
   label,

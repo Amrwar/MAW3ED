@@ -25,6 +25,7 @@ import { useSetStaffAccess, useStaff } from "@/features/business/queries";
 import type { StaffRow } from "@/features/business/types";
 import { ApiError } from "@/lib/api/errors";
 import { count } from "@/lib/plural";
+import { joinParts } from "@/lib/format";
 
 /**
  * The team: who works here, what they do, and — for the owner — who may
@@ -52,7 +53,7 @@ export default function StaffScreen() {
 
   return (
     <View style={styles.page}>
-      <TopBar title={T("الفريق", "Staff")} subtitle={staff.data ? count(staff.data.length, "person", lang) : undefined} back />
+      <TopBar title={T("الفريق", "Staff")} subtitle={staff.data ? count(staff.data.length, "person", lang) : undefined} back backTo="/(business)/account" />
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}
         refreshControl={<RefreshControl refreshing={staff.isRefetching} onRefresh={() => staff.refetch()} tintColor={colors.jade} />}
@@ -105,7 +106,7 @@ export default function StaffScreen() {
 
               {m.services.length > 0 ? (
                 <Text variant="caption" tone="subtle" numberOfLines={2}>
-                  {m.services.map((s) => s.service.nameAr).join(" · ")}
+                  {joinParts(m.services.map((s) => s.service.nameAr), lang)}
                 </Text>
               ) : null}
 

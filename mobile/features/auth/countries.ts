@@ -262,14 +262,7 @@ const SHARED_DEFAULT: Record<string, Country> = {
   "39": BY_ISO.get("IT")!,
 };
 
-/**
- * Text that must read left to right inside a sentence of either
- * language — "+20", "+201012345678". Without the isolate, Arabic's
- * bidi rules move the plus to the far end: "20+".
- */
-export function isolateLtr(text: string): string {
-  return `⁦${text}⁩`;
-}
+export { isolateLtr } from "@/lib/format";
 
 /** Matches a search box's text against a country's names, code and calling code. */
 export function matchesCountry(c: Country, query: string): boolean {

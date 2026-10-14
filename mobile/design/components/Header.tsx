@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
-import { router } from "expo-router";
+import type { Href } from "expo-router";
+import { goBack } from "@/lib/nav";
 import { colors, spacing } from "../tokens";
 import { useLocale } from "../locale";
 import { Text } from "./Text";
@@ -19,6 +20,7 @@ export function Header({
   subtitle,
   back = false,
   onBack,
+  backTo,
   actions,
   tone = "light",
   large = false,
@@ -27,6 +29,11 @@ export function Header({
   subtitle?: string;
   back?: boolean;
   onBack?: () => void;
+  /**
+   * Where back goes when there is no screen behind this one (opened from
+   * a link). Defaults to the gate, which sends each role to its home.
+   */
+  backTo?: Href;
   actions?: ReactNode;
   tone?: "light" | "night";
   /** A big title for the top of a tab, rather than a pushed screen. */
@@ -43,7 +50,7 @@ export function Header({
             icon="chevron-back"
             label={t("back")}
             variant={night ? "night" : "plain"}
-            onPress={onBack ?? (() => router.back())}
+            onPress={onBack ?? (() => goBack(backTo))}
             testID="back"
           />
         ) : null}

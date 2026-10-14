@@ -124,6 +124,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 
   android: {
     package: BUNDLE_ID[APP_ENV],
+    // adjustResize (Expo's default, stated so nobody changes it unknowingly):
+    // screens shrink above the keyboard. A Modal's window does not get it,
+    // so design/components/Sheet.tsx lifts itself from Keyboard events.
+    softwareKeyboardLayoutMode: "resize",
     // Firebase config, needed for Android to issue a push token (FCM).
     // From an EAS file variable (GOOGLE_SERVICES_JSON) in cloud builds, or
     // a local google-services.json — never committed. Without it the app

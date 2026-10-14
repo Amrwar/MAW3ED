@@ -188,16 +188,30 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
   const share = async () => {
     const url = profileUrl(p.slug);
     const message = T(`${name} على موعد: ${url}`, `${name} on Maw3ed: ${url}`);
-    try {
-      if (Platform.OS === "web") {
-        const nav = globalThis.navigator as Navigator | undefined;
-        if (nav?.share) await nav.share({ title: name, url });
-        else if (nav?.clipboard) {
-          await nav.clipboard.writeText(url);
-          toast({ message: T("اتنسخ اللينك", "Link copied"), tone: "ok" });
+    if (Platform.OS === "web") {
+      const nav = globalThis.navigator as Navigator | undefined;
+      // The browser's share sheet where there is one. It is missing on
+      // most desktops and refuses outside a user gesture or a secure
+      // page; anything but the person closing it falls through to a copy.
+      if (nav?.share) {
+        try {
+          await nav.share({ title: name, url });
+          return;
+        } catch (e) {
+          if (e instanceof Error && e.name === "AbortError") return;
         }
-        return;
       }
+      try {
+        await nav?.clipboard?.writeText(url);
+        if (!nav?.clipboard) throw new Error("no clipboard");
+        toast({ message: T("اتنسخ اللينك", "Link copied"), tone: "ok" });
+      } catch {
+        // No clipboard either (an http page): show the link to copy by hand.
+        toast({ message: url, tone: "info" });
+      }
+      return;
+    }
+    try {
       await Share.share(Platform.OS === "ios" ? { message: name, url } : { message, title: name });
     } catch {
       // Dismissing the share sheet is not an error worth a message.

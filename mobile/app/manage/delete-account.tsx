@@ -25,7 +25,7 @@ export default function DeleteBusinessAccountScreen() {
 
   return (
     <View style={styles.page}>
-      <TopBar title={T("حذف الحساب", "Delete account")} back />
+      <TopBar title={T("حذف الحساب", "Delete account")} back backTo="/(business)/account" />
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}>
         {owner ? (
           <Card>
@@ -43,7 +43,7 @@ export default function DeleteBusinessAccountScreen() {
             </Text>
             <Text variant="body" tone="ink2" style={styles.gap}>
               {T(
-                "ابعتلنا من الإيميل أو رقم الموبايل المسجل على الحساب، واكتب اسم النشاط، وهنرد خلال ٢٤ ساعة.",
+                "ابعتلنا من الإيميل أو رقم الموبايل المسجل على الحساب، واكتب اسم النشاط، وهنرد خلال 24 ساعة.",
                 "Write to us from the email or phone number on the account, with the business's name, and we'll reply within 24 hours.",
               )}
             </Text>

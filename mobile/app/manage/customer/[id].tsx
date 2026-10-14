@@ -5,7 +5,7 @@ import { Button, Card, ErrorState, Icon, SkeletonCard, Text, TopBar, colors, ltr
 import { BookingRow, SectionHead } from "@/features/business/components";
 import { useBusinessCustomer } from "@/features/business/queries";
 import { telUrl, whatsappUrl } from "@/features/profile/profile";
-import { money, num, shortDate } from "@/lib/format";
+import { formatPhone, money, num, shortDate } from "@/lib/format";
 import { unitFor } from "@/lib/plural";
 
 /**
@@ -25,7 +25,7 @@ export default function ManageCustomer() {
   if (!c) {
     return (
       <View style={styles.page}>
-        <TopBar title={T("العميل", "Customer")} back />
+        <TopBar title={T("العميل", "Customer")} back backTo="/(business)/customers" />
         <View style={styles.body}>{customer.isLoading ? <SkeletonCard /> : <ErrorState error={customer.error} onRetry={() => customer.refetch()} />}</View>
       </View>
     );
@@ -36,7 +36,7 @@ export default function ManageCustomer() {
 
   return (
     <View style={styles.page}>
-      <TopBar title={c.name} subtitle={c.phone} back />
+      <TopBar title={c.name} subtitle={c.phone ? formatPhone(c.phone) : undefined} back backTo="/(business)/customers" />
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}>
         <View style={styles.actions}>
           {call ? <Button size="sm" variant="outline" icon="call-outline" label={T("اتصل", "Call")} onPress={() => void Linking.openURL(call)} /> : null}

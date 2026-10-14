@@ -30,7 +30,7 @@ import {
   roleLabel,
 } from "@/features/business/components";
 import { useOverview, useUpdateBookingStatus } from "@/features/business/queries";
-import { longDate, shortDate, time } from "@/lib/format";
+import { joinParts, longDate, shortDate, time } from "@/lib/format";
 
 /**
  * Today — the screen a business opens in the morning.
@@ -166,7 +166,7 @@ export default function Today() {
               />
               <Stat
                 value={o.counts.cancelledRecent}
-                label={T("اتلغى في آخر ٢٤ ساعة", "Cancelled (last 24h)")}
+                label={T("اتلغى في آخر 24 ساعة", "Cancelled (last 24h)")}
                 tone={o.counts.cancelledRecent ? "danger" : "plain"}
               />
             </View>
@@ -191,9 +191,7 @@ export default function Today() {
                       {o.next.customerName}
                     </Text>
                     <Text variant="caption" tone="inverseMuted" numberOfLines={1}>
-                      {[nameOf(lang, o.next.service), nameOf(lang, o.next.staffMember)]
-                        .filter(Boolean)
-                        .join(" · ")}
+                      {joinParts([nameOf(lang, o.next.service), nameOf(lang, o.next.staffMember)], lang)}
                     </Text>
                   </View>
                   <Icon name="chevron-forward" color={colors.gold} />
@@ -220,7 +218,7 @@ export default function Today() {
                         {p.customerName}
                       </Text>
                       <Text variant="caption" tone="subtle" numberOfLines={1}>
-                        {`${p.date === o.today ? T("النهارده", "Today") : shortDate(p.date, lang)} · ${time(p.startTime, lang)} · ${nameOf(lang, p.service)}`}
+                        {joinParts([p.date === o.today ? T("النهارده", "Today") : shortDate(p.date, lang), time(p.startTime, lang), nameOf(lang, p.service)], lang)}
                       </Text>
                     </Touchable>
                     {access.can("bookings.confirm") ? (
@@ -250,7 +248,7 @@ export default function Today() {
                   >
                     <Icon name="close-circle-outline" color={colors.danger} />
                     <Text variant="body" numberOfLines={1} style={styles.flex}>
-                      {`${c.customerName} · ${shortDate(c.date, lang)} ${time(c.startTime, lang)}`}
+                      {joinParts([c.customerName, `${shortDate(c.date, lang)} ${time(c.startTime, lang)}`], lang)}
                     </Text>
                   </Card>
                 ))}

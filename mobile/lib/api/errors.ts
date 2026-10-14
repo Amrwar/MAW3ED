@@ -102,6 +102,21 @@ const STATUS_EN: Record<number, string> = {
 };
 
 /**
+ * Codes the app words itself, in both languages, rather than showing
+ * the server's sentence — the same answer from several endpoints.
+ */
+const CODE_MESSAGES: Record<string, Record<Lang, string>> = {
+  // A status change (arrived, completed, no-show) or a review before the appointment.
+  "too-early": { ar: "مينفعش قبل ميعاد الحجز.", en: "Not before the appointment time." },
+};
+
+/** The app's own words for an error's code, or null. */
+export function codeMessage(e: unknown, lang: Lang = "ar"): string | null {
+  const code = e instanceof ApiError ? e.code : undefined;
+  return (code && CODE_MESSAGES[code]?.[lang]) || null;
+}
+
+/**
  * What to put on screen for any thrown value, including unknown ones.
  *
  * Arabic shows the server's own words — written for a person, and more
@@ -111,6 +126,8 @@ const STATUS_EN: Record<number, string> = {
  * Arabic.
  */
 export function messageFor(e: unknown, lang: Lang = "ar", english: EnglishFor = {}): string {
+  const own = codeMessage(e, lang);
+  if (own) return own;
   if (lang === "ar") return isKnownError(e) ? e.message : MESSAGE_AR.generic;
   if (e instanceof NetworkError) return MESSAGE_EN.network;
   if (e instanceof UnauthorizedError) return english["401"] ?? MESSAGE_EN.session;

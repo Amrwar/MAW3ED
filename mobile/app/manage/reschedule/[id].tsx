@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { goBack } from "@/lib/nav";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Button,
@@ -20,7 +21,7 @@ import {
 import { nameOf } from "@/features/business/components";
 import { useBookingDetail, useRescheduleBooking, useRescheduleSlots } from "@/features/business/queries";
 import { ApiError } from "@/lib/api/errors";
-import { longDate, time } from "@/lib/format";
+import { joinParts, longDate, time } from "@/lib/format";
 
 /**
  * The business moves a booking — owner or manager. Times come from the
@@ -49,7 +50,7 @@ export default function RescheduleBooking() {
       {
         onSuccess: () => {
           toast({ message: T("اتغيّر الميعاد، والعميل هيوصله إشعار.", "Moved — the customer will be told."), tone: "ok" });
-          router.back();
+          goBack({ pathname: "/manage/booking/[id]", params: { id: id ?? "" } });
         },
         onError: (e) => {
           const taken = e instanceof ApiError && e.status === 409;
@@ -70,8 +71,9 @@ export default function RescheduleBooking() {
     <View style={styles.page}>
       <TopBar
         title={T("غيّر الميعاد", "Reschedule")}
-        subtitle={b ? `${b.customerName} · ${b.service ? nameOf(lang, b.service) : ""}` : undefined}
+        subtitle={b ? joinParts([b.customerName, b.service ? nameOf(lang, b.service) : null], lang) : undefined}
         back
+        backTo={{ pathname: "/manage/booking/[id]", params: { id: id ?? "" } }}
       />
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: 160 + insets.bottom }]}>
         {booking.error ? (

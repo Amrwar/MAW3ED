@@ -62,7 +62,7 @@ import { useProfile } from "@/features/customer/queries";
 import { nextFreeLabel } from "@/features/discovery/BusinessCard";
 import { useBusinessProfile } from "@/features/discovery/queries";
 import { KIND_WORDS, profileKind } from "@/features/profile/profile";
-import { duration, longDate, money, num, time } from "@/lib/format";
+import { duration, formatPhone, joinParts, longDate, money, num, time } from "@/lib/format";
 import { keys } from "@/lib/query/keys";
 import type { PublicProfile } from "@/types/api";
 import { count, hoursSpan } from "@/lib/plural";
@@ -215,7 +215,7 @@ function Flow({
   const T = (a: string, e: string) => (ar ? a : e);
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const account = useProfile();
+  const account = useProfile({ enabled: Boolean(user) });
   const me = user ? account.data : undefined;
 
   const [d, setD] = useState<Draft>(() => ({
@@ -509,7 +509,7 @@ function Flow({
             selected={d.staffId === m.id}
             photo={m.photo}
             title={(!ar && m.nameEn) || m.nameAr}
-            subtitle={[m.role, nextFreeLabel(m.nextSlot, lang)].filter(Boolean).join(" · ") || null}
+            subtitle={joinParts([m.role, nextFreeLabel(m.nextSlot, lang)], lang) || null}
             onPress={() => {
               update({ staffId: m.id });
               trackBooking("booking_staff_selected", { slug: p.slug, anyone: false, staffId: m.id });
@@ -561,7 +561,7 @@ function Flow({
                 disabled={small}
                 icon={r.kind === "TABLE" ? "restaurant-outline" : r.kind === "ROOM" ? "business-outline" : "cube-outline"}
                 title={r.name}
-                subtitle={[r.area, r.capacity !== null ? T(`لحد ${count(r.capacity, "person", "ar")}`, `Seats ${r.capacity}`) : null].filter(Boolean).join(" · ") || null}
+                subtitle={joinParts([r.area, r.capacity !== null ? T(`لحد ${count(r.capacity, "person", "ar")}`, `Seats ${r.capacity}`) : null], lang) || null}
                 note={small ? T("مش هتكفي العدد ده", "Too small for your party") : null}
                 onPress={() => {
                   update({ resourceId: r.id });
@@ -685,7 +685,7 @@ function Flow({
             {T("رقم الموبايل", "Mobile number")}
           </Text>
           <Text variant="bodyBold" style={ltr}>
-            +{phone.replace(/^\+/, "")}
+            {formatPhone(phone)}
           </Text>
           <Text variant="caption" tone="subtle">
             {T("رقمك المتأكد — عليه بيوصلك التأكيد والتذكير.", "Your verified number — confirmations and reminders go here.")}
@@ -1040,7 +1040,7 @@ function Summary({
 
       <Card>
         <Row label={T("باسم", "Name")} value={d.name.trim()} />
-        {phone ? <Row label={T("الموبايل", "Mobile number")} value={`+${phone.replace(/^\+/, "")}`} ltrValue /> : null}
+        {phone ? <Row label={T("الموبايل", "Mobile number")} value={formatPhone(phone)} ltrValue /> : null}
         {d.email.trim() ? <Row label={T("الإيميل", "Email")} value={d.email.trim()} ltrValue /> : null}
         {d.notes.trim() ? <Row label={T("ملاحظات", "Notes")} value={d.notes.trim()} /> : null}
         <Button size="sm" variant="ghost" icon="create-outline" label={T("عدّل البيانات", "Edit details")} onPress={() => onEdit("details")} style={styles.edit} />

@@ -22,7 +22,7 @@ import { useOverview } from "@/features/business/queries";
 import { DesignSystemLink } from "@/features/dev/DesignSystemLink";
 import { PushToggle } from "@/features/notifications/PushToggle";
 import { VERSION_LABEL } from "@/constants/version";
-import { num } from "@/lib/format";
+import { joinParts, num } from "@/lib/format";
 import { PRIVACY_URL, openExternal } from "@/constants/support";
 
 /**
@@ -55,7 +55,7 @@ export default function More() {
             {T("المزيد", "More")}
           </Text>
           <Text variant="body" tone="inverseMuted" numberOfLines={1}>
-            {[user?.name, business].filter(Boolean).join(" · ")}
+            {joinParts([user?.name, business], lang)}
           </Text>
           <View>
             <Badge label={roleLabel(access.role, lang)} tone="neutral" />

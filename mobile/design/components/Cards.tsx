@@ -4,7 +4,7 @@ import { Image, StyleSheet, View, useWindowDimensions } from "react-native";
 import { colors, spacing, type Tone } from "../tokens";
 import { useLocale } from "../locale";
 import { joinLabel } from "../strings";
-import { duration, longDate, money, relativeTime, time } from "@/lib/format";
+import { duration, joinParts, longDate, money, relativeTime, time } from "@/lib/format";
 import { Card } from "./Card";
 import { Text } from "./Text";
 import { Badge } from "./Badge";
@@ -57,7 +57,7 @@ export function BusinessCard(p: BusinessCardProps) {
   const fromLabel = price ? (lang === "ar" ? `من ${price}` : `from ${price}`) : null;
   const openLabel = p.openNow == null ? null : p.openNow ? (lang === "ar" ? "مفتوح دلوقتي" : "Open now") : lang === "ar" ? "مقفول" : "Closed";
   const label = joinLabel(lang, p.name, p.verified && t("verified"), p.category, p.area, p.distance, fromLabel, openLabel, p.nextFree);
-  const where = p.distance ? `${p.category} · ${p.area} · ${p.distance}` : `${p.category} · ${p.area}`;
+  const where = joinParts([p.category, p.area, p.distance], lang);
 
   const meta = (
     <View style={styles.metaRow}>
@@ -306,7 +306,7 @@ export function BookingCard(p: BookingCardProps) {
         {facts.length > 0 || price ? (
           <View style={styles.footer}>
             <Text variant="caption" tone="muted" numberOfLines={1} style={styles.flex}>
-              {facts.join(" · ")}
+              {joinParts(facts, lang)}
             </Text>
             {price ? <Text variant="label">{price}</Text> : null}
           </View>

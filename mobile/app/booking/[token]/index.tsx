@@ -35,7 +35,7 @@ import { api } from "@/lib/api/client";
 import { directionsUrl, pinDirectionsUrl, telUrl, whatsappUrl } from "@/features/profile/profile";
 import { ApiError, messageFor } from "@/lib/api/errors";
 import { config } from "@/lib/config";
-import { duration, longDate, money, time } from "@/lib/format";
+import { duration, instantTime, longDate, money, time } from "@/lib/format";
 import { keys } from "@/lib/query/keys";
 import type { PublicBooking } from "@/types/api";
 import { hoursSpan } from "@/lib/plural";
@@ -216,7 +216,7 @@ function Details({
       const code = e instanceof ApiError ? e.code : undefined;
       if (code === "payment-in-progress") {
         const at = e instanceof ApiError && typeof e.detail.retryAt === "string" ? new Date(e.detail.retryAt) : null;
-        const when = at ? at.toLocaleTimeString(ar ? "ar-EG" : "en-GB", { hour: "numeric", minute: "2-digit", timeZone: "Africa/Cairo" }) : "";
+        const when = at ? instantTime(at, lang) : "";
         setPayNote(
           when
             ? T(

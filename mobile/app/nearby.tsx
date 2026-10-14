@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Linking, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import { goBack } from "@/lib/nav";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
@@ -119,7 +120,7 @@ export default function NearbyScreen() {
             icon="chevron-back"
             variant="filled"
             label={T("رجوع", "Back")}
-            onPress={() => router.back()}
+            onPress={() => goBack("/(customer)")}
             testID="back"
           />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
@@ -161,7 +162,7 @@ export default function NearbyScreen() {
 
   return (
     <View style={styles.page}>
-      <TopBar title={T("قريب مني", "Near me")} back />
+      <TopBar title={T("قريب مني", "Near me")} back backTo="/(customer)" />
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}
         refreshControl={here ? <RefreshControl refreshing={nearby.isRefetching} onRefresh={() => nearby.refetch()} tintColor={colors.jade} /> : undefined}

@@ -87,7 +87,7 @@ export default function ReviewScreen() {
       toast({ message: T("شكرًا! التقييم اتسجّل", "Thanks — your review is saved"), tone: "ok" });
       back();
     } catch (e) {
-      setError(ar ? messageFor(e, lang) : "We couldn't save your review. Please try again.");
+      setError(messageFor(e, lang, { "400": "We couldn't save your review. Please try again.", "409": "We couldn't save your review. Please try again." }));
     }
   };
 

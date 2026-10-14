@@ -38,6 +38,7 @@ describe("text contrast", () => {
     ["night on gold (gold buttons)", "night", "gold"],
     ["nightText on nightLine-free night2 cards", "nightText", "night2"],
     ["night on goldSoft (gold badges)", "night", "goldSoft"],
+    ["ink2 on goldSoft (booking row end time)", "ink2", "goldSoft"],
   ];
 
   it.each(pairs)("%s reaches 4.5:1", (_, fg, bg) => {

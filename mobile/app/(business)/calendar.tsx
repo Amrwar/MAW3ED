@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import {
   Chip,
   EmptyState,
@@ -22,7 +22,7 @@ import { useBusinessAccess } from "@/features/business/access";
 import { BookingRow, nameOf, pick } from "@/features/business/components";
 import { useBusinessProfile, useCalendar, useStaff } from "@/features/business/queries";
 import type { CalendarBooking } from "@/features/business/types";
-import { dayOfMonth, longDate, num, weekdayShort } from "@/lib/format";
+import { dayOfMonth, longDate, num, weekdayHeading } from "@/lib/format";
 import { count as countOf } from "@/lib/plural";
 
 /**
@@ -50,6 +50,8 @@ export default function Calendar() {
   const T = (a: string, e: string) => (ar ? a : e);
   const access = useBusinessAccess();
   const today = useMemo(() => cairoToday(), []);
+  // Under 360pt a column is ~26pt: "Mon" no longer fits, "Mo" does.
+  const narrow = useWindowDimensions().width < 360;
   const [mode, setMode] = useState<Mode>("day");
   const [day, setDay] = useState(today);
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("ALL");
@@ -130,10 +132,11 @@ export default function Calendar() {
                   style={[styles.weekDay, mode === "day" && d === day && styles.weekDayOn, d === today && styles.weekDayToday]}
                   testID="calendar-day"
                 >
-                  <Text variant="tiny" style={{ color: mode === "day" && on ? colors.night : colors.nightText }}>
-                    {weekdayShort(d, lang)}
+                  {/* One letter in Arabic, "Sun" ("Su" on a small phone) in English: seven whole names do not fit. */}
+                  <Text variant="tiny" numberOfLines={1} style={{ color: mode === "day" && on ? colors.night : colors.nightText }}>
+                    {lang === "en" && narrow ? weekdayHeading(d, lang).slice(0, 2) : weekdayHeading(d, lang)}
                   </Text>
-                  <Text variant="bodyBold" style={{ color: mode === "day" && on ? colors.night : colors.inverse }}>
+                  <Text variant="bodyBold" numberOfLines={1} style={{ color: mode === "day" && on ? colors.night : colors.inverse }}>
                     {dayOfMonth(d, lang)}
                   </Text>
                   {mode === "week" && count > 0 ? (
@@ -239,7 +242,7 @@ const styles = StyleSheet.create({
   heroTop: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   todayButton: { minHeight: 36, paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.gold, justifyContent: "center", overflow: "hidden" },
   weekRow: { flexDirection: "row", alignItems: "center", gap: 2 },
-  weekDay: { flex: 1, minHeight: 64, alignItems: "center", justifyContent: "center", borderRadius: radius.md, overflow: "hidden" },
+  weekDay: { flex: 1, minWidth: 0, minHeight: 64, alignItems: "center", justifyContent: "center", borderRadius: radius.md, overflow: "hidden" },
   weekDayOn: { backgroundColor: colors.gold },
   weekDayToday: { borderWidth: 1, borderColor: colors.nightLine },
   chipStrip: { flexGrow: 0 },

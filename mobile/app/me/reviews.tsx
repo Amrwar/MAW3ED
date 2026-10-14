@@ -29,7 +29,7 @@ function Reviews() {
 
   return (
     <Screen scroll={false} edges="both"
-      hero={<Header title={T("تقييماتي", "My reviews")} back tone="night" />}
+      hero={<Header title={T("تقييماتي", "My reviews")} back backTo="/(customer)/account" tone="night" />}
     >
       <ScrollView
         contentContainerStyle={styles.list}

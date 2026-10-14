@@ -37,7 +37,7 @@ function Security() {
 
   return (
     <Screen scroll={false} edges="both"
-      hero={<Header title={T("الأمان والأجهزة", "Security & devices")} back tone="night" />}
+      hero={<Header title={T("الأمان والأجهزة", "Security & devices")} back backTo="/(customer)/account" tone="night" />}
     >
       <ScrollView
         contentContainerStyle={styles.list}

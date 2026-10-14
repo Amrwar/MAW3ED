@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { router } from "expo-router";
+import { goBack } from "@/lib/nav";
+import { formatPhone } from "@/lib/format";
 import { Button, Card, Header, ListState, Screen, Text, TextField, ltr, spacing, useLocale, useToast } from "@/design";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { SignInGate } from "@/features/auth/SignInGate";
@@ -47,7 +48,7 @@ function EditProfile() {
       await update.mutateAsync(patch);
       updateUser({ name: patch.name, email: patch.email || null });
       toast({ message: T("اتحفظ", "Saved"), tone: "ok" });
-      router.back();
+      goBack("/(customer)/account");
     } catch (err) {
       setError(ar ? messageFor(err, lang) : "We couldn't save that. If the email is used by another account, try a different one.");
     }
@@ -57,7 +58,7 @@ function EditProfile() {
     <Screen
       edges="both"
       footer={<Button fullWidth label={T("احفظ", "Save")} disabled={!nameOk || !emailOk || !data} loading={update.isPending} onPress={save} />}
-      hero={<Header title={T("بياناتك", "Your details")} back tone="night" />}
+      hero={<Header title={T("بياناتك", "Your details")} back backTo="/(customer)/account" tone="night" />}
     >
       <ListState loading={profile.isLoading} error={profile.error} isEmpty={false} emptyTitle="" onRetry={() => profile.refetch()}>
         <View style={styles.form}>
@@ -84,7 +85,7 @@ function EditProfile() {
               {T("رقم الموبايل", "Mobile number")}
             </Text>
             <Text variant="bodyBold" style={ltr}>
-              {data?.phone ? `+${data.phone.replace(/^\+/, "")}` : "—"}
+              {data?.phone ? formatPhone(data.phone) : "—"}
             </Text>
             <Text variant="caption" tone="subtle">
               {T(

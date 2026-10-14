@@ -21,7 +21,7 @@ import { useNotifications } from "@/features/notifications/queries";
 import { PushToggle } from "@/features/notifications/PushToggle";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { VERSION_LABEL } from "@/constants/version";
-import { num } from "@/lib/format";
+import { formatPhone, num } from "@/lib/format";
 import { SignInGate } from "@/features/auth/SignInGate";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { DesignSystemLink } from "@/features/dev/DesignSystemLink";
@@ -97,7 +97,7 @@ function Account() {
               <View style={styles.phoneRow}>
                 <Text variant="caption" tone="inverseMuted" style={ltr}>
                   {data?.phone
-                    ? `+${data.phone.replace(/^\+/, "")}`
+                    ? formatPhone(data.phone)
                     : T("مفيش رقم موبايل", "No phone number")}
                 </Text>
                 {/* Three states, not two: no number is a different problem from an unconfirmed one. */}

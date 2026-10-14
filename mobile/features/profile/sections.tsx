@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { sized } from "@/lib/image";
-import { Image, Linking, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Image, Linking, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Avatar, Badge, Button, Card, Icon, Text, Touchable, colors, radius, spacing, useLocale } from "@/design";
 import { nextFreeLabel } from "@/features/discovery/BusinessCard";
-import { duration, num, shortDate, time } from "@/lib/format";
+import { duration, joinParts, num, shortDate, time } from "@/lib/format";
 import type { BookingPolicies, DayHours, PublicProfile, PublicReview, PublicStaffMember } from "@/types/api";
 import { directionsUrl, pinDirectionsUrl, profilePins, telUrl, workingDays, type ProfileKind, type Seating } from "./profile";
 import { PlacesMap } from "@/features/location/PlacesMap";
@@ -176,9 +176,7 @@ export function ReviewItem({ review, action }: { review: PublicReview; action?: 
         <View style={styles.flex}>
           <Text variant="bodyBold">{review.authorName}</Text>
           <Text variant="caption" tone="subtle">
-            {[review.verifiedBooking ? (ar ? "حجز مؤكَّد" : "Verified booking") : null, review.serviceName, shortDate(cairoDate(review.createdAt), lang)]
-              .filter(Boolean)
-              .join(" · ")}
+            {joinParts([review.verifiedBooking ? (ar ? "حجز مؤكَّد" : "Verified booking") : null, review.serviceName, shortDate(cairoDate(review.createdAt), lang)], lang)}
           </Text>
         </View>
         <View accessible accessibilityLabel={ar ? `${num(review.rating, lang)} من ${num(5, lang)}` : `${review.rating} out of 5`}>
@@ -529,7 +527,9 @@ export function Glance({ p, kind }: { p: PublicProfile; kind: ProfileKind }) {
 export function PhotoTile({ uri, label, onPress, wide }: { uri: string; label: string; onPress: () => void; wide?: boolean }) {
   const { width } = useWindowDimensions();
   return (
-    <Touchable onPress={onPress} accessibilityRole="imagebutton" accessibilityLabel={label} testID="photo-tile" style={wide ? styles.photoWide : styles.photo}>
+    // react-native-web has no "imagebutton" role: it drops the role and
+    // leaves an aria-label on a bare div, which ARIA does not allow.
+    <Touchable onPress={onPress} accessibilityRole={Platform.OS === "web" ? "button" : "imagebutton"} accessibilityLabel={label} testID="photo-tile" style={wide ? styles.photoWide : styles.photo}>
       <Image source={{ uri: sized(uri, wide ? width : width / 2) }} style={StyleSheet.absoluteFill} />
     </Touchable>
   );

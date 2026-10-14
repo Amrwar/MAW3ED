@@ -2,7 +2,7 @@ import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { Badge, Icon, Text, Touchable, colors, radius, spacing, useLocale, joinLabel } from "@/design";
 import { BOOKING_STATUS_TONE, statusLabelFor } from "@/features/bookings/status";
-import { time } from "@/lib/format";
+import { joinParts, time } from "@/lib/format";
 import type { BookingStatus } from "./types";
 
 /**
@@ -56,7 +56,7 @@ export function BookingRow({
 }) {
   const { lang } = useLocale();
   const dim = status === "CANCELLED" || status === "NO_SHOW" || status === "FAILED_PAYMENT";
-  const meta = [service, staff, branch].filter(Boolean).join(" · ");
+  const meta = joinParts([service, staff, branch], lang);
   return (
     <Touchable
       accessibilityRole="button"
@@ -70,7 +70,8 @@ export function BookingRow({
           {time(startTime, lang)}
         </Text>
         {endTime ? (
-          <Text variant="tiny" style={{ color: highlight ? colors.nightText : colors.subtle }}>
+          // ink2, not subtle: subtle is 4.2:1 on goldSoft, under AA.
+          <Text variant="tiny" style={{ color: highlight ? colors.nightText : colors.ink2 }}>
             {time(endTime, lang)}
           </Text>
         ) : null}

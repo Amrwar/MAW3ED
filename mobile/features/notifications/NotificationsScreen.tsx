@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Screen, Text, Card, ListState, colors, spacing, useLocale, joinLabel } from "@/design";
+import { Button, Screen, Text, Card, ListState, colors, spacing, useLocale, joinLabel } from "@/design";
 import { SignInGate } from "@/features/auth/SignInGate";
 import { hrefFor } from "@/lib/links";
 import { track } from "@/lib/analytics";
 import type { AppNotification } from "@/types/api";
-import { useMarkNotificationsRead, useNotifications } from "./queries";
+import { fetchNotificationsPage, useMarkNotificationsRead, useNotifications } from "./queries";
 import { relativeTime } from "@/lib/format";
 import { PushToggle } from "./PushToggle";
 
@@ -37,7 +37,39 @@ function Feed() {
   const T = (a: string, e: string) => (ar ? a : e);
   const query = useNotifications();
   const markRead = useMarkNotificationsRead();
-  const items = query.data?.notifications ?? [];
+  // Older pages, fetched on "show more" and kept below the first page.
+  // The first page is the query the tab badge shares; refreshing it
+  // (marking read does) must not throw away what was loaded under it.
+  const [older, setOlder] = useState<{ items: AppNotification[]; nextCursor: string | null } | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
+  const items = useMemo(() => {
+    const first = query.data?.notifications ?? [];
+    if (!older) return first;
+    const seen = new Set(first.map((n) => n.id));
+    return [...first, ...older.items.filter((n) => !seen.has(n.id))];
+  }, [query.data, older]);
+  const nextCursor = older ? older.nextCursor : (query.data?.nextCursor ?? null);
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    setMoreFailed(false);
+    try {
+      const page = await fetchNotificationsPage(nextCursor);
+      setOlder((prev) => ({ items: [...(prev?.items ?? []), ...page.notifications], nextCursor: page.nextCursor ?? null }));
+    } catch {
+      setMoreFailed(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  function refresh() {
+    setOlder(null);
+    setMoreFailed(false);
+    void query.refetch();
+  }
   // "5 minutes ago" is read once per visit; it need not tick while open.
   const [now] = useState(() => Date.now());
 
@@ -71,7 +103,7 @@ function Feed() {
     >
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.jade} />}
+        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={refresh} tintColor={colors.jade} />}
       >
         <View style={styles.push}>
           <PushToggle card />
@@ -108,6 +140,22 @@ function Feed() {
               </View>
             </Card>
           ))}
+          {nextCursor ? (
+            <View style={styles.more}>
+              {moreFailed ? (
+                <Text variant="caption" tone="danger" align="center">
+                  {T("معرفناش نجيب الباقي. جرّب تاني.", "Couldn't load more. Try again.")}
+                </Text>
+              ) : null}
+              <Button
+                label={T("إشعارات أقدم", "Older notifications")}
+                variant="outline"
+                loading={loadingMore}
+                onPress={() => void loadMore()}
+                testID="notifications-more"
+              />
+            </View>
+          ) : null}
         </ListState>
       </ScrollView>
     </Screen>
@@ -121,4 +169,5 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.jade, marginTop: 7 },
   body: { marginTop: spacing.xs },
   push: { marginBottom: spacing.md },
+  more: { gap: spacing.sm, marginTop: spacing.sm },
 });

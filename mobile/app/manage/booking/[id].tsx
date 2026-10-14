@@ -28,8 +28,8 @@ import { nameOf } from "@/features/business/components";
 import { useBookingDetail, useUpdateBookingStatus } from "@/features/business/queries";
 import type { BookingStatus } from "@/features/business/types";
 import { telUrl, whatsappUrl } from "@/features/profile/profile";
-import { ApiError } from "@/lib/api/errors";
-import { duration, longDate, money, num, time } from "@/lib/format";
+import { ApiError, codeMessage } from "@/lib/api/errors";
+import { duration, formatPhone, longDate, money, num, time } from "@/lib/format";
 import { count } from "@/lib/plural";
 
 /**
@@ -71,7 +71,7 @@ export default function ManageBooking() {
     } catch (e) {
       const forbidden = e instanceof ApiError && e.status === 403;
       toast({
-        message: forbidden ? T("مش مسموح لك بالإجراء ده.", "You're not allowed to do that.") : T("معرفناش نغيّر الحالة. جرّب تاني.", "Couldn't change it. Try again."),
+        message: codeMessage(e, lang) ?? (forbidden ? T("مش مسموح لك بالإجراء ده.", "You're not allowed to do that.") : T("معرفناش نغيّر الحالة. جرّب تاني.", "Couldn't change it. Try again.")),
         tone: "danger",
       });
     } finally {
@@ -82,7 +82,7 @@ export default function ManageBooking() {
   if (!b) {
     return (
       <View style={styles.page}>
-        <TopBar title={T("الحجز", "Booking")} back />
+        <TopBar title={T("الحجز", "Booking")} back backTo="/(business)" />
         <View style={styles.body}>
           {booking.isLoading ? (
             <SkeletonCard />
@@ -120,7 +120,7 @@ export default function ManageBooking() {
 
   return (
     <View style={styles.page} testID="manage-booking">
-      <TopBar title={T("الحجز", "Booking")} subtitle={b.reference ?? undefined} back>
+      <TopBar title={T("الحجز", "Booking")} subtitle={b.reference ?? undefined} back backTo="/(business)">
         <View style={styles.heroRow}>
           <Text variant="title" tone="inverse" numberOfLines={1} style={styles.flex}>
             {b.service ? nameOf(lang, b.service) : T("حجز", "Booking")}
@@ -148,7 +148,7 @@ export default function ManageBooking() {
           </Text>
           <Text variant="heading">{b.customerName}</Text>
           <Text variant="body" tone="muted" style={ltr}>
-            {b.customerPhone}
+            {b.customerPhone ? formatPhone(b.customerPhone) : null}
           </Text>
           <View style={styles.actionsRow}>
             {call ? <Button size="sm" variant="outline" icon="call-outline" label={T("اتصل", "Call")} onPress={() => void Linking.openURL(call)} /> : null}

@@ -8,6 +8,7 @@ import { statusLabelFor } from "@/features/bookings/status";
 import { useBookingHistory } from "@/features/account/queries";
 import { useMyBookings } from "@/features/customer/queries";
 import type { MyBooking } from "@/types/api";
+import { joinParts } from "@/lib/format";
 
 type Tab = "upcoming" | "history";
 
@@ -126,7 +127,7 @@ function MyBookings() {
                 // Only on the upcoming tab: "7 months ago" under every row
                 // of a history list is noise, not information.
                 minutesUntil={isUpcoming ? b.minutesUntil : undefined}
-                meta={[(!ar && b.staffNameEn) || b.staffName, (!ar && b.branchNameEn) || b.branchName].filter(Boolean).join(" · ") || null}
+                meta={joinParts([(!ar && b.staffNameEn) || b.staffName, (!ar && b.branchNameEn) || b.branchName], lang) || null}
                 onPress={b.accessToken ? () => router.push({ pathname: "/booking/[token]", params: { token: b.accessToken as string } }) : undefined}
               />
             ))}

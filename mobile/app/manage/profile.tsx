@@ -4,7 +4,7 @@ import { Badge, Button, Card, ErrorState, Icon, SkeletonCard, Text, TopBar, colo
 import { pick } from "@/features/business/components";
 import { useBusinessProfile } from "@/features/business/queries";
 import { config } from "@/lib/config";
-import { num, time } from "@/lib/format";
+import { formatPhone, num, time } from "@/lib/format";
 
 /**
  * The business as the team sees it: what customers see on the public
@@ -28,7 +28,7 @@ export default function BusinessProfileScreen() {
   if (!p) {
     return (
       <View style={styles.page}>
-        <TopBar title={T("صفحة النشاط", "Business profile")} back />
+        <TopBar title={T("صفحة النشاط", "Business profile")} back backTo="/(business)/account" />
         <View style={styles.body}>{profile.isLoading ? <SkeletonCard /> : <ErrorState error={profile.error} onRetry={() => profile.refetch()} />}</View>
       </View>
     );
@@ -41,13 +41,13 @@ export default function BusinessProfileScreen() {
     p.category ? { icon: "grid-outline" as IconName, text: pick(lang, p.category.nameAr, p.category.nameEn) } : null,
     p.city ? { icon: "business-outline" as IconName, text: pick(lang, p.city.nameAr, p.city.nameEn) } : null,
     p.address ? { icon: "location-outline" as IconName, text: p.address } : null,
-    p.phone ? { icon: "call-outline" as IconName, text: p.phone, ltr: true } : null,
-    p.whatsapp ? { icon: "logo-whatsapp" as IconName, text: p.whatsapp, ltr: true } : null,
+    p.phone ? { icon: "call-outline" as IconName, text: formatPhone(p.phone), ltr: true } : null,
+    p.whatsapp ? { icon: "logo-whatsapp" as IconName, text: formatPhone(p.whatsapp), ltr: true } : null,
   ].filter(Boolean) as { icon: IconName; text: string; ltr?: boolean }[];
 
   return (
     <View style={styles.page}>
-      <TopBar title={pick(lang, p.nameAr, p.nameEn)} subtitle={T("صفحة النشاط", "Business profile")} back>
+      <TopBar title={pick(lang, p.nameAr, p.nameEn)} subtitle={T("صفحة النشاط", "Business profile")} back backTo="/(business)/account">
         <View style={styles.badges}>
           <Badge label={p.isPublished ? T("منشورة", "Published") : T("مش منشورة", "Not published")} tone={p.isPublished ? "ok" : "warn"} />
           <Badge label={p.autoConfirm ? T("تأكيد تلقائي", "Auto-confirm") : T("تأكيد يدوي", "Manual confirm")} tone="neutral" />

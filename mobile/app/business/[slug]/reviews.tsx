@@ -85,7 +85,7 @@ export default function ReviewsScreen() {
                   onPress={() => setReporting(item.id)}
                   accessibilityRole="button"
                   accessibilityLabel={ar ? `بلّغ عن تقييم ${item.authorName}` : `Report ${item.authorName}'s review`}
-                  hitSlop={8}
+                  hitSlop={12}
                   style={styles.report}
                 >
                   <Text variant="caption" tone="subtle">

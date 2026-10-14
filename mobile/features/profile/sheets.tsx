@@ -2,7 +2,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Avatar, Badge, Button, Icon, ServiceCard, Sheet, Text, Touchable, colors, radius, spacing, useLocale } from "@/design";
 import { nextFreeLabel } from "@/features/discovery/BusinessCard";
-import { duration, money, num } from "@/lib/format";
+import { duration, joinParts, money, num } from "@/lib/format";
 import type { PublicProfile, PublicStaffMember } from "@/types/api";
 import { KIND_WORDS, servicesOf, staffFor, type ProfileKind } from "./profile";
 import { HoursTable } from "./sections";
@@ -113,7 +113,7 @@ export function ServiceSheet({
                   key={m.id}
                   selected={staffId === m.id}
                   title={mName}
-                  subtitle={[m.role, nextFreeLabel(m.nextSlot, lang)].filter(Boolean).join(" · ") || null}
+                  subtitle={joinParts([m.role, nextFreeLabel(m.nextSlot, lang)], lang) || null}
                   photo={m.photo}
                   onPress={() => setStaffId(m.id)}
                 />

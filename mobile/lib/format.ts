@@ -175,3 +175,74 @@ export function rating(avg: number | null, count: number, lang: Lang = "ar"): st
   if (avg === null || count === 0) return null;
   return `${avg.toFixed(1)} (${num(count, lang)})`;
 }
+
+/**
+ * Text that must read left to right inside a sentence of either
+ * language — "+20", "+201012345678", "QA-1042". Without the isolate,
+ * Arabic's bidi rules move the plus to the far end: "20+". A style of
+ * direction: "ltr" is not enough on its own: it does not reach text
+ * that shares a line with Arabic, and iOS ignores it on Text.
+ */
+export function isolateLtr(text: string): string {
+  return `⁦${text}⁩`;
+}
+
+/**
+ * A run of mixed text — a name in Latin letters next to Arabic — that
+ * keeps its own direction instead of reordering the line around it
+ * ("QA PushPay · 17 أكتوبر" must not become "أكتوبر QA PushPay · 17").
+ * First-strong isolate: each piece reads in the direction of its first letter.
+ */
+export function isolate(text: string): string {
+  return `⁨${text}⁩`;
+}
+
+/** A phone number for display: always "+<digits>", always left to right. */
+export function formatPhone(raw: string): string {
+  return isolateLtr(`+${raw.replace(/^\+/, "")}`);
+}
+
+/**
+ * "QA PushPay · 17 أكتوبر 2:30 م": pieces joined with a middle dot, each
+ * isolated so a Latin name beside Arabic text cannot pull the date
+ * across it. Empty pieces are dropped; "" when nothing is left.
+ */
+export function joinParts(parts: readonly (string | null | undefined | false)[], lang: Lang, separator = " · "): string {
+  const joined = parts
+    .filter((p): p is string => typeof p === "string" && p.length > 0)
+    .map(isolate)
+    .join(separator);
+  // Isolates are invisible to the line's own direction, so with nothing
+  // outside them a line would fall back to left to right. A mark of the
+  // reading direction keeps the first piece at the start (the right, in Arabic).
+  return joined ? `${lang === "ar" ? "‏" : "‎"}${joined}` : "";
+}
+
+/** An instant as Cairo wall-clock parts: "YYYY-MM-DD" and "HH:MM". */
+function cairoParts(instant: string | Date): { date: string; hhmm: string } | null {
+  const d = typeof instant === "string" ? new Date(instant) : instant;
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hhmm: `${get("hour")}:${get("minute")}` };
+}
+
+/** An instant's time of day in Cairo: "2:30 م" / "2:30 PM". */
+export function instantTime(instant: string | Date, lang: Lang = "ar"): string {
+  const p = cairoParts(instant);
+  return p ? time(p.hhmm, lang) : "";
+}
+
+/** An instant in Cairo: "12 أكتوبر · 2:30 م" / "Oct 12 · 2:30 PM" — the app's dates and times, no seconds. */
+export function dateTime(instant: string | Date, lang: Lang = "ar"): string {
+  const p = cairoParts(instant);
+  return p ? joinParts([shortDate(p.date, lang), time(p.hhmm, lang)], lang) : "";
+}

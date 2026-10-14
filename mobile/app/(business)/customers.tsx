@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Card, EmptyState, Icon, ListState, SearchField, Text, colors, spacing, useLocale, joinLabel } from "@/design";
 import { useBusinessAccess } from "@/features/business/access";
 import { useBusinessCustomers } from "@/features/business/queries";
-import { money, num, shortDate } from "@/lib/format";
+import { formatPhone, money, num, shortDate } from "@/lib/format";
 import { count } from "@/lib/plural";
 
 /**
@@ -93,7 +93,7 @@ export default function Customers() {
                     {item.name}
                   </Text>
                   <Text variant="caption" tone="subtle">
-                    {item.phone}
+                    {item.phone ? formatPhone(item.phone) : null}
                   </Text>
                 </View>
                 <View style={styles.stats}>

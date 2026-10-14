@@ -21,7 +21,7 @@ export default function ServicesScreen() {
 
   return (
     <View style={styles.page}>
-      <TopBar title={T("الخدمات", "Services")} subtitle={services.data ? count(list.length, "service", lang) : undefined} back />
+      <TopBar title={T("الخدمات", "Services")} subtitle={services.data ? count(list.length, "service", lang) : undefined} back backTo="/(business)/account" />
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}
         refreshControl={<RefreshControl refreshing={services.isRefetching} onRefresh={() => services.refetch()} tintColor={colors.jade} />}
