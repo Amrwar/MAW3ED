@@ -54,7 +54,12 @@ export default function ReviewActions({
   async function vote() {
     setVoting(true);
     try {
-      const res = await fetch(`/api/public/reviews/${review.id}/helpful`, { method: "POST" });
+      const url = `/api/public/reviews/${review.id}/helpful`;
+      let res = await fetch(url, { method: "POST" });
+      // A first-time visitor has no device cookie yet; the server
+      // refuses the vote and issues one in the same answer, so trying
+      // again once is all it takes. See the helpful route for why.
+      if (res.status === 428) res = await fetch(url, { method: "POST" });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.data) {
         setCount(data.data.helpfulCount);

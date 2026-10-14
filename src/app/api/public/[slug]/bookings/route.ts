@@ -11,6 +11,8 @@ import { attachProviderOrder, openPayment } from "@/lib/payments/ledger";
 import { getEffectivePlan, getMonthlyBookingLimit, canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
+import { callerKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { normalisePhone } from "@/lib/phone";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -43,6 +45,21 @@ export async function POST(req: Request, { params }: Params) {
             tableId, resourceId, staffMemberId, branchId, partySize, idempotencyKey,
             source, discountCode } = parsed.data;
 
+    // ── Throttle ──────────────────────────────────────────────────────────────
+    //
+    // Anyone can call this, and every booking it creates holds a slot and
+    // sends the owner an alert. Two budgets, both per business: one per
+    // address, and one per phone number so rotating addresses does not
+    // let a script book a whole day under somebody else's number. The
+    // limits themselves, and why they are loose, are in lib/rate-limit.ts.
+    // Checked before any lookup, so a flood never reaches the booking tables.
+    const slugKey = slug.toLowerCase();
+    const byAddress = await rateLimit("publicBooking", `${await callerKey()}|${slugKey}`);
+    if (!byAddress.ok) return tooManyRequests(byAddress);
+    const phoneKey = normalisePhone(customerPhone) ?? customerPhone.trim();
+    const byPhone = await rateLimit("publicBookingPhone", `${phoneKey}|${slugKey}`);
+    if (!byPhone.ok) return tooManyRequests(byPhone);
+
     const business = await db.business.findUnique({
       where:   { slug, isPublished: true },
       include: { owner: { select: { email: true } } },
@@ -55,12 +72,28 @@ export async function POST(req: Request, { params }: Params) {
     });
     if (!service) return err("الخدمة غير موجودة", 404, { code: "service-not-found" });
 
-    // ── Upsert customer ────────────────────────────────────────────────────────
+    // ── Find or create the customer ───────────────────────────────────────────
+    //
+    // The record belongs to the business: it is the name the owner has on
+    // file, possibly corrected by hand. This request is anonymous — anyone
+    // can type a known customer's phone number — so it may introduce a
+    // customer but never rename one or redirect their email. It only
+    // fills an email the record does not have yet. The booking itself
+    // still carries the name the visitor typed, which is what the owner
+    // sees against that appointment.
     const customer = await db.customer.upsert({
       where:  { businessId_phone: { businessId: business.id, phone: customerPhone } },
       create: { businessId: business.id, name: customerName, phone: customerPhone, email: customerEmail || null },
-      update: { name: customerName, ...(customerEmail ? { email: customerEmail } : {}) },
+      update: {},
     });
+    if (customerEmail && !customer.email) {
+      // Conditional, so two concurrent bookings cannot both "fill" it and
+      // leave whichever wrote last.
+      await db.customer.updateMany({
+        where: { id: customer.id, email: null },
+        data:  { email: customerEmail },
+      });
+    }
 
     // ── Resolve effective plan ────────────────────────────────────────────────
     const effectivePlan = getEffectivePlan(

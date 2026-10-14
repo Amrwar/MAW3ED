@@ -150,22 +150,33 @@ export async function POST(req: Request, { params }: Params) {
     // are. Allowed on any plan — recording cash is bookkeeping, not a
     // payment feature we are providing.
     if (mode === "manual") {
-      const payment = await recordManualPayment({
-        kind: paid === 0 ? "BOOKING_FULL" : "BOOKING_BALANCE",
+      // The balance check above is for a quick, friendly answer; the one
+      // that decides is repeated inside recordManualPayment under a row
+      // lock, because two recordings racing would both pass this one.
+      const recorded = await recordManualPayment({
         businessId: business.id,
         bookingId: booking.id,
+        totalCents: toCents(booking.totalPrice),
         amountCents: amount,
         method: method!,
         recordedById: session.user.id,
         currency: booking.currency,
       });
+      if (!recorded.ok) {
+        return recorded.outstandingCents === 0
+          ? err("الحجز مدفوع بالكامل", 409)
+          : err(
+              `المبلغ أكبر من المتبقي (${formatCents(recorded.outstandingCents, booking.currency)})`,
+              422,
+            );
+      }
 
       await settleBookingIfPaid(booking.id, booking.totalPrice);
 
       return ok({
-        paymentId: payment.id,
-        receiptNumber: payment.receiptNumber,
-        outstandingCents: balanceCents(booking.totalPrice, paid + amount),
+        paymentId: recorded.payment.id,
+        receiptNumber: recorded.payment.receiptNumber,
+        outstandingCents: balanceCents(booking.totalPrice, recorded.paidBeforeCents + amount),
       });
     }
 

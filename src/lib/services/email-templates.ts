@@ -76,7 +76,7 @@ export function customerConfirmationHtml(d: BookingEmailData): string {
     <!-- Heading -->
     <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">تم تسجيل حجزك ✅</p>
     <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
-      أهلًا <strong>${d.customerName}</strong>، تم استلام حجزك بنجاح. سيتواصل معك الفريق قريبًا لتأكيده.
+      أهلًا <strong>${escapeHtml(d.customerName)}</strong>، تم استلام حجزك بنجاح. سيتواصل معك الفريق قريبًا لتأكيده.
     </p>
 
     <!-- Details table -->
@@ -103,7 +103,7 @@ export function customerConfirmationHtml(d: BookingEmailData): string {
     ${d.bookingUrl ? `
     <!-- Booking link CTA -->
     <div style="margin-bottom:24px;">
-      <a href="${d.bookingUrl}"
+      <a href="${escapeHtml(d.bookingUrl)}"
          style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;">
         عرض الحجز وإدارته ←
       </a>
@@ -127,7 +127,7 @@ export function customerReminderHtml(d: BookingEmailData): string {
     <!-- Heading -->
     <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">تذكير بموعدك غداً ⏰</p>
     <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
-      أهلًا <strong>${d.customerName}</strong>، هذا تذكير بموعدك المحجوز غداً.
+      أهلًا <strong>${escapeHtml(d.customerName)}</strong>، هذا تذكير بموعدك المحجوز غداً.
     </p>
 
     <!-- Details table -->
@@ -149,7 +149,7 @@ export function customerReminderHtml(d: BookingEmailData): string {
     ${d.bookingUrl ? `
     <!-- Booking management link -->
     <div style="margin-bottom:24px;">
-      <a href="${d.bookingUrl}"
+      <a href="${escapeHtml(d.bookingUrl)}"
          style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;">
         عرض الحجز أو إلغائه ←
       </a>
@@ -190,7 +190,7 @@ export function businessAlertHtml(d: BookingEmailData): string {
     </div>` : ""}
 
     <!-- CTA -->
-    <a href="${siteUrl("/dashboard/bookings")}"
+    <a href="${escapeHtml(siteUrl("/dashboard/bookings"))}"
        style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:700;margin-bottom:24px;">
       إدارة الحجوزات ←
     </a>
@@ -218,12 +218,12 @@ export function subscriptionRenewalReminderHtml(params: {
     <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">تذكير بتجديد اشتراكك ⏰</p>
     <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
       مرحبًا، اشتراكك في منصة <strong>موعد</strong> لعملك
-      <strong>${businessName}</strong> سينتهي خلال <strong>${daysLeft} أيام</strong>.
+      <strong>${escapeHtml(businessName)}</strong> سينتهي خلال <strong>${escapeHtml(String(daysLeft))} أيام</strong>.
     </p>
 
     <div style="background:#fef3c7;border-radius:10px;padding:16px;margin-bottom:24px;">
       <p style="margin:0;font-size:14px;color:#92400e;">
-        📅 تاريخ انتهاء خطة <strong>${planName}</strong>: <strong dir="ltr">${expiryDate}</strong>
+        📅 تاريخ انتهاء خطة <strong>${escapeHtml(planName)}</strong>: <strong dir="ltr">${escapeHtml(expiryDate)}</strong>
       </p>
       <p style="margin:8px 0 0;font-size:13px;color:#b45309;">
         بعد الانتهاء، سيتم التحويل تلقائيًا إلى الخطة المجانية وستفقد مميزات خطتك الحالية.
@@ -231,7 +231,7 @@ export function subscriptionRenewalReminderHtml(params: {
     </div>
 
     <div style="margin-bottom:24px;">
-      <a href="${renewUrl}"
+      <a href="${escapeHtml(renewUrl)}"
          style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
         تجديد الاشتراك الآن ←
       </a>
@@ -254,8 +254,8 @@ export function subscriptionExpiredHtml(params: {
   const body = `
     <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">انتهى اشتراكك 😔</p>
     <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
-      للأسف، انتهت صلاحية اشتراك عملك <strong>${businessName}</strong>
-      في خطة <strong>${planName}</strong>.
+      للأسف، انتهت صلاحية اشتراك عملك <strong>${escapeHtml(businessName)}</strong>
+      في خطة <strong>${escapeHtml(planName)}</strong>.
       تم التحويل تلقائيًا إلى الخطة المجانية.
     </p>
 
@@ -271,7 +271,7 @@ export function subscriptionExpiredHtml(params: {
     </div>
 
     <div style="margin-bottom:24px;">
-      <a href="${renewUrl}"
+      <a href="${escapeHtml(renewUrl)}"
          style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
         تجديد الاشتراك ←
       </a>
@@ -296,7 +296,7 @@ export function passwordResetHtml(resetUrl: string): string {
 
     <!-- CTA -->
     <div style="margin-bottom:24px;">
-      <a href="${resetUrl}"
+      <a href="${escapeHtml(resetUrl)}"
          style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
         إعادة تعيين كلمة المرور ←
       </a>
@@ -327,7 +327,7 @@ export function passwordResetHtml(resetUrl: string): string {
  * unpublished, so this email is the gate on the public marketplace.
  */
 export function emailVerificationHtml(verifyUrl: string, name?: string | null): string {
-  const greeting = name ? `أهلًا ${name}،` : "أهلًا بك،";
+  const greeting = name ? `أهلًا ${escapeHtml(name)}،` : "أهلًا بك،";
   const body = `
     <p style="margin:0 0 6px;font-size:24px;font-weight:900;color:#111827;">${greeting}</p>
     <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
@@ -336,7 +336,7 @@ export function emailVerificationHtml(verifyUrl: string, name?: string | null): 
     </p>
 
     <div style="margin-bottom:24px;">
-      <a href="${verifyUrl}"
+      <a href="${escapeHtml(verifyUrl)}"
          style="display:inline-block;background:#0D7A5A;color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">
         أكّد بريدي ←
       </a>
@@ -395,7 +395,15 @@ export function notificationHtml(
   }`);
 }
 
-function escapeHtml(s: string): string {
+/**
+ * Every interpolated value goes through this, not just the ones that
+ * look user-supplied today. Customer, business and account names all
+ * arrive from public forms, and one unescaped `${name}` was enough to
+ * let an anonymous booker put a link of their choosing, styled as ours,
+ * into a business owner's inbox. Escaping the trusted values too costs
+ * nothing and means nobody has to decide, per field, which ones are safe.
+ */
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

@@ -57,7 +57,27 @@ export const RULES = {
   // the phone number (cooldown and hourly cap in lib/auth/login-code.ts)
   // and on each code (five attempts).
   phoneOtp: { limit: 30, windowSeconds: 60 * 60 },
+  // Per number, on checking a code. A number gets at most five codes an
+  // hour with five guesses each, so this is a backstop for whatever
+  // slips past those, sized not to bite a person mistyping.
+  phoneOtpVerify: { limit: 30, windowSeconds: 60 * 60 },
   mobileRefresh: { limit: 60, windowSeconds: 60 * 60 },
+  // Public booking, keyed per business so one busy salon cannot use up a
+  // visitor's budget for another. A real customer books once and maybe
+  // retries or books a second family member; ten from one address to
+  // one business in an hour is already an unusual household, and the
+  // limit exists to stop a script filling a calendar with fake slots
+  // and an owner's WhatsApp with fake alerts, not to ration customers.
+  // Shared carrier IPs are why the per-address figure is the looser one.
+  publicBooking: { limit: 10, windowSeconds: 60 * 60 },
+  // Per phone number per business. Five bookings in an hour under one
+  // number is more than any person makes; past that it is somebody
+  // using a stranger's number to fill their calendar.
+  publicBookingPhone: { limit: 5, windowSeconds: 60 * 60 },
+  // Helpful votes on reviews, per address. A visitor reading reviews
+  // votes on a handful; sixty an hour leaves room for a whole office on
+  // one NAT and still makes stuffing one review slow work.
+  reviewHelpful: { limit: 60, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type Bucket = keyof typeof RULES;
@@ -80,7 +100,7 @@ function hashIdentifier(value: string): string {
  * common mistake, lets an attacker rotate the header and get a fresh
  * budget per request.
  */
-async function callerKey(): Promise<string> {
+export async function callerKey(): Promise<string> {
   const h = await headers();
   const forwarded = h.get("x-forwarded-for");
   if (forwarded) {
@@ -147,7 +167,9 @@ export async function rateLimit(
  */
 export function tooManyRequests(result: RateLimitResult): Response {
   return Response.json(
-    { error: "محاولات كتير. استنى شوية وحاول تاني." },
+    // `code` for the clients that branch on it rather than on the
+    // Arabic sentence, as the booking flow does.
+    { error: "محاولات كتير. استنى شوية وحاول تاني.", code: "rate-limited" },
     {
       status: 429,
       headers: {

@@ -28,21 +28,29 @@ export async function POST(req: Request) {
     if (!record) return err("اطلب كود جديد الأول", 400);
 
     if (isExpired(record.expiresAt)) {
-      await db.phoneVerification.delete({ where: { id: record.id } });
+      await db.phoneVerification.deleteMany({ where: { id: record.id } });
       return err("الكود انتهت صلاحيته — اطلب كود جديد", 410);
     }
 
-    if (record.attempts >= PHONE_MAX_ATTEMPTS) {
-      await db.phoneVerification.delete({ where: { id: record.id } });
+    // The attempt is spent before the comparison, in one conditional
+    // statement. A read-then-increment let parallel guesses all see the
+    // same count, so the cap only held against somebody polite enough
+    // to guess one at a time.
+    const claimed = await db.phoneVerification.updateMany({
+      where: { id: record.id, attempts: { lt: PHONE_MAX_ATTEMPTS } },
+      data: { attempts: { increment: 1 } },
+    });
+    if (claimed.count === 0) {
+      await db.phoneVerification.deleteMany({ where: { id: record.id } });
       return err("حاولت كتير — اطلب كود جديد", 429);
     }
 
     if (!secretMatches(code, record.codeHash)) {
-      await db.phoneVerification.update({
+      const after = await db.phoneVerification.findUnique({
         where: { id: record.id },
-        data: { attempts: { increment: 1 } },
+        select: { attempts: true },
       });
-      const left = PHONE_MAX_ATTEMPTS - (record.attempts + 1);
+      const left = Math.max(0, PHONE_MAX_ATTEMPTS - (after?.attempts ?? PHONE_MAX_ATTEMPTS));
       return err(`الكود غير صحيح — باقي ${left} محاولات`, 400);
     }
 

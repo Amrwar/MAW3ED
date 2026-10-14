@@ -2,6 +2,7 @@ import { z } from "zod";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { normalisePhone } from "@/lib/phone";
 import { accountForVerifiedPhone, verifyLoginCode } from "@/lib/auth/login-code";
 import { startMobileSession } from "@/lib/auth/mobile-session";
 
@@ -36,6 +37,15 @@ export async function POST(req: Request) {
 
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return err("الكود غير صحيح أو انتهت صلاحيته", 401);
+
+    // And per number, so rotating addresses does not buy more guesses at
+    // one person's codes. The web "phone-otp" provider spends the same
+    // two buckets.
+    const phone = normalisePhone(parsed.data.phone);
+    if (phone) {
+      const byPhone = await rateLimit("phoneOtpVerify", phone);
+      if (!byPhone.ok) return tooManyRequests(byPhone);
+    }
 
     const result = await verifyLoginCode(parsed.data.phone, parsed.data.code);
     // One message for wrong, expired and used up, as on the website:

@@ -64,8 +64,16 @@ export interface TokenPair {
  *
  * `sessionId` ties the refresh token to a row that can be deleted. The
  * token carries it so a refresh can check the row still exists.
+ *
+ * `generation` is the session's refreshGeneration this token is good
+ * for. Rotation (lib/auth/mobile-refresh.ts) compares it with the row,
+ * which is what makes a refresh token usable once.
  */
-export async function issueTokens(claims: MobileTokenClaims, sessionId: string): Promise<TokenPair> {
+export async function issueTokens(
+  claims: MobileTokenClaims,
+  sessionId: string,
+  generation = 0,
+): Promise<TokenPair> {
   const key = secret();
   const now = Math.floor(Date.now() / 1000);
 
@@ -81,7 +89,7 @@ export async function issueTokens(claims: MobileTokenClaims, sessionId: string):
     .setExpirationTime(now + ACCESS_TTL_SECONDS)
     .sign(key);
 
-  const refreshToken = await new SignJWT({ sid: sessionId })
+  const refreshToken = await new SignJWT({ sid: sessionId, gen: generation })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(claims.sub)
     .setIssuer(ISSUER)
@@ -117,10 +125,19 @@ export async function readAccessToken(token: string): Promise<MobileTokenClaims 
   }
 }
 
+export interface RefreshTokenRead {
+  userId: string;
+  sessionId: string;
+  /**
+   * The generation the token was issued at. Tokens from before rotation
+   * existed carry none and read as 0 — the default every existing row
+   * was given — so they are honoured once and rotated from then on.
+   */
+  generation: number;
+}
+
 /** Read a refresh token and the session row it points at. */
-export async function readRefreshToken(
-  token: string,
-): Promise<{ userId: string; sessionId: string } | null> {
+export async function readRefreshToken(token: string): Promise<RefreshTokenRead | null> {
   try {
     const { payload } = await jwtVerify(token, secret(), {
       issuer: ISSUER,
@@ -128,7 +145,9 @@ export async function readRefreshToken(
     });
     const sid = payload.sid as string | undefined;
     if (!payload.sub || !sid) return null;
-    return { userId: payload.sub, sessionId: sid };
+    const gen = payload.gen === undefined ? 0 : payload.gen;
+    if (typeof gen !== "number" || !Number.isInteger(gen) || gen < 0) return null;
+    return { userId: payload.sub, sessionId: sid, generation: gen };
   } catch {
     return null;
   }

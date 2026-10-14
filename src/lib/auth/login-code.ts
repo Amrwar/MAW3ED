@@ -102,26 +102,40 @@ export async function verifyLoginCode(rawPhone: string, candidate: string): Prom
   if (!record) return { ok: false, reason: "no-code" };
 
   if (isExpired(record.expiresAt)) {
-    await db.loginCode.delete({ where: { id: record.id } });
+    await db.loginCode.deleteMany({ where: { id: record.id } });
     return { ok: false, reason: "expired" };
   }
 
-  if (record.attempts >= PHONE_MAX_ATTEMPTS) {
-    await db.loginCode.delete({ where: { id: record.id } });
+  // Spend the attempt BEFORE comparing, in one conditional statement.
+  // Reading `attempts` and writing it back afterwards let parallel
+  // guesses all see the same count and all get compared, so firing a
+  // few hundred at once walked straight past the ceiling. The database
+  // evaluates `attempts < MAX` and the increment together, so of any
+  // number of concurrent guesses at most MAX ever reach the comparison.
+  const claimed = await db.loginCode.updateMany({
+    where: { id: record.id, attempts: { lt: PHONE_MAX_ATTEMPTS } },
+    data: { attempts: { increment: 1 } },
+  });
+  if (claimed.count === 0) {
+    await db.loginCode.deleteMany({ where: { id: record.id } });
     return { ok: false, reason: "too-many-attempts" };
   }
 
   if (!secretMatches(candidate.trim(), record.codeHash)) {
-    const next = record.attempts + 1;
-    if (next >= PHONE_MAX_ATTEMPTS) {
-      await db.loginCode.delete({ where: { id: record.id } });
-    } else {
-      await db.loginCode.update({ where: { id: record.id }, data: { attempts: next } });
-    }
+    // Burn it once the last attempt is spent. Conditional on the stored
+    // count rather than on our own arithmetic, which another request
+    // may already have overtaken.
+    await db.loginCode.deleteMany({
+      where: { id: record.id, attempts: { gte: PHONE_MAX_ATTEMPTS } },
+    });
     return { ok: false, reason: "wrong" };
   }
 
-  await db.loginCode.delete({ where: { id: record.id } });
+  // Only the request that actually removes the row wins: two copies of
+  // the right code sent at once must not both sign somebody in.
+  const consumed = await db.loginCode.deleteMany({ where: { id: record.id } });
+  if (consumed.count === 0) return { ok: false, reason: "no-code" };
+
   return { ok: true, phone };
 }
 

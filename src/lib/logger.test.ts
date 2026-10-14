@@ -106,6 +106,11 @@ describe("log", () => {
     expect(records[0].fields.phone).not.toContain("0101234");
   });
 
+  it("scrubs a phone or email written into the message itself", () => {
+    log.info("sent to 201000000777 and +44 7700 900123, cc a@b.test");
+    expect(records[0].message).toBe("sent to [phone] and [phone], cc [email]");
+  });
+
   it("carries the error on error records", () => {
     const err = new Error("db down");
     log.error("query failed", err, { table: "booking" });

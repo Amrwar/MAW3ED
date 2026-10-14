@@ -31,6 +31,7 @@ import {
   claimWebhookEvent,
   closeWebhookEvent,
   failPayment,
+  releaseWebhookEvent,
   settlePayment,
 } from "@/lib/payments/ledger";
 import { renewalPeriodEnd } from "@/lib/payments/subscription";
@@ -44,7 +45,10 @@ interface PaymobWebhookBody {
   hmac?: string;
 }
 
-/** Always 200: an error code makes Paymob retry a delivery we handled. */
+/**
+ * 200 for every delivery we handled, whatever the outcome: an error code
+ * makes Paymob retry, which is only wanted when we failed to handle it.
+ */
 function ack(extra: Record<string, unknown> = {}) {
   return Response.json({ received: true, ...extra }, { status: 200 });
 }
@@ -61,11 +65,17 @@ export async function POST(req: Request) {
     return err("invalid JSON", 400);
   }
 
+  // `null` or a bare number is valid JSON and would throw on `.type`.
+  if (typeof body !== "object" || body === null) return err("invalid payload", 400);
   if (body.type !== "TRANSACTION") return ack();
 
   const obj = body.obj;
   const hmac = body.hmac ?? new URL(req.url).searchParams.get("hmac") ?? "";
   if (!obj) return err("missing transaction object", 400);
+  // The signature check reads nested fields, so a body without them
+  // must be turned away here as malformed rather than throw there and
+  // come back as a 500 Paymob would keep retrying.
+  if (!isTransactionShaped(obj)) return err("malformed transaction object", 400);
 
   // ── 1. Signature ──────────────────────────────────────────────────────────
   if (!verifyWebhookHmac(obj, hmac)) {
@@ -93,12 +103,28 @@ export async function POST(req: Request) {
     await closeWebhookEvent("PAYMOB", transactionId, outcome);
     return ack({ outcome });
   } catch (e) {
-    // The delivery stays claimed and unprocessed, which is what a human
-    // looks for when a customer says they paid and nothing happened.
-    log.error("[paymob webhook] handler threw", e);
-    await closeWebhookEvent("PAYMOB", transactionId, "error");
-    return ack({ outcome: "error" });
+    // Something on our side broke — the database, most likely — and
+    // the money may well have arrived. Acknowledging would make that
+    // permanent: Paymob would stop retrying, and a manual resend would
+    // be dropped as a duplicate of the claim. So the claim is released
+    // and the answer is a 500, which Paymob retries. Settling is
+    // idempotent, so a retry after a partial run cannot pay twice.
+    log.error("[paymob webhook] handler threw; releasing for retry", { transactionId, providerOrderId, e });
+    await releaseWebhookEvent("PAYMOB", transactionId);
+    return err("handler error", 500);
   }
+}
+
+/** Enough structure for the HMAC to be computed without throwing. */
+function isTransactionShaped(obj: unknown): obj is PaymobTransactionObj {
+  if (typeof obj !== "object" || obj === null) return false;
+  const o = obj as Record<string, unknown>;
+  return (
+    o.id !== undefined && o.id !== null &&
+    typeof o.order === "object" && o.order !== null &&
+    (o.order as Record<string, unknown>).id !== undefined &&
+    typeof o.source_data === "object" && o.source_data !== null
+  );
 }
 
 // ─── Routing one transaction to its payment ───────────────────────────────────
