@@ -1,3 +1,4 @@
+import { hrefForBusiness } from "./recipients";
 import type { NotificationChannel } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
@@ -212,7 +213,10 @@ export function pushData(event: NotificationEvent, audience: Audience, bookingId
     data.path = "/account/upcoming";
     if (bookingId) data.bookingId = bookingId;
   } else {
-    data.path = event.type.startsWith("subscription.") ? "/dashboard/settings" : "/dashboard/bookings";
+    // The booking it is about, as the in-app notification links it: the
+    // app opens it on the business side, where the server checks this
+    // person may see it.
+    data.path = hrefForBusiness(event);
   }
   return data;
 }

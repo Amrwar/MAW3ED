@@ -195,6 +195,10 @@ function Flow({
   resumed: boolean;
   onLeave: () => void;
 }) {
+  // A link that named a service the business no longer offers (deleted,
+  // or taken off the menu): say so, rather than silently starting over.
+  const { service: linkedService } = useLocalSearchParams<{ service?: string }>();
+  const linkServiceGone = Boolean(linkedService) && !p.services.some((s) => s.id === linkedService);
   const insets = useSafeAreaInsets();
   const { lang } = useLocale();
   const ar = lang === "ar";
@@ -762,6 +766,14 @@ function Flow({
         contentContainerStyle={[styles.body, { paddingBottom: 140 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
       >
+        {linkServiceGone && step === "service" ? (
+          <Notice icon="alert-circle-outline" tone="warn">
+            <Text variant="body">
+              {T("الخدمة اللي في اللينك مش متاحة دلوقتي. اختار خدمة من اللي موجودة.", "The service in that link isn't offered any more. Choose one of these.")}
+            </Text>
+          </Notice>
+        ) : null}
+
         {showResumed ? (
           <Notice icon="bookmark-outline">
             <Text variant="body">{T("كمّلنا من مكان ما وقفت.", "Picked up where you left off.")}</Text>

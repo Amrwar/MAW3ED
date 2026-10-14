@@ -244,7 +244,7 @@ export function getSiteUrl(): string {
     process.env.AUTH_URL?.trim() ||
     process.env.NEXTAUTH_URL?.trim() ||
     process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    "https://maw3ed.net";
+    "https://www.maw3ed.net";
   return raw.replace(/\/+$/, "");
 }
 

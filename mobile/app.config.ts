@@ -45,8 +45,17 @@ function googleServicesFile(): string | undefined {
   return existsSync("./google-services.json") ? "./google-services.json" : undefined;
 }
 
-/** The domain whose links open this build. Production only — see ios.associatedDomains. */
-const APP_LINK_HOSTS = APP_ENV === "production" ? ["www.maw3ed.net", "maw3ed.net"] : [];
+/**
+ * The domain whose links open this build. Production only — see
+ * ios.associatedDomains.
+ *
+ * www only. maw3ed.net redirects to www, and neither Apple nor Google
+ * follows a redirect when fetching the verification files, so the bare
+ * domain can never verify — and on Android 11 and older one unverified
+ * host in a filter turns app links off for all of them. Every link the
+ * system writes is www (src/lib/url.ts).
+ */
+const APP_LINK_HOSTS = APP_ENV === "production" ? ["www.maw3ed.net"] : [];
 
 const NAME: Record<AppEnv, string> = {
   development: "موعد Dev",
@@ -149,7 +158,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
               action: "VIEW",
               autoVerify: true,
               data: APP_LINK_HOSTS.flatMap((host) =>
-                ["/company", "/booking"].map((pathPrefix) => ({ scheme: "https", host, pathPrefix })),
+                // With the slash, so /company-pricing or /bookings would not match.
+                ["/company/", "/booking/"].map((pathPrefix) => ({ scheme: "https", host, pathPrefix })),
               ),
               category: ["BROWSABLE", "DEFAULT"],
             },

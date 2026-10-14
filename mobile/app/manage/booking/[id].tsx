@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   ConfirmDialog,
+  EmptyState,
   ErrorState,
   Icon,
   SkeletonCard,
@@ -84,6 +85,14 @@ export default function ManageBooking() {
         <View style={styles.body}>
           {booking.isLoading ? (
             <SkeletonCard />
+          ) : booking.error instanceof ApiError && booking.error.status === 404 ? (
+            // Gone, or not this person's to see: the same answer either way.
+            <EmptyState
+              icon="calendar-clear-outline"
+              title={T("الحجز ده مش متاح", "This booking isn't available")}
+              body={T("ممكن يكون اتشال، أو مش من حجوزاتك.", "It may have been removed, or it isn't one of yours.")}
+              action={<Button label={T("التقويم", "Calendar")} variant="outline" onPress={() => router.replace("/(business)/calendar")} />}
+            />
           ) : (
             <ErrorState error={booking.error} onRetry={() => booking.refetch()} />
           )}

@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Image, Platform, ScrollView, Share, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import { countVisit } from "@/features/profile/visit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Avatar,
@@ -76,8 +77,15 @@ type Service = PublicProfile["services"][number];
 const SHOWN_REVIEWS = 3;
 
 export default function BusinessScreen() {
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { slug, src } = useLocalSearchParams<{ slug: string; src?: string }>();
   const profile = useBusinessProfile(slug);
+  // One visit per opening, credited to the link that brought them here.
+  const counted = useRef(false);
+  useEffect(() => {
+    if (counted.current || !profile.data) return;
+    counted.current = true;
+    countVisit(profile.data.slug, src);
+  }, [profile.data, src]);
   const insets = useSafeAreaInsets();
   const { lang } = useLocale();
   const ar = lang === "ar";
