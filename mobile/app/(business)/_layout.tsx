@@ -1,4 +1,5 @@
 import { Redirect, Tabs } from "expo-router";
+import { useSignedInGuard } from "@/features/auth/useSignedInGuard";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { bottomNavOptions, tabIcon, useLocale } from "@/design";
 import { useBusinessAccess } from "@/features/business/access";
@@ -22,8 +23,12 @@ export default function BusinessLayout() {
   const { lang } = useLocale();
   const access = useBusinessAccess();
   const works = Boolean(user?.businessId || user?.staff);
+  // Reached by a link while signed out: sign in and come back (and home
+  // after signing out from in here).
+  const door = useSignedInGuard();
 
-  if (restoring) return null;
+  if (door === "left") return <Redirect href="/" />;
+  if (door === "wait" || restoring || !user) return null;
   if (!works) return <Redirect href="/(customer)" />;
 
   const TABS = [

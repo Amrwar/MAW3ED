@@ -8,11 +8,15 @@
  * site is called — if one changes, change both.
  */
 
+// `||`, as in env.ts: an empty variable is "not set", not the origin.
+// www, never the bare domain: maw3ed.net redirects to www, and iOS does
+// not follow a redirect into the app, so a bare-domain link would always
+// open the browser.
 const BASE = (
-  process.env.AUTH_URL ??
-  process.env.NEXTAUTH_URL ??
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  "https://maw3ed.net"
+  process.env.AUTH_URL?.trim() ||
+  process.env.NEXTAUTH_URL?.trim() ||
+  process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+  "https://www.maw3ed.net"
 ).replace(/\/+$/, "");
 
 /** Full absolute URL for a customer's booking management page */

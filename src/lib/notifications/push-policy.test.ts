@@ -50,10 +50,14 @@ describe("what a push carries", () => {
     expect(JSON.stringify(data)).not.toMatch(/booking\/[a-f0-9]{16,}/);
   });
 
-  it("sends an owner to the dashboard", () => {
+  it("sends an owner to the booking it is about", () => {
     expect(pushData({ type: "booking.created", bookingId: "bk1" }, "business", "bk1")).toEqual({
       kind: "booking.created",
-      path: "/dashboard/bookings",
+      path: "/dashboard/bookings?booking=bk1",
     });
+  });
+
+  it("sends an owner to settings about the subscription", () => {
+    expect(pushData({ type: "subscription.expired", businessId: "b1" }, "business", null).path).toBe("/dashboard/settings");
   });
 });

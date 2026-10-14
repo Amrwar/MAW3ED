@@ -33,8 +33,9 @@ describe("routeFor", () => {
     expect(routeFor("/account")).toBe("/(customer)/account");
   });
 
-  it("opens a business link on the business screen", () => {
-    expect(routeFor("https://www.maw3ed.net/company/qa-salon?src=qr")).toBe("/business/qa-salon");
+  it("opens a business link on the business screen, keeping where it came from", () => {
+    expect(routeFor("https://www.maw3ed.net/company/qa-salon?src=qr")).toBe("/business/qa-salon?src=qr");
+    expect(routeFor("https://www.maw3ed.net/company/qa-salon?ref=instagram")).toBe("/business/qa-salon?src=instagram");
     expect(routeFor("maw3ed://company/qa-salon")).toBe("/business/qa-salon");
     // slugify() keeps underscores (src/lib/utils.ts).
     expect(routeFor("https://maw3ed.net/company/qa_salon")).toBe("/business/qa_salon");
@@ -57,7 +58,38 @@ describe("routeFor", () => {
     expect(routeFor("")).toBe("/");
   });
 
-  it("ignores trailing slashes and query strings", () => {
+  it("ignores trailing slashes and query strings it has no use for", () => {
     expect(routeFor("/dashboard/calendar/?view=week")).toBe("/(business)/calendar");
+    expect(routeFor("/company/qa-salon?utm_source=x&evil=<script>")).toBe("/business/qa-salon");
+  });
+
+  it("opens a service link straight into booking that service", () => {
+    // The web's booking link: profile?service=…&staff=…#booking
+    expect(routeFor("https://www.maw3ed.net/company/qa-salon?service=cmv123abc&staff=qa-salon-staff-0#booking")).toBe(
+      "/book/qa-salon?service=cmv123abc&staff=qa-salon-staff-0",
+    );
+    expect(routeFor("https://www.maw3ed.net/company/qa-salon?service=cmv123abc&src=qr")).toBe("/book/qa-salon?service=cmv123abc&src=qr");
+  });
+
+  it("drops a preselection that is not an id rather than passing it on", () => {
+    expect(routeFor("/company/qa-salon?service=../../x")).toBe("/business/qa-salon");
+    expect(routeFor("/company/qa-salon?service=cmv1&staff=a b")).toBe("/book/qa-salon?service=cmv1");
+    expect(routeFor("/company/qa-salon?src=<x>")).toBe("/business/qa-salon");
+  });
+
+  it("opens a booking's reschedule and review steps from their links", () => {
+    const token = "b".repeat(48);
+    // How the website writes them: anchors on the booking page.
+    expect(routeFor(`https://www.maw3ed.net/booking/${token}#review`)).toBe(`/booking/${token}/review`);
+    expect(routeFor(`https://www.maw3ed.net/booking/${token}#reschedule`)).toBe(`/booking/${token}/reschedule`);
+    expect(routeFor(`https://www.maw3ed.net/booking/${token}#cancel`)).toBe(`/booking/${token}`);
+    expect(routeFor(`https://www.maw3ed.net/booking/${token}/reschedule`)).toBe(`/booking/${token}/reschedule`);
+    expect(routeFor(`/booking/${token}/review`)).toBe(`/booking/${token}/review`);
+    expect(routeFor(`/booking/${token}/delete`)).toBe("/(customer)/bookings");
+  });
+
+  it("opens the booking a business notification is about, on the business side", () => {
+    expect(routeFor("/dashboard/bookings?booking=cmv70wd2z0006z0nthl5e4222")).toBe("/manage/booking/cmv70wd2z0006z0nthl5e4222");
+    expect(routeFor("/dashboard/bookings?booking=../x")).toBe("/(business)/calendar");
   });
 });

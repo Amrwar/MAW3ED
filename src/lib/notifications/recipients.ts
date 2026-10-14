@@ -157,6 +157,8 @@ function wantsEvent(b: BusinessSubject, event: EventType): boolean {
 /** The business's in-app notification should land on the right page. */
 export function hrefForBusiness(event: NotificationEvent): string {
   if (event.type.startsWith("subscription.")) return "/dashboard/settings";
-  if (event.type.startsWith("payment.")) return "/dashboard/bookings";
+  // Which booking, as a query the web's bookings page ignores and the
+  // app reads to open that booking (mobile/lib/links.ts).
+  if ("bookingId" in event && event.bookingId) return `/dashboard/bookings?booking=${encodeURIComponent(event.bookingId)}`;
   return "/dashboard/bookings";
 }
