@@ -8,6 +8,18 @@
 
 export type AdminRole = "MODERATOR" | "ADMIN" | "SUPER_ADMIN";
 
+export type StaffRole = "MANAGER" | "PROVIDER";
+
+/** A place on a business's team (src/lib/business-access.ts StaffSummary). */
+export interface StaffPlace {
+  businessId: string;
+  businessName: string;
+  role: StaffRole;
+  staffMemberId: string;
+  /** What the server will let this person do; the app hides the rest. */
+  permissions: string[];
+}
+
 export interface AuthUser {
   id: string;
   name: string | null;
@@ -15,6 +27,8 @@ export interface AuthUser {
   /** The business this account owns, if it owns one. */
   businessId: string | null;
   adminRole: AdminRole | null;
+  /** Staff at somebody else's business; null for owners and customers. */
+  staff?: StaffPlace | null;
 }
 
 /**
@@ -36,7 +50,9 @@ export function rolesFor(user: AuthUser | null): AppRole[] {
   if (!user) return [];
   const roles: AppRole[] = [];
   if (user.adminRole) roles.push("admin");
-  if (user.businessId) roles.push("business");
+  // Owners and their staff share the business screens; what each may
+  // do there is the server's permission list (features/business/access.ts).
+  if (user.businessId || user.staff) roles.push("business");
   // Everybody is a customer: an owner still books appointments.
   roles.push("customer");
   return roles;

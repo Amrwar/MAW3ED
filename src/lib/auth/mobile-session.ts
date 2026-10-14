@@ -1,3 +1,4 @@
+import { staffSummaryFor, type StaffSummary } from "@/lib/business-access";
 import { db } from "@/lib/db";
 import { claimsForUser, issueTokens, MOBILE_TOKEN_TTL, type TokenPair } from "@/lib/auth/mobile-token";
 
@@ -23,6 +24,8 @@ export interface MobileLogin extends TokenPair {
     email: string | null;
     businessId: string | null;
     adminRole: string | null;
+    /** Staff at a business, with their role there; null otherwise. */
+    staff: StaffSummary | null;
   };
 }
 
@@ -57,6 +60,7 @@ export async function startMobileSession(
       email: user.email,
       businessId: claims.businessId,
       adminRole: claims.adminRole,
+      staff: await staffSummaryFor(user.id),
     },
   };
 }

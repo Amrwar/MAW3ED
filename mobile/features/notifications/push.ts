@@ -176,3 +176,17 @@ export async function bookingTokenFor(bookingId: string): Promise<string | null>
     return null;
   }
 }
+
+/**
+ * The same booking on the business side: the id when this person may
+ * open it there (owner, or staff whose scope includes it), else null.
+ * The server decides; a 404 or 403 is simply "not yours".
+ */
+export async function businessBookingFor(bookingId: string): Promise<string | null> {
+  try {
+    const b = await api.get<{ id: string }>(`/api/business/bookings/${encodeURIComponent(bookingId)}`);
+    return b.id;
+  } catch {
+    return null;
+  }
+}

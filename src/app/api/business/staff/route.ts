@@ -7,6 +7,7 @@ import {
   wouldExceed,
 } from "@/lib/plans";
 import { requireBusiness } from "@/lib/api";
+import { can, requireBusinessAccess } from "@/lib/business-access";
 import { db } from "@/lib/db";
 
 /**
@@ -16,9 +17,17 @@ import { db } from "@/lib/db";
  * instead of trusting an id carried in a long-lived token.
  */
 
+/**
+ * GET /api/business/staff — the team, for the owner and any staff.
+ *
+ * Who may sign in as whom (the login phone, the linked account) is the
+ * owner's business only: staff see their colleagues' names, roles and
+ * services, not their phone numbers.
+ */
 export async function GET() {
   try {
-    const { business } = await requireBusiness();
+    const { business, actor } = await requireBusinessAccess("staff.read");
+    const owner = can(actor, "staff.manageAccess");
 
     const staff = await db.staffMember.findMany({
       where:   { businessId: business.id },
@@ -29,7 +38,11 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(staff);
+    return NextResponse.json(
+      staff.map(({ loginPhone, userId, ...m }) =>
+        owner ? { ...m, loginPhone, linked: Boolean(userId) } : { ...m, isYou: m.id === actor.staffMemberId },
+      ),
+    );
   } catch (e) {
     if (e instanceof Response) return e;
     throw e;

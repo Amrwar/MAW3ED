@@ -84,6 +84,9 @@ async function dispatch(event: NotificationEvent): Promise<DispatchOutcome[]> {
 
   const recipients: Recipient[] = [];
   for (const audience of EVENT_AUDIENCE[event.type]) {
+    // The business is not told — on any channel — about a move it made
+    // itself; the customer copy is the only one with a reader.
+    if (audience === "business" && event.type === "booking.rescheduled" && event.by === "business") continue;
     if (audience === "customer") {
       if (!booking) continue; // A subscription has no customer.
       recipients.push(customerRecipient(booking, await customerPrefs(booking.customerUserId)));

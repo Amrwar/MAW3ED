@@ -23,7 +23,7 @@ describe("ourPath", () => {
 describe("routeFor", () => {
   it("sends the notification links the server writes to the right tab", () => {
     // src/lib/notifications/recipients.ts
-    expect(routeFor("/dashboard/bookings")).toBe("/(business)/bookings");
+    expect(routeFor("/dashboard/bookings")).toBe("/(business)/calendar");
     expect(routeFor("/dashboard/settings")).toBe("/(business)/account");
     // Too short to be a token: the nearest screen, not a broken one.
     expect(routeFor("/booking/0123abcd")).toBe("/(customer)/bookings");

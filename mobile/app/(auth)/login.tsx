@@ -214,6 +214,12 @@ function BusinessForm() {
         onPress={() => openSite("/signup")}
         fullWidth
       />
+      {/* Staff have no email login: the owner gives them access by phone. */}
+      <Text variant="caption" tone="subtle" align="center">
+        {ar
+          ? "في فريق نشاط؟ سجّل دخول برقم موبايلك من تبويب «عميل» — نفس الرقم اللي صاحب النشاط ضافه."
+          : "On a business's team? Sign in with your phone on the Customer tab — the number the owner added."}
+      </Text>
     </>
   );
 }

@@ -1,181 +1,330 @@
-import { useMemo } from "react";
-import { useRouter } from "expo-router";
-import { RefreshControl, ScrollView, View, StyleSheet } from "react-native";
-import { Screen, Text, Card, Button, ListState, colors, spacing } from "@/design";
-import { BookingCard } from "@/features/bookings/BookingCard";
-import { useAnalytics, useBusinessBookings } from "@/features/business/queries";
-import { money, num } from "@/lib/format";
+import { useState } from "react";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  Icon,
+  IconButton,
+  SkeletonCard,
+  Text,
+  Touchable,
+  colors,
+  spacing,
+  useLayout,
+  useLocale,
+  useToast,
+} from "@/design";
+import { useBusinessAccess } from "@/features/business/access";
+import {
+  BookingRow,
+  SectionHead,
+  Stat,
+  nameOf,
+  openBooking,
+  roleLabel,
+} from "@/features/business/components";
+import { useOverview, useUpdateBookingStatus } from "@/features/business/queries";
+import { longDate, shortDate, time } from "@/lib/format";
 
 /**
- * The owner's home.
+ * Today — the screen a business opens in the morning.
  *
- * Today, first: what is booked, and what needs confirming. An owner
- * opening this on the shop floor wants the next hour, not a chart.
- *
- * The month's numbers sit underneath and come from the same analytics
- * endpoint the dashboard uses, so the two cannot disagree. Every figure
- * is measured — there is no target, no projection, and nothing invented
- * to fill a card.
+ * In the order the morning asks: how many today, who is next, what is
+ * waiting on me, what changed overnight, then the whole day in order.
+ * One request (GET /api/business/overview), scoped by the server to what
+ * this person may see: a provider's "today" is their own diary.
  */
-export default function BusinessHome() {
-  const router = useRouter();
+export default function Today() {
+  const { lang } = useLocale();
+  const ar = lang === "ar";
+  const T = (a: string, e: string) => (ar ? a : e);
+  const { contentWidth, gutter } = useLayout();
+  const insets = useSafeAreaInsets();
+  const access = useBusinessAccess();
+  const overview = useOverview();
+  const confirm = useUpdateBookingStatus();
+  const toast = useToast();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const o = overview.data;
 
-  // Cairo's date, not the device's: a phone set to another timezone
-  // would otherwise ask for the wrong day's bookings.
-  const today = useMemo(() => cairoToday(), []);
-  const monthStart = useMemo(() => `${today.slice(0, 7)}-01`, [today]);
+  const confirmOne = (id: string) => {
+    setBusyId(id);
+    confirm.mutate(
+      { id, status: "CONFIRMED" },
+      {
+        onSuccess: () =>
+          toast({
+            message: T(
+              "اتأكد الحجز، والعميل هيوصله إشعار.",
+              "Confirmed — the customer will be told.",
+            ),
+            tone: "ok",
+          }),
+        onError: () =>
+          toast({
+            message: T("معرفناش نأكد الحجز. جرّب تاني.", "Couldn't confirm. Try again."),
+            tone: "danger",
+          }),
+        onSettled: () => setBusyId(null),
+      },
+    );
+  };
 
-  const todays = useBusinessBookings({ date: today });
-  const analytics = useAnalytics(monthStart, today);
-
-  const bookings = todays.data?.bookings ?? [];
-  const awaiting = bookings.filter((b) => b.status === "PENDING");
-  const kpis = analytics.data?.kpis;
+  const column = {
+    width: "100%" as const,
+    maxWidth: contentWidth + gutter * 2,
+    alignSelf: "center" as const,
+    paddingHorizontal: gutter,
+  };
+  const greeting =
+    new Date().getHours() < 12 ? T("صباح الخير", "Good morning") : T("مساء الخير", "Good evening");
+  const who = o?.actor.staffName ? nameOf(lang, o.actor.staffName) : null;
 
   return (
-    <Screen
-      scroll={false}
-      hero={
-        <Text variant="display" tone="inverse" accessibilityRole="header">
-          النهاردة
-        </Text>
+    <ScrollView
+      style={styles.page}
+      contentContainerStyle={{ paddingBottom: spacing.xxxl }}
+      refreshControl={
+        <RefreshControl
+          refreshing={overview.isRefetching}
+          onRefresh={() => overview.refetch()}
+          tintColor={colors.inverse}
+        />
       }
     >
-
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={todays.isRefetching}
-            onRefresh={() => {
-              todays.refetch();
-              analytics.refetch();
-            }}
-            tintColor={colors.jade}
-          />
-        }
-      >
-        {/* ── The month, measured ── */}
-        <View style={styles.tiles}>
-          <Tile
-            label="حجوزات الشهر"
-            value={kpis ? num(kpis.totalBookings) : "—"}
-            loading={analytics.isLoading}
-          />
-          <Tile
-            label="إيراد مكتمل"
-            value={kpis ? (money(kpis.completedRevenue, kpis.currency) ?? "—") : "—"}
-            loading={analytics.isLoading}
-          />
-        </View>
-
-        {/* Only when something is actually waiting. A zero here would
-            be a nudge to do nothing. */}
-        {awaiting.length > 0 ? (
-          <Card>
-            <Text variant="bodyBold">{num(awaiting.length)} في انتظار التأكيد</Text>
-            <Text variant="caption" tone="muted" style={styles.tileHint}>
-              العميل مستني ردّك.
-            </Text>
-            <Button
-              label="راجعهم"
-              variant="outline"
-              style={styles.cardButton}
-              onPress={() => router.push("/(business)/bookings")}
-            />
-          </Card>
-        ) : null}
-
-        <Text variant="heading" style={styles.sectionTitle}>
-          مواعيد النهاردة
-        </Text>
-
-        <ListState
-          loading={todays.isLoading}
-          error={todays.error}
-          isEmpty={bookings.length === 0}
-          emptyTitle="مفيش مواعيد النهاردة"
-          emptyBody="أول ما حد يحجز هيظهر هنا."
-          onRetry={() => todays.refetch()}
-        >
-          <View style={styles.list}>
-            {bookings.map((booking) => (
-              <BookingCard
-                key={booking.id}
-                title={booking.customerName}
-                subtitle={booking.serviceName}
-                date={booking.date}
-                startTime={booking.startTime}
-                endTime={booking.endTime}
-                status={booking.status}
-                price={booking.totalPrice}
-                currency={booking.currency}
-                meta={booking.staffName ?? booking.tableName}
-                onPress={() => router.push("/(business)/bookings")}
-              />
-            ))}
+      {/* ── Night hero: who, where, today's date ── */}
+      <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>
+        <View style={column}>
+          <View style={styles.heroTop}>
+            <View style={styles.flex}>
+              <Text variant="label" tone="inverseMuted">
+                {who ? `${greeting}، ${who}` : greeting}
+              </Text>
+              <Text variant="title" tone="inverse" accessibilityRole="header" numberOfLines={2}>
+                {o
+                  ? nameOf(lang, { nameAr: o.business.nameAr, nameEn: o.business.nameEn })
+                  : T("النهاردة", "Today")}
+              </Text>
+            </View>
+            {access.role === "OWNER" ? (
+              <View>
+                <IconButton
+                  icon="notifications-outline"
+                  variant="night"
+                  label={
+                    o?.counts.unreadNotifications
+                      ? T(
+                          `الإشعارات، ${o.counts.unreadNotifications} جديد`,
+                          `Notifications, ${o.counts.unreadNotifications} new`,
+                        )
+                      : T("الإشعارات", "Notifications")
+                  }
+                  onPress={() => router.push("/(business)/notifications")}
+                />
+                {o?.counts.unreadNotifications ? <View style={styles.dot} /> : null}
+              </View>
+            ) : null}
           </View>
-        </ListState>
-      </ScrollView>
-    </Screen>
-  );
-}
+          <View style={styles.heroMeta}>
+            <Text variant="body" style={{ color: colors.gold }}>
+              {o ? longDate(o.today, lang) : " "}
+            </Text>
+            {access.role !== "OWNER" ? (
+              <Badge label={roleLabel(access.role, lang)} tone="neutral" />
+            ) : null}
+          </View>
+        </View>
+      </View>
 
-function Tile({
-  label,
-  value,
-  loading,
-}: {
-  label: string;
-  value: string;
-  loading: boolean;
-}) {
-  return (
-    <View style={styles.tile}>
-      <Text variant="caption" tone="subtle">
-        {label}
-      </Text>
-      {/* An em dash while loading, never a zero: "0 حجوزات" is a claim,
-          and it would be the wrong one. */}
-      <Text variant="title" style={styles.tileValue}>
-        {loading ? "—" : value}
-      </Text>
-    </View>
-  );
-}
+      <View style={[column, styles.body]}>
+        {overview.isLoading ? (
+          <>
+            <SkeletonCard />
+            <SkeletonCard />
+          </>
+        ) : overview.error || !o ? (
+          <ErrorState error={overview.error} onRetry={() => overview.refetch()} />
+        ) : (
+          <>
+            {/* ── The numbers that start the day ── */}
+            <View style={styles.stats}>
+              <Stat
+                value={o.counts.today}
+                label={T("حجز النهارده", "today")}
+                onPress={() => router.push("/(business)/calendar")}
+              />
+              <Stat
+                value={o.counts.pending}
+                label={T("مستني تأكيد", "awaiting confirmation")}
+                tone={o.counts.pending ? "warn" : "plain"}
+              />
+              <Stat
+                value={o.counts.cancelledRecent}
+                label={T("اتلغى آخر ٢٤ ساعة", "cancelled, last 24h")}
+                tone={o.counts.cancelledRecent ? "danger" : "plain"}
+              />
+            </View>
 
-/**
- * Today in Cairo, as "YYYY-MM-DD".
- *
- * The whole product runs on Africa/Cairo — the server stores dates in
- * it and the booking rules are written against it. Asking the device
- * would show a traveller the wrong day's list.
- */
-function cairoToday(): string {
-  // en-CA gives ISO-shaped output, which is what the API expects.
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Africa/Cairo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+            {/* ── Who is next ── */}
+            {o.next ? (
+              <Card
+                onPress={() => openBooking(o.next!.id)}
+                accessibilityLabel={T("الميعاد الجاي", "Next appointment")}
+                tone="night"
+                style={styles.next}
+              >
+                <Text variant="label" style={{ color: colors.gold }}>
+                  {T("الميعاد الجاي", "Next appointment")}
+                </Text>
+                <View style={styles.nextRow}>
+                  <Text variant="display" tone="inverse">
+                    {time(o.next.startTime, lang)}
+                  </Text>
+                  <View style={styles.flex}>
+                    <Text variant="bodyBold" tone="inverse" numberOfLines={1}>
+                      {o.next.customerName}
+                    </Text>
+                    <Text variant="caption" tone="inverseMuted" numberOfLines={1}>
+                      {[nameOf(lang, o.next.service), nameOf(lang, o.next.staffMember)]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  </View>
+                  <Icon name="chevron-forward" color={colors.gold} />
+                </View>
+              </Card>
+            ) : null}
+
+            {/* ── Waiting on the business ── */}
+            {o.pending.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHead title={T("مستني تأكيدك", "Waiting for you")} />
+                {o.pending.map((p) => (
+                  // The row opens the booking; Confirm sits beside it, not
+                  // inside it — a button within a button is one control to
+                  // a screen reader and invalid on the web.
+                  <Card key={p.id} padded={false} style={styles.pendingRow}>
+                    <Touchable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${p.customerName}، ${shortDate(p.date, lang)} ${time(p.startTime, lang)}`}
+                      onPress={() => openBooking(p.id)}
+                      style={styles.pendingOpen}
+                    >
+                      <Text variant="bodyBold" numberOfLines={1}>
+                        {p.customerName}
+                      </Text>
+                      <Text variant="caption" tone="subtle" numberOfLines={1}>
+                        {`${p.date === o.today ? T("النهارده", "Today") : shortDate(p.date, lang)} · ${time(p.startTime, lang)} · ${nameOf(lang, p.service)}`}
+                      </Text>
+                    </Touchable>
+                    {access.can("bookings.confirm") ? (
+                      <Button
+                        size="sm"
+                        label={T("أكّد", "Confirm")}
+                        loading={busyId === p.id}
+                        onPress={() => confirmOne(p.id)}
+                        style={styles.pendingButton}
+                      />
+                    ) : null}
+                  </Card>
+                ))}
+              </View>
+            ) : null}
+
+            {/* ── Changed since yesterday ── */}
+            {o.cancelled.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHead title={T("اتلغى مؤخراً", "Recently cancelled")} />
+                {o.cancelled.map((c) => (
+                  <Card
+                    key={c.id}
+                    onPress={() => openBooking(c.id)}
+                    accessibilityLabel={c.customerName}
+                    style={styles.cancelled}
+                  >
+                    <Icon name="close-circle-outline" color={colors.danger} />
+                    <Text variant="body" numberOfLines={1} style={styles.flex}>
+                      {`${c.customerName} · ${shortDate(c.date, lang)} ${time(c.startTime, lang)}`}
+                    </Text>
+                  </Card>
+                ))}
+              </View>
+            ) : null}
+
+            {/* ── The whole day ── */}
+            <View style={styles.section}>
+              <SectionHead
+                title={T("جدول النهارده", "Today's schedule")}
+                action={T("التقويم", "Calendar")}
+                onAction={() => router.push("/(business)/calendar")}
+              />
+              {o.todays.length === 0 ? (
+                <EmptyState
+                  icon="sunny-outline"
+                  title={T("مفيش حجوزات النهارده", "Nothing booked today")}
+                  body={T(
+                    "أي حجز جديد هيظهر هنا على طول.",
+                    "New bookings show up here as they come in.",
+                  )}
+                />
+              ) : (
+                o.todays.map((b) => (
+                  <BookingRow
+                    key={b.id}
+                    id={b.id}
+                    startTime={b.startTime}
+                    endTime={b.endTime}
+                    customerName={b.customerName}
+                    service={nameOf(lang, b.service) ?? ""}
+                    staff={access.can("bookings.readAll") ? nameOf(lang, b.staffMember) : null}
+                    branch={nameOf(lang, b.branch)}
+                    status={b.status}
+                    highlight={o.next?.id === b.id}
+                  />
+                ))
+              )}
+            </View>
+          </>
+        )}
+      </View>
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
-  tiles: { flexDirection: "row", gap: spacing.md },
-  tile: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: spacing.lg,
+  page: { flex: 1, backgroundColor: colors.ground },
+  flex: { flex: 1 },
+  hero: {
+    backgroundColor: colors.night,
+    paddingBottom: spacing.xxl,
+    borderBottomStartRadius: 32,
+    borderBottomEndRadius: 32,
   },
-  tileValue: { marginTop: spacing.xs },
-  tileHint: { marginTop: spacing.xs },
-  cardButton: { marginTop: spacing.lg },
-  sectionTitle: { marginTop: spacing.sm },
-  list: { gap: spacing.md },
+  heroTop: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
+  heroMeta: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
+  dot: {
+    position: "absolute",
+    top: 10,
+    end: 10,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.gold,
+    borderWidth: 2,
+    borderColor: colors.night,
+  },
+  body: { marginTop: -spacing.xl, gap: spacing.lg },
+  stats: { flexDirection: "row", gap: spacing.sm },
+  next: { gap: spacing.sm },
+  nextRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  section: { gap: spacing.sm },
+  pendingRow: { flexDirection: "row", alignItems: "center" },
+  pendingOpen: { flex: 1, padding: spacing.lg, gap: 2 },
+  pendingButton: { marginEnd: spacing.md },
+  cancelled: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
 });
