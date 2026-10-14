@@ -3,7 +3,7 @@ import { addDays, addMonths, cairoToday, monthGrid, weekdayHeaders, weekdayOf } 
 import { layoutFor } from "./layout";
 import { money, time, duration, weekdayHeading, relativeTime } from "@/lib/format";
 
-vi.mock("@expo/vector-icons", () => ({ Ionicons: () => null }));
+vi.mock("@expo/vector-icons/Ionicons", () => ({ default: () => null }));
 vi.mock("react-native", () => ({ StyleSheet: { create: (s: unknown) => s }, View: () => null }));
 vi.mock("@react-native-async-storage/async-storage", () => ({ default: {} }));
 const { isDirectional } = await import("./components/Icon");

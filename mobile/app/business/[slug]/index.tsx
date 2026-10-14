@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Image, Platform, ScrollView, Share, StyleSheet, View } from "react-native";
+import { sized } from "@/lib/image";
+import { Image, Platform, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { countVisit } from "@/features/profile/visit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -476,12 +477,13 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
 
 function Cover({ uri, count, onOpen }: { uri: string | null; count: number; onOpen?: () => void }) {
   const { lang } = useLocale();
+  const { width: screen } = useWindowDimensions();
   const [failed, setFailed] = useState(false);
   const image =
     !uri || failed ? (
       <View style={[styles.cover, styles.coverFallback]} />
     ) : (
-      <Image source={{ uri }} style={styles.cover} onError={() => setFailed(true)} accessibilityElementsHidden importantForAccessibility="no" />
+      <Image source={{ uri: sized(uri, screen) }} style={styles.cover} onError={() => setFailed(true)} accessibilityElementsHidden importantForAccessibility="no" />
     );
   if (!onOpen) return image;
   return (

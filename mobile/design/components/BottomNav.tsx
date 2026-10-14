@@ -1,6 +1,8 @@
 import type { ComponentProps } from "react";
 import type { ColorValue } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+// The one set used. The @expo/vector-icons barrel bundles all 19 icon
+// fonts (about 3 MB); this path bundles only Ionicons.
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { Tabs } from "expo-router";
 import { colors, fonts, touchTarget } from "../tokens";
 import type { IconName } from "./Icon";

@@ -1,4 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
+// The one set used. The @expo/vector-icons barrel bundles all 19 icon
+// fonts (about 3 MB); this path bundles only Ionicons.
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { ComponentProps } from "react";
 import { colors, iconSize } from "../tokens";
 import { useLocale } from "../locale";

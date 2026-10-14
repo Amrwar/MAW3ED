@@ -1,3 +1,4 @@
+import { onlineManager } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { AccessibilityInfo, ActivityIndicator, Animated, StyleSheet, View } from "react-native";
 import { colors, radius, spacing } from "../tokens";
@@ -129,7 +130,10 @@ export function EmptyState({
  */
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const { t } = useLocale();
-  const offline = error instanceof NetworkError;
+  // No error at all while offline is a request waiting for the connection
+  // (paused, not failed — lib/query/connectivity.ts): say so, rather than
+  // a generic "something went wrong".
+  const offline = error instanceof NetworkError || (!error && !onlineManager.isOnline());
   const retryable = offline || !(error instanceof ApiError && error.isClientError);
 
   return (

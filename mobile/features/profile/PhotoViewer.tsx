@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { sized } from "@/lib/image";
 import { FlatList, Image, Modal, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconButton, Text, colors, spacing, useLocale } from "@/design";
@@ -60,7 +61,7 @@ export function PhotoViewer({
           renderItem={({ item }) => (
             <View style={{ width, height, justifyContent: "center" }}>
               <Image
-                source={{ uri: item.url }}
+                source={{ uri: sized(item.url, width) }}
                 style={{ width, height: height * 0.7 }}
                 resizeMode="contain"
                 accessibilityLabel={item.caption ?? (ar ? "صورة من المكان" : "Photo of the place")}

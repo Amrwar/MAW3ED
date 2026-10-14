@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { sized } from "@/lib/image";
+import { Image, StyleSheet, View, useWindowDimensions } from "react-native";
 import { colors, spacing, type Tone } from "../tokens";
 import { useLocale } from "../locale";
 import { joinLabel } from "../strings";
@@ -131,6 +132,7 @@ export function BusinessCard(p: BusinessCardProps) {
 }
 
 function Cover({ uri, name }: { uri?: string | null; name: string }) {
+  const { width: screen } = useWindowDimensions();
   const [failed, setFailed] = useState(false);
   if (!uri || failed) {
     return (
@@ -141,7 +143,8 @@ function Cover({ uri, name }: { uri?: string | null; name: string }) {
   }
   return (
     <Image
-      source={{ uri }}
+      // Sized for the screen: the original can be 1600 px for a card.
+      source={{ uri: sized(uri, Math.min(screen, 720)) }}
       style={styles.cover}
       onError={() => setFailed(true)}
       accessibilityElementsHidden
