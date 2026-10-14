@@ -75,6 +75,11 @@ which works, just not in the app.
    - `https://www.maw3ed.net/.well-known/assetlinks.json`
    - Google's checker: `https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://www.maw3ed.net&relation=delegate_permission/common.handle_all_urls`
 
+**Production `AUTH_URL` must be `https://www.maw3ed.net`** (it is, as of
+October 2026). It is the origin every generated link uses — QR codes,
+emails, shares — so a bare-domain value would quietly make every link
+open the browser. If it is ever changed, sign-in callbacks follow it.
+
 **Always link to `www.maw3ed.net`.** The bare domain redirects to www,
 and neither Apple nor Google follows a redirect when verifying, so the
 app claims www only. Links the system writes already use www

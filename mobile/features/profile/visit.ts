@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/client";
+import { sourceOf } from "./visit-source";
 
 /**
  * Count a visit to a business page, by where it came from — the same
@@ -10,24 +11,6 @@ import { api } from "@/lib/api/client";
  * this, a QR code scanned on a phone with the app installed would open
  * the app and never be counted.
  */
-
-const SOURCES: Record<string, string> = {
-  qr: "QR",
-  instagram: "INSTAGRAM",
-  ig: "INSTAGRAM",
-  whatsapp: "WHATSAPP",
-  wa: "WHATSAPP",
-  facebook: "FACEBOOK",
-  fb: "FACEBOOK",
-  google: "GOOGLE",
-  website: "WEBSITE",
-};
-
-export function sourceOf(src: string | null | undefined): string {
-  const key = src?.trim().toLowerCase();
-  if (!key) return "MAW3ED";
-  return SOURCES[key] ?? "OTHER";
-}
 
 /** Fire and forget: a counter must never break the page. */
 export function countVisit(slug: string, src: string | null | undefined) {

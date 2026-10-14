@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, BackHandler, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { countVisit } from "@/features/profile/visit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -88,7 +89,15 @@ import type { PublicProfile } from "@/types/api";
  */
 
 export default function BookScreen() {
-  const { slug, service, staff } = useLocalSearchParams<{ slug: string; service?: string; staff?: string }>();
+  const { slug, service, staff, src } = useLocalSearchParams<{ slug: string; service?: string; staff?: string; src?: string }>();
+  // A link that went straight to booking a service (a QR code, a bio
+  // link) is still a visit from its source, as on the web's profile.
+  const counted = useRef(false);
+  useEffect(() => {
+    if (counted.current || !src || !slug) return;
+    counted.current = true;
+    countVisit(slug, src);
+  }, [slug, src]);
   const profile = useBusinessProfile(slug);
   const insets = useSafeAreaInsets();
   const { lang } = useLocale();
