@@ -69,8 +69,25 @@ maestro test .maestro --exclude-tags needs-credentials
 `config.yaml` sets the order and keeps going after a failure. Screenshots
 land in the working directory.
 
-## Running in EAS (cloud)
+## Running in GitHub Actions (cloud, free)
 
+`.github/workflows/e2e-android.yml` (at the repo root) starts an Android
+emulator, installs an APK, runs every flow and keeps the screenshots,
+recordings and a JUnit report as the run's `maestro-results` artifact.
+
+1. Build the APK: `cd mobile && npx eas-cli build -p android --profile e2e`.
+2. Put its URL in the repository variable `E2E_APK_URL`
+   (`gh variable set E2E_APK_URL --body <url>`), or pass it as the
+   `apk_url` input when starting the workflow by hand.
+3. Add the review account as repository secrets `REVIEW_EMAIL` and
+   `REVIEW_PASSWORD`; without them the business sign-in flow is skipped.
+
+It runs on any push that changes these flows, and by hand from the
+Actions tab (once the workflow is on `main`).
+
+## Running in EAS (paid plans only)
+
+Expo runs Maestro jobs only on a paid plan. With one,
 `.eas/workflows/e2e-android.yml` builds the `e2e` profile (an APK against
 staging, debug-signed, so it needs no keystore) and runs these flows on an
 Android emulator, with a screen recording and one retry for failed flows.
