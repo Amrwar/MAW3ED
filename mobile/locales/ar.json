@@ -1,5 +1,7 @@
 {
-  "CFBundleDisplayName": "موعد",
-  "NSUserNotificationsUsageDescription": "عشان نفكّرك بمواعيدك قبلها بوقت كافي.",
-  "NSLocationWhenInUseUsageDescription": "عشان نرتب الأماكن حسب قربها منك لما تطلب ده. مش بنتابع موقعك ولا بنحفظه."
+  "ios": {
+    "CFBundleDisplayName": "موعد",
+    "NSUserNotificationsUsageDescription": "عشان نفكّرك بمواعيدك قبلها بوقت كافي.",
+    "NSLocationWhenInUseUsageDescription": "عشان نرتب الأماكن حسب قربها منك لما تطلب ده. مش بنتابع موقعك ولا بنحفظه."
+  }
 }

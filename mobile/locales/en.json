@@ -1,5 +1,7 @@
 {
-  "CFBundleDisplayName": "Maw3ed",
-  "NSUserNotificationsUsageDescription": "So we can remind you about your appointments in good time.",
-  "NSLocationWhenInUseUsageDescription": "To sort places by how close they are when you ask for places near you. We don't track or keep your location."
+  "ios": {
+    "CFBundleDisplayName": "Maw3ed",
+    "NSUserNotificationsUsageDescription": "So we can remind you about your appointments in good time.",
+    "NSLocationWhenInUseUsageDescription": "To sort places by how close they are when you ask for places near you. We don't track or keep your location."
+  }
 }

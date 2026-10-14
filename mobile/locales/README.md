@@ -12,3 +12,9 @@ deciding whether to say yes, so each one says what the permission is
 
 Only keys iOS actually reads belong here; the app's own copy lives in
 the screens.
+
+They sit under an `ios` key on purpose. Without it Expo writes the same
+keys into Android's `values-b+ar/strings.xml` too, where nothing reads
+them, and the release build's lint fails on them (`ExtraTranslation`:
+translated but missing from the default locale). The first EAS Android
+build died on exactly that.
