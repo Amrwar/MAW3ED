@@ -24,6 +24,17 @@ export interface NavUser {
   name?:       string | null;
   phone?:      string | null;
   businessId?: string | null;
+  adminRole?:  string | null;
+}
+
+/**
+ * A customer: signed in with a verified phone, with no business and no
+ * admin role. They have an account area and nothing else — offering
+ * them "My business" or the dashboard's settings sends them into
+ * business onboarding, which is not what they came for.
+ */
+export function isCustomerUser(user: NavUser): boolean {
+  return !user.businessId && !user.adminRole && !!user.phone;
 }
 
 // ─── Helpers ───────────────────────────────────────────────
@@ -97,6 +108,7 @@ export function UserMenu({ user }: UserMenuProps) {
   }
 
   const hasBusiness = !!user.businessId;
+  const isCustomer  = isCustomerUser(user);
 
   const L = {
     menu:      lang === "ar" ? "قائمة المستخدم" : "User menu",
@@ -105,7 +117,7 @@ export function UserMenu({ user }: UserMenuProps) {
     dashboard: lang === "ar" ? "لوحة التحكم"  : "Dashboard",
     business:  lang === "ar" ? "إدارة نشاطي"   : "My Business",
     settings:  lang === "ar" ? "الإعدادات"     : "Settings",
-    logout:    lang === "ar" ? "تسجيل الخروج"  : "Log out",
+    logout:    lang === "ar" ? "تسجيل الخروج"  : "Sign out",
   };
 
   return (
@@ -166,13 +178,16 @@ export function UserMenu({ user }: UserMenuProps) {
         <DropdownItem icon={<LayoutDashboard size={15} strokeWidth={1.8} />} href="/dashboard">
           {L.dashboard}
         </DropdownItem>
-      ) : (
+      ) : isCustomer ? null : (
         <DropdownItem icon={<Store size={15} strokeWidth={1.8} />} href="/onboarding">
           {L.business}
         </DropdownItem>
       )}
 
-      <DropdownItem icon={<Settings2 size={15} strokeWidth={1.8} />} href="/dashboard/settings">
+      <DropdownItem
+        icon={<Settings2 size={15} strokeWidth={1.8} />}
+        href={hasBusiness ? "/dashboard/settings" : "/account/settings"}
+      >
         {L.settings}
       </DropdownItem>
 

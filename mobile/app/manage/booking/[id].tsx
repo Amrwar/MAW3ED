@@ -28,8 +28,9 @@ import { nameOf } from "@/features/business/components";
 import { useBookingDetail, useUpdateBookingStatus } from "@/features/business/queries";
 import type { BookingStatus } from "@/features/business/types";
 import { telUrl, whatsappUrl } from "@/features/profile/profile";
-import { ApiError } from "@/lib/api/errors";
-import { duration, longDate, money, num, time } from "@/lib/format";
+import { ApiError, codeMessage } from "@/lib/api/errors";
+import { duration, formatPhone, longDate, money, num, time } from "@/lib/format";
+import { count } from "@/lib/plural";
 
 /**
  * One booking, for the business: everything about it, the customer to
@@ -42,9 +43,9 @@ import { duration, longDate, money, num, time } from "@/lib/format";
 
 const ACTION: Partial<Record<BookingStatus, { ar: string; en: string; icon: IconName; variant: ButtonVariant }>> = {
   CONFIRMED: { ar: "أكّد الحجز", en: "Confirm", icon: "checkmark-circle-outline", variant: "primary" },
-  ARRIVED: { ar: "العميل وصل", en: "Checked in", icon: "enter-outline", variant: "primary" },
-  IN_PROGRESS: { ar: "بدأ", en: "Start", icon: "play-outline", variant: "outline" },
-  COMPLETED: { ar: "خلص", en: "Complete", icon: "checkmark-done-outline", variant: "primary" },
+  ARRIVED: { ar: "العميل وصل", en: "Check in", icon: "enter-outline", variant: "primary" },
+  IN_PROGRESS: { ar: "ابدأ", en: "Start", icon: "play-outline", variant: "outline" },
+  COMPLETED: { ar: "خلّص", en: "Complete", icon: "checkmark-done-outline", variant: "primary" },
   NO_SHOW: { ar: "مجاش", en: "No-show", icon: "person-remove-outline", variant: "outline" },
 };
 
@@ -70,7 +71,7 @@ export default function ManageBooking() {
     } catch (e) {
       const forbidden = e instanceof ApiError && e.status === 403;
       toast({
-        message: forbidden ? T("مش مسموح لك بالإجراء ده.", "You're not allowed to do that.") : T("معرفناش نغيّر الحالة. جرّب تاني.", "Couldn't change it. Try again."),
+        message: codeMessage(e, lang) ?? (forbidden ? T("مش مسموح لك بالإجراء ده.", "You're not allowed to do that.") : T("معرفناش نغيّر الحالة. جرّب تاني.", "Couldn't change it. Try again.")),
         tone: "danger",
       });
     } finally {
@@ -81,7 +82,7 @@ export default function ManageBooking() {
   if (!b) {
     return (
       <View style={styles.page}>
-        <TopBar title={T("الحجز", "Booking")} back />
+        <TopBar title={T("الحجز", "Booking")} back backTo="/(business)" />
         <View style={styles.body}>
           {booking.isLoading ? (
             <SkeletonCard />
@@ -112,14 +113,14 @@ export default function ManageBooking() {
     b.staffMember ? { icon: "person-outline" as IconName, text: nameOf(lang, b.staffMember) ?? "" } : null,
     b.branch ? { icon: "location-outline" as IconName, text: nameOf(lang, b.branch) ?? "" } : null,
     b.resourceName ? { icon: "cube-outline" as IconName, text: b.resourceName } : null,
-    b.partySize ? { icon: "people-outline" as IconName, text: T(`${num(b.partySize, lang)} أشخاص`, `${b.partySize} people`) } : null,
+    b.partySize ? { icon: "people-outline" as IconName, text: count(b.partySize, "person", lang) } : null,
   ].filter(Boolean) as { icon: IconName; text: string }[];
 
   const hasFooter = main.length > 0 || canCancel || b.canReschedule;
 
   return (
-    <View style={styles.page}>
-      <TopBar title={T("الحجز", "Booking")} subtitle={b.reference ?? undefined} back>
+    <View style={styles.page} testID="manage-booking">
+      <TopBar title={T("الحجز", "Booking")} subtitle={b.reference ?? undefined} back backTo="/(business)">
         <View style={styles.heroRow}>
           <Text variant="title" tone="inverse" numberOfLines={1} style={styles.flex}>
             {b.service ? nameOf(lang, b.service) : T("حجز", "Booking")}
@@ -147,7 +148,7 @@ export default function ManageBooking() {
           </Text>
           <Text variant="heading">{b.customerName}</Text>
           <Text variant="body" tone="muted" style={ltr}>
-            {b.customerPhone}
+            {b.customerPhone ? formatPhone(b.customerPhone) : null}
           </Text>
           <View style={styles.actionsRow}>
             {call ? <Button size="sm" variant="outline" icon="call-outline" label={T("اتصل", "Call")} onPress={() => void Linking.openURL(call)} /> : null}

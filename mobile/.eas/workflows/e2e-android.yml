@@ -1,0 +1,53 @@
+# End-to-end tests on an Android emulator in EAS: build the e2e APK
+# (staging API, see the "e2e" profile in eas.json), then run the Maestro
+# flows in .maestro/ against it. The flows only read and navigate — they
+# never book, review, save or change anything on staging.
+#
+# Run:   npx eas-cli workflow:run .eas/workflows/e2e-android.yml
+#
+# The business flows (05, 19) need a review account. Set it as EAS
+# environment variables in the "preview" environment, secret visibility:
+#   MAESTRO_REVIEW_EMAIL, MAESTRO_REVIEW_PASSWORD
+# Maestro reads MAESTRO_-prefixed variables on its own.
+name: E2E Android (Maestro)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build_android_e2e:
+    name: Build e2e APK
+    type: build
+    params:
+      platform: android
+      profile: e2e
+
+  maestro_android:
+    name: Maestro flows
+    type: maestro
+    needs: [build_android_e2e]
+    environment: preview
+    params:
+      build_id: ${{ needs.build_android_e2e.outputs.build_id }}
+      flow_path:
+        - .maestro/01-launch-home.yaml
+        - .maestro/02-search.yaml
+        - .maestro/03-business-profile.yaml
+        - .maestro/04-booking-guest.yaml
+        - .maestro/05-business-login.yaml
+        - .maestro/06-offline.yaml
+        - .maestro/07-english.yaml
+        - .maestro/08-nearby-denied.yaml
+        - .maestro/09-i18n-arabic.yaml
+        - .maestro/10-i18n-english.yaml
+        - .maestro/11-sign-up-surfaces.yaml
+        - .maestro/12-tabs-and-back.yaml
+        - .maestro/13-search-filters.yaml
+        - .maestro/14-business-page.yaml
+        - .maestro/15-booking-navigation.yaml
+        - .maestro/16-deep-links.yaml
+        - .maestro/17-background-relaunch.yaml
+        - .maestro/18-offline-launch.yaml
+        - .maestro/19-business-tour.yaml
+      record_screen: true
+      retries: 1

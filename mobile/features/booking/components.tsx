@@ -37,6 +37,7 @@ export function Choice({
       accessibilityRole="radio"
       accessibilityState={{ checked: selected, disabled: Boolean(disabled) }}
       accessibilityLabel={[title, subtitle, note].filter(Boolean).join(", ")}
+      testID="choice-option"
       style={[styles.choice, selected && styles.choiceOn, disabled && styles.choiceOff]}
     >
       <View style={styles.row}>

@@ -98,14 +98,16 @@ export function EmptyState({
   body,
   icon = "file-tray-outline",
   action,
+  testID,
 }: {
   title: string;
   body?: string;
   icon?: IconName;
   action?: ReactNode;
+  testID?: string;
 }) {
   return (
-    <View style={styles.state}>
+    <View style={styles.state} testID={testID}>
       <View style={styles.stateIcon}>
         <Icon name={icon} size="xl" color={colors.jade} />
       </View>
@@ -129,7 +131,7 @@ export function EmptyState({
  * 4xx sends the same wrong request again.
  */
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const { t } = useLocale();
+  const { t, lang } = useLocale();
   // No error at all while offline is a request waiting for the connection
   // (paused, not failed — lib/query/connectivity.ts): say so, rather than
   // a generic "something went wrong".
@@ -145,11 +147,11 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
         {offline ? t("offlineTitle") : t("errorTitle")}
       </Text>
       <Text variant="body" tone="muted" align="center">
-        {offline ? t("offlineBody") : error ? messageFor(error) : t("errorBody")}
+        {offline ? t("offlineBody") : error ? messageFor(error, lang) : t("errorBody")}
       </Text>
       {onRetry && retryable ? (
         <View style={styles.stateAction}>
-          <Button label={t("retry")} variant="outline" icon="refresh" onPress={onRetry} />
+          <Button label={t("retry")} variant="outline" icon="refresh" onPress={onRetry} testID="retry" />
         </View>
       ) : null}
     </View>

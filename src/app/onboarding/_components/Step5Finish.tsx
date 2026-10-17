@@ -1,5 +1,6 @@
 "use client";
 
+import { arCount } from "@/lib/fmt";
 import { useState, useEffect, useCallback } from "react";
 import {
   CheckCircle, XCircle, Loader2, MapPin, Phone, Clock,
@@ -9,6 +10,9 @@ import { makeSlug } from "@/lib/slug";
 import type { Category, City } from "@prisma/client";
 import type { OnboardingData } from "./OnboardingForm";
 import { SITE_HOST } from "@/lib/url";
+
+const SERVICE = { one: "خدمة واحدة", two: "خدمتين", few: "خدمات", many: "خدمة" };
+const WORKDAY = { zero: "أيام عمل", one: "يوم عمل واحد", two: "يومين عمل", few: "أيام عمل", many: "يوم عمل" };
 
 type SlugStatus = "idle" | "checking" | "available" | "taken" | "invalid";
 
@@ -159,7 +163,7 @@ export default function Step5Finish({
               <span className="flex items-center gap-1" dir="ltr"><Phone size={11} />{data.phone}</span>
             )}
             {openDays.length > 0 && (
-              <span className="flex items-center gap-1"><Clock size={11} />{openDays.length} أيام عمل</span>
+              <span className="flex items-center gap-1"><Clock size={11} />{arCount(openDays.length, WORKDAY)}</span>
             )}
           </div>
 
@@ -199,8 +203,8 @@ export default function Step5Finish({
           { label: "اسم العمل",          done: !!data.nameAr },
           { label: "التخصص والمدينة",    done: !!data.categoryId && !!data.cityId },
           { label: "رقم الهاتف",         done: !!data.phone },
-          { label: `${data.services.length} خدمة`, done: data.services.length > 0 },
-          { label: `${openDays.length} أيام عمل`,  done: openDays.length > 0 },
+          { label: arCount(data.services.length, SERVICE), done: data.services.length > 0 },
+          { label: arCount(openDays.length, WORKDAY),  done: openDays.length > 0 },
           { label: "الرابط المخصص",      done: status === "available" },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-1.5 text-xs">

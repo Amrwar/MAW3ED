@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-import { rateLimit } from "@/lib/rate-limit";
+import { callerKey, rateLimit } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -8,6 +8,7 @@ import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
 import { db } from "@/lib/db";
 import { accountForVerifiedPhone, verifyLoginCode } from "@/lib/auth/login-code";
+import { normalisePhone } from "@/lib/phone";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -85,6 +86,30 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           .safeParse(credentials);
 
         if (!parsed.success) return null;
+
+        // The same buckets the app's /api/auth/mobile/otp spends, so the
+        // website is not the cheaper door to guess through. Per address
+        // first, then per number: the code itself caps guesses, but
+        // without these somebody could request and guess codes for a
+        // number as fast as the cooldown lets them, from one machine or
+        // many. A null is what a wrong code gets, so the limit says
+        // nothing about which it was.
+        const byCaller = await rateLimit("phoneOtp");
+        if (!byCaller.ok) {
+          log.warn("[auth] phone sign-in rate limited (caller)");
+          return null;
+        }
+        // Keyed by number AND address: keyed by number alone, anybody
+        // could spend a stranger's bucket with junk and lock them out of
+        // signing in. Guesses at one code are capped by its attempts.
+        const phone = normalisePhone(parsed.data.phone);
+        if (phone) {
+          const byPhone = await rateLimit("phoneOtpVerify", `${phone}:${await callerKey()}`);
+          if (!byPhone.ok) {
+            log.warn("[auth] phone sign-in rate limited (number)");
+            return null;
+          }
+        }
 
         const result = await verifyLoginCode(parsed.data.phone, parsed.data.code);
         if (!result.ok) return null;

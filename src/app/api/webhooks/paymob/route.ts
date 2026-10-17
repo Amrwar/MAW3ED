@@ -15,8 +15,9 @@
  *      retries can land at once; the unique index decides which one
  *      proceeds and the other does nothing.
  *   3. Find the payment by the provider's order id.
- *   4. Check the amount is the amount we asked for.
- *   5. Settle or fail it, with the booking or the subscription moving
+ *   4. Record a refund or void as one, before anything else.
+ *   5. Check the amount (and currency) is what we asked for.
+ *   6. Settle or fail it, with the booking or the subscription moving
  *      in the same transaction.
  *
  * Configure in Paymob: Settings → Transaction processed callback →
@@ -31,9 +32,12 @@ import {
   claimWebhookEvent,
   closeWebhookEvent,
   failPayment,
+  releaseWebhookEvent,
   settlePayment,
 } from "@/lib/payments/ledger";
 import { renewalPeriodEnd } from "@/lib/payments/subscription";
+import { bookingMoney, toCents } from "@/lib/payments/money";
+import { classifyCallback, planReversal, shouldReleaseHold } from "@/lib/payments/webhook-rules";
 import type { Plan } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
@@ -44,7 +48,10 @@ interface PaymobWebhookBody {
   hmac?: string;
 }
 
-/** Always 200: an error code makes Paymob retry a delivery we handled. */
+/**
+ * 200 for every delivery we handled, whatever the outcome: an error code
+ * makes Paymob retry, which is only wanted when we failed to handle it.
+ */
 function ack(extra: Record<string, unknown> = {}) {
   return Response.json({ received: true, ...extra }, { status: 200 });
 }
@@ -61,11 +68,17 @@ export async function POST(req: Request) {
     return err("invalid JSON", 400);
   }
 
+  // `null` or a bare number is valid JSON and would throw on `.type`.
+  if (typeof body !== "object" || body === null) return err("invalid payload", 400);
   if (body.type !== "TRANSACTION") return ack();
 
   const obj = body.obj;
   const hmac = body.hmac ?? new URL(req.url).searchParams.get("hmac") ?? "";
   if (!obj) return err("missing transaction object", 400);
+  // The signature check reads nested fields, so a body without them
+  // must be turned away here as malformed rather than throw there and
+  // come back as a 500 Paymob would keep retrying.
+  if (!isTransactionShaped(obj)) return err("malformed transaction object", 400);
 
   // ── 1. Signature ──────────────────────────────────────────────────────────
   if (!verifyWebhookHmac(obj, hmac)) {
@@ -93,12 +106,28 @@ export async function POST(req: Request) {
     await closeWebhookEvent("PAYMOB", transactionId, outcome);
     return ack({ outcome });
   } catch (e) {
-    // The delivery stays claimed and unprocessed, which is what a human
-    // looks for when a customer says they paid and nothing happened.
-    log.error("[paymob webhook] handler threw", e);
-    await closeWebhookEvent("PAYMOB", transactionId, "error");
-    return ack({ outcome: "error" });
+    // Something on our side broke — the database, most likely — and
+    // the money may well have arrived. Acknowledging would make that
+    // permanent: Paymob would stop retrying, and a manual resend would
+    // be dropped as a duplicate of the claim. So the claim is released
+    // and the answer is a 500, which Paymob retries. Settling is
+    // idempotent, so a retry after a partial run cannot pay twice.
+    log.error("[paymob webhook] handler threw; releasing for retry", { transactionId, providerOrderId, e });
+    await releaseWebhookEvent("PAYMOB", transactionId);
+    return err("handler error", 500);
   }
+}
+
+/** Enough structure for the HMAC to be computed without throwing. */
+function isTransactionShaped(obj: unknown): obj is PaymobTransactionObj {
+  if (typeof obj !== "object" || obj === null) return false;
+  const o = obj as Record<string, unknown>;
+  return (
+    o.id !== undefined && o.id !== null &&
+    typeof o.order === "object" && o.order !== null &&
+    (o.order as Record<string, unknown>).id !== undefined &&
+    typeof o.source_data === "object" && o.source_data !== null
+  );
 }
 
 // ─── Routing one transaction to its payment ───────────────────────────────────
@@ -115,52 +144,9 @@ async function handle(
     return "no-matching-payment";
   }
 
-  // ── 4. The amount is ours, not theirs ───────────────────────────────────
-  //
-  // Paymob sends what was charged. If that is not what we opened the
-  // payment for, something is wrong on one side or the other and the
-  // booking must not be confirmed on the strength of it.
-  if (obj.amount_cents !== payment.amountCents) {
-    log.error("[paymob webhook] amount mismatch", {
-      paymentId: payment.id,
-      expected: payment.amountCents,
-      received: obj.amount_cents,
-    });
-    await failPayment({
-      paymentId: payment.id,
-      reason: `amount mismatch: expected ${payment.amountCents}, got ${obj.amount_cents}`,
-      providerTransactionId: transactionId,
-    });
-    return "amount-mismatch";
-  }
+  const verdict = classifyCallback(obj, payment);
 
-  // ── 5. The currency is ours too ─────────────────────────────────────────
-  //
-  // amount_cents is a number with no unit attached. 28550 piastres and
-  // 28550 cents of something else are the same integer, so checking the
-  // amount alone would settle a 285.50 EGP booking against a payment
-  // taken in another currency.
-  //
-  // In practice Paymob charges in whatever the integration is
-  // configured for, so this should never fire. It is checked for the
-  // same reason the amount is: the field is in the HMAC-signed payload,
-  // so it is authentic and free to verify, and a confirmation is a
-  // promise to both the customer and the business.
-  if (obj.currency && obj.currency.toUpperCase() !== payment.currency.toUpperCase()) {
-    log.error("[paymob webhook] currency mismatch", {
-      paymentId: payment.id,
-      expected: payment.currency,
-      received: obj.currency,
-    });
-    await failPayment({
-      paymentId: payment.id,
-      reason: `currency mismatch: expected ${payment.currency}, got ${obj.currency}`,
-      providerTransactionId: transactionId,
-    });
-    return "currency-mismatch";
-  }
-
-  // ── 6. Money that has gone back ─────────────────────────────────────────
+  // ── 4. Money that has gone back ─────────────────────────────────────────
   //
   // Paymob sends a TRANSACTION callback for a refund or a void as well,
   // with success still true and is_refunded or is_voided set. Read as a
@@ -168,20 +154,52 @@ async function handle(
   // the Paymob dashboard, rather than through /admin/payments, never
   // reached the ledger and the payment went on reading SUCCEEDED.
   //
+  // Checked before the amount: a partial refund's amount_cents is the
+  // part refunded, not the payment, and was being turned away as an
+  // amount mismatch (lib/payments/webhook-rules.ts).
+  //
   // It is recorded rather than acted on: the booking is not cancelled
   // here, because why the money went back is a decision somebody made
   // outside this system and the ledger should reflect it, not guess at
   // its intent.
-  if (obj.is_refunded || obj.is_voided) {
+  if (verdict.kind === "reversal") {
     return reconcileReversal(payment, obj, transactionId);
   }
 
-  const succeeded = obj.success && !obj.pending && !obj.error_occured;
-
-  if (!succeeded) {
-    if (obj.pending) return "still-pending";
-    return handleFailure(payment, obj, transactionId);
+  // ── 5. The amount is ours, not theirs ───────────────────────────────────
+  //
+  // Paymob sends what was charged. If that is not what we opened the
+  // payment for, something is wrong on one side or the other and the
+  // booking must not be confirmed on the strength of it.
+  //
+  // ── 6. The currency is ours too ─────────────────────────────────────────
+  //
+  // amount_cents is a number with no unit attached. 28550 piastres and
+  // 28550 cents of something else are the same integer, so checking the
+  // amount alone would settle a 285.50 EGP booking against a payment
+  // taken in another currency.
+  //
+  // Either way the payment has failed as far as this booking is
+  // concerned, and it is handled as a decline is: the hold is released
+  // (unless other money already covers it) and both sides are told.
+  // Failing the payment and leaving the booking PENDING_PAYMENT held
+  // its slot with nothing left that could ever release it.
+  if (verdict.kind === "amount-mismatch" || verdict.kind === "currency-mismatch") {
+    const reason =
+      verdict.kind === "amount-mismatch"
+        ? `amount mismatch: expected ${payment.amountCents}, got ${obj.amount_cents}`
+        : `currency mismatch: expected ${payment.currency}, got ${obj.currency}`;
+    log.error(`[paymob webhook] ${verdict.kind}`, {
+      paymentId: payment.id,
+      expected: verdict.kind === "amount-mismatch" ? payment.amountCents : payment.currency,
+      received: verdict.kind === "amount-mismatch" ? obj.amount_cents : obj.currency,
+    });
+    await failAndRelease(payment, reason, transactionId);
+    return verdict.kind;
   }
+
+  if (verdict.kind === "pending") return "still-pending";
+  if (verdict.kind === "failed") return handleFailure(payment, obj, transactionId);
 
   return payment.kind === "SUBSCRIPTION"
     ? handleSubscriptionSuccess(payment, transactionId, obj)
@@ -260,50 +278,89 @@ async function reconcileReversal(
 
   // Paymob reports the reversed amount on the transaction. Fall back to
   // the full payment, since a void is always for the whole of it.
-  const amountCents = Math.min(
+  const reversedCents = Math.min(
     Math.abs(obj.amount_cents || payment.amountCents),
     payment.amountCents,
   );
 
-  const already = await db.refund.findFirst({
-    where: { paymentId: payment.id, providerRefundId: transactionId },
-    select: { id: true },
-  });
-  // The webhook-event guard already stops a replay of the same
-  // delivery; this stops a second delivery with a new event id from
-  // double-counting the same reversal.
-  if (already) return "reversal-already-recorded";
-
-  await db.$transaction(async (tx) => {
-    await tx.refund.create({
-      data: {
-        paymentId: payment.id,
-        amountCents,
-        status: "SUCCEEDED",
-        providerRefundId: transactionId,
-        reason: `${kind} recorded from Paymob callback`,
-        // No actor: nobody in this system did it.
-        actorName: "Paymob",
-      },
-    });
-
-    const refundedTotal = Math.min(payment.refundedCents + amountCents, payment.amountCents);
-    await tx.payment.update({
+  // Decided and written under a lock on the payment row, so this cannot
+  // interleave with an admin refund's reservation (which updates the
+  // same row) or with a second delivery of the same reversal.
+  const plan = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Payment" WHERE "id" = ${payment.id} FOR UPDATE`;
+    const current = await tx.payment.findUniqueOrThrow({
       where: { id: payment.id },
-      data: {
-        refundedCents: refundedTotal,
-        status: refundedTotal >= payment.amountCents ? "REFUNDED" : "PARTIALLY_REFUNDED",
-      },
+      select: { status: true, amountCents: true, refundedCents: true },
     });
+    const refunds = await tx.refund.findMany({
+      where: { paymentId: payment.id },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, amountCents: true, status: true, providerRefundId: true, actorId: true },
+    });
+    const decided = planReversal({
+      paymentStatus: current.status,
+      amountCents: current.amountCents,
+      refundedCents: current.refundedCents,
+      reversedCents,
+      transactionId,
+      refunds,
+    });
+
+    if (decided.kind === "attach") {
+      // The admin route reserved this amount already; only the id was missing.
+      await tx.refund.update({ where: { id: decided.refundId }, data: { providerRefundId: transactionId } });
+    } else if (decided.kind === "record") {
+      await tx.refund.create({
+        data: {
+          paymentId: payment.id,
+          amountCents: decided.addCents,
+          status: "SUCCEEDED",
+          providerRefundId: transactionId,
+          reason: `${kind} recorded from Paymob callback`,
+          // No actor: nobody in this system did it.
+          actorName: "Paymob",
+        },
+      });
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { refundedCents: decided.refundedCents, status: decided.status },
+      });
+    }
+    return decided;
   });
 
-  log.warn("[paymob webhook] reversal reconciled from provider", {
-    paymentId: payment.id,
-    kind,
-    amountCents,
-  });
-
-  return `reversal-${kind}`;
+  switch (plan.kind) {
+    case "already-recorded":
+      return "reversal-already-recorded";
+    case "attach":
+      return "reversal-matched-admin-refund";
+    case "unsettled":
+    case "nothing-left":
+      await db.auditLog
+        .create({
+          data: {
+            actorName: "Paymob",
+            actorRole: "system",
+            action: plan.kind === "unsettled" ? "payment.reversal_on_unsettled" : "payment.reversal_beyond_amount",
+            resourceType: "Payment",
+            resourceId: payment.id,
+            summary:
+              plan.kind === "unsettled"
+                ? `Paymob reported a ${kind} on a payment that never succeeded (${payment.status}); not applied.`
+                : `Paymob reported a ${kind} on a payment already fully refunded; not applied.`,
+            metadata: { transactionId, reversedCents, paymentStatus: payment.status },
+          },
+        })
+        .catch((e) => log.error("[paymob webhook] could not write audit entry", e));
+      return plan.kind === "unsettled" ? "reversal-on-unsettled" : "reversal-nothing-left";
+    case "record":
+      log.warn("[paymob webhook] reversal reconciled from provider", {
+        paymentId: payment.id,
+        kind,
+        amountCents: plan.addCents,
+      });
+      return `reversal-${kind}`;
+  }
 }
 
 function methodOf(obj: PaymobTransactionObj) {
@@ -331,6 +388,12 @@ async function handleBookingSuccess(
     onFirstSettle: async (tx, settled) => {
       if (!settled.bookingId) return;
 
+      // Locked before it is read: a customer cancel (or anything else)
+      // committing between this read and the write below would otherwise
+      // be overwritten with CONFIRMED. Under the lock the status read is
+      // the one the write acts on; a booking cancelled first stays
+      // cancelled, and the money is flagged as unexpected below.
+      await tx.$queryRaw`SELECT "id" FROM "Booking" WHERE "id" = ${settled.bookingId} FOR UPDATE`;
       const booking = await tx.booking.findUnique({
         where: { id: settled.bookingId },
         select: { status: true },
@@ -344,8 +407,8 @@ async function handleBookingSuccess(
       // finished booking back to life.
       if (booking.status !== "PENDING_PAYMENT") return;
 
-      await tx.booking.update({
-        where: { id: settled.bookingId },
+      await tx.booking.updateMany({
+        where: { id: settled.bookingId, status: "PENDING_PAYMENT" },
         data: {
           status: "CONFIRMED",
           // Kept in step for anything still reading the old columns.
@@ -417,7 +480,12 @@ async function handleBookingSuccess(
   // A deposit landing on a booking that was not waiting for one — it is
   // already confirmed or finished, so this is a second payment for it.
   // The money is recorded either way; support is told so it can refund.
-  if (payment.kind === "BOOKING_DEPOSIT" && before && before !== "PENDING_PAYMENT" && before !== "FAILED_PAYMENT") {
+  // A cancelled booking counts whatever the payment was for: it is not
+  // revived, so the money needs a person to refund it.
+  if (
+    (payment.kind === "BOOKING_DEPOSIT" && before && before !== "PENDING_PAYMENT" && before !== "FAILED_PAYMENT") ||
+    before === "CANCELLED"
+  ) {
     await db.auditLog
       .create({
         data: {
@@ -443,6 +511,11 @@ async function handleBookingSuccess(
       transactionId,
     });
     if (payment.kind !== "BOOKING_BALANCE" && (before === "PENDING_PAYMENT" || revived)) {
+      // The booking only became real now, so this is when the business
+      // hears about it as a new booking — once (the key is per booking),
+      // and whatever its payment alerts are set to. The customer has the
+      // confirmation below; a "we received it" on top would be noise.
+      void notify({ type: "booking.created", bookingId: payment.bookingId, only: "business" });
       void notify({ type: "booking.confirmed", bookingId: payment.bookingId });
     }
   }
@@ -509,6 +582,16 @@ async function handleFailure(
     sourceType: obj.source_data?.type ?? null,
   });
 
+  return (await failAndRelease(payment, reason, transactionId)) ? "failed" : "already-resolved";
+}
+
+/**
+ * Fail a payment and, for a booking still waiting on it, give the slot
+ * back — unless money that already landed covers what was asked for.
+ * Tells both sides, once (only on the call that actually failed it).
+ * Returns whether this call changed anything.
+ */
+async function failAndRelease(payment: Payment, reason: string, transactionId: string): Promise<boolean> {
   const { changed } = await failPayment({
     paymentId: payment.id,
     reason,
@@ -524,29 +607,42 @@ async function handleFailure(
       }
 
       if (!failed.bookingId) return;
+      // The same row lock recordManualPayment takes, so cash being
+      // recorded at this moment is either fully visible below or waits
+      // until this decision is made — never half-seen.
+      await tx.$queryRaw`SELECT "id" FROM "Booking" WHERE "id" = ${failed.bookingId} FOR UPDATE`;
       const booking = await tx.booking.findUnique({
         where: { id: failed.bookingId },
-        select: { status: true },
+        select: { status: true, depositAmount: true, totalPrice: true },
+      });
+      if (!booking) return;
+
+      const others = await tx.payment.findMany({
+        where: { bookingId: failed.bookingId, id: { not: failed.id } },
+        select: { status: true, amountCents: true, refundedCents: true },
       });
       // A failed balance payment does not unconfirm a booking that the
-      // deposit already paid for.
-      if (failed.kind === "BOOKING_BALANCE") return;
-      if (!booking || booking.status !== "PENDING_PAYMENT") return;
+      // deposit already paid for, and other money that covers the
+      // deposit keeps the booking.
+      const release = shouldReleaseHold({
+        bookingStatus: booking.status,
+        failedKind: failed.kind,
+        requiredCents: toCents(booking.depositAmount ?? booking.totalPrice),
+        otherPaidCents: bookingMoney(0, others).netPaidCents,
+      });
+      if (!release) return;
 
-      await tx.booking.update({
-        where: { id: failed.bookingId },
+      await tx.booking.updateMany({
+        where: { id: failed.bookingId, status: "PENDING_PAYMENT" },
         data: { status: "FAILED_PAYMENT" },
       });
     },
   });
 
-  if (!changed) return "already-resolved";
-
-  if (payment.bookingId) {
+  if (changed && payment.bookingId) {
     void notify({ type: "payment.failed", bookingId: payment.bookingId, reason });
   }
-
-  return "failed";
+  return changed;
 }
 
 // ─── Subscription ─────────────────────────────────────────────────────────────

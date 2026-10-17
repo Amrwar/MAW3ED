@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { callerKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { normalisePhone } from "@/lib/phone";
 import { accountForVerifiedPhone, verifyLoginCode } from "@/lib/auth/login-code";
 import { startMobileSession } from "@/lib/auth/mobile-session";
 
@@ -37,6 +38,17 @@ export async function POST(req: Request) {
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return err("الكود غير صحيح أو انتهت صلاحيته", 401);
 
+    // And per number from this address. Not per number alone: then
+    // anybody could spend a stranger's bucket with junk and lock them
+    // out of signing in. Rotating addresses buys no extra guesses at one
+    // code, which its own attempt counter caps. The web "phone-otp"
+    // provider spends the same two buckets.
+    const phone = normalisePhone(parsed.data.phone);
+    if (phone) {
+      const byPhone = await rateLimit("phoneOtpVerify", `${phone}:${await callerKey()}`);
+      if (!byPhone.ok) return tooManyRequests(byPhone);
+    }
+
     const result = await verifyLoginCode(parsed.data.phone, parsed.data.code);
     // One message for wrong, expired and used up, as on the website:
     // which of them it was is a hint to whoever is guessing.
@@ -50,6 +62,6 @@ export async function POST(req: Request) {
     return ok(login);
   } catch (e) {
     log.error("[mobile otp login]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

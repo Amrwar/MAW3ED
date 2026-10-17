@@ -14,6 +14,9 @@ import {
   rating,
   plural,
   countLabel,
+  arCount,
+  enCount,
+  countIn,
   daysUntil,
 } from "./fmt";
 
@@ -85,6 +88,16 @@ describe("money", () => {
 
   it("defaults to Egyptian pounds", () => {
     expect(money(50, "ar")).toContain("ج.م");
+  });
+
+  it("writes piastres to two places", () => {
+    // A 25% deposit on 150 is 37.50; "37.5" read like a typo in every
+    // payment message.
+    expect(money(37.5, "ar")).toBe("37.50 ج.م");
+    expect(money(37.5, "en")).toBe("37.50 EGP");
+    expect(money(462.53, "en")).toBe("462.53 EGP");
+    expect(money(1234.5, "en")).toBe("1,234.50 EGP");
+    expect(money(0.1 + 0.2, "en")).toBe("0.30 EGP");
   });
 });
 
@@ -226,5 +239,33 @@ describe("daysUntil", () => {
 
   it("goes negative for a past date", () => {
     expect(daysUntil(new Date(Date.UTC(2026, 9, 7)), now)).toBe(-2);
+  });
+});
+
+describe("arCount", () => {
+  const place = { one: "مكان واحد", two: "مكانين", few: "أماكن", many: "مكان" };
+
+  it("follows the Arabic counted-noun rules", () => {
+    expect(arCount(1, place)).toBe("مكان واحد");
+    expect(arCount(2, place)).toBe("مكانين");
+    expect(arCount(3, place)).toBe("3 أماكن");
+    expect(arCount(10, place)).toBe("10 أماكن");
+    expect(arCount(11, place)).toBe("11 مكان");
+    expect(arCount(100, place)).toBe("100 مكان");
+    expect(arCount(105, place)).toBe("105 أماكن");
+  });
+});
+
+describe("enCount / countIn", () => {
+  it("pluralises English", () => {
+    expect(enCount(1, "place")).toBe("1 place");
+    expect(enCount(4, "place")).toBe("4 places");
+    expect(enCount(2, "business", "businesses")).toBe("2 businesses");
+  });
+
+  it("picks the language", () => {
+    const ar = { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" };
+    expect(countIn("ar", 7, ar, { one: "day" })).toBe("7 أيام");
+    expect(countIn("en", 7, ar, { one: "day" })).toBe("7 days");
   });
 });

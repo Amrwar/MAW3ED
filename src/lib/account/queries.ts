@@ -1,7 +1,7 @@
-import type { BookingStatus } from "@prisma/client";
+import type { BookingStatus, Notification, Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { cairoDateString, cairoMinutes } from "@/lib/bookings/instants";
+import { cairoDateString, cairoMinutes, cairoWallClock, dateToUTC } from "@/lib/bookings/instants";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
 import { customerMayChange } from "@/lib/bookings/self-service";
 import { canReviewBooking } from "@/lib/review-policy";
@@ -207,6 +207,56 @@ function shape(b: Row, todayDate: string, nowMin: number): AccountBooking {
 }
 
 /**
+ * When a booking is over, as where clauses — the one rule both tabs use,
+ * so every booking is in exactly one of them.
+ *
+ * The effective end is:
+ *   1. endsAt, when the row has it (Cairo wall clock written as UTC, see
+ *      lib/bookings/instants — compared with cairoWallClock);
+ *   2. for a row written before endsAt existed, its date + endTime;
+ *   3. with no endTime either, its date + startTime. A booking does not
+ *      store its own duration, and the service's current duration is not
+ *      what was booked, so the start is the last fact the row holds.
+ *
+ * Times are "HH:MM", zero-padded, so they compare as strings; "now" is
+ * taken to the minute on both sides. ended and notEnded are written out
+ * as exact complements (not NOT(...), which SQL's NULLs would break).
+ */
+function endRule(now: Date) {
+  const wall = cairoWallClock(now);
+  const today = dateToUTC(cairoDateString(now));
+  const hhmm = minutesToTime(cairoMinutes(now));
+  const ended: Prisma.BookingWhereInput[] = [
+    { endsAt: { lte: wall } },
+    { endsAt: null, endTime: { not: null }, date: { lt: today } },
+    { endsAt: null, endTime: { not: null, lte: hhmm }, date: today },
+    { endsAt: null, endTime: null, date: { lt: today } },
+    { endsAt: null, endTime: null, startTime: { lte: hhmm }, date: today },
+  ];
+  const notEnded: Prisma.BookingWhereInput[] = [
+    { endsAt: { gt: wall } },
+    { endsAt: null, endTime: { not: null }, date: { gt: today } },
+    { endsAt: null, endTime: { not: null, gt: hhmm }, date: today },
+    { endsAt: null, endTime: null, date: { gt: today } },
+    { endsAt: null, endTime: null, startTime: { gt: hhmm }, date: today },
+  ];
+  return { ended, notEnded };
+}
+
+/** Still holding a slot and not yet over: the upcoming tab. */
+export function upcomingWhere(phone: string, now: Date = new Date()): Prisma.BookingWhereInput {
+  return { customerPhoneE164: phone, status: { in: LIVE }, OR: endRule(now).notEnded };
+}
+
+/**
+ * Everything else: no longer holding a slot, or over. The exact
+ * complement of upcomingWhere.
+ */
+export function historyWhere(phone: string, now: Date = new Date()): Prisma.BookingWhereInput {
+  return { customerPhoneE164: phone, OR: [{ status: { notIn: LIVE } }, ...endRule(now).ended] };
+}
+
+/**
  * Appointments that have not happened yet.
  *
  * "Upcoming" is by instant, not by date: an appointment at 09:00 today
@@ -214,48 +264,88 @@ function shape(b: Row, todayDate: string, nowMin: number): AccountBooking {
  * customer ends up at a closed door.
  */
 export async function getUpcoming(phone: string): Promise<AccountBooking[]> {
-  const today = cairoDateString();
-  const nowMin = cairoMinutes();
-
+  const now = new Date();
   const rows = await db.booking.findMany({
-    where: {
-      customerPhoneE164: phone,
-      status: { in: LIVE },
-      // One day of slack, then filtered precisely below — a date-only
-      // filter cannot know whether this morning has passed.
-      date: { gte: new Date(Date.parse(today + "T00:00:00Z") - 86_400_000) },
-    },
-    orderBy: [{ date: "asc" }, { startTime: "asc" }],
+    where: upcomingWhere(phone, now),
+    orderBy: [{ date: "asc" }, { startTime: "asc" }, { id: "asc" }],
     select: BOOKING_SELECT,
   });
-
-  return rows.map((r) => shape(r, today, nowMin)).filter((b) => b.minutesUntil > -b.durationMinutes);
+  return rows.map((r) => shape(r, cairoDateString(now), cairoMinutes(now)));
 }
 
-/** Everything else: finished, cancelled, missed, or simply past. */
+/* History is ordered date desc, startTime desc, id desc; a cursor is the
+   last row's three keys, so the next page starts strictly after it
+   whatever moved into history in the meantime. Opaque to clients. */
+
+export function encodeHistoryCursor(b: { date: string; startTime: string; id: string }): string {
+  return Buffer.from(`${b.date}|${b.startTime}|${b.id}`, "utf8").toString("base64url");
+}
+
+export function decodeHistoryCursor(cursor: string): { date: Date; startTime: string; id: string } | null {
+  try {
+    const [date, startTime, id, extra] = Buffer.from(cursor, "base64url").toString("utf8").split("|");
+    if (extra !== undefined || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? "") || !/^\d{2}:\d{2}$/.test(startTime ?? "") || !id) {
+      return null;
+    }
+    const d = new Date(`${date}T00:00:00Z`);
+    return Number.isNaN(d.getTime()) ? null : { date: d, startTime, id };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Everything else: finished, cancelled, missed, or simply past.
+ *
+ * Paged either by offset (skip/take, kept for existing clients) or by
+ * `cursor` — the nextCursor of the previous page — which does not shift
+ * when a booking moves into history while somebody is paging. `total`
+ * is the whole history either way; nextCursor is null on the last page.
+ */
 export async function getHistory(
   phone: string,
-  opts: { take?: number; skip?: number } = {},
-): Promise<{ bookings: AccountBooking[]; total: number }> {
-  const today = cairoDateString();
-  const nowMin = cairoMinutes();
+  opts: { take?: number; skip?: number; cursor?: string | null } = {},
+): Promise<{ bookings: AccountBooking[]; total: number; nextCursor: string | null }> {
+  const now = new Date();
+  const today = cairoDateString(now);
+  const nowMin = cairoMinutes(now);
+  const take = opts.take ?? 20;
+  const where = historyWhere(phone, now);
 
+  const after = opts.cursor ? decodeHistoryCursor(opts.cursor) : null;
+  const pageWhere: Prisma.BookingWhereInput = after
+    ? {
+        AND: [
+          where,
+          {
+            OR: [
+              { date: { lt: after.date } },
+              { date: after.date, startTime: { lt: after.startTime } },
+              { date: after.date, startTime: after.startTime, id: { lt: after.id } },
+            ],
+          },
+        ],
+      }
+    : where;
+
+  // The filter is in the query and the count is over the same set, so a
+  // page holds exactly the rows a client is shown. id breaks ties, so
+  // two bookings at the same minute keep their order across pages.
   const [rows, total] = await Promise.all([
     db.booking.findMany({
-      where: { customerPhoneE164: phone },
-      orderBy: [{ date: "desc" }, { startTime: "desc" }],
-      take: (opts.take ?? 20) + 40,
-      skip: opts.skip ?? 0,
+      where: pageWhere,
+      orderBy: [{ date: "desc" }, { startTime: "desc" }, { id: "desc" }],
+      take: take + 1,
+      skip: after ? 0 : (opts.skip ?? 0),
       select: BOOKING_SELECT,
     }),
-    db.booking.count({ where: { customerPhoneE164: phone } }),
+    db.booking.count({ where }),
   ]);
 
-  const shaped = rows
-    .map((r) => shape(r, today, nowMin))
-    .filter((b) => !(LIVE.includes(b.status as BookingStatus) && b.minutesUntil > -b.durationMinutes));
-
-  return { bookings: shaped.slice(0, opts.take ?? 20), total };
+  const bookings = rows.slice(0, take).map((r) => shape(r, today, nowMin));
+  const last = bookings[bookings.length - 1];
+  const nextCursor = rows.length > take && last ? encodeHistoryCursor(last) : null;
+  return { bookings, total, nextCursor };
 }
 
 export async function getFavorites(userId: string) {
@@ -302,16 +392,37 @@ export async function getMyReviews(phone: string) {
   });
 }
 
-export async function getNotifications(userId: string, take = 50) {
-  const [items, unread] = await Promise.all([
+/**
+ * A page of notifications, newest first, and how many are unread.
+ *
+ * Cursor-paged: `cursor` is the id of the last item of the previous page
+ * and `nextCursor` is null on the last page. A cursor rather than an
+ * offset because new notifications arrive at the top while somebody is
+ * reading, which would shift every offset by one. A cursor that is not
+ * this user's (or no longer exists) is treated as the start.
+ */
+export async function getNotifications(
+  userId: string,
+  take = 50,
+  cursor?: string | null,
+): Promise<{ items: Notification[]; unread: number; nextCursor: string | null }> {
+  const from = cursor
+    ? await db.notification.findFirst({ where: { id: cursor, userId }, select: { id: true } })
+    : null;
+
+  const [rows, unread] = await Promise.all([
     db.notification.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
-      take,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: take + 1,
+      ...(from ? { cursor: { id: from.id }, skip: 1 } : {}),
     }),
     db.notification.count({ where: { userId, readAt: null } }),
   ]);
-  return { items, unread };
+
+  const items = rows.slice(0, take);
+  const nextCursor = rows.length > take ? items[items.length - 1].id : null;
+  return { items, unread, nextCursor };
 }
 
 /**

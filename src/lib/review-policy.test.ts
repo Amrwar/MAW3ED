@@ -28,6 +28,25 @@ describe("who may write a review", () => {
     }
   });
 
+  it("refuses a booking marked completed before it started", () => {
+    // NOW is 15:00 in Cairo; startsAt is in the Cairo wall-clock frame.
+    expect(
+      canReviewBooking({ status: "COMPLETED", startsAt: new Date("2026-10-07T10:00:00Z") }, NOW).reason,
+    ).toBe("too-early");
+    expect(
+      canReviewBooking(
+        { status: "COMPLETED", date: new Date("2026-10-06T00:00:00Z"), startTime: "15:30" },
+        NOW,
+      ).reason,
+    ).toBe("too-early");
+    expect(
+      canReviewBooking(
+        { status: "COMPLETED", date: new Date("2026-10-06T00:00:00Z"), startTime: "14:30" },
+        NOW,
+      ).allowed,
+    ).toBe(true);
+  });
+
   it("refuses a second review of the same visit", () => {
     expect(
       canReviewBooking(

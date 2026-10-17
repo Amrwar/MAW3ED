@@ -1,5 +1,5 @@
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { Screen, Text, Card, ListState, colors, spacing } from "@/design";
+import { Screen, Text, Card, ListState, colors, spacing, useLocale } from "@/design";
 import { useAdminOverview } from "@/features/admin/queries";
 
 /**
@@ -10,14 +10,16 @@ import { useAdminOverview } from "@/features/admin/queries";
 export default function AdminOverviewScreen() {
   const query = useAdminOverview();
   const d = query.data;
+  const { lang } = useLocale();
+  const T = (a: string, e: string) => (lang === "ar" ? a : e);
 
   const tiles: { label: string; value: number | null | undefined }[] = [
-    { label: "أعمال بانتظار المراجعة", value: d?.pendingBusinesses },
-    { label: "بلاغات مفتوحة", value: d?.openReports },
-    { label: "تقييمات تحت المراجعة", value: d?.reviewsUnderReview },
-    { label: "أعمال موقوفة", value: d?.suspendedBusinesses },
-    { label: "كل الأعمال", value: d?.totalBusinesses },
-    { label: "حجوزات مدفوعة", value: d?.paidBookings },
+    { label: T("أعمال بانتظار المراجعة", "Businesses awaiting review"), value: d?.pendingBusinesses },
+    { label: T("بلاغات مفتوحة", "Open reports"), value: d?.openReports },
+    { label: T("تقييمات تحت المراجعة", "Reviews under review"), value: d?.reviewsUnderReview },
+    { label: T("أعمال موقوفة", "Suspended businesses"), value: d?.suspendedBusinesses },
+    { label: T("كل الأعمال", "All businesses"), value: d?.totalBusinesses },
+    { label: T("حجوزات مدفوعة", "Paid bookings"), value: d?.paidBookings },
   ];
   const visible = tiles.filter((t): t is { label: string; value: number } => typeof t.value === "number");
 
@@ -27,10 +29,10 @@ export default function AdminOverviewScreen() {
       hero={
         <>
           <Text variant="display" tone="inverse" accessibilityRole="header">
-            نظرة عامة
+            {T("نظرة عامة", "Overview")}
           </Text>
           <Text variant="caption" tone="inverseMuted">
-            التفاصيل والإجراءات على لوحة الإدارة في الموقع.
+            {T("التفاصيل والإجراءات على لوحة الإدارة في الموقع.", "Details and actions are in the admin dashboard on the website.")}
           </Text>
         </>
       }
@@ -45,7 +47,7 @@ export default function AdminOverviewScreen() {
           loading={query.isLoading}
           error={query.error}
           isEmpty={visible.length === 0}
-          emptyTitle="مفيش أرقام متاحة لصلاحيتك"
+          emptyTitle={T("مفيش أرقام متاحة لصلاحيتك", "No figures available for your role")}
           onRetry={() => query.refetch()}
         >
           {visible.map((t) => (

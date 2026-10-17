@@ -1,5 +1,6 @@
 "use client";
 
+import { arCount } from "@/lib/fmt";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Power, Tag, Ticket, Trash2 } from "lucide-react";
@@ -7,6 +8,9 @@ import type { DiscountKind } from "@prisma/client";
 import Alert from "@/components/ui/Alert";
 import { formatCents } from "@/lib/payments/money";
 import { cn } from "@/lib/utils";
+
+const SERVICE = { one: "خدمة واحدة", two: "خدمتين", few: "خدمات", many: "خدمة" };
+const TIMES = { one: "مرة واحدة", two: "مرتين", few: "مرات", many: "مرة" };
 
 export interface OfferRow {
   id: string;
@@ -150,7 +154,7 @@ export default function OffersClient({
     const bits = [off];
     if (row.maxDiscountCents) bits.push(`بحد أقصى ${formatCents(row.maxDiscountCents)}`);
     if (row.minSpendCents) bits.push(`لحجوزات من ${formatCents(row.minSpendCents)}`);
-    if (row.serviceIds.length > 0) bits.push(`${row.serviceIds.length} خدمة`);
+    if (row.serviceIds.length > 0) bits.push(arCount(row.serviceIds.length, SERVICE));
     if (row.maxRedemptions) bits.push(`${row.redemptionCount}/${row.maxRedemptions} استخدام`);
     if (row.perCustomerLimit) bits.push(`${row.perCustomerLimit} لكل عميل`);
     return bits.join(" · ");
@@ -345,7 +349,7 @@ export default function OffersClient({
                   <p className="num m-0 mt-0.5 text-[0.6875rem] text-[var(--color-subtle)]">
                     {row.code ? "العميل بيكتبه" : "بيتطبّق لوحده"}
                     {" · "}
-                    اتستخدم {row.usedCount} مرة
+                    اتستخدم {arCount(row.usedCount, TIMES)}
                     {row.givenAwayCents > 0 && ` · وفّر للعملاء ${formatCents(row.givenAwayCents)}`}
                   </p>
                 </div>

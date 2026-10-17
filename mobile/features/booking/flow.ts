@@ -1,4 +1,4 @@
-import { addDays, cairoToday, weekdayOf } from "@/design/calendar";
+import { cairoToday, weekdayOf } from "@/design/calendar";
 import { staffFor, profileKind } from "@/features/profile/profile";
 import { ApiError, NetworkError, UnauthorizedError } from "@/lib/api/errors";
 import type { DayHours, PublicProfile, PublicResource, PublicStaffMember } from "@/types/api";
@@ -211,10 +211,7 @@ export function mightBeOpen(iso: string, businessHours: DayHours[], staff: Publi
   return Boolean(day && !day.isClosed);
 }
 
-/** The next `n` days from `from`, for tests and for the strip. */
-export function dayList(from: string, n: number): string[] {
-  return Array.from({ length: n }, (_, i) => addDays(from, i));
-}
+
 
 /* ─── Details ────────────────────────────────────────────── */
 
@@ -238,7 +235,7 @@ export function detailsErrors(d: Pick<Draft, "name" | "email" | "notes">): Detai
  * is what is shown from then on.
  */
 export function depositPreviewCents(totalCents: number, percent: number | null): number | null {
-  if (!percent || percent <= 0 || percent >= 100 || totalCents <= 0) return null;
+  if (!percent || percent <= 0 || percent > 100 || totalCents <= 0) return null;
   return Math.ceil((totalCents * percent) / 100);
 }
 
@@ -327,9 +324,9 @@ export function emptyDayReason(reason: string | null, lang: Lang): string {
     case "staff-off":
       return T(lang, "الشخص ده مش شغال في اليوم ده", "This person isn't working on this day");
     case "holiday":
-      return T(lang, "أجازة رسمية", "Public holiday — closed");
+      return T(lang, "إجازة رسمية", "Public holiday — closed");
     case "vacation":
-      return T(lang, "في أجازة اليوم ده", "On leave this day");
+      return T(lang, "في إجازة اليوم ده", "On leave this day");
     case "same-day-cutoff":
       return T(lang, "الحجز لليوم قفل، جرّب بكرة", "Same-day booking has closed — try tomorrow");
     case "too-far-ahead":
@@ -395,6 +392,13 @@ export function describeFailure(e: unknown, lang: Lang): Failure {
           title: T(lang, "في بيانات محتاجة تتظبط", "Some details need fixing"),
           body: lang === "ar" ? e.message : "Check your name, email and notes, then try again.",
           recovery: "edit",
+          code: e.code,
+        };
+      case "rate-limited":
+        return {
+          title: T(lang, "حجوزات كتير ورا بعض", "Too many bookings in a row"),
+          body: lang === "ar" ? e.message : "Wait a little, then try again.",
+          recovery: "retry",
           code: e.code,
         };
       case "limit-reached":

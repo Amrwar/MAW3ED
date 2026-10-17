@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
-import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
-import { claimsForUser, issueTokens, readRefreshToken } from "@/lib/auth/mobile-token";
+import { readRefreshToken } from "@/lib/auth/mobile-token";
+import { rotateRefresh } from "@/lib/auth/mobile-refresh";
 
 const schema = z.object({ refreshToken: z.string().min(10) });
 
@@ -20,6 +20,9 @@ const schema = z.object({ refreshToken: z.string().min(10) });
  * Claims are rebuilt from the database rather than carried over, so a
  * role granted or withdrawn since sign-in takes effect on the next
  * refresh instead of weeks later.
+ *
+ * Each refresh token works once; presenting a spent one revokes the
+ * session. See lib/auth/mobile-refresh.ts.
  */
 export async function POST(req: Request) {
   try {
@@ -35,27 +38,14 @@ export async function POST(req: Request) {
     const read = await readRefreshToken(parsed.data.refreshToken);
     if (!read) return err("انتهت الجلسة، سجّل الدخول من تاني", 401);
 
-    const session = await db.mobileSession.findUnique({
-      where: { id: read.sessionId },
-      select: { id: true, userId: true, expiresAt: true },
-    });
+    const result = await rotateRefresh(read);
+    // Expired, revoked and reused all get the same answer: the app's
+    // only move in each case is to sign in again.
+    if (!result.ok) return err("انتهت الجلسة، سجّل الدخول من تاني", 401);
 
-    // Revoked, or belongs to somebody else, or simply old.
-    if (!session || session.userId !== read.userId || session.expiresAt < new Date()) {
-      return err("انتهت الجلسة، سجّل الدخول من تاني", 401);
-    }
-
-    const claims = await claimsForUser(session.userId);
-    if (!claims) return err("انتهت الجلسة، سجّل الدخول من تاني", 401);
-
-    await db.mobileSession.update({
-      where: { id: session.id },
-      data: { lastUsedAt: new Date() },
-    });
-
-    return ok(await issueTokens(claims, session.id));
+    return ok(result.tokens);
   } catch (e) {
     log.error("[mobile refresh]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

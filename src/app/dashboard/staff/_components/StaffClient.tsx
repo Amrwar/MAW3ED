@@ -1,11 +1,14 @@
 "use client";
 
+import { arCount } from "@/lib/fmt";
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Scissors, Loader2 } from "lucide-react";
 import StaffPanel from "./StaffPanel";
 import type { TimeBlockRow } from "./TimeBlocks";
 import type { StaffHoursRow } from "./WeeklyHours";
 import { useLanguage } from "@/contexts/LanguageContext";
+
+const STAFF = { one: "موظف واحد", two: "موظفين اتنين", few: "موظفين", many: "موظف" };
 
 export type StaffMember = {
   id:           string;
@@ -97,8 +100,8 @@ export default function StaffClient({
           </h1>
           <p style={{ fontSize: 13, color: "var(--color-muted)" }}>
             {isAr
-              ? `${staff.length} موظف · ${active.length} نشط`
-              : `${staff.length} members · ${active.length} active`}
+              ? `${arCount(staff.length, STAFF)} · ${active.length} نشط`
+              : `${staff.length} staff · ${active.length} active`}
           </p>
         </div>
         <button
@@ -243,7 +246,11 @@ export default function StaffClient({
                           padding:      "2px 5px",
                           borderRadius: 6,
                           background:   member.workingDays.includes(day) ? "var(--color-ink)" : "var(--color-surface-3)",
-                          color:        member.workingDays.includes(day) ? "var(--color-surface)"  : "var(--color-line-2)",
+                          // An off day was drawn in a border tone (1.22:1) — present
+                          // but unreadable. Muted text, struck through, still reads
+                          // as "not this day" without relying on contrast to say so.
+                          color:        member.workingDays.includes(day) ? "var(--color-surface)"  : "var(--color-muted)",
+                          textDecoration: member.workingDays.includes(day) ? undefined : "line-through",
                         }}
                       >
                         {dayLabels[day]}
@@ -261,6 +268,7 @@ export default function StaffClient({
                       flex:           1,
                       justifyContent: "center",
                       padding:        "7px 0",
+                      minHeight:      44,
                       borderRadius:   8,
                       background:     "var(--color-surface-2)",
                       border:         "1.5px solid var(--color-line)",
@@ -276,10 +284,11 @@ export default function StaffClient({
                   <button
                     onClick={() => handleDelete(member.id)}
                     disabled={isDeleting}
+                    aria-label={isAr ? `حذف ${member.nameAr}` : `Delete ${member.nameEn || member.nameAr}`}
                     className="flex items-center justify-center transition-all duration-150"
                     style={{
-                      width:        34,
-                      height:       34,
+                      width:        44,
+                      height:       44,
                       borderRadius: 8,
                       background:   "var(--color-danger-soft)",
                       border:       "1.5px solid var(--color-danger-line)",

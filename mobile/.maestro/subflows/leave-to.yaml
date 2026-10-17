@@ -1,0 +1,16 @@
+# Android Back, repeatedly, until TARGET (a testID) shows — at most eight
+# presses. Used to walk out of the booking steps, which Back goes through
+# one at a time.
+appId: net.maw3ed.app.staging
+---
+- repeat:
+    times: 8
+    while:
+      notVisible:
+        id: ${TARGET}
+    commands:
+      - pressKey: back
+      - waitForAnimationToEnd:
+          timeout: 3000
+- assertVisible:
+    id: ${TARGET}

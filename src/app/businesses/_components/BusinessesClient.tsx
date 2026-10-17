@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, useId } from "react";
+import { countText } from "@/lib/i18n";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Search, SlidersHorizontal, Store, X } from "lucide-react";
@@ -212,7 +213,7 @@ export default function BusinessesClient({
       <PageHero
         badge={isAr ? "اكتشف" : "Discover"}
         title={b.pageTitle}
-        subtitle={isAr ? "ابحث وأحجز من الأنشطة المتاحة في منطقتك" : "Search and book from the businesses listed near you"}
+        subtitle={isAr ? "ابحث واحجز من الأنشطة المتاحة في منطقتك" : "Search and book from the businesses listed near you"}
       />
 
       {/* ── Search bar ── */}
@@ -272,8 +273,7 @@ export default function BusinessesClient({
           {/* Count, applied chips and sort */}
           <div className="mb-5 flex flex-wrap items-center gap-3">
             <p className="m-0 text-[0.875rem] text-[var(--color-muted)]" aria-live="polite">
-              <strong className="num font-bold text-[var(--color-ink)]">{num(total, lang)}</strong>{" "}
-              {b.resultsLabel}
+              <strong className="font-bold text-[var(--color-ink)]">{countText(lang, total, b.resultsLabel)}</strong>
             </p>
 
             <label className="ms-auto flex min-h-11 shrink-0 items-center gap-2 text-[0.8125rem] text-[var(--color-subtle)]">
@@ -436,7 +436,7 @@ export default function BusinessesClient({
               onClick={() => setFiltersOpen(false)}
               className="btn btn-primary flex-[2]"
             >
-              {f.showResults.replace("{n}", num(total, lang))}
+              {countText(lang, total, f.showResults)}
             </button>
           </div>
         }

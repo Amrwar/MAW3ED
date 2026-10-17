@@ -10,6 +10,9 @@ import { getCityBySlug, getPublishedBusinesses } from "@/lib/data";
 import { MIN_BUSINESSES, getLandingCities, getLandingCombos, prerenderHints } from "@/lib/seo/landing";
 import { buildMetadata } from "@/lib/seo/meta";
 import { db } from "@/lib/db";
+import { arCount } from "@/lib/fmt";
+
+const BIZ = { one: "نشاط واحد", two: "نشاطين", few: "أنشطة", many: "نشاط" };
 
 type Props = { params: Promise<{ city: string }> };
 
@@ -39,11 +42,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return buildMetadata({
-    title: `أعمال في ${city.nameAr} — احجز أونلاين`,
+    title: `أنشطة في ${city.nameAr} — احجز أونلاين`,
     description:
       count === 1
         ? `نشاط واحد في ${city.nameAr} بيستقبل حجوزات أونلاين على موعد.`
-        : `${count} نشاط في ${city.nameAr} بيستقبلوا حجوزات أونلاين على موعد. شوف المواعيد المتاحة واحجز في ثوانٍ.`,
+        : `${arCount(count, BIZ)} في ${city.nameAr} بيستقبلوا حجوزات أونلاين على موعد. شوف المواعيد المتاحة واحجز في ثوانٍ.`,
     path: `/cities/${city.slug}`,
   });
 }
@@ -81,10 +84,10 @@ export default async function CityPage({ params }: Props) {
         <div className="bg-white border-b border-[var(--color-border)]">
           <Container className="py-10">
             {/* Breadcrumb */}
-            <nav className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] mb-6">
-              <Link href="/" className="hover:text-[var(--color-accent)] transition-colors">الرئيسية</Link>
+            <nav aria-label="مسار التنقل" className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] mb-3">
+              <Link href="/" className="inline-flex min-h-11 items-center hover:text-[var(--color-accent)] transition-colors">الرئيسية</Link>
               <span>/</span>
-              <Link href="/businesses" className="hover:text-[var(--color-accent)] transition-colors">تصفح الأعمال</Link>
+              <Link href="/businesses" className="inline-flex min-h-11 items-center hover:text-[var(--color-accent)] transition-colors">تصفح الأعمال</Link>
               <span>/</span>
               <span className="text-[var(--color-text-primary)] font-medium">{city.nameAr}</span>
             </nav>
@@ -99,7 +102,7 @@ export default async function CityPage({ params }: Props) {
                 </h1>
                 <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
                   {businesses.length > 0
-                    ? `${businesses.length} عمل متاح للحجز الآن`
+                    ? `${arCount(businesses.length, BIZ)} ${businesses.length === 2 ? "متاحين" : businesses.length > 2 && businesses.length <= 10 ? "متاحة" : "متاح"} للحجز دلوقتي`
                     : "لا توجد أعمال حتى الآن"}
                 </p>
               </div>

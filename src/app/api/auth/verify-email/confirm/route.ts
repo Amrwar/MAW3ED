@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { rateLimit } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
 import { siteUrl } from "@/lib/env";
 import { hashSecret, isExpired } from "@/lib/verification";

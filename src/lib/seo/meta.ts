@@ -69,7 +69,7 @@ export function buildMetadata({
       title: pagedTitle,
       description,
       url: canonical,
-      siteName: "موعد MAW3ED",
+      siteName: "موعد · Maw3ed",
       locale: "ar_EG",
       type: "website",
       ...(image ? { images: [{ url: image }] } : {}),

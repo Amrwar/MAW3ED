@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { customerMayChange, minutesUntilStart } from "./self-service";
+import { customerMayCancel, customerMayChange, minutesUntilStart } from "./self-service";
 
 const day = (s: string) => new Date(`${s}T00:00:00Z`);
 
@@ -37,5 +37,27 @@ describe("customerMayChange", () => {
     for (const status of ["PENDING_PAYMENT", "FAILED_PAYMENT", "ARRIVED", "COMPLETED", "CANCELLED"]) {
       expect(customerMayChange({ status, date: day("2026-10-20"), startTime: "12:00" }, now)).toBe(false);
     }
+  });
+});
+
+describe("customerMayCancel", () => {
+  const now = new Date("2026-10-12T08:00:00Z"); // 11:00 in Cairo
+
+  it("lets a customer walk away from a booking still waiting on its deposit", () => {
+    // Inside the change cutoff, but nothing has been paid and the slot is
+    // only being held for them.
+    const b = { status: "PENDING_PAYMENT", date: day("2026-10-12"), startTime: "12:00" };
+    expect(customerMayChange(b, now)).toBe(false);
+    expect(customerMayCancel(b, now)).toBe(true);
+  });
+
+  it("not once it has started", () => {
+    expect(customerMayCancel({ status: "PENDING_PAYMENT", date: day("2026-10-12"), startTime: "10:30" }, now)).toBe(false);
+  });
+
+  it("follows the usual rule otherwise", () => {
+    expect(customerMayCancel({ status: "CONFIRMED", date: day("2026-10-12"), startTime: "12:00" }, now)).toBe(false);
+    expect(customerMayCancel({ status: "CONFIRMED", date: day("2026-10-13"), startTime: "12:00" }, now)).toBe(true);
+    expect(customerMayCancel({ status: "FAILED_PAYMENT", date: day("2026-10-13"), startTime: "12:00" }, now)).toBe(false);
   });
 });

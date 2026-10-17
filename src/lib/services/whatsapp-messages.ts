@@ -37,16 +37,16 @@ export interface BookingNotificationData {
  */
 export function formatBusinessNotification(d: BookingNotificationData): string {
   return [
-    `🗓️ *موعد جديد — موعد*`,
+    `🗓️ *حجز جديد — موعد*`,
     ``,
     `👤 العميل: ${d.customerName}`,
-    `📞 الهاتف: ${d.customerPhone}`,
+    `📞 رقم الموبايل: ${d.customerPhone}`,
     `✂️ الخدمة: ${d.serviceName}`,
     `📅 التاريخ: ${formatDateAr(d.date)}`,
     `⏰ الوقت: ${d.startTime} – ${d.endTime}`,
     `💰 الإجمالي: ${d.totalPrice.toLocaleString("ar-EG-u-nu-latn")} ${d.currency}`,
     ``,
-    `⏳ الحجز قيد الانتظار — يمكنك تأكيده أو إلغائه من لوحة التحكم.`,
+    `⏳ الحجز مستني تأكيدك — أكّده أو الغيه من لوحة التحكم.`,
   ].join("\n");
 }
 
@@ -56,14 +56,14 @@ export function formatBusinessNotification(d: BookingNotificationData): string {
  */
 export function formatCustomerConfirmation(d: BookingNotificationData): string {
   return [
-    `✅ *تم تسجيل حجزك بنجاح!*`,
+    `📩 *وصل طلب حجزك!*`,
     ``,
     `🏢 ${d.businessName}`,
     `✂️ الخدمة: ${d.serviceName}`,
     `📅 ${formatDateAr(d.date)}`,
     `⏰ الوقت: ${d.startTime} – ${d.endTime}`,
     ``,
-    `سيتواصل معك الفريق قريبًا لتأكيد الموعد.`,
-    `شكرًا لاستخدامك *موعد* 🙏`,
+    `${d.businessName} هيأكد الحجز وهيوصلك إشعار.`,
+    `شكرًا إنك استخدمت *موعد* 🙏`,
   ].join("\n");
 }

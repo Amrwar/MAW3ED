@@ -110,6 +110,6 @@ export async function POST(req: Request, { params }: Params) {
     return res;
   } catch (e) {
     log.error("[review report]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

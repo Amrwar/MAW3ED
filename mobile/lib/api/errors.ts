@@ -7,6 +7,24 @@
  * into one Error loses that and every screen invents its own guess.
  */
 
+import type { Lang } from "../format";
+
+/**
+ * The app's own words for what went wrong. Arabic is also each error's
+ * `message` — what Arabic mode shows; English mode reads MESSAGE_EN via
+ * messageFor(e, lang).
+ */
+const MESSAGE_AR = {
+  network: "تعذّر الاتصال بالإنترنت",
+  session: "انتهت الجلسة، سجّل الدخول من تاني",
+  generic: "حصل خطأ، حاول تاني",
+};
+const MESSAGE_EN = {
+  network: "No internet connection. Check it and try again.",
+  session: "Your session has ended. Please sign in again.",
+  generic: "Something went wrong. Please try again.",
+};
+
 /** No response at all: no signal, DNS, a timeout, a dead host. */
 export class NetworkError extends Error {
   readonly kind = "network" as const;
@@ -14,7 +32,7 @@ export class NetworkError extends Error {
     // Passed through the options bag rather than declared as a field:
     // Error already owns `cause`, and redeclaring it shadows the one
     // every debugger and logger knows to look for.
-    super("تعذّر الاتصال بالإنترنت", { cause });
+    super(MESSAGE_AR.network, { cause });
     this.name = "NetworkError";
   }
 }
@@ -22,7 +40,7 @@ export class NetworkError extends Error {
 /** The session is over. The app signs out and shows the login screen. */
 export class UnauthorizedError extends Error {
   readonly kind = "unauthorized" as const;
-  constructor(message = "انتهت الجلسة، سجّل الدخول من تاني") {
+  constructor(message: string = MESSAGE_AR.session) {
     super(message);
     this.name = "UnauthorizedError";
   }
@@ -46,7 +64,7 @@ export class ApiError extends Error {
      */
     readonly detail: { code?: string; reason?: string | null; [key: string]: unknown } = {},
   ) {
-    super(message ?? "حصل خطأ، حاول تاني");
+    super(message ?? MESSAGE_AR.generic);
     this.name = "ApiError";
   }
 
@@ -66,8 +84,55 @@ export function isKnownError(e: unknown): e is KnownError {
   return e instanceof NetworkError || e instanceof UnauthorizedError || e instanceof ApiError;
 }
 
-/** What to put on screen for any thrown value, including unknown ones. */
-export function messageFor(e: unknown): string {
-  if (isKnownError(e)) return e.message;
-  return "حصل خطأ، حاول تاني";
+/**
+ * English for an answer the server gave in Arabic, keyed by the error's
+ * `code` or its HTTP status — a screen passes the ones its request can
+ * meet ("401": wrong password on sign-in, wrong code on verify).
+ */
+export type EnglishFor = Partial<Record<string, string>>;
+
+/** What most statuses mean, whatever was asked. */
+const STATUS_EN: Record<number, string> = {
+  403: "You don't have access to this.",
+  404: "We couldn't find that. It may have been removed.",
+  409: "That changed in the meantime. Refresh and try again.",
+  413: "That's too large to upload.",
+  422: "Some details aren't right. Check them and try again.",
+  429: "Too many tries. Wait a moment and try again.",
+};
+
+/**
+ * Codes the app words itself, in both languages, rather than showing
+ * the server's sentence — the same answer from several endpoints.
+ */
+const CODE_MESSAGES: Record<string, Record<Lang, string>> = {
+  // A status change (arrived, completed, no-show) or a review before the appointment.
+  "too-early": { ar: "مينفعش قبل ميعاد الحجز.", en: "Not before the appointment time." },
+};
+
+/** The app's own words for an error's code, or null. */
+export function codeMessage(e: unknown, lang: Lang = "ar"): string | null {
+  const code = e instanceof ApiError ? e.code : undefined;
+  return (code && CODE_MESSAGES[code]?.[lang]) || null;
+}
+
+/**
+ * What to put on screen for any thrown value, including unknown ones.
+ *
+ * Arabic shows the server's own words — written for a person, and more
+ * specific than anything the app could guess. The server writes only
+ * Arabic, so English shows the screen's English for the error's code or
+ * status, then the app's general English for the status, and never the
+ * Arabic.
+ */
+export function messageFor(e: unknown, lang: Lang = "ar", english: EnglishFor = {}): string {
+  const own = codeMessage(e, lang);
+  if (own) return own;
+  if (lang === "ar") return isKnownError(e) ? e.message : MESSAGE_AR.generic;
+  if (e instanceof NetworkError) return MESSAGE_EN.network;
+  if (e instanceof UnauthorizedError) return english["401"] ?? MESSAGE_EN.session;
+  if (e instanceof ApiError) {
+    return (e.code && english[e.code]) || english[String(e.status)] || STATUS_EN[e.status] || MESSAGE_EN.generic;
+  }
+  return MESSAGE_EN.generic;
 }

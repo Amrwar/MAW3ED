@@ -99,13 +99,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 
   ios: {
     bundleIdentifier: BUNDLE_ID[APP_ENV],
-    supportsTablet: true,
+    // iPhone only. No screen has been designed or tested at iPad sizes,
+    // and an iPad-capable build is reviewed on an iPad — ship what we test.
+    supportsTablet: false,
     infoPlist: {
       // Arabic needs right-to-left; without this iOS lays the app out
       // left-to-right however the device is set.
       CFBundleAllowMixedLocalizations: true,
-      // Push on iOS needs the entitlement, which EAS adds from this.
-      UIBackgroundModes: ["remote-notification"],
+      // No UIBackgroundModes: visible push needs only the aps-environment
+      // entitlement, which the expo-notifications plugin adds. The
+      // "remote-notification" mode is for silent/background pushes, which
+      // the app never sends — and App Review asks why it is declared.
       // No encryption beyond HTTPS, so App Store Connect does not ask
       // the export-compliance question on every upload.
       ITSAppUsesNonExemptEncryption: false,
@@ -120,6 +124,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 
   android: {
     package: BUNDLE_ID[APP_ENV],
+    // adjustResize (Expo's default, stated so nobody changes it unknowingly):
+    // screens shrink above the keyboard. A Modal's window does not get it,
+    // so design/components/Sheet.tsx lifts itself from Keyboard events.
+    softwareKeyboardLayoutMode: "resize",
     // Firebase config, needed for Android to issue a push token (FCM).
     // From an EAS file variable (GOOGLE_SERVICES_JSON) in cloud builds, or
     // a local google-services.json — never committed. Without it the app
@@ -128,7 +136,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ...(googleServicesFile() ? { googleServicesFile: googleServicesFile() } : {}),
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
-      backgroundColor: "#11201C",
+      // colors.night — the foreground is the cream wordmark on transparent.
+      backgroundColor: "#0B3A2E",
     },
     permissions: [
       "android.permission.INTERNET",
@@ -212,7 +221,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       // Foreground "when in use" only — the app never asks for "always".
       "expo-location",
       {
-        locationWhenInUsePermission: "مواعيد بيستخدم موقعك لما تطلب الأماكن القريبة منك بس، ومبيحفظهوش.",
+        locationWhenInUsePermission: "موعد بيستخدم موقعك بس لما تطلب الأماكن القريبة منك، ومش بيحفظه.",
         isIosBackgroundLocationEnabled: false,
         isAndroidBackgroundLocationEnabled: false,
       },
@@ -224,6 +233,23 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         color: "#0D7A5A",
       },
     ],
+    // Crash reports. The plugin uploads source maps and debug symbols at
+    // build time, which needs SENTRY_ORG and SENTRY_AUTH_TOKEN (an EAS
+    // secret). Both, not just the org: with the plugin in and no token,
+    // its upload step fails the build — e.g. a preview build, when only
+    // production has the secret. Without them it is left out.
+    // The runtime SDK still reports when EXPO_PUBLIC_SENTRY_DSN is set.
+    ...(process.env.SENTRY_ORG && process.env.SENTRY_AUTH_TOKEN
+      ? [
+          [
+            "@sentry/react-native/expo",
+            {
+              organization: process.env.SENTRY_ORG,
+              project: process.env.SENTRY_PROJECT_MOBILE ?? "maw3ed-mobile",
+            },
+          ] as [string, Record<string, string>],
+        ]
+      : []),
   ],
 
   experiments: { typedRoutes: true },

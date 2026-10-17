@@ -96,6 +96,6 @@ export async function GET() {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[business overview]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

@@ -1,0 +1,332 @@
+# The business side, in one language (APP_LANG; start.yaml has run):
+# sign in with the review account, then Today, a booking (opened, never
+# acted on), the Calendar's day and week views and its date arrows, the
+# Customers book and its search, a customer, More and the screens it
+# opens, the language buttons there, and sign out.
+#
+# Read-only. Never tapped: a booking's status, reschedule or cancel
+# buttons, Today's Confirm, staff app-access switches, and Notifications
+# (opening it marks them read — a write).
+appId: net.maw3ed.app.staging
+---
+# Either name works; whichever is set wins. `typeof` keeps an unset one from throwing.
+- evalScript: ${output.email = (typeof REVIEW_EMAIL !== 'undefined' && REVIEW_EMAIL) || (typeof MAESTRO_REVIEW_EMAIL !== 'undefined' && MAESTRO_REVIEW_EMAIL) || ''}
+- evalScript: ${output.password = (typeof REVIEW_PASSWORD !== 'undefined' && REVIEW_PASSWORD) || (typeof MAESTRO_REVIEW_PASSWORD !== 'undefined' && MAESTRO_REVIEW_PASSWORD) || ''}
+- assertTrue:
+    condition: ${output.email !== '' && output.password !== ''}
+    label: REVIEW_EMAIL and REVIEW_PASSWORD are set
+
+# ── Sign in ──
+- tapOn:
+    id: home-sign-in
+- extendedWaitUntil:
+    visible:
+      id: login-tab-business
+    timeout: 10000
+- tapOn:
+    id: login-tab-business
+- tapOn:
+    id: login-email
+- inputText: ${output.email}
+- tapOn:
+    id: login-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: login-submit
+- extendedWaitUntil:
+    visible:
+      id: biz-tab-index
+    timeout: 30000
+    label: Signed in to the business space (is the review account a business account?)
+
+# ── Today ──
+- runFlow:
+    file: tab-label.yaml
+    env: { ID: biz-tab-index, WORD: "${output.s.bizTabToday}" }
+- runFlow:
+    file: tab-label.yaml
+    env: { ID: biz-tab-calendar, WORD: "${output.s.bizTabCalendar}" }
+- runFlow:
+    file: tab-label.yaml
+    env: { ID: biz-tab-account, WORD: "${output.s.bizTabMore}" }
+- runFlow:
+    when:
+      visible:
+        id: biz-tab-customers
+    commands:
+      - runFlow:
+          file: tab-label.yaml
+          env: { ID: biz-tab-customers, WORD: "${output.s.bizTabCustomers}" }
+- runFlow:
+    file: reading-order.yaml
+    env: { FIRST: biz-tab-index, LAST: biz-tab-account }
+- takeScreenshot: biz-today-${output.lang}
+- scrollUntilVisible:
+    element:
+      text: ${output.s.bizSchedule}
+    direction: DOWN
+    timeout: 20000
+    label: Today's schedule, titled in this language
+# A booking of today's, if there is one: opened and left untouched.
+- runFlow:
+    when:
+      visible:
+        id: booking-row
+    commands:
+      - tapOn:
+          id: booking-row
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: manage-booking
+          timeout: 20000
+      - runFlow:
+          file: chrome-words.yaml
+          env: { ID: screen-title, WORD: "${output.s.bookingTitle}" }
+      - takeScreenshot: biz-booking-${output.lang}
+      - tapOn:
+          id: back
+      - extendedWaitUntil:
+          visible:
+            id: biz-tab-index
+          timeout: 10000
+
+# ── Calendar: day and week, and moving through dates ──
+- tapOn:
+    id: biz-tab-calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar-range
+    timeout: 20000
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: calendar-mode-day, WORD: "${output.s.calendarDay}" }
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: calendar-mode-week, WORD: "${output.s.calendarWeek}" }
+- runFlow:
+    file: reading-order.yaml
+    env: { FIRST: calendar-mode-day, LAST: calendar-mode-week }
+- copyTextFrom:
+    id: calendar-range
+- evalScript: ${output.today = maestro.copiedText}
+- assertNotVisible:
+    id: calendar-today
+    label: No "Today" shortcut while showing today
+# The next day, then back to today.
+- tapOn:
+    id: calendar-next
+- copyTextFrom:
+    id: calendar-range
+- assertTrue:
+    condition: ${maestro.copiedText !== output.today}
+    label: The arrow moves to another day
+- tapOn:
+    id: calendar-today
+- copyTextFrom:
+    id: calendar-range
+- assertTrue:
+    condition: ${maestro.copiedText === output.today}
+    label: '"Today" comes back to today'
+# The day before, and back.
+- tapOn:
+    id: calendar-prev
+- copyTextFrom:
+    id: calendar-range
+- assertTrue:
+    condition: ${maestro.copiedText !== output.today}
+- tapOn:
+    id: calendar-today
+# A week: a range of dates.
+- tapOn:
+    id: calendar-mode-week
+- copyTextFrom:
+    id: calendar-range
+- evalScript: ${output.week = maestro.copiedText}
+- assertTrue:
+    condition: ${output.week.indexOf('–') > 0}
+    label: The week view shows a date range
+- takeScreenshot: biz-calendar-week-${output.lang}
+- tapOn:
+    id: calendar-next
+- copyTextFrom:
+    id: calendar-range
+- assertTrue:
+    condition: ${maestro.copiedText !== output.week}
+    label: The arrow moves a week
+- tapOn:
+    id: calendar-today
+# A day in the strip opens that day.
+- tapOn:
+    id: calendar-day
+    index: 0
+- copyTextFrom:
+    id: calendar-range
+- assertTrue:
+    condition: ${maestro.copiedText.indexOf('–') < 0}
+    label: Tapping a day of the week shows that one day
+- takeScreenshot: biz-calendar-day-${output.lang}
+- tapOn:
+    id: calendar-status-PENDING
+- assertVisible:
+    id: calendar-status-PENDING
+    checked: true
+- tapOn:
+    id: calendar-status-ALL
+- tapOn:
+    id: calendar-today
+    optional: true
+    label: Back to today (not shown if day 0 was today)
+- runFlow:
+    when:
+      visible:
+        id: booking-row
+    commands:
+      - tapOn:
+          id: booking-row
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: manage-booking
+          timeout: 20000
+      - tapOn:
+          id: back
+      - extendedWaitUntil:
+          visible:
+            id: calendar-range
+          timeout: 10000
+
+# ── Customers (hidden for a provider) ──
+- runFlow:
+    when:
+      visible:
+        id: biz-tab-customers
+    commands:
+      - tapOn:
+          id: biz-tab-customers
+      - extendedWaitUntil:
+          visible:
+            id: customers-screen
+          timeout: 20000
+      - runFlow:
+          when:
+            visible:
+              id: customers-search
+          commands:
+            - runFlow:
+                file: chrome-words.yaml
+                env: { ID: customers-search, WORD: "${output.s.customersSearch}" }
+            - tapOn:
+                id: customers-search
+            - inputText: zzzzqqq
+            - pressKey: Enter
+            - extendedWaitUntil:
+                visible:
+                  text: ${output.s.noMatches}
+                timeout: 20000
+                label: A name nobody has finds nobody, and says so
+            - takeScreenshot: biz-customers-none-${output.lang}
+            - tapOn:
+                id: customers-search
+            - eraseText: 10
+            - pressKey: Enter
+            - hideKeyboard
+            - runFlow:
+                when:
+                  visible:
+                    id: customer-row
+                commands:
+                  - tapOn:
+                      id: customer-row
+                      index: 0
+                  - extendedWaitUntil:
+                      visible:
+                        id: back
+                      timeout: 20000
+                  - takeScreenshot: biz-customer-${output.lang}
+                  - tapOn:
+                      id: back
+                  - extendedWaitUntil:
+                      visible:
+                        id: customers-screen
+                      timeout: 10000
+
+# ── More, and what it opens ──
+- tapOn:
+    id: biz-tab-account
+- extendedWaitUntil:
+    visible:
+      id: more-profile
+    timeout: 20000
+- takeScreenshot: biz-more-${output.lang}
+- tapOn:
+    id: more-profile
+- extendedWaitUntil:
+    visible:
+      text: ${output.s.bizProfile}
+    timeout: 20000
+- assertVisible:
+    id: back
+- tapOn:
+    id: back
+- runFlow:
+    file: open-more-row.yaml
+    env: { ROW: more-staff, TITLE: "${output.s.bizStaff}" }
+- runFlow:
+    file: open-more-row.yaml
+    env: { ROW: more-services, TITLE: "${output.s.bizServices}" }
+- runFlow:
+    file: open-more-row.yaml
+    env: { ROW: more-reports, TITLE: "${output.s.bizReports}" }
+
+# The language buttons switch at once, and back.
+- scrollUntilVisible:
+    element:
+      id: lang-en
+    direction: DOWN
+    timeout: 10000
+- runFlow:
+    when:
+      true: ${output.lang === 'ar'}
+    commands:
+      - tapOn:
+          id: lang-en
+      - runFlow:
+          file: tab-label.yaml
+          env: { ID: biz-tab-account, WORD: "${output.other.bizTabMore}" }
+      - tapOn:
+          id: lang-ar
+- runFlow:
+    when:
+      true: ${output.lang === 'en'}
+    commands:
+      - tapOn:
+          id: lang-ar
+      - runFlow:
+          file: tab-label.yaml
+          env: { ID: biz-tab-account, WORD: "${output.other.bizTabMore}" }
+      - tapOn:
+          id: lang-en
+- runFlow:
+    file: tab-label.yaml
+    env: { ID: biz-tab-account, WORD: "${output.s.bizTabMore}" }
+
+# ── Sign out ──
+- scrollUntilVisible:
+    element:
+      id: sign-out
+    direction: DOWN
+    timeout: 20000
+- runFlow:
+    file: chrome-words.yaml
+    env: { ID: sign-out, WORD: "${output.s.signOut}" }
+- tapOn:
+    id: sign-out
+- extendedWaitUntil:
+    visible:
+      id: tab-index
+    timeout: 20000
+    label: Back in the customer space, signed out
+- assertVisible:
+    id: home-sign-in

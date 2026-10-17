@@ -16,6 +16,12 @@ import { join } from "path";
  * The lists live in two codebases that build separately, so they are
  * compared by reading both files rather than importing across the
  * boundary.
+ *
+ * Which buttons the app shows for a booking is the server's call (the
+ * detail response carries `actions`, filtered by role, so moves out of
+ * a final state never arrive); the app only holds a label for each
+ * status it can draw. That label map is what is checked here: a label
+ * for a status the API never accepts is a button that would 422.
  */
 
 const ROOT = process.cwd();
@@ -40,12 +46,12 @@ function reachableStatuses(): Set<string> {
   return new Set([...match[1].matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]));
 }
 
-/** The statuses the mobile app offers as buttons. */
+/** The statuses the mobile app can draw as buttons. */
 function mobileOffered(): Set<string> {
-  const source = read("mobile/features/bookings/status.ts");
-  const match = source.match(/export function nextActionsFor[\s\S]*$/);
-  if (!match) throw new Error("nextActionsFor not found");
-  return new Set([...match[0].matchAll(/status:\s*"([A-Z_]+)"/g)].map((m) => m[1]));
+  const source = read("mobile/app/manage/booking/[id].tsx");
+  const match = source.match(/const ACTION[^=]*=\s*\{([\s\S]*?)\n\};/);
+  if (!match) throw new Error("ACTION map not found");
+  return new Set([...match[1].matchAll(/^\s*([A-Z_]+):/gm)].map((m) => m[1]));
 }
 
 describe("the booking actions the app offers", () => {
@@ -69,14 +75,5 @@ describe("the booking actions the app offers", () => {
     const reachable = reachableStatuses();
     const unreachable = [...mobileOffered()].filter((s) => !reachable.has(s));
     expect(unreachable).toEqual([]);
-  });
-
-  it("does not offer a move out of a terminal state", () => {
-    const source = read("mobile/features/bookings/status.ts");
-    for (const terminal of ["COMPLETED", "CANCELLED", "NO_SHOW", "FAILED_PAYMENT"]) {
-      // A `case "COMPLETED":` in nextActionsFor would mean offering
-      // somebody a way out of a state the API treats as final.
-      expect(source, terminal).not.toMatch(new RegExp(`case\\s+"${terminal}"\\s*:`));
-    }
   });
 });

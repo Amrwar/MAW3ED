@@ -338,7 +338,7 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
         {/* Tagline */}
         <div style={{ marginBottom: 16 }}>
           <Field
-            label={isAr ? `شعار قصير (${form.taglineAr.length}/120)` : `Short Tagline (${form.taglineAr.length}/120)`}
+            label={isAr ? `جملة تعريفية قصيرة (${form.taglineAr.length}/120)` : `Short Tagline (${form.taglineAr.length}/120)`}
             hint={isAr ? "جملة قصيرة تصف نشاطك — تظهر تحت الاسم في الصفحة" : "A short sentence describing your business — shown below the name"}
           >
             <input

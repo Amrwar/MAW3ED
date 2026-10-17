@@ -42,6 +42,12 @@ const STORAGE_KEY = "maw3ed.lang";
 
 const LocaleContext = createContext<LocaleState | null>(null);
 
+/**
+ * The language the provider last showed — what useLocale answers outside
+ * it, e.g. in the root ErrorBoundary that replaces the provider's tree.
+ */
+let lastLang: Lang = "ar";
+
 export function LocaleProvider({ children, initialLang }: { children: ReactNode; initialLang?: Lang }) {
   const [lang, setLangState] = useState<Lang>(initialLang ?? "ar");
 
@@ -61,6 +67,10 @@ export function LocaleProvider({ children, initialLang }: { children: ReactNode;
     AsyncStorage.setItem(STORAGE_KEY, next).catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    lastLang = lang;
+  }, [lang]);
+
   const value = useMemo<LocaleState>(() => {
     const dir: Dir = lang === "ar" ? "rtl" : "ltr";
     return { lang, dir, isRTL: dir === "rtl", setLang, t: (key) => strings[lang][key] };
@@ -74,19 +84,17 @@ export function LocaleProvider({ children, initialLang }: { children: ReactNode;
 }
 
 /**
- * The locale. Outside a provider — a component rendered in isolation —
- * it answers Arabic rather than throwing, which is what the app is.
+ * The locale. Outside a provider — a component rendered in isolation, or
+ * the root ErrorBoundary after a crash — it answers with the language the
+ * provider last showed (Arabic before there was one) rather than throwing.
  */
 export function useLocale(): LocaleState {
-  return useContext(LocaleContext) ?? FALLBACK;
+  return useContext(LocaleContext) ?? FALLBACK[lastLang];
 }
 
-const FALLBACK: LocaleState = {
-  lang: "ar",
-  dir: "rtl",
-  isRTL: true,
-  setLang: () => undefined,
-  t: (key) => strings.ar[key],
+const FALLBACK: Record<Lang, LocaleState> = {
+  ar: { lang: "ar", dir: "rtl", isRTL: true, setLang: () => undefined, t: (key) => strings.ar[key] },
+  en: { lang: "en", dir: "ltr", isRTL: false, setLang: () => undefined, t: (key) => strings.en[key] },
 };
 
 /**

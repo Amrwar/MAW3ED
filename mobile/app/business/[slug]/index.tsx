@@ -56,6 +56,7 @@ import { ServiceSheet, StaffSheet, type BookingChoice } from "@/features/profile
 import { ApiError } from "@/lib/api/errors";
 import { money, num } from "@/lib/format";
 import type { PublicProfile, PublicStaffMember } from "@/types/api";
+import { count } from "@/lib/plural";
 
 /**
  * One business.
@@ -112,10 +113,11 @@ export default function BusinessScreen() {
     return (
       <View style={[styles.page, styles.centre, { paddingTop: insets.top }]}>
         <View style={styles.topBar}>
-          <IconButton icon="chevron-back" label={ar ? "رجوع" : "Back"} onPress={back} variant="filled" />
+          <IconButton icon="chevron-back" label={ar ? "رجوع" : "Back"} onPress={back} variant="filled" testID="back" />
         </View>
         {missing ? (
           <EmptyState
+            testID="business-missing"
             icon="storefront-outline"
             title={ar ? "المكان ده مش متاح" : "This place isn't available"}
             body={ar ? "يمكن اتشال أو اتقفل. دوّر على مكان تاني." : "It may have been removed. Try searching for another."}
@@ -185,17 +187,31 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
 
   const share = async () => {
     const url = profileUrl(p.slug);
-    const message = T(`${name} على مواعيد: ${url}`, `${name} on Maw3ed: ${url}`);
-    try {
-      if (Platform.OS === "web") {
-        const nav = globalThis.navigator as Navigator | undefined;
-        if (nav?.share) await nav.share({ title: name, url });
-        else if (nav?.clipboard) {
-          await nav.clipboard.writeText(url);
-          toast({ message: T("اتنسخ اللينك", "Link copied"), tone: "ok" });
+    const message = T(`${name} على موعد: ${url}`, `${name} on Maw3ed: ${url}`);
+    if (Platform.OS === "web") {
+      const nav = globalThis.navigator as Navigator | undefined;
+      // The browser's share sheet where there is one. It is missing on
+      // most desktops and refuses outside a user gesture or a secure
+      // page; anything but the person closing it falls through to a copy.
+      if (nav?.share) {
+        try {
+          await nav.share({ title: name, url });
+          return;
+        } catch (e) {
+          if (e instanceof Error && e.name === "AbortError") return;
         }
-        return;
       }
+      try {
+        await nav?.clipboard?.writeText(url);
+        if (!nav?.clipboard) throw new Error("no clipboard");
+        toast({ message: T("اتنسخ اللينك", "Link copied"), tone: "ok" });
+      } catch {
+        // No clipboard either (an http page): show the link to copy by hand.
+        toast({ message: url, tone: "info" });
+      }
+      return;
+    }
+    try {
       await Share.share(Platform.OS === "ios" ? { message: name, url } : { message, title: name });
     } catch {
       // Dismissing the share sheet is not an error worth a message.
@@ -222,6 +238,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
               price={s.price}
               currency={s.currency}
               onPress={() => setService({ s, staffId: null })}
+              testID="service-card"
             />
           ))}
         </Section>
@@ -254,7 +271,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
         title={T("صور", "Photos")}
         action={
           photos.length > 1 ? (
-            <Button size="sm" variant="ghost" label={T(`الكل (${num(photos.length, lang)})`, `All (${photos.length})`)} onPress={() => setViewerAt(0)} />
+            <Button size="sm" variant="ghost" label={T(`الكل (${num(photos.length, lang)})`, `All (${photos.length})`)} onPress={() => setViewerAt(0)} testID="all-photos" />
           ) : undefined
         }
       >
@@ -280,7 +297,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
 
   const hoursSection =
     p.hours.length > 0 ? (
-      <Section key="hours" title={T("مواعيد العمل", "Opening hours")}>
+      <Section key="hours" title={T("مواعيد الشغل", "Opening hours")}>
         <HoursTable hours={p.hours} />
       </Section>
     ) : null;
@@ -303,6 +320,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
             variant="ghost"
             label={T(`الكل (${num(p.rating.count, lang)})`, `All (${p.rating.count})`)}
             onPress={() => router.push({ pathname: "/business/[slug]/reviews", params: { slug: p.slug } })}
+            testID="all-reviews"
           />
         ) : undefined
       }
@@ -402,7 +420,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
         style={[styles.topBar, styles.floating, { paddingTop: insets.top + spacing.sm }, compact && styles.topBarSolid]}
         pointerEvents="box-none"
       >
-        <IconButton icon="chevron-back" label={T("رجوع", "Back")} onPress={onBack} variant="filled" />
+        <IconButton icon="chevron-back" label={T("رجوع", "Back")} onPress={onBack} variant="filled" testID="back" />
         {compact ? (
           <Text variant="bodyBold" numberOfLines={1} style={[styles.flex, styles.compactTitle]}>
             {name}
@@ -411,7 +429,13 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
           <View style={styles.flex} />
         )}
         <View style={styles.actions}>
-          <IconButton icon="share-social-outline" label={T(`شارك ${name}`, `Share ${name}`)} onPress={share} variant="filled" />
+          <IconButton
+            icon="share-social-outline"
+            label={T(`شارك ${name}`, `Share ${name}`)}
+            onPress={share}
+            variant="filled"
+            testID="share-business"
+          />
           <View style={styles.filled}>
             <FavoriteButton businessId={p.id} name={name} />
           </View>
@@ -434,7 +458,7 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
                 <Text variant="caption" tone="subtle">
                   {p.services.length === 1 && p.services[0]
                     ? (!ar && p.services[0].nameEn) || p.services[0].nameAr
-                    : T(`${num(p.services.length, lang)} خدمات`, `${p.services.length} services`)}
+                    : count(p.services.length, "service", lang)}
                 </Text>
               )}
             </View>
@@ -442,11 +466,12 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
               label={words.book[lang]}
               icon="calendar-outline"
               onPress={onBookPress}
+              testID="book-button"
               accessibilityHint={p.services.length === 1 ? T("بيفتح تفاصيل الخدمة", "Opens the service") : T("بيبدأ الحجز من اختيار الخدمة", "Starts booking with a choice of service")}
             />
           </>
         ) : (
-          <Text variant="body" tone="muted" style={styles.flex}>
+          <Text variant="body" tone="muted" style={styles.flex} testID="no-services">
             {T("المكان لسه ماضافش خدمات تتحجز. تقدر تتواصل معاهم.", "Nothing to book here yet. You can still contact them.")}
           </Text>
         )}
@@ -487,7 +512,7 @@ function Cover({ uri, count, onOpen }: { uri: string | null; count: number; onOp
     );
   if (!onOpen) return image;
   return (
-    <Touchable onPress={onOpen} accessibilityRole="button" accessibilityLabel={lang === "ar" ? `شوف الصور (${num(count, lang)})` : `View photos (${count})`}>
+    <Touchable onPress={onOpen} testID="cover-photos" accessibilityRole="button" accessibilityLabel={lang === "ar" ? `شوف الصور (${num(count, lang)})` : `View photos (${count})`}>
       {image}
       <View style={styles.photoCount}>
         <Icon name="images-outline" color={colors.inverse} size="sm" />

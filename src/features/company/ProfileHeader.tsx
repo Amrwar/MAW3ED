@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { countText } from "@/lib/i18n";
 import {
   BadgeCheck,
   CalendarPlus,
@@ -19,7 +20,6 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useFavorites } from "@/hooks/useFavorites";
 import { coverClassFor } from "@/lib/category-cover";
 import { getInitials } from "@/lib/utils";
-import { num } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
 import { telHref, whatsappHref } from "@/lib/contact";
 
@@ -181,7 +181,7 @@ export default function ProfileHeader({ business: b, summary }: Props) {
                     />
                     <span className="num">{summary.average.toFixed(1)}</span>
                     <span className="font-normal text-[var(--color-subtle)]">
-                      (<span className="num">{num(summary.count, lang)}</span> {p.reviewWord})
+                      ({countText(lang, summary.count, p.reviewWord)})
                     </span>
                   </a>
                 )}

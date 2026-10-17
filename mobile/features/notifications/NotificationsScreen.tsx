@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Screen, Text, Card, ListState, colors, spacing, useLocale } from "@/design";
+import { Button, Screen, Text, Card, ListState, colors, spacing, useLocale, joinLabel } from "@/design";
 import { SignInGate } from "@/features/auth/SignInGate";
 import { hrefFor } from "@/lib/links";
 import { track } from "@/lib/analytics";
 import type { AppNotification } from "@/types/api";
-import { useMarkNotificationsRead, useNotifications } from "./queries";
+import { fetchNotificationsPage, useMarkNotificationsRead, useNotifications } from "./queries";
 import { relativeTime } from "@/lib/format";
 import { PushToggle } from "./PushToggle";
 
@@ -37,15 +37,71 @@ function Feed() {
   const T = (a: string, e: string) => (ar ? a : e);
   const query = useNotifications();
   const markRead = useMarkNotificationsRead();
-  const items = query.data?.notifications ?? [];
+  // Older pages, fetched on "show more" and kept below the first page.
+  // The first page is the query the tab badge shares; refreshing it
+  // (marking read does) must not throw away what was loaded under it.
+  // But the badge's poll can bring a new notification, which pushes the
+  // first page's last item out of it: the older pages were fetched after
+  // that item, so it would vanish. They are anchored to the first page's
+  // last id and ignored once it changes (a new "show more" starts again).
+  const [loaded, setOlder] = useState<{ anchor: string | undefined; items: AppNotification[]; nextCursor: string | null } | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
+  const firstPage = query.data?.notifications;
+  const anchor = firstPage?.[firstPage.length - 1]?.id;
+  const older = loaded && loaded.anchor === anchor ? loaded : null;
+  const items = useMemo(() => {
+    const first = firstPage ?? [];
+    if (!older) return first;
+    const seen = new Set(first.map((n) => n.id));
+    return [...first, ...older.items.filter((n) => !seen.has(n.id))];
+  }, [firstPage, older]);
+  const nextCursor = older ? older.nextCursor : (query.data?.nextCursor ?? null);
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    setMoreFailed(false);
+    try {
+      const page = await fetchNotificationsPage(nextCursor);
+      // Showing them is reading them, as for the first page. These are
+      // local, so their read state is set here; the effect below then
+      // never sees them as unread and does not PATCH them again.
+      const unread = page.notifications.filter((n) => !n.readAt).map((n) => n.id);
+      if (unread.length) markRead.mutate(unread);
+      const at = new Date().toISOString();
+      setOlder((prev) => ({
+        anchor,
+        items: [...(prev && prev.anchor === anchor ? prev.items : []), ...page.notifications.map((n) => (n.readAt ? n : { ...n, readAt: at }))],
+        nextCursor: page.nextCursor ?? null,
+      }));
+    } catch {
+      setMoreFailed(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  function refresh() {
+    setOlder(null);
+    setMoreFailed(false);
+    void query.refetch();
+  }
   // "5 minutes ago" is read once per visit; it need not tick while open.
   const [now] = useState(() => Date.now());
 
   // Opening the feed is reading it, as on the website.
-  const unreadIds = items.filter((n) => !n.readAt).map((n) => n.id);
-  const unreadKey = unreadIds.join(",");
+  // Each id is sent once; the first page shows read when the shared query refetches.
+  const sent = useRef(new Set<string>());
+  const unreadKey = items
+    .filter((n) => !n.readAt)
+    .map((n) => n.id)
+    .join(",");
   useEffect(() => {
-    if (unreadKey) markRead.mutate(unreadKey.split(","));
+    const ids = unreadKey ? unreadKey.split(",").filter((id) => !sent.current.has(id)) : [];
+    if (!ids.length) return;
+    for (const id of ids) sent.current.add(id);
+    markRead.mutate(ids);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per new batch
   }, [unreadKey]);
 
@@ -71,7 +127,7 @@ function Feed() {
     >
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} tintColor={colors.jade} />}
+        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={refresh} tintColor={colors.jade} />}
       >
         <View style={styles.push}>
           <PushToggle card />
@@ -89,7 +145,7 @@ function Feed() {
             <Card
               key={n.id}
               onPress={n.href ? () => open(n) : undefined}
-              accessibilityLabel={`${n.readAt ? "" : T("جديد: ", "New: ")}${n.title}${n.body ? `, ${n.body}` : ""}`}
+              accessibilityLabel={`${n.readAt ? "" : T("جديد: ", "New: ")}${joinLabel(lang, n.title, n.body)}`}
             >
               <View style={styles.item}>
                 {/* Unread is marked by a dot and by the word in the label, not by colour alone. */}
@@ -108,6 +164,22 @@ function Feed() {
               </View>
             </Card>
           ))}
+          {nextCursor ? (
+            <View style={styles.more}>
+              {moreFailed ? (
+                <Text variant="caption" tone="danger" align="center">
+                  {T("معرفناش نجيب الباقي. جرّب تاني.", "Couldn't load more. Try again.")}
+                </Text>
+              ) : null}
+              <Button
+                label={T("إشعارات أقدم", "Older notifications")}
+                variant="outline"
+                loading={loadingMore}
+                onPress={() => void loadMore()}
+                testID="notifications-more"
+              />
+            </View>
+          ) : null}
         </ListState>
       </ScrollView>
     </Screen>
@@ -121,4 +193,5 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.jade, marginTop: 7 },
   body: { marginTop: spacing.xs },
   push: { marginBottom: spacing.md },
+  more: { gap: spacing.sm, marginTop: spacing.sm },
 });

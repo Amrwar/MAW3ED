@@ -1,0 +1,196 @@
+# Every customer tab, and Android's Back from screens nested inside them:
+# Back always lands somewhere in the app — the screen underneath, or a
+# tab — and never closes the app from anywhere but Home. Signed out, so
+# the Bookings, Favorites and Account tabs show their sign-in prompt,
+# whose button opens sign-in and comes back. Read-only.
+appId: net.maw3ed.app.staging
+name: Tabs and Android Back
+tags:
+  - deep
+  - android
+---
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: ar
+
+# ── Each tab ──
+- tapOn:
+    id: tab-search
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 20000
+- tapOn:
+    id: tab-bookings
+- extendedWaitUntil:
+    visible:
+      id: guest-gate
+    timeout: 10000
+    label: Bookings asks a guest to sign in
+- tapOn:
+    id: tab-favorites
+- extendedWaitUntil:
+    visible:
+      id: gate-sign-in
+    timeout: 10000
+    label: Favorites asks a guest to sign in
+- tapOn:
+    id: tab-account
+- extendedWaitUntil:
+    visible:
+      id: gate-sign-in
+    timeout: 10000
+    label: Account asks a guest to sign in
+- takeScreenshot: 12-account-guest
+# The prompt opens sign-in; Back returns to the tab it came from.
+- tapOn:
+    id: gate-sign-in
+- extendedWaitUntil:
+    visible:
+      id: login-tab-customer
+    timeout: 10000
+- pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: guest-gate
+    timeout: 10000
+    label: Back from sign-in lands on the Account prompt again
+# Back from a tab other than Home goes to another tab, not out of the app.
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: tab-index
+    label: Back from a tab stays in the app
+- tapOn:
+    id: tab-index
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 10000
+
+# ── Home → business page → Back ──
+- runFlow: subflows/open-first-business.yaml
+- pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 10000
+    label: Back from a business page returns to Home
+
+# ── Home → business page → all reviews → Back → Back ──
+- runFlow: subflows/open-first-business.yaml
+- scrollUntilVisible:
+    element:
+      id: reviews
+    direction: DOWN
+    timeout: 20000
+- runFlow:
+    when:
+      visible:
+        id: all-reviews
+    commands:
+      - tapOn:
+          id: all-reviews
+      - extendedWaitUntil:
+          visible:
+            id: review-sort-recent
+          timeout: 20000
+      - pressKey: back
+      - extendedWaitUntil:
+          visible:
+            id: share-business
+          timeout: 10000
+          label: Back from the reviews returns to the business page
+- pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: tab-index
+    timeout: 10000
+
+# ── Home → booking steps → Back walks out step by step ──
+- runFlow: subflows/open-first-business.yaml
+- runFlow: subflows/open-booking.yaml
+- runFlow:
+    file: subflows/leave-to.yaml
+    env: { TARGET: share-business }
+- pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: tab-index
+    timeout: 10000
+
+# ── Home → Near me → Back ──
+# Home keeps its scroll position across tabs; the card is near the top.
+- scrollUntilVisible:
+    element:
+      id: home-nearby
+    direction: UP
+    timeout: 10000
+- tapOn:
+    id: home-nearby
+- extendedWaitUntil:
+    visible:
+      id: use-location
+    timeout: 15000
+- pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: home-nearby
+    timeout: 10000
+    label: Back from Near me returns to Home
+
+# ── Home → sign-in (business tab) → Back ──
+- scrollUntilVisible:
+    element:
+      id: home-sign-in
+    direction: UP
+    timeout: 10000
+- tapOn:
+    id: home-sign-in
+- extendedWaitUntil:
+    visible:
+      id: login-tab-business
+    timeout: 10000
+- tapOn:
+    id: login-tab-business
+- pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: home-sign-in
+    timeout: 10000
+    label: Back from sign-in returns to Home
+
+# ── Search → a result → Back keeps the search ──
+- tapOn:
+    id: tab-search
+- extendedWaitUntil:
+    visible:
+      id: "business-card|search-empty"
+    timeout: 20000
+- runFlow:
+    when:
+      visible:
+        id: business-card
+    commands:
+      - tapOn:
+          id: business-card
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: share-business
+          timeout: 20000
+      - pressKey: back
+      - extendedWaitUntil:
+          visible:
+            id: search-input
+          timeout: 10000
+          label: Back from a result returns to Search
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: tab-index
+    label: Still in the app
+- takeScreenshot: 12-end

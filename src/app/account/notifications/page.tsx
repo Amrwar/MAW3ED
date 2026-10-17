@@ -8,7 +8,7 @@ export default async function NotificationsPage() {
   const user = await getAccountUser();
   if (!user) return null;
 
-  const { items, unread } = await getNotifications(user.id);
+  const { items, unread, nextCursor } = await getNotifications(user.id);
 
   return (
     <NotificationList
@@ -22,6 +22,7 @@ export default async function NotificationsPage() {
         createdAt: n.createdAt.toISOString(),
       }))}
       initialUnread={unread}
+      initialCursor={nextCursor}
     />
   );
 }

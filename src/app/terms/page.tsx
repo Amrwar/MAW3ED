@@ -3,6 +3,7 @@ import { buildMetadata } from "@/lib/seo/meta";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/support";
 
 export const metadata: Metadata = buildMetadata({
   title: "شروط الاستخدام",
@@ -27,7 +28,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-3">1. قبول الشروط</h2>
               <p>
-                باستخدامك منصة موعد (MAW3ED)، فإنك توافق على الالتزام بهذه الشروط والأحكام. إذا كنت لا توافق على أي جزء منها، يُرجى عدم استخدام المنصة.
+                باستخدامك منصة موعد (Maw3ed)، فإنك توافق على الالتزام بهذه الشروط والأحكام. إذا كنت لا توافق على أي جزء منها، يُرجى عدم استخدام المنصة.
               </p>
             </section>
 
@@ -62,7 +63,11 @@ export default function TermsPage() {
             <section>
               <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-3">6. التواصل</h2>
               <p>
-                لأي استفسارات حول شروط الاستخدام، تواصل معنا عبر البريد الإلكتروني.
+                لأي استفسارات حول شروط الاستخدام، تواصل معنا عبر البريد الإلكتروني:{" "}
+                <a href={SUPPORT_MAILTO} dir="ltr" className="text-[var(--color-jade)] hover:underline">
+                  {SUPPORT_EMAIL}
+                </a>
+                .
               </p>
             </section>
           </div>

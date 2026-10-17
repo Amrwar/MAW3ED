@@ -36,7 +36,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   const { id } = await params;
   const existing = await getOwned(id, guard.id);
-  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!existing) return NextResponse.json({ error: "الموظف ده مش موجود" }, { status: 404 });
 
   const body = await req.json();
   const { serviceIds, ...rest } = body;
@@ -49,7 +49,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   let ownServiceIds: string[] | undefined;
   if (serviceIds !== undefined) {
     if (!Array.isArray(serviceIds)) {
-      return NextResponse.json({ error: "serviceIds must be a list" }, { status: 422 });
+      return NextResponse.json({ error: "اختار الخدمات من القائمة" }, { status: 422 });
     }
     const mine = await db.service.findMany({
       where: { businessId: guard.id, id: { in: serviceIds as string[] } },
@@ -87,7 +87,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const existing = await getOwned(id, guard.id);
-  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!existing) return NextResponse.json({ error: "الموظف ده مش موجود" }, { status: 404 });
 
   await db.staffMember.delete({ where: { id } });
   return NextResponse.json({ ok: true });

@@ -1,9 +1,9 @@
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { Badge, Card, Header, ListState, Screen, Text, colors, ltr, spacing, useLocale } from "@/design";
+import { Badge, Card, Header, ListState, Screen, Text, colors, spacing, useLocale } from "@/design";
 import { SignInGate } from "@/features/auth/SignInGate";
 import { usePayments } from "@/features/account/queries";
 import { Row } from "@/features/booking/components";
-import { longDate, money } from "@/lib/format";
+import { dateTime, joinParts, longDate, money } from "@/lib/format";
 
 /**
  * Deposits paid, from the payment ledger, with what has been refunded
@@ -30,7 +30,7 @@ function Payments() {
 
   return (
     <Screen scroll={false} edges="both"
-      hero={<Header title={T("المدفوعات", "Payments")} back tone="night" />}
+      hero={<Header title={T("المدفوعات", "Payments")} back backTo="/(customer)/account" tone="night" />}
     >
       <ScrollView
         contentContainerStyle={styles.list}
@@ -72,16 +72,16 @@ function Payments() {
                 </View>
                 {(p.serviceAr || p.serviceEn) && p.bookingDate ? (
                   <Text variant="caption" tone="subtle">
-                    {(!ar && p.serviceEn) || p.serviceAr} · {longDate(p.bookingDate.slice(0, 10), lang)}
+                    {joinParts([(!ar && p.serviceEn) || p.serviceAr, longDate(p.bookingDate.slice(0, 10), lang)], lang)}
                   </Text>
                 ) : null}
-                <Row label={T("العربون", "Deposit")} value={fmt(p.amountCents, p.currency)} strong />
+                <Row label={kindLabel(p.kind, T)} value={fmt(p.amountCents, p.currency)} strong />
                 {refunded ? <Row label={T("اترجّع", "Refunded")} value={fmt(p.refundedCents, p.currency)} tone="ok" /> : null}
                 {p.receiptNumber ? <Row label={T("رقم الإيصال", "Receipt")} value={p.receiptNumber} ltrValue /> : null}
                 {p.bookingRef ? <Row label={T("رقم الحجز", "Booking")} value={p.bookingRef} ltrValue /> : null}
                 {p.paidAt ? (
-                  <Text variant="caption" tone="subtle" style={ltr}>
-                    {new Date(p.paidAt).toLocaleString(ar ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo" })}
+                  <Text variant="caption" tone="subtle">
+                    {dateTime(p.paidAt, lang)}
                   </Text>
                 ) : null}
               </Card>
@@ -98,3 +98,17 @@ const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   flex: { flex: 1 },
 });
+
+/** What the payment was for, from the ledger's kind — not every payment is a deposit. */
+function kindLabel(kind: string, T: (ar: string, en: string) => string): string {
+  switch (kind) {
+    case "BOOKING_BALANCE":
+      return T("باقي الحساب", "Balance");
+    case "BOOKING_FULL":
+      return T("المبلغ كامل", "Full payment");
+    case "BOOKING_DEPOSIT":
+      return T("العربون", "Deposit");
+    default:
+      return T("دفعة", "Payment");
+  }
+}

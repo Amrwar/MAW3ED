@@ -29,7 +29,7 @@ export function TimeSlots({
   const { lang, t } = useLocale();
   const { isTablet } = useLayout();
 
-  if (slots.length === 0) return <EmptyState title={t("noTimes")} icon="time-outline" />;
+  if (slots.length === 0) return <EmptyState title={t("noTimes")} icon="time-outline" testID="no-times" />;
 
   const groups = slots.length > 8 ? groupByPart(slots, lang) : [{ label: null, items: slots }];
   const width = isTablet ? "18%" : "31%";
@@ -54,6 +54,7 @@ export function TimeSlots({
                   accessibilityLabel={time(s, lang)}
                   onPress={() => onChange(s)}
                   style={[styles.slot, { width }, selected ? styles.on : styles.off]}
+                  testID="time-slot"
                 >
                   <Text variant="label" align="center" style={{ color: selected ? colors.inverse : colors.ink }}>
                     {time(s, lang)}

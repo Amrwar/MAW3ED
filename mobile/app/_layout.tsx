@@ -21,7 +21,8 @@ import { persistOptions } from "@/lib/query/persist";
 import { keys } from "@/lib/query/keys";
 import { hrefFor } from "@/lib/links";
 import { screen, track } from "@/lib/analytics";
-import { Text, Button, LocaleProvider, OfflineBanner, ToastProvider, colors, spacing } from "@/design";
+import { initSentry, reportError, withSentry } from "@/lib/sentry";
+import { Text, Button, LocaleProvider, OfflineBanner, ToastProvider, colors, spacing, useLocale } from "@/design";
 
 /**
  * The root of the app.
@@ -41,13 +42,15 @@ import { Text, Button, LocaleProvider, OfflineBanner, ToastProvider, colors, spa
  * drawn in the system font and then redrawn.
  */
 
+// First, so a crash anywhere below is reported (a no-op without a DSN).
+initSentry();
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 const queryClient = createQueryClient();
 installConnectivity();
 if (Platform.OS !== "web") configureForegroundHandling();
 
-export default function RootLayout() {
+function RootLayout() {
   useScreenTracking();
   const [fontsLoaded, fontError] = useFonts({
     ReadexPro_300Light,
@@ -109,6 +112,8 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+export default withSentry(RootLayout);
 
 function useScreenTracking() {
   const pathname = usePathname();
@@ -191,22 +196,29 @@ function useNotificationRouting(ready: boolean) {
 /**
  * What a crash in any screen shows instead of a white screen. Expo
  * Router renders this for an error thrown while rendering a route; the
- * person can try again, and the error is reported once.
+ * person can try again, and the error is reported once — to analytics
+ * and, since Expo Router catches it before Sentry's global handler
+ * could, to Sentry explicitly.
  */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  // Rendered in place of the root layout, so outside its LocaleProvider:
+  // useLocale answers with the language the app was last showing.
+  const { lang } = useLocale();
+  const T = (a: string, e: string) => (lang === "ar" ? a : e);
   useEffect(() => {
     track("render_error", { message: error.message.slice(0, 120) });
+    reportError(error);
   }, [error]);
 
   return (
     <View style={styles.crash}>
       <Text variant="heading" style={styles.center}>
-        حصل خطأ غير متوقع
+        {T("حصل خطأ غير متوقع", "Something unexpected went wrong")}
       </Text>
       <Text variant="body" tone="subtle" style={styles.center}>
-        جرّب تاني. لو المشكلة فضلت، اقفل التطبيق وافتحه من جديد.
+        {T("جرّب تاني. لو المشكلة فضلت، اقفل التطبيق وافتحه من جديد.", "Try again. If it keeps happening, close the app and open it again.")}
       </Text>
-      <Button label="حاول تاني" onPress={retry} style={styles.retry} />
+      <Button label={T("حاول تاني", "Try again")} onPress={retry} style={styles.retry} />
     </View>
   );
 }

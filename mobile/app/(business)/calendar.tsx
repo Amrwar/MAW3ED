@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import {
   Chip,
   EmptyState,
@@ -15,13 +15,15 @@ import {
   radius,
   spacing,
   useLocale,
+  joinLabel,
 } from "@/design";
 import { addDays, cairoToday, weekdayOf } from "@/design/calendar";
 import { useBusinessAccess } from "@/features/business/access";
 import { BookingRow, nameOf, pick } from "@/features/business/components";
 import { useBusinessProfile, useCalendar, useStaff } from "@/features/business/queries";
 import type { CalendarBooking } from "@/features/business/types";
-import { dayOfMonth, longDate, num, weekdayShort } from "@/lib/format";
+import { dayOfMonth, longDate, num, weekdayHeading } from "@/lib/format";
+import { count as countOf } from "@/lib/plural";
 
 /**
  * The calendar: a day, or a week, of bookings in time order.
@@ -48,6 +50,8 @@ export default function Calendar() {
   const T = (a: string, e: string) => (ar ? a : e);
   const access = useBusinessAccess();
   const today = useMemo(() => cairoToday(), []);
+  // Under 360pt a column is ~26pt: "Mon" no longer fits, "Mo" does.
+  const narrow = useWindowDimensions().width < 360;
   const [mode, setMode] = useState<Mode>("day");
   const [day, setDay] = useState(today);
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("ALL");
@@ -84,6 +88,7 @@ export default function Calendar() {
   return (
     <Screen
       scroll={false}
+      testID="calendar-screen"
       hero={
         <View style={styles.heroBody}>
           <View style={styles.heroTop}>
@@ -91,7 +96,7 @@ export default function Calendar() {
               {T("التقويم", "Calendar")}
             </Text>
             {day !== today ? (
-              <Touchable accessibilityRole="button" onPress={() => setDay(today)} style={styles.todayButton}>
+              <Touchable accessibilityRole="button" onPress={() => setDay(today)} style={styles.todayButton} testID="calendar-today">
                 <Text variant="label" style={{ color: colors.night }}>
                   {T("النهارده", "Today")}
                 </Text>
@@ -106,10 +111,11 @@ export default function Calendar() {
               { value: "day", label: T("يوم", "Day") },
               { value: "week", label: T("أسبوع", "Week") },
             ]}
+            testIDPrefix="calendar-mode"
           />
           {/* The week, as a strip: tap a day to see it. */}
           <View style={styles.weekRow}>
-            <IconButton icon="chevron-back" variant="night" label={mode === "day" ? T("اليوم اللي فات", "Previous day") : T("الأسبوع اللي فات", "Previous week")} onPress={() => shift(-1)} />
+            <IconButton icon="chevron-back" variant="night" label={mode === "day" ? T("اليوم اللي فات", "Previous day") : T("الأسبوع اللي فات", "Previous week")} onPress={() => shift(-1)} testID="calendar-prev" />
             {week.map((d) => {
               const on = mode === "day" ? d === day : true;
               const count = byDay.get(d)?.length ?? 0;
@@ -118,17 +124,19 @@ export default function Calendar() {
                   key={d}
                   accessibilityRole="button"
                   accessibilityState={{ selected: d === day }}
-                  accessibilityLabel={`${longDate(d, lang)}${mode === "week" ? `، ${count}` : ""}`}
+                  accessibilityLabel={joinLabel(lang, longDate(d, lang), mode === "week" && countOf(count, "booking", lang))}
                   onPress={() => {
                     setDay(d);
                     setMode("day");
                   }}
                   style={[styles.weekDay, mode === "day" && d === day && styles.weekDayOn, d === today && styles.weekDayToday]}
+                  testID="calendar-day"
                 >
-                  <Text variant="tiny" style={{ color: mode === "day" && on ? colors.night : colors.nightText }}>
-                    {weekdayShort(d, lang)}
+                  {/* One letter in Arabic, "Sun" ("Su" on a small phone) in English: seven whole names do not fit. */}
+                  <Text variant="tiny" numberOfLines={1} style={{ color: mode === "day" && on ? colors.night : colors.nightText }}>
+                    {lang === "en" && narrow ? weekdayHeading(d, lang).slice(0, 2) : weekdayHeading(d, lang)}
                   </Text>
-                  <Text variant="bodyBold" style={{ color: mode === "day" && on ? colors.night : colors.inverse }}>
+                  <Text variant="bodyBold" numberOfLines={1} style={{ color: mode === "day" && on ? colors.night : colors.inverse }}>
                     {dayOfMonth(d, lang)}
                   </Text>
                   {mode === "week" && count > 0 ? (
@@ -139,14 +147,14 @@ export default function Calendar() {
                 </Touchable>
               );
             })}
-            <IconButton icon="chevron-forward" variant="night" label={mode === "day" ? T("اليوم اللي جاي", "Next day") : T("الأسبوع اللي جاي", "Next week")} onPress={() => shift(1)} />
+            <IconButton icon="chevron-forward" variant="night" label={mode === "day" ? T("اليوم اللي جاي", "Next day") : T("الأسبوع اللي جاي", "Next week")} onPress={() => shift(1)} testID="calendar-next" />
           </View>
         </View>
       }
     >
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={styles.chipStrip}>
         {STATUSES.map((s) => (
-          <Chip key={s} label={statusLabel[s]} selected={status === s} onPress={() => setStatus(s)} />
+          <Chip key={s} label={statusLabel[s]} selected={status === s} onPress={() => setStatus(s)} testID={`calendar-status-${s}`} />
         ))}
       </ScrollView>
 
@@ -179,7 +187,7 @@ export default function Calendar() {
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={calendar.isRefetching} onRefresh={() => calendar.refetch()} tintColor={colors.jade} />}
       >
-        <Text variant="label" tone="ink2">
+        <Text variant="label" tone="ink2" testID="calendar-range">
           {mode === "day" ? longDate(day, lang) : `${longDate(from, lang)} – ${longDate(to, lang)}`}
         </Text>
         {calendar.isLoading ? (
@@ -234,7 +242,7 @@ const styles = StyleSheet.create({
   heroTop: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   todayButton: { minHeight: 36, paddingHorizontal: spacing.md, borderRadius: radius.full, backgroundColor: colors.gold, justifyContent: "center", overflow: "hidden" },
   weekRow: { flexDirection: "row", alignItems: "center", gap: 2 },
-  weekDay: { flex: 1, minHeight: 64, alignItems: "center", justifyContent: "center", borderRadius: radius.md, overflow: "hidden" },
+  weekDay: { flex: 1, minWidth: 0, minHeight: 64, alignItems: "center", justifyContent: "center", borderRadius: radius.md, overflow: "hidden" },
   weekDayOn: { backgroundColor: colors.gold },
   weekDayToday: { borderWidth: 1, borderColor: colors.nightLine },
   chipStrip: { flexGrow: 0 },

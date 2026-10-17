@@ -2,7 +2,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Avatar, Badge, Button, Icon, ServiceCard, Sheet, Text, Touchable, colors, radius, spacing, useLocale } from "@/design";
 import { nextFreeLabel } from "@/features/discovery/BusinessCard";
-import { duration, money, num } from "@/lib/format";
+import { duration, joinParts, money, num } from "@/lib/format";
 import type { PublicProfile, PublicStaffMember } from "@/types/api";
 import { KIND_WORDS, servicesOf, staffFor, type ProfileKind } from "./profile";
 import { HoursTable } from "./sections";
@@ -59,6 +59,7 @@ export function ServiceSheet({
     <Sheet
       open
       onClose={onClose}
+      testID="service-sheet"
       title={name}
       footer={
         <View style={styles.footer}>
@@ -67,6 +68,7 @@ export function ServiceSheet({
             icon="calendar-outline"
             onPress={() => onBook({ serviceId: service.id, staffId })}
             accessibilityHint={ar ? "بيفتح الحجز على الخدمة دي" : "Starts booking this service"}
+            testID="service-sheet-book"
           />
           <Text variant="caption" tone="subtle" align="center">
             {ar ? "هتختار اليوم والميعاد في الخطوة الجاية." : "You'll pick a day and time next."}
@@ -111,7 +113,7 @@ export function ServiceSheet({
                   key={m.id}
                   selected={staffId === m.id}
                   title={mName}
-                  subtitle={[m.role, nextFreeLabel(m.nextSlot, lang)].filter(Boolean).join(" · ") || null}
+                  subtitle={joinParts([m.role, nextFreeLabel(m.nextSlot, lang)], lang) || null}
                   photo={m.photo}
                   onPress={() => setStaffId(m.id)}
                 />
@@ -195,7 +197,7 @@ export function StaffSheet({
   const works = member.hours.some((h) => !h.isClosed);
 
   return (
-    <Sheet open onClose={onClose} title={name}>
+    <Sheet open onClose={onClose} title={name} testID="staff-sheet">
       <View style={styles.body}>
         <View style={styles.who}>
           <Avatar name={name} uri={member.photo} size="xl" />

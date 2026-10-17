@@ -131,7 +131,16 @@ export default function BookingsClient({
       body:    JSON.stringify({ status }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? t.dashboard.bookingActions.error);
+    if (!res.ok) {
+      // Ahead of the clock: worded from the code in the owner's language,
+      // and the lists reloaded so the buttons match the server again.
+      if (data.code === "too-early") {
+        fetchBookings(page);
+        fetchDay(calendarDate);
+        throw new Error(t.dashboard.bookingActions.tooEarly);
+      }
+      throw new Error(data.error ?? t.dashboard.bookingActions.error);
+    }
 
     const update = (bk: DashboardBooking) => bk.id === id ? { ...bk, status } : bk;
     setBookings((prev)        => prev.map(update));
@@ -180,7 +189,9 @@ export default function BookingsClient({
           </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        {/* Wraps on a phone: the tabs and the button side by side were
+            wider than 390 px, and the button sat flush on the edge. */}
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
           <div
             role="tablist"
             aria-label={b.title}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toCents, fromCents, depositCents, balanceCents, formatCents } from "./money";
+import { toCents, fromCents, depositCents, balanceCents, bookingMoney, formatCents } from "./money";
 
 describe("toCents", () => {
   it("converts pounds to piastres", () => {
@@ -49,11 +49,57 @@ describe("depositCents", () => {
   });
 
   it("refuses a percentage that is not a deposit", () => {
-    // 0% is not a deposit and 100% is the whole price, which is a
-    // different kind of payment and should be booked as one.
     expect(() => depositCents(100, 0)).toThrow();
-    expect(() => depositCents(100, 100)).toThrow();
+    expect(() => depositCents(100, 101)).toThrow();
     expect(() => depositCents(100, -5)).toThrow();
+    expect(() => depositCents(100, Number.NaN)).toThrow();
+  });
+
+  it("takes the whole price at 100%, which the settings allow", () => {
+    // The settings route accepts 1–100; 100 used to throw here and
+    // turn every booking at such a business into a 500.
+    expect(depositCents(150, 100)).toBe(15000);
+    expect(depositCents("285.50", 100)).toBe(28550);
+    expect(balanceCents(150, depositCents(150, 100))).toBe(0);
+  });
+
+  it("is zero on a free service", () => {
+    expect(depositCents(0, 25)).toBe(0);
+  });
+});
+
+describe("bookingMoney", () => {
+  const total = 15000;
+
+  it("counts only money that arrived", () => {
+    const m = bookingMoney(total, [
+      { status: "SUCCEEDED", amountCents: 3750, refundedCents: 0 },
+      { status: "FAILED", amountCents: 3750, refundedCents: 0 },
+      { status: "PENDING", amountCents: 11250, refundedCents: 0 },
+      { status: "ABANDONED", amountCents: 3750, refundedCents: 0 },
+    ]);
+    expect(m).toEqual({ paidCents: 3750, refundedCents: 0, netPaidCents: 3750, outstandingCents: 11250 });
+  });
+
+  it("adds a balance payment and cash to the deposit", () => {
+    const m = bookingMoney(total, [
+      { status: "SUCCEEDED", amountCents: 3750, refundedCents: 0 },
+      { status: "SUCCEEDED", amountCents: 11250, refundedCents: 0 },
+    ]);
+    expect(m.outstandingCents).toBe(0);
+    expect(m.netPaidCents).toBe(15000);
+  });
+
+  it("puts refunded money back on what is owed", () => {
+    const m = bookingMoney(total, [
+      { status: "PARTIALLY_REFUNDED", amountCents: 3750, refundedCents: 1000 },
+      { status: "REFUNDED", amountCents: 5000, refundedCents: 5000 },
+    ]);
+    expect(m).toEqual({ paidCents: 8750, refundedCents: 6000, netPaidCents: 2750, outstandingCents: 12250 });
+  });
+
+  it("never owes a negative amount", () => {
+    expect(bookingMoney(1000, [{ status: "SUCCEEDED", amountCents: 1500, refundedCents: 0 }]).outstandingCents).toBe(0);
   });
 });
 

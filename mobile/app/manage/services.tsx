@@ -3,7 +3,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Badge, Card, EmptyState, ErrorState, SkeletonCard, Text, TopBar, colors, spacing, useLocale } from "@/design";
 import { pick } from "@/features/business/components";
 import { useServices } from "@/features/business/queries";
-import { duration, money, num } from "@/lib/format";
+import { duration, money } from "@/lib/format";
+import { count } from "@/lib/plural";
 
 /**
  * The menu of services, to answer a customer at the counter: what it is,
@@ -20,7 +21,7 @@ export default function ServicesScreen() {
 
   return (
     <View style={styles.page}>
-      <TopBar title={T("الخدمات", "Services")} subtitle={services.data ? T(`${num(list.length, lang)} خدمة`, `${list.length} services`) : undefined} back />
+      <TopBar title={T("الخدمات", "Services")} subtitle={services.data ? count(list.length, "service", lang) : undefined} back backTo="/(business)/account" />
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}
         refreshControl={<RefreshControl refreshing={services.isRefetching} onRefresh={() => services.refetch()} tintColor={colors.jade} />}
@@ -65,5 +66,6 @@ const styles = StyleSheet.create({
   body: { padding: spacing.lg, gap: spacing.md },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   desc: { marginTop: spacing.sm },
-  off: { opacity: 0.6 },
+  // Not faded: the badge says it isn't offered; fading took the text under 4.5:1.
+  off: { backgroundColor: colors.surface2 },
 });

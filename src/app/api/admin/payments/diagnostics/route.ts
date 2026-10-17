@@ -3,6 +3,7 @@ import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { adminNotFound, requireAdminApi } from "@/lib/admin/guard";
 import { diagnosePaymob } from "@/lib/services/paymob";
+import { arCount } from "@/lib/fmt";
 
 /**
  * GET /api/admin/payments/diagnostics
@@ -84,16 +85,16 @@ export async function GET() {
       // is good and nothing more; it says nothing about whether the
       // integration can actually take a card.
       reading: !paymob.configured
-        ? "Paymob is not fully configured; no payment can succeed until it is."
+        ? "إعدادات Paymob مش كاملة؛ مفيش أي دفع هينجح لحد ما تتظبط."
         : !paymob.authenticated
-          ? "The API key is rejected by Paymob. Every payment will fail until it is replaced."
+          ? "Paymob رافض مفتاح الـ API. كل عمليات الدفع هتفشل لحد ما يتغيّر."
           : succeeded > 0
-            ? "Credentials work and payments have succeeded."
+            ? "بيانات الدخول شغالة وفيه مدفوعات نجحت."
             : providerErrors > 0
-              ? `The API key authenticates, but ${providerErrors} transaction(s) failed with an error from Paymob rather than a card decline. That points at the integration or the 3-D Secure step, not at the customer's bank — check integration ${paymob.integrationId} and iframe ${paymob.iframeId} in the Paymob dashboard, and look up the transaction ids in its transaction log.`
+              ? `مفتاح الـ API شغال، بس ${arCount(providerErrors, { one: "عملية واحدة", two: "عمليتين", few: "عمليات", many: "عملية" })} فشلت بخطأ من Paymob مش رفض من البنك. ده معناه إن المشكلة في الـ integration أو خطوة 3-D Secure، مش في بنك العميل — راجع الـ integration رقم ${paymob.integrationId} والـ iframe رقم ${paymob.iframeId} في لوحة Paymob، ودوّر على أرقام العمليات في سجل العمليات هناك.`
               : declines > 0
-                ? "The API key authenticates and the failures are card declines, which is the bank refusing rather than anything to fix here. Try a different card."
-                : "Credentials work; no payment has succeeded yet and there is nothing recorded to explain why.",
+                ? "مفتاح الـ API شغال، والفشل كله رفض كروت من البنك، يعني مفيش حاجة تتصلح هنا. جرّب بكارت تاني."
+                : "بيانات الدخول شغالة، بس لسه مفيش دفع نجح ومفيش حاجة متسجّلة تفسّر السبب.",
     });
   } catch (e) {
     log.error("[admin payment diagnostics]", e);

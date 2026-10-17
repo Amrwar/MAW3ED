@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import Logo from "@/components/shared/Logo";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -9,6 +10,27 @@ import { VERSION_LABEL, APP_COMMIT } from "@/lib/version";
 export default function Footer({ cta = true }: { cta?: boolean }) {
   const { t, lang } = useLanguage();
   const f = t.footer;
+  const { data: session, status } = useSession();
+  const user = session?.user;
+  const signedIn = status === "authenticated" && !!user;
+
+  // Signed in, the "join us" links are noise — and for a customer they
+  // lead into business onboarding. They get their account instead, and
+  // an owner their dashboard. While the session is loading neither set
+  // is shown, so nobody signed in sees "Sign in" flash past.
+  const accountLinks = signedIn
+    ? [
+        ...(user.businessId ? [{ label: t.nav.dashboard, href: "/dashboard" }] : []),
+        { label: t.nav.myAccount, href: "/account" },
+      ]
+    : status === "loading"
+      ? []
+      : [
+          { label: f.links.addBusiness, href: "/signup?type=business" },
+          { label: f.links.signup,      href: "/signup" },
+          { label: f.links.login,       href: "/login" },
+        ];
+  const showCta = cta && !signedIn;
 
   const columns = [
     {
@@ -25,9 +47,7 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
       title: f.business,
       links: [
         { label: f.links.forBusiness, href: "/for-business" },
-        { label: f.links.addBusiness, href: "/signup?type=business" },
-        { label: f.links.signup,      href: "/signup" },
-        { label: f.links.login,       href: "/login" },
+        ...accountLinks,
       ],
     },
     {
@@ -36,6 +56,7 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
         { label: f.links.contact, href: "/contact" },
         { label: f.links.faq,     href: "/faq" },
         { label: f.links.privacy, href: "/privacy" },
+        { label: f.links.accountDeletion, href: "/account-deletion" },
         { label: f.links.terms,   href: "/terms" },
       ],
     },
@@ -53,7 +74,7 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
       the hero opens on, so the two bracket everything between them.
     */
     <footer className="bg-[var(--color-night)] text-[var(--color-inverse)]">
-      <div className={cn("container-app", cta ? "pt-0" : "pt-16")}>
+      <div className={cn("container-app", showCta ? "pt-0" : "pt-16")}>
 
         {/* The one thing worth asking for, where a reader who got this
             far is most likely to say yes.
@@ -61,7 +82,7 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
             Off on a page that already ends with its own call to action.
             The home page does, and two near-identical asks stacked back
             to back read as a page that does not know what it wants. */}
-        {cta && (
+        {showCta && (
           /*
             Relative, not a negative top margin. A negative margin on the
             first child drags the footer's own top edge up with it, so

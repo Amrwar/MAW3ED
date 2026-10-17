@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { countText } from "@/lib/i18n";
 import {
   BadgeCheck,
   CalendarClock,
@@ -14,7 +15,7 @@ import type { DiscoveryBusiness } from "@/lib/discovery/search";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useFavorites } from "@/hooks/useFavorites";
 import { coverClassFor } from "@/lib/category-cover";
-import { money, num } from "@/lib/fmt";
+import { money } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -46,7 +47,7 @@ export default function BusinessCard({ business: b, className }: Props) {
   const saved = isFavorite(b.id);
 
   const dayLabel = (offset: number) =>
-    offset === 0 ? c.today : offset === 1 ? c.tomorrow : c.inDays.replace("{n}", num(offset, lang));
+    offset === 0 ? c.today : offset === 1 ? c.tomorrow : countText(lang, offset, c.inDays);
 
   return (
     <article
@@ -158,7 +159,7 @@ export default function BusinessCard({ business: b, className }: Props) {
                 {b.ratingAvg.toFixed(1)}
               </span>
               <span className="text-[var(--color-subtle)]">
-                (<span className="num">{num(b.ratingCount, lang)}</span> {c.reviews})
+                ({countText(lang, b.ratingCount, c.reviews)})
               </span>
             </>
           ) : (

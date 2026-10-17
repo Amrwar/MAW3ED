@@ -86,7 +86,7 @@ export default function DepositSettingsForm({
               {isAr ? "إعدادات العربون" : "Deposit Settings"}
             </p>
             <p style={{ fontSize: 11, color: "var(--color-subtle)", marginTop: 1 }}>
-              {isAr ? "متاح في خطة الاحترافي فقط" : "Available on Pro plan only"}
+              {isAr ? "متاح في باقة الاحترافي وما فوقها" : "Available on Pro and above"}
             </p>
           </div>
         </div>
@@ -98,7 +98,7 @@ export default function DepositSettingsForm({
             <Lock size={26} style={{ color: "var(--color-warn)" }} />
           </div>
           <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--color-ink)", marginBottom: 8 }}>
-            {isAr ? "ميزة حجب العربون" : "Deposit Feature"}
+            {isAr ? "ميزة العربون" : "Deposits"}
           </h2>
           <p
             style={{
@@ -108,15 +108,15 @@ export default function DepositSettingsForm({
           >
             {isAr ? (
               <>
-                إعدادات العربون متاحة فقط في خطة{" "}
-                <strong style={{ color: "var(--color-warn)" }}>الاحترافي (PRO)</strong>.
-                يمكنك الترقية الآن للبدء في استقبال مدفوعات مسبقة من عملائك.
+                العربون متاح في باقة{" "}
+                <strong style={{ color: "var(--color-warn)" }}>الاحترافي</strong> وما فوقها.
+                طوّر باقتك عشان تبدأ تستقبل عربون من عملائك وقت الحجز.
               </>
             ) : (
               <>
-                Deposit settings are available only on the{" "}
-                <strong style={{ color: "var(--color-warn)" }}>Pro plan</strong>.
-                Upgrade now to start collecting upfront payments from your customers.
+                Deposits are available on the{" "}
+                <strong style={{ color: "var(--color-warn)" }}>Pro plan</strong> and above.
+                Upgrade to start taking a deposit from customers when they book.
               </>
             )}
           </p>
@@ -311,8 +311,8 @@ export default function DepositSettingsForm({
                 <Info size={13} style={{ color: "var(--color-jade)", marginTop: 1, flexShrink: 0 }} />
                 <p style={{ fontSize: 11, color: "var(--color-jade)", lineHeight: 1.6 }}>
                   {isAr
-                    ? "تأكد من إعداد حساب Paymob وإضافة متغيرات البيئة قبل تفعيل هذا الخيار."
-                    : "Make sure your Paymob account is set up and environment variables are configured before enabling this option."}
+                    ? "العميل بيدفع العربون أونلاين على صفحة Paymob الآمنة وقت الحجز، وموعد هو اللي مشغّل الدفع ده. لو العملاء مش قادرين يدفعوا، كلّم دعم موعد."
+                    : "Customers pay the deposit online on Paymob's secure page when they book; Maw3ed runs the payment setup. If customers can't pay, contact Maw3ed support."}
                 </p>
               </div>
             </div>
@@ -379,7 +379,7 @@ export default function DepositSettingsForm({
           {saving ? (
             <>
               <Loader2 size={14} className="animate-spin" />
-              {isAr ? "جاري الحفظ..." : "Saving..."}
+              {isAr ? "جارٍ الحفظ…" : "Saving…"}
             </>
           ) : (
             <>

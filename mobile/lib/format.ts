@@ -12,6 +12,8 @@
  * working unchanged. New code passes `lang` from useLocale().
  */
 
+import { count } from "./plural";
+
 export type Lang = "ar" | "en";
 
 export function localeFor(lang: Lang): string {
@@ -54,9 +56,9 @@ export function duration(minutes: number, lang: Lang = "ar"): string {
     if (hours === 0) return `${rest} min`;
     return rest ? `${hours} hr ${rest} min` : `${hours} hr`;
   }
-  if (minutes < 60) return `${num(minutes)} دقيقة`;
-  const hoursPart = hours === 1 ? "ساعة" : hours === 2 ? "ساعتين" : `${num(hours)} ساعات`;
-  return rest ? `${hoursPart} و${num(rest)} دقيقة` : hoursPart;
+  if (minutes < 60) return count(minutes, "minute", "ar");
+  const hoursPart = count(hours, "hour", "ar");
+  return rest ? `${hoursPart} و${count(rest, "minute", "ar")}` : hoursPart;
 }
 
 /**
@@ -148,17 +150,17 @@ export function relativeTime(minutesUntil: number, lang: Lang = "ar"): string {
   }
 
   if (mins < 60) {
-    const label = `${num(Math.max(1, Math.round(mins)))} دقيقة`;
+    const label = count(Math.max(1, Math.round(mins)), "minute", "ar");
     return past ? `من ${label}` : `بعد ${label}`;
   }
   if (mins < 60 * 24) {
     const hours = Math.round(mins / 60);
-    const label = hours === 1 ? "ساعة" : hours === 2 ? "ساعتين" : `${num(hours)} ساعات`;
+    const label = count(hours, "hour", "ar");
     return past ? `من ${label}` : `بعد ${label}`;
   }
   const days = Math.round(mins / (60 * 24));
   if (days === 1) return past ? "إمبارح" : "بكرة";
-  const label = days === 2 ? "يومين" : `${num(days)} أيام`;
+  const label = count(days, "day", "ar");
   return past ? `من ${label}` : `بعد ${label}`;
 }
 
@@ -172,4 +174,87 @@ export function relativeTime(minutesUntil: number, lang: Lang = "ar"): string {
 export function rating(avg: number | null, count: number, lang: Lang = "ar"): string | null {
   if (avg === null || count === 0) return null;
   return `${avg.toFixed(1)} (${num(count, lang)})`;
+}
+
+/**
+ * Text that must read left to right inside a sentence of either
+ * language — "+20", "+201012345678", "QA-1042". Without the isolate,
+ * Arabic's bidi rules move the plus to the far end: "20+". A style of
+ * direction: "ltr" is not enough on its own: it does not reach text
+ * that shares a line with Arabic, and iOS ignores it on Text.
+ */
+export function isolateLtr(text: string): string {
+  return `⁦${text}⁩`;
+}
+
+/**
+ * A run of mixed text — a name in Latin letters next to Arabic — that
+ * keeps its own direction instead of reordering the line around it
+ * ("QA PushPay · 17 أكتوبر" must not become "أكتوبر QA PushPay · 17").
+ * First-strong isolate: each piece reads in the direction of its first letter.
+ */
+export function isolate(text: string): string {
+  return `⁨${text}⁩`;
+}
+
+/**
+ * A phone number for display, always left to right. "+" is added only
+ * to what is already international: an account's verified number is
+ * stored as digits with the country code ("201012345678"), but a
+ * booking's or a business's number is kept exactly as typed
+ * ("01012345678", "010 1234 5678"), and "+0101…" would be a wrong
+ * number. Anything else is shown as typed. Links (tel:, WhatsApp) take
+ * the raw value, not this.
+ */
+export function formatPhone(raw: string): string {
+  const value = raw.trim();
+  if (!value) return "";
+  if (value.startsWith("+")) return isolateLtr(value);
+  const international = /^20\d{10}$/.test(value) || /^[1-9]\d{10,14}$/.test(value);
+  return isolateLtr(international ? `+${value}` : value);
+}
+
+/**
+ * "QA PushPay · 17 أكتوبر 2:30 م": pieces joined with a middle dot, each
+ * isolated so a Latin name beside Arabic text cannot pull the date
+ * across it. Empty pieces are dropped; "" when nothing is left.
+ */
+export function joinParts(parts: readonly (string | null | undefined | false)[], lang: Lang, separator = " · "): string {
+  const joined = parts
+    .filter((p): p is string => typeof p === "string" && p.length > 0)
+    .map(isolate)
+    .join(separator);
+  // Isolates are invisible to the line's own direction, so with nothing
+  // outside them a line would fall back to left to right. A mark of the
+  // reading direction keeps the first piece at the start (the right, in Arabic).
+  return joined ? `${lang === "ar" ? "‏" : "‎"}${joined}` : "";
+}
+
+/** An instant as Cairo wall-clock parts: "YYYY-MM-DD" and "HH:MM". */
+function cairoParts(instant: string | Date): { date: string; hhmm: string } | null {
+  const d = typeof instant === "string" ? new Date(instant) : instant;
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hhmm: `${get("hour")}:${get("minute")}` };
+}
+
+/** An instant's time of day in Cairo: "2:30 م" / "2:30 PM". */
+export function instantTime(instant: string | Date, lang: Lang = "ar"): string {
+  const p = cairoParts(instant);
+  return p ? time(p.hhmm, lang) : "";
+}
+
+/** An instant in Cairo: "12 أكتوبر · 2:30 م" / "Oct 12 · 2:30 PM" — the app's dates and times, no seconds. */
+export function dateTime(instant: string | Date, lang: Lang = "ar"): string {
+  const p = cairoParts(instant);
+  return p ? joinParts([shortDate(p.date, lang), time(p.hhmm, lang)], lang) : "";
 }

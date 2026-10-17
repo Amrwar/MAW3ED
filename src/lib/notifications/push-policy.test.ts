@@ -61,3 +61,23 @@ describe("what a push carries", () => {
     expect(pushData({ type: "subscription.expired", businessId: "b1" }, "business", null).path).toBe("/dashboard/settings");
   });
 });
+
+describe("pushes the audit found missing", () => {
+  it("pushes a customer when the business moves their appointment", () => {
+    expect(pushWorthy({ type: "booking.rescheduled", bookingId: "b", movedTo: "x", by: "business" }, "customer")).toBe(true);
+  });
+
+  it("pushes a customer about a booking the business keyed in for them", () => {
+    expect(pushWorthy({ type: "booking.created", bookingId: "b", by: "business" }, "customer")).toBe(true);
+  });
+
+  it("pushes the rest of the business when it knows who there acted", () => {
+    // The actor is dropped from the recipients by the dispatcher; the
+    // owner still hears about a manager's cancellation or move.
+    expect(pushWorthy({ type: "booking.cancelled", bookingId: "b", by: "business", actorUserId: "mgr" }, "business")).toBe(true);
+    expect(pushWorthy({ type: "booking.rescheduled", bookingId: "b", movedTo: "x", by: "business", actorUserId: "mgr" }, "business")).toBe(true);
+    expect(pushWorthy({ type: "booking.created", bookingId: "b", by: "business", actorUserId: "mgr" }, "business")).toBe(true);
+    // Without one, "the business did it" is all that is known.
+    expect(pushWorthy({ type: "booking.created", bookingId: "b", by: "business" }, "business")).toBe(false);
+  });
+});

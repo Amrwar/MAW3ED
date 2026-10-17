@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       where: { id: session.user.id },
       select: { phone: true },
     });
-    if (!user?.phone) return err("محتاجين رقم موبايل متأكد", 409, { code: "no-phone" });
+    if (!user?.phone) return err("محتاجين رقم موبايل متأكَّد منه", 409, { code: "no-phone" });
 
     const check = await verifyLoginCode(user.phone, parsed.data.code);
     if (!check.ok) return err("الكود غير صحيح أو انتهت صلاحيته", 401, { code: "wrong-code" });

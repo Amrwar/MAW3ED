@@ -53,8 +53,12 @@ async function ensureAndroidChannel() {
   if (Platform.OS !== "android") return;
   // Android 8+ shows nothing without a channel. "default" is the id the
   // server sends with every push.
+  // Named in the app's language (as last chosen) — the name shows in the
+  // system's notification settings. Re-set on every registration, so a
+  // change of language renames it the next time the app registers.
+  const lang = (await AsyncStorage.getItem("maw3ed.lang").catch(() => null)) === "en" ? "en" : "ar";
   await Notifications.setNotificationChannelAsync("default", {
-    name: "الحجوزات · Bookings",
+    name: lang === "ar" ? "الحجوزات" : "Bookings",
     importance: Notifications.AndroidImportance.HIGH,
   });
 }

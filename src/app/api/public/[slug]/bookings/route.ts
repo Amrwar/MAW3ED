@@ -11,6 +11,8 @@ import { attachProviderOrder, openPayment } from "@/lib/payments/ledger";
 import { getEffectivePlan, getMonthlyBookingLimit, canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
+import { callerKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { normalisePhone } from "@/lib/phone";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -43,6 +45,17 @@ export async function POST(req: Request, { params }: Params) {
             tableId, resourceId, staffMemberId, branchId, partySize, idempotencyKey,
             source, discountCode } = parsed.data;
 
+    // ── Throttle ──────────────────────────────────────────────────────────────
+    //
+    // Anyone can call this, and every booking it creates holds a slot and
+    // sends the owner an alert. A budget per address per business, checked
+    // before any lookup so a flood never reaches the booking tables; the
+    // limit, and why it is loose, is in lib/rate-limit.ts. The per-number
+    // cap is below, once the business is known.
+    const slugKey = slug.toLowerCase();
+    const byAddress = await rateLimit("publicBooking", `${await callerKey()}|${slugKey}`);
+    if (!byAddress.ok) return tooManyRequests(byAddress);
+
     const business = await db.business.findUnique({
       where:   { slug, isPublished: true },
       include: { owner: { select: { email: true } } },
@@ -50,17 +63,58 @@ export async function POST(req: Request, { params }: Params) {
     });
     if (!business) return err("لم يتم العثور على هذا العمل", 404, { code: "business-not-found" });
 
+    // Per number, so rotating addresses does not let a script fill a day
+    // under somebody else's phone. Counted from bookings actually made,
+    // not attempts: a customer who gets "slot taken" five times at a busy
+    // salon, or whose retry replays the same idempotency key, has booked
+    // nothing and must not be locked out. Five in an hour under one
+    // number at one business is more than any person makes.
+    const phoneE164 = normalisePhone(customerPhone);
+    if (phoneE164) {
+      const isReplay = idempotencyKey
+        ? (await db.booking.count({ where: { idempotencyKey } })) > 0
+        : false;
+      const recent = isReplay
+        ? 0
+        : await db.booking.count({
+            where: {
+              businessId: business.id,
+              customerPhoneE164: phoneE164,
+              createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+            },
+          });
+      if (recent >= 5) {
+        return err("حجوزات كتير بالرقم ده في ساعة واحدة. جرّب بعد شوية.", 429, { code: "rate-limited" });
+      }
+    }
+
     const service = await db.service.findFirst({
       where: { id: serviceId, businessId: business.id, isAvailable: true },
     });
     if (!service) return err("الخدمة غير موجودة", 404, { code: "service-not-found" });
 
-    // ── Upsert customer ────────────────────────────────────────────────────────
+    // ── Find or create the customer ───────────────────────────────────────────
+    //
+    // The record belongs to the business: it is the name the owner has on
+    // file, possibly corrected by hand. This request is anonymous — anyone
+    // can type a known customer's phone number — so it may introduce a
+    // customer but never rename one or redirect their email. It only
+    // fills an email the record does not have yet. The booking itself
+    // still carries the name the visitor typed, which is what the owner
+    // sees against that appointment.
     const customer = await db.customer.upsert({
       where:  { businessId_phone: { businessId: business.id, phone: customerPhone } },
       create: { businessId: business.id, name: customerName, phone: customerPhone, email: customerEmail || null },
-      update: { name: customerName, ...(customerEmail ? { email: customerEmail } : {}) },
+      update: {},
     });
+    if (customerEmail && !customer.email) {
+      // Conditional, so two concurrent bookings cannot both "fill" it and
+      // leave whichever wrote last.
+      await db.customer.updateMany({
+        where: { id: customer.id, email: null },
+        data:  { email: customerEmail },
+      });
+    }
 
     // ── Resolve effective plan ────────────────────────────────────────────────
     const effectivePlan = getEffectivePlan(
@@ -109,10 +163,15 @@ export async function POST(req: Request, { params }: Params) {
     // Deposits require a plan that includes them, and are a share of
     // what is actually owed — a deposit computed on the pre-discount
     // price would collect more than the booking costs.
-    const requiresDeposit = business.depositEnabled && canUseFeature(effectivePlan, "deposits");
-    const depositCents    = requiresDeposit
+    //
+    // Nothing is due on a zero total — a free service, or one a discount
+    // took to nothing — so such a booking goes through as if the business
+    // took no deposits. It used to be created PENDING_PAYMENT, fail to
+    // open a 0-piastre payment, and hold its slot forever.
+    const depositCents = business.depositEnabled && canUseFeature(effectivePlan, "deposits") && totalCents > 0
       ? calcDepositCents(totalCents / 100, business.depositPercent)
       : 0;
+    const requiresDeposit = depositCents > 0;
     const depositAmount   = requiresDeposit ? depositCents / 100 : null;
 
     // autoConfirm skips the owner's review step; without it the booking
@@ -163,7 +222,7 @@ export async function POST(req: Request, { params }: Params) {
             reason: result.failure.reason,
           });
         case "limit-reached":
-          return err("عذرًا، هذا العمل بلغ الحد الأقصى من الحجوزات الشهرية", 429, { code: "limit-reached" });
+          return err("المكان ده مش بيستقبل حجوزات أونلاين دلوقتي. كلّمهم مباشرة عشان تحجز.", 429, { code: "limit-reached" });
         case "service-not-found":
           return err("الخدمة غير موجودة", 404, { code: "service-not-found" });
         case "discount-gone":
@@ -226,19 +285,25 @@ export async function POST(req: Request, { params }: Params) {
 
     // ── If deposit required: initiate Paymob payment session ─────────────────
     if (requiresDeposit) {
-      // The ledger row goes in before the customer leaves for Paymob.
-      // If they close the tab there is a PENDING payment saying what
-      // they were trying to pay and for what, rather than a booking
-      // that just sits in PENDING_PAYMENT with nothing behind it.
-      const payment = await openPayment({
-        kind:        "BOOKING_DEPOSIT",
-        businessId:  business.id,
-        bookingId:   booking.id,
-        amountCents: depositCents,
-        currency:    service.currency,
-      });
-
+      // Everything from here on is inside the try: any failure after the
+      // PENDING_PAYMENT booking exists — opening the ledger row included —
+      // must give its slot back, or nothing ever will (the reaper only
+      // finds bookings through their payments).
+      let paymentId: string | null = null;
       try {
+        // The ledger row goes in before the customer leaves for Paymob.
+        // If they close the tab there is a PENDING payment saying what
+        // they were trying to pay and for what, rather than a booking
+        // that just sits in PENDING_PAYMENT with nothing behind it.
+        const payment = await openPayment({
+          kind:        "BOOKING_DEPOSIT",
+          businessId:  business.id,
+          bookingId:   booking.id,
+          amountCents: depositCents,
+          currency:    service.currency,
+        });
+        paymentId = payment.id;
+
         const { paymentUrl, paymobOrderId } = await createPaymentSession({
           bookingId:     booking.id,
           amountCents:   depositCents,
@@ -266,17 +331,24 @@ export async function POST(req: Request, { params }: Params) {
           201,
         );
       } catch (paymobError) {
-        // Paymob session creation failed — cancel the PENDING_PAYMENT booking
-        // so the slot is freed, then return an error
-        await db.booking.update({
-          where: { id: booking.id },
-          data:  { status: "FAILED_PAYMENT" },
-        });
-        await db.payment.update({
-          where: { id: payment.id },
-          data:  { status: "FAILED", failureReason: "could not open a Paymob session" },
-        });
-        log.error("[booking POST] Paymob session failed:", paymobError);
+        // The payment could not be started — release the PENDING_PAYMENT
+        // booking so the slot is freed, then return an error. Each step
+        // is best-effort on its own: one failing must not stop the other.
+        await db.booking
+          .updateMany({
+            where: { id: booking.id, status: "PENDING_PAYMENT" },
+            data:  { status: "FAILED_PAYMENT" },
+          })
+          .catch((e) => log.error("[booking POST] could not release the hold", e));
+        if (paymentId) {
+          await db.payment
+            .updateMany({
+              where: { id: paymentId, status: "PENDING" },
+              data:  { status: "FAILED", failureReason: "could not open a Paymob session" },
+            })
+            .catch((e) => log.error("[booking POST] could not fail the payment", e));
+        }
+        log.error("[booking POST] payment could not be started:", paymobError);
         return err("تعذّر بدء عملية الدفع، حاول مرة أخرى", 502, { code: "payment-unavailable" });
       }
     }
@@ -315,9 +387,9 @@ function unavailableMessage(reason: string | null): string {
     case "staff-off":
       return "الموظف ده مش متاح في الوقت ده";
     case "holiday":
-      return "النشاط مقفول في اليوم ده (أجازة)";
+      return "النشاط مقفول في اليوم ده (إجازة)";
     case "vacation":
-      return "الموظف ده في أجازة";
+      return "الموظف ده في إجازة";
     default:
       return "الموعد ده مش متاح، اختر وقت تاني";
   }

@@ -131,6 +131,46 @@ export async function reapAbandonedPayments(now = new Date()): Promise<ReapResul
     }
   }
 
+  // ── Holds with no payment behind them at all ─────────────────
+  //
+  // The loop above finds a held booking through its PENDING payment. A
+  // booking that reached PENDING_PAYMENT without one — the payment row
+  // failed to open, or its only payment was failed by a mismatched
+  // callback — was invisible to it and held its slot for good. Past the
+  // same window, a hold that nothing is still paying for (no PENDING
+  // payment) and nothing has paid (no SUCCEEDED one, which would need a
+  // person to look at, not a release) is let go.
+  const orphans = await db.booking.findMany({
+    where: {
+      status: "PENDING_PAYMENT",
+      createdAt: { lt: cutoff },
+      payments: { none: { status: { in: ["PENDING", "SUCCEEDED"] } } },
+    },
+    select: { id: true },
+    take: 500,
+  });
+  for (const b of orphans) {
+    try {
+      // Under the lock /pay takes before it opens a new payment, and
+      // re-checked in the write: a payment being opened right now either
+      // commits first (and this leaves the booking) or waits for this.
+      const released = await db.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${b.id}))`;
+        return tx.booking.updateMany({
+          where: {
+            id: b.id,
+            status: "PENDING_PAYMENT",
+            payments: { none: { status: { in: ["PENDING", "SUCCEEDED"] } } },
+          },
+          data: { status: "FAILED_PAYMENT" },
+        });
+      });
+      result.bookingsReleased += released.count;
+    } catch (e) {
+      log.error("[payments] could not release an orphaned hold", { bookingId: b.id, error: String(e) });
+    }
+  }
+
   // ── Upgrades with no payment behind them at all ──────────────
   //
   // The loop above reaps PENDING payment rows. It cannot see an upgrade
@@ -177,7 +217,7 @@ export async function reapAbandonedPayments(now = new Date()): Promise<ReapResul
     result.plansReleased += cleared.count;
   }
 
-  if (result.abandoned > 0 || result.plansReleased > 0) {
+  if (result.abandoned > 0 || result.plansReleased > 0 || result.bookingsReleased > 0) {
     log.info("[payments] abandoned payments reaped", {
       abandoned: result.abandoned,
       bookingsReleased: result.bookingsReleased,

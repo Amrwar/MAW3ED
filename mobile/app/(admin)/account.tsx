@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Screen, Text, Card, Button, spacing } from "@/design";
+import { Screen, Text, Card, Button, spacing, useLocale } from "@/design";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { VERSION_LABEL } from "@/constants/version";
@@ -9,12 +9,14 @@ import { DesignSystemLink } from "@/features/dev/DesignSystemLink";
 export default function AdminAccount() {
   const { user, signOut } = useAuth();
   const [busy, setBusy] = useState(false);
+  const { lang } = useLocale();
+  const T = (a: string, e: string) => (lang === "ar" ? a : e);
 
   return (
     <Screen
       hero={
         <Text variant="display" tone="inverse" accessibilityRole="header">
-          حسابي
+          {T("حسابي", "Account")}
         </Text>
       }
     >
@@ -27,7 +29,7 @@ export default function AdminAccount() {
         </Card>
         <RoleSwitcher current="admin" />
         <Button
-          label="تسجيل الخروج"
+          label={T("تسجيل الخروج", "Sign out")}
           variant="outline"
           loading={busy}
           onPress={async () => {

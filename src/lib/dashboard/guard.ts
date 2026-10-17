@@ -29,10 +29,29 @@ export async function requireBusinessPage() {
       select: { id: true, slug: true, nameAr: true, ownerId: true },
     }));
 
-  if (!business) redirect("/onboarding");
+  if (!business) redirect(await noBusinessDestination(session.user.id));
 
   // A stale token could name a business somebody else now owns.
-  if (business.ownerId !== session.user.id) redirect("/onboarding");
+  if (business.ownerId !== session.user.id) redirect(await noBusinessDestination(session.user.id));
 
   return { session, business };
+}
+
+/**
+ * Where somebody with no business goes when they open the dashboard.
+ *
+ * Two very different people arrive here. An owner who signed up with an
+ * email and has not finished setting up belongs in onboarding. A
+ * customer — signed in with a verified phone, no password — clicked a
+ * dashboard link by accident, and dropping them into "create your
+ * business" is a trap: they are sent to their own account instead, with
+ * a note saying why (rendered by the account layout).
+ */
+export async function noBusinessDestination(userId: string): Promise<string> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { password: true, phoneVerifiedAt: true, adminRole: true },
+  });
+  const isCustomer = !!user?.phoneVerifiedAt && !user.password && !user.adminRole;
+  return isCustomer ? "/account?notice=no-business" : "/onboarding";
 }

@@ -40,7 +40,7 @@ export async function PATCH(req: Request, { params }: Params) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[discount PATCH]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 
@@ -72,6 +72,6 @@ export async function DELETE(_req: Request, { params }: Params) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[discount DELETE]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

@@ -7,8 +7,10 @@ import { AlertTriangle, Search, StickyNote, Users, X } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
 import Pagination from "@/components/ui/Pagination";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { money, num } from "@/lib/fmt";
+import { arCount, enCount, money, num } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
+
+const CUST = { one: "عميل واحد", two: "عميلين", few: "عملاء", many: "عميل" };
 
 export interface CustomerRow {
   id: string;
@@ -94,8 +96,8 @@ export default function CustomersClient({
                 ? "لسه مفيش عملاء"
                 : "No customers yet"
               : ar
-                ? `${num(total, lang)} عميل`
-                : `${num(total, lang)} customers`}
+                ? arCount(total, CUST)
+                : enCount(total, "customer")}
           </p>
         </div>
       </header>

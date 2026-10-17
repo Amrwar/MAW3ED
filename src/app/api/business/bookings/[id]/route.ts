@@ -4,6 +4,7 @@ import { ok, err } from "@/lib/api";
 import { bookingScope, can, permissionsOf, requireBusinessAccess, type BusinessAction } from "@/lib/business-access";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
+import { ARRIVE_EARLY_MINUTES, allowedNow, isTooEarly } from "@/lib/bookings/progress-guard";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -87,14 +88,17 @@ export async function GET(_req: Request, { params }: Params) {
       customer:      seeCustomers && booking.customer ? { ...booking.customer, completedVisits: visits } : null,
       createdAt:     booking.createdAt.toISOString(),
       updatedAt:     booking.updatedAt.toISOString(),
-      actions:       (VALID_TRANSITIONS[booking.status] ?? []).filter((s) => can(actor, actionFor(s))),
+      // Also by the clock (lib/bookings/progress-guard): a booking that
+      // has not started cannot be completed or missed, so the app never
+      // shows a button the PATCH would refuse with "too-early".
+      actions:       allowedNow(VALID_TRANSITIONS[booking.status] ?? [], booking).filter((s) => can(actor, actionFor(s))),
       canReschedule: can(actor, "bookings.reschedule") && ["PENDING", "CONFIRMED"].includes(booking.status),
       permissions:   permissionsOf(actor),
     });
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[booking [id]]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 
@@ -102,7 +106,11 @@ export async function GET(_req: Request, { params }: Params) {
  * PATCH /api/business/bookings/[id]
  * Updates booking status. Enforces valid transition rules.
  *
- * Body: { status: "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW" }
+ * Body: { status: "CONFIRMED" | "CANCELLED" | "ARRIVED" | "IN_PROGRESS" | "COMPLETED" | "NO_SHOW" }
+ *
+ * 409 { code: "too-early" } when the move is ahead of the clock:
+ * ARRIVED/IN_PROGRESS before 30 minutes ahead of the start, or
+ * COMPLETED/NO_SHOW before the start.
  */
 export async function PATCH(req: Request, { params }: Params) {
   try {
@@ -135,6 +143,17 @@ export async function PATCH(req: Request, { params }: Params) {
       );
     }
 
+    // Not before its time: see lib/bookings/progress-guard for the rule.
+    if (isTooEarly(newStatus, booking)) {
+      return err(
+        newStatus === "ARRIVED" || newStatus === "IN_PROGRESS"
+          ? `الحالة دي متاحة قبل الموعد بـ ${ARRIVE_EARLY_MINUTES} دقيقة بس`
+          : "الحالة دي متاحة بعد ما ميعاد الحجز يبدأ",
+        409,
+        { code: "too-early" },
+      );
+    }
+
     const updated = await db.booking.update({
       where: { id },
       data:  { status: newStatus },
@@ -152,12 +171,12 @@ export async function PATCH(req: Request, { params }: Params) {
     const wasPending = booking.status === "PENDING" || booking.status === "PENDING_PAYMENT";
 
     if (newStatus === "CONFIRMED") {
-      void notify({ type: "booking.confirmed", bookingId: booking.id });
+      void notify({ type: "booking.confirmed", bookingId: booking.id, actorUserId: actor.userId });
     } else if (newStatus === "CANCELLED") {
       void notify(
         wasPending
-          ? { type: "booking.rejected", bookingId: booking.id }
-          : { type: "booking.cancelled", bookingId: booking.id, by: "business" },
+          ? { type: "booking.rejected", bookingId: booking.id, actorUserId: actor.userId }
+          : { type: "booking.cancelled", bookingId: booking.id, by: "business", actorUserId: actor.userId },
       );
     } else if (newStatus === "COMPLETED") {
       void notify({ type: "booking.completed", bookingId: booking.id });

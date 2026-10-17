@@ -18,6 +18,7 @@ import {
   useLayout,
   useLocale,
   useToast,
+  joinLabel,
 } from "@/design";
 import { useBusinessAccess } from "@/features/business/access";
 import {
@@ -29,7 +30,7 @@ import {
   roleLabel,
 } from "@/features/business/components";
 import { useOverview, useUpdateBookingStatus } from "@/features/business/queries";
-import { longDate, shortDate, time } from "@/lib/format";
+import { joinParts, longDate, shortDate, time } from "@/lib/format";
 
 /**
  * Today — the screen a business opens in the morning.
@@ -103,12 +104,12 @@ export default function Today() {
           <View style={styles.heroTop}>
             <View style={styles.flex}>
               <Text variant="label" tone="inverseMuted">
-                {who ? `${greeting}، ${who}` : greeting}
+                {who ? joinLabel(lang, greeting, who) : greeting}
               </Text>
               <Text variant="title" tone="inverse" accessibilityRole="header" numberOfLines={2}>
                 {o
                   ? nameOf(lang, { nameAr: o.business.nameAr, nameEn: o.business.nameEn })
-                  : T("النهاردة", "Today")}
+                  : T("النهارده", "Today")}
               </Text>
             </View>
             {access.role === "OWNER" ? (
@@ -160,12 +161,12 @@ export default function Today() {
               />
               <Stat
                 value={o.counts.pending}
-                label={T("مستني تأكيد", "awaiting confirmation")}
+                label={T("مستني تأكيد", "Awaiting confirmation")}
                 tone={o.counts.pending ? "warn" : "plain"}
               />
               <Stat
                 value={o.counts.cancelledRecent}
-                label={T("اتلغى آخر ٢٤ ساعة", "cancelled, last 24h")}
+                label={T("اتلغى في آخر 24 ساعة", "Cancelled (last 24h)")}
                 tone={o.counts.cancelledRecent ? "danger" : "plain"}
               />
             </View>
@@ -190,9 +191,7 @@ export default function Today() {
                       {o.next.customerName}
                     </Text>
                     <Text variant="caption" tone="inverseMuted" numberOfLines={1}>
-                      {[nameOf(lang, o.next.service), nameOf(lang, o.next.staffMember)]
-                        .filter(Boolean)
-                        .join(" · ")}
+                      {joinParts([nameOf(lang, o.next.service), nameOf(lang, o.next.staffMember)], lang)}
                     </Text>
                   </View>
                   <Icon name="chevron-forward" color={colors.gold} />
@@ -203,7 +202,7 @@ export default function Today() {
             {/* ── Waiting on the business ── */}
             {o.pending.length > 0 ? (
               <View style={styles.section}>
-                <SectionHead title={T("مستني تأكيدك", "Waiting for you")} />
+                <SectionHead title={T("مستني تأكيدك", "Awaiting your confirmation")} />
                 {o.pending.map((p) => (
                   // The row opens the booking; Confirm sits beside it, not
                   // inside it — a button within a button is one control to
@@ -211,7 +210,7 @@ export default function Today() {
                   <Card key={p.id} padded={false} style={styles.pendingRow}>
                     <Touchable
                       accessibilityRole="button"
-                      accessibilityLabel={`${p.customerName}، ${shortDate(p.date, lang)} ${time(p.startTime, lang)}`}
+                      accessibilityLabel={joinLabel(lang, p.customerName, `${shortDate(p.date, lang)} ${time(p.startTime, lang)}`)}
                       onPress={() => openBooking(p.id)}
                       style={styles.pendingOpen}
                     >
@@ -219,7 +218,7 @@ export default function Today() {
                         {p.customerName}
                       </Text>
                       <Text variant="caption" tone="subtle" numberOfLines={1}>
-                        {`${p.date === o.today ? T("النهارده", "Today") : shortDate(p.date, lang)} · ${time(p.startTime, lang)} · ${nameOf(lang, p.service)}`}
+                        {joinParts([p.date === o.today ? T("النهارده", "Today") : shortDate(p.date, lang), time(p.startTime, lang), nameOf(lang, p.service)], lang)}
                       </Text>
                     </Touchable>
                     {access.can("bookings.confirm") ? (
@@ -239,7 +238,7 @@ export default function Today() {
             {/* ── Changed since yesterday ── */}
             {o.cancelled.length > 0 ? (
               <View style={styles.section}>
-                <SectionHead title={T("اتلغى مؤخراً", "Recently cancelled")} />
+                <SectionHead title={T("اتلغى مؤخرًا", "Recently cancelled")} />
                 {o.cancelled.map((c) => (
                   <Card
                     key={c.id}
@@ -249,7 +248,7 @@ export default function Today() {
                   >
                     <Icon name="close-circle-outline" color={colors.danger} />
                     <Text variant="body" numberOfLines={1} style={styles.flex}>
-                      {`${c.customerName} · ${shortDate(c.date, lang)} ${time(c.startTime, lang)}`}
+                      {joinParts([c.customerName, `${shortDate(c.date, lang)} ${time(c.startTime, lang)}`], lang)}
                     </Text>
                   </Card>
                 ))}

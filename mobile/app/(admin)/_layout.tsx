@@ -1,6 +1,6 @@
 import { Redirect, Tabs } from "expo-router";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { bottomNavOptions, tabIcon } from "@/design";
+import { bottomNavOptions, tabIcon, useLocale } from "@/design";
 
 /**
  * The platform admin's space — deliberately small.
@@ -13,12 +13,13 @@ import { bottomNavOptions, tabIcon } from "@/design";
  * only saves a non-admin from an empty space.
  */
 const TABS = [
-  { name: "index", title: "نظرة عامة", icon: "pulse" },
-  { name: "account", title: "حسابي", icon: "person" },
+  { name: "index", ar: "نظرة عامة", en: "Overview", icon: "pulse" },
+  { name: "account", ar: "حسابي", en: "Account", icon: "person" },
 ] as const;
 
 export default function AdminLayout() {
   const { user, restoring } = useAuth();
+  const { lang } = useLocale();
 
   if (restoring) return null;
   if (!user?.adminRole) return <Redirect href="/(customer)" />;
@@ -30,7 +31,7 @@ export default function AdminLayout() {
           key={tab.name}
           name={tab.name}
           options={{
-            title: tab.title,
+            title: tab[lang],
             tabBarIcon: tabIcon(tab.icon),
           }}
         />

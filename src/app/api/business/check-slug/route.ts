@@ -23,6 +23,6 @@ export async function GET(req: Request) {
     return ok({ available: !existing });
   } catch (e) {
     log.error("[check-slug]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

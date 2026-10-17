@@ -106,8 +106,8 @@ export default function PricingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const planCtas: Record<PlanId, string> = {
-    FREE:    isAr ? "ابدأ مجانًا"       : "Start Free",
-    PRO:     isAr ? "ابدأ بالاحترافي"  : "Get Started",
+    FREE:    isAr ? "ابدأ مجانًا"       : "Start free",
+    PRO:     isAr ? "ابدأ بالاحترافي"  : "Start with Pro",
     PREMIUM: isAr ? "الترقية للمميز"   : "Upgrade to Premium",
   };
 

@@ -41,7 +41,7 @@ function Delete() {
 
   const words = (e: unknown) => {
     const c = e instanceof ApiError ? e.code : undefined;
-    if (ar) return messageFor(e);
+    if (ar) return messageFor(e, lang);
     switch (c) {
       case "owns-business":
         return "This account owns a business. Contact support to close the business first.";
@@ -55,6 +55,12 @@ function Delete() {
         return "Too many codes requested. Try again later.";
       case "wrong-code":
         return "That code is wrong or has expired.";
+      case "invalid-phone":
+        return "The phone number on this account isn't valid. Contact support.";
+      case "send-failed":
+        return "We couldn't send the code right now. Try again in a moment.";
+      case "rate-limited":
+        return "Too many tries. Wait a moment and try again.";
       default:
         return "Something went wrong. Please try again.";
     }

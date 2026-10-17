@@ -22,6 +22,11 @@ export interface Recipient {
   /** Where tapping the in-app notification should go. */
   href: string;
   allow: { inApp: boolean; email: boolean; whatsapp: boolean; sms: boolean; push: boolean };
+  /**
+   * Set when this is one of several people on the same side (a staff
+   * member beside the owner), so each gets their own ledger key.
+   */
+  keyTag?: string;
 }
 
 /** Exactly the shape the dispatcher loads; kept narrow on purpose. */
@@ -32,6 +37,8 @@ export interface BookingSubject {
   customerPhoneE164: string | null;
   customerEmail: string | null;
   customerUserId: string | null;
+  /** Who the booking is with, for telling that provider. */
+  staffMemberId?: string | null;
   business: BusinessSubject;
 }
 
@@ -132,6 +139,58 @@ export function businessRecipient(
       push: wantsEvent(business, event),
     },
   };
+}
+
+/** A staff member who can sign in to the business, as the dispatcher loads them. */
+export interface StaffUser {
+  staffMemberId: string;
+  access: "MANAGER" | "PROVIDER";
+  userId: string;
+  email: string | null;
+  /** The person's own switches, from their account. */
+  notifyByEmail: boolean;
+}
+
+/**
+ * The staff who hear about a booking event, beside the owner.
+ *
+ * A manager sees every booking in the app, so they hear what the owner
+ * hears about bookings; a provider sees only the bookings with them, so
+ * they hear only about those. Nobody hears about subscriptions but the
+ * owner. The business's own per-event switches apply to everybody (they
+ * are the business's choice of what is worth an alert), and each
+ * person's own email switch applies to them.
+ *
+ * In-app, push and email only. WhatsApp to staff would be a paid
+ * template message per booking per person, and there is no staff SMS
+ * number; neither is sent.
+ */
+export function staffRecipients(
+  business: BusinessSubject,
+  event: EventType,
+  bookingStaffMemberId: string | null,
+  staff: readonly StaffUser[],
+): Recipient[] {
+  if (event.startsWith("subscription.")) return [];
+  const wants = wantsEvent(business, event);
+  return staff
+    .filter((s) => s.userId !== business.ownerId)
+    .filter((s) => s.access === "MANAGER" || (bookingStaffMemberId !== null && s.staffMemberId === bookingStaffMemberId))
+    .map((s) => ({
+      audience: "business" as const,
+      userId: s.userId,
+      phone: null,
+      email: s.email,
+      href: "/dashboard/bookings",
+      keyTag: `staff:${s.userId}`,
+      allow: {
+        inApp: true,
+        email: s.notifyByEmail && wants,
+        whatsapp: false,
+        sms: false,
+        push: wants,
+      },
+    }));
 }
 
 /**

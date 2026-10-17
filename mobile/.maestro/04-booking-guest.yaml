@@ -1,0 +1,55 @@
+# A guest walks the booking flow of the first business on Home up to the
+# "Sign in to book" step — and stops there. Nothing is submitted: the
+# guest cannot pass that step, and the final submit button has its own
+# id (booking-submit) that no flow ever taps.
+appId: net.maw3ed.app.staging
+name: Booking as a guest (stops at sign-in)
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 30000
+- tapOn:
+    id: business-card
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: "book-button|no-services"
+    timeout: 20000
+- assertVisible:
+    id: book-button
+    label: The first business on Home has services to book (staging data)
+- tapOn:
+    id: book-button
+# One service opens its sheet first; several go straight to the flow.
+- runFlow:
+    when:
+      visible:
+        id: service-sheet-book
+    commands:
+      - tapOn:
+          id: service-sheet-book
+- extendedWaitUntil:
+    visible:
+      id: booking-step-title
+    timeout: 20000
+- takeScreenshot: 04-booking-first-step
+# Each pass answers whatever the current step asks, then continues.
+# Steps differ per business (service, staff, branch, table, time), so
+# the loop reacts to what is on screen rather than to a fixed order.
+- repeat:
+    times: 8
+    while:
+      notVisible:
+        id: booking-sign-in
+    commands:
+      - runFlow: subflows/booking-step.yaml
+- assertVisible:
+    id: booking-sign-in
+- assertNotVisible:
+    id: booking-submit
+- takeScreenshot: 04-booking-sign-in

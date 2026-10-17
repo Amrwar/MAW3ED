@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { countText } from "@/lib/i18n";
+import { arCount } from "@/lib/fmt";
 import {
   Copy, Check, Gift, Users, Trophy,
   Share2, CalendarCheck, Zap, TrendingUp,
@@ -63,7 +65,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
   const daysEarned     = rewardedCount * 30;
   const convRate       = totalCount > 0 ? Math.round((rewardedCount / totalCount) * 100) : 0;
 
-  const whatsappText   = encodeURIComponent(`سجّل عملك على موعد الآن واحصل على خصم مميز 🎉\n${referralLink}`);
+  const whatsappText   = encodeURIComponent(`سجّل نشاطك على موعد وابدأ تستقبل حجوزات أونلاين 🎉\n${referralLink}`);
   const whatsappUrl    = `https://wa.me/?text=${whatsappText}`;
 
   function handleCopy() {
@@ -111,7 +113,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
               >
                 <Zap size={12} strokeWidth={2} style={{ color: "var(--color-star)" }} />
                 <span style={{ color: "var(--color-star)", fontSize: 11, fontWeight: 700 }}>
-                  30 يومًا مجانيًا لكل إحالة ناجحة
+                  30 يوم مجاني عن كل إحالة ناجحة
                 </span>
               </div>
 
@@ -119,7 +121,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
                 className="font-extrabold text-white leading-tight mb-2 text-[1.5rem]"
                 style={{ letterSpacing: "-0.03em" }}
               >
-                اربح من دعوة العملاء
+                اربح لما تدعي أنشطة تانية
               </h1>
               <p style={{ color: "rgba(255,255,255,0.72)", fontSize: 13, lineHeight: 1.6, maxWidth: 320 }}>
                 {rf.subtitle}
@@ -172,7 +174,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
                   {daysEarned}
                 </p>
                 <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>
-                  يومًا مكافأة مكتسبة
+                  يوم مكافأة كسبتها
                 </p>
               </div>
             )}
@@ -360,7 +362,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
           </div>
           {totalCount > 0 && (
             <span className="text-xs text-[var(--color-subtle)]">
-              {totalCount} {rf.businesses}
+              {countText(lang, totalCount, rf.businesses)}
             </span>
           )}
         </div>
@@ -421,7 +423,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
               className="hidden sm:grid grid-cols-[1fr_auto_auto] gap-4 px-6 py-3 text-xs font-semibold"
               style={{ background: "var(--color-ground)", borderBottom: "1px solid var(--color-surface-3)", color: "var(--color-subtle)", letterSpacing: "0.02em" }}
             >
-              <span>العمل</span>
+              <span>النشاط</span>
               <span>تاريخ الانضمام</span>
               <span>الحالة</span>
             </div>
@@ -470,8 +472,8 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
             >
               <p className="text-xs text-[var(--color-subtle)]">
                 {rewardedCount > 0
-                  ? `🎉 لقد ربحت ${daysEarned} يومًا مجانيًا حتى الآن`
-                  : "شارك رابطك لتبدأ في كسب الأيام المجانية"}
+                  ? `🎉 كسبت ${arCount(daysEarned, { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" })} مجاني لحد دلوقتي`
+                  : "شارك رابطك وابدأ تكسب أيام مجانية"}
               </p>
             </div>
           </>
@@ -490,7 +492,7 @@ export default function ReferralsClient({ referralCode, referralLink, referrals 
           <div>
             <p className="text-sm font-bold text-[var(--color-jade)]">شارك مع المزيد</p>
             <p className="text-xs text-[var(--color-muted)] mt-0.5">
-              كل إحالة ناجحة = 30 يومًا إضافيًا مجانًا
+              كل إحالة ناجحة = 30 يوم زيادة مجانًا
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

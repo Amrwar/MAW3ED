@@ -130,7 +130,8 @@ export async function sendWhatsAppTemplate({
   const url = `${BASE_URL}/${VERSION}/${PHONE_ID}/messages`;
 
   log.info(
-    `[WhatsApp] Sending template "${templateName}" (${languageCode}) to ${phone}`,
+    `[WhatsApp] Sending template "${templateName}" (${languageCode})`,
+    { phone },
   );
 
   try {
@@ -147,15 +148,17 @@ export async function sendWhatsAppTemplate({
       const data = await res.json().catch(() => ({}));
       const msgId = (data as { messages?: { id: string }[] })?.messages?.[0]?.id ?? "unknown";
       log.info(
-        `[WhatsApp] Template "${templateName}" sent to ${phone}. Message ID: ${msgId}`,
+        `[WhatsApp] Template "${templateName}" sent. Message ID: ${msgId}`,
+        { phone },
       );
       return sent(msgId);
     }
 
     const detail = await res.text().catch(() => "(no body)");
     log.error(
-      `[WhatsApp] API error ${res.status} sending template "${templateName}" to ${phone}:`,
+      `[WhatsApp] API error ${res.status} sending template "${templateName}"`,
       detail,
+      { phone },
     );
     return failed(`http-${res.status}`);
   } catch (err) {
@@ -283,7 +286,7 @@ export async function sendWhatsAppMessage({
 
   const url = `${BASE_URL}/${VERSION}/${PHONE_ID}/messages`;
 
-  log.info(`[WhatsApp] Sending freeform text to ${phone} (dev/test path)`);
+  log.info("[WhatsApp] Sending freeform text (dev/test path)", { phone });
 
   try {
     const res = await fetch(url, {
@@ -303,12 +306,12 @@ export async function sendWhatsAppMessage({
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
       const msgId = (data as { messages?: { id: string }[] })?.messages?.[0]?.id ?? "unknown";
-      log.info(`[WhatsApp] Freeform sent to ${phone}. Message ID: ${msgId}`);
+      log.info(`[WhatsApp] Freeform sent. Message ID: ${msgId}`, { phone });
       return sent(msgId);
     }
 
     const detail = await res.text().catch(() => "(no body)");
-    log.error(`[WhatsApp] API error ${res.status} (freeform) sending to ${phone}:`, detail);
+    log.error(`[WhatsApp] API error ${res.status} (freeform)`, detail, { phone });
     return failed(`http-${res.status}`);
   } catch (err) {
     log.error("WhatsApp: network error sending freeform message", err, { phone });

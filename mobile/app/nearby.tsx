@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Linking, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import { goBack } from "@/lib/nav";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
@@ -33,6 +34,7 @@ import { track } from "@/lib/analytics";
 import { num } from "@/lib/format";
 import { keys } from "@/lib/query/keys";
 import type { NearbyResponse } from "@/types/api";
+import { count } from "@/lib/plural";
 
 /**
  * Places near me.
@@ -118,7 +120,8 @@ export default function NearbyScreen() {
             icon="chevron-back"
             variant="filled"
             label={T("رجوع", "Back")}
-            onPress={() => router.back()}
+            onPress={() => goBack("/(customer)")}
+            testID="back"
           />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
             {RADII.map((r) => (
@@ -131,7 +134,7 @@ export default function NearbyScreen() {
           <View style={styles.handle} />
           <View style={styles.sheetHead}>
             <Text variant="title" accessibilityRole="header">
-              {T(`${num(list.length, lang)} مكان قريب`, `${list.length} places nearby`)}
+              {T(`${count(list.length, "place", "ar")} جنبك`, `${count(list.length, "place", "en")} nearby`)}
             </Text>
             <Button variant="ghost" size="sm" icon="locate-outline" label={T("حدّث", "Refresh")} onPress={findMe} />
           </View>
@@ -159,7 +162,7 @@ export default function NearbyScreen() {
 
   return (
     <View style={styles.page}>
-      <TopBar title={T("قريب مني", "Near me")} back />
+      <TopBar title={T("قريب مني", "Near me")} back backTo="/(customer)" />
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}
         refreshControl={here ? <RefreshControl refreshing={nearby.isRefetching} onRefresh={() => nearby.refetch()} tintColor={colors.jade} /> : undefined}
@@ -219,7 +222,7 @@ function Ask({ fix, locating, onLocate }: { fix: Fix | null; locating: boolean; 
             ? T("خدمة الموقع مقفولة في الموبايل. افتحها وجرّب تاني.", "Location services are off on your phone. Turn them on and try again.")
             : T("معرفناش نحدد موقعك دلوقتي. جرّب تاني في مكان مفتوح، أو دوّر بالمنطقة.", "We couldn't get your location just now. Try again in the open, or search by area.");
     return (
-      <Card>
+      <Card testID="location-denied">
         <View style={styles.askRow}>
           <Icon name="location-outline" color={colors.warn} />
           <Text variant="body" tone="ink2" style={styles.flex}>
@@ -257,6 +260,7 @@ function Ask({ fix, locating, onLocate }: { fix: Fix | null; locating: boolean; 
           disabled={locating}
           onPress={onLocate}
           style={styles.goldButton}
+          testID="use-location"
         >
           <Icon name="navigate" size="sm" color={colors.night} />
           <Text variant="label" style={{ color: colors.night }}>
@@ -276,7 +280,7 @@ function Areas() {
   const cities = (facets.data?.cities ?? []).filter((c) => c.count > 0);
   if (cities.length === 0) return null;
   return (
-    <View style={styles.areas}>
+    <View style={styles.areas} testID="area-picker">
       <Text variant="label" tone="ink2" accessibilityRole="header">
         {ar ? "أو دوّر بالمنطقة" : "Or search by area"}
       </Text>

@@ -49,7 +49,7 @@ export async function GET(req: Request) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[favorites GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[favorites POST]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 
@@ -107,7 +107,7 @@ export async function DELETE(req: Request) {
     const userId = await requireUser();
 
     const businessId = new URL(req.url).searchParams.get("businessId");
-    if (!businessId) return err("businessId مطلوب", 400);
+    if (!businessId) return err("اختار النشاط الأول", 400);
 
     // deleteMany, not delete: removing something already gone should
     // not be an error, so the button is safe to press twice.
@@ -117,6 +117,6 @@ export async function DELETE(req: Request) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[favorites DELETE]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

@@ -1,8 +1,15 @@
+import { z } from "zod";
 import { parseDiscoveryQuery } from "@/lib/discovery/params";
 import { findNearby } from "@/lib/discovery/nearby";
 import { validLatLng } from "@/lib/geo";
 import { err } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { parseQuery } from "@/lib/query-params";
+
+const sizeQuery = z.object({
+  radius: z.coerce.number().positive().max(1_000_000).optional(),
+  limit: z.coerce.number().int().min(1).max(1_000_000).optional(),
+});
 
 /**
  * GET /api/public/businesses/nearby?lat=&lng=&radius=&limit=&category=&q=
@@ -25,8 +32,11 @@ export async function GET(req: Request) {
       return err("الموقع غير صالح", 400, { code: "invalid-location" });
     }
 
-    const radius = Number(searchParams.get("radius")) || undefined;
-    const limit = Number(searchParams.get("limit")) || undefined;
+    // A limit or radius that is not a positive number is a 400; above the
+    // ceiling it is clamped by findNearby (50 results, MAX_RADIUS_KM).
+    const sizes = parseQuery(searchParams, sizeQuery);
+    if (!sizes.ok) return sizes.response;
+    const { radius, limit } = sizes.data;
     const query = parseDiscoveryQuery(Object.fromEntries(searchParams.entries()));
 
     const result = await findNearby({ lat, lng }, { radiusKm: radius, limit, query });

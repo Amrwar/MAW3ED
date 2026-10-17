@@ -118,3 +118,19 @@ export function addDays(date: string, n: number): string {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
+
+/**
+ * Now, in the same frame as startsAt/endsAt: Cairo wall-clock written as
+ * if it were UTC, to the minute. Comparing a stored interval with a real
+ * `new Date()` would be off by Cairo's offset (two or three hours); this
+ * is the value to compare against instead.
+ */
+export function cairoWallClock(now: Date = new Date()): Date {
+  return new Date(dateToUTC(cairoDateString(now)).getTime() + cairoMinutes(now) * 60_000);
+}
+
+/** A booking's start in the startsAt frame, for rows written before startsAt existed. */
+export function bookingStart(b: { startsAt?: Date | null; date: Date; startTime: string }): Date {
+  if (b.startsAt) return b.startsAt;
+  return new Date(b.date.getTime() + timeToMinutes(b.startTime) * 60_000);
+}

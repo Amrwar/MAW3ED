@@ -225,6 +225,12 @@ async function run() {
   check("missing transaction object gives 400", r6.status === 400, `got ${r6.status}`);
   const r7 = await post({ type: "TOKEN", obj: {} });
   check("non-TRANSACTION type is acknowledged", r7.status === 200, `got ${r7.status}`);
+  // Before the shape check, these threw inside the HMAC computation and
+  // came back as 500s — which Paymob would retry forever.
+  const r7b = await post({ type: "TRANSACTION", obj: { id: 1 }, hmac: "x" });
+  check("transaction without order/source_data gives 400", r7b.status === 400, `got ${r7b.status}`);
+  const r7c = await post("null", { raw: true });
+  check("a JSON null body gives 400", r7c.status === 400, `got ${r7c.status}`);
 
   // ── Case 9: the wrong amount ─────────────────────────────────────
   console.log("\n9. Incorrect amount");
@@ -294,6 +300,26 @@ async function run() {
     check("refundedCents equals the payment", p?.refundedCents === 28550, String(p?.refundedCents));
     check("a Refund row was written", refunds === 1, String(refunds));
   }
+
+  // ── E: our handler fails, Paymob retries ─────────────────────────
+  //
+  // An order id carrying a NUL byte is a correctly signed callback that
+  // Postgres refuses to look up, which makes handle() throw — a stand-in
+  // for the database being down. The delivery must answer 500 (so
+  // Paymob retries) and leave no claim behind, so the retry is handled
+  // rather than dropped as a duplicate.
+  console.log("\nE. Handler error is released for retry");
+  const errCb = callback("9\u0000err");
+  const e1 = await post(errCb);
+  check("handler error returns 500", e1.status === 500, `got ${e1.status}`);
+  {
+    const claims = await db.webhookEvent.count({
+      where: { provider: "PAYMOB", eventId: String(errCb.obj.id) },
+    });
+    check("claim released after the error", claims === 0, `${claims} left`);
+  }
+  const e2 = await post(errCb);
+  check("the retry is processed, not dropped as duplicate", e2.status === 500 && e2.json?.duplicate !== true, `${e2.status} ${e2.text.slice(0, 60)}`);
 
   // Case 12: a payment that has lost its booking.
   //

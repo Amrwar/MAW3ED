@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Card, EmptyState, Icon, ListState, SearchField, Text, colors, spacing, useLocale } from "@/design";
+import { Card, EmptyState, Icon, ListState, SearchField, Text, colors, spacing, useLocale, joinLabel } from "@/design";
 import { useBusinessAccess } from "@/features/business/access";
 import { useBusinessCustomers } from "@/features/business/queries";
-import { money, num, shortDate } from "@/lib/format";
+import { formatPhone, money, num, shortDate } from "@/lib/format";
+import { count } from "@/lib/plural";
 
 /**
  * The customer book, for the owner and managers.
@@ -37,7 +38,7 @@ export default function Customers() {
   const customers = allowed ? (query.data?.customers ?? []) : [];
 
   return (
-    <View style={styles.list}>
+    <View style={styles.list} testID="customers-screen">
       {/* Title, count and search on a night block that stays put. */}
       <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>
         <View style={styles.titleRow}>
@@ -57,6 +58,7 @@ export default function Customers() {
             placeholder={T("اسم أو رقم", "Name or phone")}
             accessibilityLabel={T("ابحث في العملاء", "Search customers")}
             onSubmit={() => setSearch(term)}
+            testID="customers-search"
           />
         ) : null}
       </View>
@@ -84,14 +86,14 @@ export default function Customers() {
             </ListState>
           }
           renderItem={({ item }) => (
-            <Card onPress={() => router.push({ pathname: "/manage/customer/[id]", params: { id: item.id } })} accessibilityLabel={`${item.name}، ${item.phone}`}>
+            <Card onPress={() => router.push({ pathname: "/manage/customer/[id]", params: { id: item.id } })} testID="customer-row" accessibilityLabel={joinLabel(lang, item.name, item.phone)}>
               <View style={styles.row}>
                 <View style={styles.who}>
                   <Text variant="bodyBold" numberOfLines={1}>
                     {item.name}
                   </Text>
                   <Text variant="caption" tone="subtle">
-                    {item.phone}
+                    {item.phone ? formatPhone(item.phone) : null}
                   </Text>
                 </View>
                 <View style={styles.stats}>
@@ -100,7 +102,7 @@ export default function Customers() {
                     {money(item.totalSpend, item.currency, lang) ?? "—"}
                   </Text>
                   <Text variant="caption" tone="subtle">
-                    {T(`${num(item.bookingCount, lang)} حجز`, `${item.bookingCount} bookings`)}
+                    {count(item.bookingCount, "booking", lang)}
                   </Text>
                 </View>
                 <Icon name="chevron-forward" color={colors.faint} />

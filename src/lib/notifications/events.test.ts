@@ -106,3 +106,38 @@ describe("dedupeKey", () => {
     );
   });
 });
+
+describe("dedupeKey after a reschedule", () => {
+  it("reminds again for the new time, but never twice for the same one", () => {
+    // The reschedule routes reset customerReminderSentAt so the reminder
+    // fires for the new date; with a key that ignored the time, the
+    // ledger still said "already sent" and nothing went out.
+    const before: NotificationEvent = { type: "booking.reminder", bookingId: "bk_1", startsAt: "2026-10-20T10:00:00.000Z" };
+    const after: NotificationEvent = { type: "booking.reminder", bookingId: "bk_1", startsAt: "2026-10-22T15:00:00.000Z" };
+    expect(dedupeKey(before, "customer", "PUSH")).not.toBe(dedupeKey(after, "customer", "PUSH"));
+    expect(dedupeKey(after, "customer", "PUSH")).toBe(dedupeKey({ ...after }, "customer", "PUSH"));
+
+    const soon: NotificationEvent = { type: "booking.startingSoon", bookingId: "bk_1", startsAt: "2026-10-20T10:00:00.000Z" };
+    expect(dedupeKey(soon, "customer", "PUSH")).not.toBe(
+      dedupeKey({ ...soon, startsAt: "2026-10-22T15:00:00.000Z" }, "customer", "PUSH"),
+    );
+  });
+});
+
+describe("dedupeKey for several people on one side", () => {
+  const created: NotificationEvent = { type: "booking.created", bookingId: "bk_1" };
+
+  it("keeps the owner's key exactly as it was", () => {
+    expect(dedupeKey(created, "business", "PUSH")).toBe("booking.created:bk_1:business:PUSH");
+    expect(dedupeKey(created, "business", "PUSH", undefined)).toBe("booking.created:bk_1:business:PUSH");
+  });
+
+  it("gives each staff member their own, so one does not suppress another", () => {
+    const a = dedupeKey(created, "business", "PUSH", "staff:u_a");
+    const b = dedupeKey(created, "business", "PUSH", "staff:u_b");
+    expect(a).not.toBe(b);
+    expect(a).not.toBe(dedupeKey(created, "business", "PUSH"));
+    // The booking page reads the customer's own rows by ":customer:".
+    expect(a).not.toContain(":customer:");
+  });
+});

@@ -1,0 +1,23 @@
+# Layout direction, checked by position rather than by eye: FIRST (a
+# testID) comes before LAST in reading order — to its right in Arabic,
+# to its left in English. Needs strings.js loaded (output.lang).
+appId: net.maw3ed.app.staging
+---
+- runFlow:
+    when:
+      true: ${output.lang === 'ar'}
+    commands:
+      - assertVisible:
+          id: ${FIRST}
+          rightOf:
+            id: ${LAST}
+          label: "Arabic reads right to left: ${FIRST} is right of ${LAST}"
+- runFlow:
+    when:
+      true: ${output.lang === 'en'}
+    commands:
+      - assertVisible:
+          id: ${FIRST}
+          leftOf:
+            id: ${LAST}
+          label: "English reads left to right: ${FIRST} is left of ${LAST}"

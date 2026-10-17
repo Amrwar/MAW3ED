@@ -27,7 +27,9 @@ export async function sendCode(phone: string, code: string, freeText: string): P
   const configured = Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
 
   if (!configured && process.env.NODE_ENV !== "production") {
-    log.info(`[dev] one-time code for ${phone}: ${code}`);
+    // The last four digits are enough to tell testers apart; the logger
+    // masks any full number, so the whole one would print as [phone].
+    log.info(`[dev] one-time code for …${phone.replace(/\D/g, "").slice(-4)}: ${code}`);
     return sent("dev-log");
   }
 

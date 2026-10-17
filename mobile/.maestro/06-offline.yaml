@@ -1,0 +1,56 @@
+# Losing the connection: the offline banner appears, a page already
+# loaded still shows, and the banner goes once the connection is back.
+# Android only (setAirplaneMode).
+appId: net.maw3ed.app.staging
+name: Offline banner
+tags:
+  - android
+onFlowComplete:
+  # Never leave the emulator offline for the next flow, pass or fail.
+  - setAirplaneMode: disabled
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 30000
+# Load the first business once while online, so it is cached.
+- tapOn:
+    id: business-card
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: share-business
+    timeout: 20000
+- back
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 10000
+
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible:
+      id: offline-banner
+    timeout: 20000
+    label: The offline banner appears
+- tapOn:
+    id: business-card
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: share-business
+    timeout: 10000
+    label: The cached business page still opens offline
+- assertVisible:
+    id: offline-banner
+- takeScreenshot: 06-offline
+
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    notVisible:
+      id: offline-banner
+    timeout: 30000
+    label: The banner goes when the connection returns
+- takeScreenshot: 06-back-online

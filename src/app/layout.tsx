@@ -6,25 +6,25 @@ import type { Lang } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: {
-    default: "موعد | MAW3ED — منصة الحجز الأولى في مصر",
-    template: "%s | موعد MAW3ED",
+    default: "موعد | Maw3ed — احجز ميعادك أونلاين في مصر",
+    template: "%s | موعد · Maw3ed",
   },
   description:
-    "احجز مواعيدك في ثوانٍ مع أفضل العيادات والصالونات والمراكز الصحية في مصر. موعد — المنصة العربية الأولى للحجز الذكي.",
+    "احجز في عيادات وصالونات وجيمات ومراكز في مصر في ثواني، من غير مكالمات. شوف المواعيد الفاضية واحجز على طول.",
   keywords: ["حجز مواعيد", "عيادات", "صالونات", "مصر", "booking", "maw3ed", "موعد"],
-  authors: [{ name: "MAW3ED Team" }],
-  creator: "MAW3ED",
+  authors: [{ name: "Maw3ed" }],
+  creator: "Maw3ed",
   openGraph: {
     type: "website",
     locale: "ar_EG",
-    siteName: "موعد | MAW3ED",
-    title: "موعد | MAW3ED — منصة الحجز الأولى في مصر",
-    description: "احجز مواعيدك في ثوانٍ مع أفضل العيادات والصالونات والمراكز الصحية في مصر.",
+    siteName: "موعد · Maw3ed",
+    title: "موعد | Maw3ed — احجز ميعادك أونلاين في مصر",
+    description: "احجز في عيادات وصالونات وجيمات ومراكز في مصر في ثواني، من غير مكالمات.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "موعد | MAW3ED",
-    description: "احجز مواعيدك في ثوانٍ مع أفضل العيادات والصالونات في مصر.",
+    title: "موعد | Maw3ed",
+    description: "احجز في عيادات وصالونات وجيمات ومراكز في مصر في ثواني، من غير مكالمات.",
   },
   robots: { index: true, follow: true },
 };

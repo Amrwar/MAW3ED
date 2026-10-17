@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Image, Linking, StyleSheet, View } from "react-native";
+import { Image, Linking, Platform, StyleSheet, View } from "react-native";
 import { router, type Href } from "expo-router";
 import { IconButton, Screen, Text, Touchable, colors, elevation, radius, spacing, useLocale } from "@/design";
 import { config } from "@/lib/config";
@@ -32,7 +32,7 @@ export function AuthShell({
     <Screen dark edges="both">
       <View style={styles.top}>
         {onBack ? (
-          <IconButton icon="chevron-back" label={lang === "ar" ? "رجوع" : "Back"} onPress={onBack} variant="night" />
+          <IconButton icon="chevron-back" label={lang === "ar" ? "رجوع" : "Back"} onPress={onBack} variant="night" testID="back" />
         ) : (
           <View />
         )}
@@ -41,6 +41,8 @@ export function AuthShell({
           accessibilityLabel={lang === "ar" ? "Switch to English" : "التحويل للعربية"}
           onPress={() => setLang(lang === "ar" ? "en" : "ar")}
           style={styles.lang}
+          hitSlop={4}
+          testID="lang-toggle"
         >
           <Text variant="label" tone="inverse">
             {lang === "ar" ? "English" : "العربية"}
@@ -55,7 +57,7 @@ export function AuthShell({
           resizeMode="contain"
           accessibilityIgnoresInvertColors
           accessible
-          accessibilityLabel={lang === "ar" ? "مواعيد" : "Maw3ed"}
+          accessibilityLabel={lang === "ar" ? "موعد" : "Maw3ed"}
         />
       </View>
 
@@ -89,14 +91,14 @@ export function LegalNote() {
   const { lang } = useLocale();
   const ar = lang === "ar";
   return (
-    <Text variant="caption" tone="inverseMuted" align="center">
-      {ar ? "بالمتابعة إنت موافق على " : "By continuing you agree to the "}
-      <Text variant="caption" tone="inverse" onPress={() => openSite("/terms")} accessibilityRole="link">
-        {ar ? "الشروط والأحكام" : "Terms"}
+    <Text variant="caption" tone="inverseMuted" align="center" testID="legal-note">
+      {ar ? "بالمتابعة، إنت موافق على " : "By continuing you agree to the "}
+      <Text variant="caption" tone="inverse" onPress={() => openSite("/terms")} accessibilityRole="link" style={styles.link} testID="terms-link">
+        {ar ? "الشروط والأحكام" : "Terms & Conditions"}
       </Text>
       {ar ? " و" : " and "}
-      <Text variant="caption" tone="inverse" onPress={() => openSite("/privacy")} accessibilityRole="link">
-        {ar ? "سياسة الخصوصية" : "Privacy Policy"}
+      <Text variant="caption" tone="inverse" onPress={() => openSite("/privacy")} accessibilityRole="link" style={styles.link} testID="privacy-link">
+        {ar ? "سياسة الخصوصية" : "Privacy policy"}
       </Text>
       .
     </Text>
@@ -139,6 +141,14 @@ export function finishSignIn() {
 }
 
 const styles = StyleSheet.create({
+  // Underlined, so a link is told from the sentence by more than its
+  // colour. On web the inline padding grows the tap area to 44pt without
+  // moving the line (vertical padding on an inline box does not affect
+  // layout); native ignores padding on nested text.
+  link: {
+    textDecorationLine: "underline",
+    ...Platform.select({ web: { paddingVertical: 14 }, default: {} }),
+  },
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44 },
   lang: {
     paddingHorizontal: spacing.md,

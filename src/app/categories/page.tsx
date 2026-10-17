@@ -9,7 +9,9 @@ import { getFacets } from "@/lib/discovery/search";
 import { buildMetadata } from "@/lib/seo/meta";
 import { coverClassFor } from "@/lib/category-cover";
 import { translations, type Lang } from "@/lib/i18n";
-import { num } from "@/lib/fmt";
+import { arCount, num } from "@/lib/fmt";
+
+const BIZ = { one: "نشاط واحد", two: "نشاطين", few: "أنشطة", many: "نشاط" };
 
 export const metadata: Metadata = buildMetadata({
   title: "تصفح حسب الفئة",
@@ -58,7 +60,7 @@ export default async function CategoriesPage() {
             {categories.length === 0 ? (
               <p className="m-0 py-10 text-center text-[0.9375rem] text-[var(--color-subtle)]">
                 {isAr
-                  ? "لسه مفيش فئات فيها أنشطة. تابعنا قريب."
+                  ? "لسه مفيش فئات فيها أنشطة. ارجع بص تاني قريب."
                   : "No categories have businesses yet. Check back soon."}
               </p>
             ) : (
@@ -87,7 +89,7 @@ export default async function CategoriesPage() {
                                 ? "نشاط واحد"
                                 : "1 business"
                               : isAr
-                                ? `${num(cat.count, lang)} أنشطة`
+                                ? arCount(cat.count, BIZ)
                                 : `${num(cat.count, lang)} businesses`}
                           </span>
                         </span>

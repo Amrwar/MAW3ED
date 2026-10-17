@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Mail, Check } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type State = "idle" | "sending" | "sent" | "error";
 
@@ -12,6 +13,8 @@ type State = "idle" | "sending" | "sent" | "error";
  * rather than a generic failure.
  */
 export default function ResendVerificationButton() {
+  const { t } = useLanguage();
+  const v = t.auth.verifyEmail;
   const [state, setState] = useState<State>("idle");
   const [message, setMessage] = useState<string | null>(null);
 
@@ -25,24 +28,24 @@ export default function ResendVerificationButton() {
       if (res.ok) {
         setState("sent");
         setMessage(
-          data.alreadyVerified
-            ? "بريدك مؤكّد بالفعل."
-            : "بعتنالك رابط جديد — شوف بريدك.",
+          data.alreadyVerified ? v.alreadyVerified : v.linkSent,
         );
         return;
       }
 
       if (res.status === 401) {
         setState("error");
-        setMessage("سجّل دخولك الأول عشان نبعتلك الرابط.");
+        setMessage(v.signInFirst);
         return;
       }
 
       setState("error");
-      setMessage(data.error ?? "مقدرناش نبعت الرابط دلوقتي.");
+      // The server words its own errors in Arabic; in English the
+      // generic sentence is the honest fallback.
+      setMessage(t.lang === "ar" && data.error ? data.error : v.sendFailed);
     } catch {
       setState("error");
-      setMessage("مفيش اتصال بالسيرفر. حاول تاني.");
+      setMessage(v.offline);
     }
   }
 
@@ -61,7 +64,7 @@ export default function ResendVerificationButton() {
         ) : (
           <Mail size={16} aria-hidden="true" />
         )}
-        {state === "sent" ? "تم الإرسال" : "ابعت رابط جديد"}
+        {state === "sent" ? v.sent : v.resend}
       </Button>
 
       {message && (

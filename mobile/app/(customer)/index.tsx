@@ -20,6 +20,7 @@ import {
   spacing,
   useLayout,
   useLocale,
+  joinLabel,
   type IconName,
 } from "@/design";
 import { BusinessCard } from "@/features/discovery/BusinessCard";
@@ -36,6 +37,7 @@ import { num } from "@/lib/format";
 import { api } from "@/lib/api/client";
 import { forgetPayment, unfinishedPayments } from "@/features/booking/storage";
 import type { Business } from "@/types/api";
+import { count } from "@/lib/plural";
 
 /**
  * Home: discovery first, then booking.
@@ -155,7 +157,7 @@ export default function CustomerHome() {
       <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>
         <Column>
           <View style={styles.heroTop}>
-            <View style={styles.brand} accessible accessibilityRole="image" accessibilityLabel={T("مواعيد", "Maw3ed")}>
+            <View style={styles.brand} accessible accessibilityRole="image" accessibilityLabel={T("موعد", "Maw3ed")}>
               <View style={styles.brandMark}>
                 <Text variant="heading" style={styles.brandLetter}>
                   م
@@ -167,6 +169,7 @@ export default function CustomerHome() {
               accessibilityLabel={T(`المدينة: ${cityName}. غيّرها`, `City: ${cityName}. Change`)}
               onPress={() => setPicking(true)}
               style={styles.cityButton}
+              testID="city-picker"
               rippleColor={colors.nightLine}
             >
               <Icon name="location" size="sm" color={colors.nightAccent} />
@@ -196,15 +199,16 @@ export default function CustomerHome() {
                 variant="night"
                 size="sm"
                 onPress={() => startSignIn()}
+                testID="home-sign-in"
               />
             )}
           </View>
 
           <Text variant="label" tone="inverseMuted" style={styles.greeting}>
-            {firstName ? T(`أهلاً، ${firstName}`, `Hello, ${firstName}`) : T("أهلاً بيك", "Welcome")}
+            {firstName ? T(`أهلًا، ${firstName}`, `Hello, ${firstName}`) : T("أهلًا بيك", "Welcome")}
           </Text>
           <Text variant="display" tone="inverse" accessibilityRole="header" style={styles.headline}>
-            {T("احجز ميعادك", "Book your time")}
+            {T("احجز ميعادك", "Book an appointment")}
             {NEWLINE}
             <Text variant="display" style={styles.gold}>
               {T("في دقيقة.", "in a minute.")}
@@ -216,6 +220,7 @@ export default function CustomerHome() {
             accessibilityLabel={T("ابحث عن مكان أو خدمة", "Search for a place or service")}
             onPress={() => openSearch()}
             style={styles.searchPill}
+            testID="home-search"
           >
             <Icon name="search" color={colors.night} />
             <Text variant="body" tone="subtle" numberOfLines={1}>
@@ -234,7 +239,7 @@ export default function CustomerHome() {
 
         {/* ── The next appointment, when there is one ── */}
         {user && next ? (
-          <Section title={T("موعدك الجاي", "Your next appointment")}>
+          <Section title={T("ميعادك الجاي", "Your next appointment")}>
             <BookingCard
               title={ar ? next.business.nameAr : (next.business.nameEn ?? next.business.nameAr)}
               subtitle={(!ar && next.serviceNameEn) || next.serviceName}
@@ -285,9 +290,10 @@ export default function CustomerHome() {
                   <Touchable
                     key={c.id}
                     accessibilityRole="button"
-                    accessibilityLabel={T(`${name}، ${num(c.count)} مكان`, `${name}, ${c.count} places`)}
+                    accessibilityLabel={joinLabel(lang, name, count(c.count, "place", lang))}
                     onPress={() => openSearch({ category: c.slug })}
                     style={styles.tile}
+                    testID="category-tile"
                   >
                     <Icon name={CATEGORY_ICONS[c.slug] ?? "grid-outline"} size="lg" color={colors.night} />
                     <Text variant="tiny" align="center" numberOfLines={2}>
@@ -302,6 +308,7 @@ export default function CustomerHome() {
                   accessibilityLabel={T("كل الأقسام", "All categories")}
                   onPress={() => openSearch()}
                   style={[styles.tile, styles.tileMore]}
+                  testID="category-all"
                 >
                   <Icon name="apps-outline" size="lg" color={colors.gold} />
                   <Text variant="tiny" tone="inverse" align="center">
@@ -408,7 +415,8 @@ export default function CustomerHome() {
       <Sheet
         open={picking}
         onClose={() => setPicking(false)}
-        title={T("اختر المدينة", "Choose a city")}
+        title={T("اختار المدينة", "Choose a city")}
+        testID="city-sheet"
       >
         <View accessibilityRole="radiogroup">
           {[
@@ -425,13 +433,14 @@ export default function CustomerHome() {
                 accessibilityLabel={
                   c.count === null
                     ? name
-                    : T(`${name}، ${num(c.count)} مكان`, `${name}, ${c.count} places`)
+                    : joinLabel(lang, name, count(c.count, "place", lang))
                 }
                 onPress={() => {
                   setCity(c.slug);
                   setPicking(false);
                 }}
                 style={[styles.cityOption, selected && styles.cityOptionOn]}
+                testID="city-option"
               >
                 <Icon
                   name={selected ? "radio-button-on" : "radio-button-off"}
@@ -442,7 +451,7 @@ export default function CustomerHome() {
                 </Text>
                 {c.count !== null ? (
                   <Text variant="caption" tone="subtle">
-                    {T(`${num(c.count)} مكان`, `${c.count} places`)}
+                    {count(c.count, "place", lang)}
                   </Text>
                 ) : null}
               </Touchable>
@@ -743,6 +752,7 @@ function MapEntry() {
       accessibilityLabel={label}
       onPress={() => router.push("/nearby")}
       style={mapStyles.card}
+      testID="home-nearby"
     >
       <MapArt />
       <View style={mapStyles.body}>

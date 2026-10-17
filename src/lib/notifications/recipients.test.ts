@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { businessRecipient, customerRecipient } from "./recipients";
-import type { BookingSubject, BusinessSubject } from "./recipients";
+import { businessRecipient, customerRecipient, staffRecipients } from "./recipients";
+import type { BookingSubject, BusinessSubject, StaffUser } from "./recipients";
 
 const business: BusinessSubject = {
   id: "biz_1",
@@ -126,5 +126,58 @@ describe("preferences", () => {
     // Not an opt-out: their page comes down if they miss it.
     const quiet = { ...business, notifyNewBooking: false, notifyPayment: false };
     expect(businessRecipient(quiet, "subscription.expired").allow.email).toBe(true);
+  });
+});
+
+describe("staff", () => {
+  const manager: StaffUser = {
+    staffMemberId: "sm_mgr", access: "MANAGER", userId: "user_mgr", email: "mgr@example.com", notifyByEmail: true,
+  };
+  const provider: StaffUser = {
+    staffMemberId: "sm_pro", access: "PROVIDER", userId: "user_pro", email: "pro@example.com", notifyByEmail: false,
+  };
+  const other: StaffUser = { ...provider, staffMemberId: "sm_other", userId: "user_other" };
+
+  it("tells a manager about every booking", () => {
+    const r = staffRecipients(business, "booking.created", null, [manager]);
+    expect(r.map((x) => x.userId)).toEqual(["user_mgr"]);
+    expect(r[0].audience).toBe("business");
+    expect(r[0].allow).toMatchObject({ inApp: true, push: true, email: true, whatsapp: false, sms: false });
+  });
+
+  it("tells a provider only about the bookings with them", () => {
+    expect(staffRecipients(business, "booking.cancelled", "sm_pro", [provider, other]).map((x) => x.userId)).toEqual(["user_pro"]);
+    expect(staffRecipients(business, "booking.cancelled", null, [provider, other])).toEqual([]);
+  });
+
+  it("respects the person's own email switch", () => {
+    const [r] = staffRecipients(business, "booking.created", "sm_pro", [provider]);
+    expect(r.allow.email).toBe(false);
+    expect(r.allow.push).toBe(true);
+  });
+
+  it("applies the business's per-event switches to staff too", () => {
+    const quiet = { ...business, notifyNewBooking: false };
+    const [r] = staffRecipients(quiet, "booking.created", null, [manager]);
+    expect(r.allow.push).toBe(false);
+    expect(r.allow.email).toBe(false);
+    expect(r.allow.inApp).toBe(true);
+  });
+
+  it("leaves subscriptions to the owner", () => {
+    expect(staffRecipients(business, "subscription.expired", null, [manager])).toEqual([]);
+  });
+
+  it("never duplicates the owner, and gives each person their own key", () => {
+    const ownerAsStaff = { ...manager, userId: business.ownerId };
+    const r = staffRecipients(business, "booking.created", null, [ownerAsStaff, manager]);
+    expect(r.map((x) => x.userId)).toEqual(["user_mgr"]);
+    expect(r[0].keyTag).toBe("staff:user_mgr");
+  });
+
+  it("never carries the customer's details", () => {
+    const [r] = staffRecipients(business, "booking.created", null, [manager]);
+    expect(r.phone).toBeNull();
+    expect(r.email).not.toBe(booking.customerEmail);
   });
 });

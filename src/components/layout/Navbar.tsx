@@ -4,14 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { Menu, X, Globe, LayoutDashboard, User2, Settings2, LogOut, Store } from "lucide-react";
+import { Menu, X, Globe, LayoutDashboard, User2, Settings2, LogOut, Store, CalendarClock } from "lucide-react";
 import Logo from "@/components/shared/Logo";
-import { UserMenu, UserAvatar, NotificationBell } from "@/components/layout/UserMenu";
+import { UserMenu, UserAvatar, NotificationBell, isCustomerUser } from "@/components/layout/UserMenu";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Navbar() {
-  const { data: session }       = useSession();
+  const { data: session, status } = useSession();
   const { t, lang, toggleLang } = useLanguage();
   const pathname                = usePathname();
   const [isOpen,   setIsOpen]   = useState(false);
@@ -34,6 +34,11 @@ export default function Navbar() {
   const user        = session?.user;
   const isLoggedIn  = !!user;
   const hasBusiness = !!user?.businessId;
+  const isCustomer  = !!user && isCustomerUser(user);
+  // Until the session is known, show neither set: a signed-in customer
+  // briefly offered "Sign in" and "List your business" reads as being
+  // signed out.
+  const sessionPending = status === "loading";
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -53,11 +58,12 @@ export default function Navbar() {
   ];
 
   const ML = {
-    profile:   lang === "ar" ? "الملف الشخصي" : "Profile",
+    account:   t.nav.myBookings,
+    profile:   lang === "ar" ? "بياناتي" : "Profile",
     dashboard: lang === "ar" ? "لوحة التحكم"  : "Dashboard",
     business:  lang === "ar" ? "إدارة نشاطي"   : "My Business",
     settings:  lang === "ar" ? "الإعدادات"     : "Settings",
-    logout:    lang === "ar" ? "تسجيل الخروج"  : "Log out",
+    logout:    lang === "ar" ? "تسجيل الخروج"  : "Sign out",
   };
 
   return (
@@ -105,7 +111,7 @@ export default function Navbar() {
               {t.nav.langToggle}
             </button>
 
-            {isLoggedIn && user ? (
+            {sessionPending ? null : isLoggedIn && user ? (
               <>
                 <NotificationBell />
                 <UserMenu user={user} />
@@ -195,13 +201,18 @@ export default function Navbar() {
                 </div>
 
                 <div className="space-y-1">
-                  <MobileMenuItem icon={User2} label={ML.profile} href="/profile" />
+                  <MobileMenuItem icon={CalendarClock} label={ML.account} href="/account" />
+                  <MobileMenuItem icon={User2} label={ML.profile} href="/account/profile" />
                   {hasBusiness ? (
                     <MobileMenuItem icon={LayoutDashboard} label={ML.dashboard} href="/dashboard" />
-                  ) : (
+                  ) : isCustomer ? null : (
                     <MobileMenuItem icon={Store} label={ML.business} href="/onboarding" />
                   )}
-                  <MobileMenuItem icon={Settings2} label={ML.settings} href="/dashboard/settings" />
+                  <MobileMenuItem
+                    icon={Settings2}
+                    label={ML.settings}
+                    href={hasBusiness ? "/dashboard/settings" : "/account/settings"}
+                  />
                 </div>
 
                 <div className="mt-2 pt-2 border-t border-[var(--color-line)]">
@@ -215,7 +226,7 @@ export default function Navbar() {
                   </button>
                 </div>
               </div>
-            ) : (
+            ) : sessionPending ? null : (
               <div className="mt-3 pt-3 border-t border-[var(--color-line)] px-4 flex flex-col gap-2.5">
                 <Link href="/account-login" className="btn btn-outline w-full">
                   {t.nav.login}

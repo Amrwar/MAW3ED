@@ -121,10 +121,12 @@ export function useRemoveFavorite() {
 
 /* ─── Account ────────────────────────────────────────────── */
 
-export function useProfile() {
+/** `enabled: false` for a screen a guest can see: their request would only 401. */
+export function useProfile({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: keys.profile.all,
     queryFn: () => api.get<Profile>("/api/account/profile"),
+    enabled,
   });
 }
 

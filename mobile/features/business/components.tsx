@@ -1,8 +1,8 @@
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Badge, Icon, Text, Touchable, colors, radius, spacing, useLocale } from "@/design";
+import { Badge, Icon, Text, Touchable, colors, radius, spacing, useLocale, joinLabel } from "@/design";
 import { BOOKING_STATUS_TONE, statusLabelFor } from "@/features/bookings/status";
-import { time } from "@/lib/format";
+import { joinParts, time } from "@/lib/format";
 import type { BookingStatus } from "./types";
 
 /**
@@ -56,26 +56,28 @@ export function BookingRow({
 }) {
   const { lang } = useLocale();
   const dim = status === "CANCELLED" || status === "NO_SHOW" || status === "FAILED_PAYMENT";
-  const meta = [service, staff, branch].filter(Boolean).join(" · ");
+  const meta = joinParts([service, staff, branch], lang);
   return (
     <Touchable
       accessibilityRole="button"
-      accessibilityLabel={`${time(startTime, lang)}، ${customerName}، ${meta}، ${statusLabelFor(status, lang)}`}
+      accessibilityLabel={joinLabel(lang, time(startTime, lang), customerName, meta, statusLabelFor(status, lang))}
       onPress={() => openBooking(id)}
       style={[styles.row, highlight && styles.rowOn, dim && styles.rowDim]}
+      testID="booking-row"
     >
-      <View style={[styles.when, highlight && styles.whenOn]}>
+      <View style={[styles.when, highlight && styles.whenOn, dim && !highlight && styles.whenDim]}>
         <Text variant="bodyBold" style={{ color: highlight ? colors.gold : colors.night }}>
           {time(startTime, lang)}
         </Text>
         {endTime ? (
-          <Text variant="tiny" style={{ color: highlight ? colors.nightText : colors.subtle }}>
+          // ink2, not subtle: subtle is 4.2:1 on goldSoft, under AA.
+          <Text variant="tiny" style={{ color: highlight ? colors.nightText : colors.ink2 }}>
             {time(endTime, lang)}
           </Text>
         ) : null}
       </View>
       <View style={styles.flex}>
-        <Text variant="bodyBold" tone={highlight ? "inverse" : "ink"} numberOfLines={1} style={dim ? styles.struck : undefined}>
+        <Text variant="bodyBold" tone={highlight ? "inverse" : dim ? "muted" : "ink"} numberOfLines={1} style={dim ? styles.struck : undefined}>
           {customerName}
         </Text>
         <Text variant="caption" tone={highlight ? "inverseMuted" : "subtle"} numberOfLines={1}>
@@ -143,7 +145,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   rowOn: { backgroundColor: colors.night },
-  rowDim: { opacity: 0.6 },
+  // A cancelled or no-show booking stays fully readable (fading the row took
+  // its text under 4.5:1): the badge names the state, the name is struck
+  // through, the time box turns neutral, and the row sits on a grey ground.
+  rowDim: { backgroundColor: colors.surface2 },
+  whenDim: { backgroundColor: colors.surface },
   struck: { textDecorationLine: "line-through" },
   when: {
     width: 64,

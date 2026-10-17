@@ -12,7 +12,7 @@ import { joinLabel } from "../strings";
  * than relying on the colour change.
  *
  * Visually 36pt tall, as chips should be in a dense row; the hit area
- * is padded out to the 48pt target.
+ * is padded out to the 48pt target (hitSlop natively, a 44pt box on web).
  */
 export function Chip({
   label,
@@ -20,12 +20,15 @@ export function Chip({
   onPress,
   icon,
   count,
+  testID,
 }: {
   label: string;
   selected?: boolean;
   onPress?: () => void;
   icon?: IconName;
   count?: number;
+  /** For the end-to-end tests (.maestro/). */
+  testID?: string;
 }) {
   const { lang } = useLocale();
   const fg = selected ? colors.inverse : colors.ink2;
@@ -37,6 +40,7 @@ export function Chip({
       onPress={onPress}
       hitSlop={6}
       style={[styles.chip, selected ? styles.on : styles.off]}
+      testID={testID}
     >
       {selected ? <Icon name="checkmark" size="sm" color={fg} /> : icon ? <Icon name={icon} size="sm" color={fg} /> : null}
       <Text variant="label" style={{ color: fg }} numberOfLines={1}>

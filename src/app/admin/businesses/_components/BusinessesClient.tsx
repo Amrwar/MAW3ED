@@ -42,6 +42,7 @@ export interface AdminBusinessRow {
  */
 export default function BusinessesClient({
   rows,
+  pager,
   tally,
   activeStatus,
   query,
@@ -49,6 +50,8 @@ export default function BusinessesClient({
   canVerify,
 }: {
   rows: AdminBusinessRow[];
+  /** Server-rendered pager, shown under the list. */
+  pager?: React.ReactNode;
   tally: Record<string, number>;
   activeStatus: string;
   query: string;
@@ -65,6 +68,8 @@ export default function BusinessesClient({
 
   function go(patch: Record<string, string | null>) {
     const next = new URLSearchParams(params.toString());
+    // A new filter starts from its first page.
+    next.delete("page");
     for (const [k, v] of Object.entries(patch)) {
       if (!v) next.delete(k);
       else next.set(k, v);
@@ -191,15 +196,23 @@ export default function BusinessesClient({
                   )}
                 </div>
 
-                <Link
-                  href={`/company/${b.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-9 shrink-0 items-center gap-1 text-[0.75rem] font-bold text-[var(--color-jade)]"
-                >
-                  <ExternalLink size={11} aria-hidden="true" />
-                  الصفحة
-                </Link>
+                {/* An unpublished page is a 404 to everyone, admins
+                    included, so it is not linked. */}
+                {b.isPublished ? (
+                  <Link
+                    href={`/company/${b.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 shrink-0 items-center gap-1 text-[0.75rem] font-bold text-[var(--color-jade)]"
+                  >
+                    <ExternalLink size={11} aria-hidden="true" />
+                    الصفحة
+                  </Link>
+                ) : (
+                  <span className="inline-flex min-h-11 shrink-0 items-center text-[0.75rem] text-[var(--color-muted)]">
+                    الصفحة مش منشورة
+                  </span>
+                )}
               </div>
 
               {(canModerate || canVerify) && (
@@ -291,6 +304,7 @@ export default function BusinessesClient({
           ))}
         </ul>
       )}
+      {pager}
     </div>
   );
 }

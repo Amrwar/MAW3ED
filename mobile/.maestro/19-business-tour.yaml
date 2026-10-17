@@ -1,0 +1,25 @@
+# The business side in Arabic, then in English, signed in as the review
+# account: Today, a booking (opened only), Calendar day/week and date
+# arrows, Customers and their search, a customer, More and the profile,
+# staff, services and reports screens, the language buttons, sign out.
+# Read-only: no status, reschedule, cancel, confirm or access switch is
+# touched, and Notifications (which marks them read) is not opened.
+#
+# Credentials as in 05: -e REVIEW_EMAIL=... -e REVIEW_PASSWORD=..., or
+# MAESTRO_REVIEW_EMAIL / MAESTRO_REVIEW_PASSWORD.
+appId: net.maw3ed.app.staging
+name: Business side in both languages (read-only)
+tags:
+  - needs-credentials
+  - deep
+---
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: ar
+- runFlow: subflows/business-tour.yaml
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: en
+- runFlow: subflows/business-tour.yaml

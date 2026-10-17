@@ -7,7 +7,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { AuthShell, LegalNote, finishSignIn, openSite } from "@/features/auth/AuthShell";
 import { PhoneField } from "@/features/auth/PhoneField";
 import { countryByIso, EGYPT, type Country } from "@/features/auth/countries";
-import { emailLogin, readPhone } from "@/features/auth/validation";
+import { SEND_CODE_EN, emailLogin, readPhone } from "@/features/auth/validation";
 import { messageFor } from "@/lib/api/errors";
 
 /**
@@ -43,7 +43,7 @@ export default function Login() {
 
   return (
     <AuthShell
-      title={mode === "customer" ? (ar ? "أهلًا بيك في مواعيد" : "Welcome to Maw3ed") : ar ? "دخول أصحاب الأعمال" : "Business sign-in"}
+      title={mode === "customer" ? (ar ? "أهلًا بيك في موعد" : "Welcome to Maw3ed") : ar ? "دخول أصحاب الأعمال" : "Business sign-in"}
       subtitle={
         mode === "customer"
           ? ar
@@ -62,6 +62,7 @@ export default function Login() {
         ]}
         value={mode}
         onChange={setMode}
+        testIDPrefix="login-tab"
       />
       {mode === "customer" ? <PhoneStep /> : <BusinessForm />}
     </AuthShell>
@@ -87,7 +88,7 @@ function PhoneStep() {
       await requestCode(parsed.e164);
       router.push({ pathname: "/(auth)/verify", params: { phone: parsed.e164 } });
     } catch (e) {
-      setError(messageFor(e));
+      setError(messageFor(e, lang, SEND_CODE_EN));
     } finally {
       setBusy(false);
     }
@@ -111,6 +112,7 @@ function PhoneStep() {
         error={error}
         hint={ar ? "هنبعتلك كود تأكيد على واتساب." : "We'll send a confirmation code on WhatsApp."}
         onSubmitEditing={send}
+        testID="login-phone"
       />
       <Button
         label={ar ? "ابعت الكود" : "Send code"}
@@ -118,6 +120,7 @@ function PhoneStep() {
         disabled={!parsed.e164 || busy}
         loading={busy}
         fullWidth
+        testID="login-submit"
       />
       <Text variant="caption" tone="subtle" align="center">
         {ar
@@ -147,7 +150,7 @@ function BusinessForm() {
       await signIn(email.trim(), password);
       finishSignIn();
     } catch (e) {
-      setError(messageFor(e));
+      setError(messageFor(e, lang, { "401": "The email or password is incorrect." }));
     } finally {
       setBusy(false);
     }
@@ -156,7 +159,7 @@ function BusinessForm() {
   return (
     <>
       <TextField
-        label={ar ? "البريد الإلكتروني" : "Email"}
+        label={ar ? "الإيميل" : "Email"}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -167,6 +170,7 @@ function BusinessForm() {
         icon="mail-outline"
         ltr
         editable={!busy}
+        testID="login-email"
       />
       <View style={styles.passwordBlock}>
         <TextField
@@ -180,6 +184,7 @@ function BusinessForm() {
           editable={!busy}
           error={error}
           onSubmitEditing={submit}
+          testID="login-password"
         />
         <Text
           variant="label"
@@ -187,6 +192,7 @@ function BusinessForm() {
           accessibilityRole="link"
           onPress={() => openSite("/forgot-password")}
           style={styles.forgot}
+          testID="forgot-password"
         >
           {ar ? "نسيت كلمة المرور؟" : "Forgot password?"}
         </Text>
@@ -197,6 +203,7 @@ function BusinessForm() {
         disabled={!canSubmit}
         loading={busy}
         fullWidth
+        testID="login-submit"
       />
 
       <View style={styles.or}>
@@ -207,12 +214,13 @@ function BusinessForm() {
         <View style={styles.rule} />
       </View>
       <Button
-        label={ar ? "سجّل نشاطك على مواعيد" : "Create a business account"}
+        label={ar ? "سجّل نشاطك على موعد" : "Create a business account"}
         variant="outline"
         icon="open-outline"
         iconPosition="end"
         onPress={() => openSite("/signup")}
         fullWidth
+        testID="business-sign-up"
       />
       {/* Staff have no email login: the owner gives them access by phone. */}
       <Text variant="caption" tone="subtle" align="center">

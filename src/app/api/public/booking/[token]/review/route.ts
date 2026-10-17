@@ -61,6 +61,8 @@ export async function POST(req: Request, { params }: Params) {
         businessId: true,
         status: true,
         endsAt: true,
+        startsAt: true,
+        startTime: true,
         date: true,
         review: { select: { id: true } },
       },
@@ -73,6 +75,10 @@ export async function POST(req: Request, { params }: Params) {
     const check = canReviewBooking(booking);
     if (!check.allowed) {
       if (check.reason === "already-reviewed") return err("تم تقييم هذا الحجز من قبل", 409);
+      // Marked completed ahead of time: there was no visit yet to review.
+      if (check.reason === "too-early") {
+        return err("التقييم متاح بعد ميعاد الحجز", 409, { code: "too-early" });
+      }
       if (check.reason === "too-late") {
         return err(`التقييم بيتقفل بعد ${REVIEW_WINDOW_DAYS} يوم من الموعد`, 409);
       }
@@ -215,6 +221,6 @@ export async function DELETE(_req: Request, { params }: Params) {
     return ok({ withdrawn: true });
   } catch (e) {
     log.error("[booking review DELETE]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

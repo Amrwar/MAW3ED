@@ -9,9 +9,12 @@ import {
   ALLOWED_TRANSITIONS,
   formatDateAr,
 } from "@/features/dashboard/bookings/types";
+import { allowedNow } from "@/lib/bookings/progress-guard";
+import { useMinuteTick } from "@/hooks/useMinuteTick";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Modal from "@/components/ui/Modal";
 import Alert from "@/components/ui/Alert";
+import { providerLabel } from "@/lib/scheduling/resource-labels";
 
 const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
   PENDING:         { bg: "var(--color-warn-soft)", color: "var(--color-warn)" },
@@ -57,12 +60,14 @@ export default function BookingDetailPanel({
   const [actionError,   setActionError]   = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const { t, lang } = useLanguage();
+  // Re-evaluated every minute: which moves are open depends on the clock.
+  const now = useMinuteTick();
   const bd     = t.dashboard.bookingDetail;
   const ba     = t.dashboard.bookingActions;
   const bs     = t.dashboard.bookingStatus;
   const locale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
-  const allowedNext  = ALLOWED_TRANSITIONS[booking.status] ?? [];
+  const allowedNext  = allowedNow(ALLOWED_TRANSITIONS[booking.status] ?? [], { date: new Date(`${booking.date}T00:00:00Z`), startTime: booking.startTime }, now);
   const badge        = STATUS_BADGE[booking.status] ?? STATUS_BADGE.NO_SHOW;
   const statusLabel  = (bs as Record<string, string>)[booking.status] ?? booking.status;
 
@@ -163,7 +168,7 @@ export default function BookingDetailPanel({
           </div>
 
           {/* Booking details */}
-          <Section icon={<Calendar size={14} style={{ color: "var(--color-jade)" }} />} title={lang === "ar" ? "تفاصيل الموعد" : "Booking Details"}>
+          <Section icon={<Calendar size={14} style={{ color: "var(--color-jade)" }} />} title={lang === "ar" ? "تفاصيل الحجز" : "Booking details"}>
             <InfoRow label={bd.service}  value={booking.serviceName} />
             <InfoRow label={bd.duration} value={`${booking.serviceDuration} ${bd.minutes}`} />
             <InfoRow label={bd.date}     value={formatDateAr(booking.date)} />
@@ -172,7 +177,8 @@ export default function BookingDetailPanel({
               value={booking.endTime ? `${booking.startTime} – ${booking.endTime}` : booking.startTime}
               ltr
             />
-            {booking.staffName  && <InfoRow label={lang === "ar" ? "الحلاق"    : "Barber"}      value={booking.staffName}        />}
+            {/* The same neutral label the booking widget uses, whatever the business does. */}
+            {booking.staffName  && <InfoRow label={providerLabel(lang)} value={booking.staffName} />}
             {booking.tableName  && <InfoRow label={lang === "ar" ? "الطاولة"   : "Table"}       value={booking.tableName}        />}
             {booking.partySize  && <InfoRow label={lang === "ar" ? "الأشخاص"  : "Party size"}  value={String(booking.partySize)} />}
           </Section>

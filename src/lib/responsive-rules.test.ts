@@ -77,7 +77,7 @@ describe("the booking date strip", () => {
   });
 
   it("gives each day button its full date as an accessible name", () => {
-    expect(source).toMatch(/aria-label=\{formatDateAr\(d\.iso\)\}/);
+    expect(source).toMatch(/aria-label=\{formatDateAr\(d\.iso(, lang)?\)\}/);
   });
 });
 

@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     where:  { id: owned.id },
     select: { plan: true, subscriptionStatus: true, trialEndsAt: true },
   });
-  if (!business) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!business) return NextResponse.json({ error: "سجّل دخولك الأول" }, { status: 401 });
 
   const plan    = effectivePlanOf(business);
   const current = await db.staffMember.count({ where: { businessId: owned.id } });
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
       {
         error: ceiling === 0
           ? `إضافة فريق متاحة في خطة ${upgrade ? PLAN_NAMES_AR[upgrade] : "مدفوعة"}.`
-          : `وصلت للحد الأقصى (${ceiling} أفراد) في خطتك الحالية.`,
+          : `وصلت لأقصى عدد للفريق في باقتك الحالية (${ceiling}).`,
       },
       { status: 403 },
     );

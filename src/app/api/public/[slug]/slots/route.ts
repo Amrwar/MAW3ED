@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: Params) {
     const serviceId = searchParams.get("serviceId");
     const date = searchParams.get("date");
 
-    if (!serviceId || !date) return err("serviceId و date مطلوبان", 400);
+    if (!serviceId || !date) return err("اختار الخدمة واليوم", 400);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err("تاريخ غير صحيح", 400);
 
     const business = await db.business.findUnique({
@@ -49,6 +49,6 @@ export async function GET(req: Request, { params }: Params) {
     return ok({ slots, reason });
   } catch (e) {
     log.error("[slots GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

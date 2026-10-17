@@ -289,6 +289,11 @@ export function verifyWebhookHmac(
     log.error("[paymob] PAYMOB_HMAC_SECRET not set — rejecting webhook");
     return false;
   }
+  // The body is untrusted until this returns true, so a missing nested
+  // object is a failed check, never an exception for the caller to 500 on.
+  if (typeof obj !== "object" || obj === null || typeof hmac !== "string") return false;
+  if (typeof obj.order !== "object" || obj.order === null) return false;
+  if (typeof obj.source_data !== "object" || obj.source_data === null) return false;
 
   // Fields in the exact order specified by Paymob
   const data = [

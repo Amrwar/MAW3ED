@@ -17,6 +17,11 @@ export function useNotifications() {
   });
 }
 
+/** A page after the first: the feed's "show more". The first page stays the shared query above. */
+export function fetchNotificationsPage(cursor: string) {
+  return api.get<NotificationsResponse>(`/api/account/notifications?cursor=${encodeURIComponent(cursor)}`);
+}
+
 export function useMarkNotificationsRead() {
   const client = useQueryClient();
   return useMutation({

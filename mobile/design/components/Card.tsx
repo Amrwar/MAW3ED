@@ -19,6 +19,7 @@ export function Card({
   padded = true,
   tone = "surface",
   style,
+  testID,
 }: {
   children: ReactNode;
   onPress?: () => void;
@@ -28,6 +29,7 @@ export function Card({
   /** `night` for a card on a dark screen; `tint` for a quiet highlighted one. */
   tone?: "surface" | "tint" | "night";
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 }) {
   const body = [styles.card, styles[tone], padded && styles.padded, style];
 
@@ -39,6 +41,7 @@ export function Card({
         // A label needs a role to hang on; "group" is what a card is.
         role={accessibilityLabel ? "group" : undefined}
         aria-label={accessibilityLabel}
+        testID={testID}
       >
         {children}
       </View>
@@ -53,6 +56,7 @@ export function Card({
       accessibilityHint={accessibilityHint}
       pressedOpacity={0.85}
       style={body}
+      testID={testID}
     >
       {children}
     </Touchable>

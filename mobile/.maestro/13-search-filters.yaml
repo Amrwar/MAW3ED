@@ -1,0 +1,226 @@
+# Search in depth: the city picker on Home, a category from Home opening
+# a filtered search, the filters sheet (apply, clear, close without
+# applying), every sort order, and the empty state's "clear filters".
+# Data-agnostic: any result count is fine, as long as the screen shows
+# results or says there are none. Read-only (a search is a GET).
+appId: net.maw3ed.app.staging
+name: Search filters, sort, categories and city
+tags:
+  - deep
+---
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: ar
+
+# ── The city picker ──
+- tapOn:
+    id: city-picker
+- extendedWaitUntil:
+    visible:
+      id: city-sheet
+    timeout: 5000
+- assertVisible:
+    id: city-option
+    index: 0
+    label: '"All cities" is always offered'
+- takeScreenshot: 13-city-picker
+# A city with places, when staging has one: Home reloads for it.
+- runFlow:
+    when:
+      visible:
+        id: city-option
+        index: 1
+    commands:
+      - tapOn:
+          id: city-option
+          index: 1
+      - extendedWaitUntil:
+          notVisible:
+            id: city-sheet
+          timeout: 5000
+      - extendedWaitUntil:
+          visible:
+            id: business-card
+          timeout: 30000
+          label: Home lists the chosen city's places (it only offers cities with places)
+      - takeScreenshot: 13-home-city
+      - tapOn:
+          id: city-picker
+      - extendedWaitUntil:
+          visible:
+            id: city-sheet
+          timeout: 5000
+# Back to all cities (option 0) — also closes the sheet when nothing changed.
+- tapOn:
+    id: city-option
+    index: 0
+- extendedWaitUntil:
+    notVisible:
+      id: city-sheet
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 30000
+
+# ── A category on Home opens Search filtered by it ──
+- scrollUntilVisible:
+    element:
+      id: category-tile
+    direction: DOWN
+    timeout: 15000
+    label: Home shows at least one category (staging has none with places?)
+- tapOn:
+    id: category-tile
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: active-filter-category
+    timeout: 10000
+    label: Search opens with the category applied, shown as a chip
+- extendedWaitUntil:
+    visible:
+      id: "business-card|search-empty"
+    timeout: 20000
+- takeScreenshot: 13-category-search
+# The chip removes the filter.
+- tapOn:
+    id: active-filter-category
+- extendedWaitUntil:
+    notVisible:
+      id: active-filter-category
+    timeout: 5000
+
+# ── Filters: apply, then clear ──
+- tapOn:
+    id: open-filters
+- extendedWaitUntil:
+    visible:
+      id: filter-sheet
+    timeout: 5000
+- tapOn:
+    id: filter-available-today
+- takeScreenshot: 13-filters-draft
+- tapOn:
+    id: apply-filters
+- extendedWaitUntil:
+    notVisible:
+      id: filter-sheet
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: active-filter-available
+    timeout: 5000
+    label: The applied filter shows as a chip
+- extendedWaitUntil:
+    visible:
+      id: "business-card|search-empty"
+    timeout: 20000
+- takeScreenshot: 13-filters-applied
+- tapOn:
+    id: open-filters
+- extendedWaitUntil:
+    visible:
+      id: filter-sheet
+    timeout: 5000
+- tapOn:
+    id: clear-filters
+- tapOn:
+    id: apply-filters
+- extendedWaitUntil:
+    notVisible:
+      id: active-filter-available
+    timeout: 5000
+    label: Clear all, then Show results, removes it
+
+# Closing the sheet without "Show results" changes nothing.
+- tapOn:
+    id: open-filters
+- extendedWaitUntil:
+    visible:
+      id: filter-sheet
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: filter-verified
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: filter-verified
+- tapOn:
+    id: sheet-close
+- extendedWaitUntil:
+    notVisible:
+      id: filter-sheet
+    timeout: 5000
+- assertNotVisible:
+    id: active-filter-verified
+    label: A filter chosen but not applied is dropped
+# ...and neither does Android Back.
+- tapOn:
+    id: open-filters
+- extendedWaitUntil:
+    visible:
+      id: filter-sheet
+    timeout: 5000
+- pressKey: back
+- extendedWaitUntil:
+    notVisible:
+      id: filter-sheet
+    timeout: 5000
+- assertVisible:
+    id: search-input
+
+# ── Every sort order ──
+- runFlow:
+    file: subflows/pick-sort.yaml
+    env: { SORT: soonest }
+- runFlow:
+    file: subflows/pick-sort.yaml
+    env: { SORT: rating }
+- runFlow:
+    file: subflows/pick-sort.yaml
+    env: { SORT: most-booked }
+- runFlow:
+    file: subflows/pick-sort.yaml
+    env: { SORT: price-asc }
+- runFlow:
+    file: subflows/pick-sort.yaml
+    env: { SORT: price-desc }
+- takeScreenshot: 13-sorted
+- runFlow:
+    file: subflows/pick-sort.yaml
+    env: { SORT: recommended }
+
+# ── No results with a filter on: the empty state offers to clear it ──
+- tapOn:
+    id: open-filters
+- extendedWaitUntil:
+    visible:
+      id: filter-sheet
+    timeout: 5000
+- tapOn:
+    id: filter-available-today
+- tapOn:
+    id: apply-filters
+- extendedWaitUntil:
+    visible:
+      id: active-filter-available
+    timeout: 5000
+- tapOn:
+    id: search-input
+- inputText: zzzzqqq
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: search-empty
+    timeout: 20000
+- takeScreenshot: 13-empty-with-filter
+- tapOn:
+    id: empty-clear-filters
+- extendedWaitUntil:
+    notVisible:
+      id: active-filter-available
+    timeout: 5000
+    label: '"Clear filters" in the empty state removes them'

@@ -46,7 +46,20 @@ export function money(
   lang: Lang = "ar",
   currency = "EGP",
 ): string {
-  return `${num(value, lang)} ${currencyLabel(currency, lang)}`;
+  return `${moneyFigure(value, lang)} ${currencyLabel(currency, lang)}`;
+}
+
+/**
+ * A whole amount as it is ("300"); anything with piastres always to two
+ * places ("37.50", never "37.5"), the way a price is written.
+ */
+function moneyFigure(value: number, lang: Lang): string {
+  const cents = Math.round(value * 100);
+  if (cents % 100 === 0) return num(cents / 100, lang);
+  return (cents / 100).toLocaleString(localeFor(lang), {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 /* ─── Duration ───────────────────────────────────────────── */
@@ -61,11 +74,12 @@ export function duration(minutes: number, lang: Lang = "ar"): string {
     return `${h} hr ${m} min`;
   }
 
-  const hourWord = h === 1 ? "ساعة" : h === 2 ? "ساعتين" : "ساعات";
-  if (h === 0) return `${num(m, lang)} دقيقة`;
+  const hourWord = h === 1 ? "ساعة" : h === 2 ? "ساعتين" : h <= 10 ? "ساعات" : "ساعة";
+  const mins = `${num(m, lang)} ${m >= 3 && m <= 10 ? "دقايق" : "دقيقة"}`;
+  if (h === 0) return mins;
   if (m === 0) return h <= 2 ? hourWord : `${num(h, lang)} ${hourWord}`;
   const hPart = h <= 2 ? hourWord : `${num(h, lang)} ${hourWord}`;
-  return `${hPart} و${num(m, lang)} دقيقة`;
+  return `${hPart} و${mins}`;
 }
 
 /* ─── Dates & times ──────────────────────────────────────── */
@@ -198,6 +212,44 @@ export function countLabel(
   // "حجز واحد" and "حجزان" already carry the number in the word
   if (count === 1 || count === 2) return word;
   return `${num(count, lang)} ${word}`;
+}
+
+/** The four Arabic forms of a counted noun. `one` and `two` are whole
+ *  phrases ("مكان واحد", "مكانين"); `few` (3–10) and `many` (11+) are
+ *  the bare noun, which gets the number in front of it. */
+export interface ArCountForms {
+  zero?: string;
+  one: string;
+  two: string;
+  few: string;
+  many: string;
+}
+
+/**
+ * One counted noun, Arabic rules:
+ *   arCount(1, f) → "مكان واحد" · arCount(2, f) → "مكانين"
+ *   arCount(5, f) → "5 أماكن"   · arCount(15, f) → "15 مكان"
+ * (101–102 behave like 11+, 103–110 like 3–10, as Arabic does.)
+ */
+export function arCount(count: number, forms: ArCountForms): string {
+  const word = plural(count, forms);
+  if (count === 1 || count === 2) return word;
+  return `${num(count, "ar")} ${word}`;
+}
+
+/** "1 booking" / "3 bookings". `other` defaults to `one` + "s". */
+export function enCount(count: number, one: string, other = `${one}s`): string {
+  return `${count.toLocaleString(EN)} ${count === 1 ? one : other}`;
+}
+
+/** Either language: arCount in Arabic, enCount in English. */
+export function countIn(
+  lang: Lang,
+  count: number,
+  ar: ArCountForms,
+  en: { one: string; other?: string },
+): string {
+  return lang === "en" ? enCount(count, en.one, en.other) : arCount(count, ar);
 }
 
 /* ─── Phone ──────────────────────────────────────────────── */

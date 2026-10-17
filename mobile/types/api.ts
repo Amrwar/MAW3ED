@@ -160,6 +160,8 @@ export interface MyBooking {
 export interface MyBookingsResponse {
   bookings: MyBooking[];
   total: number;
+  /** History only: pass back as `cursor` for the next page; null on the last. Absent from an older server. */
+  nextCursor?: string | null;
   /**
    * True for an account with no verified phone — an owner who signed up
    * by email, say. Bookings are found by number, so there is nothing to
@@ -213,6 +215,8 @@ export interface AppNotification {
 export interface NotificationsResponse {
   notifications: AppNotification[];
   unread: number;
+  /** Pass as `cursor` for the next page; null on the last. Absent from an older server. */
+  nextCursor?: string | null;
 }
 
 /* ─── The owner's side ───────────────────────────────────── */

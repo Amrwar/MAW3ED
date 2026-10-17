@@ -23,7 +23,12 @@ export default function CustomerLayout() {
   return (
     <Tabs screenOptions={bottomNavOptions}>
       {TABS.map((tab) => (
-        <Tabs.Screen key={tab.name} name={tab.name} options={{ title: tab[lang], tabBarIcon: tabIcon(tab.icon) }} />
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          // A stable handle for the end-to-end tests (.maestro/): the label changes with the language.
+          options={{ title: tab[lang], tabBarIcon: tabIcon(tab.icon), tabBarButtonTestID: `tab-${tab.name}` }}
+        />
       ))}
       <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>

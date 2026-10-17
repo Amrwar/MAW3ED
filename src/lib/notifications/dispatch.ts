@@ -25,6 +25,8 @@ import {
   businessRecipient,
   customerRecipient,
   hrefForBusiness,
+  staffRecipients,
+  type StaffUser,
   type BookingSubject,
   type BusinessSubject,
   type Recipient,
@@ -76,27 +78,56 @@ async function dispatch(event: NotificationEvent): Promise<DispatchOutcome[]> {
   if (event.type === "subscription.renewalDue" && loaded.bespoke.subscription) {
     loaded.bespoke.subscription.daysLeft = event.daysLeft;
   }
+  // What only the event knows: where a moved booking was, and how much
+  // a payment was for.
+  if (event.type === "booking.rescheduled" && event.movedFrom) {
+    const [d, t] = event.movedFrom.split("T");
+    if (d && t) {
+      context.previousWhen = formatWhen(new Date(`${d}T00:00:00Z`), t);
+      if (loaded.bespoke.email) loaded.bespoke.email.previous = { date: d, startTime: t };
+    }
+  }
+  if (event.type === "payment.received") {
+    // The amount that actually arrived — a balance is not the deposit.
+    context.amount = money(event.amount, "ar", loaded.bespoke.email?.currency ?? "EGP");
+    if (loaded.bespoke.email) loaded.bespoke.email.paidAmount = event.amount;
+  }
 
   // Events a business has switched off entirely never leave here.
   if (!businessWantsEvent(business, event)) {
     return [{ audience: "customer", channel: "IN_APP", status: "SKIPPED", reason: "disabled-by-business" }];
   }
 
+  const actorUserId = "actorUserId" in event ? (event.actorUserId ?? null) : null;
+  const only = event.type === "booking.created" ? event.only : undefined;
+
   const recipients: Recipient[] = [];
   for (const audience of EVENT_AUDIENCE[event.type]) {
-    // The business is not told — on any channel — about a move it made
-    // itself; the customer copy is the only one with a reader.
-    if (audience === "business" && event.type === "booking.rescheduled" && event.by === "business") continue;
+    if (only && audience !== only) continue;
+    // A move the business made itself, when we do not know who there
+    // made it: the customer copy is the only one with a reader. When we
+    // do know, only that person is left out (below).
+    if (audience === "business" && event.type === "booking.rescheduled" && event.by === "business" && !actorUserId) continue;
     if (audience === "customer") {
       if (!booking) continue; // A subscription has no customer.
       recipients.push(customerRecipient(booking, await customerPrefs(booking.customerUserId)));
     } else {
-      recipients.push({ ...businessRecipient(business, event.type), href: hrefForBusiness(event) });
+      const href = hrefForBusiness(event);
+      recipients.push({ ...businessRecipient(business, event.type), href });
+      if (booking) {
+        // Managers, and the provider the booking is with.
+        const staff = staffRecipients(business, event.type, booking.staffMemberId ?? null, await staffUsers(business.id));
+        for (const r of staff) recipients.push({ ...r, href });
+      }
     }
   }
+  // Nobody at the business is told about what they did themselves.
+  const told = actorUserId
+    ? recipients.filter((r) => !(r.audience === "business" && r.userId === actorUserId))
+    : recipients;
 
   const results: DispatchOutcome[] = [];
-  for (const recipient of recipients) {
+  for (const recipient of told) {
     const copy = copyFor(event, recipient.audience, context);
     for (const channel of CHANNELS) {
       results.push(
@@ -126,7 +157,7 @@ async function deliver(
   const address = channel.address(recipient);
   if (!address) return { ...base, status: "SKIPPED", reason: "no-address" };
 
-  const key = dedupeKey(event, recipient.audience, channel.name);
+  const key = dedupeKey(event, recipient.audience, channel.name, recipient.keyTag);
 
   // Claim the key before sending. Whoever wins the unique index sends;
   // everyone else stops here. This is what makes a retried webhook or a
@@ -216,6 +247,30 @@ async function customerPrefs(userId: string | null) {
   });
 }
 
+/** Staff who can sign in to this business, with their own email switch. */
+async function staffUsers(businessId: string): Promise<StaffUser[]> {
+  const rows = await db.staffMember.findMany({
+    where: { businessId, isActive: true, access: { not: null }, userId: { not: null } },
+    select: {
+      id: true,
+      access: true,
+      userId: true,
+      user: { select: { email: true, notifyByEmail: true } },
+    },
+  });
+  return rows.flatMap((r) =>
+    r.access && r.userId
+      ? [{
+          staffMemberId: r.id,
+          access: r.access,
+          userId: r.userId,
+          email: r.user?.email ?? null,
+          notifyByEmail: r.user?.notifyByEmail ?? false,
+        }]
+      : [],
+  );
+}
+
 /** The switches that turn an event off at source rather than per channel. */
 function businessWantsEvent(b: BusinessSubject & Partial<ReminderPrefs>, event: NotificationEvent) {
   if (event.type === "booking.reminder") return b.reminderEnabled !== false;
@@ -270,9 +325,11 @@ async function loadBooking(bookingId: string): Promise<Loaded | null> {
     select: {
       id: true,
       accessToken: true,
+      status: true,
       customerName: true,
       customerPhone: true,
       customerPhoneE164: true,
+      staffMemberId: true,
       date: true,
       startTime: true,
       endTime: true,
@@ -303,6 +360,7 @@ async function loadBooking(bookingId: string): Promise<Loaded | null> {
       customerPhoneE164: b.customerPhoneE164,
       customerEmail: b.customer?.email ?? null,
       customerUserId: account?.id ?? null,
+      staffMemberId: b.staffMemberId,
       business,
     },
     business,
@@ -312,6 +370,7 @@ async function loadBooking(bookingId: string): Promise<Loaded | null> {
       when: formatWhen(b.date, b.startTime),
       customerName: b.customerName,
       amount: money(Number(b.depositAmount ?? b.totalPrice), "ar", b.currency),
+      status: b.status,
     },
     bespoke: {
       // Exactly what the existing templates have always been given.
@@ -338,6 +397,7 @@ async function loadBooking(bookingId: string): Promise<Loaded | null> {
         currency: b.currency,
         notes: b.notes,
         bookingUrl: b.accessToken ? bookingPageUrl(b.accessToken) : null,
+        status: b.status,
       },
       subscription: null,
     },

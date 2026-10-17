@@ -1,10 +1,24 @@
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err, requireSession } from "@/lib/api";
-import { getUpcoming, getHistory } from "@/lib/account/queries";
+import { decodeHistoryCursor, getUpcoming, getHistory } from "@/lib/account/queries";
 import { log } from "@/lib/logger";
+import { parseQuery } from "@/lib/query-params";
 
 /**
- * GET /api/account/bookings?scope=upcoming|history&take=&skip=
+ * take is 1..50 (more is clamped to 50, as it always was); skip is a
+ * whole number. Anything else is a 400 rather than a silent default.
+ */
+const query = z.object({
+  scope: z.enum(["upcoming", "history"]).optional(),
+  take: z.coerce.number().int().min(1).transform((n) => Math.min(n, 50)).optional(),
+  skip: z.coerce.number().int().min(0).max(1_000_000).optional(),
+  /** nextCursor from the previous history page; when given, skip is ignored. */
+  cursor: z.string().max(300).refine((c) => decodeHistoryCursor(c) !== null, "invalid cursor").optional(),
+});
+
+/**
+ * GET /api/account/bookings?scope=upcoming|history&take=&skip=&cursor=
  *
  * A customer's own appointments.
  *
@@ -37,8 +51,9 @@ export async function GET(req: Request) {
       return ok({ bookings: [], total: 0, needsPhone: true });
     }
 
-    const url = new URL(req.url);
-    const scope = url.searchParams.get("scope") === "history" ? "history" : "upcoming";
+    const q = parseQuery(new URL(req.url).searchParams, query);
+    if (!q.ok) return q.response;
+    const scope = q.data.scope ?? "upcoming";
 
     if (scope === "upcoming") {
       const bookings = await getUpcoming(user.phone);
@@ -49,14 +64,17 @@ export async function GET(req: Request) {
     // History can be long, so it pages. The ceiling is here rather than
     // trusting the caller: an app asking for everything at once is a
     // bug on a phone, and a stranger asking for it is worse.
-    const take = Math.min(Math.max(Number(url.searchParams.get("take")) || 20, 1), 50);
-    const skip = Math.max(Number(url.searchParams.get("skip")) || 0, 0);
+    const take = q.data.take ?? 20;
+    const skip = q.data.skip ?? 0;
 
-    const { bookings, total } = await getHistory(user.phone, { take, skip });
-    return ok({ bookings, total, needsPhone: false });
+    // nextCursor is additive: a client paging by skip ignores it, one
+    // passing it back as `cursor` gets pages that do not shift when a
+    // booking moves into history mid-scroll. null on the last page.
+    const { bookings, total, nextCursor } = await getHistory(user.phone, { take, skip, cursor: q.data.cursor });
+    return ok({ bookings, total, nextCursor, needsPhone: false });
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[account bookings]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

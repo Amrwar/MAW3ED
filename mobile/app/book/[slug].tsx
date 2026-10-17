@@ -62,9 +62,10 @@ import { useProfile } from "@/features/customer/queries";
 import { nextFreeLabel } from "@/features/discovery/BusinessCard";
 import { useBusinessProfile } from "@/features/discovery/queries";
 import { KIND_WORDS, profileKind } from "@/features/profile/profile";
-import { duration, longDate, money, num, time } from "@/lib/format";
+import { duration, formatPhone, joinParts, longDate, money, num, time } from "@/lib/format";
 import { keys } from "@/lib/query/keys";
 import type { PublicProfile } from "@/types/api";
+import { count, hoursSpan } from "@/lib/plural";
 
 /**
  * Booking, in the app — from a business's profile to a booking the
@@ -214,7 +215,7 @@ function Flow({
   const T = (a: string, e: string) => (ar ? a : e);
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const account = useProfile();
+  const account = useProfile({ enabled: Boolean(user) });
   const me = user ? account.data : undefined;
 
   const [d, setD] = useState<Draft>(() => ({
@@ -458,7 +459,7 @@ function Flow({
 
   const stepTitle: Record<Step, string> = {
     service: words.services[lang],
-    staff: kind === "clinic" ? T("اختار الدكتور", "Choose a doctor") : T("مع مين؟", "Choose who"),
+    staff: kind === "clinic" ? T("اختار الدكتور", "Choose a doctor") : T("مع مين؟", "Who with?"),
     branch: T("اختار الفرع", "Choose a branch"),
     resource: resourceTitle(resources[0]?.kind, lang),
     when: T("اليوم والميعاد", "Date & time"),
@@ -480,6 +481,7 @@ function Flow({
             price={s.price}
             currency={s.currency}
             selected={d.serviceId === s.id}
+            testID="service-option"
             onPress={() => {
               update({ serviceId: s.id });
               trackBooking("booking_service_selected", { slug: p.slug, serviceId: s.id });
@@ -507,7 +509,7 @@ function Flow({
             selected={d.staffId === m.id}
             photo={m.photo}
             title={(!ar && m.nameEn) || m.nameAr}
-            subtitle={[m.role, nextFreeLabel(m.nextSlot, lang)].filter(Boolean).join(" · ") || null}
+            subtitle={joinParts([m.role, nextFreeLabel(m.nextSlot, lang)], lang) || null}
             onPress={() => {
               update({ staffId: m.id });
               trackBooking("booking_staff_selected", { slug: p.slug, anyone: false, staffId: m.id });
@@ -559,7 +561,7 @@ function Flow({
                 disabled={small}
                 icon={r.kind === "TABLE" ? "restaurant-outline" : r.kind === "ROOM" ? "business-outline" : "cube-outline"}
                 title={r.name}
-                subtitle={[r.area, r.capacity !== null ? T(`${num(r.capacity, lang)} أشخاص`, `Seats ${r.capacity}`) : null].filter(Boolean).join(" · ") || null}
+                subtitle={joinParts([r.area, r.capacity !== null ? T(`لحد ${count(r.capacity, "person", "ar")}`, `Seats ${r.capacity}`) : null], lang) || null}
                 note={small ? T("مش هتكفي العدد ده", "Too small for your party") : null}
                 onPress={() => {
                   update({ resourceId: r.id });
@@ -603,7 +605,12 @@ function Flow({
         ) : slots.error ? (
           <ErrorState error={slots.error} onRetry={() => slots.refetch()} />
         ) : slots.data && slots.data.slots.length === 0 ? (
-          <EmptyState icon="time-outline" title={T("مفيش مواعيد", "No times")} body={emptyDayReason(slots.data.reason, lang)} />
+          <EmptyState
+            icon="time-outline"
+            title={T("مفيش مواعيد", "No times")}
+            body={emptyDayReason(slots.data.reason, lang)}
+            testID="no-times"
+          />
         ) : slots.data ? (
           <>
             <View style={styles.between}>
@@ -636,6 +643,7 @@ function Flow({
     const errors = touched ? detailsErrors(d) : [];
     content = !user ? (
       <EmptyState
+        testID="booking-sign-in"
         icon="person-circle-outline"
         title={T("سجّل دخولك عشان تحجز", "Sign in to book")}
         body={T(
@@ -672,12 +680,12 @@ function Flow({
           textContentType="name"
           error={errors.includes("name") ? T("اكتب اسمك (حرفين على الأقل)", "Enter your name (at least 2 letters)") : null}
         />
-        <View style={styles.phone} accessible accessibilityLabel={`${T("رقم الموبايل", "Phone")}: ${phone}`}>
+        <View style={styles.phone} accessible accessibilityLabel={`${T("رقم الموبايل", "Mobile number")}: ${phone}`}>
           <Text variant="label" tone="ink2">
-            {T("رقم الموبايل", "Phone")}
+            {T("رقم الموبايل", "Mobile number")}
           </Text>
           <Text variant="bodyBold" style={ltr}>
-            +{phone.replace(/^\+/, "")}
+            {formatPhone(phone)}
           </Text>
           <Text variant="caption" tone="subtle">
             {T("رقمك المتأكد — عليه بيوصلك التأكيد والتذكير.", "Your verified number — confirmations and reminders go here.")}
@@ -709,7 +717,7 @@ function Flow({
               onChangeText={setCodeInput}
               autoCapitalize="characters"
               ltr
-              error={d.code && codeRejected ? (ar ? codeRejected : "This code can't be used") : null}
+              error={d.code && codeRejected ? (ar ? codeRejected : "That code can't be used") : null}
               hint={appliedCode && quote.data?.discount ? T(`اتطبق: ${fmt(quote.data.discount.amountCents)} خصم`, `Applied: ${fmt(quote.data.discount.amountCents)} off`) : undefined}
             />
           </View>
@@ -758,7 +766,7 @@ function Flow({
       : p.autoConfirm
         ? T("أكّد الحجز", "Confirm booking")
         : T("ابعت طلب الحجز", "Send booking request")
-    : T("التالي", "Continue");
+    : T("كمّل", "Continue");
 
   return (
     <View style={styles.page}>
@@ -803,7 +811,7 @@ function Flow({
 
         {svc && step !== "service" && step !== "summary" ? <Picked p={p} d={d} /> : null}
 
-        <Text variant="title" accessibilityRole="header">
+        <Text variant="title" accessibilityRole="header" testID="booking-step-title">
           {stepTitle[step]}
         </Text>
         {content}
@@ -833,6 +841,7 @@ function Flow({
             loading={submitting}
             disabled={isSummary ? submitting || !phone : !ready && step !== "details"}
             onPress={isSummary ? submit : onNext}
+            testID={isSummary ? "booking-submit" : "booking-next"}
           />
         </View>
       ) : null}
@@ -918,7 +927,7 @@ function Picked({ p, d }: { p: PublicProfile; d: Draft }) {
     d.time ? time(d.time, lang) : null,
   ].filter(Boolean);
   return (
-    <View style={styles.picked}>
+    <View style={styles.picked} testID="booking-picked">
       {bits.map((b) => (
         <Badge key={b as string} tone="neutral" label={b as string} />
       ))}
@@ -1013,8 +1022,8 @@ function Summary({
         </Text>
         <Text variant="body" tone="ink2">
           {T(
-            `تقدر تلغي أو تغيّر ميعادك بنفسك لحد ${duration(p.policies.changeCutoffHours * 60, "ar")} قبل الميعاد.`,
-            `You can cancel or reschedule yourself up to ${p.policies.changeCutoffHours} hours before the appointment.`,
+            `تقدر تلغي أو تغيّر ميعادك بنفسك لحد ${hoursSpan(p.policies.changeCutoffHours, "ar")} قبل الميعاد.`,
+            `You can cancel or reschedule yourself up to ${hoursSpan(p.policies.changeCutoffHours, "en")} before the appointment.`,
           )}
         </Text>
         <Text variant="body" tone="ink2">
@@ -1031,7 +1040,7 @@ function Summary({
 
       <Card>
         <Row label={T("باسم", "Name")} value={d.name.trim()} />
-        {phone ? <Row label={T("الموبايل", "Phone")} value={`+${phone.replace(/^\+/, "")}`} ltrValue /> : null}
+        {phone ? <Row label={T("الموبايل", "Mobile number")} value={formatPhone(phone)} ltrValue /> : null}
         {d.email.trim() ? <Row label={T("الإيميل", "Email")} value={d.email.trim()} ltrValue /> : null}
         {d.notes.trim() ? <Row label={T("ملاحظات", "Notes")} value={d.notes.trim()} /> : null}
         <Button size="sm" variant="ghost" icon="create-outline" label={T("عدّل البيانات", "Edit details")} onPress={() => onEdit("details")} style={styles.edit} />

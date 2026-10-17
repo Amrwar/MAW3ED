@@ -16,8 +16,6 @@ const eslintConfig = defineConfig([
     // lint config; linting React Native with the Next rules reports
     // noise about rules that do not apply to it.
     "mobile/**",
-    "android/**",
-    "ios/**",
   ]),
 ]);
 

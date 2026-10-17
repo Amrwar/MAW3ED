@@ -21,10 +21,11 @@ import { useNotifications } from "@/features/notifications/queries";
 import { PushToggle } from "@/features/notifications/PushToggle";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { VERSION_LABEL } from "@/constants/version";
-import { num } from "@/lib/format";
+import { formatPhone, num } from "@/lib/format";
 import { SignInGate } from "@/features/auth/SignInGate";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { DesignSystemLink } from "@/features/dev/DesignSystemLink";
+import { PRIVACY_URL, openExternal } from "@/constants/support";
 
 /**
  * Account.
@@ -81,7 +82,7 @@ function Account() {
           >
             <View style={styles.avatar}>
               <Text variant="title" style={styles.avatarText}>
-                {initials(data?.name ?? user?.name)}
+                {initials(data?.name ?? user?.name, lang)}
               </Text>
             </View>
             <View style={styles.flex}>
@@ -96,7 +97,7 @@ function Account() {
               <View style={styles.phoneRow}>
                 <Text variant="caption" tone="inverseMuted" style={ltr}>
                   {data?.phone
-                    ? `+${data.phone.replace(/^\+/, "")}`
+                    ? formatPhone(data.phone)
                     : T("مفيش رقم موبايل", "No phone number")}
                 </Text>
                 {/* Three states, not two: no number is a different problem from an unconfirmed one. */}
@@ -104,7 +105,7 @@ function Account() {
                   <Badge
                     label={
                       data.phoneVerified
-                        ? T("متأكد", "Verified")
+                        ? T("متأكَّد منه", "Verified")
                         : T("محتاج تأكيد", "Needs verifying")
                     }
                     tone={data.phoneVerified ? "ok" : "warn"}
@@ -206,6 +207,12 @@ function Account() {
               icon="shield-checkmark-outline"
               label={T("الأمان والأجهزة", "Security & devices")}
               href="/me/security"
+            />
+            <LinkRow
+              icon="document-lock-outline"
+              label={T("سياسة الخصوصية", "Privacy policy")}
+              onPress={() => openExternal(PRIVACY_URL)}
+              external
               last
             />
           </Card>
@@ -216,6 +223,7 @@ function Account() {
             label={T("تسجيل الخروج", "Sign out")}
             variant="outline"
             loading={signingOut}
+            testID="sign-out"
             onPress={async () => {
               setSigningOut(true);
               try {
@@ -244,9 +252,9 @@ function Account() {
 }
 
 /** Up to two letters from the name, for the avatar; a person icon's stand-in when there is none. */
-function initials(name: string | null | undefined): string {
+function initials(name: string | null | undefined, lang: "ar" | "en"): string {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "؟";
+  if (parts.length === 0) return lang === "ar" ? "؟" : "?";
   return parts
     .slice(0, 2)
     .map((p) => p[0])
@@ -293,18 +301,21 @@ function LinkRow({
   icon,
   label,
   href,
+  onPress,
+  external,
   trailing,
   last,
 }: {
   icon: IconName;
   label: string;
-  href: Href;
   trailing?: ReactNode;
   last?: boolean;
-}) {
+  /** Opens outside the app (a web page): an arrow out instead of a chevron. */
+  external?: boolean;
+} & ({ href: Href; onPress?: never } | { href?: never; onPress: () => void })) {
   return (
     <Touchable
-      onPress={() => router.push(href)}
+      onPress={onPress ?? (() => router.push(href))}
       accessibilityRole="link"
       accessibilityLabel={label}
       style={[styles.link, !last && styles.linkLine]}
@@ -316,7 +327,7 @@ function LinkRow({
         {label}
       </Text>
       {trailing}
-      <Icon name="chevron-forward" color={colors.faint} />
+      <Icon name={external ? "open-outline" : "chevron-forward"} color={colors.faint} />
     </Touchable>
   );
 }

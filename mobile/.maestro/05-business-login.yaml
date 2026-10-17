@@ -1,0 +1,107 @@
+# A business account signs in with email and password, looks around its
+# space, and signs out. Read-only: opens a booking but never taps its
+# status, reschedule or cancel actions.
+#
+# Credentials come from the environment, never from this file:
+#   locally   maestro test -e REVIEW_EMAIL=... -e REVIEW_PASSWORD=... .maestro/05-business-login.yaml
+#   EAS       MAESTRO_REVIEW_EMAIL / MAESTRO_REVIEW_PASSWORD (Maestro picks up MAESTRO_* variables itself)
+appId: net.maw3ed.app.staging
+name: Business sign-in (read-only)
+tags:
+  - needs-credentials
+---
+# Either name works; whichever is set wins. `typeof` keeps an unset one from throwing.
+- evalScript: ${output.email = (typeof REVIEW_EMAIL !== 'undefined' && REVIEW_EMAIL) || (typeof MAESTRO_REVIEW_EMAIL !== 'undefined' && MAESTRO_REVIEW_EMAIL) || ''}
+- evalScript: ${output.password = (typeof REVIEW_PASSWORD !== 'undefined' && REVIEW_PASSWORD) || (typeof MAESTRO_REVIEW_PASSWORD !== 'undefined' && MAESTRO_REVIEW_PASSWORD) || ''}
+- assertTrue:
+    condition: ${output.email !== '' && output.password !== ''}
+    label: REVIEW_EMAIL and REVIEW_PASSWORD are set
+
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: home-sign-in
+    timeout: 30000
+- tapOn:
+    id: home-sign-in
+- extendedWaitUntil:
+    visible:
+      id: login-tab-business
+    timeout: 10000
+- tapOn:
+    id: login-tab-business
+- tapOn:
+    id: login-email
+- inputText: ${output.email}
+- tapOn:
+    id: login-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: login-submit
+- extendedWaitUntil:
+    visible:
+      id: biz-tab-index
+    timeout: 30000
+    label: Signed in to the business space (is the review account a business account?)
+- takeScreenshot: 05-business-today
+
+# Today's first booking, if there is one today: open it, look, leave.
+- runFlow:
+    when:
+      visible:
+        id: booking-row
+    commands:
+      - tapOn:
+          id: booking-row
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: manage-booking
+          timeout: 20000
+      - takeScreenshot: 05-business-booking
+      - back
+      - extendedWaitUntil:
+          visible:
+            id: biz-tab-index
+          timeout: 10000
+
+- tapOn:
+    id: biz-tab-calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar-screen
+    timeout: 20000
+- takeScreenshot: 05-business-calendar
+
+# Hidden for a provider, who has no customer book.
+- runFlow:
+    when:
+      visible:
+        id: biz-tab-customers
+    commands:
+      - tapOn:
+          id: biz-tab-customers
+      - extendedWaitUntil:
+          visible:
+            id: customers-screen
+          timeout: 20000
+      - takeScreenshot: 05-business-customers
+
+- tapOn:
+    id: biz-tab-account
+- scrollUntilVisible:
+    element:
+      id: sign-out
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: sign-out
+- extendedWaitUntil:
+    visible:
+      id: tab-index
+    timeout: 20000
+    label: Back in the customer space, signed out
+- assertVisible:
+    id: home-sign-in

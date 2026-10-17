@@ -155,7 +155,10 @@ function emit(level: LogLevel, message: string, fields?: LogFields, error?: unkn
 
   const record: LogRecord = {
     level,
-    message,
+    // The message is scrubbed as well as the fields. A template string
+    // like `sent to ${phone}` bypasses the key-based masking entirely,
+    // and the message is the one part every sink is sure to keep.
+    message: scrubString(message),
     fields: (redact(fields ?? {}) as LogFields) ?? {},
     error: error === undefined ? undefined : redact(error),
     at: new Date().toISOString(),

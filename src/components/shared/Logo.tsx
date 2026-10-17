@@ -32,10 +32,15 @@ export default function Logo({
 }: LogoProps) {
   const dims = sizeMap[size];
 
+  const name = "موعد - Maw3ed";
+
+  // As a link, the name goes on the <a> itself and the picture is
+  // decorative, so the control is named whatever reads it — a checker
+  // that looks at the link alone found it unnamed.
   const imgEl = (
     <Image
       src="/logo.png"
-      alt="موعد - MAW3ED"
+      alt={href ? "" : name}
       width={dims.width}
       height={dims.height}
       className={cn(
@@ -49,7 +54,7 @@ export default function Logo({
 
   if (href) {
     return (
-      <Link href={href} className="flex items-center">
+      <Link href={href} aria-label={name} className="flex items-center">
         {imgEl}
       </Link>
     );

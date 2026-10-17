@@ -1,0 +1,37 @@
+# The app opens on Home (Arabic, signed out), at the top, and lists at
+# least one place.
+#
+# Emulator runs 1 and 3 found Arabic Home scrolled past the search field
+# with nothing having touched it (English opened at the top). This flow
+# photographs Home every second from launch, before waiting on anything,
+# so a jump shows when it happens, then checks it is still at the top.
+appId: net.maw3ed.app.staging
+name: Launch and home
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- takeScreenshot: 01-t00
+- repeat:
+    times: 12
+    commands:
+      # A one-second wait that touches nothing: wait for an element that
+      # never exists, and carry on when it times out.
+      - extendedWaitUntil:
+          visible:
+            id: never-present
+          timeout: 1000
+          optional: true
+      - takeScreenshot: 01-tick
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 45000
+    label: Home lists at least one business (staging returned none?)
+- takeScreenshot: 01-home-loaded
+- assertVisible:
+    id: home-search
+    label: Still at the top after the places loaded (Home must not scroll itself)
+- assertVisible:
+    id: tab-index

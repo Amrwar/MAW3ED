@@ -8,6 +8,7 @@ import { statusLabelFor } from "@/features/bookings/status";
 import { useBookingHistory } from "@/features/account/queries";
 import { useMyBookings } from "@/features/customer/queries";
 import type { MyBooking } from "@/types/api";
+import { joinParts } from "@/lib/format";
 
 type Tab = "upcoming" | "history";
 
@@ -60,7 +61,7 @@ function MyBookings() {
             {T("حجوزاتي", "My bookings")}
           </Text>
           <Text variant="body" tone="inverseMuted">
-            {isUpcoming ? T("مواعيدك الجاية، الأقرب الأول.", "Your upcoming times, soonest first.") : T("كل اللي فات، تقدر تقيّمه.", "Everything past, ready to review.")}
+            {isUpcoming ? T("مواعيدك الجاية، الأقرب الأول.", "Your upcoming appointments, soonest first.") : T("كل اللي فات، تقدر تقيّمه.", "Everything past, ready to review.")}
           </Text>
           <View style={styles.tabs}>
             <Tabs
@@ -96,7 +97,7 @@ function MyBookings() {
           emptyBody={
             needsPhone
               ? T(
-                  "الحجوزات بتترّبط برقم موبايلك المتأكد منه. ضيفه من حسابك عشان تشوفها هنا.",
+                  "الحجوزات بتتربط برقم موبايلك المتأكد منه. ضيفه من حسابك عشان تشوفها هنا.",
                   "Bookings are linked to your verified phone number. Add one in your account to see them here.",
                 )
               : isUpcoming
@@ -126,7 +127,7 @@ function MyBookings() {
                 // Only on the upcoming tab: "7 months ago" under every row
                 // of a history list is noise, not information.
                 minutesUntil={isUpcoming ? b.minutesUntil : undefined}
-                meta={[(!ar && b.staffNameEn) || b.staffName, (!ar && b.branchNameEn) || b.branchName].filter(Boolean).join(" · ") || null}
+                meta={joinParts([(!ar && b.staffNameEn) || b.staffName, (!ar && b.branchNameEn) || b.branchName], lang) || null}
                 onPress={b.accessToken ? () => router.push({ pathname: "/booking/[token]", params: { token: b.accessToken as string } }) : undefined}
               />
             ))}

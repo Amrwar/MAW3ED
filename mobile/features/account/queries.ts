@@ -11,15 +11,38 @@ import type { AccountPayment, AccountSession, MyBookingsResponse, MyReview } fro
  */
 
 /** Past bookings, a page at a time — history can be long. */
+type HistoryPage = { cursor?: string; skip: number };
+
+/**
+ * Past bookings, 20 at a time. Paged by the server's cursor when it
+ * gives one — pages that do not shift when a booking moves into history
+ * meanwhile — and by skip from an older server that does not. Either
+ * way a booking already shown on an earlier page is dropped from a
+ * later one, so a shift can never list it twice.
+ */
 export function useBookingHistory(enabled = true) {
   return useInfiniteQuery({
     enabled,
     queryKey: keys.myBookings.historyPages,
-    initialPageParam: 0,
-    queryFn: ({ pageParam }) => api.get<MyBookingsResponse>(`/api/account/bookings?scope=history&take=20&skip=${pageParam}`),
-    getNextPageParam: (last, pages) => {
+    initialPageParam: { skip: 0 } as HistoryPage,
+    queryFn: ({ pageParam }) =>
+      api.get<MyBookingsResponse>(
+        `/api/account/bookings?scope=history&take=20&${pageParam.cursor ? `cursor=${encodeURIComponent(pageParam.cursor)}` : `skip=${pageParam.skip}`}`,
+      ),
+    getNextPageParam: (last, pages): HistoryPage | undefined => {
       const loaded = pages.reduce((n, p) => n + p.bookings.length, 0);
-      return loaded < last.total ? loaded : undefined;
+      if (last.nextCursor !== undefined) return last.nextCursor ? { cursor: last.nextCursor, skip: loaded } : undefined;
+      return loaded < last.total ? { skip: loaded } : undefined;
+    },
+    select: (data) => {
+      const seen = new Set<string>();
+      return {
+        ...data,
+        pages: data.pages.map((p) => ({
+          ...p,
+          bookings: p.bookings.filter((b) => (seen.has(b.id) ? false : (seen.add(b.id), true))),
+        })),
+      };
     },
     staleTime: 60_000,
   });

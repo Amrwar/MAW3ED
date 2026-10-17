@@ -35,6 +35,7 @@ export function PhoneField({
   hint,
   editable = true,
   onSubmitEditing,
+  testID,
 }: {
   label: string;
   value: string;
@@ -45,6 +46,7 @@ export function PhoneField({
   hint?: string;
   editable?: boolean;
   onSubmitEditing?: () => void;
+  testID?: string;
 }) {
   const { lang } = useLocale();
   const ar = lang === "ar";
@@ -69,6 +71,7 @@ export function PhoneField({
           onPress={() => setPicking(true)}
           disabled={!editable}
           style={styles.country}
+          testID="country-picker"
         >
           <Text variant="body">{flagOf(country.iso)}</Text>
           <Text variant="bodyBold">{isolateLtr(`+${country.dial}`)}</Text>
@@ -92,6 +95,7 @@ export function PhoneField({
           onSubmitEditing={onSubmitEditing}
           returnKeyType="next"
           style={styles.input}
+          testID={testID}
         />
       </View>
 
@@ -150,12 +154,14 @@ function CountrySheet({
         setQuery("");
         onClose();
       }}
-      title={ar ? "اختر الدولة" : "Choose your country"}
+      title={ar ? "اختار الدولة" : "Choose your country"}
+      testID="country-sheet"
     >
       <SearchField
         value={query}
         onChangeText={setQuery}
         placeholder={ar ? "ابحث باسم الدولة أو الكود" : "Search by country or code"}
+        testID="country-search"
       />
       <View accessibilityRole="radiogroup">
         {list.map((c) => {
@@ -171,6 +177,7 @@ function CountrySheet({
                 onSelect(c);
               }}
               style={[styles.option, isSelected && styles.optionSelected]}
+              testID="country-option"
             >
               <Text variant="heading">{flagOf(c.iso)}</Text>
               <Text variant="body" style={styles.optionName} numberOfLines={1}>
@@ -215,6 +222,9 @@ const styles = StyleSheet.create({
   divider: { width: 1, alignSelf: "stretch", marginVertical: spacing.sm, backgroundColor: colors.line2 },
   input: {
     flex: 1,
+    // A browser gives <input> an intrinsic width; without this the web
+    // build pushes the field past the card on a 320 pt screen.
+    minWidth: 0,
     minHeight: touchTarget - 4,
     paddingHorizontal: spacing.md,
     fontFamily: fonts.regular,

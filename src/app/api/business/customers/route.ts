@@ -1,7 +1,9 @@
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { can, requireBusinessAccess } from "@/lib/business-access";
 import { log } from "@/lib/logger";
+import { pageParam, parseQuery } from "@/lib/query-params";
 
 export type CustomerRow = {
   id:              string;
@@ -24,7 +26,21 @@ export type CustomerRow = {
  *   search — name or phone (case-insensitive)
  *   sort   — name | bookingCount | lastVisit | totalSpend | createdAt (default: createdAt)
  *   order  — asc | desc (default: desc)
+ *   page, pageSize — optional paging (pageSize 1..100, default 50 when
+ *            page is given). Without either, every customer is returned
+ *            as before, so existing callers are unchanged. The response
+ *            always carries `total` (all matches); when paged it also
+ *            carries `page`, `pageSize` and `totalPages`.
+ *
+ * An unknown sort/order or a bad page is a 400.
  */
+const query = z.object({
+  search:   z.string().max(100).optional(),
+  sort:     z.enum(["name", "bookingCount", "lastVisit", "totalSpend", "createdAt"]).optional(),
+  order:    z.enum(["asc", "desc"]).optional(),
+  page:     pageParam.optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+});
 export async function GET(req: Request) {
   try {
     const { business, actor } = await requireBusinessAccess("customers.read");
@@ -33,9 +49,11 @@ export async function GET(req: Request) {
     const seeMoney = can(actor, "reports.read");
     const { searchParams } = new URL(req.url);
 
-    const search = searchParams.get("search")?.trim() ?? "";
-    const sort   = searchParams.get("sort")   ?? "createdAt";
-    const order  = searchParams.get("order")  ?? "desc";
+    const q = parseQuery(searchParams, query);
+    if (!q.ok) return q.response;
+    const search = q.data.search?.trim() ?? "";
+    const sort   = q.data.sort  ?? "createdAt";
+    const order  = q.data.order ?? "desc";
 
     const raw = await db.customer.findMany({
       where: {
@@ -98,10 +116,23 @@ export async function GET(req: Request) {
       }
     });
 
+    if (q.data.page || q.data.pageSize) {
+      const page       = q.data.page ?? 1;
+      const pageSize   = q.data.pageSize ?? 50;
+      const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+      return ok({
+        customers: rows.slice((page - 1) * pageSize, page * pageSize),
+        total: rows.length,
+        page,
+        pageSize,
+        totalPages,
+      });
+    }
+
     return ok({ customers: rows, total: rows.length });
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[customers GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

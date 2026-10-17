@@ -1,0 +1,32 @@
+# Switching to English from the sign-in screen, then Home in English.
+appId: net.maw3ed.app.staging
+name: English
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: home-sign-in
+    timeout: 30000
+- tapOn:
+    id: home-sign-in
+- extendedWaitUntil:
+    visible:
+      id: lang-toggle
+    timeout: 10000
+- tapOn:
+    id: lang-toggle
+- takeScreenshot: 07-login-english
+- back
+- extendedWaitUntil:
+    visible:
+      id: business-card
+    timeout: 20000
+# The app's own tab label (not data): proves the language changed.
+- assertVisible:
+    text: Home
+- assertNotVisible:
+    text: الرئيسية
+- takeScreenshot: 07-home-english

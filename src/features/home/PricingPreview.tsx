@@ -4,14 +4,18 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
+import { PLANS, PLAN_NAMES_AR, PLAN_NAMES_EN, PLAN_PRICES_EGP } from "@/lib/plans";
 
 /**
  * The middle plan is the one we recommend, so it is the only card
  * that gets a filled dark surface. The other two stay quiet.
  */
 export default function PricingPreview() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const p = t.pricingPreview;
+  // Names and prices come from the plan matrix, so this card can never
+  // sell a plan or a price that billing does not charge.
+  const names = lang === "en" ? PLAN_NAMES_EN : PLAN_NAMES_AR;
 
   return (
     <section className="bg-[var(--color-ground)] pt-20">
@@ -26,9 +30,10 @@ export default function PricingPreview() {
         <div className="grid items-stretch gap-5 lg:grid-cols-3">
           {p.plans.map((plan, i) => {
             const featured = i === 1;
+            const id = PLANS[i];
             return (
               <article
-                key={plan.name}
+                key={id}
                 className={cn(
                   "flex flex-col rounded-[var(--radius-xl)] p-8",
                   featured
@@ -43,7 +48,7 @@ export default function PricingPreview() {
                 )}
 
                 <h3 className={cn("text-[1.1875rem] font-bold", featured ? "text-white" : "text-[var(--color-ink)]")}>
-                  {plan.name}
+                  {names[id]}
                 </h3>
 
                 <div
@@ -58,7 +63,7 @@ export default function PricingPreview() {
                       featured ? "text-white" : "text-[var(--color-ink)]",
                     )}
                   >
-                    {plan.price}
+                    {PLAN_PRICES_EGP[id]}
                   </span>
                   <span className={cn("text-sm", featured ? "text-[var(--color-night-subtle)]" : "text-[var(--color-subtle)]")}>
                     {plan.period}

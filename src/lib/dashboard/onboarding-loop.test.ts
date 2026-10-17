@@ -70,8 +70,12 @@ describe("the dashboard", () => {
   it("sends somebody with no business to onboarding", () => {
     // The other side of the pair. Both directions have to exist, or
     // one of the two pages becomes unreachable.
-    expect(read(DASHBOARD_LAYOUT)).toContain('redirect("/onboarding")');
-    expect(read(DASHBOARD_GUARD)).toContain('redirect("/onboarding")');
+    // Both go through noBusinessDestination, which sends an owner to
+    // onboarding and a customer (verified phone, no password) to their
+    // account — a customer is not somebody about to set up a business.
+    expect(read(DASHBOARD_LAYOUT)).toContain("redirect(await noBusinessDestination(");
+    expect(read(DASHBOARD_GUARD)).toContain("redirect(await noBusinessDestination(");
+    expect(read(DASHBOARD_GUARD)).toMatch(/:\s*"\/onboarding"/);
   });
 });
 

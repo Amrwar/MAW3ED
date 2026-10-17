@@ -1,0 +1,13 @@
+# An element of the app's own chrome (ID, a testID) says WORD and holds
+# no letter of the other language's script — so it is translated, not
+# left in the other language. Needs strings.js loaded.
+appId: net.maw3ed.app.staging
+---
+- assertVisible:
+    id: ${ID}
+    text: ${WORD}
+    label: "${ID} reads '${WORD}'"
+- assertNotVisible:
+    id: ${ID}
+    text: ${output.s.otherScript}
+    label: "${ID} has no word of the other language"

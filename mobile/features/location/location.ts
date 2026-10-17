@@ -20,15 +20,7 @@ export type Fix =
   | { ok: true; lat: number; lng: number; /** metres, when the OS says */ accuracy: number | null }
   | { ok: false; reason: "denied" | "blocked" | "services-off" | "unavailable" | "timeout" };
 
-/** Without prompting: has the person already said yes? */
-export async function locationAllowed(): Promise<boolean> {
-  try {
-    const { status } = await Location.getForegroundPermissionsAsync();
-    return status === "granted";
-  } catch {
-    return false;
-  }
-}
+
 
 /**
  * Ask (if needed) and read. `blocked` means the system will not show the
@@ -62,7 +54,7 @@ export const ROUGH_ACCURACY_M = 1_000;
 export function formatDistance(km: number, lang: "ar" | "en"): string {
   if (km < 1) {
     const m = Math.max(50, Math.round((km * 1000) / 50) * 50);
-    return lang === "ar" ? `${num(m, lang)} م` : `${m} m`;
+    return lang === "ar" ? `${num(m, lang)} متر` : `${m} m`;
   }
   const v = km < 10 ? Math.round(km * 10) / 10 : Math.round(km);
   return lang === "ar" ? `${num(v, lang)} كم` : `${v} km`;

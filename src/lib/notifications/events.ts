@@ -32,22 +32,43 @@ export type EventType = BookingEventType | SubscriptionEventType;
 /** Who an event concerns. */
 export type Audience = "customer" | "business";
 
+/**
+ * Who in the business did it, when somebody there did. That person is
+ * not told about their own action; everybody else at the business is
+ * (the owner hears about a booking a manager keyed in, and vice versa).
+ */
+interface Actor {
+  actorUserId?: string;
+}
+
 export type NotificationEvent =
-  /** `by: "business"` when the owner keyed it in — they need no push about their own action. */
-  | { type: "booking.created"; bookingId: string; by?: Audience }
-  | { type: "booking.confirmed"; bookingId: string }
-  | { type: "booking.rejected"; bookingId: string }
-  | { type: "booking.cancelled"; bookingId: string; by: Audience }
-  | {
+  /**
+   * `by: "business"` when the business keyed it in.
+   * `only` limits it to one side — a deposit booking that just became
+   * real is news to the business, while the customer gets the
+   * confirmation instead.
+   */
+  | ({ type: "booking.created"; bookingId: string; by?: Audience; only?: Audience } & Actor)
+  | ({ type: "booking.confirmed"; bookingId: string } & Actor)
+  | ({ type: "booking.rejected"; bookingId: string } & Actor)
+  | ({ type: "booking.cancelled"; bookingId: string; by: Audience } & Actor)
+  | ({
       type: "booking.rescheduled";
       bookingId: string;
       /** Included in the key so a second move sends a second message. */
       movedTo: string;
+      /** Where it was before, "YYYY-MM-DDTHH:MM" — shown as the old time. Not part of the key. */
+      movedFrom?: string;
       /** `"business"` when the business moved it (absent: the customer did). */
       by?: Audience;
-    }
-  | { type: "booking.reminder"; bookingId: string }
-  | { type: "booking.startingSoon"; bookingId: string }
+    } & Actor)
+  /**
+   * `startsAt` is the appointment's start (ISO) when the reminder was
+   * due. Part of the key: a booking moved to a new time is reminded
+   * again, as its customerReminderSentAt reset promises.
+   */
+  | { type: "booking.reminder"; bookingId: string; startsAt?: string }
+  | { type: "booking.startingSoon"; bookingId: string; startsAt?: string }
   | { type: "booking.completed"; bookingId: string }
   | { type: "review.requested"; bookingId: string }
   | {
@@ -122,17 +143,27 @@ export function isSubscriptionEvent(
  *
  * Events that can legitimately happen more than once to the same
  * booking add a discriminator — a reschedule to a new time is a new
- * thing to say, a reminder is not.
+ * thing to say, and so is a reminder for the new time; a second
+ * reminder for the same time is not.
  */
 export function dedupeKey(
   event: NotificationEvent,
   audience: Audience,
   channel: string,
+  /**
+   * Which person, when one audience has several (the owner and their
+   * staff). Absent for the owner and the customer, so their keys are
+   * what they always were.
+   */
+  recipientTag?: string | null,
 ): string {
   const subject = isSubscriptionEvent(event) ? event.businessId : event.bookingId;
 
   let extra = "";
   if (event.type === "booking.rescheduled") extra = `:${event.movedTo}`;
+  else if ((event.type === "booking.reminder" || event.type === "booking.startingSoon") && event.startsAt) {
+    extra = `:${event.startsAt}`;
+  }
   else if (event.type === "payment.received") extra = `:${event.transactionId ?? "na"}`;
   else if (event.type === "booking.cancelled") extra = `:${event.by}`;
   else if (event.type === "subscription.renewalDue") extra = `:${event.daysLeft}`;
@@ -140,5 +171,6 @@ export function dedupeKey(
     extra = `:${event.until.toISOString().slice(0, 10)}`;
   }
 
-  return `${event.type}:${subject}${extra}:${audience}:${channel}`;
+  const who = recipientTag ? `:${recipientTag}` : "";
+  return `${event.type}:${subject}${extra}:${audience}:${channel}${who}`;
 }

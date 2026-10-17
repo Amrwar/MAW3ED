@@ -24,7 +24,8 @@ import { pick, roleLabel } from "@/features/business/components";
 import { useSetStaffAccess, useStaff } from "@/features/business/queries";
 import type { StaffRow } from "@/features/business/types";
 import { ApiError } from "@/lib/api/errors";
-import { num } from "@/lib/format";
+import { count } from "@/lib/plural";
+import { joinParts } from "@/lib/format";
 
 /**
  * The team: who works here, what they do, and — for the owner — who may
@@ -52,7 +53,7 @@ export default function StaffScreen() {
 
   return (
     <View style={styles.page}>
-      <TopBar title={T("الفريق", "Staff")} subtitle={staff.data ? T(`${num(staff.data.length, lang)} شخص`, `${staff.data.length} people`) : undefined} back />
+      <TopBar title={T("الفريق", "Staff")} subtitle={staff.data ? count(staff.data.length, "person", lang) : undefined} back backTo="/(business)/account" />
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}
         refreshControl={<RefreshControl refreshing={staff.isRefetching} onRefresh={() => staff.refetch()} tintColor={colors.jade} />}
@@ -105,7 +106,7 @@ export default function StaffScreen() {
 
               {m.services.length > 0 ? (
                 <Text variant="caption" tone="subtle" numberOfLines={2}>
-                  {m.services.map((s) => s.service.nameAr).join(" · ")}
+                  {joinParts(m.services.map((s) => s.service.nameAr), lang)}
                 </Text>
               ) : null}
 
@@ -212,7 +213,8 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.ground },
   flex: { flex: 1 },
   body: { padding: spacing.lg, gap: spacing.md },
-  inactive: { opacity: 0.6 },
+  // Not faded: the badge says inactive; fading took the text under 4.5:1.
+  inactive: { backgroundColor: colors.surface2 },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   days: { flexDirection: "row", gap: spacing.xs, marginTop: spacing.md },
   day: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 },

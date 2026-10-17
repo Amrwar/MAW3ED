@@ -43,6 +43,9 @@ yarn-error.log*
 # local tool directories (may contain secrets); .github is kept
 .*/
 !.github/
+# The app's end-to-end flows and the EAS workflow that runs them.
+!mobile/.maestro/
+!mobile/.eas/
 # Served at /.well-known by the site (app links); the rule above would
 # otherwise silently keep these route files out of the repository.
 !src/app/.well-known/

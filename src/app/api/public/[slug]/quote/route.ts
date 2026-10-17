@@ -83,6 +83,6 @@ export async function POST(req: Request, { params }: Params) {
     });
   } catch (e) {
     log.error("[quote]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

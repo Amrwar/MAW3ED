@@ -37,13 +37,13 @@ export interface KindWords {
 export const KIND_WORDS: Record<ProfileKind, KindWords> = {
   clinic: {
     people: { ar: "الأطباء والأخصائيين", en: "Doctors & specialists" },
-    services: { ar: "الكشوفات والخدمات", en: "Appointments & services" },
+    services: { ar: "الكشوفات والخدمات", en: "Consultations & services" },
     book: { ar: "احجز كشف", en: "Book appointment" },
   },
   team: {
     people: { ar: "الفريق", en: "The team" },
     services: { ar: "الخدمات", en: "Services" },
-    book: { ar: "احجز موعد", en: "Book" },
+    book: { ar: "احجز ميعاد", en: "Book" },
   },
   dining: {
     people: { ar: "الفريق", en: "The team" },
@@ -53,7 +53,7 @@ export const KIND_WORDS: Record<ProfileKind, KindWords> = {
   general: {
     people: { ar: "الفريق", en: "The team" },
     services: { ar: "الخدمات", en: "Services" },
-    book: { ar: "احجز موعد", en: "Book" },
+    book: { ar: "احجز ميعاد", en: "Book" },
   },
 };
 

@@ -4,7 +4,7 @@ import { buildMetadata } from "@/lib/seo/meta";
 /**
  * The page itself is a client component, so it cannot export metadata.
  * Without this it inherited the site-wide default and went to Google
- * titled "موعد | MAW3ED — منصة الحجز الأولى في مصر", competing with the
+ * titled with the site-wide default, competing with the
  * home page for the same words and carrying no canonical, so every
  * campaign link with a tracking parameter was a separate URL to index.
  */

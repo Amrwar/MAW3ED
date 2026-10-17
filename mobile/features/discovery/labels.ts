@@ -5,11 +5,11 @@ import type { Available, MinRating, Sort } from "./searchState";
 
 const SORT: Record<Sort, [ar: string, en: string]> = {
   recommended: ["الأنسب", "Recommended"],
-  soonest: ["أقرب موعد فاضي", "Soonest available"],
-  rating: ["الأعلى تقييماً", "Top rated"],
-  "most-booked": ["الأكثر حجزاً", "Most booked"],
-  "price-asc": ["السعر: الأقل أولاً", "Price: low to high"],
-  "price-desc": ["السعر: الأعلى أولاً", "Price: high to low"],
+  soonest: ["أقرب ميعاد فاضي", "Soonest available"],
+  rating: ["الأعلى تقييمًا", "Top rated"],
+  "most-booked": ["الأكثر حجزًا", "Most booked"],
+  "price-asc": ["السعر: الأقل أولًا", "Price: low to high"],
+  "price-desc": ["السعر: الأعلى أولًا", "Price: high to low"],
 };
 
 const AVAILABLE: Record<Available, [ar: string, en: string]> = {

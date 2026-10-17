@@ -35,17 +35,20 @@ export default function Reports() {
 
   return (
     <View style={styles.page}>
-      <TopBar title={T("التقارير", "Reports")} back>
-        <Tabs
-          tone="night"
-          value={range}
-          onChange={setRange}
-          options={[
-            { value: "7", label: T("٧ أيام", "7 days") },
-            { value: "30", label: T("٣٠ يوم", "30 days") },
-            { value: "90", label: T("٩٠ يوم", "90 days") },
-          ]}
-        />
+      <TopBar title={T("التقارير", "Reports")} back backTo="/(business)/account">
+        {/* No period to pick when there are no figures to show. */}
+        {allowed ? (
+          <Tabs
+            tone="night"
+            value={range}
+            onChange={setRange}
+            options={[
+              { value: "7", label: T("7 أيام", "7 days") },
+              { value: "30", label: T("30 يوم", "30 days") },
+              { value: "90", label: T("90 يوم", "90 days") },
+            ]}
+          />
+        ) : null}
       </TopBar>
       <ScrollView
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing.xxl }]}

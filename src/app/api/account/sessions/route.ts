@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[account sessions GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[account sessions POST]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 

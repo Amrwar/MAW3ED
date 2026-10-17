@@ -77,6 +77,8 @@ export function PlacesMap({
                   : ((lang === "en" && p.branchNameEn) || p.branchNameAr || names[p.id] || p.slug)
               }
               onPress={() => void Linking.openURL(google(p))}
+              // A long branch name ends in "…" inside the map, not past its edge.
+              style={{ maxWidth: "100%" }}
             />
           ))}
         </View>

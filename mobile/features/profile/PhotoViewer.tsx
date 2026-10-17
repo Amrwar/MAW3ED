@@ -40,7 +40,7 @@ export function PhotoViewer({
 
   return (
     <Modal visible={start !== null} animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={styles.page} accessibilityViewIsModal>
+      <View style={styles.page} accessibilityViewIsModal testID="photo-viewer">
         <FlatList
           ref={list}
           data={photos}
@@ -71,8 +71,8 @@ export function PhotoViewer({
         />
 
         <View style={[styles.top, { top: insets.top + spacing.sm }]}>
-          <IconButton icon="close" label={ar ? "اقفل" : "Close"} onPress={onClose} variant="night" color={colors.inverse} />
-          <Text variant="label" tone="inverse" accessibilityLiveRegion="polite">
+          <IconButton icon="close" label={ar ? "اقفل" : "Close"} onPress={onClose} variant="night" color={colors.inverse} testID="close-viewer" />
+          <Text variant="label" tone="inverse" accessibilityLiveRegion="polite" testID="photo-counter">
             {ar
               ? `${num(index + 1, lang)} من ${num(photos.length, lang)}`
               : `${num(index + 1, lang)} of ${num(photos.length, lang)}`}
@@ -95,6 +95,7 @@ export function PhotoViewer({
               variant="night"
               color={colors.inverse}
               disabled={index === 0}
+              testID="previous-photo"
               onPress={() => list.current?.scrollToIndex({ index: Math.max(0, index - 1) })}
             />
             <IconButton
@@ -103,6 +104,7 @@ export function PhotoViewer({
               variant="night"
               color={colors.inverse}
               disabled={index >= photos.length - 1}
+              testID="next-photo"
               onPress={() => list.current?.scrollToIndex({ index: Math.min(photos.length - 1, index + 1) })}
             />
           </View>

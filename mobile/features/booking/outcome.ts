@@ -86,7 +86,7 @@ export function outcomeCopy(outcome: Outcome, lang: Lang, b: Pick<PublicBooking,
           title: T(lang, "الدفع وصل بعد ما الميعاد اتساب", "Payment arrived after your time was released"),
           body: T(
             lang,
-            "العربون اتسجّل، بس الميعاد كان اتحجز لحد تاني. كلّم المكان أو دعم مواعيد برقم الحجز عشان ترتّب ميعاد جديد أو استرداد.",
+            "العربون اتسجّل، بس الميعاد كان اتحجز لحد تاني. كلّم المكان أو دعم موعد برقم الحجز عشان ترتّب ميعاد جديد أو استرداد.",
             "Your deposit was recorded, but the time had been booked by someone else. Contact the business or Maw3ed support with your reference to arrange a new time or a refund.",
           ),
         };

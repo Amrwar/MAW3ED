@@ -129,6 +129,29 @@ export async function closeWebhookEvent(
     .catch((e) => log.error("[payments] could not close webhook event", e));
 }
 
+/**
+ * Give a claim back after the handler failed.
+ *
+ * The claim exists to stop a delivery being processed twice; it must
+ * not stop one being processed at all. If the handler threw, nothing was
+ * settled (settling is one transaction), so the row is removed and
+ * Paymob's retry can claim it afresh. Only an unprocessed claim is
+ * removed: a delivery some other worker finished stays finished.
+ */
+export async function releaseWebhookEvent(
+  provider: PaymentProvider,
+  eventId: string,
+): Promise<void> {
+  await db.webhookEvent
+    .deleteMany({ where: { provider, eventId, processedAt: null } })
+    .catch((e) =>
+      // A claim that cannot be released turns the retry into a
+      // "duplicate" — the exact silent loss this exists to prevent —
+      // so it is logged as loudly as the original failure.
+      log.error("[payments] could not release webhook claim; retry will be dropped", { provider, eventId, e }),
+    );
+}
+
 // ─── Settling ─────────────────────────────────────────────────────────────────
 
 /**
@@ -241,24 +264,68 @@ export async function failPayment(params: {
  * Settled on creation, because there is no provider to hear back from —
  * the owner saying it happened is the whole of the evidence. It carries
  * who keyed it in for exactly that reason.
+ *
+ * The "is there that much left to pay" check happens here, inside the
+ * transaction, with the booking row locked. Checked outside, two owners
+ * (or one double-click) recording the balance at the same moment both
+ * read the same outstanding figure and both pass, and the booking ends
+ * up paid twice over. FOR UPDATE makes the second wait until the first
+ * has committed, so it reads a balance that already includes it.
  */
 export async function recordManualPayment(params: {
-  kind: PaymentKind;
   businessId: string;
   bookingId: string;
+  /** What the booking costs, in piastres. */
+  totalCents: number;
   amountCents: number;
   method: PaymentMethod;
   recordedById: string;
   currency?: string;
-}): Promise<Payment> {
+  /**
+   * What a booking still waiting on its deposit must have collected
+   * after this payment (its deposit, in piastres). Checked under the
+   * same lock, against the status read under it.
+   */
+  holdCents?: number;
+}): Promise<
+  | { ok: true; payment: Payment; paidBeforeCents: number }
+  | { ok: false; outstandingCents: number; belowDepositCents?: number; closed?: boolean }
+> {
   if (params.amountCents <= 0) {
     throw new Error(`refusing to record a payment for ${params.amountCents} piastres`);
   }
 
   return db.$transaction(async (tx) => {
-    return tx.payment.create({
+    await tx.$queryRaw`SELECT "id" FROM "Booking" WHERE "id" = ${params.bookingId} FOR UPDATE`;
+
+    const rows = await tx.payment.findMany({
+      where: { bookingId: params.bookingId, status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED"] } },
+      select: { amountCents: true, refundedCents: true },
+    });
+    const paid = rows.reduce((sum, p) => sum + p.amountCents - p.refundedCents, 0);
+    const outstandingCents = Math.max(0, params.totalCents - paid);
+    if (params.amountCents > outstandingCents) return { ok: false as const, outstandingCents };
+
+    // Cash below the deposit on a booking that is still waiting for it
+    // would leave money recorded against a hold that a declined card or
+    // the reaper then releases. Whatever is taken while the booking is
+    // held must cover the deposit, which moves it on.
+    if (params.holdCents !== undefined) {
+      const [row] = await tx.$queryRaw<{ status: string }[]>`
+        SELECT "status"::text AS status FROM "Booking" WHERE "id" = ${params.bookingId}`;
+      // Released or cancelled since the caller looked (a decline can land
+      // in between): its slot may already be somebody else's.
+      if (row?.status === "FAILED_PAYMENT" || row?.status === "CANCELLED") {
+        return { ok: false as const, outstandingCents, closed: true };
+      }
+      if (row?.status === "PENDING_PAYMENT" && paid + params.amountCents < params.holdCents) {
+        return { ok: false as const, outstandingCents, belowDepositCents: params.holdCents - paid };
+      }
+    }
+
+    const payment = await tx.payment.create({
       data: {
-        kind: params.kind,
+        kind: paid === 0 ? "BOOKING_FULL" : "BOOKING_BALANCE",
         businessId: params.businessId,
         bookingId: params.bookingId,
         amountCents: params.amountCents,
@@ -271,6 +338,7 @@ export async function recordManualPayment(params: {
         receiptNumber: await nextReceiptNumber(tx),
       },
     });
+    return { ok: true as const, payment, paidBeforeCents: paid };
   });
 }
 

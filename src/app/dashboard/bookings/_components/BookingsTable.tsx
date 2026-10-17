@@ -8,6 +8,8 @@ import {
   ALLOWED_TRANSITIONS,
   formatDateAr,
 } from "@/features/dashboard/bookings/types";
+import { allowedNow } from "@/lib/bookings/progress-guard";
+import { useMinuteTick } from "@/hooks/useMinuteTick";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Pagination from "@/components/ui/Pagination";
 
@@ -64,7 +66,10 @@ export default function BookingsTable({
   onPageChange,
 }: BookingsTableProps) {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [actionError,     setActionError]     = useState<string | null>(null);
   const { t, lang } = useLanguage();
+  // Re-evaluated every minute: which moves are open depends on the clock.
+  const now = useMinuteTick();
   const bk     = t.dashboard.bookings;
   const ba     = t.dashboard.bookingActions;
   const bs     = t.dashboard.bookingStatus;
@@ -78,8 +83,11 @@ export default function BookingsTable({
     e.stopPropagation();
     if (!onStatusChange || actionLoadingId) return;
     setActionLoadingId(booking.id);
+    setActionError(null);
     try {
       await onStatusChange(booking.id, status);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : ba.error);
     } finally {
       setActionLoadingId(null);
     }
@@ -89,6 +97,11 @@ export default function BookingsTable({
     <div
       className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] overflow-hidden"
     >
+      {actionError && (
+        <p role="alert" className="m-0 px-6 py-3 text-[0.8125rem] text-[var(--color-danger)]" style={{ background: "var(--color-danger-soft)" }}>
+          {actionError}
+        </p>
+      )}
       {/* Header */}
       <div
         className="flex items-center justify-between px-6 py-4"
@@ -157,7 +170,7 @@ export default function BookingsTable({
               bookings.map((b) => {
                 const badge          = STATUS_BADGE[b.status] ?? STATUS_BADGE.NO_SHOW;
                 const statusLabel    = (bs as Record<string, string>)[b.status] ?? b.status;
-                const nextStatuses   = ALLOWED_TRANSITIONS[b.status] ?? [];
+                const nextStatuses   = allowedNow(ALLOWED_TRANSITIONS[b.status] ?? [], { date: new Date(`${b.date}T00:00:00Z`), startTime: b.startTime }, now);
                 const primaryAction  = nextStatuses[0] ?? null;
                 const isActionLoading = actionLoadingId === b.id;
                 const actionStyle    = primaryAction ? (ACTION_STYLE[primaryAction] ?? ACTION_STYLE.NO_SHOW) : null;

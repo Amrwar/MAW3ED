@@ -1366,6 +1366,15 @@ model MobileSession {
   /// Past this, refreshing fails however valid the signature.
   expiresAt    DateTime
 
+  /// Which refresh token is the live one. Each refresh carries the
+  /// generation it was issued at and advances this by one, so a refresh
+  /// token can be used once: presenting an older one means two parties
+  /// hold this session, and it is revoked (lib/auth/mobile-refresh.ts).
+  refreshGeneration Int       @default(0)
+  /// When refreshGeneration last advanced, for the short grace in which
+  /// the immediately previous token is still honoured.
+  rotatedAt         DateTime?
+
   @@index([userId])
   @@index([expiresAt])
 }

@@ -77,7 +77,7 @@ export function Button({
       ) : (
         <View style={[styles.row, iconPosition === "end" && styles.reverse]}>
           {icon ? <Icon name={icon} size={size === "sm" ? "sm" : "md"} color={v.fg} /> : null}
-          <Text variant="label" style={{ color: v.fg }} numberOfLines={1}>
+          <Text variant="label" style={{ color: v.fg, flexShrink: 1 }} numberOfLines={1}>
             {label}
           </Text>
         </View>

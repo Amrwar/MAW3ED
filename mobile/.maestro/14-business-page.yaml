@@ -1,0 +1,279 @@
+# The first business on Home, section by section: the photo viewer
+# (open, next, swipe, close by button and by Back), a service's sheet,
+# a team member's sheet, all reviews with their sort and star filters,
+# Share (the system sheet, then Back), and Directions (another app, then
+# back to the app where it was). Sections a business does not have are
+# skipped. Read-only: nothing is booked, saved, reported or sent.
+appId: net.maw3ed.app.staging
+name: Business page sections
+tags:
+  - deep
+---
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      APP_LANG: ar
+- runFlow: subflows/open-first-business.yaml
+
+# ── Photos ──
+- runFlow:
+    when:
+      visible:
+        id: cover-photos
+    commands:
+      - tapOn:
+          id: cover-photos
+      - extendedWaitUntil:
+          visible:
+            id: photo-viewer
+          timeout: 5000
+      - copyTextFrom:
+          id: photo-counter
+      - evalScript: ${output.firstPhoto = maestro.copiedText}
+      - takeScreenshot: 14-photo-1
+      - runFlow:
+          when:
+            visible:
+              id: next-photo
+              enabled: true
+          commands:
+            - tapOn:
+                id: next-photo
+            - waitForAnimationToEnd:
+                timeout: 3000
+            - copyTextFrom:
+                id: photo-counter
+            - assertTrue:
+                condition: ${maestro.copiedText !== output.firstPhoto}
+                label: Next moves to the second photo
+            - swipe:
+                direction: RIGHT
+                duration: 400
+            - waitForAnimationToEnd:
+                timeout: 3000
+            - takeScreenshot: 14-photo-swiped
+      - tapOn:
+          id: close-viewer
+      - extendedWaitUntil:
+          notVisible:
+            id: photo-viewer
+          timeout: 5000
+          label: The close button closes the viewer
+      # Android Back closes it too, and stays on the page.
+      - tapOn:
+          id: cover-photos
+      - extendedWaitUntil:
+          visible:
+            id: photo-viewer
+          timeout: 5000
+      - pressKey: back
+      - extendedWaitUntil:
+          notVisible:
+            id: photo-viewer
+          timeout: 5000
+      - assertVisible:
+          id: share-business
+
+# ── Share: the system share sheet, then Back ──
+- tapOn:
+    id: share-business
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 14-share-sheet
+# Back dismisses the system sheet. Had no sheet opened, the same Back
+# would leave the page, and the check below would fail — as it should.
+- pressKey: back
+- extendedWaitUntil:
+    visible:
+      id: share-business
+    timeout: 10000
+    label: Back from the share sheet returns to the business page
+
+# ── A service's sheet ──
+- scrollUntilVisible:
+    element:
+      id: service-card
+    direction: DOWN
+    timeout: 20000
+    optional: true
+    label: A service card (none for a place with nothing to book)
+- runFlow:
+    when:
+      visible:
+        id: service-card
+    commands:
+      - tapOn:
+          id: service-card
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: service-sheet
+          timeout: 5000
+      - assertVisible:
+          id: service-sheet-book
+      - takeScreenshot: 14-service-sheet
+      - tapOn:
+          id: sheet-close
+      - extendedWaitUntil:
+          notVisible:
+            id: service-sheet
+          timeout: 5000
+          label: The close button closes the service sheet
+      - tapOn:
+          id: service-card
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: service-sheet
+          timeout: 5000
+      - pressKey: back
+      - extendedWaitUntil:
+          notVisible:
+            id: service-sheet
+          timeout: 5000
+          label: Back closes the service sheet and stays on the page
+      - assertVisible:
+          id: service-card
+
+# ── A team member's sheet ──
+- scrollUntilVisible:
+    element:
+      id: staff-member
+    direction: DOWN
+    timeout: 15000
+    optional: true
+    label: A team member (only some places list their team)
+- runFlow:
+    when:
+      visible:
+        id: staff-member
+    commands:
+      - tapOn:
+          id: staff-member
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: staff-sheet
+          timeout: 5000
+      - takeScreenshot: 14-staff-sheet
+      - tapOn:
+          id: sheet-close
+      - extendedWaitUntil:
+          notVisible:
+            id: staff-sheet
+          timeout: 5000
+
+# ── A gallery tile, when the place has a gallery ──
+- scrollUntilVisible:
+    element:
+      id: photo-tile
+    direction: DOWN
+    timeout: 15000
+    optional: true
+    label: A gallery (only some places have one)
+- runFlow:
+    when:
+      visible:
+        id: photo-tile
+    commands:
+      - tapOn:
+          id: photo-tile
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: photo-viewer
+          timeout: 5000
+      - tapOn:
+          id: close-viewer
+      - extendedWaitUntil:
+          notVisible:
+            id: photo-viewer
+          timeout: 5000
+
+# ── Reviews: all of them, sorted and filtered ──
+- scrollUntilVisible:
+    element:
+      id: reviews
+    direction: DOWN
+    timeout: 20000
+- runFlow:
+    when:
+      visible:
+        id: all-reviews
+    commands:
+      - tapOn:
+          id: all-reviews
+      - extendedWaitUntil:
+          visible:
+            id: review-item
+          timeout: 20000
+          label: All reviews lists reviews
+      - tapOn:
+          id: review-sort-highest
+      - extendedWaitUntil:
+          visible:
+            id: review-item
+          timeout: 20000
+      - assertVisible:
+          id: review-sort-highest
+          checked: true
+      - tapOn:
+          id: review-sort-lowest
+      - extendedWaitUntil:
+          visible:
+            id: review-item
+          timeout: 20000
+      - tapOn:
+          id: review-stars-5
+      # Five-star reviews, or the "none with that many stars" state.
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - takeScreenshot: 14-reviews-5-stars
+      - tapOn:
+          id: review-stars-all
+      - extendedWaitUntil:
+          visible:
+            id: review-item
+          timeout: 20000
+      - tapOn:
+          id: review-sort-recent
+      - tapOn:
+          id: back
+      - extendedWaitUntil:
+          visible:
+            id: share-business
+          timeout: 10000
+
+# ── Directions: another app opens; the app is where it was after ──
+- scrollUntilVisible:
+    element:
+      id: directions
+    direction: DOWN
+    timeout: 15000
+    optional: true
+    label: Directions (offered when the place has an address or a pin)
+- runFlow:
+    when:
+      visible:
+        id: directions
+    commands:
+      - tapOn:
+          id: directions
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - takeScreenshot: 14-directions
+      # Maps, a browser or a chooser — whichever the emulator has. Back
+      # to the app without restarting it.
+      - launchApp:
+          stopApp: false
+      - extendedWaitUntil:
+          visible:
+            id: share-business
+          timeout: 15000
+          label: Back in the app, still on the business page
+- tapOn:
+    id: back
+- extendedWaitUntil:
+    visible:
+      id: tab-index
+    timeout: 10000

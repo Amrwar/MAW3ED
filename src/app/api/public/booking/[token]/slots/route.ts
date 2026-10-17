@@ -40,6 +40,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
     return ok({ slots, reason });
   } catch (e) {
     log.error("[booking slots GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

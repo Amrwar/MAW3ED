@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import {
   DEVICE_COOKIE,
   isDeviceId,
@@ -30,9 +31,28 @@ export async function POST(_req: Request, { params }: Params) {
   try {
     const { id } = await params;
 
+    // Per address, before anything else. The device cookie below is
+    // free to mint — clear it and you are a new voter — so the only
+    // thing that makes stuffing a count expensive is this ceiling.
+    const limited = await rateLimit("reviewHelpful");
+    if (!limited.ok) return tooManyRequests(limited);
+
     const jar = await cookies();
     const existing = jar.get(DEVICE_COOKIE)?.value;
-    const deviceId = isDeviceId(existing) ? existing : newDeviceId();
+
+    // No device id, no vote. Minting one here and counting the vote in
+    // the same request made every cookieless request a fresh voter, so
+    // a script that never kept cookies could press the button forever.
+    // Instead the id is issued with the refusal and the browser — which
+    // keeps cookies — retries once with it (ReviewActions does). A
+    // script has to keep the cookie to vote, and keeping it means its
+    // second press takes the vote back rather than adding another.
+    if (!isDeviceId(existing)) {
+      const res = err("أعد المحاولة", 428, { code: "device-required" });
+      res.headers.append("Set-Cookie", deviceCookie(newDeviceId()));
+      return res;
+    }
+    const deviceId = existing;
 
     // Only a review somebody can actually see may be voted on.
     const review = await db.review.findFirst({
@@ -84,20 +104,15 @@ export async function POST(_req: Request, { params }: Params) {
       }
     }
 
-    const res = ok({ voted: !already, helpfulCount });
-
-    if (!isDeviceId(existing)) {
-      res.headers.append(
-        "Set-Cookie",
-        `${DEVICE_COOKIE}=${deviceId}; Path=/; Max-Age=${60 * 60 * 24 * 365}; SameSite=Lax; HttpOnly`,
-      );
-    }
-
-    return res;
+    return ok({ voted: !already, helpfulCount });
   } catch (e) {
     log.error("[review helpful]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
+}
+
+function deviceCookie(deviceId: string): string {
+  return `${DEVICE_COOKIE}=${deviceId}; Path=/; Max-Age=${60 * 60 * 24 * 365}; SameSite=Lax; HttpOnly`;
 }
 
 // A helpful vote deliberately does not touch the rating. Voting on a

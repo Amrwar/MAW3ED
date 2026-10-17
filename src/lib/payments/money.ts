@@ -40,9 +40,14 @@ export function fromCents(cents: number): number {
  * Rounded up. A 20% deposit on 285.50 is 57.10 exactly, but on 33.33 it
  * is 6.666 — and the business should not be a third of a piastre short
  * because of it.
+ *
+ * 100 is allowed: the business takes the whole price up front, the
+ * deposit is the price, and the balance is zero. The settings route
+ * accepts 1–100, so this must too — refusing 100 here made every
+ * booking at such a business fail.
  */
 export function depositCents(totalPounds: Money, percent: number): number {
-  if (percent <= 0 || percent >= 100) {
+  if (!(percent > 0) || percent > 100) {
     throw new Error(`deposit percent out of range: ${percent}`);
   }
   return Math.ceil((toCents(totalPounds) * percent) / 100);
@@ -56,6 +61,50 @@ export function depositCents(totalPounds: Money, percent: number): number {
  */
 export function balanceCents(totalPounds: Money, alreadyPaidCents: number): number {
   return Math.max(0, toCents(totalPounds) - alreadyPaidCents);
+}
+
+/** A ledger row, as far as what the customer has paid is concerned. */
+export interface PaymentLine {
+  status: string;
+  amountCents: number;
+  refundedCents: number;
+}
+
+export interface BookingMoney {
+  /** Everything that arrived, before refunds. */
+  paidCents: number;
+  /** What has gone back. */
+  refundedCents: number;
+  /** paid − refunded: what the business is holding. */
+  netPaidCents: number;
+  /** total − net paid, never negative: what is still owed at the venue. */
+  outstandingCents: number;
+}
+
+const LANDED = new Set(["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"]);
+
+/**
+ * Where a booking's money stands, from every payment against it — the
+ * deposit, any balance link, cash at the counter — less refunds.
+ *
+ * Pending, failed and abandoned attempts never count: only money that
+ * arrived does.
+ */
+export function bookingMoney(totalCents: number, payments: readonly PaymentLine[]): BookingMoney {
+  let paidCents = 0;
+  let refundedCents = 0;
+  for (const p of payments) {
+    if (!LANDED.has(p.status)) continue;
+    paidCents += p.amountCents;
+    refundedCents += Math.min(p.refundedCents, p.amountCents);
+  }
+  const netPaidCents = paidCents - refundedCents;
+  return {
+    paidCents,
+    refundedCents,
+    netPaidCents,
+    outstandingCents: Math.max(0, totalCents - netPaidCents),
+  };
 }
 
 /** For UI: "٢٨٥٫٥٠ ج.م", Latin digits so prices stay scannable. */

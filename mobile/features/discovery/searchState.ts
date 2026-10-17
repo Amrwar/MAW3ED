@@ -160,10 +160,7 @@ export function useSearchState() {
   };
 }
 
-/** For tests. */
-export function resetSearchState() {
-  state = { term: "", filters: DEFAULT_FILTERS, arrivals: 0 };
-}
+
 
 /**
  * Start a search from another screen — Home's categories and rails — and

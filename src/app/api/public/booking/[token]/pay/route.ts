@@ -56,6 +56,12 @@ export async function POST(_req: Request, { params }: { params: Promise<{ token:
     // serialises them; the second sees the first's new PENDING row.
     const decision = await db.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${booking.id}))`;
+      // Re-read under the lock: the reaper's sweep for holds with no
+      // payment takes the same lock, so either it released the booking
+      // before this (and no payment is opened for a released slot) or it
+      // will see the payment this inserts and leave the booking alone.
+      const now = await tx.booking.findUnique({ where: { id: booking.id }, select: { status: true } });
+      if (now?.status !== "PENDING_PAYMENT") return { refuse: "not-awaiting-payment" as const, status: now?.status ?? null };
       const last = await tx.payment.findFirst({
         where: { bookingId: booking.id, kind: "BOOKING_DEPOSIT" },
         orderBy: { createdAt: "desc" },
@@ -86,6 +92,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ token:
     });
 
     if ("refuse" in decision) {
+      if (decision.refuse === "not-awaiting-payment") {
+        return err("الحجز ده مش مستني دفع", 409, { code: "not-awaiting-payment", status: decision.status });
+      }
       if (decision.refuse === "already-paid") return err("الدفع وصل خلاص، التأكيد جاي", 409, { code: "already-paid" });
       return err("في صفحة دفع لسه شغالة للحجز ده. كمّلها، أو استنى لحد ما تخلص صلاحيتها.", 409, {
         code: "payment-in-progress",
@@ -118,6 +127,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ token:
     }
   } catch (e) {
     log.error("[booking pay]", e instanceof Error ? { message: e.message } : undefined);
-    return err("حدث خطأ", 500, { code: "server-error" });
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500, { code: "server-error" });
   }
 }

@@ -44,7 +44,12 @@ export default function BusinessLayout() {
         <Tabs.Screen
           key={tab.name}
           name={tab.name}
-          options={{ title: tab[lang], tabBarIcon: tabIcon(tab.icon), href: tab.show ? undefined : null }}
+          options={{
+            title: tab[lang],
+            tabBarIcon: tabIcon(tab.icon),
+            tabBarButtonTestID: `biz-tab-${tab.name}`,
+            href: tab.show ? undefined : null,
+          }}
         />
       ))}
       <Tabs.Screen name="notifications" options={{ href: null }} />

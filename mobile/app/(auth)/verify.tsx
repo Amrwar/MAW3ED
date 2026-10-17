@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Button, Text, Touchable, colors, fonts, ltr, radius, spacing, useLocale } from "@/design";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { AuthShell, finishSignIn } from "@/features/auth/AuthShell";
-import { loginCode } from "@/features/auth/validation";
+import { SEND_CODE_EN, loginCode } from "@/features/auth/validation";
 import { isolateLtr } from "@/features/auth/countries";
 import { messageFor } from "@/lib/api/errors";
 
@@ -58,7 +58,7 @@ export default function Verify() {
       if (!user.name) router.replace("/(auth)/profile");
       else finishSignIn();
     } catch (e) {
-      setError(messageFor(e));
+      setError(messageFor(e, lang, { "401": "That code is wrong or has expired." }));
       setCode("");
       setBusy(false);
       // After the field is editable again, or the keyboard stays shut.
@@ -80,7 +80,7 @@ export default function Verify() {
       setCode("");
       setNotice(ar ? "بعتنالك كود جديد." : "We sent you a new code.");
     } catch (e) {
-      setError(messageFor(e));
+      setError(messageFor(e, lang, SEND_CODE_EN));
     } finally {
       inFlight.current = false;
       setBusy(false);

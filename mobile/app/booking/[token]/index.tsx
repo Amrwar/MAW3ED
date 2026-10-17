@@ -35,9 +35,10 @@ import { api } from "@/lib/api/client";
 import { directionsUrl, pinDirectionsUrl, telUrl, whatsappUrl } from "@/features/profile/profile";
 import { ApiError, messageFor } from "@/lib/api/errors";
 import { config } from "@/lib/config";
-import { duration, longDate, money, time } from "@/lib/format";
+import { duration, instantTime, longDate, money, time } from "@/lib/format";
 import { keys } from "@/lib/query/keys";
 import type { PublicBooking } from "@/types/api";
+import { hoursSpan } from "@/lib/plural";
 
 /**
  * One booking, as the server has it — the screen a new booking lands on,
@@ -215,7 +216,7 @@ function Details({
       const code = e instanceof ApiError ? e.code : undefined;
       if (code === "payment-in-progress") {
         const at = e instanceof ApiError && typeof e.detail.retryAt === "string" ? new Date(e.detail.retryAt) : null;
-        const when = at ? at.toLocaleTimeString(ar ? "ar-EG" : "en-GB", { hour: "numeric", minute: "2-digit", timeZone: "Africa/Cairo" }) : "";
+        const when = at ? instantTime(at, lang) : "";
         setPayNote(
           when
             ? T(
@@ -281,6 +282,13 @@ function Details({
   const notes = notificationLines(b.notifications, lang);
   const live = outcome === "confirmed" || outcome === "awaiting-business";
   const paidDeposit = b.payment?.status === "SUCCEEDED" || b.payment?.status === "PARTIALLY_REFUNDED" || b.payment?.status === "REFUNDED";
+  // The server's ledger figures — every payment (deposit, balance, cash) less refunds — when it sends them.
+  const extra = b as PublicBooking & { money?: { paid: number; refunded: number; outstanding: number }; canCancel?: boolean };
+  const ledger = extra.money;
+  const outstanding = ledger ? ledger.outstanding : Math.max(0, b.totalPrice - (paidDeposit ? (b.depositAmount ?? 0) : 0));
+  const paidInFull = outstanding === 0 && (ledger ? ledger.paid > 0 : paidDeposit);
+  const refundedTotal = ledger ? ledger.refunded : (b.payment?.refunded ?? 0);
+  const canCancel = extra.canCancel ?? b.canChange;
 
   return (
     <View style={styles.page}>
@@ -377,19 +385,19 @@ function Details({
               {b.depositAmount ? (
                 <>
                   <Row label={T("العربون", "Deposit")} value={`${fmt(b.depositAmount)} · ${paymentWord(b.payment?.status, lang)}`} tone={paidDeposit ? "ok" : undefined} />
-                  <Row label={T("الباقي في المكان", "Pay at the venue")} value={fmt(Math.max(0, b.totalPrice - (paidDeposit ? b.depositAmount : 0)))} />
+                  <Row label={T("الباقي في المكان", "Pay at the venue")} value={paidInFull ? T("مدفوع بالكامل", "Paid in full") : fmt(outstanding)} tone={paidInFull ? "ok" : undefined} />
                 </>
               ) : (
-                <Row label={T("الدفع", "Payment")} value={T("في المكان", "At the venue")} />
+                <Row label={T("الدفع", "Payment")} value={paidInFull ? T("مدفوع بالكامل", "Paid in full") : ledger && ledger.paid > 0 ? `${fmt(outstanding)} ${T("في المكان", "at the venue")}` : T("في المكان", "At the venue")} />
               )}
             </>
           ) : (
             <Row label={T("السعر", "Price")} value={T("بيتحدد في المكان", "Priced at the venue")} />
           )}
-          {b.payment && b.payment.refunded > 0 ? (
+          {refundedTotal > 0 ? (
             <Row
               label={T("اترجّع", "Refunded")}
-              value={`${fmt(b.payment.refunded)}${b.payment.status === "PARTIALLY_REFUNDED" ? T(" (جزء من العربون)", " (part of the deposit)") : ""}`}
+              value={`${fmt(refundedTotal)}${!ledger && b.payment?.status === "PARTIALLY_REFUNDED" ? T(" (جزء من العربون)", " (part of the deposit)") : ""}`}
               tone="ok"
             />
           ) : null}
@@ -423,12 +431,12 @@ function Details({
           <Text variant="caption" tone="subtle">
             {b.canChange
               ? T(
-                  `تقدر تلغي أو تغيّر الميعاد لحد ${duration(b.changeCutoffHours * 60, "ar")} قبله.`,
-                  `You can cancel or reschedule up to ${b.changeCutoffHours} hours before.`,
+                  `تقدر تلغي أو تغيّر الميعاد لحد ${hoursSpan(b.changeCutoffHours, "ar")} قبله.`,
+                  `You can cancel or reschedule up to ${hoursSpan(b.changeCutoffHours, "en")} before.`,
                 )
               : T(
-                  `الإلغاء والتغيير بيقفلوا قبل الميعاد بـ${duration(b.changeCutoffHours * 60, "ar")}. لو محتاج تغيّر، كلّم المكان.`,
-                  `Cancelling and rescheduling close ${b.changeCutoffHours} hours before. To change it now, contact the business.`,
+                  `الإلغاء والتغيير بيقفلوا قبل الميعاد بـ${hoursSpan(b.changeCutoffHours, "ar")}. لو محتاج تغيّر، كلّم المكان.`,
+                  `Cancelling and rescheduling close ${hoursSpan(b.changeCutoffHours, "en")} before. To change it now, contact the business.`,
                 )}
           </Text>
         ) : null}
@@ -443,6 +451,12 @@ function Details({
               style={styles.flex}
               onPress={() => router.push({ pathname: "/booking/[token]/reschedule", params: { token } })}
             />
+            <Button label={T("إلغاء الحجز", "Cancel booking")} icon="close-circle-outline" variant="danger" style={styles.flex} onPress={() => setCancelling(true)} />
+          </View>
+        ) : null}
+        {/* Still waiting on the deposit: it can be let go of, not moved. */}
+        {!b.canChange && canCancel ? (
+          <View style={styles.contact}>
             <Button label={T("إلغاء الحجز", "Cancel booking")} icon="close-circle-outline" variant="danger" style={styles.flex} onPress={() => setCancelling(true)} />
           </View>
         ) : null}
@@ -549,7 +563,7 @@ function Details({
 /** The server's reasons, in either language. */
 function cancelError(e: unknown, lang: "ar" | "en"): string {
   const code = e instanceof ApiError ? e.code : undefined;
-  if (lang === "ar") return messageFor(e);
+  if (lang === "ar") return messageFor(e, lang);
   if (code === "too-late") return "It's too close to the appointment to cancel here. Please contact the business.";
   if (code === "not-cancellable") return "This booking can no longer be cancelled.";
   return "We couldn't cancel the booking. Please try again.";

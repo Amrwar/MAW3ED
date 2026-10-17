@@ -1,4 +1,5 @@
-import { type Prisma } from "@prisma/client";
+import { BookingStatus, type Prisma } from "@prisma/client";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { ownerBookingSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
@@ -9,6 +10,21 @@ import { generateReference } from "@/lib/bookings/reference";
 import { getEffectivePlan, getMonthlyBookingLimit, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
+import { isoDate, pageParam, parseQuery } from "@/lib/query-params";
+
+/** Query of GET: a bad page, status or date is a 400, not a 500. */
+const listQuery = z.object({
+  status:    z.union([z.literal("ALL"), z.enum(BookingStatus)]).optional(),
+  serviceId: z.string().max(64).optional(),
+  date:      isoDate.optional(),
+  dateFrom:  isoDate.optional(),
+  dateTo:    isoDate.optional(),
+  search:    z.string().max(100).optional(),
+  staffId:   z.string().max(64).optional(),
+  branchId:  z.string().max(64).optional(),
+  view:      z.string().max(20).optional(),
+  page:      pageParam.optional(),
+});
 
 /**
  * GET /api/business/bookings
@@ -32,16 +48,12 @@ export async function GET(req: Request) {
     const { business, actor } = await requireBusinessAccess("bookings.read");
     const { searchParams } = new URL(req.url);
 
-    const status    = searchParams.get("status");
-    const serviceId = searchParams.get("serviceId");
-    const date      = searchParams.get("date");
-    const dateFrom  = searchParams.get("dateFrom");
-    const dateTo    = searchParams.get("dateTo");
-    const search    = searchParams.get("search")?.trim();
-    const staffId   = searchParams.get("staffId");
-    const branchId  = searchParams.get("branchId");
-    const calendar  = searchParams.get("view") === "calendar";
-    const page      = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+    const q = parseQuery(searchParams, listQuery);
+    if (!q.ok) return q.response;
+
+    const { status, serviceId, date, dateFrom, dateTo, staffId, branchId, page = 1 } = q.data;
+    const search    = q.data.search?.trim();
+    const calendar  = q.data.view === "calendar";
     const limit     = calendar ? 500 : 25;
 
     // Built on the actor's scope: a provider's query cannot be widened by
@@ -59,11 +71,11 @@ export async function GET(req: Request) {
       // would be checked and then not applied.
       const iso = /^\d{4}-\d{2}-\d{2}$/;
       const days = dateFrom && dateTo && iso.test(dateFrom) && iso.test(dateTo) ? (Date.parse(dateTo) - Date.parse(dateFrom)) / 86_400_000 : NaN;
-      if (!(days >= 0 && days <= 31)) return err("حدد فترة من يوم لـ ٣١ يوم", 422, { code: "range" });
+      if (!(days >= 0 && days <= 31)) return err("حدد فترة من يوم لـ 31 يوم", 422, { code: "range" });
     }
 
     if (status && status !== "ALL") {
-      where.status = status as Prisma.EnumBookingStatusFilter;
+      where.status = status;
     }
     if (serviceId) {
       where.serviceId = serviceId;
@@ -103,7 +115,8 @@ export async function GET(req: Request) {
           staffMember: { select: { id: true, nameAr: true, nameEn: true } },
           branch:      { select: { id: true, nameAr: true, nameEn: true } },
         },
-        orderBy: calendar ? [{ date: "asc" }, { startTime: "asc" }] : [{ date: "desc" }, { startTime: "asc" }],
+        // id last, so rows at the same minute keep their order across pages.
+        orderBy: calendar ? [{ date: "asc" }, { startTime: "asc" }, { id: "asc" }] : [{ date: "desc" }, { startTime: "asc" }, { id: "asc" }],
         take:    limit,
         skip:    (page - 1) * limit,
       }),
@@ -142,7 +155,7 @@ export async function GET(req: Request) {
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[bookings GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 
@@ -153,7 +166,7 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
-    const { business } = await requireBusiness();
+    const { session, business } = await requireBusiness();
     const body   = await req.json();
     const parsed = ownerBookingSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
@@ -179,7 +192,7 @@ export async function POST(req: Request) {
         },
       });
       if (count >= monthlyLimit) {
-        return err(`بلغت الحد الأقصى (${monthlyLimit}) من الحجوزات الشهرية. يرجى الترقية للاستمرار`, 429);
+        return err(`وصلت لأقصى عدد حجوزات في باقتك الشهر ده (${monthlyLimit}). رقّي باقتك عشان تكمّل تستقبل حجوزات.`, 429);
       }
     }
 
@@ -244,7 +257,7 @@ export async function POST(req: Request) {
     // who had just created it — and tell the customer nothing at all.
     // The customer gets their confirmation now, and the owner's alert
     // is still sent, mutable from their notification settings.
-    void notify({ type: "booking.created", bookingId: booking.id, by: "business" });
+    void notify({ type: "booking.created", bookingId: booking.id, by: "business", actorUserId: session.user.id });
 
     return ok(
       {

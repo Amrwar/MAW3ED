@@ -62,7 +62,7 @@ export default function ReviewScreen() {
   if (!allowed) {
     const why =
       b.reviewBlock === "not-completed"
-        ? T("التقييم بيتفتح بعد ما الموعد يخلص والمكان يسجّله.", "Reviews open once the appointment is completed.")
+        ? T("التقييم بيتفتح بعد ما الميعاد يخلص والمكان يسجّله.", "Reviews open once the appointment is completed.")
         : b.reviewBlock === "too-late"
           ? T("فات وقت التقييم على الحجز ده.", "The review window for this booking has closed.")
           : T("مينفعش تعدّل التقييم ده دلوقتي.", "This review can't be edited now.");
@@ -87,7 +87,7 @@ export default function ReviewScreen() {
       toast({ message: T("شكرًا! التقييم اتسجّل", "Thanks — your review is saved"), tone: "ok" });
       back();
     } catch (e) {
-      setError(ar ? messageFor(e) : "We couldn't save your review. Please try again.");
+      setError(messageFor(e, lang, { "400": "We couldn't save your review. Please try again.", "409": "We couldn't save your review. Please try again." }));
     }
   };
 

@@ -1,9 +1,10 @@
 "use client";
 
 import { CalendarClock, Clock, Users } from "lucide-react";
+import { countText } from "@/lib/i18n";
 import type { Service } from "@/types/service";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { duration as fmtDuration, money, num } from "@/lib/fmt";
+import { duration as fmtDuration, money } from "@/lib/fmt";
 
 export interface ServiceProvider {
   id: string;
@@ -37,14 +38,14 @@ export default function ServicesSection({ services, providers, nextSlot, onBook 
   if (services.length === 0) return null;
 
   const dayLabel = (offset: number) =>
-    offset === 0 ? s.today : offset === 1 ? s.tomorrow : s.inDays.replace("{n}", num(offset, lang));
+    offset === 0 ? s.today : offset === 1 ? s.tomorrow : countText(lang, offset, s.inDays);
 
   return (
     <section id="services" className="scroll-mt-32">
       <div className="mb-5 flex items-baseline justify-between gap-4">
         <h2 className="m-0 text-[1.5rem] font-bold text-[var(--color-ink)]">{s.title}</h2>
         <span className="text-[0.8125rem] text-[var(--color-subtle)]">
-          <span className="num">{num(services.length, lang)}</span> {s.countWord}
+          {countText(lang, services.length, s.countWord)}
         </span>
       </div>
 
@@ -91,7 +92,7 @@ export default function ServicesSection({ services, providers, nextSlot, onBook 
                       <span className="truncate">
                         {who.length === 1
                           ? who[0].name
-                          : s.providerCount.replace("{n}", num(who.length, lang))}
+                          : countText(lang, who.length, s.providerCount)}
                       </span>
                     </span>
                   )}

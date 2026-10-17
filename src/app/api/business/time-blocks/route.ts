@@ -67,7 +67,7 @@ export async function GET() {
     return ok({ blocks });
   } catch (e) {
     log.error("[time-blocks GET]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }
 
@@ -130,7 +130,7 @@ export async function DELETE(req: Request) {
     if (!ctx) return err("غير مصرح", 401);
 
     const id = new URL(req.url).searchParams.get("id");
-    if (!id) return err("id مطلوب", 400);
+    if (!id) return err("اختار الوقت المقفول اللي عايز تشيله", 400);
 
     const owned = await db.timeBlock.findFirst({
       where: { id, businessId: ctx.business.id },

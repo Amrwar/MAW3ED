@@ -1,5 +1,6 @@
 "use client";
 
+import { useMounted } from "@/hooks/useMounted";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -13,6 +14,11 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token        = searchParams.get("token") ?? "";
   const { lang }     = useLanguage();
+  // The submit stays disabled until React has hydrated. Before then a
+  // press would be a native form submission that never reaches
+  // onSubmit; with method="post" nothing would land in the URL anyway,
+  // but the credentials should not leave the page at all.
+  const hydrated = useMounted();
   const ar           = lang === "ar";
   const T            = (a: string, e: string) => (ar ? a : e);
   // An expired or used link: the way forward is a new one, not a retry.
@@ -56,7 +62,11 @@ function ResetPasswordForm() {
         setDeadLink(dead);
         setError(
           ar
-            ? (data.error ?? "حدث خطأ، حاول مرة أخرى")
+            ? dead
+              ? "الرابط ده انتهى أو اتستخدم قبل كده، اطلب رابط جديد."
+              : res.status === 429
+                ? "محاولات كتير، استنى شوية وجرّب تاني."
+                : (data.error ?? "حصلت مشكلة، جرّب تاني.")
             : dead
               ? "This link has expired or was already used. Request a new one."
               : res.status === 429
@@ -112,7 +122,7 @@ function ResetPasswordForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <form method="post" onSubmit={handleSubmit} className="space-y-4" noValidate>
         {/* New password */}
         <div>
           <label className="field-label" htmlFor="rp-new">
@@ -124,7 +134,7 @@ function ResetPasswordForm() {
               type={showPass ? "text" : "password"}
               autoComplete="new-password"
               placeholder={T("8 أحرف على الأقل", "At least 8 characters")}
-              className="input w-full pe-10"
+              className="input w-full pe-12"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError(""); }}
             />
@@ -132,7 +142,7 @@ function ResetPasswordForm() {
               type="button"
               onClick={() => setShowPass((v) => !v)}
               aria-label={showPass ? T("إخفاء كلمة المرور", "Hide password") : T("إظهار كلمة المرور", "Show password")}
-              className="absolute inset-y-0 end-3 flex items-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+              className="absolute inset-y-0 end-1 flex w-11 min-h-11 items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
             >
               {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
@@ -172,7 +182,7 @@ function ResetPasswordForm() {
 
         <button
           type="submit"
-          disabled={loading || password.length < 8 || password !== confirm}
+          disabled={!hydrated || loading || password.length < 8 || password !== confirm}
           className="btn btn-primary w-full gap-2 mt-2"
         >
           {loading

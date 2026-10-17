@@ -59,12 +59,25 @@ export function readPhone(raw: string, picked: Country): PhoneInput {
   return { e164: valid ? `+${full}` : null, country };
 }
 
+// Only `.success` is read — the screens keep their button disabled until
+// the input is valid rather than showing a message — so these carry no
+// wording (which would otherwise need both languages).
 export const loginCode = z
   .string()
   .transform(digits)
-  .refine((d) => d.length === 6, "الكود 6 أرقام");
+  .refine((d) => d.length === 6);
 
 export const emailLogin = z.object({
-  email: z.string().trim().email("البريد الإلكتروني غير صحيح"),
-  password: z.string().min(1, "أدخل كلمة المرور"),
+  email: z.string().trim().email(),
+  password: z.string().min(1),
 });
+
+/**
+ * English for what POST /api/auth/phone/send can answer — the server
+ * writes only Arabic (messageFor shows it as-is in Arabic mode).
+ */
+export const SEND_CODE_EN = {
+  "422": "Enter a valid mobile number.",
+  "429": "You've asked for too many codes. Wait a minute and try again.",
+  "send-failed": "We couldn't send the code right now. Try again in a moment.",
+};

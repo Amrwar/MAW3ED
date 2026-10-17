@@ -71,6 +71,7 @@ export function FilterSheet({
       open={open}
       onClose={onClose}
       title={T("الفلاتر", "Filters")}
+      testID="filter-sheet"
       footer={
         <View style={styles.footer}>
           <Button
@@ -82,17 +83,19 @@ export function FilterSheet({
               setMaxText("");
             }}
             style={styles.flex}
+            testID="clear-filters"
           />
           <Button
             label={T("اعرض النتايج", "Show results")}
             disabled={Boolean(priceError)}
             onPress={() => onApply({ ...draft, minPrice, maxPrice })}
             style={styles.flex}
+            testID="apply-filters"
           />
         </View>
       }
     >
-      <Section title={T("النوع", "Category")}>
+      <Section title={T("القسم", "Category")}>
         <Chips>
           <Chip label={T("الكل", "All")} selected={!draft.category} onPress={() => patch({ category: "", subcategory: "" })} />
           {categories.map((c) => (
@@ -102,6 +105,7 @@ export function FilterSheet({
               count={c.count}
               selected={draft.category === c.slug}
               onPress={() => patch({ category: draft.category === c.slug ? "" : c.slug, subcategory: "" })}
+              testID="filter-category"
             />
           ))}
         </Chips>
@@ -120,7 +124,7 @@ export function FilterSheet({
         ) : null}
       </Section>
 
-      <Section title={T("المكان", "Location")}>
+      <Section title={T("المنطقة", "Location")}>
         <Chips>
           <Chip label={T("كل المدن", "All cities")} selected={!draft.city} onPress={() => patch({ city: "", neighborhood: "" })} />
           {cities.map((c) => (
@@ -156,7 +160,7 @@ export function FilterSheet({
       <Section title={T("المواعيد", "Availability")}>
         <Chips>
           {AVAILABLE.map((a) => (
-            <Chip key={a} label={availableLabel(a, lang)} selected={draft.available === a} onPress={() => patch({ available: a })} />
+            <Chip key={a} label={availableLabel(a, lang)} selected={draft.available === a} onPress={() => patch({ available: a })} testID={`filter-available-${a}`} />
           ))}
         </Chips>
       </Section>
@@ -164,7 +168,7 @@ export function FilterSheet({
       <Section title={T("التقييم", "Rating")}>
         <Chips>
           {RATINGS.map((r) => (
-            <Chip key={r} label={ratingLabel(r, lang)} selected={draft.rating === r} onPress={() => patch({ rating: r })} />
+            <Chip key={r} label={ratingLabel(r, lang)} selected={draft.rating === r} onPress={() => patch({ rating: r })} testID={`filter-rating-${r}`} />
           ))}
         </Chips>
         {draft.rating > 0 ? (
@@ -202,7 +206,7 @@ export function FilterSheet({
 
       <Section title={T("حاجات تانية", "More")}>
         <Chips>
-          <Chip label={T("موثّق بس", "Verified only")} icon="checkmark-circle-outline" selected={draft.verified} onPress={() => patch({ verified: !draft.verified })} />
+          <Chip label={T("موثّق بس", "Verified only")} icon="checkmark-circle-outline" selected={draft.verified} onPress={() => patch({ verified: !draft.verified })} testID="filter-verified" />
           <Chip label={T("تأكيد فوري", "Instant confirmation")} icon="flash-outline" selected={draft.instant} onPress={() => patch({ instant: !draft.instant })} />
           <Chip label={T("دفع أونلاين", "Pay online")} icon="card-outline" selected={draft.online} onPress={() => patch({ online: !draft.online })} />
         </Chips>
@@ -225,7 +229,7 @@ export function SortSheet({
 }) {
   const { lang } = useLocale();
   return (
-    <Sheet open={open} onClose={onClose} title={lang === "ar" ? "الترتيب" : "Sort by"}>
+    <Sheet open={open} onClose={onClose} title={lang === "ar" ? "الترتيب" : "Sort by"} testID="sort-sheet">
       <View accessibilityRole="radiogroup">
         {SORTS.map((s) => {
           const selected = s === value;
@@ -236,6 +240,7 @@ export function SortSheet({
               accessibilityState={{ selected }}
               onPress={() => onChange(s)}
               style={[styles.option, selected && styles.optionOn]}
+              testID={`sort-option-${s}`}
             >
               <Text variant={selected ? "bodyBold" : "body"} style={styles.flex}>
                 {sortLabel(s, lang)}

@@ -1,0 +1,108 @@
+# End-to-end tests of the Android app on an emulator, with Maestro.
+#
+# The flows (mobile/.maestro) only read and navigate — they never book,
+# review, save or change anything on staging. They run against an APK
+# built by EAS with the "e2e" profile:
+#
+#   cd mobile && npx eas-cli build -p android --profile e2e
+#
+# Which APK: the `apk_url` input when started by hand, otherwise the
+# repository variable E2E_APK_URL (Settings → Variables), so a push that
+# changes the flows re-runs them against the last e2e build.
+#
+# The business flows (05, 19) need the review account, as repository
+# secrets REVIEW_EMAIL and REVIEW_PASSWORD. Without them those flows are
+# skipped (tag needs-credentials) rather than failed.
+#
+# Expo runs Maestro only on paid plans; GitHub's hosted runners have KVM,
+# so the emulator runs here for free within the monthly minutes.
+name: E2E Android (Maestro)
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: "APK to test (an EAS e2e build). Empty = the E2E_APK_URL variable."
+        required: false
+  push:
+    paths:
+      - "mobile/.maestro/**"
+      - ".github/workflows/e2e-android.yml"
+
+concurrency:
+  group: e2e-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  maestro:
+    runs-on: ubuntu-latest
+    # 19 flows, several of them long (09-19 walk many screens, twice for
+    # the two languages); about an hour on a hosted runner's emulator.
+    timeout-minutes: 90
+    env:
+      APK_URL: ${{ inputs.apk_url || vars.E2E_APK_URL }}
+      REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
+      REVIEW_PASSWORD: ${{ secrets.REVIEW_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Which APK
+        run: |
+          if [ -z "$APK_URL" ]; then
+            echo "::error::No APK: pass apk_url or set the E2E_APK_URL repository variable."
+            exit 1
+          fi
+          curl -fsSL "$APK_URL" -o app.apk
+          ls -lh app.apk
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the flows on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 3072M
+          cores: 2
+          # Two of the runner's four cores: four starved the host and the
+          # emulator never finished booting.
+          emulator-boot-timeout: 900
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          # A software-rendered emulator is slow enough that Android's own
+          # System UI raises "isn't responding" over the app, and every flow
+          # fails behind it. Hide crash/ANR dialogs, and let the system
+          # finish starting before the first flow.
+          script: |
+            adb shell settings put global hide_error_dialogs 1
+            adb shell settings put secure anr_show_background 0
+            sleep 45
+            adb install -r app.apk
+            mkdir -p maestro-out
+            if [ -n "$REVIEW_EMAIL" ] && [ -n "$REVIEW_PASSWORD" ]; then maestro test --format junit --output maestro-out/report.xml --test-output-dir maestro-out -e REVIEW_EMAIL="$REVIEW_EMAIL" -e REVIEW_PASSWORD="$REVIEW_PASSWORD" mobile/.maestro; else echo "No review account set: skipping the business sign-in flow."; maestro test --format junit --output maestro-out/report.xml --test-output-dir maestro-out --exclude-tags needs-credentials mobile/.maestro; fi
+
+      - name: Keep screenshots, recordings and the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-results
+          path: |
+            maestro-out
+            ~/.maestro/tests
+          if-no-files-found: ignore

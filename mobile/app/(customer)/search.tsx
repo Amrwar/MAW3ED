@@ -33,6 +33,7 @@ import {
 import { useFacets } from "@/features/customer/queries";
 import { num } from "@/lib/format";
 import type { Business } from "@/types/api";
+import { count } from "@/lib/plural";
 
 /**
  * Search.
@@ -120,6 +121,7 @@ export default function Search() {
           // recent search, which would hide the row being tapped.
           onBlur={() => setTimeout(() => setFocused(false), 150)}
           maxLength={MAX_TERM}
+          testID="search-input"
         />
       </View>
       <View style={styles.top}>
@@ -129,15 +131,17 @@ export default function Search() {
             icon="options-outline"
             selected={filterCount > 0}
             onPress={() => setSheet("filters")}
+            testID="open-filters"
           />
           <Chip
             label={sortLabel(filters.sort, lang)}
             icon="swap-vertical"
             selected={filters.sort !== "recommended"}
             onPress={() => setSheet("sort")}
+            testID="open-sort"
           />
           {chips.map((c) => (
-            <Chip key={c.key} label={c.label} icon="close" onPress={() => patchFilters(c.clear)} />
+            <Chip key={c.key} label={c.label} icon="close" onPress={() => patchFilters(c.clear)} testID={`active-filter-${c.key}`} />
           ))}
         </ScrollView>
       </View>
@@ -191,9 +195,9 @@ export default function Search() {
           !problem && results.data ? (
             <View>
               <View style={styles.countRow} accessibilityLiveRegion="polite">
-                <Text variant="caption" tone="subtle">
+                <Text variant="caption" tone="subtle" testID="results-count">
                   {/* The server's total, not the length of what has loaded. */}
-                  {T(`${num(total, lang)} مكان`, `${num(total, lang)} ${total === 1 ? "place" : "places"}`)}
+                  {count(total, "place", lang)}
                 </Text>
                 {results.isFetching && !results.isFetchingNextPage ? <ActivityIndicator size="small" color={colors.jade} /> : null}
               </View>
@@ -216,6 +220,7 @@ export default function Search() {
             </View>
           ) : (
             <EmptyState
+              testID="search-empty"
               icon="search-outline"
               title={T("مفيش أماكن مطابقة", "No places match")}
               body={
@@ -225,7 +230,7 @@ export default function Search() {
               }
               action={
                 <View style={styles.emptyActions}>
-                  {filterCount > 0 ? <Button label={T("امسح الفلاتر", "Clear filters")} onPress={clearFilters} /> : null}
+                  {filterCount > 0 ? <Button label={T("امسح الفلاتر", "Clear filters")} onPress={clearFilters} testID="empty-clear-filters" /> : null}
                   {debounced.trim() ? (
                     <Button label={T("امسح البحث", "Clear search")} variant="outline" onPress={() => setTerm("")} />
                   ) : null}
@@ -339,7 +344,7 @@ function useActiveChips(f: Filters, lang: "ar" | "en") {
   const price = priceLabel(f.minPrice, f.maxPrice, lang);
   if (price) chips.push({ key: "price", label: price, clear: { minPrice: null, maxPrice: null } });
   if (f.verified) chips.push({ key: "verified", label: ar ? "موثّق" : "Verified", clear: { verified: false } });
-  if (f.instant) chips.push({ key: "instant", label: ar ? "تأكيد فوري" : "Instant", clear: { instant: false } });
+  if (f.instant) chips.push({ key: "instant", label: ar ? "تأكيد فوري" : "Instant confirmation", clear: { instant: false } });
   if (f.online) chips.push({ key: "online", label: ar ? "دفع أونلاين" : "Pay online", clear: { online: false } });
   return chips;
 }

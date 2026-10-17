@@ -150,6 +150,6 @@ export async function POST(req: Request, { params }: Params) {
     return ok(updated);
   } catch (e) {
     log.error("[admin business action]", e);
-    return err("حدث خطأ", 500);
+    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { countText } from "@/lib/i18n";
 import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
@@ -135,7 +136,7 @@ export default function BranchesClient({ initial }: { initial: BranchRow[] }) {
       if (!res.ok) return;
       if (data.deactivated) {
         setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, isActive: false } : x)));
-        setNotice(b.deactivated.replace("{n}", num(data.bookings, lang)));
+        setNotice(countText(lang, data.bookings, b.deactivated));
       } else {
         setRows((prev) => prev.filter((x) => x.id !== row.id));
       }

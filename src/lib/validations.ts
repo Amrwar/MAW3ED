@@ -8,9 +8,16 @@ import { dialable, normalisePhone, PHONE_INVALID } from "./phone";
 // straight to the client.
 installArabicZodErrors();
 
+// Every name a person types is bounded. Names are echoed into emails,
+// WhatsApp messages, notifications and dashboards; an unbounded one is
+// a free 1 MB payload carried into every one of those, and no real
+// name — Arabic four-part names included — comes near a hundred.
+const NAME_MAX = 100;
+const NAME_TOO_LONG = "الاسم طويل جدًا";
+
 // ─── Auth ──────────────────────────────────────────────────
 export const signUpSchema = z.object({
-  name:     z.string().min(2, "الاسم قصير جدًا"),
+  name:     z.string().trim().min(2, "الاسم قصير جدًا").max(NAME_MAX, NAME_TOO_LONG),
   // Stored lower-case, so every later lookup agrees with it.
   email:    z.string().trim().toLowerCase().email("البريد الإلكتروني غير صحيح"),
   password: z.string().min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل"),
@@ -23,8 +30,8 @@ export const loginSchema = z.object({
 
 // ─── Onboarding ───────────────────────────────────────────
 const serviceItemSchema = z.object({
-  nameAr:       z.string().min(2, "أدخل اسم الخدمة"),
-  nameEn:       z.string().optional(),
+  nameAr:       z.string().trim().min(2, "أدخل اسم الخدمة").max(NAME_MAX, NAME_TOO_LONG),
+  nameEn:       z.string().trim().max(NAME_MAX, NAME_TOO_LONG).optional(),
   descriptionAr: z.string().optional(),
   duration:     z.number().min(5).max(480),
   price:        z.number().min(0),
@@ -38,8 +45,8 @@ const availabilityDaySchema = z.object({
 });
 
 export const onboardingSchema = z.object({
-  nameAr:     z.string().min(2, "أدخل اسم العمل بالعربية"),
-  nameEn:     z.string().optional(),
+  nameAr:     z.string().trim().min(2, "أدخل اسم العمل بالعربية").max(NAME_MAX, NAME_TOO_LONG),
+  nameEn:     z.string().trim().max(NAME_MAX, NAME_TOO_LONG).optional(),
   categoryId: z.string().min(1, "اختر التخصص"),
   cityId:     z.string().min(1, "اختر المدينة"),
   phone:      z.string().min(8, "أدخل رقم الهاتف"),
@@ -107,12 +114,12 @@ export function bothOrNeither(v: { latitude?: number | null; longitude?: number 
 
 export const businessUpdateSchema = z.object({
   // Required: a business must keep a name, a city and a category.
-  nameAr:      z.string().min(2, "أدخل اسم العمل").optional(),
+  nameAr:      z.string().trim().min(2, "أدخل اسم العمل").max(NAME_MAX, NAME_TOO_LONG).optional(),
   cityId:      z.string().min(1).optional(),
   categoryId:  z.string().min(1).optional(),
 
   // Clearable: emptying any of these is a thing an owner may want.
-  nameEn:      clearable(z.string()),
+  nameEn:      clearable(z.string().trim().max(NAME_MAX, NAME_TOO_LONG)),
   taglineAr:   clearable(z.string().max(120)),
   phone:       clearable(z.string()),
   whatsapp:    clearable(z.string()),
@@ -126,10 +133,10 @@ export const businessUpdateSchema = z.object({
 
 // ─── Service ──────────────────────────────────────────────
 export const serviceSchema = z.object({
-  nameAr:       z.string().min(2, "أدخل اسم الخدمة"),
+  nameAr:       z.string().trim().min(2, "أدخل اسم الخدمة").max(NAME_MAX, NAME_TOO_LONG),
   // Clearable for the same reason the business fields are: an owner who
   // empties a description and saves expects it to go.
-  nameEn:       clearable(z.string()),
+  nameEn:       clearable(z.string().trim().max(NAME_MAX, NAME_TOO_LONG)),
   descriptionAr: clearable(z.string()),
   duration:     z.number().min(5).max(480),
   price:        z.number().min(0),
@@ -167,7 +174,7 @@ export const bookingSchema = z.object({
   serviceId:     z.string().min(1, "اختر خدمة"),
   date:          z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاريخ غير صحيح"),
   startTime:     z.string().regex(/^\d{2}:\d{2}$/, "وقت غير صحيح"),
-  customerName:  z.string().min(2, "أدخل اسمك الكامل"),
+  customerName:  z.string().trim().min(2, "أدخل اسمك الكامل").max(NAME_MAX, NAME_TOO_LONG),
   // A number normalisePhone() can read, the same rule as signing in: it
   // is how the booking finds the customer's account (the
   // customerPhoneE164 column) and where its confirmation goes. Any eight

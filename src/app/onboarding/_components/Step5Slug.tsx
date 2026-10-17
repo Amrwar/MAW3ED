@@ -128,7 +128,7 @@ export default function Step5Slug({ data, onNext, onBack }: Props) {
         </p>
         {[
           "استخدم اسم عملك بالإنجليزية",
-          "ابدأ بحرف وليس رقم",
+          "ابدأ بحرف مش برقم",
           "تجنب الرموز الخاصة",
           "مثال: dr-ahmed-clinic أو bella-salon",
         ].map((tip) => (
