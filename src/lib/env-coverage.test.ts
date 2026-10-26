@@ -133,8 +133,11 @@ describe("the environment", () => {
   it("documents nothing the code never reads", () => {
     // The other direction: a leftover in .env.example is somebody
     // setting a variable that does nothing, and believing it does.
+    // One scan, not one per documented name: re-walking the repository
+    // forty times took this test past its timeout.
+    const read = variablesRead();
     const unused = [...documented].filter(
-      (name) => !variablesRead().has(name) && !PLATFORM_PROVIDED.has(name),
+      (name) => !read.has(name) && !PLATFORM_PROVIDED.has(name),
     );
     expect(unused).toEqual([]);
   });

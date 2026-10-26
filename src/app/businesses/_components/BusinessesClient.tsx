@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, useId } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition, useId } from "react";
 import { countText } from "@/lib/i18n";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -89,9 +89,10 @@ export default function BusinessesClient({
   const [loadError, setLoadError] = useState(false);
 
   // The search box follows the URL, so the back button restores the term.
-  const lastQ = useRef(query.q);
-  if (lastQ.current !== query.q) {
-    lastQ.current = query.q;
+  // Held in state, not a ref: React may not read refs during render.
+  const [lastQ, setLastQ] = useState(query.q);
+  if (lastQ !== query.q) {
+    setLastQ(query.q);
     setTerm(query.q);
   }
 

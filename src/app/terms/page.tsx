@@ -75,7 +75,8 @@ export default function TermsPage() {
               <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-3">6. التواصل</h2>
               <p>
                 لأي استفسارات حول شروط الاستخدام، تواصل معنا عبر البريد الإلكتروني:{" "}
-                <a href={SUPPORT_MAILTO} dir="ltr" className="text-[var(--color-jade)] hover:underline">
+                {/* Underlined: inside a sentence, colour alone does not mark a link. */}
+                <a href={SUPPORT_MAILTO} dir="ltr" className="text-[var(--color-jade)] underline underline-offset-2">
                   {SUPPORT_EMAIL}
                 </a>
                 .
