@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getLang } from "@/lib/lang-server";
 import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { canonicalFor } from "@/lib/seo/meta";
 import { Suspense } from "react";
@@ -25,12 +26,18 @@ import {
 import { getSiteUrl } from "@/lib/env";
 import { translations, type Lang } from "@/lib/i18n";
 
-export const metadata: Metadata = {
-  title: "موعد | Maw3ed — احجز ميعادك في ثواني",
-  description:
-    "ابحث عن عيادة، صالون، جيم أو مركز قريب منك في مصر، شوف المواعيد المتاحة واحجز في ثوانٍ. الحجز مجاني والتأكيد فوري.",
-  alternates: { canonical: canonicalFor("/") },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = await getLang();
+  return {
+    title: { absolute: lang === "en"
+      ? "Maw3ed — Book your appointment in seconds"
+      : "موعد | Maw3ed — احجز ميعادك في ثواني" },
+    description: lang === "en"
+      ? "Find a clinic, salon, gym or centre near you in Egypt, see the free times and book in seconds. Booking is free and confirmed instantly."
+      : "ابحث عن عيادة، صالون، جيم أو مركز قريب منك في مصر، شوف المواعيد المتاحة واحجز في ثوانٍ. الحجز مجاني والتأكيد فوري.",
+    alternates: { canonical: canonicalFor("/") },
+  };
+}
 
 /**
  * The page answers one question in order: what do you need, where,
@@ -44,7 +51,7 @@ export const metadata: Metadata = {
  */
 export default async function HomePage() {
   const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   // The hero stores a city slug; /businesses and the data layer both
   // read slugs, so nothing has to translate an id along the way.
   const savedCity = cookieStore.get("maw3ed-city")?.value ?? "";
@@ -187,8 +194,7 @@ async function BusinessRowServer({
   cityName?: string;
   viewAllHref: string;
 }) {
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const f = (translations[lang] ?? translations.ar).featured;
 
   if (kind === "nearby") {

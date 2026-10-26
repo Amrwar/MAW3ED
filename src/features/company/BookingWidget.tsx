@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef, useId } from "react";
 import type { TrafficSource } from "@prisma/client";
 import {
-  ChevronRight, CheckCircle,
+  ChevronRight, ChevronLeft, CheckCircle,
   Loader2, CalendarDays, Clock, Check, Users, Scissors,
 } from "lucide-react";
 import type { Service } from "@/types/service";
 import type { PublicResource, PublicStaff } from "./CompanyContent";
 import { money, duration as fmtDuration, arCount } from "@/lib/fmt";
 import { depositCents } from "@/lib/payments/money";
+import { normalisePhone } from "@/lib/phone";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   chooseResourceLabel,
@@ -346,6 +347,9 @@ export default function BookingWidget({
   /** Arabic or English, by the page's language. */
   const tr = (ar: string, enText: string) => (en ? enText : ar);
   const staffName = (s: PublicStaff) => (en && s.nameEn ? s.nameEn : s.nameAr);
+  // The services list above names a service in the page's language; the
+  // widget named it in Arabic only, so one service had two names.
+  const serviceName = (s: Service) => (en && s.nameEn ? s.nameEn : s.nameAr);
   // What this business schedules on, read off what it has rather than
   // off what it is. Both, either or neither is a valid answer.
   const hasStaff     = staffMembers.length > 0;
@@ -431,8 +435,39 @@ export default function BookingWidget({
   const [submitError,  setSubmitError]  = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
 
+  // Confirming the number with a WhatsApp code, when the server asks for
+  // it (BOOKING_PHONE_VERIFICATION; signed-in customers never are). The
+  // proof it returns is kept for retries of this same attempt.
+  const [codeSent,   setCodeSent]   = useState(false);
+  const [otp,        setOtp]        = useState("");
+  const [phoneProof, setPhoneProof] = useState<string | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const days = getUpcomingDays(30);
+  // Whether the day strip has more to show toward earlier / later days,
+  // for its arrows and fade. Measured, not assumed: at either end there
+  // is nothing to hint at.
+  const [dayEdges, setDayEdges] = useState({ earlier: false, later: true });
+  function measureDays() {
+    const el = scrollRef.current;
+    if (!el) return;
+    // RTL scrolls with scrollLeft running from 0 to negative.
+    const pos = Math.abs(el.scrollLeft);
+    const max = el.scrollWidth - el.clientWidth;
+    setDayEdges({ earlier: pos > 4, later: pos < max - 4 });
+  }
+  useEffect(() => {
+    if (step === "date") measureDays();
+  }, [step]);
+
+  /** Pages the day strip toward later (1) or earlier (-1) days, in either direction of text. */
+  function scrollDays(towardLater: 1 | -1) {
+    const el = scrollRef.current;
+    if (!el) return;
+    // In RTL, later days lie to the left: scrollLeft runs negative.
+    const sign = getComputedStyle(el).direction === "rtl" ? -1 : 1;
+    el.scrollBy({ left: towardLater * sign * el.clientWidth * 0.8, behavior: "smooth" });
+  }
 
   // The person in the link belongs to the service in the link: applied
   // only while that first preselection stands. Compared, not consumed, so
@@ -491,23 +526,91 @@ export default function BookingWidget({
 
   function validate(): boolean {
     const errs: typeof errors = {};
-    if (name.trim().length < 2)
-      errs.name = tr("اكتب اسمك بالكامل", "Enter your full name");
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 8)
+    // Say what is wrong rather than repeating the label: "a" is a name
+    // that is too short, not a missing one, and "123" is a number that
+    // cannot be read. The phone rule is the server's (normalisePhone),
+    // so nothing passes here that the booking route then refuses.
+    const trimmedName = name.trim();
+    if (!trimmedName)
+      errs.name = tr("اكتب اسمك", "Enter your name");
+    else if (trimmedName.length < 2)
+      errs.name = tr("الاسم قصير أوي", "Name is too short");
+    if (!phone.trim())
       errs.phone = tr("اكتب رقم موبايلك", "Enter your mobile number");
-    else if (digits.length > 15)
-      errs.phone = tr("رقم الموبايل ده مش صحيح", "That mobile number isn't valid");
+    else if (!normalisePhone(phone))
+      errs.phone = tr(
+        "اكتب رقم صحيح زي 01012345678، أو بكود الدولة لو من برّه مصر",
+        "Enter a valid number like 01012345678, or with the country code outside Egypt",
+      );
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       errs.email = tr("الإيميل ده مش صحيح", "That email isn't valid");
     setErrors(errs);
     return !errs.name && !errs.phone && !errs.email;
   }
 
+  /** Asks for a code to the booking's number. True when one went out. */
+  async function sendPhoneCode(): Promise<boolean> {
+    const res = await fetch("/api/auth/phone/send", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ phone: phone.trim(), purpose: "booking" }),
+    });
+    if (res.ok) {
+      setCodeSent(true);
+      setOtp("");
+      return true;
+    }
+    const data = await res.json().catch(() => null);
+    setSubmitError(data?.error ?? tr("معرفناش نبعت الكود، جرّب تاني", "Couldn't send the code. Try again."));
+    return false;
+  }
+
+  /** Trades the typed code for a proof. Null, with the error shown, when it is refused. */
+  async function exchangeCode(): Promise<string | null> {
+    const res = await fetch("/api/public/phone-proof", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ phone: phone.trim(), code: otp.trim() }),
+    });
+    const data = await res.json().catch(() => null);
+    const proof = res.ok ? ((data?.data ?? data)?.proof as string | undefined) : undefined;
+    if (proof) {
+      setPhoneProof(proof);
+      return proof;
+    }
+    const code = data?.code as string | undefined;
+    setSubmitError(
+      code === "wrong-code"
+        ? tr("الكود مش صحيح", "That code isn't right")
+        : code === "expired-code" || code === "too-many-attempts"
+          ? tr("الكود انتهى. اطلب كود جديد", "That code has expired. Ask for a new one.")
+          : data?.error ?? tr("معرفناش نتأكد من الكود، جرّب تاني", "Couldn't check the code. Try again."),
+    );
+    return null;
+  }
+
   async function handleSubmit() {
     if (!validate() || !selectedService || !selectedDate || !selectedTime) return;
     setSubmitting(true);
     setSubmitError(null);
+
+    // A code is on screen: check it first, and book with the proof.
+    let proof = phoneProof;
+    if (codeSent && !proof) {
+      if (otp.trim().length < 4) {
+        setSubmitError(tr("اكتب الكود اللي وصلك على واتساب", "Enter the code we sent to your WhatsApp"));
+        setSubmitting(false);
+        return;
+      }
+      proof = await exchangeCode().catch(() => {
+        setSubmitError(tr("معرفناش نوصل للسيرفر، اتأكد من النت وجرّب تاني", "Couldn't reach the server. Check your connection and try again."));
+        return null;
+      });
+      if (!proof) {
+        setSubmitting(false);
+        return;
+      }
+    }
 
     // Reuse the key across retries of this same attempt; only a fresh
     // run through the form mints a new one.
@@ -539,10 +642,18 @@ export default function BookingWidget({
           // same rules that produced the quote, so a tampered payload
           // gets the honest number rather than its own.
           discountCode: quote?.discount?.code ?? undefined,
+          phoneProof: proof ?? undefined,
         }),
       });
 
       const data = await res.json();
+      // This business asks guests to confirm their number: send the code
+      // and let them type it here, then the same button books.
+      if (res.status === 403 && data?.code === "phone-unverified") {
+        setPhoneProof(null);
+        await sendPhoneCode();
+        return;
+      }
       if (!res.ok) {
         setSubmitError(data.error ?? tr("حصلت مشكلة في الحجز، جرّب تاني", "Something went wrong with the booking. Try again."));
         return;
@@ -573,6 +684,7 @@ export default function BookingWidget({
     setIdempotencyKey(null);
     setSlotsReason(null);
     setName(""); setPhone(""); setEmail(""); setNotes("");
+    setCodeSent(false); setPhoneProof(null); setOtp("");
     setErrors({});
     setSlots([]);
     setConfirmation(null);
@@ -734,12 +846,12 @@ export default function BookingWidget({
                         <div className="w-14 h-14 rounded-[var(--radius-md)] bg-[var(--color-jade-soft)] flex items-center justify-center shrink-0">
                           {service.image
                             // eslint-disable-next-line @next/next/no-img-element
-                            ? <img src={service.image} alt={service.nameAr} className="w-10 h-10 object-contain" />
-                            : <span className="text-xl font-bold text-[var(--color-jade)]">{service.nameAr.charAt(0)}</span>
+                            ? <img src={service.image} alt={serviceName(service)} className="w-10 h-10 object-contain" />
+                            : <span className="text-xl font-bold text-[var(--color-jade)]">{serviceName(service).charAt(0)}</span>
                           }
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[15px] font-bold text-[var(--color-ink)] leading-snug">{service.nameAr}</p>
+                          <p className="text-[15px] font-bold text-[var(--color-ink)] leading-snug">{serviceName(service)}</p>
                           {service.duration > 0 && (
                             <p className="text-xs text-[var(--color-subtle)] mt-1 flex items-center gap-1">
                               <Clock size={11} />
@@ -1013,10 +1125,35 @@ export default function BookingWidget({
           <div>
             <SectionTitle>{tr("اختار اليوم", "Choose a day")}</SectionTitle>
 
+            {/* Thirty days do not fit across the widget, and with the
+                scrollbar hidden nothing said the row went on. An arrow
+                and a fade on each edge that has more. */}
+            <div className="relative">
+            {dayEdges.earlier && <button
+              type="button"
+              onClick={() => scrollDays(-1)}
+              aria-label={tr("الأيام اللي فاتت", "Earlier days")}
+              className="absolute inset-y-0 start-0 z-10 hidden w-8 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-surface)]/90 text-[var(--color-ink-2)] shadow-sm sm:flex"
+            >
+              {en ? <ChevronLeft size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
+            </button>}
+            {dayEdges.later && <button
+              type="button"
+              onClick={() => scrollDays(1)}
+              aria-label={tr("أيام بعد كده", "Later days")}
+              className="absolute inset-y-0 end-0 z-10 hidden w-8 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-surface)]/90 text-[var(--color-ink-2)] shadow-sm sm:flex"
+            >
+              {en ? <ChevronRight size={16} aria-hidden="true" /> : <ChevronLeft size={16} aria-hidden="true" />}
+            </button>}
             <div
               ref={scrollRef}
-              className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1"
-              style={{ scrollbarWidth: "none" }}
+              onScroll={measureDays}
+              className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 sm:px-9"
+              style={{
+                scrollbarWidth: "none",
+                maskImage: stripMask(dayEdges, en),
+                WebkitMaskImage: stripMask(dayEdges, en),
+              }}
             >
               {days.map((d) => {
                 const disabled = !openDays.includes(d.dow);
@@ -1043,12 +1180,13 @@ export default function BookingWidget({
                 );
               })}
             </div>
+            </div>
 
-            {!selectedDate && (
-              <p className="text-xs text-[var(--color-subtle)] mt-4 text-center">
-                {tr("اختار يوم عشان تكمّل", "Pick a day to continue")}
-              </p>
-            )}
+            {/* Always one line here, so picking a day does not pull the
+                Next button up from under the pointer. */}
+            <p className="text-xs text-[var(--color-subtle)] mt-4 text-center">
+              {selectedDate ? formatDateAr(selectedDate, lang) : tr("اختار يوم عشان تكمّل", "Pick a day to continue")}
+            </p>
 
             <StepButtons lang={lang} onBack={goBack} onNext={goNext} nextEnabled={!!selectedDate} />
           </div>
@@ -1111,7 +1249,7 @@ export default function BookingWidget({
           <div>
             {/* Mini summary */}
             <div className="rounded-[var(--radius-lg)] px-4 py-3 mb-5 space-y-1.5" style={{ background: "rgba(14,127,94,0.06)", border: "1px solid rgba(14,127,94,0.14)" }}>
-              <SummaryRow label={businessType === "RESTAURANT" ? tr("الجلسة", "Seating") : tr("الخدمة", "Service")} value={selectedService?.nameAr ?? ""} />
+              <SummaryRow label={businessType === "RESTAURANT" ? tr("الجلسة", "Seating") : tr("الخدمة", "Service")} value={selectedService ? serviceName(selectedService) : ""} />
               {selectedStaff && (
                 <SummaryRow label={providerLabel(lang)} value={staffName(selectedStaff)} />
               )}
@@ -1171,7 +1309,12 @@ export default function BookingWidget({
                   placeholder="01xxxxxxxxx"
                   value={phone}
                   dir="ltr"
-                  onChange={(e) => { setPhone(e.target.value); setErrors((p) => ({ ...p, phone: undefined })); }}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    setErrors((p) => ({ ...p, phone: undefined }));
+                    // A code or proof belongs to the number it was sent to.
+                    setCodeSent(false); setPhoneProof(null); setOtp("");
+                  }}
                   className={`w-full rounded-[var(--radius-md)] border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.phone ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
                 />
                 {errors.phone && <p id={`${fid}-phone-err`} className="field-error">{errors.phone}</p>}
@@ -1246,7 +1389,7 @@ export default function BookingWidget({
               {selectedBranch && <SummaryRow label={tr("الفرع", "Branch")} value={selectedBranch.nameAr} />}
               <SummaryRow
                 label={businessType === "RESTAURANT" ? tr("الجلسة", "Seating") : tr("الخدمة", "Service")}
-                value={selectedService.nameAr}
+                value={serviceName(selectedService)}
               />
               {selectedStaff && (
                 <SummaryRow label={providerLabel(lang)} value={staffName(selectedStaff)} />
@@ -1346,6 +1489,37 @@ export default function BookingWidget({
               <SummaryRow label={tr("الموبايل", "Mobile")} value={phone.trim()} ltr />
             </div>
 
+            {codeSent && !phoneProof && (
+              <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-jade)]/30 bg-[var(--color-jade-tint)] px-4 py-3">
+                <label htmlFor={`${fid}-otp`} className="block text-xs font-bold text-[var(--color-ink)]">
+                  {tr("بعتنالك كود على واتساب", "We sent a code to your WhatsApp")}
+                </label>
+                <p className="m-0 mt-1 text-xs text-[var(--color-subtle)]">
+                  {tr("اكتبه هنا عشان نأكد إن الرقم ده بتاعك.", "Type it here so we know this number is yours.")}
+                </p>
+                <div className="mt-2.5 flex gap-2">
+                  <input
+                    id={`${fid}-otp`}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={10}
+                    dir="ltr"
+                    value={otp}
+                    onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "")); setSubmitError(null); }}
+                    className="min-h-11 w-full min-w-0 rounded-[var(--radius-md)] border-2 border-[var(--color-line-2)] bg-[var(--color-surface)] px-3.5 text-center text-base font-bold tracking-[0.3em] outline-none focus:border-[var(--color-jade)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setSubmitError(null); void sendPhoneCode(); }}
+                    disabled={submitting}
+                    className="min-h-11 shrink-0 px-2 text-xs font-bold text-[var(--color-jade)] disabled:opacity-50"
+                  >
+                    {tr("ابعت تاني", "Resend")}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* The policy, stated before they commit rather than after. */}
             <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface-2)] px-4 py-3">
               <p className="m-0 text-xs font-bold text-[var(--color-ink)]">{tr("الإلغاء والتعديل", "Cancelling and changing")}</p>
@@ -1373,7 +1547,7 @@ export default function BookingWidget({
                 disabled={submitting}
                 className="flex-1 py-3.5 rounded-[var(--radius-lg)] bg-[var(--color-jade)] hover:bg-[var(--color-jade-hover)] text-[var(--color-inverse)] font-bold text-sm flex items-center justify-center gap-2 shadow-[var(--shadow-raised)] transition-all disabled:opacity-60"
               >
-                {submitting ? <><Loader2 size={14} className="animate-spin" /> {tr("جارٍ الحجز…", "Booking…")}</> : depositDue !== null ? tr("أكّد وادفع", "Confirm and pay") : tr("أكّد الحجز", "Confirm booking")}
+                {submitting ? <><Loader2 size={14} className="animate-spin" /> {tr("جارٍ الحجز…", "Booking…")}</> : codeSent && !phoneProof ? tr("أكّد الكود واحجز", "Verify and book") : depositDue !== null ? tr("أكّد وادفع", "Confirm and pay") : tr("أكّد الحجز", "Confirm booking")}
               </button>
             </div>
           </div>
@@ -1476,4 +1650,12 @@ export default function BookingWidget({
       </div>
     </div>
   );
+}
+
+/** Fades whichever ends of the day strip have more days beyond them. */
+function stripMask(edges: { earlier: boolean; later: boolean }, en: boolean): string {
+  // Earlier days lie to the left in English and to the right in Arabic.
+  const left = en ? edges.earlier : edges.later;
+  const right = en ? edges.later : edges.earlier;
+  return `linear-gradient(to right, ${left ? "transparent 0, black 2.5rem" : "black 0"}, ${right ? "black calc(100% - 2.5rem), transparent 100%" : "black 100%"})`;
 }

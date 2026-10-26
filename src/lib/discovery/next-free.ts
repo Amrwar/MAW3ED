@@ -10,7 +10,6 @@ import { LIVE_STATUSES } from "@/lib/bookings/schedule";
 import { addDays, cairoDateString, cairoMinutes, dateToUTC, weekdayOf } from "@/lib/bookings/instants";
 import { timeToMinutes } from "@/lib/bookings/time";
 import type { DayHours } from "./hours";
-import type { NextSlot } from "./next-slot";
 
 /**
  * The first free appointment for one business, or one person at it, as
@@ -24,11 +23,19 @@ import type { NextSlot } from "./next-slot";
  * holding its slot (PENDING_PAYMENT included) all apply.
  *
  * Everything is fetched once, in three queries; each person after that
- * is arithmetic. The discovery list keeps its lighter findNextSlot,
- * which is computed for a page of businesses at a time.
+ * is arithmetic. The discovery list loads a page of businesses the same
+ * way (loadSchedules), so cards and profiles use one rule.
  */
 
 const HORIZON_DAYS = 14;
+
+/** The first free appointment, relative to today in Cairo. */
+export interface NextSlot {
+  /** Days from today. 0 = today. */
+  dayOffset: number;
+  /** "HH:MM" in Cairo. */
+  time: string;
+}
 
 export interface Schedule {
   today: string;
@@ -41,14 +48,28 @@ export interface Schedule {
 }
 
 export async function loadSchedule(businessId: string, now: Date = new Date()): Promise<Schedule | null> {
+  return (await loadSchedules([businessId], now)).get(businessId) ?? null;
+}
+
+/**
+ * Schedules for several businesses in the same three queries — what the
+ * discovery list uses, so a card and the profile it opens agree on the
+ * next free time. They used to differ: the list ran a lighter rule that
+ * ignored blocks, notice and buffers.
+ */
+export async function loadSchedules(businessIds: string[], now: Date = new Date()): Promise<Map<string, Schedule>> {
+  const out = new Map<string, Schedule>();
+  if (businessIds.length === 0) return out;
+
   const today = cairoDateString(now);
   const from = dateToUTC(today);
   const until = dateToUTC(addDays(today, HORIZON_DAYS));
 
-  const [business, booked, blocks] = await Promise.all([
-    db.business.findUnique({
-      where: { id: businessId },
+  const [businesses, booked, blocks] = await Promise.all([
+    db.business.findMany({
+      where: { id: { in: businessIds } },
       select: {
+        id: true,
         bufferMinutes: true,
         minNoticeMinutes: true,
         maxAdvanceDays: true,
@@ -57,8 +78,9 @@ export async function loadSchedule(businessId: string, now: Date = new Date()): 
       },
     }),
     db.booking.findMany({
-      where: { businessId, status: { in: [...LIVE_STATUSES] }, date: { gte: from, lt: until } },
+      where: { businessId: { in: businessIds }, status: { in: [...LIVE_STATUSES] }, date: { gte: from, lt: until } },
       select: {
+        businessId: true,
         date: true,
         startTime: true,
         endTime: true,
@@ -69,13 +91,14 @@ export async function loadSchedule(businessId: string, now: Date = new Date()): 
     }),
     db.timeBlock.findMany({
       where: {
-        businessId,
+        businessId: { in: businessIds },
         OR: [
           { dayOfWeek: { not: null } },
           { AND: [{ startsOn: { lt: until } }, { OR: [{ endsOn: null }, { endsOn: { gte: from } }] }] },
         ],
       },
       select: {
+        businessId: true,
         kind: true,
         staffMemberId: true,
         branchId: true,
@@ -87,10 +110,11 @@ export async function loadSchedule(businessId: string, now: Date = new Date()): 
       },
     }),
   ]);
-  if (!business) return null;
 
-  const byDate = new Map<string, ExistingBooking[]>();
+  const bookingsOf = new Map<string, Map<string, ExistingBooking[]>>();
   for (const b of booked) {
+    const byDate = bookingsOf.get(b.businessId) ?? new Map<string, ExistingBooking[]>();
+    bookingsOf.set(b.businessId, byDate);
     const key = b.date.toISOString().slice(0, 10);
     const startMin = timeToMinutes(b.startTime);
     const list = byDate.get(key) ?? [];
@@ -103,17 +127,10 @@ export async function loadSchedule(businessId: string, now: Date = new Date()): 
     byDate.set(key, list);
   }
 
-  return {
-    today,
-    nowMinutes: cairoMinutes(now),
-    policy: {
-      bufferMinutes: business.bufferMinutes,
-      minNoticeMinutes: business.minNoticeMinutes,
-      maxAdvanceDays: business.maxAdvanceDays,
-      sameDayCutoff: business.sameDayCutoff,
-    },
-    hours: business.availability,
-    blocks: blocks.map((b) => ({
+  const blocksOf = new Map<string, BlockRule[]>();
+  for (const b of blocks) {
+    const list = blocksOf.get(b.businessId) ?? [];
+    list.push({
       kind: b.kind,
       staffMemberId: b.staffMemberId,
       branchId: b.branchId,
@@ -122,9 +139,27 @@ export async function loadSchedule(businessId: string, now: Date = new Date()): 
       endsOn: b.endsOn ? b.endsOn.toISOString().slice(0, 10) : null,
       startTime: b.startTime,
       endTime: b.endTime,
-    })),
-    bookings: byDate,
-  };
+    });
+    blocksOf.set(b.businessId, list);
+  }
+
+  const nowMinutes = cairoMinutes(now);
+  for (const business of businesses) {
+    out.set(business.id, {
+      today,
+      nowMinutes,
+      policy: {
+        bufferMinutes: business.bufferMinutes,
+        minNoticeMinutes: business.minNoticeMinutes,
+        maxAdvanceDays: business.maxAdvanceDays,
+        sameDayCutoff: business.sameDayCutoff,
+      },
+      hours: business.availability,
+      blocks: blocksOf.get(business.id) ?? [],
+      bookings: bookingsOf.get(business.id) ?? new Map(),
+    });
+  }
+  return out;
 }
 
 /**

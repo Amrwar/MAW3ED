@@ -14,6 +14,7 @@ import {
   effectivePlanOf,
   businessAllows,
   featureRows,
+  featureLabel,
   type PlanFeature,
 } from "./plans";
 
@@ -166,6 +167,11 @@ describe("featureRows", () => {
     expect(pro.find((r) => r.key === "monthlyBookings")?.ar).toBe("حجوزات غير محدودة");
     expect(pro.find((r) => r.key === "staffMembers")?.ar).toBe("حتى 10 أفراد");
     expect(featureRows("FREE").find((r) => r.key === "monthlyBookings")?.ar).toBe("30 حجز شهريًا");
+  });
+
+  it("labels a comparison row by the feature, not by any plan's value", () => {
+    expect(featureLabel("monthlyBookings", "en")).toBe("Monthly bookings");
+    expect(featureLabel("staffMembers", "ar")).toBe("فريق العمل");
   });
 
   it("names a zero ceiling plainly instead of 'up to 0'", () => {

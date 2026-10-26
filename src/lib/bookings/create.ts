@@ -171,18 +171,8 @@ export async function createBooking(
           // Counted inside the transaction so two simultaneous requests
           // cannot both see "one left".
           if (input.monthlyLimit !== undefined && Number.isFinite(input.monthlyLimit)) {
-            const monthStart = new Date(
-              Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
-            );
-            const monthEnd = new Date(
-              Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
-            );
             const used = await tx.booking.count({
-              where: {
-                businessId: input.businessId,
-                createdAt: { gte: monthStart, lt: monthEnd },
-                status: { notIn: ["FAILED_PAYMENT", "CANCELLED"] },
-              },
+              where: countedThisMonth(input.businessId, now),
             });
             if (used >= input.monthlyLimit) throw new LimitReached();
           }
@@ -306,6 +296,23 @@ export async function createBooking(
     businessId: input.businessId,
   });
   return { ok: false, failure: { kind: "slot-taken" } };
+}
+
+/**
+ * The bookings a monthly plan limit counts: made this calendar month
+ * (UTC), and not cancelled or failed at payment. Shared with the
+ * dashboard's usage warning, so it warns about the number that is
+ * actually enforced.
+ */
+export function countedThisMonth(businessId: string, now: Date = new Date()) {
+  return {
+    businessId,
+    createdAt: {
+      gte: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
+      lt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
+    },
+    status: { notIn: ["FAILED_PAYMENT", "CANCELLED"] as ("FAILED_PAYMENT" | "CANCELLED")[] },
+  };
 }
 
 /* ─── Error plumbing ─────────────────────────────────────── */

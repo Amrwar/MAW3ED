@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import DashboardHomeClient from "@/features/dashboard/DashboardHomeClient";
 import { getDashboardKpis } from "@/lib/dashboard/queries";
+import { countedThisMonth } from "@/lib/bookings/create";
+import { getEffectivePlan, getMonthlyBookingLimit, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { cairoDayEnd, cairoDayStart } from "@/lib/bookings/instants";
 import { type RecentBooking } from "@/features/dashboard/RecentBookings";
 import { type DashboardBooking } from "@/features/dashboard/bookings/types";
@@ -53,6 +55,15 @@ export default async function DashboardPage() {
   // Counted from booking rows, in the one place that defines what
   // "completed", "revenue" and "no-show" mean. See lib/dashboard/stats.
   const kpis = await getDashboardKpis(businessId);
+
+  // How much of a capped plan's monthly allowance is spent — shown before
+  // it runs out, because at the limit new customers can no longer book.
+  const monthlyLimit = getMonthlyBookingLimit(
+    getEffectivePlan(business.plan as Plan, business.subscriptionStatus as SubscriptionStatus, business.trialEndsAt),
+  );
+  const allowance = Number.isFinite(monthlyLimit)
+    ? { used: await db.booking.count({ where: countedThisMonth(businessId) }), limit: monthlyLimit }
+    : null;
 
   const recentBookings: RecentBooking[] = rawBookings.map((b) => ({
     id:            b.id,
@@ -113,6 +124,7 @@ export default async function DashboardPage() {
       isOpenToday={!!isOpenToday}
       todayHours={todayHours ? { openTime: todayHours.openTime, closeTime: todayHours.closeTime, isClosed: todayHours.isClosed } : null}
       isProfileIncomplete={isProfileIncomplete}
+      allowance={allowance}
     />
   );
 }

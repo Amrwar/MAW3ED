@@ -1,23 +1,33 @@
 import type { Metadata } from "next";
+import { getLang } from "@/lib/lang-server";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { MapPin } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PageHero from "@/components/shared/PageHero";
 import { getFacets } from "@/lib/discovery/search";
 import { buildMetadata } from "@/lib/seo/meta";
-import { translations, type Lang } from "@/lib/i18n";
+import { translations } from "@/lib/i18n";
 import { arCount, num } from "@/lib/fmt";
 
 const BIZ = { one: "نشاط واحد", two: "نشاطين", few: "أنشطة", many: "نشاط" };
 
-export const metadata: Metadata = buildMetadata({
-  title: "تصفح حسب المدينة",
-  description:
-    "المدن اللي فيها أنشطة بتستقبل حجوزات على موعد — اختر مدينتك وشوف الأماكن القريبة منك.",
-  path: "/cities",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = await getLang();
+  return lang === "en"
+    ? buildMetadata({
+        title: "Browse by city",
+        description: "Cities with businesses taking bookings on Maw3ed — pick yours and see the places near you.",
+        path: "/cities",
+        lang,
+      })
+    : buildMetadata({
+        title: "تصفح حسب المدينة",
+        description:
+          "المدن اللي فيها أنشطة بتستقبل حجوزات على موعد — اختر مدينتك وشوف الأماكن القريبة منك.",
+        path: "/cities",
+      });
+}
 
 /**
  * The city directory.
@@ -33,8 +43,7 @@ export const metadata: Metadata = buildMetadata({
  * links to /cities/[slug], which exists under exactly that condition.
  */
 export default async function CitiesPage() {
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
   const c = t.citiesPage;
   const isAr = lang === "ar";

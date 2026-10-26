@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { cairoNow, openState, type DayHours, type OpenState } from "@/lib/discovery/hours";
-import type { NextSlot } from "@/lib/discovery/next-slot";
+import type { NextSlot } from "@/lib/discovery/next-free";
 import { firstFree, loadSchedule, shortest } from "@/lib/discovery/next-free";
 import { getBusinessReviews, getRatingSummary, type PublicReview, type RatingSummary } from "@/lib/reviews";
 import { canUseFeature, getEffectivePlan } from "@/lib/plans";

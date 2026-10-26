@@ -45,10 +45,13 @@ export async function POST(req: Request) {
       }
     }
 
+    // The same code serves a guest confirming the number on a booking
+    // (POST /api/public/phone-proof); only the free-text wording differs.
+    const lead = body?.purpose === "booking" ? "كود تأكيد الحجز على موعد" : "كود الدخول على موعد";
     const delivery = await sendCode(
       result.phone,
       result.code,
-      `كود الدخول على موعد: ${result.code}\n\n` +
+      `${lead}: ${result.code}\n\n` +
         `الكود صالح لمدة 10 دقائق. لو مش إنت اللي طلبته، تجاهل الرسالة ومتديهوش لحد.`,
     );
     // "Check your WhatsApp" only when a code really went out.

@@ -7,6 +7,7 @@ import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SUPPORT_WHATSAPP, telHref, whatsappHref } from "@/lib/contact";
 import { BUSINESS_ADDRESS, SUPPORT_PHONE } from "@/lib/support";
+import { dialable, formatPhone } from "@/lib/phone";
 
 /**
  * Contact.
@@ -27,6 +28,19 @@ export default function ContactPage() {
   const whatsapp = c.channels[1];
 
   const channels = [
+    // First, and only when a number is actually configured: in Egypt
+    // WhatsApp is how people expect to reach a business.
+    SUPPORT_WHATSAPP && whatsapp && {
+      key: "whatsapp",
+      Icon: MessageCircle,
+      tone: "bg-[var(--color-ok-soft)] text-[var(--color-ok)]",
+      title: whatsapp.title,
+      // The number itself, so it can be saved or typed into a phone.
+      value: formatPhone(dialable(SUPPORT_WHATSAPP)) || whatsapp.value,
+      sub: whatsapp.sub,
+      href: whatsappHref(SUPPORT_WHATSAPP),
+      external: true,
+    },
     email && {
       key: "email",
       Icon: Mail,
@@ -36,17 +50,6 @@ export default function ContactPage() {
       sub: email.sub,
       href: `mailto:${email.value}`,
       external: false,
-    },
-    // Only when a number is actually configured.
-    SUPPORT_WHATSAPP && whatsapp && {
-      key: "whatsapp",
-      Icon: MessageCircle,
-      tone: "bg-[var(--color-ok-soft)] text-[var(--color-ok)]",
-      title: whatsapp.title,
-      value: whatsapp.value,
-      sub: whatsapp.sub,
-      href: whatsappHref(SUPPORT_WHATSAPP),
-      external: true,
     },
     {
       key: "phone",

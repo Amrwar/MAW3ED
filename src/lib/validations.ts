@@ -198,6 +198,9 @@ export const bookingSchema = z.object({
   staffMemberId: z.string().optional(),
   // Which location, when the business keeps more than one.
   branchId:      z.string().optional(),
+  // From POST /api/public/phone-proof, when guest bookings must prove
+  // their number (BOOKING_PHONE_VERIFICATION).
+  phoneProof:    z.string().max(2000).optional(),
   /**
    * Client-generated, stable across retries of the same submission. A
    * second request carrying the same key returns the first booking

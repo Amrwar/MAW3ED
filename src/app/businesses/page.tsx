@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
+import { getLang } from "@/lib/lang-server";
 import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { siteUrl } from "@/lib/url";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requestNonce } from "@/lib/security/nonce";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { discoveryHref, parseDiscoveryQuery } from "@/lib/discovery/params";
 import { getFacets, searchBusinesses } from "@/lib/discovery/search";
-import { translations, type Lang } from "@/lib/i18n";
+import { translations } from "@/lib/i18n";
 import BusinessesClient from "./_components/BusinessesClient";
 
 interface Props {
@@ -30,10 +30,12 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       q.verified || q.instant || q.online,
   );
 
+  const en = (await getLang()) === "en";
   return {
-    title: "تصفح الأعمال",
-    description:
-      "ابحث في الأنشطة المتاحة للحجز في مصر — فلتر حسب التخصص، المدينة، السعر والمواعيد المتاحة.",
+    title: en ? "Browse businesses" : "تصفح الأعمال",
+    description: en
+      ? "Search the businesses you can book in Egypt — filter by specialty, city, price and free times."
+      : "ابحث في الأنشطة المتاحة للحجز في مصر — فلتر حسب التخصص، المدينة، السعر والمواعيد المتاحة.",
     // Absolute, like every other page. A relative canonical is legal
     // but resolves against whatever host served the page.
     alternates: { canonical: siteUrl(discoveryHref(q)) },
@@ -47,9 +49,7 @@ export default async function BusinessesPage({ searchParams }: Props) {
   const nonce = await requestNonce();
 
   const query = parseDiscoveryQuery(await searchParams);
-
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
 
   // Facets are scoped to the chosen city so the neighbourhood list is

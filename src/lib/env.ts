@@ -85,6 +85,9 @@ const optional = z.object({
   // it codes go as free text, which Meta only delivers inside 24 hours
   // of the person messaging the business number.
   WHATSAPP_TEMPLATE_AUTH_CODE: z.string().optional(),
+  // "1" makes guest bookings confirm their phone with a WhatsApp code
+  // (lib/bookings/phone-proof). Leave off until codes are delivered.
+  BOOKING_PHONE_VERIFICATION: z.string().optional(),
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
   WHATSAPP_API_VERSION: z.string().optional(),

@@ -7,6 +7,7 @@ import {
   CalendarClock,
   Heart,
   MapPin,
+  Sparkles,
   Star,
   Wallet,
   Zap,
@@ -58,12 +59,12 @@ export default function BusinessCard({ business: b, className }: Props) {
     >
       {/* ── Cover ── */}
       <div className="relative shrink-0">
-        <Link href={href} aria-label={name} className="block">
+        <Link href={href} aria-label={b.coverImage ? undefined : name} className="block">
           {b.coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={b.coverImage}
-              alt=""
+              alt={name}
               loading="lazy"
               className="h-[11.5rem] w-full object-cover"
             />
@@ -107,7 +108,7 @@ export default function BusinessCard({ business: b, className }: Props) {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={b.logoImage}
-            alt=""
+            alt={isAr ? `شعار ${name}` : `${name} logo`}
             loading="lazy"
             className="absolute -bottom-6 start-5 h-12 w-12 rounded-[var(--radius-md)] border-2 border-[var(--color-surface)] bg-[var(--color-surface)] object-cover"
           />
@@ -125,9 +126,11 @@ export default function BusinessCard({ business: b, className }: Props) {
           <h3 className="m-0 flex items-center gap-1.5 text-[1.0625rem] font-bold text-[var(--color-ink)]">
             <Link
               href={href}
-              className="inline-flex min-h-6 min-w-0 items-center text-inherit transition-colors hover:text-[var(--color-jade)]"
+              className="-my-2.5 inline-flex min-h-11 min-w-0 items-center py-2.5 text-inherit transition-colors hover:text-[var(--color-jade)]"
             >
-              <span className="truncate">{name}</span>
+              {/* dir="auto": an owner's English name inside an Arabic
+                  page (or the reverse) keeps its own punctuation order. */}
+              <span dir="auto" className="truncate">{name}</span>
             </Link>
             {b.isVerified && (
               <BadgeCheck
@@ -139,7 +142,7 @@ export default function BusinessCard({ business: b, className }: Props) {
           </h3>
 
           {b.taglineAr && (
-            <p className="m-0 mt-1 line-clamp-1 text-[0.8125rem] text-[var(--color-subtle)]">
+            <p dir="auto" className="m-0 mt-1 line-clamp-1 text-start text-[0.8125rem] text-[var(--color-subtle)]">
               {b.taglineAr}
             </p>
           )}
@@ -164,7 +167,9 @@ export default function BusinessCard({ business: b, className }: Props) {
             </>
           ) : (
             <>
-              <Star size={14} aria-hidden="true" className="shrink-0 text-[var(--color-line-2)]" />
+              {/* "New", not an empty star: a grey rating under a
+                  heading about where people book reads as a bad one. */}
+              <Sparkles size={14} aria-hidden="true" className="shrink-0 text-[var(--color-jade)]" />
               <span className="text-[var(--color-subtle)]">{c.noReviews}</span>
             </>
           )}
@@ -226,20 +231,17 @@ export default function BusinessCard({ business: b, className }: Props) {
             stacked three words tall. Given a line of its own it reads
             as a sentence. */}
         <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2.5 border-t border-[var(--color-line)] pt-3.5">
-          <span className="text-[0.8125rem] text-[var(--color-subtle)]">
-            {b.minPrice !== null ? (
-              <>
-                {c.from}{" "}
-                <strong className="num text-[0.9375rem] font-extrabold text-[var(--color-ink)]">
-                  {money(b.minPrice, lang, b.currency)}
-                </strong>
-              </>
-            ) : (
-              // Never "0 ج.م": a service left at the default has no
-              // price, and saying so is more useful than saying free.
-              c.priceUnset
-            )}
-          </span>
+          {/* Never "0 ج.م", and no "price not set" either: on a card it
+              reads as a fault in the listing. The profile still says it
+              per service. */}
+          {b.minPrice !== null && (
+            <span className="text-[0.8125rem] text-[var(--color-subtle)]">
+              {c.from}{" "}
+              <strong className="num text-[0.9375rem] font-extrabold text-[var(--color-ink)]">
+                {money(b.minPrice, lang, b.currency)}
+              </strong>
+            </span>
+          )}
 
           <div className="ms-auto flex shrink-0 items-center gap-2">
             <Link href={href} className="btn btn-outline btn-sm btn-pill">

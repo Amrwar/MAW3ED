@@ -216,8 +216,11 @@ export default function ProfileHeader({ business: b, summary }: Props) {
           </div>
 
           {/* ── 9. Primary actions ── */}
-          <div id="profile-actions" className="mt-6 flex flex-wrap items-center gap-2.5">
-            <a href="#booking" className="btn btn-primary btn-pill">
+          {/* On a phone: Book across the full width, then the rest as an
+              even three-column row of icon-over-label tiles. Wrapped
+              pills of different widths came out 2–2–2 and ragged. */}
+          <div id="profile-actions" className="mt-6 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
+            <a href="#booking" className="btn btn-primary btn-pill col-span-3">
               <CalendarPlus size={16} strokeWidth={1.9} aria-hidden="true" />
               {p.bookNow}
             </a>
@@ -227,7 +230,7 @@ export default function ProfileHeader({ business: b, summary }: Props) {
                 href={whatsappHref(b.whatsapp)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-outline btn-pill"
+                className={SECONDARY}
               >
                 <MessageCircle size={16} strokeWidth={1.9} aria-hidden="true" />
                 {p.whatsapp}
@@ -235,7 +238,7 @@ export default function ProfileHeader({ business: b, summary }: Props) {
             )}
 
             {b.phone && (
-              <a href={telHref(b.phone)} className="btn btn-outline btn-pill">
+              <a href={telHref(b.phone)} className={SECONDARY}>
                 <Phone size={16} strokeWidth={1.9} aria-hidden="true" />
                 {p.call}
               </a>
@@ -247,14 +250,14 @@ export default function ProfileHeader({ business: b, summary }: Props) {
                 href={`https://www.google.com/maps/search/?api=1&query=${directionsQuery}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-outline btn-pill"
+                className={SECONDARY}
               >
                 <Navigation size={16} strokeWidth={1.9} aria-hidden="true" />
                 {p.directions}
               </a>
             )}
 
-            <button type="button" onClick={share} className="btn btn-outline btn-pill">
+            <button type="button" onClick={share} className={SECONDARY}>
               {shared ? (
                 <Check size={16} strokeWidth={2.2} aria-hidden="true" />
               ) : (
@@ -267,7 +270,7 @@ export default function ProfileHeader({ business: b, summary }: Props) {
               type="button"
               onClick={() => toggle(b.id)}
               aria-pressed={saved}
-              className={cn("btn btn-outline btn-pill", saved && "text-[var(--color-danger)]")}
+              className={cn(SECONDARY, saved && "text-[var(--color-danger)]")}
             >
               <Heart
                 size={16}
@@ -283,3 +286,8 @@ export default function ProfileHeader({ business: b, summary }: Props) {
     </header>
   );
 }
+
+/** A secondary action: a pill from sm up, a stacked tile in the phone grid. */
+const SECONDARY =
+  // `!` because .btn is unlayered CSS and would otherwise beat utilities.
+  "btn btn-outline btn-pill max-sm:min-h-16! max-sm:flex-col max-sm:gap-1! max-sm:rounded-[var(--radius-md)]! max-sm:px-1! max-sm:py-2 max-sm:text-xs!";
