@@ -1134,6 +1134,9 @@ model Payment {
 
   /// Only for SUBSCRIPTION: the plan being bought.
   plan Plan?
+  /// Only for SUBSCRIPTION: months bought, 1 or 12 (a year at ten
+  /// months' price). The webhook extends the period by this much.
+  periodMonths Int @default(1)
 
   /// Sequential and human-quotable, assigned when the money arrives.
   receiptNumber String?   @unique
@@ -1422,4 +1425,34 @@ model RateLimit {
   expiresAt DateTime
 
   @@index([expiresAt])
+}
+
+/// Somebody who searched for a kind of place that is not listed yet
+/// and asked to be told when one is: "notify me when a dentist joins".
+///
+/// What was asked for is kept as typed (lower-cased), with the city if
+/// one was chosen, so the list reads as demand: forty people waiting
+/// for a dentist in Maadi is a reason to go and sign one up. The email
+/// is used for that one message and nothing else, as the form says, and
+/// only once its owner has confirmed it: anyone can type an address.
+model WaitlistRequest {
+  id        String    @id @default(cuid())
+  email     String
+  /// The search, trimmed and lower-cased.
+  query     String
+  /// "" when no city was chosen, so the unique key below holds (a null
+  /// would make every city-less request distinct).
+  citySlug  String    @default("")
+  lang      String    @default("ar")
+  createdAt DateTime  @default(now())
+  /// Hash of the link in the confirmation email; null once confirmed.
+  confirmToken String?   @unique
+  /// Set when the link is followed. Nothing is sent to an address
+  /// before this, the confirmation email aside.
+  confirmedAt  DateTime?
+  /// Set when the "it is here" message has gone out.
+  notifiedAt DateTime?
+
+  @@unique([email, query, citySlug])
+  @@index([createdAt])
 }

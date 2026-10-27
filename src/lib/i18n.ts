@@ -185,7 +185,7 @@ export const translations = {
         {
           period:"للأبد",
           cta:"ابدأ مجانًا",
-          features:["صفحة احترافية للنشاط","حتى 30 حجز في الشهر","رابط حجز خاص","تذكيرات تلقائية للعملاء"],
+          features:["صفحة احترافية للنشاط","30 حجز بتأكيد تلقائي في الشهر","رابط حجز خاص","تذكيرات تلقائية للعملاء"],
         },
         {
           period:"ج.م / شهر",
@@ -742,15 +742,34 @@ export const translations = {
       subtitle:    "إجابات على أكثر الأسئلة شيوعًا حول موعد.",
       notFoundTitle:"لم تجد إجابة لسؤالك؟",
       contactBtn:  "تواصل معنا",
+      // General questions; the homepage shows these. The FAQ page adds
+      // the two groups below them.
       items: [
         { q:"ما هو موعد؟",                              a:"موعد منصة عربية لحجز المواعيد واكتشاف الأنشطة والخدمات في مصر. بيوصّل العملاء بالعيادات والصالونات والجيمات والمراكز وغيرها." },
-        { q:"هل الاستخدام مجاني؟",                     a:"نعم، الاستخدام مجاني للعملاء بشكل كامل. لأصحاب الأعمال، هناك خطة مجانية مع إمكانية الترقية للخطط المدفوعة." },
-        { q:"كيف أضيف نشاطي التجاري؟",                a:"أنشئ حسابًا على موعد، ثم أضف بيانات نشاطك من خدمات وأسعار وأوقات عمل. ستحصل فورًا على صفحة احترافية ورابط حجز خاص بك." },
-        { q:"هل يمكنني إلغاء الاشتراك في أي وقت؟",    a:"نعم، يمكنك إلغاء اشتراكك في أي وقت دون أي رسوم إضافية." },
-        { q:"هل بياناتي آمنة؟",                       a:"كل الاتصال بالموقع والتطبيق مشفّر (HTTPS)، وكلمات المرور متخزنة مشفّرة، ومش بنبيع بياناتك. التفاصيل في سياسة الخصوصية." },
+        { q:"هل الاستخدام مجاني؟",                     a:"نعم، الحجز مجاني للعملاء بالكامل، وموعد مش بياخد رسوم حجز. لأصحاب الأنشطة فيه باقة مجانية وباقات مدفوعة." },
+        { q:"محتاج أعمل حساب عشان أحجز؟",              a:"لأ. بتختار الخدمة والميعاد وتكتب اسمك ورقم موبايلك وخلاص. الحساب اختياري، بيجمع حجوزاتك وأماكنك المحفوظة في مكان واحد." },
         { q:"كيف يتلقى العملاء تأكيد الحجز؟",          a:"العميل بيشوف تأكيد الحجز على الشاشة على طول، وبيوصله على البريد الإلكتروني لو كتبه، وعلى واتساب لو باقة النشاط فيها واتساب، وفي حسابه على موعد لو عنده حساب. وقبل الميعاد بيوصله تذكير تلقائي." },
-        { q:"هل يعمل موعد على الهاتف المحمول؟",        a:"نعم، موعد يعمل بشكل كامل على جميع الأجهزة — الهاتف المحمول، التابلت، والكمبيوتر." },
+        { q:"أقدر ألغي أو أغيّر ميعادي؟",               a:"أيوه، من رابط الحجز اللي وصلك، لحد قبل الميعاد بساعتين. بعد كده كلّم المكان مباشرة." },
+        { q:"هل بياناتي آمنة؟",                       a:"كل الاتصال بالموقع والتطبيق مشفّر (HTTPS)، وكلمات المرور متخزنة مشفّرة، ومش بنبيع بياناتك. التفاصيل في سياسة الخصوصية." },
         { q:"كيف أتواصل مع فريق الدعم؟",              a:`يمكنك التواصل معنا عبر صفحة تواصل معنا أو عبر البريد الإلكتروني ${SUPPORT_EMAIL}` },
+      ],
+      customerTitle: "للعملاء",
+      customerItems: [
+        { q:"لحد إمتى أقدر ألغي أو أغيّر الحجز؟",       a:"لحد قبل الميعاد بساعتين، من رابط الحجز في رسالة التأكيد أو من حسابك. أقل من ساعتين؟ كلّم المكان على التليفون أو واتساب من صفحته." },
+        { q:"ليه في أماكن بتطلب عربون؟",               a:"بعض الأماكن بتطلب جزء من السعر أونلاين وقت الحجز عشان تضمن الميعاد. بتدفعه بالكارت أو المحفظة على صفحة Paymob، والباقي بتدفعه للمكان. السعر والعربون بيبانوا قبل ما تأكد." },
+        { q:"لو لغيت، العربون بيرجع؟",                  a:"الإلغاء مش بيرجّع العربون لوحده. كلّم المكان، ولو الاسترداد مستحق، موعد بيرجّعه على نفس الكارت أو المحفظة. لو مدفعتش لسه، الإلغاء بيقفل صفحة الدفع ومش بيتخصم منك حاجة." },
+        { q:"ليه حجزي مكتوب «مستني التأكيد»؟",          a:"بعض الأماكن بتراجع كل حجز بنفسها قبل ما تأكده. أول ما يأكدوه بيوصلك تأكيد، ولو رفضوه بيوصلك برضه عشان تختار ميعاد تاني." },
+        { q:"لو مقدرتش أروح؟",                          a:"ألغي أو غيّر الميعاد من رابط الحجز قبلها بساعتين على الأقل، عشان المكان يدّي الوقت لحد تاني. المكان بيقدر يسجّل الميعاد اللي محدش حضره كـ«محضرش»." },
+        { q:"إزاي أكتب تقييم؟",                         a:"بعد ميعادك بيوصلك طلب تقييم. التقييمات بتيجي من ناس حجزت فعلًا، عشان كده كل تقييم على موعد مربوط بحجز حقيقي." },
+      ],
+      businessTitle: "لأصحاب الأنشطة",
+      businessItems: [
+        { q:"كيف أضيف نشاطي التجاري؟",                a:"أنشئ حسابًا على موعد، ثم أضف بيانات نشاطك من خدمات وأسعار وأوقات عمل. ستحصل فورًا على صفحة احترافية ورابط حجز خاص بك." },
+        { q:"إيه اللي بيحصل بعد 30 حجز في الباقة المجانية؟", a:"العملاء بيفضلوا يحجزوا عادي. الحجوزات اللي فوق الـ30 في الشهر بتوصلك مستنية تأكيدك بإيدك لحد أول الشهر الجاي، أو لحد ما ترقّي باقتك." },
+        { q:"إزاي بدفع الاشتراك؟",                       a:"شهر بشهر، أو سنة مقدّمًا بسعر 10 شهور، عن طريق Paymob بالكارت أو المحفظة. مفيش خصم تلقائي: بنفكّرك قبل ما الفترة تخلص." },
+        { q:"هل يمكنني إلغاء الاشتراك في أي وقت؟",    a:"نعم. مفيش تجديد تلقائي، فكفاية متجدّدش. مميزات باقتك بتفضل لحد آخر الفترة اللي دفعتها، وبعدها بترجع للباقة المجانية وصفحتك بتفضل ظاهرة." },
+        { q:"أقدر آخد عربون من العملاء؟",              a:"أيوه في الباقات المدفوعة. بتحدد النسبة، والعميل بيدفعها أونلاين وقت الحجز، والفلوس بتتسجل مع الحجز في لوحة التحكم." },
+        { q:"إزاي أخلّي الحجوزات تتأكد لوحدها؟",        a:"من الإعدادات، في «أوقات العمل»، فعّل «تأكيد الحجوزات الأونلاين تلقائيًا». من غيره كل حجز بيستناك تأكده أو ترفضه، والعميل بيوصله الرد في الحالتين." },
       ],
     },
     pricing: {
@@ -765,8 +784,8 @@ export const translations = {
       faqTitle:   "أسئلة شائعة",
       faqs: [
         { q:"هل يمكنني إلغاء الاشتراك؟",                      a:"نعم، يمكنك التوقف عن التجديد في أي وقت. ستستمر مميزات خطتك حتى نهاية فترة الاشتراك." },
-        { q:"كيف يتم الدفع؟",                                 a:"يتم الدفع شهريًا عبر بوابة Paymob الآمنة. نقبل بطاقات الائتمان والمحافظ الإلكترونية." },
-        { q:"ماذا يحدث إذا تجاوزت الحد الشهري للحجوزات؟",   a:"سيتوقف قبول الحجوزات الجديدة حتى بداية الشهر التالي أو حتى ترقية خطتك." },
+        { q:"كيف يتم الدفع؟",                                 a:"بتدفع شهر بشهر، أو سنة مقدّمًا بسعر 10 شهور، عن طريق بوابة Paymob الآمنة بالكارت أو المحفظة الإلكترونية. مفيش خصم تلقائي: قبل ما الفترة تخلص بنفكّرك تجدّد." },
+        { q:"ماذا يحدث إذا تجاوزت الحد الشهري للحجوزات؟",   a:"العملاء بيفضلوا يحجزوا عادي. الحجوزات اللي فوق الحد بتوصلك مستنية تأكيدك بإيدك لحد أول الشهر الجاي، أو لحد ما ترقّي باقتك." },
         { q:"هل البيانات الخاصة بي آمنة؟",                   a:"مش بنبيع بياناتك، وبنشاركها بس مع مزوّدي الخدمة اللي محتاجينهم لتشغيل المنصة (زي الدفع والرسائل والاستضافة). القائمة كاملة في سياسة الخصوصية." },
       ],
     },
@@ -1224,7 +1243,7 @@ export const translations = {
         {
           period:"forever",
           cta:"Start free",
-          features:["Professional business page","Up to 30 bookings a month","Custom booking link","Automatic customer reminders"],
+          features:["Professional business page","30 auto-confirmed bookings a month","Custom booking link","Automatic customer reminders"],
         },
         {
           period:"EGP / month",
@@ -1781,15 +1800,34 @@ export const translations = {
       subtitle:     "Answers to the most common questions about Maw3ed.",
       notFoundTitle:"Didn't find an answer?",
       contactBtn:   "Contact Us",
+      // General questions; the homepage shows these. The FAQ page adds
+      // the two groups below them.
       items: [
         { q:"What is Maw3ed?",                          a:"Maw3ed is an Arabic appointment booking platform for discovering businesses and services in Egypt. It connects customers with clinics, salons, gyms, centers and more." },
-        { q:"Is it free to use?",                       a:"Yes, it's completely free for customers. For business owners, there's a free plan with the option to upgrade to paid plans for additional features." },
-        { q:"How do I add my business?",                a:"Create an account on Maw3ed, then add your business details including services, prices, and working hours. You'll immediately get a professional page and a custom booking link." },
-        { q:"Can I cancel my subscription anytime?",    a:"Yes, you can cancel your subscription at any time with no extra charges." },
-        { q:"Is my data secure?",                       a:"Every connection to the website and app is encrypted (HTTPS), passwords are stored hashed, and we never sell your data. The privacy policy has the details." },
+        { q:"Is it free to use?",                       a:"Yes. Booking is completely free for customers and Maw3ed charges no booking fee. Businesses have a free plan and paid plans." },
+        { q:"Do I need an account to book?",            a:"No. Pick the service and time, enter your name and mobile number, and that's it. An account is optional; it keeps your bookings and saved places in one place." },
         { q:"How do customers receive booking confirmations?", a:"Customers see the confirmation on screen straight away. They also get it by email if they gave one, on WhatsApp if the business's plan includes WhatsApp, and in their Maw3ed account if they have one — plus an automatic reminder before the appointment." },
-        { q:"Does Maw3ed work on mobile?",              a:"Yes, Maw3ed works fully on all devices — mobile phones, tablets, and computers." },
+        { q:"Can I cancel or change my booking?",       a:"Yes, from the link in your booking confirmation, up to two hours before the appointment. After that, contact the business directly." },
+        { q:"Is my data secure?",                       a:"Every connection to the website and app is encrypted (HTTPS), passwords are stored hashed, and we never sell your data. The privacy policy has the details." },
         { q:"How do I contact the support team?",       a:`You can reach us via the Contact Us page or by email at ${SUPPORT_EMAIL}` },
+      ],
+      customerTitle: "For customers",
+      customerItems: [
+        { q:"How late can I cancel or change a booking?", a:"Up to two hours before it starts, from the link in your confirmation or from your account. Less than two hours? Call or WhatsApp the business from its page." },
+        { q:"Why do some places ask for a deposit?",     a:"Some places take part of the price online when you book, to hold the time for you. You pay it by card or wallet on Paymob's page and pay the rest at the business. The price and deposit are shown before you confirm." },
+        { q:"If I cancel, do I get the deposit back?",   a:"Cancelling does not refund a deposit by itself. Contact the business; if a refund is due, Maw3ed returns it to the same card or wallet. If you had not paid yet, cancelling closes the payment page and nothing is charged." },
+        { q:"Why does my booking say “awaiting confirmation”?", a:"Some places review each booking before confirming it. You are told as soon as they confirm, and also if they decline, so you can pick another time." },
+        { q:"What if I can't make it?",                  a:"Cancel or move the booking from its link at least two hours before, so the place can give the time to someone else. The business can mark a missed appointment as a no-show." },
+        { q:"How do I leave a review?",                  a:"You are asked for a review after your appointment. Reviews come from people who actually booked, so every review on Maw3ed is tied to a real booking." },
+      ],
+      businessTitle: "For businesses",
+      businessItems: [
+        { q:"How do I add my business?",                a:"Create an account on Maw3ed, then add your business details including services, prices, and working hours. You'll immediately get a professional page and a custom booking link." },
+        { q:"What happens after 30 bookings on the free plan?", a:"Customers can still book. Bookings beyond 30 in a month wait for you to confirm them by hand until the next month starts, or until you upgrade." },
+        { q:"How do I pay for a plan?",                 a:"Month by month, or a year up front for the price of 10 months, through Paymob by card or wallet. Nothing renews automatically: we remind you before your period ends." },
+        { q:"Can I cancel my subscription anytime?",    a:"Yes. Nothing renews automatically, so simply don't renew. Your plan's features last until the end of the period you paid for, then you move to the free plan and your page stays up." },
+        { q:"Can I take deposits from customers?",      a:"Yes, on the paid plans. You set the percentage, the customer pays it online when booking, and the money is recorded with the booking in your dashboard." },
+        { q:"How do I have bookings confirmed automatically?", a:"In settings, under Working Hours, turn on “Confirm online bookings automatically”. Without it, each booking waits for you to confirm or decline it, and the customer is told either way." },
       ],
     },
     pricing: {
@@ -1804,8 +1842,8 @@ export const translations = {
       faqTitle:   "Frequently Asked Questions",
       faqs: [
         { q:"Can I cancel my subscription?",           a:"Yes, you can stop renewing at any time. Your plan's features will continue until the end of the billing period." },
-        { q:"How do I pay?",                           a:"Payments are made monthly through the secure Paymob gateway. We accept credit cards and digital wallets." },
-        { q:"What happens if I exceed the monthly booking limit?",a:"New bookings will be paused until the next month starts or until you upgrade your plan." },
+        { q:"How do I pay?",                           a:"Month by month, or a year up front for the price of 10 months, through the secure Paymob gateway by card or mobile wallet. Nothing is charged automatically: we remind you before your period ends." },
+        { q:"What happens if I exceed the monthly booking limit?",a:"Customers can still book. Bookings over the limit wait for you to confirm them by hand until the next month starts, or until you upgrade." },
         { q:"Is my data secure?",                      a:"We never sell your data. We share it only with the providers needed to run the service (such as payments, messaging and hosting); the privacy policy lists them all." },
       ],
     },

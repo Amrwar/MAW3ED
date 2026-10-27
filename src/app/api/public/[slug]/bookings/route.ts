@@ -230,6 +230,9 @@ export async function POST(req: Request, { params }: Params) {
       discount:       applied ? { id: applied.id, amountCents: applied.amountCents } : null,
       idempotencyKey: idempotencyKey ?? null,
       monthlyLimit:   getMonthlyBookingLimit(effectivePlan),
+      // Past the free plan's allowance the booking still goes in, held
+      // for the owner to confirm; the owner is the one asked to upgrade.
+      overLimit:      "hold",
     });
 
     if (!result.ok) {

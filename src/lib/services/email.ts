@@ -21,6 +21,7 @@ import {
   subscriptionRenewalReminderHtml,
   subscriptionExpiredHtml,
   emailVerificationHtml,
+  waitlistConfirmHtml,
 } from "./email-templates";
 import { log } from "@/lib/logger";
 import { arCount, money } from "@/lib/fmt";
@@ -156,6 +157,20 @@ export async function sendPasswordResetEmail(
     to:      to.trim(),
     subject: "🔐 تغيير كلمة المرور — موعد",
     html:    passwordResetHtml(resetUrl),
+  });
+}
+
+/** The one email a waitlist address gets before it is confirmed. */
+export async function sendWaitlistConfirmation(
+  to: string,
+  confirmUrl: string,
+  query: string,
+  lang: "ar" | "en",
+): Promise<SendOutcome> {
+  return sendEmail({
+    to,
+    subject: lang === "en" ? "Confirm your Maw3ed alert" : "أكّد التنبيه من موعد",
+    html: waitlistConfirmHtml(confirmUrl, query, lang),
   });
 }
 

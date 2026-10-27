@@ -166,7 +166,7 @@ describe("featureRows", () => {
     const pro = featureRows("PRO");
     expect(pro.find((r) => r.key === "monthlyBookings")?.ar).toBe("حجوزات غير محدودة");
     expect(pro.find((r) => r.key === "staffMembers")?.ar).toBe("حتى 10 أفراد");
-    expect(featureRows("FREE").find((r) => r.key === "monthlyBookings")?.ar).toBe("30 حجز شهريًا");
+    expect(featureRows("FREE").find((r) => r.key === "monthlyBookings")?.ar).toBe("30 حجز بتأكيد تلقائي شهريًا");
   });
 
   it("labels a comparison row by the feature, not by any plan's value", () => {

@@ -134,8 +134,8 @@ export default function DashboardHomeClient({
       </div>
 
       {/* ── Setup prompt ── */}
-      {/* At 80% of a capped plan, before customers start being turned
-          away rather than after. */}
+      {/* At 80% of a capped plan, before bookings start waiting on the
+          owner rather than after. */}
       {allowance && allowance.used >= Math.ceil(allowance.limit * 0.8) && (
         <div
           role="status"
@@ -156,11 +156,11 @@ export default function DashboardHomeClient({
               <p className="m-0 mt-1 text-[0.78125rem] leading-relaxed text-[var(--color-warn)]/85">
                 {allowance.used >= allowance.limit
                   ? lang === "en"
-                    ? "Customers can't book online until next month. Upgrade to keep taking bookings."
-                    : "العملاء مش هيقدروا يحجزوا أونلاين لحد الشهر الجاي. رقّي باقتك عشان تفضل تستقبل حجوزات."
+                    ? "Customers can still book, but until next month each new booking waits for you to confirm it. Upgrade for unlimited auto-confirmed bookings."
+                    : "العملاء لسه بيقدروا يحجزوا، بس لحد الشهر الجاي كل حجز جديد هيستنى تأكيدك. رقّي باقتك عشان الحجوزات تتأكد تلقائي من غير حد."
                   : lang === "en"
-                    ? "When the limit is reached, customers can't book online until next month."
-                    : "لما توصل للحد، العملاء مش هيقدروا يحجزوا أونلاين لحد الشهر الجاي."}
+                    ? "Past the limit, customers can still book, but each new booking waits for you to confirm it until next month."
+                    : "بعد الحد، العملاء هيفضلوا يحجزوا، بس كل حجز جديد هيستنى تأكيدك لحد الشهر الجاي."}
               </p>
             </div>
           </div>

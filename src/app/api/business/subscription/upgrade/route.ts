@@ -2,11 +2,11 @@
  * POST /api/business/subscription/upgrade
  *
  * Initiates a Paymob payment session to upgrade the business subscription plan.
- * Body: { plan: "PRO" | "PREMIUM" }
+ * Body: { plan: "PRO" | "PREMIUM", cycle?: "monthly" | "annual" }
  *
  * Flow:
  *  1. Validate the requested plan
- *  2. Create a Paymob payment session for the monthly subscription fee
+ *  2. Create a Paymob payment session for a month, or a year at ten months' price
  *  3. Store pendingPlan + subscriptionPaymobOrderId on the business
  *  4. Return { paymentUrl } — client redirects there
  *
@@ -16,7 +16,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
-import { PAID_PLANS } from "@/lib/plans";
+import { BILLING_CYCLES, PAID_PLANS, cycleMonths } from "@/lib/plans";
 import { createSubscriptionPaymentSession } from "@/lib/services/paymob";
 import { attachProviderOrder, openPayment } from "@/lib/payments/ledger";
 import { canPurchase, priceCentsFor } from "@/lib/payments/subscription";
@@ -26,6 +26,7 @@ const upgradeSchema = z.object({
   // From the matrix, so a new paid tier is purchasable without this
   // route having to be told about it.
   plan: z.enum(PAID_PLANS),
+  cycle: z.enum(BILLING_CYCLES).default("monthly"),
 });
 
 export async function POST(req: Request) {
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
     const parsed = upgradeSchema.safeParse(body);
     if (!parsed.success) return err("خطة غير صالحة", 422);
 
-    const { plan } = parsed.data;
+    const { plan, cycle } = parsed.data;
 
     // Asked by rank, not by plan name. The old version compared
     // "PREMIUM" to "PRO" directly, which is a fact about the tier
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
 
     const ownerName  = owner?.name ?? business.nameAr;
     const ownerPhone = business.phone ?? business.whatsapp ?? "01000000000";
-    const amountCents = priceCentsFor(plan);
+    const amountCents = priceCentsFor(plan, cycle);
 
     // Opened before the owner leaves, so an abandoned upgrade is a
     // PENDING row naming the plan rather than nothing at all.
@@ -70,6 +71,8 @@ export async function POST(req: Request) {
       businessId: business.id,
       plan,
       amountCents,
+      // What the webhook adds to the period when the money arrives.
+      periodMonths: cycleMonths(cycle),
     });
 
     try {

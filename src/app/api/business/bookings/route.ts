@@ -7,7 +7,6 @@ import { bookingScope, can, requireBusinessAccess } from "@/lib/business-access"
 import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { generateReference } from "@/lib/bookings/reference";
-import { getEffectivePlan, getMonthlyBookingLimit, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
 import { isoDate, pageParam, parseQuery } from "@/lib/query-params";
@@ -173,28 +172,11 @@ export async function POST(req: Request) {
 
     const { serviceId, date, startTime, customerName, customerPhone, notes } = parsed.data;
 
-    // ── Enforce monthly booking limit ─────────────────────────────────────────
-    const effectivePlan = getEffectivePlan(
-      business.plan as Plan,
-      business.subscriptionStatus as SubscriptionStatus,
-      business.trialEndsAt,
-    );
-    const monthlyLimit = getMonthlyBookingLimit(effectivePlan);
-    if (isFinite(monthlyLimit)) {
-      const now        = new Date();
-      const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-      const monthEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-      const count = await db.booking.count({
-        where: {
-          businessId: business.id,
-          createdAt:  { gte: monthStart, lt: monthEnd },
-          status:     { notIn: ["FAILED_PAYMENT", "CANCELLED"] },
-        },
-      });
-      if (count >= monthlyLimit) {
-        return err(`وصلت لأقصى عدد حجوزات في باقتك الشهر ده (${monthlyLimit}). رقّي باقتك عشان تكمّل تستقبل حجوزات.`, 429);
-      }
-    }
+    // No monthly limit here. The free plan's allowance decides whether
+    // a customer's online booking is confirmed on the spot or waits for
+    // the owner (lib/bookings/create, overLimit "hold"); a booking the
+    // owner keys in is already theirs, and refusing it made the owner
+    // the one person past the limit who could not add a booking.
 
     // Validate service belongs to this business
     const service = await db.service.findFirst({

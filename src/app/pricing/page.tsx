@@ -6,9 +6,14 @@ import { Check, Minus, Zap, Crown, Sparkles, ChevronDown, MessageCircle, ArrowRi
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PageHero from "@/components/shared/PageHero";
+import BillingCycleToggle from "@/components/shared/BillingCycleToggle";
 import { Table } from "@/components/ui/Table";
 import {
   PLAN_PRICES_EGP,
+  ANNUAL_MONTHS_CHARGED,
+  fullYearPriceEgp,
+  planPriceEgp,
+  type BillingCycle,
   PLAN_NAMES_AR,
   PLAN_NAMES_EN,
   FEATURE_ORDER,
@@ -105,6 +110,7 @@ export default function PricingPage() {
     rowsFor(planId).find((r) => r.key === key)!;
   const planNames    = isAr ? PLAN_NAMES_AR    : PLAN_NAMES_EN;
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [cycle, setCycle] = useState<BillingCycle>("monthly");
 
   const planCtas: Record<PlanId, string> = {
     FREE:    isAr ? "ابدأ مجانًا"       : "Start free",
@@ -149,13 +155,18 @@ export default function PricingPage() {
 
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20 relative z-10">
 
+            {/* ── Monthly / yearly ──────────────────────────── */}
+            <div className="mb-10 flex justify-center">
+              <BillingCycleToggle value={cycle} onChange={setCycle} lang={lang} />
+            </div>
+
             {/* ── Plan cards ──────────────────────────────── */}
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5 items-start">
               {PLAN_ORDER.map((planId) => {
                 const cfg    = PLANS_CONFIG[planId];
                 const Icon   = cfg.icon;
-                const price  = PLAN_PRICES_EGP[planId];
-                const isFree = price === 0;
+                const isFree = PLAN_PRICES_EGP[planId] === 0;
+                const price  = isFree ? 0 : planPriceEgp(planId as Exclude<PlanId, "FREE">, cycle);
                 const { featured } = cfg;
 
                 return (
@@ -259,8 +270,14 @@ export default function PricingPage() {
                                 {isAr ? "ج.م" : "EGP"}
                               </span>
                             </div>
+                            {/* Each period is paid for on its own; nothing is
+                                charged without the owner paying it. */}
                             <p className="text-xs text-[var(--color-subtle)] mt-1">
-                              {isAr ? "شهريًا · يُجدَّد تلقائيًا" : "per month · auto-renewed"}
+                              {cycle === "annual"
+                                ? (isAr
+                                    ? `في السنة · بدل ${fullYearPriceEgp(planId as Exclude<PlanId, "FREE">).toLocaleString("en-US")} ج.م، بتدفع ${ANNUAL_MONTHS_CHARGED} شهور بس`
+                                    : `per year · instead of ${fullYearPriceEgp(planId as Exclude<PlanId, "FREE">).toLocaleString("en-US")} EGP, you pay for ${ANNUAL_MONTHS_CHARGED} months`)
+                                : (isAr ? "شهريًا · بتجدّد بنفسك، من غير خصم تلقائي" : "per month · you renew it, nothing is charged automatically")}
                             </p>
                           </>
                         )}

@@ -15,7 +15,9 @@ const DURATION_OPTIONS = [
   { value: 180, label: "3 ساعات" },
 ];
 
-const EMPTY_SERVICE: ServiceItem = { nameAr: "", duration: 30, price: 0 };
+// No preset length or price: a default 30 minutes and 0 were kept as
+// they were, and the site filled with "30 min · Price not set".
+const EMPTY_SERVICE: ServiceItem = { nameAr: "", duration: 0, price: 0 };
 
 interface Props {
   data:   OnboardingData;
@@ -47,10 +49,10 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
   function handleNext() {
     setError(null);
     const valid = services.every(
-      (s) => s.nameAr.trim().length >= 2 && s.duration > 0 && s.price >= 0
+      (s) => s.nameAr.trim().length >= 2 && s.duration > 0 && s.price > 0
     );
     if (!valid || services.length === 0) {
-      setError("أضف خدمة واحدة على الأقل وتأكد من اكتمال البيانات");
+      setError("لكل خدمة اكتب الاسم واختار المدة واكتب السعر. تقدر تضيف خدمات مجانية بعدين من لوحة التحكم.");
       return;
     }
     onNext({ services });
@@ -107,7 +109,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
               {/* Duration */}
               <div>
                 <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
-                  المدة
+                  المدة <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <select
                   aria-label="المدة"
@@ -115,6 +117,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
                   onChange={(e) => updateService(i, "duration", Number(e.target.value))}
                   className="input text-sm"
                 >
+                  <option value={0} disabled>اختار المدة</option>
                   {DURATION_OPTIONS.map((d) => (
                     <option key={d.value} value={d.value}>
                       {d.label}
@@ -126,7 +129,7 @@ export default function Step3Services({ data, onNext, onBack }: Props) {
               {/* Price */}
               <div>
                 <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
-                  السعر (ج.م)
+                  السعر (ج.م) <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <input
                   type="number"

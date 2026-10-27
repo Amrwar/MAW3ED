@@ -108,6 +108,7 @@ export default async function SettingsPage() {
         reviewRequestEnabled: business.reviewRequestEnabled,
       }}
       depositEnabled={business.depositEnabled}
+      autoConfirm={business.autoConfirm}
       depositPercent={business.depositPercent}
       plan={business.plan as Plan}
       subscriptionStatus={business.subscriptionStatus as SubscriptionStatus}

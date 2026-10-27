@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import { arCount } from "@/lib/fmt";
+import BillingCycleToggle from "@/components/shared/BillingCycleToggle";
 import { Zap, CheckCircle, Loader2, Crown, Star, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
 import {
   PLANS,
   PAID_PLANS,
   PLAN_NAMES_AR,
-  PLAN_PRICES_EGP,
+  fullYearPriceEgp,
+  planPriceEgp,
   featureRows,
   isUpgrade,
   planAtLeast,
+  type BillingCycle,
   type Plan,
   type SubscriptionStatus,
 } from "@/lib/plans";
@@ -44,6 +47,8 @@ export default function SubscriptionPanel({
 }: SubscriptionPanelProps) {
   const [loading, setLoading] = useState<Plan | null>(null);
   const [error,   setError]   = useState<string | null>(null);
+  // Applies to renewals too: a year paid up front is ten months' price.
+  const [cycle,   setCycle]   = useState<BillingCycle>("monthly");
 
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
   const isInactive     = subscriptionStatus === "INACTIVE" && plan !== "FREE";
@@ -58,7 +63,7 @@ export default function SubscriptionPanel({
       const res  = await fetch("/api/business/subscription/upgrade", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ plan: targetPlan }),
+        body:    JSON.stringify({ plan: targetPlan, cycle }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -75,8 +80,20 @@ export default function SubscriptionPanel({
 
   const isTrial = subscriptionStatus === "TRIAL";
 
+  // A renewal follows the monthly/yearly switch above, so the button
+  // says what it will charge rather than leaving that to the toggle.
+  const renewLabel = (verb: string) =>
+    plan === "FREE"
+      ? verb
+      : `${verb} — ${planPriceEgp(plan, cycle).toLocaleString("en")} جنيه ${cycle === "annual" ? "لسنة" : "لشهر"}`;
+
   return (
     <div className="space-y-6">
+
+      {/* Monthly or yearly — read by every button below, renewals included. */}
+      {!isTopPlan || isInactive || isExpiringSoon ? (
+        <BillingCycleToggle value={cycle} onChange={setCycle} lang="ar" />
+      ) : null}
 
       {/* Expired / inactive banner */}
       {isInactive && (
@@ -95,7 +112,7 @@ export default function SubscriptionPanel({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-danger)] text-white text-sm font-bold hover:bg-[var(--color-danger)] transition-colors disabled:opacity-50 shrink-0"
             >
               {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-              تجديد
+              {renewLabel("تجديد")}
             </button>
           </div>
         </div>
@@ -120,7 +137,7 @@ export default function SubscriptionPanel({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-warn)] text-white text-sm font-bold hover:bg-[var(--color-warn)] transition-colors disabled:opacity-50 shrink-0"
             >
               {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-              تجديد الآن
+              {renewLabel("تجديد الآن")}
             </button>
           </div>
         </div>
@@ -210,9 +227,16 @@ export default function SubscriptionPanel({
                         </span>
                       )}
                     </div>
-                    <span className="font-extrabold text-lg text-[var(--color-text-primary)]" dir="ltr">
-                      {PLAN_PRICES_EGP[targetPlan]} جنيه
-                      <span className="text-xs font-normal text-[var(--color-text-muted)]">/شهر</span>
+                    <span className="text-end">
+                      <span className="block font-extrabold text-lg text-[var(--color-text-primary)]">
+                        {planPriceEgp(targetPlan, cycle).toLocaleString("en")} جنيه
+                        <span className="text-xs font-normal text-[var(--color-text-muted)]">{cycle === "annual" ? " / سنة" : " / شهر"}</span>
+                      </span>
+                      {cycle === "annual" && (
+                        <span className="block text-[0.6875rem] text-[var(--color-ok)]">
+                          بدل {fullYearPriceEgp(targetPlan).toLocaleString("en")} جنيه — شهرين ببلاش
+                        </span>
+                      )}
                     </span>
                   </div>
 

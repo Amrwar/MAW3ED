@@ -40,6 +40,8 @@ export interface OpenPaymentInput {
   bookingId?: string | null;
   /** Required for SUBSCRIPTION. */
   plan?: Plan | null;
+  /** SUBSCRIPTION only: 12 for a year paid up front, otherwise 1. */
+  periodMonths?: 1 | 12;
   /** The provider's order id, once we have one. */
   providerOrderId?: string | null;
 }
@@ -65,6 +67,7 @@ export async function openPayment(input: OpenPaymentInput): Promise<Payment> {
       provider: input.provider ?? "PAYMOB",
       bookingId: input.kind === "SUBSCRIPTION" ? null : (input.bookingId ?? null),
       plan: input.kind === "SUBSCRIPTION" ? (input.plan ?? null) : null,
+      periodMonths: input.kind === "SUBSCRIPTION" ? (input.periodMonths ?? 1) : 1,
       providerOrderId: input.providerOrderId ?? null,
       status: "PENDING",
     },

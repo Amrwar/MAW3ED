@@ -87,6 +87,10 @@ export default async function PrivacyPage() {
             والملاحظات اللي النشاط بيسجلها عنده.
           </li>
           <li>
+            <strong>قائمة الانتظار:</strong> لو طلبت نبلّغك لما نوع مكان مش موجود يتضاف، بنحفظ إيميلك والكلمة اللي دوّرت
+            بيها والمدينة. بنبعت إيميل تأكيد الأول، ولو مأكدتش مش هيوصلك غيره. بعد التأكيد بنبعت إيميل واحد لما يتضاف مكان مناسب، ومش بنضيفك لأي قائمة تانية.
+          </li>
+          <li>
             <strong>المدفوعات:</strong> المبلغ والحالة وطريقة الدفع وأرقام العملية عند Paymob. بيانات الكارت بتتكتب على صفحة
             Paymob مباشرةً ومش بتوصل لموعد خالص.
           </li>
@@ -240,6 +244,10 @@ export default async function PrivacyPage() {
             customer records and notes a business keeps.
           </li>
           <li>
+            <strong>Waitlist:</strong> if you ask to be told when a kind of place is listed, we keep your email, what you
+            searched for and the city. We send a confirmation email first, and nothing else unless you confirm. Once confirmed, it is used for one email when a match is listed, and not added to any other list.
+          </li>
+          <li>
             <strong>Payments:</strong> amount, status, method and Paymob transaction references. Card details are entered on
             Paymob&apos;s own page and never reach Maw3ed.
           </li>
@@ -368,7 +376,7 @@ export default async function PrivacyPage() {
     <LegalPage
       path="/privacy"
       title={{ ar: "سياسة الخصوصية", en: "Privacy Policy" }}
-      updated={{ ar: "آخر تحديث: 14 أكتوبر 2026", en: "Last updated: 14 October 2026" }}
+      updated={{ ar: "آخر تحديث: 27 أكتوبر 2026", en: "Last updated: 27 October 2026" }}
       body={{ ar, en }}
     />
   );

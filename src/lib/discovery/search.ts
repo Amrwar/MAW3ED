@@ -14,6 +14,7 @@ import {
 import { firstFree, loadSchedules, type NextSlot } from "./next-free";
 import { timeToMinutes } from "@/lib/bookings/time";
 import { searchTerms } from "./synonyms";
+import { settleInstantBadges } from "@/lib/bookings/allowance";
 
 /**
  * The discovery query.
@@ -313,7 +314,7 @@ export async function cardsForIds(ids: string[], q: DiscoveryQuery, now: Date = 
     select: SELECT,
   });
   const mapped = rows.map((r) => toBusiness(r, dayOfWeek, time));
-  await attachNextSlots(mapped, now);
+  await Promise.all([attachNextSlots(mapped, now), settleInstantBadges(mapped, now)]);
   return mapped;
 }
 
@@ -430,6 +431,8 @@ export async function searchBusinesses(
     ? ordered.slice((q.page - 1) * PAGE_SIZE, q.page * PAGE_SIZE)
     : ordered;
   if (q.sort !== "soonest") await attachNextSlots(businesses, now);
+  // Only the page shown: the badge is what the card says.
+  await settleInstantBadges(businesses, now);
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   return {
