@@ -21,6 +21,7 @@ export default function Breadcrumbs({
   label,
   className,
   onDark = false,
+  singleLine = false,
 }: {
   items: Crumb[];
   lang: "ar" | "en";
@@ -28,17 +29,23 @@ export default function Breadcrumbs({
   className?: string;
   /** On a --color-night bar, where the light-surface colours vanish. */
   onDark?: boolean;
+  /**
+   * Never wrap: the earlier crumbs keep their width and the last one is
+   * cut short with an ellipsis. For a phone, where a long business name
+   * pushed the trail onto two lines.
+   */
+  singleLine?: boolean;
 }) {
   if (items.length === 0) return null;
   const Separator = lang === "ar" ? ChevronLeft : ChevronRight;
 
   return (
     <nav aria-label={label} className={cn("min-w-0", className)}>
-      <ol className="m-0 flex list-none flex-wrap items-center gap-1 p-0 text-[0.8125rem]">
+      <ol className={cn("m-0 flex list-none items-center gap-1 p-0 text-[0.8125rem]", singleLine ? "flex-nowrap" : "flex-wrap")}>
         {items.map((item, i) => {
           const last = i === items.length - 1;
           return (
-            <li key={`${item.label}-${i}`} className="flex min-w-0 items-center gap-1">
+            <li key={`${item.label}-${i}`} className={cn("flex min-w-0 items-center gap-1", singleLine && !last && "shrink-0")}>
               {i > 0 && (
                 <Separator
                   size={13}
@@ -49,17 +56,19 @@ export default function Breadcrumbs({
               {last || !item.href ? (
                 <span
                   aria-current={last ? "page" : undefined}
-                  className={cn("flex min-h-11 items-center truncate font-bold", onDark ? "text-[var(--color-inverse)]" : "text-[var(--color-ink)]")}
+                  className={cn("flex min-h-11 min-w-0 items-center font-bold", onDark ? "text-[var(--color-inverse)]" : "text-[var(--color-ink)]")}
                   title={item.label}
                 >
-                  {item.label}
+                  {/* The ellipsis goes on an inner box: bare text in a
+                      flex container is clipped without one. */}
+                  <span className="truncate">{item.label}</span>
                 </span>
               ) : (
                 <Link
                   href={item.href}
-                  className={cn("flex min-h-11 items-center truncate transition-colors", onDark ? "text-[var(--color-night-text)] hover:text-[var(--color-inverse)]" : "text-[var(--color-muted)] hover:text-[var(--color-jade)]")}
+                  className={cn("flex min-h-11 min-w-0 items-center transition-colors", onDark ? "text-[var(--color-night-text)] hover:text-[var(--color-inverse)]" : "text-[var(--color-muted)] hover:text-[var(--color-jade)]")}
                 >
-                  {item.label}
+                  <span className="truncate">{item.label}</span>
                 </Link>
               )}
             </li>

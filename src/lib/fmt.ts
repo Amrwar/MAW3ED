@@ -151,6 +151,26 @@ export function clock(value: string): string {
   return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
 }
 
+/**
+ * "16:00" → "4:00 م" / "4:00 PM". For customer-facing times: people in
+ * Egypt say and read the twelve-hour clock. The dashboard keeps the
+ * 24-hour one, where a shift is easier to scan without the suffixes.
+ */
+export function clock12(value: string, lang: Lang = "ar"): string {
+  const [hRaw = "0", m = "00"] = value.split(":");
+  const h = Number(hRaw) % 24;
+  const pm = h >= 12;
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  const suffix = lang === "en" ? (pm ? "PM" : "AM") : pm ? "م" : "ص";
+  return `${h12}:${m.padStart(2, "0")} ${suffix}`;
+}
+
+/** Which part of the day an "HH:MM" falls in, for grouping times. */
+export function dayPart(value: string): "morning" | "afternoon" | "evening" {
+  const h = Number(value.split(":")[0]) % 24;
+  return h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+}
+
 /* ─── Relative time ──────────────────────────────────────── */
 
 /** "النهاردة" · "قبل 3 أيام" · "بعد ساعتين" */

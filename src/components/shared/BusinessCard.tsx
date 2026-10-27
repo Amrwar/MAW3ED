@@ -16,8 +16,9 @@ import type { DiscoveryBusiness } from "@/lib/discovery/search";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useFavorites } from "@/hooks/useFavorites";
 import { coverClassFor } from "@/lib/category-cover";
-import { money } from "@/lib/fmt";
+import { clock12, money } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
+import { cdnImage } from "@/lib/cdn-image";
 
 interface Props {
   business: DiscoveryBusiness;
@@ -63,7 +64,7 @@ export default function BusinessCard({ business: b, className }: Props) {
           {b.coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={b.coverImage}
+              src={cdnImage(b.coverImage, 800)}
               alt={name}
               loading="lazy"
               className="h-[11.5rem] w-full object-cover"
@@ -107,7 +108,7 @@ export default function BusinessCard({ business: b, className }: Props) {
         {b.logoImage && b.coverImage && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={b.logoImage}
+            src={cdnImage(b.logoImage, 128)}
             alt={isAr ? `شعار ${name}` : `${name} logo`}
             loading="lazy"
             className="absolute -bottom-6 start-5 h-12 w-12 rounded-[var(--radius-md)] border-2 border-[var(--color-surface)] bg-[var(--color-surface)] object-cover"
@@ -187,7 +188,7 @@ export default function BusinessCard({ business: b, className }: Props) {
               <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--color-ok)]" />
               {c.openNow}
               <span className="font-normal text-[var(--color-subtle)]">
-                · {c.until} <span className="num">{b.open.closesAt}</span>
+                · {c.until} <span>{clock12(b.open.closesAt, lang)}</span>
               </span>
             </span>
           )}
@@ -202,7 +203,7 @@ export default function BusinessCard({ business: b, className }: Props) {
             <span className="flex items-center gap-1.5 text-[var(--color-jade)]">
               <CalendarClock size={13} strokeWidth={1.9} aria-hidden="true" className="shrink-0" />
               {c.nextFree} {dayLabel(b.nextSlot.dayOffset)}{" "}
-              <span className="num">{b.nextSlot.time}</span>
+              <span>{clock12(b.nextSlot.time, lang)}</span>
             </span>
           )}
         </div>

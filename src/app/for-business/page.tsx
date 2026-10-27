@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getLang } from "@/lib/lang-server";
 import { buildMetadata } from "@/lib/seo/meta";
 import { db } from "@/lib/db";
+import { getPlatformReach, SHOW_COUNTS_FROM } from "@/lib/data";
 import ForBusinessContent from "./_components/ForBusinessContent";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,29 +31,36 @@ export async function generateMetadata(): Promise<Metadata> {
  * strip is honest in a way an invented one is not.
  */
 export default async function ForBusinessPage() {
-  const businesses = await db.business.findMany({
-    where: { isPublished: true },
-    orderBy: { createdAt: "desc" },
-    take: 9,
-    select: {
-      slug: true,
-      nameAr: true,
-      nameEn: true,
-      logoImage: true,
-      category: { select: { nameAr: true } },
-      city: { select: { nameAr: true } },
-    },
-  });
+  const [{ businesses: total }, businesses] = await Promise.all([
+    // The homepage's figure, so the two pages agree on when to show it.
+    getPlatformReach(),
+    db.business.findMany({
+      where: { isPublished: true },
+      orderBy: { createdAt: "desc" },
+      take: 9,
+      select: {
+        slug: true,
+        nameAr: true,
+        nameEn: true,
+        logoImage: true,
+        category: { select: { nameAr: true, nameEn: true } },
+        city: { select: { nameAr: true, nameEn: true } },
+      },
+    }),
+  ]);
 
   return (
     <ForBusinessContent
+      total={total >= SHOW_COUNTS_FROM ? total : null}
       businesses={businesses.map((b) => ({
         slug: b.slug,
         nameAr: b.nameAr,
         nameEn: b.nameEn,
         logoImage: b.logoImage,
         categoryAr: b.category.nameAr,
+        categoryEn: b.category.nameEn,
         cityAr: b.city.nameAr,
+        cityEn: b.city.nameEn,
       }))}
     />
   );

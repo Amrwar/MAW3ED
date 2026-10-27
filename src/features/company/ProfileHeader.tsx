@@ -22,6 +22,8 @@ import { coverClassFor } from "@/lib/category-cover";
 import { getInitials } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { telHref, whatsappHref } from "@/lib/contact";
+import { cdnImage } from "@/lib/cdn-image";
+import { clock12 } from "@/lib/fmt";
 
 export interface ProfileHeaderBusiness {
   id: string;
@@ -112,7 +114,7 @@ export default function ProfileHeader({ business: b, summary }: Props) {
           <div className="relative h-[clamp(11rem,26vw,19rem)] w-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={b.coverImage!}
+              src={cdnImage(b.coverImage!, 64)}
               alt=""
               aria-hidden="true"
               className="absolute inset-0 h-full w-full scale-125 object-cover blur-2xl"
@@ -120,8 +122,8 @@ export default function ProfileHeader({ business: b, summary }: Props) {
             <span aria-hidden="true" className="absolute inset-0 bg-black/15" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={b.coverImage!}
-              alt=""
+              src={cdnImage(b.coverImage!, 1600)}
+              alt={isAr ? `صورة ${name}` : `${name} cover photo`}
               className="relative h-full w-full object-contain"
             />
           </div>
@@ -141,8 +143,8 @@ export default function ProfileHeader({ business: b, summary }: Props) {
             {b.logoImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={b.logoImage}
-                alt=""
+                src={cdnImage(b.logoImage, 192)}
+                alt={isAr ? `شعار ${name}` : `${name} logo`}
                 className="h-[4.75rem] w-[4.75rem] shrink-0 rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] object-contain p-2"
               />
             ) : (
@@ -197,8 +199,10 @@ export default function ProfileHeader({ business: b, summary }: Props) {
                   <span className="flex items-center gap-1.5 font-bold text-[var(--color-ok)]">
                     <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--color-ok)]" />
                     {p.openNow}
-                    <span className="num font-normal text-[var(--color-subtle)]">
-                      · {p.until} {b.open.closesAt}
+                    {/* Not .num: forced left-to-right, the Arabic "until"
+                        and the dot landed on the wrong sides. */}
+                    <span className="font-normal text-[var(--color-subtle)]">
+                      · {p.until} {clock12(b.open.closesAt, lang)}
                     </span>
                   </span>
                 )}
@@ -206,8 +210,8 @@ export default function ProfileHeader({ business: b, summary }: Props) {
                   <span className="flex items-center gap-1.5">
                     <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--color-line-2)]" />
                     {p.closed}
-                    <span className="num text-[var(--color-subtle)]">
-                      · {p.opensAt} {b.open.opensAt}
+                    <span className="text-[var(--color-subtle)]">
+                      · {p.opensAt} {clock12(b.open.opensAt, lang)}
                     </span>
                   </span>
                 )}

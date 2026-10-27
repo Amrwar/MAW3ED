@@ -4,7 +4,7 @@ import { Clock, MapPin, Navigation, Phone } from "lucide-react";
 import type { DayHours } from "@/lib/discovery/hours";
 import { cairoNow } from "@/lib/discovery/hours";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { clock } from "@/lib/fmt";
+import { clock12 } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
 import { telHref } from "@/lib/contact";
 
@@ -107,8 +107,11 @@ export default function LocationSection({
                   >
                     <span className={isToday ? "text-[var(--color-ink)]" : "text-[var(--color-muted)]"}>
                       {dayNames[d]}
+                      {/* A real space, not only a margin: copied or read
+                          aloud, the margin alone gave "Tuesdaytoday". */}
+                      {isToday && " "}
                       {isToday && (
-                        <span className="ms-2 text-[0.6875rem] font-normal text-[var(--color-jade)]">
+                        <span className="ms-1 text-[0.6875rem] font-normal text-[var(--color-jade)]">
                           {l.todayMarker}
                         </span>
                       )}
@@ -117,8 +120,10 @@ export default function LocationSection({
                     {!rule || rule.isClosed ? (
                       <span className="text-[var(--color-subtle)]">{l.closed}</span>
                     ) : (
-                      <span className="num text-[var(--color-ink)]">
-                        {clock(rule.openTime)} — {clock(rule.closeTime)}
+                      // Not .num: it forces left-to-right, which would
+                      // put the closing time first for an Arabic reader.
+                      <span className="tabular-nums text-[var(--color-ink)]">
+                        {clock12(rule.openTime, lang)} — {clock12(rule.closeTime, lang)}
                       </span>
                     )}
                   </li>

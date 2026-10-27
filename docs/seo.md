@@ -104,7 +104,12 @@ previous allow-list had already fallen behind: it named `/cities/` and
 added since, so new public routes were invisible by default.
 
 Disallowed: everything behind a login, the API, payment returns,
-`/booking/` (those URLs contain a secret token — indexing one would
-publish it), and `/businesses?` (filtered search is a combinatorial
-surface of the same listings; the landing pages are the indexable
-version of it).
+`/booking/` and `/reset-password` (those URLs contain a secret token —
+indexing one would publish it), and `/businesses?` (filtered search is
+a combinatorial surface of the same listings; the landing pages are the
+indexable version of it).
+
+Not disallowed: the sign-in, sign-up and forgot-password pages. Each carries
+`noindex, follow` in its own metadata, and a crawler must be allowed to
+fetch a page to see that. Blocked in robots.txt, a page linked from
+every footer can still be indexed as a bare URL.

@@ -55,6 +55,9 @@
   --color-night:           #11201C;
   --color-night-2:         #19302A;
   --color-night-line:      #27403A;
+  /* An outline that has to be seen, not a divider: 3.8:1 on night,
+     over the 3:1 a control's edge needs. night-line is 1.5:1. */
+  --color-night-edge:      #5E7F74;
   --color-night-text:      #A9BAB3;
   --color-night-subtle:    #7F9C92;
   /* Jade lifted to read against the dark band; the page jade is too
@@ -524,7 +527,7 @@ h1, h2, h3, h4, h5, h6 {
    suggestions beneath it rather than competing with it. */
 .chip-on-dark {
   background: transparent;
-  border-color: var(--color-night-line);
+  border-color: var(--color-night-edge);
   color: var(--color-night-text);
 }
 .chip-on-dark:hover {

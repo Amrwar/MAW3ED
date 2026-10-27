@@ -27,12 +27,17 @@ export default function robots(): MetadataRoute.Robots {
           "/account/",
           "/admin/",
           "/notifications",
-          "/login",
-          "/signup",
-          "/account-login",
-          "/forgot-password",
-          "/reset-password",
           "/verify-email",
+
+          // The reset link carries a token. Kept out of crawlers'
+          // hands even though the page says noindex.
+          "/reset-password",
+          "/en/reset-password",
+
+          // Not the sign-in and sign-up pages. Each says noindex itself,
+          // and a crawler has to fetch a page to read that: blocked
+          // here, a page every footer links to still got indexed as a
+          // bare URL, with nothing to tell the engine to drop it.
 
           // Not pages: data endpoints and payment returns.
           "/api/",
@@ -48,12 +53,7 @@ export default function robots(): MetadataRoute.Robots {
           // The landing pages are the indexable version of this.
           "/businesses?",
 
-          // The same, at their English addresses (lib/locale-path).
-          "/en/login",
-          "/en/signup",
-          "/en/account-login",
-          "/en/forgot-password",
-          "/en/reset-password",
+          // The same, at its English address (lib/locale-path).
           "/en/businesses?",
         ],
       },

@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import type { Service } from "@/types/service";
 import type { PublicResource, PublicStaff } from "./CompanyContent";
-import { money, duration as fmtDuration, arCount } from "@/lib/fmt";
+import { money, duration as fmtDuration, arCount, clock12, dayPart } from "@/lib/fmt";
 import { depositCents } from "@/lib/payments/money";
 import { normalisePhone } from "@/lib/phone";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -389,6 +389,21 @@ export default function BookingWidget({
   };
 
   const [step, setStep] = useState<Step>("service");
+
+  // Each step replaces the last in place. Focus moves to the new one,
+  // so a keyboard or screen-reader user is not left on a button that
+  // no longer exists; the live region below says which step it is.
+  const stepRef = useRef<HTMLDivElement>(null);
+  // Null until the first commit: a link that preselects a service
+  // moves the step during the first render, and that is not something
+  // the visitor did, so it must not pull focus off the top of the page.
+  const shownStep = useRef<Step | null>(null);
+  useEffect(() => {
+    const before = shownStep.current;
+    shownStep.current = step;
+    if (before === null || before === step) return;
+    stepRef.current?.focus({ preventScroll: true });
+  }, [step]);
 
   function goNext() {
     const idx = ALL_STEPS.indexOf(step);
@@ -859,7 +874,13 @@ export default function BookingWidget({
         </div>
       )}
 
-      <div className="px-5 pb-5 pt-4">
+      <p className="sr-only-label" aria-live="polite">
+        {step === "done"
+          ? tr("تم الحجز", "Booked")
+          : `${tr("خطوة", "Step")} ${currentStepN} ${tr("من", "of")} ${ALL_STEPS.length}: ${stepLabel(step)}`}
+      </p>
+
+      <div ref={stepRef} tabIndex={-1} className="px-5 pb-5 pt-4 outline-none">
 
         {/* ═══ STEP: service ═══ */}
         {step === "service" && (
@@ -1210,7 +1231,9 @@ export default function BookingWidget({
                   <button
                     key={d.iso}
                     disabled={disabled}
-                    onClick={() => setSelectedDate(d.iso)}
+                    // Picking the day is the whole step, so it moves on
+                    // by itself; Next stays for coming back to the step.
+                    onClick={() => { setSelectedDate(d.iso); goNext(); }}
                     aria-pressed={selected}
                     aria-label={formatDateAr(d.iso, lang)}
                     className={`flex flex-col items-center py-2.5 px-2 rounded-[var(--radius-md)] text-xs shrink-0 min-w-[3.25rem] transition-all ${
@@ -1230,8 +1253,9 @@ export default function BookingWidget({
             </div>
             </div>
 
-            {/* Always one line here, so picking a day does not pull the
-                Next button up from under the pointer. */}
+            {/* Always one line here, so the Next button stays put. A tap
+                on a day moves on by itself; this and Next are for
+                coming back to the step to check or keep the day. */}
             <p className="text-xs text-[var(--color-subtle)] mt-4 text-center">
               {selectedDate ? formatDateAr(selectedDate, lang) : tr("اختار يوم عشان تكمّل", "Pick a day to continue")}
             </p>
@@ -1269,22 +1293,37 @@ export default function BookingWidget({
             )}
 
             {!slotsLoading && !slotsError && slots.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {slots.map((slot) => (
-                  <button
-                    key={slot}
-                    dir="ltr"
-                    onClick={() => setSelectedTime(slot)}
-                    aria-pressed={selectedTime === slot}
-                    className={`py-2.5 rounded-[var(--radius-md)] text-xs font-semibold border-2 transition-all ${
-                      selectedTime === slot
-                        ? "bg-[var(--color-jade)] text-[var(--color-inverse)] border-[var(--color-jade)]"
-                        : "bg-[var(--color-surface)] border-[var(--color-line-2)] hover:border-[var(--color-jade)]/50 text-[var(--color-ink-2)]"
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                ))}
+              /* Grouped by part of the day and on the twelve-hour clock:
+                 twenty-four "16:00"s in one grid had to be read one by
+                 one to find the evening. */
+              <div className="space-y-4">
+                {(["morning", "afternoon", "evening"] as const).map((part) => {
+                  const inPart = slots.filter((slot) => dayPart(slot) === part);
+                  if (inPart.length === 0) return null;
+                  return (
+                    <div key={part} role="group" aria-labelledby={`${fid}-${part}`}>
+                      <p id={`${fid}-${part}`} className="mb-2 text-xs font-semibold text-[var(--color-subtle)]">
+                        {part === "morning" ? tr("الصبح", "Morning") : part === "afternoon" ? tr("الضهر", "Afternoon") : tr("بالليل", "Evening")}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {inPart.map((slot) => (
+                          <button
+                            key={slot}
+                            onClick={() => setSelectedTime(slot)}
+                            aria-pressed={selectedTime === slot}
+                            className={`py-2.5 rounded-[var(--radius-md)] text-xs font-semibold border-2 transition-all ${
+                              selectedTime === slot
+                                ? "bg-[var(--color-jade)] text-[var(--color-inverse)] border-[var(--color-jade)]"
+                                : "bg-[var(--color-surface)] border-[var(--color-line-2)] hover:border-[var(--color-jade)]/50 text-[var(--color-ink-2)]"
+                            }`}
+                          >
+                            {clock12(slot, lang)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -1308,9 +1347,14 @@ export default function BookingWidget({
                 />
               )}
               <SummaryRow label={tr("اليوم", "Day")}  value={selectedDate ? formatDateAr(selectedDate, lang) : ""} />
-              <SummaryRow label={tr("الوقت", "Time")}  value={selectedTime ?? ""} ltr />
+              <SummaryRow label={tr("الوقت", "Time")}  value={selectedTime ? clock12(selectedTime, lang) : ""} />
               {selectedResource?.capacity != null && (
                 <SummaryRow label={tr("الأشخاص", "Party")} value={partyLabel} />
+              )}
+              {/* The list price; a discount code is entered and shown
+                  on the review step. */}
+              {selectedService && selectedService.price > 0 && (
+                <SummaryRow label={tr("السعر", "Price")} value={money(selectedService.price, lang, selectedService.currency)} />
               )}
             </div>
 
@@ -1331,7 +1375,7 @@ export default function BookingWidget({
                   aria-required="true"
                   aria-invalid={errors.name ? true : undefined}
                   aria-describedby={errors.name ? `${fid}-name-err` : undefined}
-                  placeholder={tr("محمد أحمد", "Mohamed Ahmed")}
+                  placeholder={tr("اسمك", "Your name")}
                   value={name}
                   onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: undefined })); }}
                   className={`w-full rounded-[var(--radius-md)] border-2 px-3.5 py-2.5 text-sm outline-none transition-all ${errors.name ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
@@ -1452,7 +1496,7 @@ export default function BookingWidget({
                 <SummaryRow label={tr("عدد الأشخاص", "Party size")} value={partyLabel} />
               )}
               <SummaryRow label={tr("التاريخ", "Date")} value={selectedDate ? formatDateAr(selectedDate, lang) : ""} />
-              <SummaryRow label={tr("الوقت", "Time")} value={selectedTime ?? ""} ltr />
+              <SummaryRow label={tr("الوقت", "Time")} value={selectedTime ? clock12(selectedTime, lang) : ""} />
               <SummaryRow label={tr("المدة", "Duration")} value={fmtDuration(selectedService.duration, lang)} />
 
               <div className="pt-2.5 border-t border-[var(--color-jade-line)]">
@@ -1646,7 +1690,7 @@ export default function BookingWidget({
               <SummaryRow label={tr("العميل", "Customer")}  value={confirmation.customerName} />
               <SummaryRow label={tr("الخدمة", "Service")}  value={confirmation.serviceName} />
               <SummaryRow label={tr("التاريخ", "Date")} value={formatDateAr(confirmation.date, lang)} />
-              <SummaryRow label={tr("الوقت", "Time")}   value={`${confirmation.startTime} – ${confirmation.endTime}`} ltr />
+              <SummaryRow label={tr("الوقت", "Time")}   value={`${clock12(confirmation.startTime, lang)} – ${clock12(confirmation.endTime, lang)}`} />
               {selectedResource && (
                 <SummaryRow
                   label={resourceLabel(selectedResource.kind, lang, true)}

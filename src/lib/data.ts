@@ -98,6 +98,13 @@ export async function getCategoriesWithCounts(): Promise<CategoryWithCount[]> {
     .sort((a, b) => b.count - a.count || a.nameAr.localeCompare(b.nameAr, "ar"));
 }
 
+/**
+ * How many listings there must be before the site states a count.
+ * "4 businesses in 3 cities" tells a visitor the shelves are empty;
+ * below this the pages say what Maw3ed does instead of how big it is.
+ */
+export const SHOW_COUNTS_FROM = 50;
+
 export type PlatformReach = {
   /** Published listings. */
   businesses: number;

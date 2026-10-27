@@ -45,6 +45,8 @@ export interface LocalBusinessInput {
   category:      { nameAr: string };
   availability:  AvailabilityRule[];
   services:      ServicePrice[];
+  /** The owner's map pin, when they have dropped one. */
+  geo?:          { latitude: number; longitude: number } | null;
   /**
    * Emitted only when reviews actually exist. Marking up a rating a
    * business has not earned is what rich-result spam policies are
@@ -98,6 +100,9 @@ export function buildLocalBusinessJsonLd(b: LocalBusinessInput): Record<string, 
   if (openingHours.length)    jsonld.openingHours   = openingHours;
   if (priceRange)             jsonld.priceRange     = priceRange;
   if (b.logoImage)            jsonld.logo           = b.logoImage;
+  if (b.geo) {
+    jsonld.geo = { "@type": "GeoCoordinates", latitude: b.geo.latitude, longitude: b.geo.longitude };
+  }
 
   // openingHoursSpecification carries the same hours in the structured
   // form, which is what Google actually reads for an hours panel.

@@ -26,8 +26,9 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
     : status === "loading"
       ? []
       : [
+          // Both lead to the business side. A bare "Sign up" here was
+          // the business form too, and customers took it for theirs.
           { label: f.links.addBusiness, href: "/signup?type=business" },
-          { label: f.links.signup,      href: "/signup" },
           { label: f.links.login,       href: "/login" },
         ];
   const showCta = cta && !signedIn;

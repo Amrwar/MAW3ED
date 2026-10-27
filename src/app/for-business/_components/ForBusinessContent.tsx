@@ -12,6 +12,7 @@ import {
   CalendarDays, ShieldCheck, LayoutDashboard,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { cdnImage } from "@/lib/cdn-image";
 
 /** A business that is actually on Maw3ed. Nothing here is written by us. */
 export interface RealBusiness {
@@ -19,7 +20,9 @@ export interface RealBusiness {
   nameAr: string;
   nameEn: string | null;
   categoryAr: string;
+  categoryEn: string;
   cityAr: string;
+  cityEn: string;
   logoImage: string | null;
 }
 
@@ -33,7 +36,14 @@ const BENEFIT_ICONS = [
   { Icon: ShieldCheck,  iconBg: "linear-gradient(135deg, var(--color-info) 0%, var(--color-info) 100%)" },
 ];
 
-export default function ForBusinessContent({ businesses }: { businesses: RealBusiness[] }) {
+export default function ForBusinessContent({
+  businesses,
+  total,
+}: {
+  businesses: RealBusiness[];
+  /** Published listings, or null while too few to be worth stating. */
+  total: number | null;
+}) {
   const { t, lang } = useLanguage();
   const fb   = t.forBusiness;
   const isAr = lang === "ar";
@@ -412,7 +422,7 @@ export default function ForBusinessContent({ businesses }: { businesses: RealBus
               <div className="text-center max-w-xl mx-auto mb-10">
                 <p className="section-eyebrow mb-2">{fb.realEyebrow}</p>
                 <h2 className="section-title mb-4">
-                  {countText(lang, businesses.length, fb.realTitle)}
+                  {total === null ? fb.realTitleNoCount : countText(lang, total, fb.realTitle)}
                 </h2>
               </div>
 
@@ -430,7 +440,7 @@ export default function ForBusinessContent({ businesses }: { businesses: RealBus
                         {b.logoImage ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={b.logoImage}
+                            src={cdnImage(b.logoImage, 96)}
                             alt=""
                             className="h-full w-full object-cover"
                             loading="lazy"
@@ -444,7 +454,7 @@ export default function ForBusinessContent({ businesses }: { businesses: RealBus
                           {isAr ? b.nameAr : b.nameEn ?? b.nameAr}
                         </span>
                         <span className="mt-0.5 block truncate text-[0.78125rem] text-[var(--color-subtle)]">
-                          {b.categoryAr} · {b.cityAr}
+                          {isAr ? b.categoryAr : b.categoryEn || b.categoryAr} · {isAr ? b.cityAr : b.cityEn || b.cityAr}
                         </span>
                       </span>
                     </Link>
