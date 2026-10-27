@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { CalendarDays, Plus, ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import TodaySchedule from "@/app/dashboard/bookings/_components/TodaySchedule";
 import BookingDetailPanel from "@/app/dashboard/bookings/_components/BookingDetailPanel";
 import ManualBookingPanel, { type ServiceOption } from "@/features/dashboard/ManualBookingPanel";

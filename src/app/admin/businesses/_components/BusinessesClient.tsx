@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ExternalLink, Loader2, Search, Star } from "lucide-react";
 import Alert from "@/components/ui/Alert";

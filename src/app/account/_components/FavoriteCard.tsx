@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { useState } from "react";
 import { BadgeCheck, Heart, MapPin, Star } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";

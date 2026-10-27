@@ -1,11 +1,11 @@
+import { getLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { translations, type Lang } from "@/lib/i18n";
+import { translations } from "@/lib/i18n";
 import NotificationList from "../account/_components/NotificationList";
 
 export const metadata: Metadata = {
@@ -27,8 +27,7 @@ export default async function NotificationsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/account-login?next=/notifications");
 
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
 
   const [items, unread] = await Promise.all([

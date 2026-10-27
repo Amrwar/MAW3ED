@@ -3,10 +3,11 @@
 import { useMounted } from "@/hooks/useMounted";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { Eye, EyeOff, Lock, CheckCircle2, Loader2 } from "lucide-react";
 import Alert from "@/components/ui/Alert";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { localizePath } from "@/lib/locale-path";
 
 // useSearchParams must be wrapped in Suspense (Next.js requirement)
 function ResetPasswordForm() {
@@ -33,8 +34,8 @@ function ResetPasswordForm() {
 
   // Redirect to forgot-password if no token in URL
   useEffect(() => {
-    if (!token) router.replace("/forgot-password");
-  }, [token, router]);
+    if (!token) router.replace(localizePath("/forgot-password", lang));
+  }, [token, router, lang]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,7 +77,7 @@ function ResetPasswordForm() {
         return;
       }
       setDone(true);
-      setTimeout(() => router.push("/login"), 2500);
+      setTimeout(() => router.push(localizePath("/login", lang)), 2500);
     } catch {
       setError(T("تعذّر الاتصال بالخادم، حاول مرة أخرى", "Couldn't reach the server. Please try again."));
     } finally {

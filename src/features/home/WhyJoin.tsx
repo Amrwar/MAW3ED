@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Link2, CalendarCheck, BellRing, BarChart3, Store, Gift, Check } from "lucide-react";
 

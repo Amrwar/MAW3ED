@@ -26,6 +26,14 @@ Only `/company/` and `/booking/` are claimed by the app (iOS
 `associatedDomains`, Android `intentFilters`, and the site's
 `/.well-known/` files). The rest of the site stays in the browser.
 
+English business pages live at `/en/company/<slug>`. The app reads
+`/en/…` and `/ar/…` as the bare path (it is one app in either language),
+and Android builds from now on claim `/en/company/` too. The iOS claim is
+the website's apple-app-site-association, which takes effect without an
+app update, so `/en/company/*` is deliberately **not** in
+`APP_LINK_PATHS` yet: an installed build from before this change would
+open such a link on its home screen. Add it once those builds are gone.
+
 ### Validation
 
 Every value a link carries is checked before it reaches a route: slugs

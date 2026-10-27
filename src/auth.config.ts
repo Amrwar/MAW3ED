@@ -5,6 +5,7 @@
  * here. Database checks belong in src/auth.ts or the route itself.
  */
 import type { NextAuthConfig } from "next-auth";
+import { hasTwin, splitLang } from "@/lib/locale-path";
 
 export const authConfig: NextAuthConfig = {
   pages: {
@@ -14,7 +15,12 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const path = nextUrl.pathname;
+      // /en/login is /login in English: the rules are about the page.
+      const { lang, path } = splitLang(nextUrl.pathname);
+      // /en/dashboard and the like: the proxy first sends these to their
+      // one address and saves the language; the check runs on that
+      // request. Redirecting from here would skip the proxy and lose it.
+      if (lang !== null && !hasTwin(path)) return true;
 
       const isProtected =
         path.startsWith("/dashboard") || path.startsWith("/onboarding");

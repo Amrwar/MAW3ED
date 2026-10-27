@@ -65,12 +65,20 @@ describe("what gets indexed", () => {
     expect(m.openGraph?.url).toBe(m.alternates?.canonical);
   });
 
-  it("emits no hreflang, because there is no second URL to point at", () => {
-    // Arabic and English share one address, chosen by a cookie. An
-    // hreflang pointing back at itself claims two languages live at one
-    // URL, which is worse than saying nothing.
-    const m = buildMetadata(base);
-    expect(m.alternates?.languages).toBeUndefined();
+  it("names each language's address, each page canonical to itself", () => {
+    const ar = buildMetadata({ ...base, path: "/cairo/clinics" });
+    const en = buildMetadata({ ...base, path: "/cairo/clinics", lang: "en" });
+    const languages = { ar: canonicalFor("/cairo/clinics"), en: canonicalFor("/cairo/clinics", 1, "en"), "x-default": canonicalFor("/cairo/clinics") };
+    expect(canonicalFor("/cairo/clinics", 1, "en")).toMatch(/\/en\/cairo\/clinics$/);
+    expect(ar.alternates).toEqual({ canonical: languages.ar, languages });
+    expect(en.alternates).toEqual({ canonical: languages.en, languages });
+    expect(en.openGraph?.url).toBe(languages.en);
+  });
+
+  it("keeps a later page's number on both twins", () => {
+    const m = buildMetadata({ ...base, path: "/cairo/clinics", page: 3, lang: "en" });
+    expect(m.alternates?.canonical).toMatch(/\/en\/cairo\/clinics\?page=3$/);
+    expect((m.alternates?.languages as Record<string, string>).ar).toMatch(/[^n]\/cairo\/clinics\?page=3$/);
   });
 });
 

@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
 import { getLang } from "@/lib/lang-server";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { buildMetadata } from "@/lib/seo/meta";
 import LegalPage, { LegalList, LegalSection } from "@/components/legal/LegalPage";
-import { parseLangParam } from "@/components/legal/lang-param";
 import { BUSINESS_ADDRESS, SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/support";
 
-export async function generateMetadata({
-  searchParams,
-}: {
-  searchParams: Promise<{ lang?: string | string[] }>;
-}): Promise<Metadata> {
-  // ?lang= wins, as it does for the page body: the stores link these
-  // pages with it, to a visitor who has no cookie.
-  const lang = parseLangParam((await searchParams).lang) ?? (await getLang());
+export async function generateMetadata(): Promise<Metadata> {
+  // The stores link /privacy?lang=en; the proxy sends that to /en/privacy.
+  const lang = await getLang();
   return lang === "en"
     ? buildMetadata({
         title: "Privacy policy",
@@ -53,12 +47,7 @@ export async function generateMetadata({
  * Anything that could not be confirmed from code is marked with a
  * VERIFY comment, not stated.
  */
-export default async function PrivacyPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ lang?: string | string[] }>;
-}) {
-  const forced = parseLangParam((await searchParams).lang);
+export default async function PrivacyPage() {
   const email = (
     <a href={SUPPORT_MAILTO} dir="ltr" className="text-[var(--color-jade)] underline underline-offset-2 hover:text-[var(--color-jade-hover)]">
       {SUPPORT_EMAIL}
@@ -378,7 +367,6 @@ export default async function PrivacyPage({
   return (
     <LegalPage
       path="/privacy"
-      forced={forced}
       title={{ ar: "سياسة الخصوصية", en: "Privacy Policy" }}
       updated={{ ar: "آخر تحديث: 14 أكتوبر 2026", en: "Last updated: 14 October 2026" }}
       body={{ ar, en }}

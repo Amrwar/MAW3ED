@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Clock, DollarSign, FileText, Languages, CheckCircle2 } from "lucide-react";
 import type { Service } from "./ServicesClient";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -144,22 +144,30 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
   const { lang } = useLanguage();
   const isAr = lang === "ar";
 
-  useEffect(() => {
-    if (!open) return;
-    setError("");
-    setForm(
-      editing
-        ? {
-            nameAr:        editing.nameAr,
-            nameEn:        editing.nameEn,
-            descriptionAr: editing.descriptionAr,
-            duration:      editing.duration,
-            price:         editing.price,
-            isAvailable:   editing.isAvailable,
-          }
-        : DEFAULT,
-    );
-  }, [open, editing]);
+  // Opening the panel, or opening it on another service, starts from
+  // that service's values (or blank ones).
+  const [shownFor, setShownFor] = useState<{ open: boolean; editing: Props["editing"] }>({
+    open: false,
+    editing: null,
+  });
+  if (shownFor.open !== open || shownFor.editing !== editing) {
+    setShownFor({ open, editing });
+    if (open) {
+      setError("");
+      setForm(
+        editing
+          ? {
+              nameAr:        editing.nameAr,
+              nameEn:        editing.nameEn,
+              descriptionAr: editing.descriptionAr,
+              duration:      editing.duration,
+              price:         editing.price,
+              isAvailable:   editing.isAvailable,
+            }
+          : DEFAULT,
+      );
+    }
+  }
 
   function set<K extends keyof typeof DEFAULT>(k: K, v: (typeof DEFAULT)[K]) {
     setForm((p) => ({ ...p, [k]: v }));

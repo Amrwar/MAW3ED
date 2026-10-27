@@ -7,7 +7,7 @@ import {
   Menu,
   LogOut, ArrowUpRight,
 } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 
 /**
  * The pieces every admin section is built from.

@@ -172,7 +172,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
               autoVerify: true,
               data: APP_LINK_HOSTS.flatMap((host) =>
                 // With the slash, so /company-pricing or /bookings would not match.
-                ["/company/", "/booking/"].map((pathPrefix) => ({ scheme: "https", host, pathPrefix })),
+                // /en/company/ is the same page in English.
+                ["/company/", "/en/company/", "/booking/"].map((pathPrefix) => ({ scheme: "https", host, pathPrefix })),
               ),
               category: ["BROWSABLE", "DEFAULT"],
             },

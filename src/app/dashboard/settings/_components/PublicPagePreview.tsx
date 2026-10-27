@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ExternalLink, Copy, Check, Clock, MapPin } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import type { Profile, ServicePreview } from "./SettingsClient";
 
 type Props = {

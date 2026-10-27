@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { Bell, CalendarClock, Heart, Star } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { num } from "@/lib/fmt";

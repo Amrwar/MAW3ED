@@ -471,13 +471,15 @@ export default function BookingWidget({
 
   // The person in the link belongs to the service in the link: applied
   // only while that first preselection stands. Compared, not consumed, so
-  // an effect that runs twice (StrictMode) lands on the same answer, and
+  // a render that runs twice (StrictMode) lands on the same answer, and
   // a link whose service no longer exists never pins the person to a
-  // service the visitor picks themselves later.
-  const arrivedWith = useRef(preselectedService);
-  useEffect(() => {
-    if (!preselectedService) return;
-    const wanted = preselectedService === arrivedWith.current ? initialStaffId : null;
+  // service the visitor picks themselves later. Applied during render
+  // rather than in an effect, so the widget never paints the old step.
+  const [arrivedWith] = useState(preselectedService);
+  const [appliedPreselection, setAppliedPreselection] = useState<Service | null>(null);
+  if (preselectedService && preselectedService !== appliedPreselection) {
+    setAppliedPreselection(preselectedService);
+    const wanted = preselectedService === arrivedWith ? initialStaffId : null;
     const staff = wanted
       ? staffMembers.find(
           (s) => s.id === wanted && (s.serviceIds.length === 0 || s.serviceIds.includes(preselectedService.id)),
@@ -492,15 +494,29 @@ export default function BookingWidget({
     setStep(
       hasStaff ? "provider" : hasResources ? "resource" : hasBranches ? "branch" : "date",
     );
-  }, [preselectedService, hasStaff, hasResources, hasBranches, staffMembers, initialStaffId]);
+  }
 
-  // Fetch available slots when date / service / resource changes
+  // A new day, service or choice asks for the times again, from empty.
+  const slotsKey = selectedDate && selectedService
+    ? [selectedDate, selectedService.id, selectedStaff?.id, selectedResource?.id, selectedBranch?.id, slug].join("|")
+    : null;
+  const [slotsFor, setSlotsFor] = useState<string | null>(null);
+  if (slotsKey !== slotsFor) {
+    setSlotsFor(slotsKey);
+    if (slotsKey) {
+      setSlots([]);
+      setSelectedTime(null);
+      setSlotsError(null);
+      setSlotsLoading(true);
+    }
+  }
+
+  // Fetch available slots when date / service / resource changes. A
+  // reply that arrives after the choice has moved on is dropped, so a
+  // slow answer for one day never fills in the times of another.
   useEffect(() => {
     if (!selectedDate || !selectedService) return;
-    setSlots([]);
-    setSelectedTime(null);
-    setSlotsError(null);
-    setSlotsLoading(true);
+    let stale = false;
 
     const params = new URLSearchParams({
       serviceId: selectedService.id,
@@ -516,11 +532,19 @@ export default function BookingWidget({
     fetch(`/api/public/${slug}/slots?${params}`)
       .then((r) => r.json())
       .then((data) => {
+        if (stale) return;
         setSlots(data.slots ?? []);
         setSlotsReason(data.reason ?? null);
         setSlotsLoading(false);
       })
-      .catch(() => { setSlotsError(tr("معرفناش نحمّل المواعيد، جرّب تاني", "Couldn't load the times. Try again.")); setSlotsLoading(false); });
+      .catch(() => {
+        if (stale) return;
+        setSlotsError(tr("معرفناش نحمّل المواعيد، جرّب تاني", "Couldn't load the times. Try again."));
+        setSlotsLoading(false);
+      });
+    return () => {
+      stale = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, selectedService, selectedStaff, selectedResource, selectedBranch, slug]);
 
@@ -719,33 +743,57 @@ export default function BookingWidget({
       )
     : staffMembers;
 
-  // Asks what this booking costs, with or without a code. Runs on its
-  // own when the service is picked, so an automatic promotion is shown
-  // without the customer having to do anything.
-  async function fetchQuote(code?: string) {
-    if (!selectedService) return;
-    setQuoting(true);
+  // Asks what this booking costs, with or without a code. A quote that
+  // could not be fetched comes back null, which leaves the full price
+  // shown: the safe direction to be wrong in.
+  async function requestQuote(serviceId: string, code?: string): Promise<Quote | null> {
     try {
       const res = await fetch(`/api/public/${slug}/quote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serviceId: selectedService.id, code: code?.trim() || undefined }),
+        body: JSON.stringify({ serviceId, code: code?.trim() || undefined }),
       });
       const data = await res.json().catch(() => null);
-      setQuote(res.ok ? ((data?.data ?? data) as Quote) : null);
+      return res.ok ? ((data?.data ?? data) as Quote) : null;
     } catch {
-      // A quote that could not be fetched leaves the full price shown,
-      // which is the safe direction to be wrong in.
-      setQuote(null);
-    } finally {
-      setQuoting(false);
+      return null;
     }
   }
 
-  useEffect(() => {
+  // Numbers each quote asked for; only the latest one's answer is shown,
+  // so a code applied to one service never prices another.
+  const quoteSeq = useRef(0);
+
+  async function fetchQuote(code?: string) {
+    if (!selectedService) return;
+    const seq = ++quoteSeq.current;
+    setQuoting(true);
+    const q = await requestQuote(selectedService.id, code);
+    if (seq !== quoteSeq.current) return;
+    setQuote(q);
+    setQuoting(false);
+  }
+
+  // A different service starts with no code typed, and asks on its own
+  // what it costs, so an automatic promotion is shown without the
+  // customer having to do anything.
+  const quoteKey = selectedService ? `${selectedService.id}|${slug}` : null;
+  const [quotedFor, setQuotedFor] = useState<string | null>(null);
+  if (quotedFor !== quoteKey) {
+    setQuotedFor(quoteKey);
     setQuote(null);
     setCodeInput("");
-    if (selectedService) void fetchQuote();
+    setQuoting(quoteKey !== null);
+  }
+
+  useEffect(() => {
+    if (!selectedService) return;
+    const seq = ++quoteSeq.current;
+    void requestQuote(selectedService.id).then((q) => {
+      if (seq !== quoteSeq.current) return;
+      setQuote(q);
+      setQuoting(false);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedService?.id, slug]);
 

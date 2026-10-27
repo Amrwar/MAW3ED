@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { ArrowLeft, ArrowRight, Store } from "lucide-react";
 import BusinessCard from "@/components/shared/BusinessCard";
 import EmptyState from "@/components/ui/EmptyState";

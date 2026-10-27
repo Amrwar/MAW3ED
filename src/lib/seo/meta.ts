@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { localizePath } from "@/lib/locale-path";
 import { siteUrl } from "@/lib/url";
 
 /**
@@ -15,11 +16,10 @@ import { siteUrl } from "@/lib/url";
  *      are the same page, so page one canonicalises to the clean URL and
  *      the "?page=1" form never appears anywhere.
  *
- * There is deliberately no hreflang. Arabic and English are served from
- * the same URL, chosen by a cookie, so there is no second URL to point
- * at — and an hreflang tag pointing back at itself tells Google two
- * languages share one address, which is worse than saying nothing. See
- * the note in README-SEO.md for what an /en prefix would involve.
+ * Every public page has an address per language — /x in Arabic, /en/x
+ * in English (lib/locale-path) — so each names itself as canonical and
+ * lists both twins as hreflang alternates, with Arabic as x-default:
+ * the version for a searcher whose language is neither.
  */
 
 /** Everything after page one is a continuation, not a page to index. */
@@ -35,6 +35,11 @@ export interface PageMeta {
   lang?: "ar" | "en";
 }
 
+/** The metadata of a page that turned out not to exist: never indexed. */
+export function notFoundMetadata(lang: "ar" | "en"): Metadata {
+  return { title: lang === "en" ? "Not found" : "غير موجود", robots: { index: false, follow: false } };
+}
+
 /** The site-wide share card (public/og.png), for pages without an image of their own. */
 export const DEFAULT_OG_IMAGE = { url: "/og.png", size: { width: 1200, height: 630 } } as const;
 
@@ -43,11 +48,30 @@ export function ogLocale(lang: "ar" | "en"): string {
   return lang === "en" ? "en_US" : "ar_EG";
 }
 
-export function canonicalFor(path: string, page = 1): string {
+/** The page's path, with ?page= only past page one. */
+function pagePath(path: string, page: number): string {
   const clean = path.split("?")[0];
   // Page one is the page. Only a later page carries the parameter, and
   // it carries nothing else.
-  return page > 1 ? siteUrl(`${clean}?page=${page}`) : siteUrl(clean);
+  return page > 1 ? `${clean}?page=${page}` : clean;
+}
+
+export function canonicalFor(path: string, page = 1, lang: "ar" | "en" = "ar"): string {
+  return siteUrl(localizePath(pagePath(path, page), lang));
+}
+
+/**
+ * A page's canonical and its hreflang twins. `path` is the page's
+ * Arabic (bare) path, with the query when the query is part of what
+ * identifies the page.
+ */
+export function alternatesFor(path: string, lang: "ar" | "en"): NonNullable<Metadata["alternates"]> {
+  const ar = siteUrl(path);
+  const en = siteUrl(localizePath(path, "en"));
+  return {
+    canonical: lang === "en" ? en : ar,
+    languages: { ar, en, "x-default": ar },
+  };
 }
 
 export function buildMetadata({
@@ -58,13 +82,13 @@ export function buildMetadata({
   image,
   lang = "ar",
 }: PageMeta): Metadata {
-  const canonical = canonicalFor(path, page);
+  const canonical = canonicalFor(path, page, lang);
   const pagedTitle = page > 1 ? `${title} — ${lang === "en" ? "Page" : "صفحة"} ${page}` : title;
 
   return {
     title: pagedTitle,
     description,
-    alternates: { canonical },
+    alternates: alternatesFor(pagePath(path, page), lang),
     robots:
       page > 1
         ? {

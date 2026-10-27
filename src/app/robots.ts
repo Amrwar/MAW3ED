@@ -47,6 +47,14 @@ export default function robots(): MetadataRoute.Robots {
           // distinct URL showing a rearrangement of the same listings.
           // The landing pages are the indexable version of this.
           "/businesses?",
+
+          // The same, at their English addresses (lib/locale-path).
+          "/en/login",
+          "/en/signup",
+          "/en/account-login",
+          "/en/forgot-password",
+          "/en/reset-password",
+          "/en/businesses?",
         ],
       },
     ],

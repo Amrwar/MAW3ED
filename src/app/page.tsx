@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getLang } from "@/lib/lang-server";
 import { jsonLdScript } from "@/lib/seo/jsonld-script";
-import { canonicalFor } from "@/lib/seo/meta";
+import { alternatesFor } from "@/lib/seo/meta";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { requestNonce } from "@/lib/security/nonce";
@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description: lang === "en"
       ? "Find a clinic, salon, gym or centre near you in Egypt, see the free times and book in seconds. Booking is free and confirmed instantly."
       : "ابحث عن عيادة، صالون، جيم أو مركز قريب منك في مصر، شوف المواعيد المتاحة واحجز في ثوانٍ. الحجز مجاني والتأكيد فوري.",
-    alternates: { canonical: canonicalFor("/") },
+    alternates: alternatesFor("/", lang),
   };
 }
 

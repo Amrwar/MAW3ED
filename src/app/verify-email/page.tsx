@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { CheckCircle2, AlertTriangle, Clock, XCircle } from "lucide-react";
 import Logo from "@/components/shared/Logo";
 import ResendVerificationButton from "./_components/ResendVerificationButton";

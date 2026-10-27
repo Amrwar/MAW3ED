@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { StaffMember } from "./StaffClient";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Modal from "@/components/ui/Modal";
@@ -68,7 +68,14 @@ export default function StaffPanel({
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState("");
 
-  useEffect(() => {
+  // Opening the panel, or opening it on another member, starts from
+  // that member's values (or blank ones).
+  const [shownFor, setShownFor] = useState<{ open: boolean; editing: Props["editing"] }>({
+    open: false,
+    editing: null,
+  });
+  if (shownFor.open !== open || shownFor.editing !== editing) {
+    setShownFor({ open, editing });
     if (open) {
       setForm(
         editing
@@ -86,7 +93,7 @@ export default function StaffPanel({
       );
       setError("");
     }
-  }, [open, editing]);
+  }
 
   function set<K extends keyof FormState>(key: K, val: FormState[K]) {
     setForm((f) => ({ ...f, [key]: val }));

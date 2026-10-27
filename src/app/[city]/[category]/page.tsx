@@ -1,18 +1,18 @@
+import { getLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
 import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { cookies } from "next/headers";
+import Link from "@/components/shared/LocaleLink";
 import { requestNonce } from "@/lib/security/nonce";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
 import BusinessCard from "@/components/shared/BusinessCard";
 import Breadcrumbs from "@/components/shared/Breadcrumbs";
-import { translations, type Lang } from "@/lib/i18n";
+import { translations } from "@/lib/i18n";
 import { buildBreadcrumbJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
 import { getLandingCombos, resolveCombo, prerenderHints } from "@/lib/seo/landing";
-import { buildMetadata, parsePage } from "@/lib/seo/meta";
+import { buildMetadata, notFoundMetadata, parsePage } from "@/lib/seo/meta";
 import { EMPTY_QUERY } from "@/lib/discovery/params";
 import { searchBusinesses } from "@/lib/discovery/search";
 import { arCount } from "@/lib/fmt";
@@ -48,8 +48,25 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const { city, category } = await params;
   const page = parsePage((await searchParams).page);
 
+  const lang = await getLang();
   const combo = await resolveCombo(city, category);
-  if (!combo) return { title: "غير موجود", robots: { index: false, follow: false } };
+  if (!combo) return notFoundMetadata(lang);
+
+  if (lang === "en") {
+    const categoryName = combo.category.nameEn || combo.category.nameAr;
+    const cityName = combo.city.nameEn || combo.city.nameAr;
+    const where = `${categoryName} in ${cityName}`;
+    return buildMetadata({
+      title: `${where} — book online`,
+      description:
+        combo.count === 1
+          ? `${where}: one business taking online bookings on Maw3ed. See the free times and book in seconds.`
+          : `${combo.count} businesses in ${categoryName} – ${cityName} take online bookings on Maw3ed. Compare times and prices and book in seconds.`,
+      path: `/${combo.city.slug}/${combo.category.slug}`,
+      page,
+      lang,
+    });
+  }
 
   const where = `${combo.category.nameAr} في ${combo.city.nameAr}`;
 
@@ -79,8 +96,7 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
   // Unknown pair, or a pair with nothing in it. Both are a 404.
   if (!combo) notFound();
 
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
   const isAr = lang === "ar";
 
@@ -97,10 +113,10 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
   // one-page list should not render an empty grid.
   if (items.length === 0 && page > 1) notFound();
 
-  const cityName = isAr ? combo.city.nameAr : (combo.city.nameEn ?? combo.city.nameAr);
+  const cityName = isAr ? combo.city.nameAr : (combo.city.nameEn || combo.city.nameAr);
   const catName = isAr
     ? combo.category.nameAr
-    : (combo.category.nameEn ?? combo.category.nameAr);
+    : (combo.category.nameEn || combo.category.nameAr);
 
   const trail = [
     { name: isAr ? "الرئيسية" : "Home", path: "/" },

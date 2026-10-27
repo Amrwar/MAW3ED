@@ -2,12 +2,19 @@ import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "./auth.config";
 import { buildCsp, generateNonce } from "./lib/security/csp";
+import { LANG_COOKIE, LANG_COOKIE_MAX_AGE, LANG_HEADER } from "./lib/lang";
+import { routeLocale } from "./lib/locale-routing";
 
 // The lightweight config (no DB), shared with auth.config.ts's authorized().
 const { auth } = NextAuth(authConfig);
 
 /**
- * Auth, plus the Content-Security-Policy.
+ * Auth, the page's language, and the Content-Security-Policy.
+ *
+ * Language: lib/locale-routing decides from the path, the query and the
+ * saved choice. English pages are served by rewriting /en/x to /x, so
+ * each page is written once; the language travels to it on the request
+ * as x-maw3ed-lang, which getLang() reads.
  *
  * The policy lives here rather than in next.config.ts because it
  * carries a nonce, and a nonce has to be new on every request —
@@ -34,17 +41,38 @@ const { auth } = NextAuth(authConfig);
  * Next 16 renamed middleware to proxy; this file was src/middleware.ts.
  */
 export default auth((req) => {
+  const locale = routeLocale({
+    pathname: req.nextUrl.pathname,
+    search: req.nextUrl.search,
+    method: req.method,
+    cookieLang: req.cookies.get(LANG_COOKIE)?.value,
+  });
+  if (locale.type === "redirect") {
+    return remember(NextResponse.redirect(new URL(locale.to, req.nextUrl), 307), locale.remember);
+  }
+
   const nonce = generateNonce();
   const csp = buildCsp({ nonce, development: process.env.NODE_ENV === "development" });
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("content-security-policy", csp);
+  // Always set, so a header sent by the client is never believed.
+  requestHeaders.set(LANG_HEADER, locale.lang);
 
-  const res = NextResponse.next({ request: { headers: requestHeaders } });
+  const res =
+    locale.type === "rewrite"
+      ? NextResponse.rewrite(new URL(locale.to, req.nextUrl), { request: { headers: requestHeaders } })
+      : NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("content-security-policy", csp);
-  return res;
+  return remember(res, locale.type === "rewrite" ? locale.remember : undefined);
 });
+
+/** Saves the language as the visitor's choice, as the switch does. */
+function remember(res: NextResponse, lang: "ar" | "en" | undefined): NextResponse {
+  if (lang) res.cookies.set(LANG_COOKIE, lang, { path: "/", maxAge: LANG_COOKIE_MAX_AGE, sameSite: "lax" });
+  return res;
+}
 
 export const config = {
   // Skip Next.js internals, static files, public assets

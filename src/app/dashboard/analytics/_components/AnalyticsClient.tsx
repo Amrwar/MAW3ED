@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import KPICards        from "./KPICards";
@@ -55,24 +55,28 @@ export default function AnalyticsClient({ initial }: Props) {
   const [from,    setFrom]    = useState(() => presetRange("thisMonth").from);
   const [to,      setTo]      = useState(() => presetRange("thisMonth").to);
   const [data,    setData]    = useState<AnalyticsPayload>(initial);
-  const [loading, setLoading] = useState(false);
-
-  const fetchData = useCallback(async (f: string, t: string) => {
-    setLoading(true);
-    try {
-      const res  = await fetch(`/api/business/analytics?from=${f}&to=${t}`);
-      const json = await res.json();
-      if (res.ok) setData(json);
-    } catch {
-      // keep previous data
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // The range whose figures are on screen; loading until it matches.
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const rangeKey = `${from}|${to}`;
+  const loading  = loadedKey !== rangeKey;
 
   useEffect(() => {
-    fetchData(from, to);
-  }, [from, to, fetchData]);
+    let stale = false;
+    fetch(`/api/business/analytics?from=${from}&to=${to}`)
+      .then(async (res) => {
+        const json = await res.json();
+        if (!stale && res.ok) setData(json);
+      })
+      .catch(() => {
+        // keep previous data
+      })
+      .finally(() => {
+        if (!stale) setLoadedKey(`${from}|${to}`);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [from, to]);
 
   function applyPreset(p: Preset) {
     setPreset(p);

@@ -1,10 +1,10 @@
+import { getLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { cookies } from "next/headers";
-import { translations, type Lang } from "@/lib/i18n";
+import Link from "@/components/shared/LocaleLink";
+import { translations } from "@/lib/i18n";
 import AnalyticsClient from "./_components/AnalyticsClient";
 import type { AnalyticsPayload, RevenuePoint, ServiceSlice, HeatCell } from "@/app/api/business/analytics/route";
 import { getEffectivePlan, canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
@@ -25,7 +25,7 @@ export default async function AnalyticsPage() {
   const session = await auth();
   if (!session?.user?.businessId) redirect("/onboarding");
 
-  const lang = ((await cookies()).get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const an   = translations[lang].dashboard.analytics;
 
   const businessId = session.user.businessId;

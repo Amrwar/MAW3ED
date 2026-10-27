@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { useState, useTransition } from "react";
 import { AlertTriangle, Search, StickyNote, Users, X } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";

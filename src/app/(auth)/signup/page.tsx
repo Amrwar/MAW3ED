@@ -3,7 +3,7 @@
 import { useMounted } from "@/hooks/useMounted";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +12,7 @@ import { z } from "zod";
 import { signUpSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { localizePath } from "@/lib/locale-path";
 import Alert from "@/components/ui/Alert";
 
 const formSchema = signUpSchema.extend({
@@ -65,7 +66,7 @@ export default function SignupPage() {
 
     if (result?.error) {
       setServerError(s.accountCreated);
-      router.push("/login");
+      router.push(localizePath("/login", lang));
       return;
     }
 

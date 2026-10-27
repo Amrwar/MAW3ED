@@ -96,6 +96,9 @@ export default function OnboardingForm({ categories, cities }: Props) {
         data: OnboardingData;
       };
       if (savedData?.nameAr) {
+        // localStorage exists only in the browser, so the saved draft can
+        // only be read after hydration: an effect is the right place.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setData(savedData);
         setStep(Math.min(Math.max(savedStep, 1), STEPS.length));
       }

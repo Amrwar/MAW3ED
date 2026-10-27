@@ -1,12 +1,13 @@
+import { getLang } from "@/lib/lang-server";
+import { localizePath } from "@/lib/locale-path";
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { auth } from "@/auth";
-import { cookies } from "next/headers";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Alert from "@/components/ui/Alert";
 import { getAccountUser, getNotifications } from "@/lib/account/queries";
-import { translations, type Lang } from "@/lib/i18n";
+import { translations } from "@/lib/i18n";
 import { Suspense } from "react";
 import AccountNav from "./_components/AccountNav";
 import NoBusinessNotice from "./_components/NoBusinessNotice";
@@ -21,10 +22,9 @@ import NoBusinessNotice from "./_components/NoBusinessNotice";
  */
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (!session?.user?.id) redirect("/account-login?next=/account");
+  const lang = await getLang();
+  if (!session?.user?.id) redirect(localizePath("/account-login?next=/account", lang));
 
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
   const t = translations[lang] ?? translations.ar;
 
   const user = await getAccountUser();

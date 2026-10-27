@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
+import { localizePath } from "@/lib/locale-path";
 import { siteUrl } from "@/lib/url";
 import {
   getLandingCategories,
@@ -20,6 +21,10 @@ import {
  * Everything here comes from lib/seo/landing, which is the same module
  * the pages themselves use to decide whether to render or 404. They
  * cannot disagree.
+ *
+ * Every page is listed twice, at its Arabic and its English address,
+ * each naming both as hreflang alternates (Arabic is x-default), which
+ * is how a search engine learns they are one page in two languages.
  *
  * Paginated URLs are deliberately absent. "?page=2" is marked noindex
  * by the pages that emit it, and a sitemap entry for a page we have
@@ -101,11 +106,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [
+  return inBothLanguages([
     ...staticRoutes,
     ...comboRoutes,
     ...cityRoutes,
     ...categoryRoutes,
     ...businessRoutes,
-  ];
+  ]);
+}
+
+/** Each Arabic entry, followed by its English twin; both name both. */
+function inBothLanguages(entries: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
+  const base = siteUrl("/").slice(0, -1);
+  return entries.flatMap((entry) => {
+    const path = entry.url.slice(base.length) || "/";
+    const ar = siteUrl(path);
+    const en = siteUrl(localizePath(path, "en"));
+    const alternates = { languages: { ar, en, "x-default": ar } };
+    return [
+      { ...entry, url: ar, alternates },
+      { ...entry, url: en, alternates },
+    ];
+  });
 }
