@@ -21,6 +21,13 @@ interface Props {
  * beauty — keyed by slug, with a rotating list of plausible numbers
  * for any slug that table missed.
  */
+/** Which empty categories to show first: what people search for most. */
+const UPCOMING_FIRST = ["dentists", "gyms", "beauty-centers", "clinics", "salons", "spas", "education", "labs"];
+function rank(slug: string): number {
+  const i = UPCOMING_FIRST.indexOf(slug);
+  return i === -1 ? UPCOMING_FIRST.length : i;
+}
+
 export default function CategoriesSection({ categories, limit = 8 }: Props) {
   const { t, lang } = useLanguage();
   const c = t.categories;
@@ -33,6 +40,14 @@ export default function CategoriesSection({ categories, limit = 8 }: Props) {
   // straight into a 404.
   const shown = categories.filter((c) => c.count > 0).slice(0, limit);
   if (shown.length === 0) return null;
+
+  // A row of three looked like the whole catalogue. Up to six, the
+  // kinds of place still to come are shown too — as tiles that say so
+  // and link nowhere, since their pages do not exist yet.
+  const upcoming = categories
+    .filter((c) => c.count === 0)
+    .sort((a, b) => rank(a.slug) - rank(b.slug))
+    .slice(0, Math.max(0, 6 - shown.length));
 
   return (
     <section className="bg-[var(--color-ground)] pt-20">
@@ -87,6 +102,24 @@ export default function CategoriesSection({ categories, limit = 8 }: Props) {
               </li>
             );
           })}
+          {upcoming.map((cat) => (
+            <li
+              key={cat.id}
+              className="min-w-0 basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-3rem)/4)]"
+            >
+              <div className="card block overflow-hidden opacity-75">
+                <span aria-hidden="true" className={`block h-[8.5rem] grayscale ${coverClassFor(cat.slug)}`} />
+                <span className="block px-5 pb-5 pt-4">
+                  <span className="block truncate text-base font-bold text-[var(--color-muted)]">
+                    {isAr ? cat.nameAr : cat.nameEn}
+                  </span>
+                  <span className="mt-1 block text-[0.78125rem] text-[var(--color-subtle)]">
+                    {isAr ? "قريبًا على موعد" : "Coming soon"}
+                  </span>
+                </span>
+              </div>
+            </li>
+          ))}
         </ul>
       </div>
     </section>

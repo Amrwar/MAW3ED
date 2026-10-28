@@ -19,12 +19,12 @@ async function main() {
   // ─── Categories ───────────────────────────────────────────
   const categories = [
     // Medical
-    { slug: "clinics",        nameAr: "عيادات طبية",       nameEn: "Clinics",          icon: "🏥", color: "#0EA5E9", bgColor: "#F0F9FF" },
+    { slug: "clinics",        nameAr: "عيادات طبية",       nameEn: "Medical Clinics",          icon: "🏥", color: "#0EA5E9", bgColor: "#F0F9FF" },
     { slug: "dentists",       nameAr: "طب أسنان",           nameEn: "Dentistry",        icon: "🦷", color: "#06B6D4", bgColor: "#ECFEFF" },
     { slug: "labs",           nameAr: "مختبرات وتحاليل",    nameEn: "Medical Labs",     icon: "🔬", color: "#EF4444", bgColor: "#FEF2F2" },
 
     // Beauty & Wellness
-    { slug: "salons",         nameAr: "صالونات حلاقة",     nameEn: "Salons",           icon: "✂️", color: "#EC4899", bgColor: "#FDF2F8" },
+    { slug: "salons",         nameAr: "صالونات حلاقة",     nameEn: "Barbershops & Salons", icon: "✂️", color: "#EC4899", bgColor: "#FDF2F8" },
     { slug: "beauty-centers", nameAr: "مراكز تجميل",       nameEn: "Beauty Centers",   icon: "💄", color: "#F472B6", bgColor: "#FFF0F6" },
     { slug: "spas",           nameAr: "سبا وتدليك",        nameEn: "Spa & Massage",    icon: "🧖", color: "#8B5CF6", bgColor: "#F5F3FF" },
     { slug: "gyms",           nameAr: "جيم وفيتنس",        nameEn: "Gyms & Fitness",   icon: "💪", color: "#10B981", bgColor: "#ECFDF5" },

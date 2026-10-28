@@ -6,6 +6,7 @@ import Logo from "@/components/shared/Logo";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { VERSION_LABEL, APP_COMMIT } from "@/lib/version";
+import { SUPPORT_WHATSAPP, whatsappHref } from "@/lib/contact";
 
 export default function Footer({ cta = true }: { cta?: boolean }) {
   const { t, lang } = useLanguage();
@@ -117,6 +118,39 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
             <p className="max-w-[34ch] text-[0.84375rem] leading-[1.9] text-[var(--color-night-text)]">
               {f.tagline}
             </p>
+
+            {/* Only once a support number is configured (lib/contact). */}
+            {SUPPORT_WHATSAPP && (
+              <a
+                href={whatsappHref(SUPPORT_WHATSAPP)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex min-h-11 items-center gap-2 text-[0.84375rem] font-bold text-[var(--color-inverse)] hover:text-[var(--color-night-accent)]"
+              >
+                {lang === "ar" ? "كلّمنا على واتساب" : "Message us on WhatsApp"}
+                <span dir="ltr" className="font-normal text-[var(--color-night-text)]">{SUPPORT_WHATSAPP}</span>
+              </a>
+            )}
+
+            {/* Not links and not the stores' badge artwork: there is no
+                listing to point at yet. Plain text, so nobody taps one
+                expecting a store page. */}
+            <div className="mt-5">
+              <p className="m-0 mb-2 text-[0.75rem] text-[var(--color-night-subtle)]">
+                {lang === "ar" ? "تطبيق موعد — قريب" : "The Maw3ed app — coming soon"}
+              </p>
+              <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+                {["App Store", "Google Play"].map((store) => (
+                  <li
+                    key={store}
+                    className="rounded-[var(--radius-md)] border border-[var(--color-night-edge)] px-3 py-1.5 text-[0.75rem] text-[var(--color-night-text)]"
+                  >
+                    <span dir="ltr">{store}</span>
+                    <span className="ms-1.5 text-[var(--color-night-subtle)]">{lang === "ar" ? "· قريبًا" : "· soon"}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           {columns.map((col) => (

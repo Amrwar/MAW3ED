@@ -164,7 +164,7 @@ export function copyFor(
     case "subscription.expired":
       return {
         title: "انتهى اشتراكك في موعد",
-        body: `رجعت للباقة المجانية: صفحتك لسه ظاهرة، بس بحد ${PLAN_FEATURES.FREE.monthlyBookings} حجز في الشهر ومن غير واتساب ولا إحصائيات ولا عربون. جدّد عشان ترجع مميزات باقتك.`,
+        body: `رجعت للباقة المجانية: صفحتك لسه ظاهرة، بس بعد ${PLAN_FEATURES.FREE.monthlyBookings} حجز في الشهر الحجوزات بتستنى تأكيدك، ومن غير واتساب ولا إحصائيات ولا عربون. جدّد عشان ترجع مميزات باقتك.`,
       };
 
     case "subscription.renewed":

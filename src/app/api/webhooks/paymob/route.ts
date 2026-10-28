@@ -35,7 +35,7 @@ import {
   releaseWebhookEvent,
   settlePayment,
 } from "@/lib/payments/ledger";
-import { renewalPeriodEnd } from "@/lib/payments/subscription";
+import { purchasePeriodEnd, renewalPeriodEnd } from "@/lib/payments/subscription";
 import { bookingMoney, toCents } from "@/lib/payments/money";
 import { classifyCallback, planReversal, shouldReleaseHold } from "@/lib/payments/webhook-rules";
 import type { Plan } from "@/lib/plans";
@@ -669,13 +669,20 @@ async function handleSubscriptionSuccess(
     onFirstSettle: async (tx, settled) => {
       const business = await tx.business.findUniqueOrThrow({
         where: { id: settled.businessId },
-        select: { currentPeriodEnd: true, referredById: true, referralRewardedAt: true },
+        select: { plan: true, currentPeriodEnd: true, referredById: true, referralRewardedAt: true },
       });
 
       // Extends from whatever is left, not from today — renewing early
       // used to forfeit the remaining days, which is why the upgrade
-      // route had to refuse renewals more than a week out.
-      period.until = renewalPeriodEnd(business.currentPeriodEnd);
+      // route had to refuse renewals more than a week out. Days left on
+      // a cheaper plan are converted at the price difference first, and
+      // a payment that bought a year (periodMonths 12) adds a year.
+      period.until = purchasePeriodEnd({
+        currentPlan: business.plan as Plan,
+        currentEnd: business.currentPeriodEnd,
+        newPlan: plan,
+        months: settled.periodMonths,
+      });
 
       await tx.business.update({
         where: { id: settled.businessId },

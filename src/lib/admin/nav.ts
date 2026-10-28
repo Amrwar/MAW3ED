@@ -75,6 +75,12 @@ const SECTIONS: AdminNavSection[] = [
         permissions: ["customers.read"],
       },
       {
+        href: "/admin/waitlist",
+        labelAr: "قائمة الانتظار",
+        labelEn: "Waitlist",
+        permissions: ["customers.read"],
+      },
+      {
         href: "/admin/bookings",
         labelAr: "الحجوزات",
         labelEn: "Bookings",

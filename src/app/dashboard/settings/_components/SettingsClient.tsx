@@ -7,11 +7,12 @@ import ProfileForm from "./ProfileForm";
 import AvailabilityForm from "./AvailabilityForm";
 import PublicPagePreview from "./PublicPagePreview";
 import DepositSettingsForm from "./DepositSettingsForm";
+import AutoConfirmSetting from "./AutoConfirmSetting";
 import NotificationSettingsForm, {
   type NotificationPrefs,
 } from "./NotificationSettingsForm";
 import SubscriptionPanel from "./SubscriptionPanel";
-import { canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
+import { canUseFeature, getMonthlyBookingLimit, type Plan, type SubscriptionStatus } from "@/lib/plans";
 
 export type Profile = {
   id:             string;
@@ -53,6 +54,7 @@ type Props = {
   services:           ServicePreview[];
   depositEnabled:     boolean;
   depositPercent:     number;
+  autoConfirm:        boolean;
   notificationPrefs:  NotificationPrefs;
   plan:               Plan;
   subscriptionStatus: SubscriptionStatus;
@@ -74,6 +76,7 @@ export default function SettingsClient({
   services,
   depositEnabled,
   depositPercent,
+  autoConfirm,
   notificationPrefs,
   plan,
   subscriptionStatus,
@@ -85,6 +88,7 @@ export default function SettingsClient({
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
   const { t } = useLanguage();
   const st = t.dashboard.settings;
+  const monthlyLimit = getMonthlyBookingLimit(effectivePlan);
 
   const TABS = TAB_IDS.map((id, i) => ({
     id,
@@ -165,7 +169,13 @@ export default function SettingsClient({
         />
       )}
       {tab === "availability" && (
-        <AvailabilityForm initialAvailability={availability} />
+        <>
+          <AutoConfirmSetting
+            initial={autoConfirm}
+            monthlyLimit={Number.isFinite(monthlyLimit) ? monthlyLimit : null}
+          />
+          <AvailabilityForm initialAvailability={availability} />
+        </>
       )}
       {tab === "payments" && (
         <DepositSettingsForm

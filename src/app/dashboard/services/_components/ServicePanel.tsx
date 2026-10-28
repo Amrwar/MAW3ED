@@ -21,7 +21,9 @@ const DEFAULT = {
   nameAr:        "",
   nameEn:        "",
   descriptionAr: "",
-  duration:      30,
+  // No default length: a preset 30 was kept by almost every owner, so
+  // every service on the site read "30 min" whatever it really took.
+  duration:      0,
   price:         0,
   isAvailable:   true,
 };
@@ -181,7 +183,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
       return;
     }
     if (form.duration < 5) {
-      setError(isAr ? "يجب أن تكون مدة الخدمة 5 دقائق على الأقل" : "Service duration must be at least 5 minutes");
+      setError(isAr ? "اختار مدة الخدمة — الوقت اللي بتاخده فعلًا" : "Choose how long the service really takes");
       return;
     }
     if (form.price < 0) {
@@ -382,6 +384,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                   onFocus={focusStyle}
                   onBlur={blurStyle}
                 >
+                  <option value={0} disabled>{isAr ? "اختار المدة" : "Choose"}</option>
                   {DURATIONS.map((d) => (
                     <option key={d} value={d}>{d} {isAr ? "دقيقة" : "min"}</option>
                   ))}

@@ -8,6 +8,7 @@ import { Search, SlidersHorizontal, Store, X } from "lucide-react";
 import BusinessCard, { BusinessCardSkeleton } from "@/components/shared/BusinessCard";
 import PageHero from "@/components/shared/PageHero";
 import EmptyState from "@/components/ui/EmptyState";
+import WaitlistForm from "./WaitlistForm";
 import Alert from "@/components/ui/Alert";
 import Modal from "@/components/ui/Modal";
 import {
@@ -348,7 +349,13 @@ export default function BusinessesClient({
                   }
                 />
                 {/* A search that found nothing should not be a dead end:
-                    offer the kinds of place that are actually listed. */}
+                    ask to hear when it is listed, and offer the kinds of
+                    place that are listed now. */}
+                {query.q && (
+                  <div className="border-t border-[var(--color-line)] px-6 py-6">
+                    <WaitlistForm key={`${query.q}|${query.city}`} query={query.q} city={query.city} lang={lang} />
+                  </div>
+                )}
                 {query.q && listedCategories.length > 0 && (
                   <div className="border-t border-[var(--color-line)] px-6 pb-7 pt-5 text-center">
                     <p className="m-0 text-[0.84375rem] text-[var(--color-subtle)]">

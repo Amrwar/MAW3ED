@@ -80,6 +80,14 @@ export interface CreateBookingInput {
   idempotencyKey?: string | null;
   /** Checked inside the transaction so two requests cannot both be the last. */
   monthlyLimit?: number;
+  /**
+   * What a booking past monthlyLimit does. "refuse" fails it with
+   * limit-reached. "hold" takes it anyway, but never confirmed: it
+   * waits for the owner like any booking on a business without
+   * auto-confirm. A customer should not meet a business that has
+   * stopped taking bookings because of the business's plan.
+   */
+  overLimit?: "refuse" | "hold";
 }
 
 export type CreateBookingResult =
@@ -165,6 +173,8 @@ export async function createBooking(
 
   // ── Insert ───────────────────────────────────────────────
   for (let attempt = 0; attempt < REFERENCE_ATTEMPTS; attempt++) {
+    // Per attempt: a retried transaction counts the month afresh.
+    let status = input.status;
     try {
       const booking = await db.$transaction(
         async (tx) => {
@@ -174,7 +184,10 @@ export async function createBooking(
             const used = await tx.booking.count({
               where: countedThisMonth(input.businessId, now),
             });
-            if (used >= input.monthlyLimit) throw new LimitReached();
+            if (used >= input.monthlyLimit) {
+              if (input.overLimit !== "hold") throw new LimitReached();
+              if (status === "CONFIRMED") status = "PENDING";
+            }
           }
 
           const created = await tx.booking.create({
@@ -189,7 +202,7 @@ export async function createBooking(
               endTime,
               startsAt,
               endsAt,
-              status: input.status,
+              status,
               totalPrice: input.totalPrice,
               currency: input.currency,
               notes: input.notes ?? null,

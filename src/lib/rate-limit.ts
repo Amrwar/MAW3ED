@@ -75,6 +75,12 @@ export const RULES = {
   // votes on a handful; sixty an hour leaves room for a whole office on
   // one NAT and still makes stuffing one review slow work.
   reviewHelpful: { limit: 60, windowSeconds: 60 * 60 },
+  // "Tell me when one joins", per address. Somebody asks once or twice;
+  // ten an hour stops the form being used to fill the table.
+  waitlist: { limit: 10, windowSeconds: 60 * 60 },
+  // Per address, so the form cannot be used to send one inbox a stream
+  // of confirmation emails from many networks.
+  waitlistEmail: { limit: 5, windowSeconds: 24 * 60 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type Bucket = keyof typeof RULES;

@@ -366,7 +366,7 @@ export function subscriptionExpiredHtml(params: {
         ⚠️ اللي وقف لحد ما تجدّد:
       </p>
       <ul style="margin:8px 0 0;padding-right:20px;font-size:13px;color:#b91c1c;">
-        <li>الحجوزات غير المحدودة (المجانية: ${PLAN_FEATURES.FREE.monthlyBookings} حجز في الشهر)</li>
+        <li>التأكيد التلقائي من غير حد (المجانية: ${PLAN_FEATURES.FREE.monthlyBookings} حجز في الشهر، وبعدها كل حجز يستنى تأكيدك)</li>
         <li>إشعارات واتساب</li>
         <li>لوحة الإحصائيات</li>
         <li>استلام العربون والمدفوعات أونلاين</li>
@@ -441,6 +441,36 @@ export function emailVerificationHtml(verifyUrl: string, name?: string | null): 
 
     <p style="margin:0;font-size:13px;color:#9ca3af;">شكرًا إنك اخترت <strong style="color:#0D7A5A;">موعد</strong></p>
   `;
+  return layout(body);
+}
+
+/**
+ * "Tell me when one joins" — confirming the address before it counts.
+ * In the language the form was filled in, since the rest of the site
+ * was in it too.
+ */
+export function waitlistConfirmHtml(confirmUrl: string, query: string, lang: "ar" | "en"): string {
+  const q = escapeHtml(query);
+  const body =
+    lang === "en"
+      ? `
+    <p style="margin:0 0 6px;font-size:22px;font-weight:900;color:#111827;" dir="ltr">Confirm your email</p>
+    <p style="margin:0 0 28px;font-size:15px;color:#6b7280;" dir="ltr">
+      You asked Maw3ed to tell you when <strong>${q}</strong> is listed. Confirm, and we will send you one email when it is.
+    </p>
+    ${button(confirmUrl, "Confirm →")}
+    <p style="margin:0 0 16px;font-size:13px;color:#9ca3af;" dir="ltr">
+      Didn't ask for this? Ignore this email and nothing will be sent.
+    </p>`
+      : `
+    <p style="margin:0 0 6px;font-size:22px;font-weight:900;color:#111827;">أكّد إيميلك</p>
+    <p style="margin:0 0 28px;font-size:15px;color:#6b7280;">
+      طلبت من موعد يبلّغك لما <strong>${q}</strong> يتضاف. أكّد، وهنبعتلك إيميل واحد بس لما يتضاف.
+    </p>
+    ${button(confirmUrl, "أكّد ←")}
+    <p style="margin:0 0 16px;font-size:13px;color:#9ca3af;">
+      مش إنت اللي طلبت؟ تجاهل الإيميل ده ومش هيوصلك حاجة.
+    </p>`;
   return layout(body);
 }
 

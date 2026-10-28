@@ -24,12 +24,30 @@ export default function FaqPage() {
 
         <section className="section-padding">
           <Container>
-            <div className="max-w-2xl mx-auto space-y-4">
-              {f.items.map((item, i) => (
-                <div key={i} className="card p-6">
-                  <h3 className="font-bold text-[var(--color-text-primary)] mb-2">{item.q}</h3>
-                  <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">{item.a}</p>
-                </div>
+            {/* General first, then by who is asking: a customer looking
+                for the cancellation rule should not read past questions
+                about plans to find it. */}
+            <div className="max-w-2xl mx-auto space-y-12">
+              {[
+                { id: "general",   title: null,              items: f.items },
+                { id: "customers", title: f.customerTitle,   items: f.customerItems },
+                { id: "business",  title: f.businessTitle,   items: f.businessItems },
+              ].map((group) => (
+                <section key={group.id} id={group.id} aria-labelledby={group.title ? `${group.id}-title` : undefined}>
+                  {group.title && (
+                    <h2 id={`${group.id}-title`} className="mb-4 text-lg font-bold text-[var(--color-ink)]">
+                      {group.title}
+                    </h2>
+                  )}
+                  <div className="space-y-4">
+                    {group.items.map((item) => (
+                      <div key={item.q} className="card p-6">
+                        <h3 className="font-bold text-[var(--color-text-primary)] mb-2">{item.q}</h3>
+                        <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">{item.a}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
 

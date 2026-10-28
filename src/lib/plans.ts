@@ -14,7 +14,8 @@
  * by comparing plan names. Both are now rank and matrix questions.
  *
  *   FREE     a working booking page: profile, services, scheduling,
- *            thirty bookings a month, and reminders to the customer
+ *            thirty auto-confirmed bookings a month (more still come in,
+ *            held for the owner), and reminders to the customer
  *   PRO      the business tools: unlimited bookings, staff, WhatsApp,
  *            analytics, and taking money from customers
  *   PREMIUM  the group tools: branches, advanced analytics, marketing,
@@ -276,6 +277,33 @@ export const PLAN_PRICES_CENTS: Record<PaidPlan, number> = {
   PREMIUM: PLAN_PRICES_EGP.PREMIUM * 100,
 };
 
+/** Monthly, or a year paid up front. */
+export type BillingCycle = "monthly" | "annual";
+export const BILLING_CYCLES = ["monthly", "annual"] as const;
+
+/** A year costs this many months: two months free. */
+export const ANNUAL_MONTHS_CHARGED = 10;
+
+/** How many months a purchase on this cycle buys. */
+export function cycleMonths(cycle: BillingCycle): 1 | 12 {
+  return cycle === "annual" ? 12 : 1;
+}
+
+/** What one purchase on this cycle costs, in pounds. */
+export function planPriceEgp(plan: PaidPlan, cycle: BillingCycle): number {
+  return PLAN_PRICES_EGP[plan] * (cycle === "annual" ? ANNUAL_MONTHS_CHARGED : 1);
+}
+
+/** Twelve months at the monthly price: what a year would cost without the discount. */
+export function fullYearPriceEgp(plan: PaidPlan): number {
+  return PLAN_PRICES_EGP[plan] * 12;
+}
+
+/** The same, in piastres. */
+export function planPriceCents(plan: PaidPlan, cycle: BillingCycle): number {
+  return planPriceEgp(plan, cycle) * 100;
+}
+
 // ─── Names ────────────────────────────────────────────────────────────────────
 
 export const PLAN_NAMES_AR: Record<Plan, string> = {
@@ -356,7 +384,11 @@ function countLabel(key: PlanFeature, value: number, lang: "ar" | "en"): string 
 
   if (key === "monthlyBookings") {
     if (value === Infinity) return lang === "ar" ? "حجوزات غير محدودة" : "Unlimited bookings";
-    return lang === "ar" ? `${arCount(value, { one: "حجز واحد", two: "حجزين", few: "حجوزات", many: "حجز" })} شهريًا` : `${value} bookings / month`;
+    // Past the allowance bookings still arrive; they wait for the
+    // owner to confirm them (lib/bookings/create, overLimit "hold").
+    return lang === "ar"
+      ? `${arCount(value, { one: "حجز واحد", two: "حجزين", few: "حجوزات", many: "حجز" })} بتأكيد تلقائي شهريًا`
+      : `${value} auto-confirmed bookings / month`;
   }
   if (key === "staffMembers") {
     if (value === Infinity) return lang === "ar" ? "فريق غير محدود" : "Unlimited staff";

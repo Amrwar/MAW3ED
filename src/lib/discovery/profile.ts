@@ -6,6 +6,7 @@ import { getBusinessReviews, getRatingSummary, type PublicReview, type RatingSum
 import { canUseFeature, getEffectivePlan } from "@/lib/plans";
 import { CUTOFF_HOURS } from "@/lib/bookings/self-service";
 import { staffWeek } from "@/lib/discovery/staff";
+import { overAllowance } from "@/lib/bookings/allowance";
 
 /**
  * One business as the public may see it — the app's business screen.
@@ -233,6 +234,11 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
   const takesDeposit =
     b.depositEnabled && canUseFeature(getEffectivePlan(b.plan, b.subscriptionStatus, b.trialEndsAt), "deposits");
 
+  // The same goes for instant confirmation: past the plan's monthly
+  // allowance a booking waits for the owner, so the page must not say
+  // it will be confirmed on the spot.
+  const confirmsInstantly = b.autoConfirm && !(await overAllowance([b.id])).has(b.id);
+
   const services = b.services.map((s) => {
     const price = Number(s.price);
     return {
@@ -261,7 +267,7 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
     coverImage: b.coverImage,
     logoImage: b.logoImage,
     isVerified: b.isVerified,
-    autoConfirm: b.autoConfirm,
+    autoConfirm: confirmsInstantly,
     acceptsOnlinePayment: takesDeposit,
     businessType: b.businessType,
     category: {
