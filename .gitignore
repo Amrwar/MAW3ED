@@ -56,3 +56,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Vitest 5 report output
+.vitest/
+vitest-report.json
