@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { authConfig } from "./auth.config";
 import { buildCsp, generateNonce } from "./lib/security/csp";
 
-// Use lightweight edge-compatible config (no DB) for middleware
+// The lightweight config (no DB), shared with auth.config.ts's authorized().
 const { auth } = NextAuth(authConfig);
 
 /**
@@ -29,8 +29,9 @@ const { auth } = NextAuth(authConfig);
  * Note the shape: `auth(callback)`. The callback runs only after the
  * authorized() callback in auth.config.ts has allowed the request, so
  * wrapping it does not weaken route protection — a redirect returned
- * there is returned before this runs. That is load-bearing enough to be
- * worth a test, and middleware.test.ts has one.
+ * there is returned before this runs.
+ *
+ * Next 16 renamed middleware to proxy; this file was src/middleware.ts.
  */
 export default auth((req) => {
   const nonce = generateNonce();

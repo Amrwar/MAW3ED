@@ -21,7 +21,7 @@ import pkg from "./package.json" with { type: "json" };
  *                      payment handler, so nothing may ask.
  *
  * Not here: Content-Security-Policy. It carries a per-request nonce, so
- * it is built in src/middleware.ts from src/lib/security/csp.ts — these
+ * it is built in src/proxy.ts from src/lib/security/csp.ts — these
  * headers are computed once at build time, which would hand every
  * visitor the same nonce and defeat the point of having one.
  */

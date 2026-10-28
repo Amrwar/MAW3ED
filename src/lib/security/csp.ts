@@ -108,8 +108,7 @@ export function buildCsp({ nonce, development = false }: CspOptions): string {
  * Must be unguessable and must never repeat, or the policy means
  * nothing: an attacker who learns one nonce, or can predict the next,
  * can author a script tag that passes. crypto.getRandomValues is the
- * Web Crypto API, which is what the Edge runtime middleware runs on —
- * Node's randomBytes is not available there.
+ * Web Crypto API, available in the proxy and anywhere else this runs.
  */
 export function generateNonce(): string {
   const bytes = new Uint8Array(16);

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 
 /**
- * This request's CSP nonce, as the middleware set it.
+ * This request's CSP nonce, as the proxy (src/proxy.ts) set it.
  *
  * Next stamps the nonce onto the script tags it injects itself, but a
  * <script type="application/ld+json"> written by a page is ours to

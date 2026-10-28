@@ -71,7 +71,7 @@ Two consequences worth knowing:
 ### What an `/en` prefix would take
 
 - A route group so every page exists at both `/x` and `/en/x`.
-- Middleware resolving language from the path rather than the cookie,
+- The proxy (src/proxy.ts) resolving language from the path rather than the cookie,
   with the cookie demoted to a preference used only for redirecting a
   first-time visitor.
 - Every internal `Link` made locale-aware, or a wrapper that is.
@@ -84,18 +84,17 @@ it is written down here rather than half-done.
 
 ## Soft 404s
 
-`notFound()` inside a streamed page returns HTTP 200 with a not-found
-body — Next flushes the shell before the page decides. This affects
-every such page on the site, including `/company/<unknown>`, and
-predates the landing pages.
+Fixed: `notFound()` answers HTTP 404. It used to answer 200, because a
+root `loading.tsx` streamed the shell before the page decided; that
+boundary now lives only on `/businesses`, which never 404s. Keep it
+that way — a `loading.tsx` above a page that can 404 brings the soft
+404 back.
 
-It matters less than it looks here: the invalid combinations are in no
-sitemap and no link, so nothing discovers them, and anything that does
-finds `noindex`. Fixing it properly means doing the existence check
-before rendering begins, which for a database lookup means either
-`dynamicParams = false` — and then a newly listed business has no
-landing page until the next deploy — or moving the check into
-middleware, which cannot reach the database.
+The 404 body is an empty `<html id="__next_error__">` shell, and the
+not-found page is drawn in the browser from the payload that ships with
+it. That is Next 16's own behaviour for `notFound()` in a dynamic page
+(it reproduces in a bare app) and harmless for search: crawlers act on
+the status.
 
 ## robots.txt
 

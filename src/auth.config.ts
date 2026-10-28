@@ -1,6 +1,8 @@
 /**
- * Edge-compatible auth config — no DB imports allowed here.
- * Used by middleware (Edge runtime).
+ * Auth config without database imports, used by the proxy (src/proxy.ts).
+ *
+ * The proxy runs on every request, so it stays light: no Prisma client
+ * here. Database checks belong in src/auth.ts or the route itself.
  */
 import type { NextAuthConfig } from "next-auth";
 
@@ -23,7 +25,7 @@ export const authConfig: NextAuthConfig = {
       }
 
       // The customer area. Guarded here rather than only in the layout
-      // because middleware is the one place that knows which path was
+      // because the proxy is the one place that knows which path was
       // asked for: somebody who follows a link to /account/favorites and
       // has to sign in first gets sent back to favorites, instead of
       // being dumped on the account home having lost where they were
