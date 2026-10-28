@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { getLang } from "@/lib/lang-server";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { ArrowRight, ArrowLeft, Search } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -8,17 +8,27 @@ import PageHero from "@/components/shared/PageHero";
 import { getFacets } from "@/lib/discovery/search";
 import { buildMetadata } from "@/lib/seo/meta";
 import { coverClassFor } from "@/lib/category-cover";
-import { translations, type Lang } from "@/lib/i18n";
+import { translations } from "@/lib/i18n";
 import { arCount, num } from "@/lib/fmt";
 
 const BIZ = { one: "نشاط واحد", two: "نشاطين", few: "أنشطة", many: "نشاط" };
 
-export const metadata: Metadata = buildMetadata({
-  title: "تصفح حسب الفئة",
-  description:
-    "كل الفئات اللي فيها أنشطة بتستقبل حجوزات على موعد — اختر فئة وشوف الأماكن المتاحة فيها.",
-  path: "/categories",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = await getLang();
+  return lang === "en"
+    ? buildMetadata({
+        title: "Browse by category",
+        description: "Every category with businesses taking bookings on Maw3ed — pick one and see the places in it.",
+        path: "/categories",
+        lang,
+      })
+    : buildMetadata({
+        title: "تصفح حسب الفئة",
+        description:
+          "كل الفئات اللي فيها أنشطة بتستقبل حجوزات على موعد — اختر فئة وشوف الأماكن المتاحة فيها.",
+        path: "/categories",
+      });
+}
 
 /**
  * The category directory.
@@ -39,8 +49,7 @@ export const metadata: Metadata = buildMetadata({
  * visitor will actually find.
  */
 export default async function CategoriesPage() {
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
   const c = t.categoriesPage;
   const isAr = lang === "ar";

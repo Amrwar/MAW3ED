@@ -13,6 +13,8 @@ import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
 import { callerKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { normalisePhone } from "@/lib/phone";
+import { phoneProofRequired, readPhoneProof } from "@/lib/bookings/phone-proof";
+import { currentCaller } from "@/lib/api";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -43,7 +45,26 @@ export async function POST(req: Request, { params }: Params) {
 
     const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes,
             tableId, resourceId, staffMemberId, branchId, partySize, idempotencyKey,
-            source, discountCode } = parsed.data;
+            source, discountCode, phoneProof } = parsed.data;
+
+    const phoneE164 = normalisePhone(customerPhone);
+
+    // ── Is the number theirs? ─────────────────────────────────────────────────
+    //
+    // Only when switched on (lib/bookings/phone-proof). A signed-in
+    // customer whose account phone is this number has proved it already;
+    // anyone else brings the proof the code exchange issued. Checked
+    // before the throttle below: the first attempt of every guest booking
+    // comes back here to ask for a code, and must not spend the
+    // per-address booking budget doing so.
+    if (phoneProofRequired() && phoneE164) {
+      const proven =
+        (await readPhoneProof(phoneProof)) === phoneE164 ||
+        (await callerOwnsPhone(phoneE164));
+      if (!proven) {
+        return err("أكّد رقم موبايلك بالكود الأول", 403, { code: "phone-unverified" });
+      }
+    }
 
     // ── Throttle ──────────────────────────────────────────────────────────────
     //
@@ -69,7 +90,6 @@ export async function POST(req: Request, { params }: Params) {
     // salon, or whose retry replays the same idempotency key, has booked
     // nothing and must not be locked out. Five in an hour under one
     // number at one business is more than any person makes.
-    const phoneE164 = normalisePhone(customerPhone);
     if (phoneE164) {
       const isReplay = idempotencyKey
         ? (await db.booking.count({ where: { idempotencyKey } })) > 0
@@ -393,4 +413,15 @@ function unavailableMessage(reason: string | null): string {
     default:
       return "الموعد ده مش متاح، اختر وقت تاني";
   }
+}
+
+/** Whether the signed-in caller, if any, has proved this number on their account. */
+async function callerOwnsPhone(phoneE164: string): Promise<boolean> {
+  const caller = await currentCaller();
+  if (!caller) return false;
+  const user = await db.user.findUnique({
+    where: { id: caller.user.id },
+    select: { phone: true, phoneVerifiedAt: true },
+  });
+  return Boolean(user?.phoneVerifiedAt && user.phone === phoneE164);
 }

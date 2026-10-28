@@ -49,11 +49,17 @@ export default function CategoriesSection({ categories, limit = 8 }: Props) {
           </Link>
         </div>
 
-        <ul className="grid list-none grid-cols-2 gap-4 p-0 sm:grid-cols-3 lg:grid-cols-4">
+        {/* Wrapping rows, centred: a short last row sits in the middle
+            instead of leaving a hole at the end (three tiles in a
+            four-column grid did). Widths match the old 2/3/4 columns. */}
+        <ul className="flex list-none flex-wrap justify-center gap-4 p-0">
           {shown.map((cat) => {
             const name = isAr ? cat.nameAr : cat.nameEn;
             return (
-              <li key={cat.id} className="min-w-0">
+              <li
+                key={cat.id}
+                className="min-w-0 basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-3rem)/4)]"
+              >
                 <Link
                   href={`/categories/${cat.slug}`}
                   className="card card-hover block overflow-hidden"

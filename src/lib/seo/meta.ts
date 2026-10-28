@@ -31,6 +31,16 @@ export interface PageMeta {
   page?: number;
   /** Absolute or site-relative image for sharing. */
   image?: string | null;
+  /** The language the page is being served in. Arabic when omitted. */
+  lang?: "ar" | "en";
+}
+
+/** The site-wide share card (public/og.png), for pages without an image of their own. */
+export const DEFAULT_OG_IMAGE = { url: "/og.png", size: { width: 1200, height: 630 } } as const;
+
+/** og:locale for a page language. */
+export function ogLocale(lang: "ar" | "en"): string {
+  return lang === "en" ? "en_US" : "ar_EG";
 }
 
 export function canonicalFor(path: string, page = 1): string {
@@ -46,9 +56,10 @@ export function buildMetadata({
   path,
   page = 1,
   image,
+  lang = "ar",
 }: PageMeta): Metadata {
   const canonical = canonicalFor(path, page);
-  const pagedTitle = page > 1 ? `${title} — صفحة ${page}` : title;
+  const pagedTitle = page > 1 ? `${title} — ${lang === "en" ? "Page" : "صفحة"} ${page}` : title;
 
   return {
     title: pagedTitle,
@@ -70,12 +81,17 @@ export function buildMetadata({
       description,
       url: canonical,
       siteName: "موعد · Maw3ed",
-      locale: "ar_EG",
+      // The language the page is actually in. It said ar_EG over English
+      // titles, so a share card and the page disagreed.
+      locale: ogLocale(lang),
       type: "website",
-      ...(image ? { images: [{ url: image }] } : {}),
+      // The brand card when the page has no picture of its own: a page
+      // object's openGraph replaces the layout's whole, image included.
+      images: [{ url: image ?? DEFAULT_OG_IMAGE.url, ...(image ? {} : DEFAULT_OG_IMAGE.size) }],
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
+      card: "summary_large_image",
+      images: [image ?? DEFAULT_OG_IMAGE.url],
       title: pagedTitle,
       description,
     },

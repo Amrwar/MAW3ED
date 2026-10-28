@@ -2,7 +2,47 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Home, Search, Calendar, Clock, ArrowLeft } from "lucide-react";
+import { Home, Search, Calendar, Clock, ArrowLeft, ArrowRight } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+
+// Arabic and English, by the page's language. This page was Arabic only,
+// so an English visitor who mistyped a link landed somewhere else entirely.
+const TEXT = {
+  ar: {
+    notFoundTitle:    "الصفحة غير موجودة",
+    notFoundBody:     "يبدو أن هذا الموعد ضاع في الطريق. الصفحة التي تبحث عنها غير موجودة أو ربما تم نقلها.",
+    errorBody:        "حدث خطأ غير متوقع في النظام. يرجى إعادة المحاولة أو العودة للصفحة الرئيسية.",
+    homeAria:         "موعد — الصفحة الرئيسية",
+    backHome:         "العودة للرئيسية",
+    code:             "رمز الخطأ",
+    home:             "الصفحة الرئيسية",
+    browse:           "استكشف الأعمال",
+    retry:            "↺ إعادة المحاولة",
+    more:             "قد يهمك أيضًا",
+    categories:       "التصنيفات",
+    cities:           "المدن",
+    forBusiness:      "لأصحاب الأعمال",
+    contact:          "تواصل معنا",
+    rights:           "جميع الحقوق محفوظة",
+  },
+  en: {
+    notFoundTitle:    "Page not found",
+    notFoundBody:     "This appointment seems to have got lost on the way. The page you are looking for does not exist or has moved.",
+    errorBody:        "Something unexpected went wrong. Try again, or go back to the home page.",
+    homeAria:         "Maw3ed — home",
+    backHome:         "Back to home",
+    code:             "Error code",
+    home:             "Home",
+    browse:           "Browse businesses",
+    retry:            "↺ Try again",
+    more:             "You might also like",
+    categories:       "Categories",
+    cities:           "Cities",
+    forBusiness:      "For business owners",
+    contact:          "Contact us",
+    rights:           "All rights reserved",
+  },
+} as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,14 +57,15 @@ type Props = {
 
 export default function ErrorPage({
   code     = "404",
-  title    = "الصفحة غير موجودة",
+  title,
   subtitle,
   onReset,
 }: Props) {
-  const defaultSubtitle =
-    code === "404"
-      ? "يبدو أن هذا الموعد ضاع في الطريق. الصفحة التي تبحث عنها غير موجودة أو ربما تم نقلها."
-      : "حدث خطأ غير متوقع في النظام. يرجى إعادة المحاولة أو العودة للصفحة الرئيسية.";
+  const { lang } = useLanguage();
+  const tx = TEXT[lang];
+  const dir = lang === "en" ? "ltr" : "rtl";
+  const LinkArrow = lang === "en" ? ArrowRight : ArrowLeft;
+  const defaultSubtitle = code === "404" ? tx.notFoundBody : tx.errorBody;
 
   return (
     <div
@@ -84,22 +125,22 @@ export default function ErrorPage({
         }}
       >
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" aria-label="موعد — الصفحة الرئيسية">
+          <Link href="/" aria-label={tx.homeAria}>
             <Image src="/logo.png" alt="" width={110} height={46} className="object-contain" priority />
           </Link>
           <Link
             href="/"
             className="text-sm font-semibold transition-colors"
             style={{ color: "var(--color-muted)" }}
-            dir="rtl"
+            dir={dir}
           >
-            العودة للرئيسية
+            {tx.backHome}
           </Link>
         </div>
       </header>
 
       {/* ── Main ─────────────────────────────────────────────────────────────── */}
-      <main id="main" className="max-w-5xl mx-auto px-6 py-14 lg:py-20" dir="rtl">
+      <main id="main" className="max-w-5xl mx-auto px-6 py-14 lg:py-20" dir={dir}>
         <div className="flex flex-col lg:flex-row items-center gap-14 lg:gap-8">
 
           {/* ── Column 1: Text content ── */}
@@ -115,7 +156,7 @@ export default function ErrorPage({
               }}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-jade)] animate-pulse" />
-              رمز الخطأ {code}
+              {tx.code} {code}
             </div>
 
             {/* Headline */}
@@ -128,7 +169,7 @@ export default function ErrorPage({
                 lineHeight:    1.18,
               }}
             >
-              {title}
+              {title ?? tx.notFoundTitle}
             </h1>
 
             {/* Subtitle */}
@@ -150,7 +191,7 @@ export default function ErrorPage({
                 }}
               >
                 <Home size={15} />
-                الصفحة الرئيسية
+                {tx.home}
               </Link>
 
               <Link
@@ -164,7 +205,7 @@ export default function ErrorPage({
                 }}
               >
                 <Search size={15} />
-                استكشف الأعمال
+                {tx.browse}
               </Link>
 
               {onReset && (
@@ -177,7 +218,7 @@ export default function ErrorPage({
                     color:      "var(--color-muted)",
                   }}
                 >
-                  ↺ إعادة المحاولة
+                  {tx.retry}
                 </button>
               )}
             </div>
@@ -195,16 +236,16 @@ export default function ErrorPage({
                 className="text-xs font-extrabold mb-4 uppercase tracking-widest"
                 style={{ color: "var(--color-subtle)" }}
               >
-                قد يهمك أيضًا
+                {tx.more}
               </p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
                 {[
-                  { href: "/",             label: "الصفحة الرئيسية"  },
-                  { href: "/businesses",   label: "استكشف الأعمال"   },
-                  { href: "/categories",   label: "التصنيفات"         },
-                  { href: "/cities",       label: "المدن"             },
-                  { href: "/for-business", label: "لأصحاب الأعمال"   },
-                  { href: "/contact",      label: "تواصل معنا"       },
+                  { href: "/",             label: tx.home        },
+                  { href: "/businesses",   label: tx.browse      },
+                  { href: "/categories",   label: tx.categories  },
+                  { href: "/cities",       label: tx.cities      },
+                  { href: "/for-business", label: tx.forBusiness },
+                  { href: "/contact",      label: tx.contact     },
                 ].map((link) => (
                   <Link
                     key={link.href}
@@ -212,7 +253,7 @@ export default function ErrorPage({
                     className="group flex items-center gap-2 py-2.5 text-sm font-semibold transition-colors"
                     style={{ color: "var(--color-muted)" }}
                   >
-                    <ArrowLeft
+                    <LinkArrow
                       size={12}
                       style={{ color: "var(--color-line-2)", transition: "color 0.15s, transform 0.15s" }}
                       className="group-hover:text-[var(--color-jade)]"
@@ -237,7 +278,7 @@ export default function ErrorPage({
         className="py-6 text-xs text-center"
         style={{ color: "var(--color-subtle)", borderTop: "1px solid var(--color-surface-3)" }}
       >
-        © {new Date().getFullYear()} موعد · Maw3ed — جميع الحقوق محفوظة
+        © {new Date().getFullYear()} موعد · Maw3ed — {tx.rights}
       </footer>
     </div>
   );

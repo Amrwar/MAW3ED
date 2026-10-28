@@ -1,15 +1,26 @@
 import type { Metadata } from "next";
+import { getLang } from "@/lib/lang-server";
 import { buildMetadata } from "@/lib/seo/meta";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/support";
 
-export const metadata: Metadata = buildMetadata({
-  title: "شروط الاستخدام",
-  description: "شروط استخدام منصة موعد للعملاء ولأصحاب الأعمال.",
-  path: "/terms",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = await getLang();
+  return lang === "en"
+    ? buildMetadata({
+        title: "Terms of use",
+        description: "Terms of use of the Maw3ed platform for customers and business owners.",
+        path: "/terms",
+        lang,
+      })
+    : buildMetadata({
+        title: "شروط الاستخدام",
+        description: "شروط استخدام منصة موعد للعملاء ولأصحاب الأعمال.",
+        path: "/terms",
+      });
+}
 
 export default function TermsPage() {
   return (

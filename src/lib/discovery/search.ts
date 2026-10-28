@@ -8,11 +8,10 @@ import {
   cairoNow,
   dayOffsetToWeekday,
   openState,
-  startOfCairoDay,
   type DayHours,
   type OpenState,
 } from "./hours";
-import { findNextSlot, type BookedRange, type NextSlot } from "./next-slot";
+import { firstFree, loadSchedules, type NextSlot } from "./next-free";
 import { timeToMinutes } from "@/lib/bookings/time";
 
 /**
@@ -48,7 +47,7 @@ export interface DiscoveryBusiness {
   open: OpenState;
   /**
    * The first genuinely free appointment, or null when there is none
-   * inside the fortnight we look ahead. Never a guess — see next-slot.ts.
+   * inside the fortnight we look ahead. Never a guess — see next-free.ts.
    */
   nextSlot: NextSlot | null;
   /**
@@ -300,81 +299,39 @@ export async function cardsForIds(ids: string[], q: DiscoveryQuery, now: Date = 
     where: { AND: [buildWhere(q, now), { id: { in: ids } }] },
     select: SELECT,
   });
-  const rulesByBusiness = new Map<string, DayHours[]>(rows.map((r) => [r.id, r.availability]));
   const mapped = rows.map((r) => toBusiness(r, dayOfWeek, time));
-  await attachNextSlots(mapped, rulesByBusiness, dayOfWeek, time, now);
+  await attachNextSlots(mapped, now);
   return mapped;
 }
 
 /**
- * Fills in nextSlot for one page of results.
- *
- * Two queries regardless of page size: the shortest service per
- * business, and every booking across those businesses for the fortnight
- * ahead. Both are indexed.
+ * Fills in nextSlot for one page of results, by the booking engine's own
+ * rule (lib/discovery/next-free) — the one the profile page and the
+ * booking widget use, so a card never promises a time the profile does
+ * not show. Three queries regardless of page size.
  */
-async function attachNextSlots(
-  list: DiscoveryBusiness[],
-  rulesByBusiness: Map<string, DayHours[]>,
-  nowDay: number,
-  nowTime: string,
-  now: Date,
-): Promise<void> {
+async function attachNextSlots(list: DiscoveryBusiness[], now: Date): Promise<void> {
   if (list.length === 0) return;
-
   const ids = list.map((b) => b.id);
 
-  const todayUTC = startOfCairoDay(now);
-  const horizonUTC = new Date(todayUTC.getTime() + 14 * 86_400_000);
-
-  const [services, bookings] = await Promise.all([
+  const [services, schedules] = await Promise.all([
     // One row per business, not every service of every business.
     db.service.groupBy({
       by: ["businessId"],
       where: { businessId: { in: ids }, isAvailable: true, duration: { gt: 0 } },
       _min: { duration: true },
     }),
-    db.booking.findMany({
-      where: {
-        businessId: { in: ids },
-        date: { gte: todayUTC, lt: horizonUTC },
-        status: { in: ["PENDING", "CONFIRMED"] },
-      },
-      select: {
-        businessId: true,
-        date: true,
-        startTime: true,
-        endTime: true,
-        service: { select: { duration: true } },
-      },
-    }),
+    loadSchedules(ids, now),
   ]);
 
-  const shortest = new Map<string, number>();
+  const shortestOf = new Map<string, number>();
   for (const s of services) {
-    if (s._min.duration !== null) shortest.set(s.businessId, s._min.duration);
-  }
-
-  const booked = new Map<string, BookedRange[]>();
-  for (const b of bookings) {
-    const dayOffset = Math.round((b.date.getTime() - todayUTC.getTime()) / 86_400_000);
-    const startMin = timeToMinutes(b.startTime);
-    const endMin = b.endTime ? timeToMinutes(b.endTime) : startMin + b.service.duration;
-    const list = booked.get(b.businessId) ?? [];
-    list.push({ dayOffset, startMin, endMin });
-    booked.set(b.businessId, list);
+    if (s._min.duration !== null) shortestOf.set(s.businessId, s._min.duration);
   }
 
   for (const b of list) {
-    b.nextSlot = findNextSlot(
-      {
-        rules: rulesByBusiness.get(b.id) ?? [],
-        durationMinutes: shortest.get(b.id) ?? null,
-        booked: booked.get(b.id) ?? [],
-      },
-      nowDay,
-      nowTime,
-    );
+    const schedule = schedules.get(b.id);
+    b.nextSlot = schedule ? firstFree(schedule, shortestOf.get(b.id) ?? null) : null;
   }
 }
 
@@ -448,19 +405,18 @@ export async function searchBusinesses(
         }),
   ]);
 
-  // The rules came back with the rows; next-slot reuses them rather than
-  // reading them again.
-  const rulesByBusiness = new Map<string, DayHours[]>(rows.map((r) => [r.id, r.availability]));
   const mapped = rows.map((r) => toBusiness(r, dayOfWeek, time));
 
   // "Soonest" ranks by the next free slot, so every candidate needs one
-  // before sorting; otherwise only the page shown does.
-  if (q.sort === "soonest") await attachNextSlots(mapped, rulesByBusiness, dayOfWeek, time, now);
+  // before sorting; otherwise only the page shown does. That is the full
+  // booking engine over up to DERIVED_CAP businesses — three queries, then
+  // arithmetic — the price of the order matching what each card shows.
+  if (q.sort === "soonest") await attachNextSlots(mapped, now);
   const ordered = sortInMemory(mapped, q.sort);
   const businesses = derivedSort
     ? ordered.slice((q.page - 1) * PAGE_SIZE, q.page * PAGE_SIZE)
     : ordered;
-  if (q.sort !== "soonest") await attachNextSlots(businesses, rulesByBusiness, dayOfWeek, time, now);
+  if (q.sort !== "soonest") await attachNextSlots(businesses, now);
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   return {

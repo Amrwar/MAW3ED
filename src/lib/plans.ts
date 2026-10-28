@@ -325,6 +325,11 @@ const LABELS: Record<PlanFeature, { ar: string; en: string }> = {
   customBranding: { ar: "إخفاء شعار موعد", en: "Remove Maw3ed branding" },
 };
 
+/** A row's name, for the label column of a comparison. */
+export function featureLabel(key: PlanFeature, lang: "ar" | "en"): string {
+  return LABELS[key][lang];
+}
+
 /** The order the rows read best in. */
 export const FEATURE_ORDER: PlanFeature[] = [
   "monthlyBookings",

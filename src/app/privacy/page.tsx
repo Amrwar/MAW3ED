@@ -1,15 +1,32 @@
 import type { Metadata } from "next";
+import { getLang } from "@/lib/lang-server";
 import Link from "next/link";
 import { buildMetadata } from "@/lib/seo/meta";
 import LegalPage, { LegalList, LegalSection } from "@/components/legal/LegalPage";
 import { parseLangParam } from "@/components/legal/lang-param";
 import { BUSINESS_ADDRESS, SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/support";
 
-export const metadata: Metadata = buildMetadata({
-  title: "سياسة الخصوصية",
-  description: "إيه البيانات اللي موعد بيجمعها، وبيستخدمها في إيه، ومين بيستلمها، وإزاي تحذف حسابك.",
-  path: "/privacy",
-});
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ lang?: string | string[] }>;
+}): Promise<Metadata> {
+  // ?lang= wins, as it does for the page body: the stores link these
+  // pages with it, to a visitor who has no cookie.
+  const lang = parseLangParam((await searchParams).lang) ?? (await getLang());
+  return lang === "en"
+    ? buildMetadata({
+        title: "Privacy policy",
+        description: "What data Maw3ed collects, what it is used for, who receives it, and how to delete your account.",
+        path: "/privacy",
+        lang,
+      })
+    : buildMetadata({
+        title: "سياسة الخصوصية",
+        description: "إيه البيانات اللي موعد بيجمعها، وبيستخدمها في إيه، ومين بيستلمها، وإزاي تحذف حسابك.",
+        path: "/privacy",
+      });
+}
 
 /**
  * The privacy policy, written from the code rather than from a template.

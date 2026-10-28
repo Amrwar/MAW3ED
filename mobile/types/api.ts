@@ -26,7 +26,7 @@ export type OpenState =
   | { state: "closed"; opensInDays: number; opensAt: string }
   | { state: "unknown" };
 
-/** Mirrors src/lib/discovery/next-slot.ts: days from today in Cairo, and a Cairo time. */
+/** Mirrors NextSlot in src/lib/discovery/next-free.ts: days from today in Cairo, and a Cairo time. */
 export interface NextSlot {
   dayOffset: number;
   time: string;

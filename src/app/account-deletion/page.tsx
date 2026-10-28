@@ -1,15 +1,32 @@
 import type { Metadata } from "next";
+import { getLang } from "@/lib/lang-server";
 import Link from "next/link";
 import { buildMetadata } from "@/lib/seo/meta";
 import LegalPage, { LegalList, LegalSection } from "@/components/legal/LegalPage";
 import { parseLangParam } from "@/components/legal/lang-param";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/support";
 
-export const metadata: Metadata = buildMetadata({
-  title: "حذف الحساب",
-  description: "إزاي تحذف حسابك على موعد، وإيه اللي بيتحذف وإيه اللي بيفضل عند الأنشطة.",
-  path: "/account-deletion",
-});
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ lang?: string | string[] }>;
+}): Promise<Metadata> {
+  // ?lang= wins, as it does for the page body: the stores link these
+  // pages with it, to a visitor who has no cookie.
+  const lang = parseLangParam((await searchParams).lang) ?? (await getLang());
+  return lang === "en"
+    ? buildMetadata({
+        title: "Delete your account",
+        description: "How to delete your Maw3ed account, what is deleted and what businesses keep.",
+        path: "/account-deletion",
+        lang,
+      })
+    : buildMetadata({
+        title: "حذف الحساب",
+        description: "إزاي تحذف حسابك على موعد، وإيه اللي بيتحذف وإيه اللي بيفضل عند الأنشطة.",
+        path: "/account-deletion",
+      });
+}
 
 /**
  * How to delete a Maw3ed account — public, no sign-in, because Google

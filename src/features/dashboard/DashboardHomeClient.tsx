@@ -39,6 +39,8 @@ interface Props {
   isOpenToday:         boolean | TodayHours | null | undefined;
   todayHours:          TodayHours | null | undefined;
   isProfileIncomplete: boolean;
+  /** Bookings counted against a capped plan this month; null when uncapped. */
+  allowance: { used: number; limit: number } | null;
 }
 
 /** A single snapshot figure. Hoisted so it is not rebuilt per render. */
@@ -92,6 +94,7 @@ export default function DashboardHomeClient({
   isOpenToday,
   todayHours,
   isProfileIncomplete,
+  allowance,
 }: Props) {
   const { t, lang } = useLanguage();
   const h = t.dashboard.home;
@@ -131,6 +134,46 @@ export default function DashboardHomeClient({
       </div>
 
       {/* ── Setup prompt ── */}
+      {/* At 80% of a capped plan, before customers start being turned
+          away rather than after. */}
+      {allowance && allowance.used >= Math.ceil(allowance.limit * 0.8) && (
+        <div
+          role="status"
+          className="flex flex-wrap items-start justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-warn-line)] bg-[var(--color-warn-soft)] px-5 py-4"
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <AlertTriangle size={18} strokeWidth={1.8} aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--color-warn)]" />
+            <div className="min-w-0">
+              <p className="m-0 text-[0.875rem] font-bold text-[var(--color-warn)]">
+                {allowance.used >= allowance.limit
+                  ? lang === "en"
+                    ? "You've reached this month's booking limit"
+                    : "وصلت لحد الحجوزات الشهري"
+                  : lang === "en"
+                    ? `${num(allowance.used, lang)} of ${num(allowance.limit, lang)} bookings used this month`
+                    : `استخدمت ${num(allowance.used, lang)} من ${num(allowance.limit, lang)} حجز الشهر ده`}
+              </p>
+              <p className="m-0 mt-1 text-[0.78125rem] leading-relaxed text-[var(--color-warn)]/85">
+                {allowance.used >= allowance.limit
+                  ? lang === "en"
+                    ? "Customers can't book online until next month. Upgrade to keep taking bookings."
+                    : "العملاء مش هيقدروا يحجزوا أونلاين لحد الشهر الجاي. رقّي باقتك عشان تفضل تستقبل حجوزات."
+                  : lang === "en"
+                    ? "When the limit is reached, customers can't book online until next month."
+                    : "لما توصل للحد، العملاء مش هيقدروا يحجزوا أونلاين لحد الشهر الجاي."}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/billing"
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-[var(--radius-sm)] bg-[var(--color-warn)] px-3.5 py-2 text-[0.75rem] font-bold text-white"
+          >
+            {lang === "en" ? "Upgrade" : "رقّي الباقة"}
+            <ChevronLeft size={13} aria-hidden="true" className={lang === "en" ? "rotate-180" : undefined} />
+          </Link>
+        </div>
+      )}
+
       {isProfileIncomplete && (
         <div className="flex flex-wrap items-start justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-warn-line)] bg-[var(--color-warn-soft)] px-5 py-4">
           <div className="flex min-w-0 items-start gap-3">

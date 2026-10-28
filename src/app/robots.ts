@@ -51,6 +51,7 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: siteUrl("/sitemap.xml"),
-    host: siteUrl("/").replace(/\/$/, ""),
+    // No Host: line. It was Yandex-only and is deprecated; the canonical
+    // host is already stated by every page's canonical link.
   };
 }

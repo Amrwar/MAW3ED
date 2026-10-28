@@ -13,6 +13,7 @@ import {
   PLAN_NAMES_EN,
   FEATURE_ORDER,
   featureRows,
+  featureLabel,
   type PlanFeature,
 } from "@/lib/plans";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -112,8 +113,8 @@ export default function PricingPage() {
   };
 
   const trustItems = isAr
-    ? ["بدون بطاقة ائتمان", "إلغاء في أي وقت", "إعداد في 5 دقائق"]
-    : ["No credit card required", "Cancel anytime", "5-minute setup"];
+    ? ["الباقة المجانية بدون بطاقة ائتمان", "إلغاء في أي وقت", "إعداد في 5 دقائق"]
+    : ["Free plan needs no credit card", "Cancel anytime", "5-minute setup"];
 
   return (
     <>
@@ -423,7 +424,7 @@ export default function PricingPage() {
                               borderBottom: "1px solid var(--color-surface-3)",
                             }}
                           >
-                            {isAr ? rowOf("FREE", key).ar : rowOf("FREE", key).en}
+                            {featureLabel(key, lang)}
                           </td>
 
                           {/* Plan cells */}
@@ -445,7 +446,9 @@ export default function PricingPage() {
                             // than just yes: "up to 10 staff" is the
                             // difference between two tiers, and a tick in
                             // both columns hides it.
-                            if (key === "monthlyBookings" || key === "staffMembers") {
+                            // A plan without the feature at all (Free has
+                            // no staff) gets the dash like any other row.
+                            if (row.enabled && (key === "monthlyBookings" || key === "staffMembers")) {
                               content = (
                                 <span
                                   className="font-bold"

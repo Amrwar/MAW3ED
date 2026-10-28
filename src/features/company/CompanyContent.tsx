@@ -208,8 +208,12 @@ export default function CompanyContent({
             <div
               ref={widgetRef}
               id="booking"
-              className="w-full min-w-[18rem] flex-[0_1_22.5rem] scroll-mt-32 lg:sticky lg:top-[7.5rem]"
+              className="w-full min-w-[18rem] flex-[0_1_22.5rem] scroll-mt-32 lg:sticky lg:top-[7.5rem] lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto lg:overscroll-contain"
             >
+              {/* Pinned, the widget can be taller than the window on a
+                  laptop screen; capped to what is left under the two
+                  bars and scrolling inside, its Back and Review buttons
+                  stay reachable. */}
               <BookingWidget
                 services={services}
                 businessName={business.nameAr}

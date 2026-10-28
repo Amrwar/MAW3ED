@@ -4,7 +4,9 @@ import { resolveSource } from "@/lib/attribution/source";
 import { OWN_HOSTS } from "@/lib/attribution/hosts";
 import RecordView from "@/features/company/RecordView";
 import { notFound } from "next/navigation";
-import { cookies, headers } from "next/headers";
+import Link from "next/link";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { headers } from "next/headers";
 import { requestNonce } from "@/lib/security/nonce";
 import { db } from "@/lib/db";
 import Logo from "@/components/shared/Logo";
@@ -16,12 +18,14 @@ import type { Business } from "@/types/business";
 import type { Service } from "@/types/service";
 import { buildLocalBusinessJsonLd } from "@/lib/jsonld";
 import { siteUrl } from "@/lib/env";
+import { getLang } from "@/lib/lang-server";
+import { DEFAULT_OG_IMAGE, ogLocale } from "@/lib/seo/meta";
 import { getPublishedBusinesses } from "@/lib/data";
 import { cairoNow, openState, type DayHours } from "@/lib/discovery/hours";
 import { businessNextSlot } from "@/lib/discovery/profile";
 import { CUTOFF_HOURS } from "@/lib/bookings/self-service";
 import { getBusinessReviews, getRatingSummary } from "@/lib/reviews";
-import { translations, type Lang } from "@/lib/i18n";
+import { translations } from "@/lib/i18n";
 
 interface Params {
   params: Promise<{ slug: string }>;
@@ -42,21 +46,29 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       logoImage:   true,
       ratingAvg:   true,
       ratingCount: true,
-      city:         { select: { nameAr: true } },
-      neighborhood: { select: { nameAr: true } },
-      category:     { select: { nameAr: true } },
+      city:         { select: { nameAr: true, nameEn: true } },
+      neighborhood: { select: { nameAr: true, nameEn: true } },
+      category:     { select: { nameAr: true, nameEn: true } },
     },
   });
 
-  if (!biz) return { title: "غير موجود", robots: { index: false, follow: false } };
+  const lang = await getLang();
+  const en = lang === "en";
+  if (!biz) return { title: en ? "Not found" : "غير موجود", robots: { index: false, follow: false } };
 
   const pageUrl = `${siteUrl}/company/${slug}`;
-  const place = biz.neighborhood ? `${biz.neighborhood.nameAr}، ${biz.city.nameAr}` : biz.city.nameAr;
+  // The page's language for everything Maw3ed writes; the owner's own
+  // words (tagline, about) stay as they wrote them.
+  const name = en && biz.nameEn ? biz.nameEn : biz.nameAr;
+  const city = en ? biz.city.nameEn : biz.city.nameAr;
+  const hood = biz.neighborhood ? (en ? biz.neighborhood.nameEn : biz.neighborhood.nameAr) : null;
+  const category = en ? biz.category.nameEn : biz.category.nameAr;
+  const place = hood ? `${hood}${en ? ", " : "، "}${city}` : city;
 
   // No brand suffix here: the root layout's title template already
   // appends "| موعد MAW3ED", and adding one too produced
   // "… | موعد | موعد MAW3ED" on every page of the site.
-  const title = `${biz.nameAr} — ${biz.category.nameAr} في ${place}`;
+  const title = en ? `${name} — ${category} in ${place}` : `${name} — ${category} في ${place}`;
 
   // Description, in order of how much it actually says about the place:
   // the owner's tagline, then their own words, then a sentence built
@@ -65,12 +77,14 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     biz.taglineAr?.trim() ||
     (biz.about?.trim()
       ? biz.about.trim().slice(0, 155) + (biz.about.trim().length > 155 ? "…" : "")
-      : `احجز موعدك في ${biz.nameAr} — ${biz.category.nameAr} في ${place}. شوف الخدمات والأسعار والمواعيد المتاحة واحجز أونلاين.`);
+      : en
+        ? `Book at ${name} — ${category} in ${place}. See the services, prices and free times and book online.`
+        : `احجز موعدك في ${name} — ${category} في ${place}. شوف الخدمات والأسعار والمواعيد المتاحة واحجز أونلاين.`);
 
   const ogImage = biz.coverImage ?? biz.logoImage;
   const ogImages = ogImage
-    ? [{ url: ogImage, width: 1200, height: 630, alt: biz.nameAr }]
-    : [];
+    ? [{ url: ogImage, width: 1200, height: 630, alt: name }]
+    : [{ url: DEFAULT_OG_IMAGE.url, ...DEFAULT_OG_IMAGE.size, alt: name }];
 
   return {
     title,
@@ -81,15 +95,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       title,
       description,
       url: pageUrl,
-      siteName: "موعد",
-      locale: "ar_EG",
+      siteName: "موعد · Maw3ed",
+      locale: ogLocale(lang),
       images: ogImages,
     },
     twitter: {
-      card: ogImage ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title,
       description,
-      ...(ogImage ? { images: [ogImage] } : {}),
+      images: [ogImage ?? DEFAULT_OG_IMAGE.url],
     },
   };
 }
@@ -131,8 +145,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
 
   if (!dbBusiness) notFound();
 
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
 
   const [resourcesRaw, staffRaw, summary, reviewPage, nextSlot] = await Promise.all([
@@ -294,6 +307,16 @@ export default async function CompanyPage({ params, searchParams }: Params) {
                 another produced an <a> inside an <a>: invalid HTML, and
                 React threw a hydration error on every load of this
                 page. */}
+            {/* A way back on a phone, where the breadcrumbs are not in
+                the bar. To the list, not history.back(): a visitor
+                arriving from a shared link has no history here. */}
+            <Link
+              href="/businesses"
+              aria-label={lang === "ar" ? "رجوع لتصفح الأنشطة" : "Back to browse"}
+              className="-ms-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--color-night-text)] hover:bg-white/10 sm:hidden"
+            >
+              {lang === "ar" ? <ArrowRight size={20} aria-hidden="true" /> : <ArrowLeft size={20} aria-hidden="true" />}
+            </Link>
             <Logo size="sm" variant="white" className="shrink-0" />
             <Breadcrumbs
               items={crumbs}
