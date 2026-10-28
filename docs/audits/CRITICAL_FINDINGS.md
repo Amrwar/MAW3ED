@@ -114,7 +114,7 @@ is run on the production database.
 | P17-07 | **Serialization failures reported as "someone took the slot".** `create.ts` mapped 40001 to slot-taken, and the soft-cap count makes those frequent under load. Fix: retried within the attempt loop; only the exclusion violation means taken | FIXED |
 | P17-08 | **JSON-LD `"priceRange":"0 EGP"`** on live listings whose services have no price. Fix: unpriced services excluded. Test: `jsonld.test.ts` | FIXED |
 | P17-09 | **Homepage claims not true for the listings.** "Verified businesses" with 0 verified; "Booking is completely free" beside deposits; "Instant confirmation" while most businesses confirm by hand. Fix: copy says what is true (no booking fees, book in seconds, what the badge requires). End to end: checked on the homepage | FIXED |
-| P17-10 | **Pre-registration account takeover through an unverified email change.** `api/account/profile/route.ts` sets any address without verification, matching case-sensitively; sign-in and reset match case-insensitively with no ordering. An attacker can claim an owner's email before the owner signs up; the owner's reset link then sets a password on the attacker's row. Fix: lower-case, case-insensitive uniqueness, a pending address until a link is confirmed, a unique index on `lower(email)` | OPEN, recommended first in Phase 18 |
+| P17-10 | **Pre-registration account takeover through an unverified email change.** `api/account/profile/route.ts` sets any address without verification, matching case-sensitively; sign-in and reset match case-insensitively with no ordering. An attacker can claim an owner's email before the owner signs up; the owner's reset link then sets a password on the attacker's row. Fix: lower-case, case-insensitive uniqueness, a pending address until a link is confirmed, a unique index on `lower(email)` | **FIXED in Phase 18**: the new address lives on the verification token and becomes the account's only when its link is followed; uniqueness is checked case-insensitively and a unique index on `lower(email)` is added (`phase18_email_change.sql`). Tests: `api/account/profile/route.test.ts` (fails 4/6 on the old route), `api/auth/verify-email/confirm/route.test.ts` |
 | P17-11 | **Notifications are fire-and-forget and claimed SENT before sending.** `dispatch.ts` inserts the ledger row as SENT; callers use `void notify()`; nothing re-drives a stalled send, so a suspended function can lose a confirmation silently. Fix: `after()` from `next/server`, PENDING claims, and a cron that re-drives stale rows | OPEN |
 | P17-12 | **Production error monitoring is off.** No `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` in Vercel production (names listed 2026-10-28). Errors exist only in Vercel logs | OWNER (configuration) |
 | P17-13 | **Terms of use say nothing about money.** No deposit, cancellation, refund, subscription or payout terms; dated March 2025. Paymob merchant review normally needs a refund policy | OWNER (legal text) |
@@ -127,12 +127,12 @@ is run on the production database.
 |---|---|---|---|
 | P17-16 | Unconditional status writes race (owner cancel vs. payment webhook; customer cancel vs. owner confirm; reschedule vs. cancel; the subscription cron can downgrade a business that just paid) | `business/bookings/[id]/route.ts:157`, both reschedule routes, `cron/subscriptions/route.ts:54` | OPEN |
 | P17-17 | Discount redemptions never released on cancellation or failure; per-customer limit checked outside the transaction; Customer keyed on the raw phone, so `010…` and `+2010…` are two customers | `create.ts`, `discounts/resolve.ts`, booking route upsert | OPEN |
-| P17-18 | PROVIDER staff see the owner's private customer notes in the bookings list (the detail view hides them) | `api/business/bookings/route.ts:112,141` | OPEN |
-| P17-19 | Email-verification link reusable for 24 h and republishes a suspended or rejected business | `api/auth/verify-email/confirm/route.ts` | OPEN |
+| P17-18 | PROVIDER staff see the owner's private customer notes in the bookings list (the detail view hides them) | `api/business/bookings/route.ts:112,141` | FIXED in Phase 18 (`can(actor, "customers.read")` gate) |
+| P17-19 | Email-verification link reusable for 24 h and republishes a suspended or rejected business | `api/auth/verify-email/confirm/route.ts` | FIXED in Phase 18: a SUSPENDED or REJECTED business is not republished; the link stays idempotent for the current address (tested) |
 | P17-20 | Unbacked claims: "replies within 24 hours" (home, /for-business, /contact), Pro "Most popular", a "Most booked" row on almost no data; /for-business lists analytics among free features | `WhyJoin.tsx:30`, `i18n.ts`, `app/page.tsx:141` | OPEN |
 | P17-21 | Live listing data: BerryGum (web design) under Education with an unpriced service and a mixed-language tagline; a Maadi business under Cairo; an unverifiable medical superlative | `prisma/data-fixes/2026-10-27-listing-cleanup.sql` covers part | OWNER |
 | P17-22 | Contact page: Canadian address and phone vs "made in Cairo"; meta promises WhatsApp it does not show; legal entity unnamed | `app/contact`, `privacy/page.tsx` VERIFY notes | OWNER |
-| P17-23 | `/en` shows Arabic city names in the Location block and an Arabic loading message | `CompanyContent.tsx:179`, `businesses/loading.tsx:26` | OPEN |
+| P17-23 | `/en` shows Arabic city names in the Location block and an Arabic loading message | `CompanyContent.tsx:179`, `businesses/loading.tsx:26` | FIXED in Phase 18 |
 | P17-24 | Reviews: reported (UNDER_REVIEW) reviews count toward ratings; an owner can book, complete and review their own business | `reviews.ts:32`, `review-policy.ts:62` | OPEN (decision) |
 | P17-25 | Vercel: secrets stored as plain "Config", and Paymob's production keys are also given to Development and Preview deployments | `vercel env ls` | OWNER |
 | P17-26 | Badge survives changing the verified phone or email; mobile password login rate-limited per IP only | `api/business/route.ts:53`, `api/auth/mobile/login/route.ts:34` | OPEN |
@@ -179,6 +179,15 @@ in the first version of the fixes. Each is fixed and tested:
 | R7 | "Anyone" always went to the longest-serving member | Least-loaded free member that day | `availability.test.ts` "spreads 'anyone' across the team" |
 | R8 | The dashboard read the clock twice for one day range | One `cairoWallDay()` | — |
 | R9 | The migration backfill copied `Customer.email`, possibly the planted address this phase closes | Backfill only from an account that has verified both the booking's phone and its email | Re-applied to QA |
+
+## Phase 18
+
+Fixed in Phase 18: P17-10, P17-18, P17-19, P17-23 (marked above), the
+"24-hour reply" and "Most popular" claims and the "Most booked" row from
+P17-20, and the "Verified only" hint. A code review of the Phase 18
+changes found ten further problems in the first version of the
+email-change flow and the filter panel; all fixed and tested
+(`docs/phases/PHASE_18_REPORT.md`, "Code review of this phase's changes").
 
 ## Defects in my own verification, for the record
 

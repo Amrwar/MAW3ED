@@ -31,6 +31,8 @@ export type Business = {
   reviewCount: number;
   location: string;
   locationAr: string;
+  /** The city in English, for /en pages; absent when the city has none. */
+  locationEn?: string;
   address?: string;
   phone?: string;
   whatsapp?: string;

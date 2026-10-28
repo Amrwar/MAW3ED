@@ -226,6 +226,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     reviewCount:  summary.count,
     location:     dbBusiness.city.nameAr,
     locationAr:   dbBusiness.city.nameAr,
+    locationEn:   dbBusiness.city.nameEn ?? undefined,
     address:      dbBusiness.address ?? undefined,
     phone:        dbBusiness.phone ?? undefined,
     whatsapp:     dbBusiness.whatsapp ?? undefined,

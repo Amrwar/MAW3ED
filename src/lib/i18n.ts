@@ -11,6 +11,8 @@ export type Lang = "ar" | "en";
  * same placeholders.
  */
 export interface CountForms {
+  /** For none at all, where "0 نشاط" is not a phrase anyone says. */
+  zero?: string;
   one: string;
   two: string;
   few: string;
@@ -19,7 +21,8 @@ export interface CountForms {
 
 /** Picks the form for `n` and fills in the number. */
 export function countText(lang: Lang, n: number, forms: CountForms): string {
-  const form = lang === "en" ? (n === 1 ? forms.one : forms.many) : plural(n, forms);
+  const form =
+    lang === "en" ? (n === 0 && forms.zero ? forms.zero : n === 1 ? forms.one : forms.many) : plural(n, forms);
   return form.replace("{n}", num(n, lang));
 }
 
@@ -157,7 +160,7 @@ export const translations = {
       bullets: [
         "إعداد سهل في 5 دقائق",
         "مش محتاج أي خبرة تقنية",
-        "دعم بالعربي بيرد عليك خلال 24 ساعة",
+        "دعم بالعربي من فريق موعد",
         "تحديثات مستمرة بدون تكلفة إضافية",
       ],
       cta1: "ابدأ مجانًا الآن",
@@ -180,7 +183,7 @@ export const translations = {
       title:    "خطط تناسب كل عمل",
       subtitle: "ابدأ مجانًا وطوّر باقتك لما نشاطك يكبر. لا التزامات، لا رسوم خفية.",
       viewAll:  "شاهد المقارنة الكاملة بين الخطط ←",
-      badge:    "الأكثر طلبًا",
+      badge:    "ننصح بيها",
       plans: [
         {
           period:"للأبد",
@@ -222,7 +225,7 @@ export const translations = {
       noResultsTitle:    "لم نجد نتائج",
       noResultsSub:      "جرّب تغيير كلمة البحث أو الفلاتر",
       showAll:           "عرض كل الأنشطة",
-      resultsLabel:      { one:"نشاط واحد", two:"نشاطين", few:"{n} أنشطة", many:"{n} نشاط" },
+      resultsLabel:      { zero:"مفيش أنشطة", one:"نشاط واحد", two:"نشاطين", few:"{n} أنشطة", many:"{n} نشاط" },
       emptyFiltered:     "مفيش نتائج بالفلاتر دي",
       emptyFilteredBody: "جرّب توسّع البحث — شيل فلتر أو اتنين وشوف.",
       emptyAll:          "لسه مفيش أنشطة منشورة",
@@ -254,7 +257,7 @@ export const translations = {
       availableToday:    "متاح النهارده",
       availableTomorrow: "متاح بكرة",
       verified:          "موثّق فقط",
-      verifiedHint:      "أكّد بريده ورقم واتساب",
+      verifiedHint:      "أكّد بريده وواتسابه وكمّل صفحته",
       instant:           "حجز فوري",
       instantHint:       "الحجز بيتأكد على طول",
       online:            "دفع أونلاين",
@@ -466,6 +469,7 @@ export const translations = {
         phoneLocked: "الرقم ده هو مفتاح حجوزاتك، فمش بيتغير من هنا.",
         email:       "البريد الإلكتروني",
         emailHint:   "اختياري — بنبعت عليه تأكيد الحجز.",
+        emailPending: "بعتنا رابط تأكيد على {email}. بريدك هيتغيّر أول ما تضغط عليه.",
         save:        "حفظ",
         saved:       "تم الحفظ.",
         saveError:   "مقدرناش نحفظ. حاول تاني.",
@@ -706,7 +710,7 @@ export const translations = {
       bullets: [
         "إعداد في 5 دقائق بدون خبرة تقنية",
         "بدون رسوم خفية أو التزامات",
-        "دعم بالعربي بيرد عليك خلال 24 ساعة",
+        "دعم بالعربي من فريق موعد",
         "تحديثات مستمرة بدون تكلفة إضافية",
         "يعمل على جميع الأجهزة والمتصفحات",
       ],
@@ -728,9 +732,9 @@ export const translations = {
     contact: {
       eyebrow:  "نحن هنا",
       title:    "تواصل معنا",
-      subtitle: "فريق دعم موعد بيرد عليك خلال 24 ساعة.",
+      subtitle: "فريق موعد بيرد عليك بالعربي في أقرب وقت.",
       channels: [
-        { title:"البريد الإلكتروني", value:SUPPORT_EMAIL,            sub:"نرد خلال 24 ساعة" },
+        { title:"البريد الإلكتروني", value:SUPPORT_EMAIL,            sub:"بنرد في أقرب وقت" },
         { title:"واتساب",          value:"تواصل عبر واتساب",         sub:"ردود سريعة" },
       ],
       phone:   { title:"الهاتف",  sub:"اتصل بنا" },
@@ -776,7 +780,7 @@ export const translations = {
       eyebrow:   "الأسعار",
       title:     "خطط بسيطة وشفافة",
       subtitle:  "ابدأ مجانًا، وطوّر باقتك لما تكون جاهز. لا رسوم خفية.",
-      mostPopular:"الأكثر طلبًا",
+      mostPopular:"ننصح بيها",
       comparison: "مقارنة تفصيلية",
       feature:    "الميزة",
       unlimited:  "غير محدود",
@@ -1215,7 +1219,7 @@ export const translations = {
       bullets: [
         "Easy setup in 5 minutes",
         "No technical skills required",
-        "Arabic support that replies within 24 hours",
+        "Arabic-language support from the Maw3ed team",
         "Continuous updates at no extra cost",
       ],
       cta1: "Start Free Now",
@@ -1238,7 +1242,7 @@ export const translations = {
       title:    "Plans for Every Business",
       subtitle: "Start free and scale as you grow. No commitments, no hidden fees.",
       viewAll:  "See full plan comparison →",
-      badge:    "Most Popular",
+      badge:    "Recommended",
       plans: [
         {
           period:"forever",
@@ -1280,7 +1284,7 @@ export const translations = {
       noResultsTitle:    "No Results Found",
       noResultsSub:      "Try changing your search terms or filters",
       showAll:           "Show All Businesses",
-      resultsLabel:      { one:"1 business", two:"2 businesses", few:"{n} businesses", many:"{n} businesses" },
+      resultsLabel:      { zero:"No businesses", one:"1 business", two:"2 businesses", few:"{n} businesses", many:"{n} businesses" },
       emptyFiltered:     "Nothing matches these filters",
       emptyFilteredBody: "Try widening the search — drop a filter or two and see.",
       emptyAll:          "No businesses listed yet",
@@ -1312,7 +1316,7 @@ export const translations = {
       availableToday:    "Available today",
       availableTomorrow: "Available tomorrow",
       verified:          "Verified only",
-      verifiedHint:      "email and WhatsApp confirmed",
+      verifiedHint:      "email and WhatsApp confirmed, page complete",
       instant:           "Instant booking",
       instantHint:       "confirmed straight away",
       online:            "Pay online",
@@ -1524,6 +1528,7 @@ export const translations = {
         phoneLocked: "This number is the key to your bookings, so it cannot be changed here.",
         email:       "Email",
         emailHint:   "Optional — we send booking confirmations to it.",
+        emailPending: "We sent a confirmation link to {email}. Your email changes once you open it.",
         save:        "Save",
         saved:       "Saved.",
         saveError:   "We could not save that. Try again.",
@@ -1764,7 +1769,7 @@ export const translations = {
       bullets: [
         "5-minute setup with no technical skills",
         "No hidden fees or commitments",
-        "Arabic support that replies within 24 hours",
+        "Arabic-language support from the Maw3ed team",
         "Continuous updates at no extra cost",
         "Works on all devices and browsers",
       ],
@@ -1786,9 +1791,9 @@ export const translations = {
     contact: {
       eyebrow:  "We're Here",
       title:    "Contact Us",
-      subtitle: "The Maw3ed team replies within 24 hours.",
+      subtitle: "The Maw3ed team replies, in Arabic or English, as soon as it can.",
       channels: [
-        { title:"Email",     value:SUPPORT_EMAIL,         sub:"We respond within 24 hours" },
+        { title:"Email",     value:SUPPORT_EMAIL,         sub:"We reply as soon as we can" },
         { title:"WhatsApp",  value:"Chat on WhatsApp",    sub:"Quick responses" },
       ],
       phone:   { title:"Phone",   sub:"Call us" },
@@ -1834,7 +1839,7 @@ export const translations = {
       eyebrow:   "Pricing",
       title:     "Simple, Transparent Plans",
       subtitle:  "Start free and upgrade when you're ready. No hidden fees.",
-      mostPopular:"Most Popular",
+      mostPopular:"Recommended",
       comparison: "Detailed Comparison",
       feature:    "Feature",
       unlimited:  "Unlimited",

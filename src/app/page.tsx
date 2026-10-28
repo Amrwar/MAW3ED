@@ -138,20 +138,26 @@ export default async function HomePage() {
 /* ─── Streamed sections ──────────────────────────────────────
    Each owns its query, so a slow one delays only its own row. */
 
+const POPULAR_MIN_BOOKINGS = 10;
+const POPULAR_MIN_BUSINESSES = 4;
+
 async function PopularRow() {
   const businesses = await getPublishedBusinesses({
     take: 6,
     orderBy: "mostBooked",
   });
 
-  // With nothing booked yet there is no popularity to claim, so the
-  // row calls itself "newest" instead — which the ordering also
-  // satisfies, since bookings all tie at zero and createdAt breaks it.
-  const anyBookings = businesses.some((b) => (b.bookingCount ?? 0) > 0);
+  // "Most booked" is a claim about the listings, so it waits until
+  // there is something to compare: at least four of the six with ten
+  // or more bookings. Below that the row calls itself "newest", which
+  // the ordering also satisfies (ties broken by createdAt). One booking
+  // somewhere used to be enough to call a row "where people book".
+  const established = businesses.filter((b) => (b.bookingCount ?? 0) >= POPULAR_MIN_BOOKINGS).length;
+  const popular = established >= POPULAR_MIN_BUSINESSES;
 
   return (
     <BusinessRowServer
-      kind={anyBookings ? "popular" : "newest"}
+      kind={popular ? "popular" : "newest"}
       businesses={businesses}
       viewAllHref="/businesses"
     />

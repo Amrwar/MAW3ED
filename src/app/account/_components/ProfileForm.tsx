@@ -17,6 +17,8 @@ export default function ProfileForm({ user }: { user: AccountUser }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // A new address waits for its link; until then the old one stands.
+  const [pendingEmail, setPendingEmail] = useState<string | null>(user.pendingEmail ?? null);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -36,6 +38,8 @@ export default function ProfileForm({ user }: { user: AccountUser }) {
         return;
       }
       setSaved(true);
+      setPendingEmail(data.pendingEmail ?? null);
+      if (data.pendingEmail) setEmail(user.email ?? "");
     } catch {
       setError(p.saveError);
     } finally {
@@ -70,6 +74,9 @@ export default function ProfileForm({ user }: { user: AccountUser }) {
 
       {error && <Alert tone="danger">{error}</Alert>}
       {saved && <Alert tone="success">{p.saved}</Alert>}
+      {pendingEmail && (
+        <Alert tone="info">{p.emailPending.replace("{email}", pendingEmail)}</Alert>
+      )}
 
       <Button type="submit" variant="primary" isLoading={busy}>
         {p.save}

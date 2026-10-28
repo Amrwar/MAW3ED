@@ -10,7 +10,12 @@ import { syncVerifiedBadge } from "@/lib/business-verification";
  *
  * Followed from the email, so it redirects to a page rather than
  * returning JSON. The token is looked up by hash — the plaintext is
- * never stored — and is single-use.
+ * never stored.
+ *
+ * Two kinds of link arrive here: one proving the account's current
+ * address, and one proving a new address the account asked to move to
+ * (the token carries it). The second is the only way an address
+ * changes; see PATCH /api/account/profile.
  */
 export async function GET(req: Request) {
   // An emailed link is still a token to guess at. Limited by
@@ -30,9 +35,8 @@ export async function GET(req: Request) {
   try {
     const record = await db.emailVerificationToken.findUnique({
       where: { tokenHash: hashSecret(token) },
-      select: { id: true, userId: true, expiresAt: true },
+      select: { id: true, userId: true, expiresAt: true, email: true },
     });
-
     if (!record) return to("invalid");
 
     if (isExpired(record.expiresAt)) {
@@ -45,25 +49,48 @@ export async function GET(req: Request) {
     // link before the person does; burning the token on that first
     // visit left the real click on "invalid link" with the email in
     // fact already verified. A second visit just says "verified" again.
-    await db.user.updateMany({
-      where: { id: record.userId, emailVerified: null },
-      data: { emailVerified: new Date() },
-    });
+    if (record.email) {
+      // Somebody else may have registered the address since the link
+      // was sent. Checked case-insensitively, as sign-in matches.
+      const taken = await db.user.findFirst({
+        where: { email: { equals: record.email, mode: "insensitive" }, id: { not: record.userId } },
+        select: { id: true },
+      });
+      if (taken) return to("taken");
+      await db.user.update({
+        where: { id: record.userId },
+        data: { email: record.email, emailVerified: new Date() },
+      });
+    } else {
+      await db.user.updateMany({
+        where: { id: record.userId, emailVerified: null },
+        data: { emailVerified: new Date() },
+      });
+    }
 
-    // A business held back at signup can now go live.
     const business = await db.business.findUnique({
       where: { ownerId: record.userId },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (business) {
-      await db.business.update({
-        where: { id: business.id },
-        data: { isPublished: true },
-      });
+      // A business held back at signup can now go live, whichever
+      // address was just proved — an owner who mistyped theirs and
+      // corrected it has verified an address all the same. Unless an
+      // admin has since taken it down, which a re-opened link must not
+      // undo.
+      const takenDown = business.status === "SUSPENDED" || business.status === "REJECTED";
+      if (!takenDown) {
+        await db.business.update({
+          where: { id: business.id },
+          data: { isPublished: true },
+        });
+      }
       await syncVerifiedBadge(business.id);
     }
 
-    log.info("email verified", { userId: record.userId });
+    log.info(record.email ? "email changed" : "email verified", { userId: record.userId });
+
+    if (record.email) return to("changed");
     // "Your page is live" only when there is a page: verifying mid-onboarding
     // is common, and the business does not exist yet.
     return to(business ? "success" : "verified");

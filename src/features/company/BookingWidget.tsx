@@ -823,13 +823,11 @@ export default function BookingWidget({
   // came first in the markup rather than on the one that was meant.
   return (
     <div
-      className="overflow-hidden rounded-[var(--radius-xl)] bg-white"
+      // The hooks the booking tests drive it by (scripts/qa-booking-e2e.mjs).
+      data-testid="booking-widget"
+      data-step={step}
+      className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] shadow-[var(--shadow-float)]"
       dir={en ? "ltr" : "rtl"}
-      style={{
-        boxShadow:  "0 4px 32px rgba(17,32,28,0.10), 0 1px 8px rgba(17,32,28,0.06)",
-        border:     "1px solid var(--color-line)",
-        fontFamily: "var(--font-cairo, Cairo, sans-serif)",
-      }}
     >
       {/* ── Header ── */}
       <div

@@ -126,7 +126,7 @@ export default function BusinessesClient({
             )}
           >
             {t.label}
-            {t.id && tally[t.id] ? <span className="num ms-1.5 opacity-70">{tally[t.id]}</span> : null}
+            {t.id && tally[t.id] ? <span className="num ms-1.5">{tally[t.id]}</span> : null}
           </button>
         ))}
 

@@ -21,6 +21,12 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   name          String?
+  /// Stored lower-cased (every writer lower-cases; sign-in matches
+  /// case-insensitively). Production also carries a unique index on
+  /// lower(email), "User_email_lower_key", which Prisma cannot express:
+  /// phase18_email_change.sql adds it, and `prisma db push` / `migrate
+  /// diff` would see it as drift and drop it. Migrations here are
+  /// hand-written SQL, never those commands, for this among other reasons.
   email         String?   @unique
   emailVerified DateTime?
   password      String?
@@ -795,6 +801,10 @@ model EmailVerificationToken {
   tokenHash String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+  /// The address being proved, when it is not yet the account's: an
+  /// email change takes effect only when this link is followed. Null
+  /// for the account's current address (prisma/migrations/phase18_email_change.sql).
+  email     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

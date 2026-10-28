@@ -70,7 +70,7 @@ export default function ErrorPage({
   return (
     <div
       className="min-h-screen overflow-hidden"
-      style={{ background: "var(--color-surface-2)", fontFamily: "var(--font-cairo, Cairo, sans-serif)" }}
+      style={{ background: "var(--color-surface-2)" }}
     >
       {/* ── Keyframe animations ───────────────────────────────────────────────── */}
       <style>{`

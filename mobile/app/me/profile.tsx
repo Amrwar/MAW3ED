@@ -45,9 +45,16 @@ function EditProfile() {
     setError(null);
     try {
       const patch = { name: n.trim(), email: e.trim() };
-      await update.mutateAsync(patch);
-      updateUser({ name: patch.name, email: patch.email || null });
-      toast({ message: T("اتحفظ", "Saved"), tone: "ok" });
+      const res = await update.mutateAsync(patch);
+      // A new address is not the account's until the link sent to it
+      // is opened; the server says which address is waiting.
+      updateUser({ name: patch.name, email: res.pendingEmail ? res.user.email : patch.email || null });
+      toast({
+        message: res.pendingEmail
+          ? T(`بعتنا رابط تأكيد على ${res.pendingEmail}. بريدك هيتغيّر أول ما تفتحه.`, `We sent a confirmation link to ${res.pendingEmail}. Your email changes once you open it.`)
+          : T("اتحفظ", "Saved"),
+        tone: "ok",
+      });
       goBack("/(customer)/account");
     } catch (err) {
       setError(ar ? messageFor(err, lang) : "We couldn't save that. If the email is used by another account, try a different one.");

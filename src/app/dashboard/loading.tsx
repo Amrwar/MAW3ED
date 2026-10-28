@@ -8,7 +8,8 @@ import Skeleton from "@/components/ui/Skeleton";
 export default function DashboardLoading() {
   return (
     <div className="flex flex-col gap-6" aria-busy="true" aria-live="polite">
-      <span className="sr-only-label">جارٍ تحميل لوحة التحكم…</span>
+      <span className="sr-only-label only-ar">جارٍ تحميل لوحة التحكم…</span>
+      <span className="sr-only-label only-en" lang="en">Loading your dashboard…</span>
 
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div className="flex flex-col gap-3">
