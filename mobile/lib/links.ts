@@ -131,8 +131,11 @@ function queryOf(pairs: [string, string | null, RegExp][]): string {
 /** The app route for a website path or link. Home when nothing matches. */
 export function routeFor(input: string): AppRoute {
   const link = parseLink(input);
-  if (!link || link.path === "/") return "/";
-  const path = link.path.replace(/\/+$/, "") || "/";
+  if (!link) return "/";
+  // The website serves English at /en/… and redirects /ar/… to the bare
+  // path; the app is one app in either language, so the prefix goes.
+  const path = link.path.replace(/\/+$/, "").replace(/^\/(?:en|ar)(?=\/|$)/, "") || "/";
+  if (path === "/") return "/";
   const q = link.query;
   const source = q.get("src") ?? q.get("ref");
 

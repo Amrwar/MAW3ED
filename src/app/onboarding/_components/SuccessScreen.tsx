@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CheckCircle, Copy, Check, ExternalLink, LayoutDashboard, MailCheck } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import ResendVerificationButton from "@/app/verify-email/_components/ResendVerificationButton";
 
 interface Props {

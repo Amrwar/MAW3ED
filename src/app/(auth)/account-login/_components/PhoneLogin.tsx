@@ -3,7 +3,7 @@
 import { useMounted } from "@/hooks/useMounted";
 import { useEffect, useRef, useState } from "react";
 import { countText } from "@/lib/i18n";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { ArrowRight, MessageCircle, Smartphone } from "lucide-react";

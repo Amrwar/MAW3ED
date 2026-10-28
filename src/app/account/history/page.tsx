@@ -1,10 +1,10 @@
+import { getLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { History } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
 import { decodeHistoryCursor, getAccountUser, getHistory } from "@/lib/account/queries";
-import { translations, type Lang } from "@/lib/i18n";
-import { cookies } from "next/headers";
+import { translations } from "@/lib/i18n";
 import { redirect } from "next/navigation";
 import AccountBookingCard from "../_components/AccountBookingCard";
 
@@ -20,8 +20,7 @@ export default async function HistoryPage({
   const user = await getAccountUser();
   if (!user) return null;
 
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
 
   // Paged by keyset cursor (lib/account/queries getHistory), so a

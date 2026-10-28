@@ -1,9 +1,9 @@
+import { getLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { cookies } from "next/headers";
+import Link from "@/components/shared/LocaleLink";
 import { CreditCard, Receipt, ShieldCheck } from "lucide-react";
 import { getAccountUser, getPaymentHistory } from "@/lib/account/queries";
-import { translations, type Lang } from "@/lib/i18n";
+import { translations } from "@/lib/i18n";
 import { formatCents } from "@/lib/payments/money";
 import type { PaymentKind } from "@prisma/client";
 
@@ -36,8 +36,7 @@ export default async function PaymentsPage() {
   const user = await getAccountUser();
   if (!user) return null;
 
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
   const isAr = lang === "ar";
 

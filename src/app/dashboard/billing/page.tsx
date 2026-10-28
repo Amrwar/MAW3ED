@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { ArrowLeft, Receipt, Wallet } from "lucide-react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";

@@ -33,6 +33,14 @@ describe("routeFor", () => {
     expect(routeFor("/account")).toBe("/(customer)/account");
   });
 
+  it("reads a link in either of the website's languages the same way", () => {
+    expect(routeFor("https://www.maw3ed.net/en/company/qa-salon?src=qr")).toBe("/business/qa-salon?src=qr");
+    expect(routeFor("https://www.maw3ed.net/en")).toBe("/");
+    expect(routeFor("/ar/businesses")).toBe("/(customer)/search");
+    // A whole segment only: /english is not English.
+    expect(routeFor("/english")).toBe("/");
+  });
+
   it("opens a business link on the business screen, keeping where it came from", () => {
     expect(routeFor("https://www.maw3ed.net/company/qa-salon?src=qr")).toBe("/business/qa-salon?src=qr");
     expect(routeFor("https://www.maw3ed.net/company/qa-salon?ref=instagram")).toBe("/business/qa-salon?src=instagram");

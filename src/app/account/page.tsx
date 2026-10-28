@@ -1,10 +1,10 @@
+import { getLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { CalendarClock } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
 import { getAccountSummary, getAccountUser, getUpcoming } from "@/lib/account/queries";
-import { translations, type Lang } from "@/lib/i18n";
-import { cookies } from "next/headers";
+import { translations } from "@/lib/i18n";
 import AccountBookingCard from "./_components/AccountBookingCard";
 import SummaryTiles from "./_components/SummaryTiles";
 
@@ -14,8 +14,7 @@ export default async function AccountOverviewPage() {
   const user = await getAccountUser();
   if (!user) return null; // the layout has already explained why
 
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
 
   const [summary, upcoming] = await Promise.all([

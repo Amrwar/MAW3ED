@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import {
   ExternalLink, Store, Clock, CheckCircle2,
   AlertTriangle, ChevronLeft, TrendingUp, ArrowLeft,

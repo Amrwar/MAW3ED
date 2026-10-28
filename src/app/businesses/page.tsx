@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { getLang } from "@/lib/lang-server";
 import { jsonLdScript } from "@/lib/seo/jsonld-script";
-import { siteUrl } from "@/lib/url";
+import { localizePath } from "@/lib/locale-path";
+import { alternatesFor } from "@/lib/seo/meta";
 import { redirect } from "next/navigation";
 import { requestNonce } from "@/lib/security/nonce";
 import Navbar from "@/components/layout/Navbar";
@@ -30,7 +31,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       q.verified || q.instant || q.online,
   );
 
-  const en = (await getLang()) === "en";
+  const lang = await getLang();
+  const en = lang === "en";
   return {
     title: en ? "Browse businesses" : "تصفح الأعمال",
     description: en
@@ -38,7 +40,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       : "ابحث في الأنشطة المتاحة للحجز في مصر — فلتر حسب التخصص، المدينة، السعر والمواعيد المتاحة.",
     // Absolute, like every other page. A relative canonical is legal
     // but resolves against whatever host served the page.
-    alternates: { canonical: siteUrl(discoveryHref(q)) },
+    alternates: alternatesFor(discoveryHref(q), lang),
     robots: filtered || q.page > 1 ? { index: false, follow: true } : { index: true, follow: true },
   };
 }
@@ -63,7 +65,7 @@ export default async function BusinessesPage({ searchParams }: Props) {
   // empty with no pager and nothing said why. The last real page is
   // what that visitor was after.
   if (result.pageCount > 0 && query.page > result.pageCount) {
-    redirect(discoveryHref({ ...query, page: result.pageCount }));
+    redirect(localizePath(discoveryHref({ ...query, page: result.pageCount }), lang));
   }
 
   return (

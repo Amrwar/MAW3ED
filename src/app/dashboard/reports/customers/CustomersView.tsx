@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { arCount, enCount, money, num } from "@/lib/fmt";
 import { Figures, Rows } from "../_components/ReportBits";

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, CreditCard, Info, Lock, Check, X } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DepositSettingsFormProps {

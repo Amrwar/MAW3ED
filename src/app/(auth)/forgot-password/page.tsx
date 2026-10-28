@@ -2,7 +2,7 @@
 
 import { useMounted } from "@/hooks/useMounted";
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { Mail, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import Alert from "@/components/ui/Alert";
 import { useLanguage } from "@/contexts/LanguageContext";

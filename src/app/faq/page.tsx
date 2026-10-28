@@ -4,7 +4,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
 import PageHero from "@/components/shared/PageHero";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function FaqPage() {

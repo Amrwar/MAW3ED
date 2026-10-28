@@ -40,7 +40,6 @@ export default function BookingsClient({
   const [total,           setTotal]           = useState(totalBookings);
   const [totalPages,      setTotalPages]      = useState(1);
   const [page,            setPage]            = useState(1);
-  const [loading,         setLoading]         = useState(true);
   const [selectedBooking, setSelectedBooking] = useState<DashboardBooking | null>(null);
   const [newBookingOpen,  setNewBookingOpen]  = useState(false);
 
@@ -62,31 +61,52 @@ export default function BookingsClient({
   const [serviceFilter, setServiceFilter] = useState("");
 
   // ── Fetch ─────────────────────────────────────────────────
-  const fetchBookings = useCallback(async (targetPage = 1) => {
-    setLoading(true);
-    setPage(targetPage);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter !== "ALL") params.set("status", statusFilter);
-      if (search.trim())          params.set("search", search.trim());
-      if (dateFrom)               params.set("dateFrom", dateFrom);
-      if (dateTo)                 params.set("dateTo", dateTo);
-      if (serviceFilter)          params.set("serviceId", serviceFilter);
-      params.set("page", String(targetPage));
+  // A new filter starts again from the first page.
+  const filterKey = [statusFilter, search.trim(), dateFrom, dateTo, serviceFilter].join("|");
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (lastFilterKey !== filterKey) {
+    setLastFilterKey(filterKey);
+    setPage(1);
+  }
 
-      const res  = await fetch(`/api/business/bookings?${params}`);
-      const data = await res.json();
-      setBookings(data.bookings ?? []);
-      setTotal(data.total ?? 0);
-      setTotalPages(data.totalPages ?? 1);
-    } catch {
-      // keep previous data on error
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, search, dateFrom, dateTo, serviceFilter]);
+  const params = new URLSearchParams();
+  if (statusFilter !== "ALL") params.set("status", statusFilter);
+  if (search.trim())          params.set("search", search.trim());
+  if (dateFrom)               params.set("dateFrom", dateFrom);
+  if (dateTo)                 params.set("dateTo", dateTo);
+  if (serviceFilter)          params.set("serviceId", serviceFilter);
+  params.set("page", String(page));
 
-  useEffect(() => { fetchBookings(1); }, [fetchBookings]);
+  // Bumped to fetch the same page again after a change elsewhere.
+  const [reloads, setReloads] = useState(0);
+  const reloadBookings = () => setReloads((n) => n + 1);
+  const requestKey = `${params}#${reloads}`;
+
+  // The request whose rows are on screen; loading until it matches.
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== requestKey;
+
+  useEffect(() => {
+    let stale = false;
+    const query = requestKey.slice(0, requestKey.lastIndexOf("#"));
+    fetch(`/api/business/bookings?${query}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (stale) return;
+        setBookings(data.bookings ?? []);
+        setTotal(data.total ?? 0);
+        setTotalPages(data.totalPages ?? 1);
+      })
+      .catch(() => {
+        // keep previous data on error
+      })
+      .finally(() => {
+        if (!stale) setLoadedKey(requestKey);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [requestKey]);
 
   const fetchDay = useCallback(async (iso: string) => {
     setDayLoading(true);
@@ -119,7 +139,8 @@ export default function BookingsClient({
         [...prev, booking].sort((a, bk) => a.startTime.localeCompare(bk.startTime)),
       );
     }
-    fetchBookings(1);
+    setPage(1);
+    reloadBookings();
     setTotal((t) => t + 1);
   }
 
@@ -135,7 +156,7 @@ export default function BookingsClient({
       // Ahead of the clock: worded from the code in the owner's language,
       // and the lists reloaded so the buttons match the server again.
       if (data.code === "too-early") {
-        fetchBookings(page);
+        reloadBookings();
         fetchDay(calendarDate);
         throw new Error(t.dashboard.bookingActions.tooEarly);
       }
@@ -157,7 +178,7 @@ export default function BookingsClient({
       setDayBookings((prev)     => prev.map((bk) => bk.id === id ? { ...bk, status: s } : bk));
       setSelectedBooking((prev) => prev?.id === id ? { ...prev, status: s } : prev);
     } else {
-      fetchBookings(page);
+      reloadBookings();
       const bk = event.booking;
       if (bk.date === calendarDate && bk.status !== "CANCELLED") {
         setDayBookings((prev) => {
@@ -267,7 +288,7 @@ export default function BookingsClient({
             page={page}
             totalPages={totalPages}
             total={total}
-            onPageChange={(p) => fetchBookings(p)}
+            onPageChange={setPage}
           />
         </>
       )}

@@ -1,7 +1,7 @@
 "use client";
 
 import Logo from "@/components/shared/Logo";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 

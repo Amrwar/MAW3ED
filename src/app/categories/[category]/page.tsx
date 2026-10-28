@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { ArrowRight } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -8,7 +8,8 @@ import Container from "@/components/ui/Container";
 import BusinessCard from "@/components/shared/BusinessCard";
 import { getCategoryBySlug, getPublishedBusinesses } from "@/lib/data";
 import { MIN_BUSINESSES, getLandingCategories, prerenderHints } from "@/lib/seo/landing";
-import { buildMetadata } from "@/lib/seo/meta";
+import { buildMetadata, notFoundMetadata } from "@/lib/seo/meta";
+import { getLang } from "@/lib/lang-server";
 import { db } from "@/lib/db";
 import { arCount } from "@/lib/fmt";
 
@@ -27,14 +28,28 @@ export const dynamicParams = true;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { category: slug } = await params;
+  const lang = await getLang();
   const category = await getCategoryBySlug(slug);
-  if (!category) return { title: "غير موجود", robots: { index: false, follow: false } };
+  if (!category) return notFoundMetadata(lang);
 
   const count = await db.business.count({
     where: { isPublished: true, categoryId: category.id },
   });
   if (count < MIN_BUSINESSES) {
-    return { title: "غير موجود", robots: { index: false, follow: false } };
+    return notFoundMetadata(lang);
+  }
+
+  if (lang === "en") {
+    const name = category.nameEn || category.nameAr;
+    return buildMetadata({
+      title: `${name} — book online`,
+      description:
+        count === 1
+          ? `One business in ${name} takes online bookings on Maw3ed.`
+          : `${count} businesses in ${name} take online bookings on Maw3ed. Compare and book in seconds.`,
+      path: `/categories/${category.slug}`,
+      lang,
+    });
   }
 
   return buildMetadata({

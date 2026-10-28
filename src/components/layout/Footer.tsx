@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { useSession } from "next-auth/react";
 import Logo from "@/components/shared/Logo";
 import { cn } from "@/lib/utils";

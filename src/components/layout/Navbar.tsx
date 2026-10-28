@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { Menu, X, Globe, LayoutDashboard, User2, Settings2, LogOut, Store, CalendarClock } from "lucide-react";
@@ -9,6 +9,7 @@ import Logo from "@/components/shared/Logo";
 import { UserMenu, UserAvatar, NotificationBell, isCustomerUser } from "@/components/layout/UserMenu";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { splitLang } from "@/lib/locale-path";
 
 export default function Navbar() {
   const { data: session, status } = useSession();
@@ -41,8 +42,10 @@ export default function Navbar() {
   const sessionPending = status === "loading";
 
   function isActive(href: string) {
-    if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
+    // The page, not its address: /en/pricing is the pricing page.
+    const page = splitLang(pathname).path;
+    if (href === "/") return page === "/";
+    return page.startsWith(href);
   }
 
   async function handleMobileLogout() {

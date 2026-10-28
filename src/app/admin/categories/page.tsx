@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { db } from "@/lib/db";
 import { requireAdminPage } from "@/lib/admin/guard";
 import { AdminHeading, AdminTable, Pill } from "../_components/AdminBits";

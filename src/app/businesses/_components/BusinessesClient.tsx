@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition, useId } from "react";
+import { useCallback, useMemo, useState, useTransition, useId } from "react";
 import { countText } from "@/lib/i18n";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { usePathname, useRouter } from "next/navigation";
 import { Search, SlidersHorizontal, Store, X } from "lucide-react";
 import BusinessCard, { BusinessCardSkeleton } from "@/components/shared/BusinessCard";
@@ -23,6 +23,7 @@ import {
 import type { DiscoveryBusiness, Facets } from "@/lib/discovery/search";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { num } from "@/lib/fmt";
+import { localizePath } from "@/lib/locale-path";
 import { cn } from "@/lib/utils";
 import FilterPanel from "./FilterPanel";
 import PaginationBar from "./PaginationBar";
@@ -96,17 +97,20 @@ export default function BusinessesClient({
     setTerm(query.q);
   }
 
-  useEffect(() => {
+  // New filters drop the pages loaded for the old ones.
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (lastFilterKey !== filterKey) {
+    setLastFilterKey(filterKey);
     setExtra((prev) => (prev.key === filterKey ? prev : { key: filterKey, items: [] }));
     setLoadError(false);
-  }, [filterKey]);
+  }
 
   const push = useCallback(
     (patch: Partial<DiscoveryQuery>) => {
       const next = { ...query, ...patch };
-      startTransition(() => router.push(discoveryHref(next), { scroll: false }));
+      startTransition(() => router.push(localizePath(discoveryHref(next), lang), { scroll: false }));
     },
-    [query, router],
+    [query, router, lang],
   );
 
   const appended = extra.key === filterKey ? extra.items : [];

@@ -30,6 +30,18 @@ const KIND_AR: Record<string, string> = {
   BOOKING_FULL: "دفع كامل",
 };
 
+/** The booking's payment summary, or null when it cannot be read. */
+async function readSummary(bookingId: string): Promise<Summary | null> {
+  try {
+    const res = await fetch(`/api/business/bookings/${bookingId}/payments`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.data ?? data;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * What is still owed on a booking, and the two ways to collect it.
  *
@@ -52,27 +64,29 @@ export default function CollectBalance({ bookingId }: { bookingId: string }) {
   const [copied, setCopied] = useState(false);
 
   async function load() {
-    try {
-      const res = await fetch(`/api/business/bookings/${bookingId}/payments`);
-      if (!res.ok) {
-        setSummary(null);
-        return;
-      }
-      const data = await res.json();
-      setSummary(data.data ?? data);
-    } catch {
-      setSummary(null);
-    } finally {
-      setLoading(false);
-    }
+    setSummary(await readSummary(bookingId));
+    setLoading(false);
   }
 
-  useEffect(() => {
+  // Another booking opened in the same panel starts from a clean slate.
+  const [shownId, setShownId] = useState(bookingId);
+  if (shownId !== bookingId) {
+    setShownId(bookingId);
     setLoading(true);
     setLink(null);
     setError(null);
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }
+
+  useEffect(() => {
+    let stale = false;
+    void readSummary(bookingId).then((next) => {
+      if (stale) return;
+      setSummary(next);
+      setLoading(false);
+    });
+    return () => {
+      stale = true;
+    };
   }, [bookingId]);
 
   async function collect(mode: "link" | "manual", method?: "CASH" | "CARD") {

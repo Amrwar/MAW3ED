@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { usePathname } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import type { AdminNavSection } from "@/lib/admin/nav";

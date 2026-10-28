@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { MapPin, ArrowRight, Building2 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -8,7 +8,8 @@ import Container from "@/components/ui/Container";
 import BusinessCard from "@/components/shared/BusinessCard";
 import { getCityBySlug, getPublishedBusinesses } from "@/lib/data";
 import { MIN_BUSINESSES, getLandingCities, getLandingCombos, prerenderHints } from "@/lib/seo/landing";
-import { buildMetadata } from "@/lib/seo/meta";
+import { buildMetadata, notFoundMetadata } from "@/lib/seo/meta";
+import { getLang } from "@/lib/lang-server";
 import { db } from "@/lib/db";
 import { arCount } from "@/lib/fmt";
 
@@ -33,12 +34,26 @@ export const dynamicParams = true;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { city: slug } = await params;
+  const lang = await getLang();
   const city = await getCityBySlug(slug);
-  if (!city) return { title: "غير موجود", robots: { index: false, follow: false } };
+  if (!city) return notFoundMetadata(lang);
 
   const count = await countInCity(city.id);
   if (count < MIN_BUSINESSES) {
-    return { title: "غير موجود", robots: { index: false, follow: false } };
+    return notFoundMetadata(lang);
+  }
+
+  if (lang === "en") {
+    const name = city.nameEn || city.nameAr;
+    return buildMetadata({
+      title: `Businesses in ${name} — book online`,
+      description:
+        count === 1
+          ? `One business in ${name} takes online bookings on Maw3ed.`
+          : `${count} businesses in ${name} take online bookings on Maw3ed. See the free times and book in seconds.`,
+      path: `/cities/${city.slug}`,
+      lang,
+    });
   }
 
   return buildMetadata({

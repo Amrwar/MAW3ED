@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Search, MapPin, CalendarDays, BadgeCheck, Zap, Wallet } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { localizePath } from "@/lib/locale-path";
 import { cn } from "@/lib/utils";
 
 type City = { id: string; slug: string; nameAr: string; nameEn: string };
@@ -52,12 +53,12 @@ export default function HeroSearch({ cities, suggestions, initialCity = "" }: Pr
     if (city) document.cookie = `maw3ed-city=${city};path=/;max-age=31536000;samesite=lax`;
 
     startTransition(() => {
-      router.push(`/businesses${params.size ? `?${params}` : ""}`);
+      router.push(localizePath(`/businesses${params.size ? `?${params}` : ""}`, lang));
     });
   }
 
   function jumpTo(slug: string) {
-    startTransition(() => router.push(`/categories/${slug}`));
+    startTransition(() => router.push(localizePath(`/categories/${slug}`, lang)));
   }
 
   const whenOptions: { value: typeof when; label: string }[] = [

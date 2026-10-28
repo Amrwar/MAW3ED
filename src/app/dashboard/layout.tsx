@@ -1,3 +1,4 @@
+import { getLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
@@ -6,7 +7,6 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { db } from "@/lib/db";
 import { getEffectivePlan, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { getCapabilities, resourceLabel } from "@/lib/scheduling/capabilities";
-import { cookies } from "next/headers";
 import VerifyEmailBanner from "@/components/dashboard/VerifyEmailBanner";
 import { noBusinessDestination } from "@/lib/dashboard/guard";
 
@@ -77,8 +77,7 @@ export default async function DashboardLayout({
   // What this business calls its rooms, chairs or tables — derived from
   // what it has created, not from its category.
   const capabilities = await getCapabilities(business.id);
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as "ar" | "en";
+  const lang = await getLang();
   const resourceWord = resourceLabel(capabilities.resourceKind, lang);
   const businessName = (lang === "en" ? business.nameEn : null) || business.nameAr;
   const cityName = (lang === "en" ? business.city?.nameEn : null) || business.city?.nameAr || "";

@@ -54,33 +54,33 @@ Rules, all in `src/lib/seo/meta.ts` and covered by `meta.test.ts`:
   names only the businesses actually on the page, so it never claims
   more than it shows.
 
-## hreflang — deliberately absent
+## Languages: one address each
 
-Arabic and English are served from the **same URL**, chosen by the
-`maw3ed-lang` cookie. hreflang needs a different URL per language, so
-there is nothing to point at; a tag pointing back at its own URL tells
-Google two languages share one address, which is worse than silence.
+Every public page exists twice: Arabic at the bare path (`/faq`) and
+English under `/en` (`/en/faq`). Arabic is the product's language, so it
+keeps the addresses that were already indexed and linked.
 
-Two consequences worth knowing:
-
-1. **Googlebot only ever sees the Arabic version.** It does not carry
-   cookies, so the English content is not indexed anywhere. For an
-   Egyptian market that is mostly acceptable, but it is a real limit.
-2. Adding hreflang properly means giving English its own URLs.
-
-### What an `/en` prefix would take
-
-- A route group so every page exists at both `/x` and `/en/x`.
-- The proxy (src/proxy.ts) resolving language from the path rather than the cookie,
-  with the cookie demoted to a preference used only for redirecting a
-  first-time visitor.
-- Every internal `Link` made locale-aware, or a wrapper that is.
-- `generateStaticParams` and the sitemap doubling, each entry carrying
-  `alternates.languages` pointing at its twin plus `x-default`.
-- The canonical of each becoming itself, not the other.
-
-It is a large change touching every route and every link, which is why
-it is written down here rather than half-done.
+- **Which pages:** `src/lib/locale-path.ts` (`hasTwin`). The dashboard,
+  the customer account, admin, the API and one-off links (`/booking/…`,
+  `/ref/…`, payment returns) have one address and follow the saved
+  choice, the `maw3ed-lang` cookie.
+- **Routing:** the proxy (`src/proxy.ts`) applies
+  `src/lib/locale-routing.ts`. `/en/x` is rewritten to `/x` with the
+  language on the request (`x-maw3ed-lang`, read by `getLang()`), so each
+  page is written once. `/ar/x` and `?lang=en|ar` redirect to the right
+  address; a visitor who chose English and follows a bare link is sent
+  to the `/en` twin. Crawlers carry no cookie, so they get each address
+  in its own language.
+- **Tags:** each page is canonical to itself and lists both twins as
+  hreflang alternates, Arabic as `x-default` (`alternatesFor` in
+  `src/lib/seo/meta.ts`). The sitemap lists both addresses with the same
+  alternates.
+- **Links:** `@/components/shared/LocaleLink` is `next/link` pointed at
+  the current language's address; programmatic navigations use
+  `localizePath`. The language switch does a full load of the twin, so
+  server-rendered text and metadata change with it.
+- **Structured data** still names the Arabic URL as the entity's address;
+  it identifies the business, which is the same in both languages.
 
 ## Soft 404s
 

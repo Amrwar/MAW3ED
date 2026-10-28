@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, Eye, EyeOff, Flag, Loader2, Star } from "lucide-react";
 import Alert from "@/components/ui/Alert";

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getLang } from "@/lib/lang-server";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { MapPin } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";

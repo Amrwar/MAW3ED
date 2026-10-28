@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Check, Loader2, CalendarDays, Clock, User, Phone } from "lucide-react";
 import type { DashboardBooking } from "@/features/dashboard/bookings/types";
 import Modal from "@/components/ui/Modal";
@@ -42,42 +42,63 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
   const [error,         setError]         = useState("");
   const [created,       setCreated]       = useState<DashboardBooking | null>(null);
 
-  // Reset when opened
-  useEffect(() => {
-    if (!open) return;
-    setServiceId(services[0]?.id ?? "");
-    setDate(TODAY);
-    setStartTime("");
-    setCustomerName("");
-    setCustomerPhone("");
-    setNotes("");
-    setSlots([]);
-    setError("");
-    setCreated(null);
-  }, [open, services]);
-
-  // Fetch available slots when service + date change
-  const fetchSlots = useCallback(async () => {
-    if (!serviceId || !date) { setSlots([]); return; }
-    setLoadingSlots(true);
-    setStartTime("");
-    setError("");
-    try {
-      const res  = await fetch(
-        `/api/public/${slug}/slots?serviceId=${serviceId}&date=${date}`
-      );
-      const data = await res.json();
-      setSlots(Array.isArray(data.slots) ? data.slots : []);
-    } catch {
+  // Reset when opened. During render rather than in an effect, so the
+  // last booking's details never flash up before clearing.
+  const [shownFor, setShownFor] = useState<{ open: boolean; services: ServiceOption[] }>({
+    open: false,
+    services,
+  });
+  if (shownFor.open !== open || shownFor.services !== services) {
+    setShownFor({ open, services });
+    if (open) {
+      setServiceId(services[0]?.id ?? "");
+      setDate(TODAY);
+      setStartTime("");
+      setCustomerName("");
+      setCustomerPhone("");
+      setNotes("");
       setSlots([]);
-    } finally {
-      setLoadingSlots(false);
+      setError("");
+      setCreated(null);
     }
-  }, [serviceId, date, slug]);
+  }
 
+  // A new service or day asks for the times again, with no time chosen.
+  const slotsKey = open && serviceId && date ? `${serviceId}|${date}|${slug}` : null;
+  const [slotsFor, setSlotsFor] = useState<string | null>(null);
+  if (slotsKey !== slotsFor) {
+    setSlotsFor(slotsKey);
+    setStartTime("");
+    if (slotsKey) {
+      setLoadingSlots(true);
+      setError("");
+    } else {
+      setSlots([]);
+    }
+  }
+
+  // Fetch available slots when service + date change. A reply that
+  // arrives after the choice has moved on is dropped.
   useEffect(() => {
-    if (open) fetchSlots();
-  }, [open, fetchSlots]);
+    if (!slotsKey) return;
+    let stale = false;
+    fetch(`/api/public/${slug}/slots?serviceId=${serviceId}&date=${date}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!stale) setSlots(Array.isArray(data.slots) ? data.slots : []);
+      })
+      .catch(() => {
+        if (!stale) setSlots([]);
+      })
+      .finally(() => {
+        if (!stale) setLoadingSlots(false);
+      });
+    return () => {
+      stale = true;
+    };
+    // slotsKey carries serviceId, date and slug.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slotsKey]);
 
   const selectedService = services.find((s) => s.id === serviceId);
 

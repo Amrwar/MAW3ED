@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import {
   CheckCircle, Clock, XCircle, AlertCircle,
   CalendarDays, Phone, Store, CreditCard,

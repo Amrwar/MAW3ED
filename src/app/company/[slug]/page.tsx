@@ -4,7 +4,7 @@ import { resolveSource } from "@/lib/attribution/source";
 import { OWN_HOSTS } from "@/lib/attribution/hosts";
 import RecordView from "@/features/company/RecordView";
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { headers } from "next/headers";
 import { requestNonce } from "@/lib/security/nonce";
@@ -19,7 +19,7 @@ import type { Service } from "@/types/service";
 import { buildLocalBusinessJsonLd } from "@/lib/jsonld";
 import { siteUrl } from "@/lib/env";
 import { getLang } from "@/lib/lang-server";
-import { DEFAULT_OG_IMAGE, ogLocale } from "@/lib/seo/meta";
+import { alternatesFor, DEFAULT_OG_IMAGE, ogLocale } from "@/lib/seo/meta";
 import { getPublishedBusinesses } from "@/lib/data";
 import { cairoNow, openState, type DayHours } from "@/lib/discovery/hours";
 import { businessNextSlot } from "@/lib/discovery/profile";
@@ -56,7 +56,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const en = lang === "en";
   if (!biz) return { title: en ? "Not found" : "غير موجود", robots: { index: false, follow: false } };
 
-  const pageUrl = `${siteUrl}/company/${slug}`;
+  const alternates = alternatesFor(`/company/${slug}`, lang);
+  const canonical = String(alternates.canonical);
   // The page's language for everything Maw3ed writes; the owner's own
   // words (tagline, about) stay as they wrote them.
   const name = en && biz.nameEn ? biz.nameEn : biz.nameAr;
@@ -89,12 +90,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: { canonical: pageUrl },
+    alternates,
     openGraph: {
       type: "website",
       title,
       description,
-      url: pageUrl,
+      url: canonical,
       siteName: "موعد · Maw3ed",
       locale: ogLocale(lang),
       images: ogImages,

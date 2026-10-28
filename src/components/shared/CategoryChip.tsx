@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import type { Category } from "@/types/business";
 import { cn } from "@/lib/utils";
 

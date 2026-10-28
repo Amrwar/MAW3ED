@@ -1,13 +1,13 @@
+import { getLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { requireBusiness } from "@/lib/api";
 import { cairoDateString } from "@/lib/bookings/instants";
 import { timeToMinutes } from "@/lib/bookings/time";
 import { loadCalendar, parseView, type CalendarFilters } from "@/lib/scheduling/calendar";
 import { getCapabilities, resourceLabel } from "@/lib/scheduling/capabilities";
-import { translations, type Lang } from "@/lib/i18n";
+import { translations } from "@/lib/i18n";
 import CalendarClient from "./_components/CalendarClient";
 
 export const metadata: Metadata = { title: "التقويم" };
@@ -48,8 +48,7 @@ export default async function CalendarPage({ searchParams }: Props) {
   if (!business) redirect("/onboarding");
 
   const params = await searchParams;
-  const cookieStore = await cookies();
-  const lang = (cookieStore.get("maw3ed-lang")?.value ?? "ar") as Lang;
+  const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
 
   const view = parseView(one(params.view) ?? undefined);

@@ -12,7 +12,7 @@
 
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import { db } from "@/lib/db";
 import { CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
 import BackToApp from "./BackToApp";

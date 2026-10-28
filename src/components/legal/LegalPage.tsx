@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/shared/LocaleLink";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -12,30 +12,27 @@ type Both<V> = { ar: V; en: V };
 /**
  * A public text page — privacy, account deletion — in both languages.
  *
- * The site's language normally follows the maw3ed-lang cookie, which a
- * store reviewer opening the link cold will not have. So the page also
- * honours ?lang=en / ?lang=ar (passed in by the server page as `forced`)
- * and links to the other language, so either version has an address of
- * its own that can be pasted into a store form.
+ * Each language has its own address, /privacy and /en/privacy, so either
+ * can be pasted into a store form. The stores' existing ?lang=en links
+ * are sent to the right one by the proxy (lib/locale-routing), and the
+ * link to the other language uses the same parameter, which also saves
+ * the choice.
  *
  * The body carries its own dir, so English text inside an Arabic
  * navbar still reads left to right, and the other way round.
  */
 export default function LegalPage({
   path,
-  forced,
   title,
   updated,
   body,
 }: {
   path: string;
-  forced?: Lang;
   title: Both<string>;
   updated: Both<string>;
   body: Both<ReactNode>;
 }) {
-  const { lang: siteLang } = useLanguage();
-  const lang: Lang = forced ?? siteLang;
+  const { lang } = useLanguage();
   const other: Lang = lang === "ar" ? "en" : "ar";
 
   return (
@@ -51,13 +48,15 @@ export default function LegalPage({
             <h1 className="text-3xl font-extrabold text-[var(--color-text-primary)]">
               {title[lang]}
             </h1>
-            <Link
+            {/* A plain link: a full load, so the whole page, header
+                included, comes back in the other language. */}
+            <a
               href={`${path}?lang=${other}`}
               lang={other}
               className="inline-flex min-h-11 items-center text-sm text-[var(--color-jade)] hover:underline"
             >
               {other === "en" ? "English" : "العربية"}
-            </Link>
+            </a>
           </div>
           <p className="text-sm text-[var(--color-text-muted)] mb-10">{updated[lang]}</p>
 
