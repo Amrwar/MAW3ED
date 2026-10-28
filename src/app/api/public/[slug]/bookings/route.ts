@@ -118,10 +118,12 @@ export async function POST(req: Request, { params }: Params) {
     // The record belongs to the business: it is the name the owner has on
     // file, possibly corrected by hand. This request is anonymous — anyone
     // can type a known customer's phone number — so it may introduce a
-    // customer but never rename one or redirect their email. It only
-    // fills an email the record does not have yet. The booking itself
-    // still carries the name the visitor typed, which is what the owner
-    // sees against that appointment.
+    // customer but never rename one. It fills an email the record does
+    // not have yet, for the owner's contact card only: nothing is ever
+    // sent to it. Every email about a booking goes to the address typed
+    // with that booking (Booking.customerEmail). Sending to the record's
+    // used to let whoever booked first with somebody's number receive
+    // that person's later confirmations and manage links.
     const customer = await db.customer.upsert({
       where:  { businessId_phone: { businessId: business.id, phone: customerPhone } },
       create: { businessId: business.id, name: customerName, phone: customerPhone, email: customerEmail || null },
@@ -211,6 +213,7 @@ export async function POST(req: Request, { params }: Params) {
       customerId:     customer.id,
       customerName,
       customerPhone,
+      customerEmail:  customerEmail || null,
       date,
       startTime,
       notes:          notes ?? null,

@@ -329,23 +329,23 @@ async function attachNextSlots(list: DiscoveryBusiness[], now: Date): Promise<vo
   const ids = list.map((b) => b.id);
 
   const [services, schedules] = await Promise.all([
-    // One row per business, not every service of every business.
-    db.service.groupBy({
-      by: ["businessId"],
+    // The shortest service of each business, and which one it is: the
+    // members who do it decide the time.
+    db.service.findMany({
       where: { businessId: { in: ids }, isAvailable: true, duration: { gt: 0 } },
-      _min: { duration: true },
+      orderBy: [{ businessId: "asc" }, { duration: "asc" }],
+      distinct: ["businessId"],
+      select: { id: true, businessId: true, duration: true },
     }),
     loadSchedules(ids, now),
   ]);
 
-  const shortestOf = new Map<string, number>();
-  for (const s of services) {
-    if (s._min.duration !== null) shortestOf.set(s.businessId, s._min.duration);
-  }
+  const shortestOf = new Map(services.map((s) => [s.businessId, s]));
 
   for (const b of list) {
     const schedule = schedules.get(b.id);
-    b.nextSlot = schedule ? firstFree(schedule, shortestOf.get(b.id) ?? null) : null;
+    const quickest = shortestOf.get(b.id);
+    b.nextSlot = schedule && quickest ? firstFree(schedule, quickest.duration, null, quickest.id) : null;
   }
 }
 

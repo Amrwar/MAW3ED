@@ -48,7 +48,7 @@ below is planned in detail yet, and no phase starts automatically.
 | Phase | Scope | Status |
 |---|---|---|
 | Baseline | Repository inspection, roadmap and verification documents, CI repair | Done — `docs/phases/BASELINE_REPORT.md` |
-| 17 | Awaiting instructions | NOT STARTED |
+| 17 | Production audit and remediation | PARTIAL — code complete, awaiting merge + migration (`docs/phases/PHASE_17_REPORT.md`) |
 | 18 | Awaiting instructions | NOT STARTED |
 | 19 | Awaiting instructions | NOT STARTED |
 | 20 | Awaiting instructions | NOT STARTED |

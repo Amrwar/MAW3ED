@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { cairoWallClock } from "@/lib/bookings/instants";
 import { businessAllows } from "@/lib/plans";
 import { notify } from "@/lib/notifications";
 import { log } from "@/lib/logger";
@@ -45,15 +46,21 @@ export async function GET(req: Request) {
   if (!allowed.ok) return allowed.response;
 
   const now = new Date();
+  // startsAt and endsAt are Cairo wall-clock written as UTC, so every
+  // comparison with them uses this rather than `now`, which is off by
+  // Cairo's offset: a "30 minutes before" nudge went out two to three
+  // hours after the appointment had started. `now` stays for real
+  // instants (the reaper below).
+  const wall = cairoWallClock(now);
   const counts = { reminder: 0, startingSoon: 0, review: 0, skipped: 0, failed: 0 };
 
   /* ── Upcoming appointments ──────────────────────────────── */
 
-  const horizon = new Date(now.getTime() + MAX_LEAD_HOURS * 3_600_000);
+  const horizon = new Date(wall.getTime() + MAX_LEAD_HOURS * 3_600_000);
   const upcoming = await db.booking.findMany({
     where: {
       status: "CONFIRMED",
-      startsAt: { gte: now, lte: horizon },
+      startsAt: { gte: wall, lte: horizon },
     },
     select: {
       id: true,
@@ -80,7 +87,7 @@ export async function GET(req: Request) {
 
   for (const b of upcoming) {
     if (!b.startsAt) continue;
-    const minutesAway = (b.startsAt.getTime() - now.getTime()) / 60_000;
+    const minutesAway = (b.startsAt.getTime() - wall.getTime()) / 60_000;
     const biz = b.business;
 
     // Asked once per booking, for both kinds of nudge below.
@@ -129,8 +136,8 @@ export async function GET(req: Request) {
 
   /* ── Finished appointments, not yet reviewed ────────────── */
 
-  const reviewFrom = new Date(now.getTime() - REVIEW_WINDOW_HOURS * 3_600_000);
-  const reviewTo = new Date(now.getTime() - REVIEW_DELAY_HOURS * 3_600_000);
+  const reviewFrom = new Date(wall.getTime() - REVIEW_WINDOW_HOURS * 3_600_000);
+  const reviewTo = new Date(wall.getTime() - REVIEW_DELAY_HOURS * 3_600_000);
 
   const finished = await db.booking.findMany({
     where: {

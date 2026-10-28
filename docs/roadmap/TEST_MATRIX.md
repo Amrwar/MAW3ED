@@ -10,9 +10,11 @@ anything not run says NOT RUN or BLOCKED.
 |---|---|---|---|---|---|
 | Web typecheck | static | `tsconfig.json` (strict) | `npm run typecheck` | yes | PASS — 2026-10-28, `77c8649` |
 | Web lint | static | `eslint.config.mjs` | `npm run lint` | yes | PASS — 0 errors, 6 warnings — 2026-10-28 |
-| Web unit + route tests | Vitest 5.0.5 | `src/**/*.test.ts(x)` (80 files) | `npm run test:run` | yes | PASS — 934 passed, 34 skipped (968) — 2026-10-28 |
+| Web unit + route tests | Vitest 5.0.5 | `src/**/*.test.ts(x)` (82 files) | `npm run test:run` | yes | PASS — 960 passed, 39 skipped (999) — 2026-10-28, Phase 17 branch (baseline: 934 / 34) |
+| Booking engine on Postgres (P17-01/03/05, R2, R5) | DB integration | `src/lib/bookings/create.db.test.ts` | `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/bookings/create.db.test.ts` | no (needs Postgres) | PASS — 5/5, five consecutive runs — 2026-10-28; 4/4 of the original tests FAIL on the pre-Phase-17 code |
+| Phase 17 end to end | Playwright + HTTP against a production build and the QA DB | `scripts/qa-phase17.mjs` | `node scripts/qa-phase17.mjs` (server on :3101) | no | PASS — 13/13 — 2026-10-28 |
 | Phone normalisation, SQL vs TypeScript | DB invariant | `src/lib/phone-sql.test.ts` | `PHONE_SQL_DATABASE_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/phone-sql.test.ts` | no (needs Postgres) | PASS — 34/34 against local QA Postgres — 2026-10-28 |
-| Web build | build | — | `npm run build` | yes (did not run on #28–#31, see CI note) | Vercel production build of `77c8649` succeeded |
+| Web build | build | — | `npm run build` | yes (did not run on #28–#31, see CI note) | PASS locally on the Phase 17 branch — 2026-10-28 |
 | Prettier | format | — | `npm run format:check` | non-blocking | NOT RUN at baseline (known debt) |
 | Mobile typecheck | static | `mobile/tsconfig.json` | `cd mobile && npx tsc --noEmit` | no | PASS — 2026-10-28 |
 | Mobile lint | static | `mobile/eslint.config.js` | `cd mobile && npx eslint .` | no | PASS — 2026-10-28 |
@@ -30,8 +32,12 @@ manual QA record), L = live/partner verification.
 
 | Area | U | D | E | L | Gaps |
 |---|---|---|---|---|---|
-| Slots, overlap, time zones | ✔ | — | ✔ | — | No DB-level test of concurrent double-booking |
-| Booking creation, allowance, soft cap | ✔ | — | ✔ (local, PR #31) | — | |
+| Slots, overlap, time zones | ✔ | ✔ (Phase 17) | ✔ | — | |
+| "Any available", team capacity, shared resources | ✔ | ✔ | ✔ (Phase 17 race) | — | |
+| Reminders cron, dashboard Today (Cairo clock) | ✔ (Phase 17) | — | ✔ (22:30 booking in Today) | — | |
+| Booking creation, allowance, soft cap | ✔ | ✔ | ✔ (local, PR #31) | — | |
+| Plan matrix vs. enforcement | ✔ (source scan, Phase 17) | — | ✔ (pricing pages) | — | |
+| Booking email address (P17-03) | — | ✔ | ✔ | — | Live delivery not verified |
 | Status transitions | ✔ | — | ✔ | — | |
 | Self-service links | ✔ | — | ✔ | — | |
 | Restaurant tables | partial | — | — | — | No table-assignment tests |

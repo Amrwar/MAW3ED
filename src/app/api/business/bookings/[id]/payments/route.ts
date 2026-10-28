@@ -121,7 +121,7 @@ export async function POST(req: Request, { params }: Params) {
         currency: true,
         customerName: true,
         customerPhone: true,
-        customer: { select: { email: true } },
+        customerEmail: true,
       },
     });
     if (!booking) return err("الحجز غير موجود", 404);
@@ -221,7 +221,7 @@ export async function POST(req: Request, { params }: Params) {
         currency: booking.currency,
         customerName: booking.customerName,
         customerPhone: booking.customerPhone,
-        customerEmail: booking.customer?.email ?? undefined,
+        customerEmail: booking.customerEmail ?? undefined,
       });
 
       await attachProviderOrder(payment.id, paymobOrderId);

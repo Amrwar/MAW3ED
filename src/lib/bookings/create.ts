@@ -51,6 +51,12 @@ export interface CreateBookingInput {
   customerId: string;
   customerName: string;
   customerPhone: string;
+  /**
+   * Where this booking's emails go: the address typed with it. Kept on
+   * the booking, never read back from the Customer record, which
+   * anybody who knows the phone number could have filled.
+   */
+  customerEmail?: string | null;
   /** YYYY-MM-DD */
   date: string;
   /** HH:MM */
@@ -120,8 +126,13 @@ const BOOKING_SELECT = {
   notes: true,
 } satisfies Prisma.BookingSelect;
 
-/** A reference is unique platform-wide; collisions are rare but possible. */
-const REFERENCE_ATTEMPTS = 6;
+/**
+ * Attempts at the insert. A reference collision draws a new one; a
+ * serialization failure — two bookings at one business counting the
+ * month together — is retried as a whole, since the overlap constraint
+ * still holds whatever the retry does.
+ */
+const INSERT_ATTEMPTS = 6;
 
 export async function createBooking(
   input: CreateBookingInput,
@@ -141,38 +152,40 @@ export async function createBooking(
   // Never trust the time the client sends. This is the same call the
   // slots endpoint makes, so an invented time, a time that is no longer
   // offered, and a time somebody else has just taken all fail here.
-  const availability = await loadAvailability(
-    {
-      businessId: input.businessId,
-      serviceId: input.serviceId,
-      date: input.date,
-      staffMemberId: input.staffMemberId ?? null,
-      resourceId: input.resourceId ?? null,
-      branchId: input.branchId ?? null,
-    },
-    now,
-  );
-
-  if (availability.serviceDuration <= 0) return { ok: false, failure: { kind: "service-not-found" } };
-
-  if (!availability.slots.includes(input.startTime)) {
+  //
+  // "Anyone available" is given to the member the engine found free.
+  // A booking with nobody on it at a business with staff blocks nobody
+  // in particular, which is how two customers ended up in one chair.
+  async function derive(): Promise<Plan | CreateFailure> {
+    const availability = await loadAvailability(
+      {
+        businessId: input.businessId,
+        serviceId: input.serviceId,
+        date: input.date,
+        staffMemberId: input.staffMemberId ?? null,
+        resourceId: input.resourceId ?? null,
+        branchId: input.branchId ?? null,
+      },
+      now,
+    );
+    if (availability.serviceDuration <= 0) return { kind: "service-not-found" };
+    if (!availability.slots.includes(input.startTime)) {
+      return { kind: "slot-unavailable", reason: availability.reason };
+    }
+    const endTime = minutesToTime(timeToMinutes(input.startTime) + availability.serviceDuration);
     return {
-      ok: false,
-      failure: { kind: "slot-unavailable", reason: availability.reason },
+      staffMemberId: input.staffMemberId ?? availability.assignments[input.startTime] ?? null,
+      endTime,
+      ...bookingInstants(input.date, input.startTime, endTime, availability.serviceDuration),
     };
   }
 
-  const startMin = timeToMinutes(input.startTime);
-  const endTime = minutesToTime(startMin + availability.serviceDuration);
-  const { startsAt, endsAt } = bookingInstants(
-    input.date,
-    input.startTime,
-    endTime,
-    availability.serviceDuration,
-  );
+  let plan = await derive();
+  if ("kind" in plan) return { ok: false, failure: plan };
 
   // ── Insert ───────────────────────────────────────────────
-  for (let attempt = 0; attempt < REFERENCE_ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < INSERT_ATTEMPTS; attempt++) {
+    const { staffMemberId, endTime, startsAt, endsAt } = plan;
     // Per attempt: a retried transaction counts the month afresh.
     let status = input.status;
     try {
@@ -197,6 +210,7 @@ export async function createBooking(
               customerId: input.customerId,
               customerName: input.customerName,
               customerPhone: input.customerPhone,
+              customerEmail: input.customerEmail ?? null,
               date: dateToUTC(input.date),
               startTime: input.startTime,
               endTime,
@@ -212,7 +226,7 @@ export async function createBooking(
               depositAmount: input.depositAmount,
               source: input.source ?? null,
               discountCents: input.discount?.amountCents ?? 0,
-              staffMemberId: input.staffMemberId ?? null,
+              staffMemberId,
               resourceId: input.resourceId ?? null,
               // Booking.tableId is deliberately not set. It has a foreign
               // key to Table, a resource id is not a table id, and so
@@ -287,9 +301,23 @@ export async function createBooking(
         if (existing) return { ok: true, booking: existing, reused: true };
       }
 
+      // Two transactions at one business read together, or the member
+      // this booking was given went to somebody else a moment earlier.
+      // Ask again: another member may still be free. Only a time nobody
+      // can take any more is "taken".
+      const autoAssigned = !input.staffMemberId && staffMemberId !== null;
+      if (code === PG_SERIALIZATION_FAILURE || (code === PG_EXCLUSION_VIOLATION && autoAssigned)) {
+        const again = await derive();
+        if ("kind" in again) {
+          return { ok: false, failure: again.kind === "slot-unavailable" ? { kind: "slot-taken" } : again };
+        }
+        plan = again;
+        continue;
+      }
+
       // The slot went to somebody else between the check and the commit.
       // This is the race the constraint exists for.
-      if (code === PG_EXCLUSION_VIOLATION || code === PG_SERIALIZATION_FAILURE) {
+      if (code === PG_EXCLUSION_VIOLATION) {
         return { ok: false, failure: { kind: "slot-taken" } };
       }
 
@@ -305,7 +333,7 @@ export async function createBooking(
     }
   }
 
-  log.error("[createBooking] exhausted reference attempts", {
+  log.error("[createBooking] exhausted insert attempts", {
     businessId: input.businessId,
   });
   return { ok: false, failure: { kind: "slot-taken" } };
@@ -326,6 +354,14 @@ export function countedThisMonth(businessId: string, now: Date = new Date()) {
     },
     status: { notIn: ["FAILED_PAYMENT", "CANCELLED"] as ("FAILED_PAYMENT" | "CANCELLED")[] },
   };
+}
+
+/** What one attempt inserts: the time, and who it was given to. */
+interface Plan {
+  staffMemberId: string | null;
+  endTime: string;
+  startsAt: Date;
+  endsAt: Date;
 }
 
 /* ─── Error plumbing ─────────────────────────────────────── */

@@ -84,17 +84,17 @@ export const translations = {
       searchBtn:        "ابحث",
       searching:        "بندوّر...",
       tryLabel:         "جرّب:",
-      promiseInstant:   "تأكيد فوري للحجز",
-      promiseVerified:  "أنشطة متحقّق منها",
-      promiseFree:      "الحجز مجاني تمامًا",
+      promiseInstant:   "احجز في ثواني",
+      promiseVerified:  "من غير مكالمات",
+      promiseFree:      "من غير رسوم حجز",
     },
     trustSignals: {
       eyebrow:         "ليه موعد",
       title:           "حجز تقدر تعتمد عليه",
-      verifiedTitle:   "أنشطة متحقّق منها",
-      verifiedBody:    "علامة التوثيق مش بتتحط بالطلب — النشاط لازم يأكّد بريده ورقم واتساب الأول.",
-      instantTitle:    "تأكيد فوري",
-      instantBody:     "بتشوف المواعيد الفاضية فعلاً وتحجز في ثواني، من غير مكالمات ولا انتظار رد.",
+      verifiedTitle:   "علامة توثيق ليها معنى",
+      verifiedBody:    "علامة «موثّق» مش بتتحط بالطلب: النشاط لازم يأكّد بريده ورقم واتساب، ويكمّل صفحته بخدمة وعنوان ونبذة وشعار.",
+      instantTitle:    "مواعيد فاضية فعلًا",
+      instantBody:     "بتشوف المواعيد الفاضية فعلاً وتحجز في ثواني، من غير مكالمات. أماكن كتير بتأكّد على طول، والباقي بيأكّد بنفسه وبيوصلك التأكيد.",
       noFeesTitle:     "من غير رسوم حجز",
       noFeesBody:      "موعد مش بياخد منك رسوم حجز. بتدفع تمن الخدمة للنشاط، وبعض الأماكن بتطلب عربون أونلاين وقت الحجز.",
       arabicTitle:     "عربي بالكامل",
@@ -141,7 +141,7 @@ export const translations = {
       customerSteps:[
         { number:"1", icon:"🔍", title:"ابحث واختار",   description:"تصفح الأنشطة المتاحة، وفلتر حسب التخصص والمدينة والتقييم." },
         { number:"2", icon:"📅", title:"احجز موعدك",   description:"اختار الخدمة، الوقت المناسب، واحجز في ثوانٍ بدون مكالمات." },
-        { number:"3", icon:"✅", title:"استمتع بالخدمة",description:"احصل على تأكيد فوري وتذكير تلقائي قبل موعدك." },
+        { number:"3", icon:"✅", title:"استمتع بالخدمة",description:"بيوصلك تأكيد الحجز وتذكير تلقائي قبل موعدك." },
       ],
       businessSteps:[
         { number:"1", icon:"🏪", title:"أنشئ صفحتك",  description:"سجّل عملك مجانًا وخصّص صفحتك بخدماتك وأوقاتك." },
@@ -195,7 +195,7 @@ export const translations = {
         {
           period:"ج.م / شهر",
           cta:"الترقية للمميز",
-          features:["كل مميزات الاحترافي","فروع متعددة وفريق غير محدود","تحليلات متقدمة","إخفاء شعار موعد","دعم بأولوية"],
+          features:["كل مميزات الاحترافي","فروع متعددة","فريق غير محدود"],
         },
       ],
     },
@@ -746,7 +746,7 @@ export const translations = {
       // the two groups below them.
       items: [
         { q:"ما هو موعد؟",                              a:"موعد منصة عربية لحجز المواعيد واكتشاف الأنشطة والخدمات في مصر. بيوصّل العملاء بالعيادات والصالونات والجيمات والمراكز وغيرها." },
-        { q:"هل الاستخدام مجاني؟",                     a:"نعم، الحجز مجاني للعملاء بالكامل، وموعد مش بياخد رسوم حجز. لأصحاب الأنشطة فيه باقة مجانية وباقات مدفوعة." },
+        { q:"هل الاستخدام مجاني؟",                     a:"موعد مش بياخد من العملاء أي رسوم حجز. بتدفع تمن الخدمة للمكان، وبعض الأماكن بتطلب عربون أونلاين وقت الحجز. لأصحاب الأنشطة فيه باقة مجانية وباقات مدفوعة." },
         { q:"محتاج أعمل حساب عشان أحجز؟",              a:"لأ. بتختار الخدمة والميعاد وتكتب اسمك ورقم موبايلك وخلاص. الحساب اختياري، بيجمع حجوزاتك وأماكنك المحفوظة في مكان واحد." },
         { q:"كيف يتلقى العملاء تأكيد الحجز؟",          a:"العميل بيشوف تأكيد الحجز على الشاشة على طول، وبيوصله على البريد الإلكتروني لو كتبه، وعلى واتساب لو باقة النشاط فيها واتساب، وفي حسابه على موعد لو عنده حساب. وقبل الميعاد بيوصله تذكير تلقائي." },
         { q:"أقدر ألغي أو أغيّر ميعادي؟",               a:"أيوه، من رابط الحجز اللي وصلك، لحد قبل الميعاد بساعتين. بعد كده كلّم المكان مباشرة." },
@@ -1142,17 +1142,17 @@ export const translations = {
       searchBtn:        "Search",
       searching:        "Searching...",
       tryLabel:         "Try:",
-      promiseInstant:   "Instant confirmation",
-      promiseVerified:  "Verified businesses",
-      promiseFree:      "Booking is always free",
+      promiseInstant:   "Book in seconds",
+      promiseVerified:  "No phone calls",
+      promiseFree:      "No booking fees",
     },
     trustSignals: {
       eyebrow:         "Why Maw3ed",
       title:           "Booking you can rely on",
-      verifiedTitle:   "Verified businesses",
-      verifiedBody:    "The badge is earned, not set: a business has to confirm its email and WhatsApp number first.",
-      instantTitle:    "Instant confirmation",
-      instantBody:     "You see the openings that are actually free and book in seconds — no calls, no waiting for a reply.",
+      verifiedTitle:   "A badge that means something",
+      verifiedBody:    "The Verified badge is earned, not set: a business has to confirm its email and WhatsApp number and complete its page with a service, an address, a description and a logo.",
+      instantTitle:    "Times that are really free",
+      instantBody:     "You see the openings that are actually free and book in seconds, without a phone call. Many places confirm on the spot; the rest confirm themselves and you are told.",
       noFeesTitle:     "No booking fees",
       noFeesBody:      "Maw3ed charges you no booking fee. You pay the business for the service; some ask for an online deposit when you book.",
       arabicTitle:     "Built in Arabic",
@@ -1199,7 +1199,7 @@ export const translations = {
       customerSteps:[
         { number:"1", icon:"🔍", title:"Search & Choose",   description:"Browse businesses and filter by specialty, city and rating." },
         { number:"2", icon:"📅", title:"Book Your Slot",    description:"Pick a service, choose a time, and book in seconds — no phone calls." },
-        { number:"3", icon:"✅", title:"Enjoy the Service", description:"Get instant confirmation and an automatic reminder before your appointment." },
+        { number:"3", icon:"✅", title:"Enjoy the Service", description:"Get your booking confirmed and an automatic reminder before your appointment." },
       ],
       businessSteps:[
         { number:"1", icon:"🏪", title:"Create Your Page",  description:"Register your business for free and customize your page with services and hours." },
@@ -1253,7 +1253,7 @@ export const translations = {
         {
           period:"EGP / month",
           cta:"Upgrade to Premium",
-          features:["Everything in Pro","Multiple branches and unlimited team","Advanced analytics","Remove Maw3ed branding","Priority support"],
+          features:["Everything in Pro","Multiple branches","Unlimited team"],
         },
       ],
     },
@@ -1804,7 +1804,7 @@ export const translations = {
       // the two groups below them.
       items: [
         { q:"What is Maw3ed?",                          a:"Maw3ed is an Arabic appointment booking platform for discovering businesses and services in Egypt. It connects customers with clinics, salons, gyms, centers and more." },
-        { q:"Is it free to use?",                       a:"Yes. Booking is completely free for customers and Maw3ed charges no booking fee. Businesses have a free plan and paid plans." },
+        { q:"Is it free to use?",                       a:"Maw3ed charges customers no booking fee. You pay the business for the service, and some ask for an online deposit when you book. Businesses have a free plan and paid plans." },
         { q:"Do I need an account to book?",            a:"No. Pick the service and time, enter your name and mobile number, and that's it. An account is optional; it keeps your bookings and saved places in one place." },
         { q:"How do customers receive booking confirmations?", a:"Customers see the confirmation on screen straight away. They also get it by email if they gave one, on WhatsApp if the business's plan includes WhatsApp, and in their Maw3ed account if they have one — plus an automatic reminder before the appointment." },
         { q:"Can I cancel or change my booking?",       a:"Yes, from the link in your booking confirmation, up to two hours before the appointment. After that, contact the business directly." },

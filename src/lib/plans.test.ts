@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync, statSync } from "fs";
+import { join } from "path";
 import { describe, it, expect } from "vitest";
 import {
   PLANS,
@@ -97,7 +99,6 @@ describe("cheapestPlanWith", () => {
   it("names the plan to upgrade to", () => {
     expect(cheapestPlanWith("staffMembers")).toBe("PRO");
     expect(cheapestPlanWith("deposits")).toBe("PRO");
-    expect(cheapestPlanWith("api")).toBe("PREMIUM");
     expect(cheapestPlanWith("branches")).toBe("PREMIUM");
   });
 });
@@ -139,14 +140,14 @@ describe("effective plan", () => {
     const business = { plan: "PRO" as const, subscriptionStatus: "ACTIVE" as const, trialEndsAt: null };
     expect(effectivePlanOf(business)).toBe("PRO");
     expect(businessAllows(business, "deposits")).toBe(true);
-    expect(businessAllows(business, "api")).toBe(false);
+    expect(businessAllows(business, "branches")).toBe(false);
   });
 
   it("refuses a lapsed business the features it used to have", () => {
     const lapsed = { plan: "PREMIUM" as const, subscriptionStatus: "INACTIVE" as const, trialEndsAt: null };
     expect(businessAllows(lapsed, "analytics")).toBe(false);
     expect(businessAllows(lapsed, "deposits")).toBe(false);
-    expect(businessAllows(lapsed, "api")).toBe(false);
+    expect(businessAllows(lapsed, "branches")).toBe(false);
   });
 
   it("keeps reminding customers whatever happens to the subscription", () => {
@@ -194,4 +195,39 @@ describe("featureRows", () => {
       }
     }
   });
+});
+
+describe("everything the pricing page sells is enforced", () => {
+  // The matrix once gave PREMIUM advanced analytics, marketing tools,
+  // API access, priority support and its own branding. Nothing read
+  // those rows, and the pricing page sold them at 499 a month. A row
+  // only belongs here when some code outside this module checks it.
+  function sourceFiles(dir: string, out: string[] = []): string[] {
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) sourceFiles(full, out);
+      else if (/\.(ts|tsx)$/.test(full) && !/\.test\.tsx?$/.test(full) && !/[\\/]lib[\\/]plans\.ts$/.test(full)) {
+        out.push(full);
+      }
+    }
+    return out;
+  }
+  const source = sourceFiles(join(process.cwd(), "src"))
+    .map((f) => readFileSync(f, "utf8"))
+    .join("\n");
+
+  // monthlyBookings is read through getMonthlyBookingLimit, which lives
+  // in plans.ts; that it reaches the booking route is checked here too.
+  const CHECKED_VIA: Partial<Record<PlanFeature, RegExp>> = {
+    monthlyBookings: /getMonthlyBookingLimit\(/,
+  };
+
+  for (const key of FEATURE_ORDER) {
+    it(`${key} is checked by the code`, () => {
+      const pattern =
+        CHECKED_VIA[key] ??
+        new RegExp(`(allows|canUseFeature|businessAllows|limitOf|wouldExceed)\\(\\s*[^)]*?["']${key}["']`);
+      expect(pattern.test(source), `no code checks "${key}"`).toBe(true);
+    });
+  }
 });

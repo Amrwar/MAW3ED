@@ -1,9 +1,11 @@
 import { db } from "@/lib/db";
 import {
   computeAvailability,
+  computeStaffedAvailability,
   type BlockRule,
   type ExistingBooking,
   type SchedulingPolicy,
+  type StaffCandidate,
   type StaffDayRule,
 } from "@/lib/bookings/availability";
 import { LIVE_STATUSES } from "@/lib/bookings/schedule";
@@ -45,6 +47,16 @@ export interface Schedule {
   blocks: BlockRule[];
   /** Live bookings by YYYY-MM-DD. */
   bookings: Map<string, ExistingBooking[]>;
+  /**
+   * Active staff, with the services each is listed for (empty: all).
+   * When there are any, a time is free as the booking engine decides
+   * it for a team (computeStaffedAvailability).
+   */
+  team: TeamMember[];
+}
+
+export interface TeamMember extends StaffCandidate {
+  serviceIds: string[];
 }
 
 export async function loadSchedule(businessId: string, now: Date = new Date()): Promise<Schedule | null> {
@@ -75,6 +87,16 @@ export async function loadSchedules(businessIds: string[], now: Date = new Date(
         maxAdvanceDays: true,
         sameDayCutoff: true,
         availability: { select: { dayOfWeek: true, openTime: true, closeTime: true, isClosed: true } },
+        staffMembers: {
+          where: { isActive: true },
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            workingDays: true,
+            hours: { select: { dayOfWeek: true, startTime: true, endTime: true, isOff: true } },
+            services: { select: { serviceId: true } },
+          },
+        },
       },
     }),
     db.booking.findMany({
@@ -157,6 +179,10 @@ export async function loadSchedules(businessIds: string[], now: Date = new Date(
       hours: business.availability,
       blocks: blocksOf.get(business.id) ?? [],
       bookings: bookingsOf.get(business.id) ?? new Map(),
+      team: business.staffMembers.map(({ services, ...m }) => ({
+        ...m,
+        serviceIds: services.map((x) => x.serviceId),
+      })),
     });
   }
   return out;
@@ -164,19 +190,32 @@ export async function loadSchedules(businessIds: string[], now: Date = new Date(
 
 /**
  * The first slot of the shortest service, for the business as a whole
- * (staff null: "anyone available", as the widget offers it) or for one
- * person. Null when nothing is free within the horizon, or nothing is
- * bookable at all.
+ * ("anyone available", as the widget offers it) or for one person.
+ * Null when nothing is free within the horizon, or nothing is bookable
+ * at all.
+ *
+ * With staff, this is the booking engine's team rule, so a card never
+ * advertises a time the widget then refuses: only members who do the
+ * service count, and bookings nobody was given are owed by the team.
+ * `serviceId` names the service the duration belongs to; without it
+ * every member counts.
  */
 export function firstFree(
   s: Schedule,
   durationMinutes: number | null,
   staff: { id: string; workingDays: number[]; hours: StaffDayRule[] } | null = null,
+  serviceId: string | null = null,
 ): NextSlot | null {
   if (!durationMinutes || durationMinutes <= 0) return null;
+
+  const team: StaffCandidate[] = s.team.filter(
+    (m) => !serviceId || m.serviceIds.length === 0 || m.serviceIds.includes(serviceId),
+  );
+  if (staff && s.team.length > 0 && !team.some((m) => m.id === staff.id)) team.push(staff);
+
   for (let i = 0; i < HORIZON_DAYS; i++) {
     const date = addDays(s.today, i);
-    const { slots } = computeAvailability({
+    const base = {
       date,
       dayOfWeek: weekdayOf(date),
       today: s.today,
@@ -185,18 +224,32 @@ export function firstFree(
       serviceDuration: durationMinutes,
       policy: s.policy,
       businessHours: s.hours,
-      staffMemberId: staff?.id ?? null,
-      staffHours: staff?.hours ?? [],
-      staffWorkingDays: staff?.workingDays ?? [],
       branchId: null,
       blocks: s.blocks,
       bookings: s.bookings.get(date) ?? [],
       resourceId: null,
-    });
+    };
+    const { slots } =
+      team.length > 0
+        ? computeStaffedAvailability(base, team, staff?.id ?? null)
+        : computeAvailability({
+            ...base,
+            staffMemberId: staff?.id ?? null,
+            staffHours: staff?.hours ?? [],
+            staffWorkingDays: staff?.workingDays ?? [],
+          });
     const first = slots[0];
     if (first) return { dayOffset: i, time: first };
   }
   return null;
+}
+
+/** The shortest bookable service: what "next free" is measured with. */
+export function shortestService<T extends { id: string; duration: number }>(services: T[]): T | null {
+  return services.reduce<T | null>(
+    (min, svc) => (svc.duration > 0 && (min === null || svc.duration < min.duration) ? svc : min),
+    null,
+  );
 }
 
 /** Shortest positive duration, or null. */

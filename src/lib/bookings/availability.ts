@@ -276,12 +276,20 @@ export function computeAvailability(input: AvailabilityInput): AvailabilityResul
   const { bufferMinutes } = input.policy;
   const duration = input.serviceDuration;
 
-  // Collision is scoped exactly as the database constraint is: a
-  // booking against a named person or resource only blocks others
+  // A booking against a named person or resource only blocks others
   // against that same one, so several chairs or rooms run in parallel;
   // a booking against neither blocks the whole business, which is how a
   // one-room clinic behaves.
+  //
+  // A resource is held by one booking at a time whoever runs it: two
+  // doctors cannot both have room 1 at ten. That check comes first, so
+  // a request naming a person still collides on the room.
+  //
+  // Bookings with nobody assigned, at a business that has staff, are
+  // not this function's to place. computeStaffedAvailability counts
+  // them against the team as a whole.
   const relevant = input.bookings.filter((b) => {
+    if (input.resourceId && b.resourceId === input.resourceId) return true;
     if (input.staffMemberId || b.staffMemberId) {
       return b.staffMemberId === input.staffMemberId;
     }
@@ -316,6 +324,121 @@ export function computeAvailability(input: AvailabilityInput): AvailabilityResul
   }
 
   return { slots, reason: slots.length === 0 ? null : null, window };
+}
+
+/* ─── A team, rather than one person ─────────────────────── */
+
+/** Someone who can be booked for the service being asked about. */
+export interface StaffCandidate {
+  id: string;
+  workingDays: number[];
+  hours: StaffDayRule[];
+}
+
+export interface StaffedAvailabilityResult extends AvailabilityResult {
+  /**
+   * Who takes each slot. For "anyone", the free member with the fewest
+   * bookings that day (the first of them in the order given, on a tie);
+   * for a named member, that member.
+   */
+  assignments: Record<string, string>;
+}
+
+/**
+ * Availability at a business whose service is done by staff.
+ *
+ * "Any available" used to run the engine with nobody in particular,
+ * which only collided with other bookings that also had nobody — so a
+ * shop with one barber booked at 14:00 still offered 14:00 to the next
+ * customer who did not pick a name, and both arrived for one chair. A
+ * time is now offered to "anyone" only when somebody is actually free,
+ * and the booking is given to that person.
+ *
+ * Bookings with nobody assigned (made before this, or by hand) still
+ * need a person. Which one is unknown, so each is counted against the
+ * team: a time is free for one more booking when more members are free
+ * than there are unassigned bookings overlapping it.
+ */
+export function computeStaffedAvailability(
+  base: Omit<AvailabilityInput, "staffMemberId" | "staffHours" | "staffWorkingDays">,
+  candidates: StaffCandidate[],
+  chosen: string | null,
+): StaffedAvailabilityResult {
+  const perStaff = candidates.map((c) => ({
+    id: c.id,
+    result: computeAvailability({
+      ...base,
+      staffMemberId: c.id,
+      staffHours: c.hours,
+      staffWorkingDays: c.workingDays,
+    }),
+  }));
+
+  const own = chosen ? perStaff.find((p) => p.id === chosen) : undefined;
+  if (chosen && !own) {
+    // Not someone who does this service here.
+    return { slots: [], reason: "staff-off", window: null, assignments: {} };
+  }
+
+  const { bufferMinutes } = base.policy;
+  const unassigned = base.bookings.filter((b) => !b.staffMemberId);
+  const freeSets = perStaff.map((p) => ({ id: p.id, free: new Set(p.result.slots) }));
+  // So "anyone" spreads across the team rather than filling the
+  // longest-serving member's day before anyone else's.
+  const load = new Map<string, number>();
+  for (const b of base.bookings) {
+    if (b.staffMemberId) load.set(b.staffMemberId, (load.get(b.staffMemberId) ?? 0) + 1);
+  }
+
+  const candidatesTimes = own
+    ? own.result.slots
+    : [...new Set(perStaff.flatMap((p) => p.result.slots))].sort(
+        (a, b) => timeToMinutes(a) - timeToMinutes(b),
+      );
+
+  const slots: string[] = [];
+  const assignments: Record<string, string> = {};
+  for (const time of candidatesTimes) {
+    const start = timeToMinutes(time);
+    const heldEnd = start + base.serviceDuration + bufferMinutes;
+    const owed = unassigned.filter((b) =>
+      overlaps(start, heldEnd, b.startMin, b.endMin + bufferMinutes),
+    ).length;
+    const free = freeSets.filter((s) => s.free.has(time)).map((s) => s.id);
+
+    if (chosen) {
+      // The named member, and enough of the others left over for the
+      // bookings nobody has been given yet.
+      if (free.length - 1 < owed) continue;
+      slots.push(time);
+      assignments[time] = chosen;
+    } else {
+      if (free.length <= owed) continue;
+      slots.push(time);
+      assignments[time] = free.reduce((best, id) =>
+        (load.get(id) ?? 0) < (load.get(best) ?? 0) ? id : best,
+      );
+    }
+  }
+
+  let reason: UnavailableReason | null = null;
+  let window: Interval | null = null;
+  if (own) {
+    reason = slots.length === 0 ? own.result.reason : null;
+    window = own.result.window;
+  } else {
+    const reasons = new Set(perStaff.map((p) => p.result.reason));
+    if (slots.length === 0 && reasons.size === 1) reason = [...reasons][0];
+    const windows = perStaff.map((p) => p.result.window).filter((w): w is Interval => w !== null);
+    if (windows.length > 0) {
+      window = {
+        start: Math.min(...windows.map((w) => w.start)),
+        end: Math.max(...windows.map((w) => w.end)),
+      };
+    }
+  }
+
+  return { slots, reason, window, assignments };
 }
 
 /**

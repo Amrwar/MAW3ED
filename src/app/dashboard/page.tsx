@@ -6,7 +6,7 @@ import DashboardHomeClient from "@/features/dashboard/DashboardHomeClient";
 import { getDashboardKpis } from "@/lib/dashboard/queries";
 import { countedThisMonth } from "@/lib/bookings/create";
 import { getEffectivePlan, getMonthlyBookingLimit, type Plan, type SubscriptionStatus } from "@/lib/plans";
-import { cairoDayEnd, cairoDayStart } from "@/lib/bookings/instants";
+import { cairoWallDay } from "@/lib/bookings/instants";
 import { type RecentBooking } from "@/features/dashboard/RecentBookings";
 import { type DashboardBooking } from "@/features/dashboard/bookings/types";
 
@@ -34,6 +34,8 @@ export default async function DashboardPage() {
   // The headline numbers come from getDashboardKpis; this is only what
   // the lists below need. Seven aggregate queries that fed the old
   // stats cards used to run here on every load and are gone with them.
+  // One reading of the clock, so the range cannot straddle midnight.
+  const today = cairoWallDay();
   const [rawBookings, rawTodayBookings] = await Promise.all([
     db.booking.findMany({
       where:   { businessId },
@@ -44,7 +46,7 @@ export default async function DashboardPage() {
     db.booking.findMany({
       where: {
         businessId,
-        startsAt: { gte: cairoDayStart(), lt: cairoDayEnd() },
+        startsAt: { gte: today.start, lt: today.end },
         status: { in: ["PENDING", "CONFIRMED", "ARRIVED", "IN_PROGRESS"] },
       },
       include: { service: { select: { nameAr: true, duration: true } } },

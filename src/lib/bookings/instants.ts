@@ -129,6 +129,17 @@ export function cairoWallClock(now: Date = new Date()): Date {
   return new Date(dateToUTC(cairoDateString(now)).getTime() + cairoMinutes(now) * 60_000);
 }
 
+/**
+ * Today in Cairo, in the startsAt frame: from its midnight to the next.
+ * What a "today" list filters startsAt on. cairoDayStart/End are real
+ * instants, which against startsAt drop every booking from 22:00 (21:00
+ * in summer) and pick up the previous evening's instead.
+ */
+export function cairoWallDay(now: Date = new Date()): { start: Date; end: Date } {
+  const start = dateToUTC(cairoDateString(now));
+  return { start, end: new Date(start.getTime() + 86_400_000) };
+}
+
 /** A booking's start in the startsAt frame, for rows written before startsAt existed. */
 export function bookingStart(b: { startsAt?: Date | null; date: Date; startTime: string }): Date {
   if (b.startsAt) return b.startsAt;

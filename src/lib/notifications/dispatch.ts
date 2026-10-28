@@ -319,7 +319,8 @@ interface Loaded {
   bespoke: BespokeContext;
 }
 
-async function loadBooking(bookingId: string): Promise<Loaded | null> {
+/** Exported for its test: which address a booking's emails go to. */
+export async function loadBooking(bookingId: string): Promise<Loaded | null> {
   const b = await db.booking.findUnique({
     where: { id: bookingId },
     select: {
@@ -329,6 +330,7 @@ async function loadBooking(bookingId: string): Promise<Loaded | null> {
       customerName: true,
       customerPhone: true,
       customerPhoneE164: true,
+      customerEmail: true,
       staffMemberId: true,
       date: true,
       startTime: true,
@@ -338,7 +340,6 @@ async function loadBooking(bookingId: string): Promise<Loaded | null> {
       depositAmount: true,
       currency: true,
       service: { select: { nameAr: true } },
-      customer: { select: { email: true } },
       business: { select: BUSINESS_SELECT },
     },
   });
@@ -358,7 +359,9 @@ async function loadBooking(bookingId: string): Promise<Loaded | null> {
       accessToken: b.accessToken,
       customerPhone: b.customerPhone,
       customerPhoneE164: b.customerPhoneE164,
-      customerEmail: b.customer?.email ?? null,
+      // The booking's own address, never the Customer record's: see
+      // Booking.customerEmail.
+      customerEmail: b.customerEmail,
       customerUserId: account?.id ?? null,
       staffMemberId: b.staffMemberId,
       business,

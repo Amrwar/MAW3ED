@@ -1,7 +1,8 @@
 # Feature inventory
 
-Baseline: `main` @ `77c8649`, 2026-10-28. Update this file whenever a
-phase changes a feature's status.
+Baseline: `main` @ `77c8649`, 2026-10-28. Updated by Phase 17
+(`docs/audits/CRITICAL_FINDINGS.md` holds the findings referred to as
+P17-xx). Update this file whenever a phase changes a feature's status.
 
 ## Classification
 
@@ -24,13 +25,13 @@ verification is tracked separately in `PHASE_STATUS.md`.
 | Arabic synonyms / dialect search ("دكتور" → clinics) | VERIFIED | `synonyms.ts` + tests; PR #30 QA |
 | Nearby (location) | VERIFIED | `/api/public/businesses/nearby`, `geo.test.ts`; `docs/location.md` |
 | Business profile page (services, staff, hours, map, reviews, JSON-LD) | VERIFIED | `src/features/company`, `jsonld.test.ts`; QA phase 19/20 |
-| Booking: service → staff → day → time → details, guest checkout | VERIFIED | `BookingWidget.tsx`, `create.ts`, `availability.test.ts`; QA phase 19, PR #30 |
+| Booking: service → staff → day → time → details, guest checkout | VERIFIED (Phase 17 branch) | "Any available" double-booked staff (P17-01) and shared rooms were not held across staff (P17-04): fixed, with `create.db.test.ts` against Postgres and an end-to-end race. In production only once the Phase 17 PR and its migration are deployed |
 | Restaurant table reservations (party size, table types) | INCOMPLETE | `Table`, `TableType`, `partySize` on `Booking`, `/dashboard/tables`. No dedicated unit tests for table assignment; not part of a recorded QA pass |
 | Booking self-service by token link (view, cancel, reschedule, calendar file, review) | VERIFIED | `/api/public/booking/[token]/*`, `self-service.test.ts`; QA-C1 fixed |
 | Online deposits / full payment (Paymob) | BLOCKED | Code and webhook tests exist; **no real card payment has ever succeeded** (`docs/payments-verification.md`) |
 | Refunds through Paymob | BLOCKED | `refundTransaction()` never called against Paymob's API |
 | Reviews (verified-booking only, votes, reports, moderation) | VERIFIED | `reviews.test.ts`, `review-policy.test.ts`; QA phase 19 |
-| Customer accounts (upcoming, history, favorites, payments, reviews, notifications, profile, sessions, deletion) | VERIFIED | `/account/*`, `/api/account/*`; QA phase 19 |
+| Customer accounts (upcoming, history, favorites, payments, reviews, notifications, profile, sessions, deletion) | DEFECTIVE | Works, but email change is unverified (P17-10, account takeover before an owner registers) and deletion leaves history reachable by the next holder of the number (P17-14) |
 | Sign-in: password, WhatsApp OTP | INCOMPLETE | Password verified in QA. WhatsApp OTP depends on Meta Cloud API credentials (BLOCKED for live delivery) |
 | Google sign-in | MISSING | No provider configured in `src/auth.ts` |
 | Waitlist "notify me" with email confirmation | INCOMPLETE | PR #31. Confirmation verified locally; **sending the "it's listed now" email is not built** (`notifiedAt` is never set) |
@@ -45,7 +46,7 @@ verification is tracked separately in `PHASE_STATUS.md`.
 | Onboarding (type, details, services, hours) | VERIFIED | `/onboarding`; QA phase 19 |
 | Services, staff, staff hours, staff ↔ service | VERIFIED | `/dashboard/services`, `/dashboard/staff` |
 | Staff access levels (MANAGER / PROVIDER) | VERIFIED | `business-access.test.ts` |
-| Bookings list, today, upcoming, calendar, manual booking, status changes | VERIFIED | `booking-transitions.test.ts`, `calendar.test.ts`; QA-M3 fixed |
+| Bookings list, today, upcoming, calendar, manual booking, status changes | VERIFIED (Phase 17 branch) | Today dropped bookings from 22:00 (P17-06, fixed). Status writes race (P17-16, open) |
 | Realtime booking updates | VERIFIED | SSE with 3 s DB polling (`/api/realtime/bookings`) — fine at current scale, see performance notes |
 | Customer management (CRM: list, profile, history, notes) | VERIFIED | `Customer` model, `/dashboard/customers` |
 | Multi-branch | INCOMPLETE | `Branch` carries bookings, time blocks and resources. **Services, staff, opening hours and pricing are business-wide**; no per-branch manager role; no per-branch reporting |
@@ -55,8 +56,8 @@ verification is tracked separately in `PHASE_STATUS.md`.
 | Discounts / offers | VERIFIED | `src/lib/discounts`, `/dashboard/offers` |
 | Reports & analytics (bookings, revenue, customers, performance) | VERIFIED | `/dashboard/reports/*`, `src/lib/dashboard/reports.ts` |
 | Referral / attribution links, QR code for the booking page | VERIFIED | `src/lib/attribution`, `/api/business/qr` |
-| Subscriptions: FREE / PRO / PREMIUM, monthly & annual, soft cap, auto-confirm | INCOMPLETE | PR #31. Plan logic tested; **paid upgrade BLOCKED** with Paymob; no automatic renewal by design |
-| Notifications to owners (in-app, email, WhatsApp, push) | BLOCKED | Pipeline + ledger tested. Email needs `RESEND_API_KEY`; WhatsApp needs Meta credentials; push not verified on a device (`docs/push-setup.md`); SMS has no provider |
+| Subscriptions: FREE / PRO / PREMIUM, monthly & annual, soft cap, auto-confirm | INCOMPLETE | PR #31. Premium was sold with five unbuilt features (P17-02, fixed: Premium = multiple branches + unlimited team; a test now fails for any plan row no code checks). **Paid upgrade BLOCKED** with Paymob; no automatic renewal by design |
+| Notifications (in-app, email, WhatsApp, push) | DEFECTIVE | Customer emails went to an address any anonymous booking could set (P17-03, fixed). Reminders fired on the wrong clock (P17-06, fixed). Sends are fire-and-forget and never re-driven (P17-11, open). Live delivery not verified: `RESEND_API_KEY` and the WhatsApp variables are set in production, but no send was observed; push not verified on a device; SMS has no provider |
 
 ## Platform administration
 
@@ -89,12 +90,17 @@ verification is tracked separately in `PHASE_STATUS.md`.
 | Authorized third-party QR / gate access (Eterna Mall, Emaar) | BLOCKED | Requires a written agreement and an API or integration spec from Emaar/the operator. Nothing may be built that simulates their approval |
 | SMS channel | BLOCKED | Channel exists and reports `sms-not-configured`; no provider chosen |
 
-## Known defects at baseline
+## Known defects
 
-| Defect | Severity | Notes |
+The full, current list is `docs/audits/CRITICAL_FINDINGS.md` (Phase 17).
+Open items with the most weight:
+
+| ID | Defect | Severity |
 |---|---|---|
-| CI "suite not empty" check counted 0 tests since Vitest 5 (PR #28), so CI failed on `main` for #28–#31 and the CI **Build** step did not run | HIGH (process) | Fixed in the baseline PR (`.github/workflows/ci.yml`). Vercel's own build succeeded for `77c8649` |
-| Production may not have `add_audit_followups.sql` applied while #31 is live | CRITICAL if unapplied | Owner action; cannot be checked from here (production DB access is owner-only) |
-| `axe-core` is a dev dependency but nothing runs it | LOW | No automated accessibility check exists |
-| 6 lint warnings (`<img>` elements, an unused variable in a QA script, a React Compiler skip) | LOW | Non-blocking |
-| Mobile tests and web Playwright QA scripts are not run in CI | MEDIUM | Only the web unit suite gates merges |
+| P17-10 | Unverified email change → account takeover before an owner registers | P1 |
+| P17-11 | Notifications fire-and-forget, claimed SENT before sending, never re-driven | P1 |
+| P17-12 | No Sentry DSN in production: errors are not reported | P1 (owner) |
+| P17-13 | Terms say nothing about deposits, refunds, cancellation or subscriptions | P1 (owner) |
+| P17-14 | Deleted accounts' history reachable through a recycled number | P1 |
+| P17-15 | `add_audit_followups.sql` unconfirmed on production | P1 (owner) |
+| P17-27 | Maestro failing on `main`; mobile tests and Playwright not in CI | P2 |
