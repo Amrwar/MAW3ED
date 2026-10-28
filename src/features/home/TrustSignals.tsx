@@ -6,7 +6,8 @@ import { num } from "@/lib/fmt";
 import type { PlatformReach } from "@/lib/data";
 
 interface Props {
-  reach: PlatformReach;
+  /** Null while there are too few listings for a count to help (SHOW_COUNTS_FROM). */
+  reach: PlatformReach | null;
 }
 
 /**
@@ -33,11 +34,13 @@ export default function TrustSignals({ reach }: Props) {
    * Counted, never written down. A figure that is still zero says
    * nothing worth saying, so it is left out rather than shown as "0".
    */
-  const figures = [
-    { value: reach.businesses, label: ts.countBusinesses },
-    { value: reach.cities,     label: ts.countCities },
-    { value: reach.categories, label: ts.countCategories },
-  ].filter((f) => f.value > 0);
+  const figures = reach
+    ? [
+        { value: reach.businesses, label: ts.countBusinesses },
+        { value: reach.cities,     label: ts.countCities },
+        { value: reach.categories, label: ts.countCategories },
+      ].filter((f) => f.value > 0)
+    : [];
 
   return (
     <section className="mt-20 border-y border-[var(--color-line)] bg-[var(--color-surface)] py-16">

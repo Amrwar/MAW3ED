@@ -141,7 +141,7 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
 
             <header className="mt-5 mb-7">
               <h1 className="m-0 text-[1.75rem] font-light tracking-tight text-[var(--color-ink)]">
-                {catName} <span className="text-[var(--color-subtle)]">في</span> {cityName}
+                {catName} <span className="text-[var(--color-subtle)]">{isAr ? "في" : "in"}</span> {cityName}
               </h1>
               <p className="num m-0 mt-2 text-[0.875rem] text-[var(--color-subtle)]">
                 {total === 1

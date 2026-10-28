@@ -145,6 +145,7 @@ export default function BusinessesClient({
   if (query.q) chips.push({ key: "q", label: query.q, clear: () => push({ q: "", page: 1 }) });
 
   const cat = facets.categories.find((c) => c.slug === query.category);
+  const listedCategories = facets.categories.filter((c) => c.count > 0).slice(0, 6);
   const sub = cat?.children.find((k) => k.slug === query.subcategory);
   if (sub) {
     chips.push({ key: "sub", label: nameOf(sub), clear: () => push({ subcategory: "", page: 1 }) });
@@ -346,6 +347,28 @@ export default function BusinessesClient({
                     )
                   }
                 />
+                {/* A search that found nothing should not be a dead end:
+                    offer the kinds of place that are actually listed. */}
+                {query.q && listedCategories.length > 0 && (
+                  <div className="border-t border-[var(--color-line)] px-6 pb-7 pt-5 text-center">
+                    <p className="m-0 text-[0.84375rem] text-[var(--color-subtle)]">
+                      {isAr ? "أو اختار من الأقسام الموجودة" : "Or browse what is listed"}
+                    </p>
+                    <div className="mt-3 flex flex-wrap justify-center gap-2">
+                      {listedCategories.map((c) => (
+                        <Link
+                          key={c.slug}
+                          // The counts are within the chosen city, so the
+                          // link keeps it.
+                          href={`/businesses?category=${c.slug}${query.city ? `&city=${query.city}` : ""}`}
+                          className="chip"
+                        >
+                          {isAr ? c.nameAr : c.nameEn}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           ) : (

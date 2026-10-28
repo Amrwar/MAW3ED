@@ -106,9 +106,13 @@ export default function ProfileNav({ sections }: { sections: NavSection[] }) {
       className="sticky top-16 z-40 border-y border-[var(--color-line)] bg-[var(--color-ground)]/95 backdrop-blur-md"
     >
       <div className="container-app">
+        {/* The scrollbar is hidden, so on a phone the end edge fades
+            out to show the row goes on — "FAQ" sat cut in half with
+            nothing to say there was more. The end padding is as wide as
+            the fade, so scrolled all the way the last tab is clear of it. */}
         <ul
           ref={listRef}
-          className="m-0 flex list-none gap-1 overflow-x-auto p-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="m-0 flex list-none gap-1 overflow-x-auto p-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-sm:pe-10 max-sm:[mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)] max-sm:rtl:[mask-image:linear-gradient(to_left,black_calc(100%-2.5rem),transparent)]"
         >
           {sections.map((s) => (
             <li key={s.id} className="shrink-0">

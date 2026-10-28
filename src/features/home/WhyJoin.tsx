@@ -2,15 +2,15 @@
 
 import Link from "@/components/shared/LocaleLink";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Link2, CalendarCheck, BellRing, BarChart3, Store, Gift, Check } from "lucide-react";
-
-/** Icons in the same order as `t.whyJoin.benefits`. */
-const BENEFIT_ICONS = [Link2, CalendarCheck, BellRing, BarChart3, Store, Gift];
+import { Check } from "lucide-react";
 
 /**
  * The one dark band on the homepage. It marks the switch from
  * speaking to customers to speaking to business owners, so the
  * contrast is carrying the change of audience.
+ *
+ * Kept short: the homepage is for people booking, and the full pitch,
+ * benefit by benefit, is on /for-business behind the second button.
  */
 export default function WhyJoin() {
   const { t, lang } = useLanguage();
@@ -78,23 +78,6 @@ export default function WhyJoin() {
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="mt-14 grid gap-x-10 gap-y-9 border-t border-[var(--color-night-line)] pt-12 sm:grid-cols-2 lg:grid-cols-3">
-            {w.benefits.map((b, i) => {
-              const Icon = BENEFIT_ICONS[i] ?? Store;
-              return (
-                <div key={b.title} className="min-w-0">
-                  <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-night-line)]">
-                    <Icon size={19} strokeWidth={1.7} className="text-[#4FA98B]" aria-hidden="true" />
-                  </span>
-                  <h3 className="text-[1.0625rem] font-bold text-[var(--color-inverse)]">{b.title}</h3>
-                  <p className="mt-2 text-[0.875rem] leading-[1.8] text-[var(--color-night-text)]">
-                    {b.description}
-                  </p>
-                </div>
-              );
-            })}
           </div>
         </div>
       </div>

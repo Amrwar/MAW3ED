@@ -75,9 +75,22 @@ export default function BusinessRow({
             />
           </div>
         ) : (
-          <ul className="grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 lg:grid-cols-3">
+          /* Below lg a row scrolls sideways, one card and a bit of the
+             next in view: stacked one per row, the two rows made the
+             homepage about thirteen phone screens long. From lg it is a
+             grid, four across when there are exactly four so the last
+             card is not left alone on its own row. The negative margin
+             lets cards scroll to the screen edge past the gutter. */
+          <ul
+            className={cn(
+              "-mx-5 flex list-none snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-3",
+              "md:-mx-8 md:scroll-px-8 md:px-8",
+              "lg:mx-0 lg:grid lg:gap-5 lg:overflow-visible lg:px-0 lg:pb-0",
+              businesses.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3",
+            )}
+          >
             {businesses.map((b) => (
-              <li key={b.id} className="min-w-0">
+              <li key={b.id} className="w-[82%] min-w-0 shrink-0 snap-start sm:w-[45%] lg:w-auto">
                 <BusinessCard business={b} />
               </li>
             ))}
@@ -100,11 +113,12 @@ export function BusinessRowSkeleton({ count = 3 }: { count?: number }) {
           <Skeleton className="h-3.5 w-24" />
           <Skeleton className="mt-3 h-8 w-64" />
         </div>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {/* The same sideways row as the real one below lg. */}
+        <div className="-mx-5 flex gap-4 overflow-hidden px-5 md:-mx-8 md:px-8 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-5 lg:px-0">
           {Array.from({ length: count }).map((_, i) => (
             <div
               key={i}
-              className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]"
+              className="w-[82%] shrink-0 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] sm:w-[45%] lg:w-auto"
             >
               <Skeleton className="h-[11.5rem] w-full" rounded="sm" />
               <div className="flex flex-col gap-3 px-5 pb-5 pt-4">

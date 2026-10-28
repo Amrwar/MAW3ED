@@ -7,6 +7,8 @@ import {
   currencyLabel,
   duration,
   clock,
+  clock12,
+  dayPart,
   time,
   timeRange,
   dateLong,
@@ -126,6 +128,24 @@ describe("duration", () => {
   it("reads naturally in English", () => {
     expect(duration(60, "en")).toBe("1 hr");
     expect(duration(90, "en")).toBe("1 hr 30 min");
+  });
+});
+
+describe("clock12", () => {
+  it("reads the clock the way people say it", () => {
+    expect(clock12("16:00")).toBe("4:00 م");
+    expect(clock12("09:30", "en")).toBe("9:30 AM");
+    expect(clock12("00:15", "en")).toBe("12:15 AM");
+    expect(clock12("12:00")).toBe("12:00 م");
+  });
+});
+
+describe("dayPart", () => {
+  it("splits the day at noon and five", () => {
+    expect(dayPart("11:59")).toBe("morning");
+    expect(dayPart("12:00")).toBe("afternoon");
+    expect(dayPart("16:59")).toBe("afternoon");
+    expect(dayPart("17:00")).toBe("evening");
   });
 });
 

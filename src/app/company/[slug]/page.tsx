@@ -17,6 +17,7 @@ import StickyBookingBar from "@/features/company/StickyBookingBar";
 import type { Business } from "@/types/business";
 import type { Service } from "@/types/service";
 import { buildLocalBusinessJsonLd } from "@/lib/jsonld";
+import { cdnShareImage } from "@/lib/cdn-image";
 import { siteUrl } from "@/lib/env";
 import { getLang } from "@/lib/lang-server";
 import { alternatesFor, DEFAULT_OG_IMAGE, ogLocale } from "@/lib/seo/meta";
@@ -82,7 +83,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
         ? `Book at ${name} — ${category} in ${place}. See the services, prices and free times and book online.`
         : `احجز موعدك في ${name} — ${category} في ${place}. شوف الخدمات والأسعار والمواعيد المتاحة واحجز أونلاين.`);
 
-  const ogImage = biz.coverImage ?? biz.logoImage;
+  const uploaded = biz.coverImage ?? biz.logoImage;
+  // Cropped to the size declared below; anything not on Cloudinary
+  // passes through as it was.
+  const ogImage = uploaded ? cdnShareImage(uploaded) : null;
   const ogImages = ogImage
     ? [{ url: ogImage, width: 1200, height: 630, alt: name }]
     : [{ url: DEFAULT_OG_IMAGE.url, ...DEFAULT_OG_IMAGE.size, alt: name }];
@@ -266,6 +270,10 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     neighborhood: dbBusiness.neighborhood,
     category:     dbBusiness.category,
     availability: dbBusiness.availability,
+    geo:
+      dbBusiness.latitude != null && dbBusiness.longitude != null
+        ? { latitude: dbBusiness.latitude, longitude: dbBusiness.longitude }
+        : null,
     services:     dbBusiness.services.map((s) => ({
       nameAr:   s.nameAr,
       price:    Number(s.price),
@@ -337,7 +345,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
       <main id="main" className="bg-[var(--color-ground)]">
         {/* The trail again on a phone, where it does not fit in the bar. */}
         <div className="container-app pt-3 sm:hidden">
-          <Breadcrumbs items={crumbs} lang={lang} label={t.profile.breadcrumb} />
+          <Breadcrumbs items={crumbs} lang={lang} label={t.profile.breadcrumb} singleLine />
         </div>
 
         <ProfileHeader

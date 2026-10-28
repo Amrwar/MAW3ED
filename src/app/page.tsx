@@ -19,9 +19,9 @@ import SectionBoundary from "@/components/shared/SectionBoundary";
 import {
   getCategoriesWithCounts,
   getCitiesWithListings,
-  getCities,
   getPlatformReach,
   getPublishedBusinesses,
+  SHOW_COUNTS_FROM,
 } from "@/lib/data";
 import { getSiteUrl } from "@/lib/env";
 import { translations, type Lang } from "@/lib/i18n";
@@ -57,10 +57,11 @@ export default async function HomePage() {
   const savedCity = cookieStore.get("maw3ed-city")?.value ?? "";
 
   // The hero paints from these; everything heavier streams in behind
-  // its own skeleton.
+  // its own skeleton. Only cities with a listing are offered: picking
+  // one of the other twenty-odd led straight to an empty page.
   const [categories, cities] = await Promise.all([
     getCategoriesWithCounts(),
-    getCities(),
+    getCitiesWithListings(),
   ]);
 
   // One copy of the section-failure wording, spread into each boundary.
@@ -76,7 +77,9 @@ export default async function HomePage() {
         <HeroSearch
           cities={cities}
           suggestions={categories.filter((c) => c.count > 0).slice(0, 5)}
-          initialCity={savedCity}
+          // A city saved before the list was trimmed to listed ones
+          // would search an empty page behind a select showing "any".
+          initialCity={cities.some((c) => c.slug === savedCity) ? savedCity : ""}
         />
 
         {/* 2 — Browse by what you need done */}
@@ -156,9 +159,10 @@ async function PopularRow() {
 }
 
 async function NearbyRow({ citySlug }: { citySlug: string }) {
-  const [businesses, cities] = await Promise.all([
+  const [businesses, cities, lang] = await Promise.all([
     getPublishedBusinesses({ citySlug, take: 3 }),
     getCitiesWithListings(),
+    getLang(),
   ]);
 
   const city = cities.find((c) => c.slug === citySlug);
@@ -167,7 +171,7 @@ async function NearbyRow({ citySlug }: { citySlug: string }) {
     <BusinessRowServer
       kind="nearby"
       businesses={businesses}
-      cityName={city?.nameAr}
+      cityName={city && (lang === "en" ? city.nameEn || city.nameAr : city.nameAr)}
       viewAllHref={`/businesses?city=${citySlug}`}
     />
   );
@@ -175,7 +179,7 @@ async function NearbyRow({ citySlug }: { citySlug: string }) {
 
 async function TrustRow() {
   const reach = await getPlatformReach();
-  return <TrustSignals reach={reach} />;
+  return <TrustSignals reach={reach.businesses >= SHOW_COUNTS_FROM ? reach : null} />;
 }
 
 /**

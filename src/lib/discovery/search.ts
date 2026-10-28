@@ -13,6 +13,7 @@ import {
 } from "./hours";
 import { firstFree, loadSchedules, type NextSlot } from "./next-free";
 import { timeToMinutes } from "@/lib/bookings/time";
+import { searchTerms } from "./synonyms";
 
 /**
  * The discovery query.
@@ -85,20 +86,32 @@ function buildWhere(q: DiscoveryQuery, now: Date): Prisma.BusinessWhereInput {
 
   // Free text spans the three things a person types: the place, what
   // they want done, and who they want to see.
+  // The query is widened first (lib/discovery/synonyms): "doctor" also
+  // looks for clinics, "عيادة" for "عيادات". Every word has to match
+  // something; the alternatives for one word are ORed. A word as typed
+  // is looked for everywhere, a stand-in for it only in the fields a
+  // synonym describes — the name, the services and the category — so
+  // a widened query costs a few scans more rather than eight times.
   if (q.q) {
-    const contains = { contains: q.q, mode: "insensitive" as const };
-    and.push({
-      OR: [
-        { nameAr: contains },
-        { nameEn: contains },
-        { taglineAr: contains },
-        { services: { some: { isAvailable: true, OR: [{ nameAr: contains }, { nameEn: contains }] } } },
-        { staffMembers: { some: { isActive: true, OR: [{ nameAr: contains }, { nameEn: contains }] } } },
-        { category: { OR: [{ nameAr: contains }, { nameEn: contains }] } },
-        { city: { OR: [{ nameAr: contains }, { nameEn: contains }] } },
-        { neighborhood: { OR: [{ nameAr: contains }, { nameEn: contains }] } },
-      ],
-    });
+    for (const [typed, ...alts] of searchTerms(q.q)) {
+      const where = (term: string) => ({ contains: term, mode: "insensitive" as const });
+      const loose = (term: string): Prisma.BusinessWhereInput[] => [
+        { nameAr: where(term) },
+        { nameEn: where(term) },
+        { services: { some: { isAvailable: true, OR: [{ nameAr: where(term) }, { nameEn: where(term) }] } } },
+        { category: { OR: [{ nameAr: where(term) }, { nameEn: where(term) }] } },
+      ];
+      and.push({
+        OR: [
+          ...loose(typed),
+          { taglineAr: where(typed) },
+          { staffMembers: { some: { isActive: true, OR: [{ nameAr: where(typed) }, { nameEn: where(typed) }] } } },
+          { city: { OR: [{ nameAr: where(typed) }, { nameEn: where(typed) }] } },
+          { neighborhood: { OR: [{ nameAr: where(typed) }, { nameEn: where(typed) }] } },
+          ...alts.flatMap(loose),
+        ],
+      });
+    }
   }
 
   // A parent category matches its children too, so picking "medical"

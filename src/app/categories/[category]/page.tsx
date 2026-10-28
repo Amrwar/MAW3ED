@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "@/components/shared/LocaleLink";
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/Container";
 import BusinessCard from "@/components/shared/BusinessCard";
+import Breadcrumbs from "@/components/shared/Breadcrumbs";
 import { getCategoryBySlug, getPublishedBusinesses } from "@/lib/data";
 import { MIN_BUSINESSES, getLandingCategories, prerenderHints } from "@/lib/seo/landing";
 import { buildMetadata, notFoundMetadata } from "@/lib/seo/meta";
 import { getLang } from "@/lib/lang-server";
 import { db } from "@/lib/db";
 import { arCount } from "@/lib/fmt";
+import { translations } from "@/lib/i18n";
+import { buildBreadcrumbJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
+import { jsonLdScript } from "@/lib/seo/jsonld-script";
+import { requestNonce } from "@/lib/security/nonce";
 
 const BIZ = { one: "نشاط واحد", two: "نشاطين", few: "أنشطة", many: "نشاط" };
 
@@ -65,7 +70,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CategoryPage({ params }: Props) {
   const { category: slug } = await params;
 
-  const [category, businesses, allCategories] = await Promise.all([
+  const [category, businesses, allCategories, lang] = await Promise.all([
     getCategoryBySlug(slug),
     getPublishedBusinesses({ categorySlug: slug }),
     // Not getCategories(). This list links to sibling category pages,
@@ -74,12 +79,26 @@ export default async function CategoryPage({ params }: Props) {
     // eight shown here did. getLandingCategories() is the same source
     // the sitemap uses: the pages that are actually there.
     getLandingCategories(),
+    getLang(),
   ]);
 
   if (!category) notFound();
   if (businesses.length < MIN_BUSINESSES) notFound();
 
+  const isAr = lang === "ar";
+  const t = translations[lang] ?? translations.ar;
+  const name = isAr ? category.nameAr : category.nameEn || category.nameAr;
   const otherCategories = allCategories.filter((c) => c.slug !== slug).slice(0, 8);
+
+  const n = businesses.length;
+  const trail = [
+    { name: isAr ? "الرئيسية" : "Home", path: "/" },
+    { name: isAr ? "الأقسام" : "Categories", path: "/categories" },
+    { name },
+  ];
+  // The ld+json tags below need this request's CSP nonce, or the
+  // browser refuses to parse them.
+  const nonce = await requestNonce();
 
   return (
     <>
@@ -89,17 +108,16 @@ export default async function CategoryPage({ params }: Props) {
         {/* ── Hero ─────────────────────────────────────────── */}
         <div className="bg-white border-b border-[var(--color-border)]">
           <Container className="py-10">
-            {/* Breadcrumb */}
-            <nav aria-label="مسار التنقل" className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] mb-3">
-              <Link href="/" className="inline-flex min-h-11 items-center hover:text-[var(--color-accent)] transition-colors">الرئيسية</Link>
-              <span>/</span>
-              <Link href="/businesses" className="inline-flex min-h-11 items-center hover:text-[var(--color-accent)] transition-colors">تصفح الأعمال</Link>
-              <span>/</span>
-              <span className="text-[var(--color-text-primary)] font-medium">{category.nameAr}</span>
-            </nav>
+            <Breadcrumbs
+              items={trail.map((x) => ({ label: x.name, href: x.path }))}
+              lang={lang}
+              label={t.profile.breadcrumb}
+              className="mb-3"
+            />
 
             <div className="flex items-center gap-4">
               <div
+                aria-hidden="true"
                 className="w-14 h-14 rounded-[var(--radius-lg)] flex items-center justify-center text-2xl shrink-0"
                 style={{ backgroundColor: category.bgColor }}
               >
@@ -107,12 +125,14 @@ export default async function CategoryPage({ params }: Props) {
               </div>
               <div>
                 <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)]">
-                  {category.nameAr}
+                  {name}
                 </h1>
                 <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
-                  {businesses.length > 0
-                    ? `${arCount(businesses.length, BIZ)} ${businesses.length === 2 ? "متاحين" : businesses.length > 2 && businesses.length <= 10 ? "متاحة" : "متاح"} للحجز دلوقتي`
-                    : "لا توجد أعمال حتى الآن"}
+                  {isAr
+                    ? `${arCount(n, BIZ)} ${n === 2 ? "متاحين" : n > 2 && n <= 10 ? "متاحة" : "متاح"} للحجز دلوقتي`
+                    : n === 1
+                      ? "1 business to book now"
+                      : `${n} businesses to book now`}
                 </p>
               </div>
             </div>
@@ -121,43 +141,38 @@ export default async function CategoryPage({ params }: Props) {
 
         {/* ── Business grid ─────────────────────────────────── */}
         <Container className="py-10">
-          {businesses.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {businesses.map((b) => (
-                  <BusinessCard key={b.id} business={b} />
-                ))}
-              </div>
+          <h2 className="sr-only-label">{isAr ? "الأنشطة المتاحة" : "Available businesses"}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {businesses.map((b) => (
+              <BusinessCard key={b.id} business={b} />
+            ))}
+          </div>
 
-              <div className="mt-8 text-center">
-                <Link
-                  href="/businesses"
-                  className="inline-flex items-center gap-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors"
-                >
-                  <ArrowRight size={14} />
-                  عرض كل الأعمال
-                </Link>
-              </div>
-            </>
-          ) : (
-            <EmptyState categoryName={category.nameAr} categoryIcon={category.icon} />
-          )}
+          <div className="mt-8 text-center">
+            <Link
+              href="/businesses"
+              className="inline-flex min-h-11 items-center gap-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors"
+            >
+              {isAr ? <ArrowRight size={14} aria-hidden="true" /> : <ArrowLeft size={14} aria-hidden="true" />}
+              {isAr ? "عرض كل الأنشطة" : "See all businesses"}
+            </Link>
+          </div>
 
           {/* ── Other categories ──────────────────────────── */}
           {otherCategories.length > 0 && (
             <div className="mt-14">
               <h2 className="text-base font-bold text-[var(--color-text-primary)] mb-4">
-                تصفح تخصصات أخرى
+                {isAr ? "تصفح تخصصات أخرى" : "Other categories"}
               </h2>
               <div className="flex flex-wrap gap-2">
                 {otherCategories.map((c) => (
                   <Link
                     key={c.slug}
                     href={`/categories/${c.slug}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-medium transition-all hover:shadow-[var(--shadow-card)]"
+                    className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-medium transition-all hover:shadow-[var(--shadow-card)]"
                   >
-                    <span>{c.icon}</span>
-                    <span className="text-[var(--color-text-secondary)]">{c.nameAr}</span>
+                    <span aria-hidden="true">{c.icon}</span>
+                    <span className="text-[var(--color-text-secondary)]">{isAr ? c.nameAr : c.nameEn || c.nameAr}</span>
                   </Link>
                 ))}
               </div>
@@ -166,30 +181,21 @@ export default async function CategoryPage({ params }: Props) {
         </Container>
       </main>
       <Footer />
+
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        dangerouslySetInnerHTML={{
+          __html: jsonLdScript(buildBreadcrumbJsonLd(trail.map((x) => ({ name: x.name, path: x.path })))),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        dangerouslySetInnerHTML={{
+          __html: jsonLdScript(buildItemListJsonLd(businesses.map((b) => ({ slug: b.slug, name: b.nameAr })))),
+        }}
+      />
     </>
-  );
-}
-
-// ─── Empty state ──────────────────────────────────────────
-
-function EmptyState({ categoryName, categoryIcon }: { categoryName: string; categoryIcon: string }) {
-  return (
-    <div className="text-center py-24 bg-white rounded-[var(--radius-lg)] border border-[var(--color-border)]">
-      <div className="text-5xl mb-4">{categoryIcon}</div>
-      <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-2">
-        لا توجد أعمال في {categoryName} حتى الآن
-      </h2>
-      <p className="text-sm text-[var(--color-text-muted)] mb-6 max-w-xs mx-auto">
-        كن أول من يضيف نشاطه في الفئة دي ويبدأ يستقبل حجوزات على طول.
-      </p>
-      <div className="flex items-center justify-center gap-3">
-        <Link href="/signup" className="btn btn-primary btn-sm">
-          أضف عملك مجانًا
-        </Link>
-        <Link href="/businesses" className="btn btn-outline btn-sm">
-          تصفح تخصصات أخرى
-        </Link>
-      </div>
-    </div>
   );
 }

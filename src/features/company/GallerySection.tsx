@@ -7,6 +7,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { useMounted } from "@/hooks/useMounted";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
+import { cdnImage } from "@/lib/cdn-image";
 
 export interface GalleryImage {
   id: string;
@@ -97,7 +98,7 @@ export default function GallerySection({ images, businessName }: Props) {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={img.url}
+                src={cdnImage(img.url, 800)}
                 alt={img.caption ?? ""}
                 loading="lazy"
                 className="h-full w-full object-cover transition-transform duration-200 hover:scale-[1.03]"
@@ -207,7 +208,7 @@ function Lightbox({
         <figure className="m-0 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={current.url}
+            src={cdnImage(current.url, 1600)}
             alt={current.caption ?? ""}
             className="max-h-full min-h-0 max-w-full rounded-[var(--radius-lg)] object-contain"
           />

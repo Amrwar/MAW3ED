@@ -8,6 +8,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { coverClassFor } from "@/lib/category-cover";
 import { num } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
+import { cdnImage } from "@/lib/cdn-image";
 
 interface Props {
   business: {
@@ -51,7 +52,7 @@ export default function FavoriteCard({ business: b }: Props) {
         <Link href={`/company/${b.slug}`} aria-label={name} className="block">
           {b.coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={b.coverImage} alt="" loading="lazy" className="h-28 w-full object-cover" />
+            <img src={cdnImage(b.coverImage, 640)} alt="" loading="lazy" className="h-28 w-full object-cover" />
           ) : (
             <span
               aria-hidden="true"

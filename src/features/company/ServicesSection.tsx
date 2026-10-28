@@ -4,7 +4,7 @@ import { CalendarClock, Clock, Users } from "lucide-react";
 import { countText } from "@/lib/i18n";
 import type { Service } from "@/types/service";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { duration as fmtDuration, money } from "@/lib/fmt";
+import { clock12, duration as fmtDuration, money } from "@/lib/fmt";
 
 export interface ServiceProvider {
   id: string;
@@ -101,7 +101,7 @@ export default function ServicesSection({ services, providers, nextSlot, onBook 
                     <span className="flex items-center gap-1.5 text-[var(--color-jade)]">
                       <CalendarClock size={13} strokeWidth={1.9} aria-hidden="true" className="shrink-0" />
                       {s.nextFree} {dayLabel(nextSlot.dayOffset)}{" "}
-                      <span className="num">{nextSlot.time}</span>
+                      <span>{clock12(nextSlot.time, lang)}</span>
                     </span>
                   )}
                 </div>
