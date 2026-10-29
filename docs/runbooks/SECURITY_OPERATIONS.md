@@ -113,9 +113,13 @@ pg_restore --no-owner --no-privileges -d "$TARGET_URL" maw3ed.dump
 
 Today: Vercel runtime logs (JSON lines from `lib/logger`), the admin
 pages (`/admin/notifications`, `/admin/payments/diagnostics`,
-`/admin/audit`), and the cron responses. **Not configured:** Sentry
-(`SENTRY_DSN`), a log drain, uptime checks, alerts (S-03). Minimum to
-set up: Sentry DSN in Vercel; a Vercel log drain; an uptime check on
+`/admin/audit`), the cron responses, and **Sentry** (project `maw3ed` in
+org `website-builder-l5`, https://website-builder-l5.sentry.io; every
+`log.error` is forwarded with personal data redacted, `src/instrumentation.ts`).
+The DSN is public by design and is in Vercel as `SENTRY_DSN` and
+`NEXT_PUBLIC_SENTRY_DSN`. **Not configured:** Sentry alert rules, a
+Vercel log drain, uptime checks (S-03). Minimum to set up: a Sentry
+alert on new issues; a Vercel log drain; an uptime check on
 `/api/version`; an alert when `/api/cron/notifications` reports `dead >
 0` or the webhook logs `handler threw`.
 
