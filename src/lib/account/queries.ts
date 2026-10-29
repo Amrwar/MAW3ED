@@ -1,6 +1,7 @@
 import type { BookingStatus, Notification, Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { pendingEmailFor } from "@/lib/account/pending-email";
 import { cairoDateString, cairoMinutes, cairoWallClock, dateToUTC } from "@/lib/bookings/instants";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
 import { customerMayChange } from "@/lib/bookings/self-service";
@@ -26,6 +27,8 @@ export interface AccountUser {
   id: string;
   name: string | null;
   email: string | null;
+  /** A new address waiting on its confirmation link, if any. */
+  pendingEmail: string | null;
   phone: string;
   notifyByWhatsApp: boolean;
   notifyByEmail: boolean;
@@ -58,6 +61,7 @@ export async function getAccountUser(): Promise<AccountUser | null> {
     id: user.id,
     name: user.name,
     email: user.email,
+    pendingEmail: await pendingEmailFor(user.id, user.email),
     phone: user.phone,
     notifyByWhatsApp: user.notifyByWhatsApp,
     notifyByEmail: user.notifyByEmail,

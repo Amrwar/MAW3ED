@@ -25,6 +25,15 @@ interface Props {
  * options here currently match nothing, and leaving them live meant 33
  * clickable rows that could only ever return an empty page.
  */
+/**
+ * The options worth listing: those matching something, plus the one
+ * already chosen (so it can be un-chosen). The panel used to list every
+ * city and category in the country with a "0" beside most of them.
+ */
+function offered<T extends { slug: string; count: number }>(list: T[], chosen: string | null | undefined): T[] {
+  return list.filter((x) => x.count > 0 || x.slug === chosen);
+}
+
 export default function FilterPanel({ query, facets, priceBounds, onChange }: Props) {
   // This panel is on the page twice: the desktop sidebar and the
   // filter drawer a phone opens. Hard-coded ids made both copies claim
@@ -94,7 +103,7 @@ export default function FilterPanel({ query, facets, priceBounds, onChange }: Pr
               onClick={() => onChange({ category: "", subcategory: "", page: 1 })}
             />
           </li>
-          {facets.categories.map((c) => (
+          {offered(facets.categories, query.category).map((c) => (
             <li key={c.id}>
               <Row
                 label={name(c)}
@@ -110,9 +119,9 @@ export default function FilterPanel({ query, facets, priceBounds, onChange }: Pr
               />
               {/* Children appear once their parent is the active branch,
                   so the column does not open as a wall of options. */}
-              {parent?.id === c.id && c.children.length > 0 && (
+              {parent?.id === c.id && offered(c.children, query.subcategory).length > 0 && (
                 <ul className="m-0 mt-0.5 flex list-none flex-col gap-0.5 p-0 ps-3">
-                  {c.children.map((k) => (
+                  {offered(c.children, query.subcategory).map((k) => (
                     <li key={k.id}>
                       <Row
                         label={name(k)}
@@ -145,7 +154,7 @@ export default function FilterPanel({ query, facets, priceBounds, onChange }: Pr
               onClick={() => onChange({ city: "", neighborhood: "", page: 1 })}
             />
           </li>
-          {facets.cities.map((c) => (
+          {offered(facets.cities, query.city).map((c) => (
             <li key={c.id}>
               <Row
                 label={name(c)}
@@ -278,6 +287,7 @@ function Row({
   // An option matching nothing cannot be chosen — but one that is
   // already chosen stays live whatever its count, or a filter that
   // narrows to zero results would trap the visitor with no way back.
+  // (Lists leave such options out before they get here: see offered.)
   const dead = count === 0 && !active;
 
   return (

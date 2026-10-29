@@ -31,7 +31,7 @@ verification is tracked separately in `PHASE_STATUS.md`.
 | Online deposits / full payment (Paymob) | BLOCKED | Code and webhook tests exist; **no real card payment has ever succeeded** (`docs/payments-verification.md`) |
 | Refunds through Paymob | BLOCKED | `refundTransaction()` never called against Paymob's API |
 | Reviews (verified-booking only, votes, reports, moderation) | VERIFIED | `reviews.test.ts`, `review-policy.test.ts`; QA phase 19 |
-| Customer accounts (upcoming, history, favorites, payments, reviews, notifications, profile, sessions, deletion) | DEFECTIVE | Works, but email change is unverified (P17-10, account takeover before an owner registers) and deletion leaves history reachable by the next holder of the number (P17-14) |
+| Customer accounts (upcoming, history, favorites, payments, reviews, notifications, profile, sessions, deletion) | INCOMPLETE | Email change now confirmed from the new address (P17-10 fixed, Phase 18). Deletion still leaves history reachable by the next holder of the number (P17-14) |
 | Sign-in: password, WhatsApp OTP | INCOMPLETE | Password verified in QA. WhatsApp OTP depends on Meta Cloud API credentials (BLOCKED for live delivery) |
 | Google sign-in | MISSING | No provider configured in `src/auth.ts` |
 | Waitlist "notify me" with email confirmation | INCOMPLETE | PR #31. Confirmation verified locally; **sending the "it's listed now" email is not built** (`notifiedAt` is never set) |
@@ -97,7 +97,6 @@ Open items with the most weight:
 
 | ID | Defect | Severity |
 |---|---|---|
-| P17-10 | Unverified email change → account takeover before an owner registers | P1 |
 | P17-11 | Notifications fire-and-forget, claimed SENT before sending, never re-driven | P1 |
 | P17-12 | No Sentry DSN in production: errors are not reported | P1 (owner) |
 | P17-13 | Terms say nothing about deposits, refunds, cancellation or subscriptions | P1 (owner) |

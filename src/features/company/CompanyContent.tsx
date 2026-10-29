@@ -176,7 +176,7 @@ export default function CompanyContent({
               <LocationSection
                 name={business.nameAr}
                 address={business.address ?? null}
-                cityName={business.locationAr}
+                cityName={lang === "en" && business.locationEn ? business.locationEn : business.locationAr}
                 neighborhoodName={neighborhoodName}
                 phone={business.phone ?? null}
                 hours={hours}

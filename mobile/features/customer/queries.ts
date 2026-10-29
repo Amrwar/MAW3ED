@@ -134,7 +134,7 @@ export function useUpdateProfile() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (patch: Partial<Pick<Profile, "name" | "email" | "notifyByWhatsApp" | "notifyByEmail">>) =>
-      api.patch<{ user: Profile }>("/api/account/profile", patch),
+      api.patch<{ user: Profile; pendingEmail?: string | null }>("/api/account/profile", patch),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: keys.profile.all });
     },

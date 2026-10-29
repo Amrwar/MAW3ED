@@ -6,7 +6,7 @@ import ResendVerificationButton from "./_components/ResendVerificationButton";
 
 export const metadata: Metadata = { title: "تأكيد البريد الإلكتروني" };
 
-type Status = "success" | "verified" | "expired" | "invalid" | "error" | "busy" | "pending";
+type Status = "success" | "verified" | "changed" | "taken" | "expired" | "invalid" | "error" | "busy" | "pending";
 
 interface Props {
   searchParams: Promise<{ status?: string }>;
@@ -26,6 +26,16 @@ const COPY: Record<
     title: "تم تأكيد بريدك",
     body: "كمّل إعداد نشاطك، وصفحتك هتتنشر أول ما تخلص.",
     tone: "ok",
+  },
+  changed: {
+    title: "اتغيّر بريدك الإلكتروني",
+    body: "من دلوقتي تأكيدات الحجز وروابط الدخول هتوصل على العنوان الجديد.",
+    tone: "ok",
+  },
+  taken: {
+    title: "البريد ده اتسجّل بحساب تاني",
+    body: "حد تاني سجّل بالعنوان ده قبل ما تضغط على الرابط، فبريدك فضل زي ما هو. جرّب عنوان مختلف من صفحة حسابك.",
+    tone: "warn",
   },
   expired: {
     title: "الرابط انتهت صلاحيته",
@@ -70,7 +80,7 @@ const TONES = {
 
 export default async function VerifyEmailPage({ searchParams }: Props) {
   const { status } = await searchParams;
-  const known = ["success", "verified", "expired", "invalid", "error", "busy"] as const;
+  const known = ["success", "verified", "changed", "taken", "expired", "invalid", "error", "busy"] as const;
   const key: Status = known.includes(status as (typeof known)[number])
     ? (status as Status)
     : "pending";
@@ -109,6 +119,10 @@ export default async function VerifyEmailPage({ searchParams }: Props) {
             ) : key === "verified" ? (
               <Link href="/onboarding" className="btn btn-primary w-full">
                 كمّل إعداد نشاطك
+              </Link>
+            ) : key === "changed" || key === "taken" ? (
+              <Link href="/account" className="btn btn-primary w-full">
+                صفحة حسابك
               </Link>
             ) : key === "busy" ? null : (
               <ResendVerificationButton />

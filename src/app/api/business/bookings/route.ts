@@ -138,7 +138,9 @@ export async function GET(req: Request) {
       depositAmount:   b.depositAmount !== null ? Number(b.depositAmount) : null,
       currency:        b.currency,
       notes:           b.notes,
-      customerNotes:   b.customer?.notes ?? null,
+      // The owner's private notes on a customer are the customer book,
+      // which a provider does not have; the detail route hides them too.
+      customerNotes:   can(actor, "customers.read") ? (b.customer?.notes ?? null) : null,
       createdAt:       b.createdAt.toISOString(),
       tableName:       b.table?.name        ?? null,
       staffName:       b.staffMember?.nameAr ?? null,

@@ -95,7 +95,7 @@ export default function ReviewsClient({
         {reviews.map((r) => (
           <li key={r.id} className="card p-4">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="flex gap-0.5" aria-label={`${r.rating} / 5`}>
+              <span className="flex gap-0.5" role="img" aria-label={`${r.rating} / 5`}>
                 {[1, 2, 3, 4, 5].map((i) => (
                   <Star
                     key={i}

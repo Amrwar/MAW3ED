@@ -28,7 +28,9 @@ export default function WhyJoin() {
     { value: lang === "ar" ? "0 ج.م" : "Free", ar: "للخطة المجانية، للأبد", en: "plan, forever" },
     { value: lang === "ar" ? "0%"   : "0%",    ar: "عمولة على كل حجز",      en: "commission per booking" },
     { value: lang === "ar" ? "5 دقايق" : "5 min", ar: "وقت تجهيز صفحتك",    en: "to set your page up" },
-    { value: lang === "ar" ? "24 ساعة" : "24 h", ar: "أقصى وقت لرد الدعم بالعربي", en: "for support to reply, in Arabic" },
+    // A reply time is a promise nothing measures; the free allowance is
+    // a rule the code enforces (lib/plans).
+    { value: lang === "ar" ? "30 حجز" : "30", ar: "بتأكيد تلقائي شهريًا في الخطة المجانية", en: "auto-confirmed bookings a month, free" },
   ];
 
   return (

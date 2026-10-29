@@ -10,9 +10,11 @@ anything not run says NOT RUN or BLOCKED.
 |---|---|---|---|---|---|
 | Web typecheck | static | `tsconfig.json` (strict) | `npm run typecheck` | yes | PASS — 2026-10-28, `77c8649` |
 | Web lint | static | `eslint.config.mjs` | `npm run lint` | yes | PASS — 0 errors, 6 warnings — 2026-10-28 |
-| Web unit + route tests | Vitest 5.0.5 | `src/**/*.test.ts(x)` (82 files) | `npm run test:run` | yes | PASS — 960 passed, 39 skipped (999) — 2026-10-28, Phase 17 branch (baseline: 934 / 34) |
+| Web unit + route tests | Vitest 5.0.5 | `src/**/*.test.ts(x)` (85 files) | `npm run test:run` | yes | PASS — 978 passed, 39 skipped (1017) — 2026-10-28, Phase 18 branch (Phase 17: 960; baseline: 934) |
 | Booking engine on Postgres (P17-01/03/05, R2, R5) | DB integration | `src/lib/bookings/create.db.test.ts` | `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/bookings/create.db.test.ts` | no (needs Postgres) | PASS — 5/5, five consecutive runs — 2026-10-28; 4/4 of the original tests FAIL on the pre-Phase-17 code |
 | Phase 17 end to end | Playwright + HTTP against a production build and the QA DB | `scripts/qa-phase17.mjs` | `node scripts/qa-phase17.mjs` (server on :3101) | no | PASS — 13/13 — 2026-10-28 |
+| Booking journeys (ar/en, staff / restaurant / plain, keyboard, validation, Back, retry, cancel, URL compatibility) | Playwright through the real widget | `scripts/qa-booking-e2e.mjs` | `node scripts/qa-booking-e2e.mjs` (server on :3101) | no | PASS — 19/19 — 2026-10-28 |
+| Page sweep: screenshots, axe WCAG 2.1 AA, overflow, console, focus rings, pixel comparison | Playwright + axe-core, 37 routes × ar/en × 375/768/1024/1440 | `scripts/qa-phase18.mjs` | `node scripts/qa-phase18.mjs --shots DIR [--compare BASELINE]` | no | PASS — 320 loads, 0 overflow, 0 serious/critical axe, 0 missing focus rings — 2026-10-28 |
 | Phone normalisation, SQL vs TypeScript | DB invariant | `src/lib/phone-sql.test.ts` | `PHONE_SQL_DATABASE_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/phone-sql.test.ts` | no (needs Postgres) | PASS — 34/34 against local QA Postgres — 2026-10-28 |
 | Web build | build | — | `npm run build` | yes (did not run on #28–#31, see CI note) | PASS locally on the Phase 17 branch — 2026-10-28 |
 | Prettier | format | — | `npm run format:check` | non-blocking | NOT RUN at baseline (known debt) |
@@ -23,7 +25,7 @@ anything not run says NOT RUN or BLOCKED.
 | Mobile E2E (Android emulator) | Maestro, 19 flows | `mobile/.maestro/` | `.github/workflows/e2e-android.yml` (manual or on flow changes) | separate workflow | **FAIL** — last run on `main`, 2026-10-17; last success 2026-10-14 on `release/audit-fixes` |
 | Web E2E: responsive, layout, security | Playwright scripts | `scripts/qa-responsive.mjs`, `qa-security.mjs`, fixtures | `node scripts/<name>.mjs` against a local server + QA DB | no | NOT RUN at baseline; last recorded passes in `docs/qa-phase19.md` / `qa-phase20-responsive.md` |
 | Paymob webhook verification | script | `scripts/verify-payment-webhook.mjs` | see `docs/payments-verification.md` | no | NOT RUN at baseline |
-| Accessibility (axe) | — | `axe-core` is installed, **nothing runs it** | — | no | MISSING |
+| Accessibility (axe) | Playwright + axe-core | part of `scripts/qa-phase18.mjs` | see above | no | PASS — 0 serious/critical on 320 page loads (Phase 18) |
 
 ## Coverage by area
 
@@ -51,7 +53,8 @@ manual QA record), L = live/partner verification.
 | Tenant isolation | ✔ | — | ✔ (manual) | — | Not in CI |
 | Phone normalisation | ✔ | ✔ | — | — | |
 | i18n / RTL / `/en` routing | ✔ | — | ✔ | — | |
-| Accessibility | — | — | partial (manual, H20) | — | No automated check |
+| Accessibility | — | — | ✔ (axe on every key page, keyboard booking) | — | No real screen-reader session yet |
+| Email change / verification | ✔ (Phase 18) | — | — | ✘ | Live delivery of the link not observed |
 | Mobile app | ✔ | — | ✘ (Maestro failing) | ✘ | Not in stores; no device verification |
 
 ## CI

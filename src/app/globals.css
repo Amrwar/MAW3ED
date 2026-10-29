@@ -290,6 +290,11 @@ h1, h2, h3, h4, h5, h6 {
 @media (min-width: 768px)  { .container-app { padding-inline: 2rem; } }
 @media (min-width: 1280px) { .container-app { padding-inline: 2.5rem; } }
 
+/* Text for one language only, decided by the document's lang. For
+   server fallbacks (loading.tsx) that render before any request
+   context is at hand; everything else reads the language directly. */
+:lang(en) .only-ar, :lang(ar) .only-en { display: none; }
+
 .section-padding { padding-block: var(--spacing-section); }
 
 /* ─── Card ───────────────────────────────────────────────── */

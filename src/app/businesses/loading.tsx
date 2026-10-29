@@ -23,7 +23,8 @@ import Skeleton from "@/components/ui/Skeleton";
 export default function Loading() {
   return (
     <div className="min-h-screen bg-[var(--color-ground)]" aria-busy="true" aria-live="polite">
-      <span className="sr-only-label">جارٍ التحميل…</span>
+      <span className="sr-only-label only-ar">جارٍ التحميل…</span>
+      <span className="sr-only-label only-en" lang="en">Loading…</span>
 
       {/* Navbar strip — same 65px the real header occupies. */}
       <div className="h-[65px] border-b border-[var(--color-line)] bg-[var(--color-surface)]" />

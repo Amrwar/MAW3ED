@@ -193,6 +193,8 @@ export interface Profile {
   id: string;
   name: string | null;
   email: string | null;
+  /** A new address waiting on its confirmation link; the old one stands until then. */
+  pendingEmail?: string | null;
   phone: string | null;
   /** Distinguishes "no number" from "number not confirmed". */
   phoneVerified: boolean;

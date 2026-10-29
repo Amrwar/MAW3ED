@@ -84,8 +84,17 @@ export function AdminTable({
     );
   }
 
+  // On a phone the table is wider than the card and scrolls inside it;
+  // a scroll box has to be reachable by keyboard or its hidden columns
+  // are not (WCAG 2.1.1; axe scrollable-region-focusable), the same
+  // rule components/ui/Table applies.
   return (
-    <div className="card overflow-x-auto">
+    <div
+      tabIndex={0}
+      role="region"
+      aria-label={head.filter(Boolean).join("، ")}
+      className="card overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-jade)]"
+    >
       <table className="w-full border-collapse text-[0.84375rem]">
         <thead>
           <tr>
