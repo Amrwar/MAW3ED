@@ -28,6 +28,7 @@ const ROOT = process.cwd();
 const PLATFORM_PROVIDED = new Set([
   "NODE_ENV",
   "NEXT_RUNTIME",
+  "VERCEL",
   "VERCEL_ENV",
   "VERCEL_URL",
   "VERCEL_PROJECT_PRODUCTION_URL",

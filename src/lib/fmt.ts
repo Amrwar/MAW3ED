@@ -1,4 +1,5 @@
 import type { Lang } from "@/lib/i18n";
+import { wrapClock } from "@/lib/bookings/time";
 
 /**
  * Number, money, date and time formatting for Maw3ed.
@@ -145,10 +146,22 @@ export function timeRange(
   return `${time(start)} — ${time(end)}`;
 }
 
-/** Normalises an "HH:MM" or "H:MM" string to "HH:MM". */
+/**
+ * Normalises an "HH:MM" or "H:MM" string to "HH:MM".
+ *
+ * A time past midnight on a business trading late is stored as "25:00"
+ * on the evening's date (lib/bookings/time.ts); it is shown as the clock
+ * reading with a next-day mark, "01:00 +1", so a 1 a.m. table under
+ * Thursday is not mistaken for Thursday morning.
+ */
 export function clock(value: string): string {
-  const [h = "0", m = "00"] = value.split(":");
-  return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
+  const { time, nextDay } = wrapClock(value);
+  return nextDay ? `${time} +1` : time;
+}
+
+/** "11:30 – 12:15" from two stored times, each wrapped past midnight. */
+export function clockRange(start: string, end: string | null | undefined): string {
+  return end ? `${clock(start)} – ${clock(end)}` : clock(start);
 }
 
 /**
@@ -157,12 +170,13 @@ export function clock(value: string): string {
  * 24-hour one, where a shift is easier to scan without the suffixes.
  */
 export function clock12(value: string, lang: Lang = "ar"): string {
-  const [hRaw = "0", m = "00"] = value.split(":");
+  const { time, nextDay } = wrapClock(value);
+  const [hRaw = "0", m = "00"] = time.split(":");
   const h = Number(hRaw) % 24;
   const pm = h >= 12;
   const h12 = h % 12 === 0 ? 12 : h % 12;
   const suffix = lang === "en" ? (pm ? "PM" : "AM") : pm ? "م" : "ص";
-  return `${h12}:${m.padStart(2, "0")} ${suffix}`;
+  return `${h12}:${m.padStart(2, "0")} ${suffix}${nextDay ? " +1" : ""}`;
 }
 
 /** Which part of the day an "HH:MM" falls in, for grouping times. */

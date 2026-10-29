@@ -16,6 +16,7 @@ import Link from "@/components/shared/LocaleLink";
 import { db } from "@/lib/db";
 import { CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
 import BackToApp from "./BackToApp";
+import { clockRange } from "@/lib/fmt";
 
 export const metadata: Metadata = { title: "نتيجة الدفع" };
 
@@ -125,7 +126,7 @@ export default async function PaymentReturnPage({
               <Row label="العمل"    value={booking.business.nameAr} />
               <Row label="الخدمة"   value={booking.service.nameAr} />
               <Row label="التاريخ"  value={booking.date.toISOString().split("T")[0]} />
-              <Row label="الوقت"    value={`${booking.startTime}${booking.endTime ? ` – ${booking.endTime}` : ""}`} ltr />
+              <Row label="الوقت"    value={clockRange(booking.startTime, booking.endTime)} ltr />
               {booking.depositAmount !== null && (
                 <Row
                   label="العربون المدفوع"

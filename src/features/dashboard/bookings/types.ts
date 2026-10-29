@@ -1,3 +1,5 @@
+import { BUSINESS_TRANSITIONS } from "@/lib/bookings/transitions";
+
 export type DashboardBookingStatus =
   | "PENDING_PAYMENT"
   | "PENDING"
@@ -47,17 +49,10 @@ export const STATUS_CONFIG: Record<
 };
 
 /** Which status transitions are allowed from a given status */
-export const ALLOWED_TRANSITIONS: Partial<Record<DashboardBookingStatus, DashboardBookingStatus[]>> = {
-  PENDING_PAYMENT: ["CANCELLED"],          // owner can cancel unpaid bookings
-  PENDING:         ["CONFIRMED", "CANCELLED"],
-  // The day-of path runs CONFIRMED → ARRIVED → IN_PROGRESS → COMPLETED,
-  // but no step is mandatory: an owner who never touches the tablet can
-  // still mark a booking COMPLETED straight from CONFIRMED, which is
-  // what every existing business does today.
-  CONFIRMED:       ["ARRIVED", "IN_PROGRESS", "COMPLETED", "NO_SHOW", "CANCELLED"],
-  ARRIVED:         ["IN_PROGRESS", "COMPLETED", "NO_SHOW", "CANCELLED"],
-  IN_PROGRESS:     ["COMPLETED", "CANCELLED"],
-};
+// The one transition table (lib/bookings/transitions.ts): the buttons
+// shown here are exactly the moves the API accepts.
+export const ALLOWED_TRANSITIONS: Partial<Record<DashboardBookingStatus, readonly DashboardBookingStatus[]>> =
+  BUSINESS_TRANSITIONS;
 
 /** Arabic labels for action buttons */
 export const ACTION_LABELS: Partial<Record<DashboardBookingStatus, string>> = {

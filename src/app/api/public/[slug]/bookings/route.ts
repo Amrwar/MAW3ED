@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { resolveAutomatic, resolveCode } from "@/lib/discounts/resolve";
 import { FAILURE_AR } from "@/lib/discounts/apply";
@@ -10,7 +11,7 @@ import { depositCents as calcDepositCents } from "@/lib/payments/money";
 import { attachProviderOrder, openPayment } from "@/lib/payments/ledger";
 import { getEffectivePlan, getMonthlyBookingLimit, canUseFeature, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { log } from "@/lib/logger";
-import { notify } from "@/lib/notifications";
+import { notifyLater } from "@/lib/notifications";
 import { callerKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { normalisePhone } from "@/lib/phone";
 import { phoneProofRequired, readPhoneProof } from "@/lib/bookings/phone-proof";
@@ -124,11 +125,7 @@ export async function POST(req: Request, { params }: Params) {
     // with that booking (Booking.customerEmail). Sending to the record's
     // used to let whoever booked first with somebody's number receive
     // that person's later confirmations and manage links.
-    const customer = await db.customer.upsert({
-      where:  { businessId_phone: { businessId: business.id, phone: customerPhone } },
-      create: { businessId: business.id, name: customerName, phone: customerPhone, email: customerEmail || null },
-      update: {},
-    });
+    const customer = await findOrCreateCustomer(business.id, customerPhone, customerName, customerEmail || null);
     if (customerEmail && !customer.email) {
       // Conditional, so two concurrent bookings cannot both "fill" it and
       // leave whichever wrote last.
@@ -256,6 +253,8 @@ export async function POST(req: Request, { params }: Params) {
           // in their name. Better to say so than to quietly charge them
           // more than the price they were quoted.
           return err("العرض خلص دلوقتي، جرّب تحجز من غير كود", 409, { code: "discount-gone" });
+        case "party-too-large":
+          return err("مفيش ترابيزة تكفي العدد ده، قلّل العدد أو كلّم المكان", 422, { code: "party-too-large", field: "partySize" });
       }
     }
 
@@ -384,7 +383,7 @@ export async function POST(req: Request, { params }: Params) {
     // plan includes WhatsApp are all decided in lib/notifications —
     // including the in-app copy the customer's account shows, which
     // this route never used to file.
-    void notify({ type: "booking.created", bookingId: booking.id });
+    notifyLater({ type: "booking.created", bookingId: booking.id });
 
     return ok(
       {
@@ -394,8 +393,44 @@ export async function POST(req: Request, { params }: Params) {
       201,
     );
   } catch (e) {
+    // The database could not give this request a connection in time: a
+    // burst, not a fault. Said as "busy, try again" with a Retry-After,
+    // which the app and the widget already handle as a retryable answer;
+    // nothing was written.
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2028") {
+      log.warn("[booking POST] database busy; asked the client to retry");
+      const res = err("الضغط عالي دلوقتي، جرّب تاني بعد ثواني", 503, { code: "busy" });
+      res.headers.set("Retry-After", "2");
+      return res;
+    }
     log.error("[booking POST]", e);
     return err("حدث خطأ أثناء الحجز، حاول مرة أخرى", 500, { code: "server-error" });
+  }
+}
+
+/**
+ * The customer record for this phone at this business, made if missing.
+ *
+ * Prisma's upsert is a read followed by a write, not one statement, so
+ * two requests for the same number arriving together — a double-tap,
+ * or ten retries carrying one idempotency key — both found nothing,
+ * both tried to insert, and the loser's unique-constraint error became
+ * a 500 before the booking's own idempotency check could answer. The
+ * loser now simply reads the row the winner made.
+ */
+async function findOrCreateCustomer(businessId: string, phone: string, name: string, email: string | null) {
+  const where = { businessId_phone: { businessId, phone } };
+  try {
+    return await db.customer.upsert({
+      where,
+      create: { businessId, name, phone, email },
+      update: {},
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return db.customer.findUniqueOrThrow({ where });
+    }
+    throw e;
   }
 }
 
@@ -416,6 +451,8 @@ function unavailableMessage(reason: string | null): string {
       return "النشاط مقفول في اليوم ده (إجازة)";
     case "vacation":
       return "الموظف ده في إجازة";
+    case "party-too-large":
+      return "مفيش ترابيزة تكفي العدد ده";
     default:
       return "الموعد ده مش متاح، اختر وقت تاني";
   }

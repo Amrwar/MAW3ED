@@ -12,6 +12,7 @@ import { allowedNow } from "@/lib/bookings/progress-guard";
 import { useMinuteTick } from "@/hooks/useMinuteTick";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Pagination from "@/components/ui/Pagination";
+import { clockRange } from "@/lib/fmt";
 
 const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
   PENDING:         { bg: "var(--color-warn-soft)", color: "var(--color-warn)" },
@@ -216,7 +217,7 @@ export default function BookingsTable({
                     {/* Time */}
                     <td className="px-5 py-3.5">
                       <p className="text-sm text-[var(--color-muted)] whitespace-nowrap" dir="ltr">
-                        {b.startTime}{b.endTime ? ` – ${b.endTime}` : ""}
+                        {clockRange(b.startTime, b.endTime)}
                       </p>
                     </td>
 

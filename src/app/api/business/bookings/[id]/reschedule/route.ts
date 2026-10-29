@@ -6,8 +6,9 @@ import { bookingScope, requireBusinessAccess } from "@/lib/business-access";
 import { loadAvailability } from "@/lib/bookings/schedule";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
-import { notify } from "@/lib/notifications";
+import { notifyLater } from "@/lib/notifications";
 import { log } from "@/lib/logger";
+import { CUSTOMER_MOVABLE } from "@/lib/bookings/transitions";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -51,6 +52,7 @@ export async function GET(req: Request, { params }: Params) {
       staffMemberId: booking.staffMemberId,
       resourceId: booking.resourceId,
       branchId: booking.branchId,
+      partySize: booking.partySize,
       excludeBookingId: booking.id,
     });
     return ok({ date, slots: availability.slots, reason: availability.reason ?? null });
@@ -81,7 +83,7 @@ export async function POST(req: Request, { params }: Params) {
     const booking = await movable(id);
     if (!booking) return err("الحجز غير موجود", 404, { code: "not-found" });
 
-    if (!["PENDING", "CONFIRMED"].includes(booking.status)) {
+    if (!(CUSTOMER_MOVABLE as readonly string[]).includes(booking.status)) {
       return err("الحجز ده مينفعش يتغيّر ميعاده", 400, { code: "not-changeable" });
     }
 
@@ -92,6 +94,7 @@ export async function POST(req: Request, { params }: Params) {
       staffMemberId: booking.staffMemberId,
       resourceId: booking.resourceId,
       branchId: booking.branchId,
+      partySize: booking.partySize,
       excludeBookingId: booking.id,
     });
     if (!availability.slots.includes(startTime)) {
@@ -102,10 +105,21 @@ export async function POST(req: Request, { params }: Params) {
     const { startsAt, endsAt } = bookingInstants(date, startTime, endTime, booking.service.duration);
 
     try {
-      await db.booking.update({
-        where: { id: booking.id },
-        data: { date: dateToUTC(date), startTime, endTime, startsAt, endsAt, customerReminderSentAt: null },
+      // Conditional on the status read above, so a cancel (the
+      // customer's, or a colleague's) landing in the same moment is not
+      // turned back into a live booking at a new time. A booking that
+      // had nobody, or no table, is given the one free at the new time.
+      const moved = await db.booking.updateMany({
+        where: { id: booking.id, status: booking.status },
+        data: {
+          date: dateToUTC(date), startTime, endTime, startsAt, endsAt, customerReminderSentAt: null,
+          staffMemberId: booking.staffMemberId ?? availability.assignments[startTime] ?? null,
+          resourceId: booking.resourceId ?? availability.resourceAssignments[startTime] ?? null,
+        },
       });
+      if (moved.count === 0) {
+        return err("الحجز اتغيّر دلوقتي، حدّث الصفحة وجرّب تاني", 409, { code: "changed" });
+      }
     } catch (e) {
       const message = e instanceof Prisma.PrismaClientKnownRequestError ? e.message : String(e);
       if (message.includes("booking_no_overlap")) {
@@ -114,7 +128,7 @@ export async function POST(req: Request, { params }: Params) {
       throw e;
     }
 
-    void notify({
+    notifyLater({
       type: "booking.rescheduled",
       bookingId: booking.id,
       movedTo: `${date}T${startTime}`,

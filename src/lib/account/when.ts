@@ -1,3 +1,6 @@
+import { addDays } from "@/lib/bookings/instants";
+import { wrapClock } from "@/lib/bookings/time";
+
 /**
  * "الثلاثاء، 7 أكتوبر — 14:00", for notification copy.
  *
@@ -12,8 +15,12 @@ const AR_MONTHS = [
 ];
 
 export function formatWhen(date: Date, startTime: string): string {
-  const d = date.getUTCDate();
-  const m = date.getUTCMonth();
-  const dow = date.getUTCDay();
-  return `${AR_DAYS[dow]}، ${d} ${AR_MONTHS[m]} — ${startTime}`;
+  // A table at "25:00" is one in the morning of the following day; the
+  // message names the day the customer will actually turn up.
+  const { time, nextDay } = wrapClock(startTime);
+  const when = nextDay ? new Date(`${addDays(date.toISOString().slice(0, 10), 1)}T00:00:00Z`) : date;
+  const d = when.getUTCDate();
+  const m = when.getUTCMonth();
+  const dow = when.getUTCDay();
+  return `${AR_DAYS[dow]}، ${d} ${AR_MONTHS[m]} — ${time}`;
 }

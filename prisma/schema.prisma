@@ -162,9 +162,18 @@ enum NotificationChannel {
 }
 
 enum DeliveryStatus {
+  /// Claimed, not yet handed to the provider. A row left here longer
+  /// than a send takes means the process died mid-send; the re-drive
+  /// job picks it up (prisma/migrations/phase19_reliability.sql).
+  PENDING
   SENT
   SKIPPED
+  /// The provider refused or was unreachable. Retried with backoff
+  /// while attempts remain; see `nextAttemptAt`.
   FAILED
+  /// Given up: every retry failed, or the message stopped being worth
+  /// sending (a reminder for an appointment that has passed).
+  DEAD
 }
 
 /// The record of what has already gone out.
@@ -187,12 +196,22 @@ model NotificationDelivery {
   bookingId  String?
   businessId String?
   error      String?
+  /// Sends so far, counting the first. The re-drive job stops at
+  /// MAX_ATTEMPTS (lib/notifications/outbox.ts) and marks the row DEAD.
+  attempts      Int       @default(0)
+  /// When a FAILED row may be tried again; null when it may not.
+  nextAttemptAt DateTime?
+  lastAttemptAt DateTime?
+  /// The event this row was claimed for, so a retry can rebuild the
+  /// message from the current booking without the original request.
+  event         Json?
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
 
   @@index([kind, createdAt])
   @@index([bookingId])
   @@index([businessId])
+  @@index([status, nextAttemptAt])
 }
 
 model Account {

@@ -1,8 +1,10 @@
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
-import { notify } from "@/lib/notifications";
+import { notifyLater } from "@/lib/notifications";
 import { customerMayCancel } from "@/lib/bookings/self-service";
+import { canTransition } from "@/lib/bookings/transitions";
+import { moveBooking } from "@/lib/bookings/state";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -20,7 +22,7 @@ export async function POST(_req: Request, { params }: Params) {
     // Status check. A booking still waiting on its deposit may be let go
     // at any point before it starts; the rest follow the cutoff — see
     // self-service.ts.
-    if (!["PENDING", "CONFIRMED", "PENDING_PAYMENT"].includes(booking.status)) {
+    if (!canTransition(booking.status, "CANCELLED", "customer")) {
       return err("لا يمكن إلغاء هذا الحجز", 400, { code: "not-cancellable" });
     }
     if (!customerMayCancel(booking)) {
@@ -31,22 +33,21 @@ export async function POST(_req: Request, { params }: Params) {
 
     // Conditional on the status read above, so a deposit landing in the
     // same moment (which confirms it) is not overwritten by a cancel.
-    const moved = await db.booking.updateMany({
-      where: { id: booking.id, status: booking.status },
-      data:  { status: "CANCELLED" },
+    // Also closes the payment page in the ledger — paid anyway, the
+    // webhook records the money and flags it for a refund rather than
+    // reviving a cancelled booking — and hands any discount back.
+    const move = await moveBooking({
+      bookingId: booking.id,
+      from: booking.status,
+      to: "CANCELLED",
+      by: "customer",
+      reason: "booking cancelled by the customer",
     });
-    if (moved.count === 0) {
+    if (!move.moved) {
       return err("الحجز اتغيّر دلوقتي، حدّث الصفحة وجرّب تاني", 409, { code: "changed" });
     }
 
     if (awaitingPayment) {
-      // Its payment page is closed, so nothing is still waiting on it.
-      // Paid anyway, the webhook records the money and flags it for a
-      // refund rather than reviving a cancelled booking.
-      await db.payment.updateMany({
-        where: { bookingId: booking.id, status: "PENDING" },
-        data:  { status: "ABANDONED", failureReason: "booking cancelled by the customer before paying" },
-      });
       // The business was never told about a booking that was not paid
       // for, so there is nothing to tell it now, and the customer did
       // this themselves.
@@ -56,9 +57,12 @@ export async function POST(_req: Request, { params }: Params) {
     // The business hears about this too now — somebody not turning up
     // to a slot they are holding is the business's news as much as the
     // customer's, and only the customer was being told.
-    void notify({ type: "booking.cancelled", bookingId: booking.id, by: "customer" });
+    notifyLater({ type: "booking.cancelled", bookingId: booking.id, by: "customer" });
 
-    return ok({ cancelled: true });
+    // A deposit already paid is not refunded by cancelling: that is the
+    // business's policy and a person's decision. The page says so, and
+    // this says how much is at stake, from the ledger.
+    return ok({ cancelled: true, paidCents: move.refundNeededCents });
   } catch (e) {
     log.error("[booking cancel]", e);
     return err("حدث خطأ أثناء الإلغاء", 500);

@@ -543,6 +543,9 @@ export default function BookingWidget({
     // and the customer was offered times it was already taken.
     if (selectedResource) params.set("resourceId",    selectedResource.id);
     if (selectedBranch)   params.set("branchId",      selectedBranch.id);
+    // So a table is only offered when it seats the party, and the
+    // server's own check (422 party-too-large) is never a surprise.
+    if (resourcesCountSeats) params.set("partySize", String(partySize));
 
     fetch(`/api/public/${slug}/slots?${params}`)
       .then((r) => r.json())
@@ -671,7 +674,7 @@ export default function BookingWidget({
           resourceId:    selectedResource?.id,
           staffMemberId: selectedStaff?.id,
           branchId:      selectedBranch?.id,
-          partySize:     selectedResource?.capacity != null ? partySize : undefined,
+          partySize:     resourcesCountSeats ? partySize : undefined,
           idempotencyKey: key,
           // Carried from the page, which read it off the link and the
           // Referer header. Lets a booking say which channel produced

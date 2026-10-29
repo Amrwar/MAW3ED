@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import type {
   DeliveryStatus,
   NotificationChannel,
@@ -13,6 +14,7 @@ import { bookingPageUrl, siteUrl } from "@/lib/url";
 import type { BespokeContext } from "./templates";
 import { copyFor, type CopyContext } from "./copy";
 import { allows, CHANNELS, type Channel } from "./channels";
+import { MAX_ATTEMPTS, STALE_PENDING_MS, isPermanentFailure, nextAttemptAt, serializeEvent } from "./outbox";
 import {
   EVENT_AUDIENCE,
   EVENT_KIND,
@@ -58,6 +60,26 @@ export async function notify(event: NotificationEvent): Promise<DispatchOutcome[
   } catch (e) {
     log.error("[notify] dispatch failed", e, { type: event.type });
     return [];
+  }
+}
+
+/**
+ * `notify`, after the response has gone out.
+ *
+ * A route must not make the customer wait on WhatsApp, and must not
+ * fail their booking because an email did not go. It used to write
+ * `void notify(...)` — and on a serverless platform the function is
+ * frozen as soon as the response is sent, so a send that had not
+ * finished was simply lost. `after()` keeps the function alive until
+ * the work completes. Outside a request (a cron, a test, a script)
+ * there is nothing to defer behind and it runs at once; either way the
+ * outbox has the claim, so a lost send is retried rather than forgotten.
+ */
+export function notifyLater(event: NotificationEvent): void {
+  try {
+    after(() => notify(event));
+  } catch {
+    void notify(event);
   }
 }
 
@@ -163,7 +185,7 @@ async function deliver(
   // everyone else stops here. This is what makes a retried webhook or a
   // cron that overlaps itself harmless.
   const claim = await claimKey(key, event, channel.name, address, booking?.id ?? null, business.id);
-  if (claim === "taken") return { ...base, status: "DUPLICATE" };
+  if (claim.kind === "taken") return { ...base, status: "DUPLICATE" };
 
   const outcome = await channel.send({
     event,
@@ -174,22 +196,52 @@ async function deliver(
     bespoke,
   });
 
-  const status: DeliveryStatus = outcome.ok ? "SENT" : outcome.skipped ? "SKIPPED" : "FAILED";
+  // `attempts` was counted when the row was claimed, not here: a send
+  // that never returns (a provider that hangs, a function killed) must
+  // still use up an attempt, or the stale-claim takeover would retry it
+  // for ever.
+  const attempts = claim.attempts;
+  const now = new Date();
+  let status: DeliveryStatus = outcome.ok ? "SENT" : outcome.skipped ? "SKIPPED" : "FAILED";
   const reason = outcome.ok ? undefined : outcome.reason;
+  // A failure is retried later by the re-drive job (lib/notifications/
+  // outbox.ts) unless it is the kind trying again cannot fix, or this
+  // was the last attempt allowed.
+  let retryAt: Date | null = null;
+  if (status === "FAILED") {
+    retryAt = isPermanentFailure(reason) ? null : nextAttemptAt(attempts, now);
+    if (!retryAt) status = "DEAD";
+  }
 
   await db.notificationDelivery
-    .update({ where: { dedupeKey: key }, data: { status, error: reason ?? null } })
+    .update({
+      where: { dedupeKey: key },
+      data: { status, error: reason ?? null, nextAttemptAt: retryAt },
+    })
     .catch((e) => log.error("[notify] could not record outcome", e));
+
+  if (status === "DEAD") {
+    log.error("[notify] delivery given up", { key, channel: channel.name, attempts, reason });
+  }
 
   return { ...base, status, reason };
 }
 
+/** `attempts` is the count including the send about to be made. */
+type Claim = { kind: "claimed"; attempts: number } | { kind: "taken" };
+
 /**
  * Takes the key, or reports that somebody else already has it.
  *
- * A row left as FAILED is not a duplicate — the message never arrived,
- * so a later attempt is allowed to try again. Only SENT and SKIPPED
- * mean "this has been dealt with".
+ * The row is claimed PENDING and carries the event, so that if this
+ * process dies before the send returns, the re-drive job can see a
+ * claim that never reported back and finish it. A row left FAILED with
+ * its retry time reached, or PENDING for longer than a send takes, may
+ * be taken over; SENT, SKIPPED and DEAD mean "dealt with". Each
+ * take-over is a conditional update, so two re-drivers racing cannot
+ * both win the same row. The attempt is counted on the claim itself,
+ * so a send that never comes back still spends one, and a row that has
+ * spent them all is closed rather than taken over again.
  */
 async function claimKey(
   dedupeKeyValue: string,
@@ -198,7 +250,7 @@ async function claimKey(
   recipient: string,
   bookingId: string | null,
   businessId: string,
-): Promise<"claimed" | "taken"> {
+): Promise<Claim> {
   // createMany with skipDuplicates rather than create-and-catch: losing
   // the race is the normal, expected outcome here, and a create that
   // throws makes Prisma log a unique-constraint error every time a cron
@@ -211,30 +263,58 @@ async function claimKey(
         dedupeKey: dedupeKeyValue,
         kind: EVENT_KIND[event.type],
         channel,
-        status: "SENT", // corrected the moment the send returns
+        status: "PENDING",
         recipient,
         bookingId,
         businessId,
+        event: serializeEvent(event),
+        attempts: 1,
+        lastAttemptAt: new Date(),
       },
     ],
     skipDuplicates: true,
   });
-  if (claim.count === 1) return "claimed";
+  if (claim.count === 1) return { kind: "claimed", attempts: 1 };
 
-  // Somebody already holds it. A row left as FAILED means the message
-  // never arrived, so a later attempt may take it over and try again.
   const existing = await db.notificationDelivery.findUnique({
     where: { dedupeKey: dedupeKeyValue },
-    select: { status: true },
+    select: { status: true, attempts: true, nextAttemptAt: true, updatedAt: true },
   });
-  if (existing?.status === "FAILED") {
-    await db.notificationDelivery.update({
-      where: { dedupeKey: dedupeKeyValue },
-      data: { status: "SENT", error: null },
+  if (!existing) return { kind: "taken" };
+
+  const now = Date.now();
+  const retryDue = existing.status === "FAILED" && existing.nextAttemptAt !== null && existing.nextAttemptAt.getTime() <= now;
+  const abandoned = existing.status === "PENDING" && existing.updatedAt.getTime() < now - STALE_PENDING_MS;
+  if (!retryDue && !abandoned) return { kind: "taken" };
+
+  // A claim that never reported back has still spent its attempt. Out
+  // of attempts, it is closed here rather than sent once more.
+  if (existing.attempts >= MAX_ATTEMPTS) {
+    await db.notificationDelivery.updateMany({
+      where: { dedupeKey: dedupeKeyValue, status: existing.status, updatedAt: existing.updatedAt },
+      data: { status: "DEAD", error: "no answer from the provider after every attempt", nextAttemptAt: null },
     });
-    return "claimed";
+    return { kind: "taken" };
   }
-  return "taken";
+
+  const took = await db.notificationDelivery.updateMany({
+    where: {
+      dedupeKey: dedupeKeyValue,
+      status: existing.status,
+      // The same row, in the same state we read it in: another worker
+      // that took it over since has moved updatedAt.
+      updatedAt: existing.updatedAt,
+    },
+    data: {
+      status: "PENDING",
+      error: null,
+      recipient,
+      event: serializeEvent(event),
+      attempts: { increment: 1 },
+      lastAttemptAt: new Date(),
+    },
+  });
+  return took.count === 1 ? { kind: "claimed", attempts: existing.attempts + 1 } : { kind: "taken" };
 }
 
 /* ─── Preferences ────────────────────────────────────────── */

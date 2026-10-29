@@ -69,7 +69,7 @@ export interface PublicBooking {
    */
   money: { paid: number; refunded: number; outstanding: number };
   /** What has been sent to the customer about this booking, per channel. */
-  notifications: { channel: NotificationChannel; status: DeliveryStatus }[];
+  notifications: { channel: NotificationChannel; status: DeliverySummaryStatus }[];
   /** The customer may still cancel or move it themselves. */
   canChange: boolean;
   /** The customer may cancel — canChange, or a booking still awaiting its deposit. */
@@ -236,19 +236,27 @@ function pin(lat: number | null, lng: number | null): { lat: number; lng: number
   return lat !== null && lng !== null ? { lat, lng } : null;
 }
 
+/** What a customer is told about a channel: it arrived, it did not, or it was not tried. */
+export type DeliverySummaryStatus = "SENT" | "FAILED" | "SKIPPED";
+
 /**
  * One line per channel. A channel that delivered anything counts as
  * sent; otherwise a failure is worth saying; a skip is said only when
- * that is all there is.
+ * that is all there is. A delivery still in flight (PENDING: claimed,
+ * provider not yet answered, or waiting for a retry) is not reported
+ * either way — the page polls and will see where it lands; one given
+ * up on (DEAD) reads as failed, which to the customer it is.
  */
 export function summariseDeliveries(
   rows: { channel: NotificationChannel; status: DeliveryStatus }[],
-): { channel: NotificationChannel; status: DeliveryStatus }[] {
-  const rank: Record<DeliveryStatus, number> = { SENT: 3, FAILED: 2, SKIPPED: 1 };
-  const best = new Map<NotificationChannel, DeliveryStatus>();
+): { channel: NotificationChannel; status: DeliverySummaryStatus }[] {
+  const rank: Record<DeliverySummaryStatus, number> = { SENT: 3, FAILED: 2, SKIPPED: 1 };
+  const best = new Map<NotificationChannel, DeliverySummaryStatus>();
   for (const r of rows) {
+    if (r.status === "PENDING") continue;
+    const status: DeliverySummaryStatus = r.status === "DEAD" ? "FAILED" : r.status;
     const held = best.get(r.channel);
-    if (!held || rank[r.status] > rank[held]) best.set(r.channel, r.status);
+    if (!held || rank[status] > rank[held]) best.set(r.channel, status);
   }
   return [...best].map(([channel, status]) => ({ channel, status }));
 }

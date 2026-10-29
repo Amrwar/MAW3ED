@@ -5,7 +5,7 @@ import { CalendarClock, Phone, Sun } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { money, num } from "@/lib/fmt";
+import { money, num, clock } from "@/lib/fmt";
 import { telHref } from "@/lib/contact";
 
 export interface ListedBooking {
@@ -110,10 +110,10 @@ export default function BookingList({
               <li key={b.id} className="card p-4">
                 <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
                   <span className="num shrink-0 text-[1.0625rem] font-bold text-[var(--color-ink)]">
-                    {b.startTime}
+                    {clock(b.startTime)}
                     {b.endTime && (
                       <span className="block text-[0.6875rem] font-normal text-[var(--color-subtle)]">
-                        {ar ? "لـ" : "to"} {b.endTime}
+                        {ar ? "لـ" : "to"} {clock(b.endTime)}
                       </span>
                     )}
                   </span>

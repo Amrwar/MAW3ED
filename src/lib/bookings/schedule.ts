@@ -5,6 +5,7 @@ import {
   type AvailabilityInput,
   type AvailabilityResult,
   type BlockRule,
+  type StaffCandidate,
 } from "./availability";
 import {
   cairoDateString,
@@ -33,6 +34,12 @@ export interface SlotQuery {
   staffMemberId?: string | null;
   resourceId?: string | null;
   branchId?: string | null;
+  /**
+   * How many people are coming. With a resource named, it has to seat
+   * them; without one, at a business whose resources count seats, the
+   * smallest free one that does is chosen.
+   */
+  partySize?: number | null;
   /** Ignores this booking when checking collisions — used by reschedule. */
   excludeBookingId?: string | null;
 }
@@ -54,6 +61,13 @@ export interface LoadedAvailability extends AvailabilityResult {
    * the business schedules without staff.
    */
   assignments: Record<string, string>;
+  /**
+   * Which room, chair or table each offered slot is held on, when the
+   * business has resources and none was named: the smallest one that
+   * fits the party and is free then. Empty when a resource was named
+   * (the booking holds that one) or the business has none.
+   */
+  resourceAssignments: Record<string, string>;
 }
 
 const NONE = (reason: AvailabilityResult["reason"], serviceDuration: number): LoadedAvailability => ({
@@ -62,13 +76,20 @@ const NONE = (reason: AvailabilityResult["reason"], serviceDuration: number): Lo
   window: null,
   serviceDuration,
   assignments: {},
+  resourceAssignments: {},
 });
+
+interface ResourceRow {
+  id: string;
+  capacity: number | null;
+  branchId: string | null;
+}
 
 export async function loadAvailability(
   q: SlotQuery,
   now: Date = new Date(),
 ): Promise<LoadedAvailability> {
-  const [business, service, bookings, team, resource, branch, blocks] = await Promise.all([
+  const [business, service, bookings, team, resources, branch, blocks] = await Promise.all([
     db.business.findUnique({
       where: { id: q.businessId },
       select: {
@@ -115,12 +136,16 @@ export async function loadAvailability(
         hours: { select: { dayOfWeek: true, startTime: true, endTime: true, isOff: true } },
       },
     }),
-    // Ids arrive from the client. Each has to be this business's, and
-    // in use, or the booking would hold another tenant's room or a
-    // resource nobody can see.
-    q.resourceId
-      ? db.resource.findFirst({ where: { id: q.resourceId, businessId: q.businessId, isActive: true }, select: { id: true } })
-      : Promise.resolve(null),
+    // The business's rooms, chairs and tables. Ids arrive from the
+    // client, so a named one has to be found here — this business's,
+    // and in use — or the booking would hold another tenant's room or a
+    // resource nobody can see. Smallest first, so "any table" seats a
+    // couple at a table for two rather than the one for eight.
+    db.resource.findMany({
+      where: { businessId: q.businessId, isActive: true },
+      orderBy: [{ capacity: { sort: "asc", nulls: "last" } }, { sortOrder: "asc" }, { createdAt: "asc" }],
+      select: { id: true, capacity: true, branchId: true },
+    }),
     q.branchId
       ? db.branch.findFirst({ where: { id: q.branchId, businessId: q.businessId, isActive: true }, select: { id: true } })
       : Promise.resolve(null),
@@ -153,7 +178,33 @@ export async function loadAvailability(
   ]);
 
   if (!business || !service) return NONE("no-service-duration", 0);
-  if ((q.resourceId && !resource) || (q.branchId && !branch)) return NONE(null, service.duration);
+  if (q.branchId && !branch) return NONE(null, service.duration);
+
+  // ── Which resource(s) the booking may hold ──────────────────
+  const party = q.partySize && q.partySize > 0 ? q.partySize : null;
+  const inBranch = (r: ResourceRow) => !q.branchId || !r.branchId || r.branchId === q.branchId;
+  const seats = (r: ResourceRow) => r.capacity === null || r.capacity >= (party ?? 1);
+
+  let lanes: (string | null)[];
+  if (q.resourceId) {
+    const named = resources.find((r) => r.id === q.resourceId);
+    if (!named || !inBranch(named)) return NONE(null, service.duration);
+    // A table for four is not offered to a party of six, whatever the
+    // client sent.
+    if (!seats(named)) return NONE("party-too-large", service.duration);
+    lanes = [named.id];
+  } else if (resources.length > 0) {
+    // No resource named at a business that has them: the booking still
+    // has to hold one, or it would hold nothing and two parties would
+    // meet at one table. Every resource that fits is a candidate; the
+    // first free one in capacity order takes each slot.
+    const fitting = resources.filter((r) => inBranch(r) && seats(r));
+    if (fitting.length === 0) return NONE(party ? "party-too-large" : null, service.duration);
+    lanes = fitting.map((r) => r.id);
+  } else {
+    lanes = [null];
+  }
+
   // A named member who is inactive, from another business, or does not
   // do this service. Treating them as "nobody in particular" used to
   // book them inside business hours regardless.
@@ -162,7 +213,8 @@ export async function loadAvailability(
   // have taken the service off their list, or deactivated them, and the
   // booking still has to be movable. They count, for this request only,
   // with their own hours — provided they belong to this business.
-  if (q.staffMemberId && !team.some((m) => m.id === q.staffMemberId)) {
+  const staff: StaffCandidate[] = [...team];
+  if (q.staffMemberId && !staff.some((m) => m.id === q.staffMemberId)) {
     const keeper = q.excludeBookingId
       ? await db.staffMember.findFirst({
           where: { id: q.staffMemberId, businessId: q.businessId },
@@ -174,12 +226,12 @@ export async function loadAvailability(
         })
       : null;
     if (!keeper) return NONE("staff-off", service.duration);
-    team.push(keeper);
+    staff.push(keeper);
   }
 
   const today = cairoDateString(now);
 
-  const base: Omit<AvailabilityInput, "staffMemberId" | "staffHours" | "staffWorkingDays"> = {
+  const base: Omit<AvailabilityInput, "staffMemberId" | "staffHours" | "staffWorkingDays" | "resourceId"> = {
     date: q.date,
     dayOfWeek: weekdayOf(q.date),
     today,
@@ -210,28 +262,53 @@ export async function loadAvailability(
     ),
     bookings: bookings.map((b) => {
       const startMin = timeToMinutes(b.startTime);
-      return {
-        startMin,
-        endMin: b.endTime ? timeToMinutes(b.endTime) : startMin + b.service.duration,
-        staffMemberId: b.staffMemberId,
-        resourceId: b.resourceId,
-      };
+      let endMin = b.endTime ? timeToMinutes(b.endTime) : startMin + b.service.duration;
+      // A legacy row whose endTime wrapped past midnight.
+      if (endMin <= startMin) endMin = startMin + b.service.duration;
+      return { startMin, endMin, staffMemberId: b.staffMemberId, resourceId: b.resourceId };
     }),
-    resourceId: q.resourceId ?? null,
   };
 
   // A service done by staff is the team's to answer, whether a person
   // was named or not. Without staff, the business is the one lane.
-  if (team.length > 0) {
-    return {
-      ...computeStaffedAvailability(base, team, q.staffMemberId ?? null),
-      serviceDuration: service.duration,
-    };
+  const run = (resourceId: string | null) =>
+    staff.length > 0
+      ? computeStaffedAvailability({ ...base, resourceId }, staff, q.staffMemberId ?? null)
+      : { ...computeAvailability({ ...base, resourceId, staffMemberId: null, staffHours: [], staffWorkingDays: [] }), assignments: {} as Record<string, string> };
+
+  // One lane: the answer is that lane's. When the lane is a resource the
+  // customer did not name — the only table that seats the party — the
+  // booking still has to be given it.
+  if (lanes.length === 1) {
+    const r = run(lanes[0]);
+    const only = lanes[0];
+    const resourceAssignments: Record<string, string> =
+      !q.resourceId && only ? Object.fromEntries(r.slots.map((t) => [t, only])) : {};
+    return { ...r, serviceDuration: service.duration, resourceAssignments };
   }
+
+  // Several candidate resources: a time is offered when any of them is
+  // free, and goes to the first (smallest) that is.
+  const runs = lanes.map((id) => ({ id: id as string, result: run(id) }));
+  const times = [...new Set(runs.flatMap((r) => r.result.slots))].sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+  const assignments: Record<string, string> = {};
+  const resourceAssignments: Record<string, string> = {};
+  for (const t of times) {
+    const first = runs.find((r) => r.result.slots.includes(t))!;
+    resourceAssignments[t] = first.id;
+    if (first.result.assignments[t]) assignments[t] = first.result.assignments[t];
+  }
+  const reasons = new Set(runs.map((r) => r.result.reason));
+  const windows = runs.map((r) => r.result.window).filter((w): w is NonNullable<typeof w> => w !== null);
   return {
-    ...computeAvailability({ ...base, staffMemberId: null, staffHours: [], staffWorkingDays: [] }),
+    slots: times,
+    reason: times.length === 0 && reasons.size === 1 ? [...reasons][0] : null,
+    window: windows.length
+      ? { start: Math.min(...windows.map((w) => w.start)), end: Math.max(...windows.map((w) => w.end)) }
+      : null,
     serviceDuration: service.duration,
-    assignments: {},
+    assignments,
+    resourceAssignments,
   };
 }
 

@@ -12,16 +12,17 @@ import type { PaymobTransactionObj } from "./paymob";
  * its idempotency and its booking updates are the real ones. The fake
  * page sends the same signed TRANSACTION callback Paymob sends.
  *
- * It can never run in production: it needs PAYMOB_FAKE=1 AND a
- * non-production NODE_ENV AND no production Vercel environment, and
- * every entry point checks fakePaymobEnabled() itself.
+ * It can never run where customers are: it needs PAYMOB_FAKE=1, AND
+ * not to be on Vercel at all (no VERCEL or VERCEL_ENV), AND its own
+ * page to be served from this machine (a localhost base URL). A local
+ * production build (`next start`) qualifies — that is what the Phase 19
+ * end-to-end script runs against — a deployment never does. Every
+ * entry point checks fakePaymobEnabled() itself.
  */
 export function fakePaymobEnabled(): boolean {
-  return (
-    process.env.PAYMOB_FAKE === "1" &&
-    process.env.NODE_ENV !== "production" &&
-    process.env.VERCEL_ENV !== "production"
-  );
+  if (process.env.PAYMOB_FAKE !== "1") return false;
+  if (process.env.VERCEL || process.env.VERCEL_ENV) return false;
+  return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base());
 }
 
 /** Where the fake checkout is served — the API's own origin as the phone reaches it. */

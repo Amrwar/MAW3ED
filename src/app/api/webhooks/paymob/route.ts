@@ -40,7 +40,8 @@ import { bookingMoney, toCents } from "@/lib/payments/money";
 import { classifyCallback, planReversal, shouldReleaseHold } from "@/lib/payments/webhook-rules";
 import type { Plan } from "@/lib/plans";
 import { log } from "@/lib/logger";
-import { notify } from "@/lib/notifications";
+import { notifyLater } from "@/lib/notifications";
+import { releaseBookingHold } from "@/lib/bookings/state";
 
 interface PaymobWebhookBody {
   type?: string;
@@ -103,7 +104,9 @@ export async function POST(req: Request) {
 
   try {
     const outcome = await handle(obj, providerOrderId, transactionId);
-    await closeWebhookEvent("PAYMOB", transactionId, outcome);
+    // A pending callback released its own claim so the final one can
+    // land; there is no row left to close.
+    if (outcome !== "still-pending") await closeWebhookEvent("PAYMOB", transactionId, outcome);
     return ack({ outcome });
   } catch (e) {
     // Something on our side broke — the database, most likely — and
@@ -198,7 +201,16 @@ async function handle(
     return verdict.kind;
   }
 
-  if (verdict.kind === "pending") return "still-pending";
+  if (verdict.kind === "pending") {
+    // Wallet and kiosk payments report "pending" first and the result
+    // later, under the SAME transaction id. The claim taken above would
+    // have the final callback thrown away as a duplicate, and the
+    // booking would wait for money that had in fact arrived. So the
+    // claim is given back: nothing was settled, and the next delivery
+    // for this id is processed afresh.
+    await releaseWebhookEvent("PAYMOB", transactionId);
+    return "still-pending";
+  }
   if (verdict.kind === "failed") return handleFailure(payment, obj, transactionId);
 
   return payment.kind === "SUBSCRIPTION"
@@ -307,8 +319,18 @@ async function reconcileReversal(
     });
 
     if (decided.kind === "attach") {
-      // The admin route reserved this amount already; only the id was missing.
-      await tx.refund.update({ where: { id: decided.refundId }, data: { providerRefundId: transactionId } });
+      // The admin route reserved this amount already; only the id was
+      // missing. A row still PENDING — the provider never answered the
+      // admin's request — is settled by this: Paymob has just said the
+      // money went back.
+      await tx.refund.update({
+        where: { id: decided.refundId },
+        data: { providerRefundId: transactionId, status: "SUCCEEDED", failureReason: null },
+      });
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: current.refundedCents >= current.amountCents ? "REFUNDED" : "PARTIALLY_REFUNDED" },
+      });
     } else if (decided.kind === "record") {
       await tx.refund.create({
         data: {
@@ -472,7 +494,7 @@ async function handleBookingSuccess(
         .catch((e) => log.error("[paymob webhook] could not write audit entry", e));
       // The customer is told the money arrived; the booking screen says
       // the time was released and support will sort it out.
-      void notify({ type: "payment.received", bookingId: payment.bookingId, amount: payment.amountCents / 100, transactionId });
+      notifyLater({ type: "payment.received", bookingId: payment.bookingId, amount: payment.amountCents / 100, transactionId });
       return "paid-after-release";
     }
   }
@@ -504,7 +526,7 @@ async function handleBookingSuccess(
   if (payment.bookingId) {
     // The transaction id goes into the event so a retry computes the
     // same deduplication key and the customer is not thanked twice.
-    void notify({
+    notifyLater({
       type: "payment.received",
       bookingId: payment.bookingId,
       amount: payment.amountCents / 100,
@@ -515,8 +537,8 @@ async function handleBookingSuccess(
       // hears about it as a new booking — once (the key is per booking),
       // and whatever its payment alerts are set to. The customer has the
       // confirmation below; a "we received it" on top would be noise.
-      void notify({ type: "booking.created", bookingId: payment.bookingId, only: "business" });
-      void notify({ type: "booking.confirmed", bookingId: payment.bookingId });
+      notifyLater({ type: "booking.created", bookingId: payment.bookingId, only: "business" });
+      notifyLater({ type: "booking.confirmed", bookingId: payment.bookingId });
     }
   }
 
@@ -632,15 +654,20 @@ async function failAndRelease(payment: Payment, reason: string, transactionId: s
       });
       if (!release) return;
 
-      await tx.booking.updateMany({
+      const { count } = await tx.booking.updateMany({
         where: { id: failed.bookingId, status: "PENDING_PAYMENT" },
         data: { status: "FAILED_PAYMENT" },
       });
+      // The time is back on the calendar: any other page still open for
+      // it is closed and a discount it carried is handed back.
+      if (count === 1) {
+        await releaseBookingHold(tx, { bookingId: failed.bookingId, to: "FAILED_PAYMENT", by: "system", reason: `deposit payment failed: ${reason}` });
+      }
     },
   });
 
   if (changed && payment.bookingId) {
-    void notify({ type: "payment.failed", bookingId: payment.bookingId, reason });
+    notifyLater({ type: "payment.failed", bookingId: payment.bookingId, reason });
   }
   return changed;
 }
@@ -709,7 +736,7 @@ async function handleSubscriptionSuccess(
   });
 
   if (period.until) {
-    void notify({
+    notifyLater({
       type: "subscription.renewed",
       businessId: payment.businessId,
       until: period.until,

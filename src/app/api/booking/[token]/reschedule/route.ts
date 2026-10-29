@@ -5,9 +5,10 @@ import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { loadAvailability } from "@/lib/bookings/schedule";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { Prisma } from "@prisma/client";
-import { notify } from "@/lib/notifications";
+import { notifyLater } from "@/lib/notifications";
 import { log } from "@/lib/logger";
 import { CUTOFF_HOURS, minutesUntilStart } from "@/lib/bookings/self-service";
+import { CUSTOMER_MOVABLE } from "@/lib/bookings/transitions";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -45,10 +46,11 @@ export async function POST(req: Request, { params }: Params) {
       include: {
         business: {
           select: {
-            nameAr:   true,
-            whatsapp: true,
-            phone:    true,
-            owner:    { select: { email: true } },
+            nameAr:      true,
+            whatsapp:    true,
+            phone:       true,
+            autoConfirm: true,
+            owner:       { select: { email: true } },
           },
         },
         service:  { select: { nameAr: true, duration: true } },
@@ -61,7 +63,7 @@ export async function POST(req: Request, { params }: Params) {
     // ARRIVED and IN_PROGRESS are deliberately absent: once somebody is
     // in the building, moving the appointment is the owner's job, not a
     // self-service action.
-    if (!["PENDING", "CONFIRMED"].includes(booking.status)) {
+    if (!(CUSTOMER_MOVABLE as readonly string[]).includes(booking.status)) {
       return err("الحجز ده مينفعش يتغيّر ميعاده", 400, { code: "not-changeable" });
     }
 
@@ -82,8 +84,9 @@ export async function POST(req: Request, { params }: Params) {
       serviceId:        booking.serviceId,
       date:             newDate,
       staffMemberId:    booking.staffMemberId,
-      resourceId:          booking.resourceId,
+      resourceId:       booking.resourceId,
       branchId:         booking.branchId,
+      partySize:        booking.partySize,
       excludeBookingId: booking.id,
     });
 
@@ -112,20 +115,39 @@ export async function POST(req: Request, { params }: Params) {
     );
 
     // ── Persist ──────────────────────────────────────────────────────────────
-    let updated;
+    //
+    // The new time waits for the business again unless it confirms
+    // bookings automatically, in which case a confirmed booking stays
+    // confirmed — the business would have confirmed the new time
+    // unseen anyway, and a customer should not lose their confirmation
+    // for moving an hour.
+    //
+    // Conditional on the status read above: a cancel landing in the
+    // same moment (the owner's, or this customer's from another tab)
+    // must not be overwritten with a moved, live booking.
+    const nextStatus = booking.business.autoConfirm ? booking.status : "PENDING";
     try {
-      updated = await db.booking.update({
-        where: { id: booking.id },
+      const moved = await db.booking.updateMany({
+        where: { id: booking.id, status: booking.status },
         data: {
           date:                  newDateUTC,
           startTime:             newStartTime,
           endTime:               newEndTime,
           startsAt,
           endsAt,
-          status:                "PENDING",      // reset so owner reviews new time
+          status:                nextStatus,
           customerReminderSentAt: null,           // reset so reminder fires for new date
+          // A booking that had nobody, or no table, is given the one the
+          // engine found free at the new time — as a new booking would
+          // be — so the moved appointment holds a lane the constraints
+          // can see.
+          staffMemberId: booking.staffMemberId ?? availability.assignments[newStartTime] ?? null,
+          resourceId:    booking.resourceId ?? availability.resourceAssignments[newStartTime] ?? null,
         },
       });
+      if (moved.count === 0) {
+        return err("الحجز اتغيّر دلوقتي، حدّث الصفحة وجرّب تاني", 409, { code: "changed" });
+      }
     } catch (e) {
       // Somebody took the slot between the check above and this write.
       const message = e instanceof Prisma.PrismaClientKnownRequestError ? e.message : String(e);
@@ -138,7 +160,7 @@ export async function POST(req: Request, { params }: Params) {
     // One call for both sides. Note this now respects the WhatsApp
     // plan gate, which this route never checked while the booking route
     // always did — a free plan was getting a paid channel here only.
-    void notify({
+    notifyLater({
       type: "booking.rescheduled",
       bookingId: booking.id,
       movedTo: `${newDate}T${newStartTime}`,
@@ -149,7 +171,7 @@ export async function POST(req: Request, { params }: Params) {
       date:      newDate,
       startTime: newStartTime,
       endTime:   newEndTime,
-      status:    updated.status,
+      status:    nextStatus,
     });
   } catch (e) {
     log.error("[booking reschedule]", e);

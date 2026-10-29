@@ -3,28 +3,16 @@ import { bookingStatusSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import { bookingScope, can, permissionsOf, requireBusinessAccess, type BusinessAction } from "@/lib/business-access";
 import { log } from "@/lib/logger";
-import { notify } from "@/lib/notifications";
+import { notifyLater } from "@/lib/notifications";
 import { ARRIVE_EARLY_MINUTES, allowedNow, isTooEarly } from "@/lib/bookings/progress-guard";
+import { CUSTOMER_MOVABLE, canTransition, transitionsFrom } from "@/lib/bookings/transitions";
+import { moveBooking } from "@/lib/bookings/state";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** Valid status transitions — terminal states (COMPLETED, CANCELLED, NO_SHOW, FAILED_PAYMENT) cannot be changed */
-const VALID_TRANSITIONS: Partial<Record<string, string[]>> = {
-  PENDING_PAYMENT: ["CANCELLED"],                      // owner can cancel awaiting-payment bookings
-  PENDING:         ["CONFIRMED", "CANCELLED"],
-  // The day-of path: the customer turns up, the work starts, it ends.
-  // ARRIVED and IN_PROGRESS existed in BookingStatus, in the labels and
-  // in booking_no_overlap, but nothing could set them — so an owner
-  // could only jump straight from CONFIRMED to COMPLETED and the two
-  // states were decoration.
-  //
-  // COMPLETED stays reachable directly from CONFIRMED: a busy owner
-  // marking a finished appointment should not have to walk through two
-  // intermediate states first.
-  CONFIRMED:       ["ARRIVED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "NO_SHOW"],
-  ARRIVED:         ["IN_PROGRESS", "COMPLETED", "NO_SHOW", "CANCELLED"],
-  IN_PROGRESS:     ["COMPLETED", "CANCELLED"],
-};
+// The transition table lives in lib/bookings/transitions.ts, shared with
+// the dashboard's buttons and the customer's routes, so no two screens
+// disagree about what may follow what.
 
 /** The permission a move to `status` needs (lib/business-access.ts). */
 function actionFor(status: string): BusinessAction {
@@ -91,8 +79,8 @@ export async function GET(_req: Request, { params }: Params) {
       // Also by the clock (lib/bookings/progress-guard): a booking that
       // has not started cannot be completed or missed, so the app never
       // shows a button the PATCH would refuse with "too-early".
-      actions:       allowedNow(VALID_TRANSITIONS[booking.status] ?? [], booking).filter((s) => can(actor, actionFor(s))),
-      canReschedule: can(actor, "bookings.reschedule") && ["PENDING", "CONFIRMED"].includes(booking.status),
+      actions:       allowedNow(transitionsFrom(booking.status, "business"), booking).filter((s) => can(actor, actionFor(s))),
+      canReschedule: can(actor, "bookings.reschedule") && (CUSTOMER_MOVABLE as readonly string[]).includes(booking.status),
       permissions:   permissionsOf(actor),
     });
   } catch (e) {
@@ -135,11 +123,11 @@ export async function PATCH(req: Request, { params }: Params) {
     }
 
     // Check transition is valid
-    const allowed = VALID_TRANSITIONS[booking.status] ?? [];
-    if (!allowed.includes(newStatus)) {
+    if (!canTransition(booking.status, newStatus, "business")) {
       return err(
         `لا يمكن تغيير الحالة من "${booking.status}" إلى "${newStatus}"`,
         400,
+        { code: "not-allowed" },
       );
     }
 
@@ -154,10 +142,21 @@ export async function PATCH(req: Request, { params }: Params) {
       );
     }
 
-    const updated = await db.booking.update({
-      where: { id },
-      data:  { status: newStatus },
+    // Conditional on the status read above. The deposit's webhook, the
+    // customer's own cancel and a colleague's tap all move the same row;
+    // whichever lands second must not overwrite the first unseen.
+    // Cancelling also closes any open payment page, hands a discount
+    // back and flags money already paid for a refund (lib/bookings/state).
+    const move = await moveBooking({
+      bookingId: booking.id,
+      from: booking.status,
+      to: newStatus,
+      by: "business",
+      actorUserId: actor.userId,
     });
+    if (!move.moved) {
+      return err("الحجز اتغيّر دلوقتي، حدّث الصفحة وجرّب تاني", 409, { code: "changed" });
+    }
 
     // Told after the update, not before: a notification saying "your
     // booking is confirmed" must not go out if the write that confirms
@@ -171,18 +170,24 @@ export async function PATCH(req: Request, { params }: Params) {
     const wasPending = booking.status === "PENDING" || booking.status === "PENDING_PAYMENT";
 
     if (newStatus === "CONFIRMED") {
-      void notify({ type: "booking.confirmed", bookingId: booking.id, actorUserId: actor.userId });
+      notifyLater({ type: "booking.confirmed", bookingId: booking.id, actorUserId: actor.userId });
     } else if (newStatus === "CANCELLED") {
-      void notify(
+      notifyLater(
         wasPending
           ? { type: "booking.rejected", bookingId: booking.id, actorUserId: actor.userId }
           : { type: "booking.cancelled", bookingId: booking.id, by: "business", actorUserId: actor.userId },
       );
     } else if (newStatus === "COMPLETED") {
-      void notify({ type: "booking.completed", bookingId: booking.id });
+      notifyLater({ type: "booking.completed", bookingId: booking.id });
     }
 
-    return ok({ id: updated.id, status: updated.status });
+    return ok({
+      id: booking.id,
+      status: newStatus,
+      // Money already taken for a booking that is now off; the app shows
+      // the owner a line saying support refunds it, never a promise.
+      refundNeededCents: move.refundNeededCents,
+    });
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[bookings PATCH]", e);

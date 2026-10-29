@@ -114,6 +114,30 @@ export async function POST(req: Request, { params }: Params) {
           : { ok: false as const, providerRefundId: undefined, error: "no provider transaction id" };
 
     // ── 4. Settle the record ──
+    if (!outcome.ok && outcome.uncertain) {
+      // The provider may have sent the money: a timeout or a 5xx says
+      // nothing either way. Releasing the reservation here would let a
+      // retry send it again, so the amount stays held and the row stays
+      // PENDING until Paymob's own callback for the refund arrives
+      // (webhooks/paymob reconcileReversal attaches it) or somebody
+      // checks the Paymob dashboard and settles it by hand
+      // (docs/runbooks/PAYMENT_OPERATIONS.md).
+      await db.refund.update({
+        where: { id: refund.id },
+        data: { failureReason: `uncertain: ${outcome.error?.slice(0, 480) ?? "no answer"}` },
+      });
+      log.error("[admin refund] provider outcome unknown; reservation kept", {
+        paymentId: payment.id,
+        refundId: refund.id,
+        amountCents: amount,
+        error: outcome.error,
+      });
+      return err("مزوّد الدفع مردّش. الاسترجاع متعلّق لحد ما يتأكد — متكرّرش الطلب.", 502, {
+        code: "refund-uncertain",
+        refundId: refund.id,
+      });
+    }
+
     if (!outcome.ok) {
       // Hand the reservation back: no money moved, so the headroom
       // must not stay held against a later legitimate refund.

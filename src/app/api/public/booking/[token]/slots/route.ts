@@ -23,7 +23,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
 
     const booking = await db.booking.findUnique({
       where: { accessToken: token },
-      select: { id: true, businessId: true, serviceId: true, staffMemberId: true, resourceId: true, branchId: true },
+      select: { id: true, businessId: true, serviceId: true, staffMemberId: true, resourceId: true, branchId: true, partySize: true },
     });
     if (!booking) return err("لم يتم العثور على هذا الحجز", 404);
 
@@ -34,6 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
       staffMemberId: booking.staffMemberId,
       resourceId: booking.resourceId,
       branchId: booking.branchId,
+      partySize: booking.partySize,
       excludeBookingId: booking.id,
     });
 

@@ -6,6 +6,7 @@ import type { DashboardBooking } from "@/features/dashboard/bookings/types";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
+import { clock } from "@/lib/fmt";
 
 export type ServiceOption = {
   id:       string;
@@ -193,7 +194,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
               <Row
                 icon={<CalendarDays size={14} />}
                 label="الموعد"
-                value={`${formatDate(created.date)} — ${created.startTime}`}
+                value={`${formatDate(created.date)} — ${clock(created.startTime)}`}
                 ltr
               />
             </div>
