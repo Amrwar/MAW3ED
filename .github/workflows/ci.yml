@@ -50,12 +50,16 @@ jobs:
 
       # A green run with zero tests collected is the other way this can go
       # quiet. Require a floor well under the real count but above zero.
+      #
+      # The report goes to a named file: since Vitest 5 the JSON reporter
+      # writes to .vitest/json/output.json instead of stdout, and reading
+      # stdout counted 0 on every run.
       - name: Assert the suite is not empty
         run: |
-          COUNT=$(npx vitest run --reporter=json 2>/dev/null | node -e "
-            let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
-              try{const j=JSON.parse(s.slice(s.indexOf('{')));console.log(j.numTotalTests??0)}catch{console.log(0)}
-            })")
+          npx vitest run --reporter=json --outputFile=vitest-report.json > /dev/null 2>&1 || true
+          COUNT=$(node -e "
+            try{console.log(require('./vitest-report.json').numTotalTests??0)}catch{console.log(0)}
+          ")
           echo "tests collected: $COUNT"
           if [ "$COUNT" -lt 100 ]; then
             echo "::error::Expected at least 100 tests, collected $COUNT."
