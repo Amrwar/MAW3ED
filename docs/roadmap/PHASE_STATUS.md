@@ -46,11 +46,11 @@ these rows record what the owner reports.
 
 | Migration | Needed by | Applied to production |
 |---|---|---|
-| `add_audit_followups.sql` | PR #31 (live since 2026-10-28) | **UNCONFIRMED — owner to confirm** |
-| `phase17_booking_integrity.sql` | PR #33 (merged 2026-10-29) | **UNCONFIRMED — the merge deployed; public booking fails until this runs. Owner to confirm** |
-| `phase18_email_change.sql` | PR #34 (merged 2026-10-29) | **UNCONFIRMED — owner to confirm** |
-| `phase19_reliability.sql` | PR #35 (merged 2026-10-29) | **UNCONFIRMED — the merge deployed; the notification dispatcher needs it. Owner to confirm** |
-| `phase20_security.sql` | Phase 20 PR | **NOT YET — run before that PR deploys** |
+| `add_audit_followups.sql` | PR #31 (live since 2026-10-28) | APPLIED 2026-10-29 (owner ran `migrate-prod.sh`; verified by query) |
+| `phase17_booking_integrity.sql` | PR #33 (merged 2026-10-29) | APPLIED 2026-10-29; both overlap constraints present (verified by query) |
+| `phase18_email_change.sql` | PR #34 (merged 2026-10-29) | APPLIED 2026-10-29; `User_email_lower_key` present (verified by query) |
+| `phase19_reliability.sql` | PR #35 (merged 2026-10-29) | APPLIED 2026-10-29 (verified by query) |
+| `phase20_security.sql` | Phase 20 PR (#36) | APPLIED 2026-10-29 ahead of the merge (verified by query); `PSEUDONYM_SECRET` set in Vercel (all environments) |
 | `prisma/data-fixes/2026-10-27-listing-cleanup.sql` | data only | UNCONFIRMED |
 | All earlier files in `prisma/migrations/` | earlier PRs | assumed, not recorded |
 

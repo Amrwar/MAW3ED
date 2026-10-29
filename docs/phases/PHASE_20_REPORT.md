@@ -87,9 +87,9 @@ rollback, migration safety, monitoring gaps, incident steps); CI gates.
 `prisma/migrations/phase20_security.sql` — **run on production before
 this PR deploys** (sign-in reads the new columns on every check):
 `User.sessionsRevokedAt`, `User.historySince`, table `PhoneRelease`.
-Idempotent. Applied to the local QA database for every test below.
+Idempotent. Applied to the local QA database for every test below, and **applied to production on 2026-10-29** by the owner (with the Phase 17–19 files, all verified present by query).
 
-**Also set `PSEUDONYM_SECRET` in Vercel before this deploys** (32 random
+**`PSEUDONYM_SECRET` is set in Vercel (all three environments, 2026-10-29).** It was required before deploy (32 random
 bytes; never rotate — `docs/runbooks/SECURITY_OPERATIONS.md` § 1). Without
 it the deleted-phone hashes are keyed on `AUTH_SECRET` and would be lost
 the first time that is rotated.
