@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   computeAvailability,
+  computeStaffedAvailability,
   subtractIntervals,
   type AvailabilityInput,
   type BlockRule,
@@ -358,5 +359,90 @@ describe("the rules together", () => {
     expect(r.slots).not.toContain("13:00");
     // 14:00 is clear, and fits before 17:00.
     expect(r.slots).toContain("14:00");
+  });
+});
+
+describe("a shared room or table", () => {
+  it("is held by one booking at a time, whoever runs it", () => {
+    // Doctor A has room 1 at ten. Doctor B is free, the room is not.
+    const booked = [{ startMin: 600, endMin: 660, staffMemberId: "a", resourceId: "room-1" }];
+    const r = computeAvailability(base({ staffMemberId: "b", resourceId: "room-1", bookings: booked }));
+    expect(r.slots).not.toContain("10:00");
+    // Another room is fine.
+    const other = computeAvailability(base({ staffMemberId: "b", resourceId: "room-2", bookings: booked }));
+    expect(other.slots).toContain("10:00");
+  });
+});
+
+describe("computeStaffedAvailability — a team", () => {
+  const member = (id: string) => ({ id, workingDays: [], hours: [] });
+  // The staff fields in it are ignored: each member brings their own.
+  const team = (over: Partial<AvailabilityInput> = {}) => base(over);
+
+  it("does not offer 'anyone' a time when the only barber is booked", () => {
+    // The Phase 17 P0: one barber booked at 14:00, and "any available"
+    // offered 14:00 again, so two customers came for one chair.
+    const booked = [{ startMin: 14 * 60, endMin: 15 * 60, staffMemberId: "ahmed", resourceId: null }];
+    const r = computeStaffedAvailability(team({ bookings: booked }), [member("ahmed")], null);
+    expect(r.slots).not.toContain("14:00");
+    expect(r.slots).toContain("13:00");
+  });
+
+  it("gives 'anyone' to a member who is actually free", () => {
+    const booked = [{ startMin: 600, endMin: 660, staffMemberId: "sara", resourceId: null }];
+    const r = computeStaffedAvailability(team({ bookings: booked }), [member("sara"), member("omar")], null);
+    expect(r.slots).toContain("10:00");
+    expect(r.assignments["10:00"]).toBe("omar");
+    // Both free at nine: the one with less on that day.
+    expect(r.assignments["09:00"]).toBe("omar");
+  });
+
+  it("spreads 'anyone' across the team, the first member taking a tie", () => {
+    const r = computeStaffedAvailability(team(), [member("sara"), member("omar")], null);
+    expect(r.assignments["09:00"]).toBe("sara");
+  });
+
+  it("counts a booking nobody was given against the team", () => {
+    const unassigned = [{ startMin: 600, endMin: 660, staffMemberId: null, resourceId: null }];
+    // Two people, one already owed: one more fits.
+    expect(
+      computeStaffedAvailability(team({ bookings: unassigned }), [member("a"), member("b")], null).slots,
+    ).toContain("10:00");
+    // One person, already owed: nothing fits.
+    expect(
+      computeStaffedAvailability(team({ bookings: unassigned }), [member("a")], null).slots,
+    ).not.toContain("10:00");
+    // Naming the one person does not get round it.
+    expect(
+      computeStaffedAvailability(team({ bookings: unassigned }), [member("a")], "a").slots,
+    ).not.toContain("10:00");
+  });
+
+  it("leaves a named member's time to them when the rest can cover what is owed", () => {
+    const bookings = [
+      { startMin: 600, endMin: 660, staffMemberId: null, resourceId: null },
+      { startMin: 600, endMin: 660, staffMemberId: "b", resourceId: null },
+    ];
+    // a is free, b is busy, and one unassigned booking needs someone:
+    // that someone can only be a.
+    const r = computeStaffedAvailability(team({ bookings }), [member("a"), member("b")], "a");
+    expect(r.slots).not.toContain("10:00");
+    expect(r.slots).toContain("11:00");
+    expect(r.assignments["11:00"]).toBe("a");
+  });
+
+  it("refuses a member who does not do this service here", () => {
+    const r = computeStaffedAvailability(team(), [member("a")], "stranger");
+    expect(r.slots).toEqual([]);
+    expect(r.reason).toBe("staff-off");
+  });
+
+  it("follows each member's own hours", () => {
+    const early = { id: "early", workingDays: [], hours: [{ dayOfWeek: 2, startTime: "09:00", endTime: "12:00", isOff: false }] };
+    const late = { id: "late", workingDays: [], hours: [{ dayOfWeek: 2, startTime: "13:00", endTime: "17:00", isOff: false }] };
+    const r = computeStaffedAvailability(team(), [early, late], null);
+    expect(r.assignments["09:00"]).toBe("early");
+    expect(r.assignments["14:00"]).toBe("late");
+    expect(r.slots).not.toContain("12:00");
   });
 });

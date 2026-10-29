@@ -1,4 +1,5 @@
 import type { BookingStatus } from "@prisma/client";
+import { cairoWallClock } from "@/lib/bookings/instants";
 
 /**
  * Counting what actually happened.
@@ -57,6 +58,8 @@ export interface Tally {
 }
 
 export function tally(bookings: CountableBooking[], now: Date = new Date()): Tally {
+  // startsAt is Cairo wall-clock written as UTC; "now" has to be too.
+  const wall = cairoWallClock(now);
   const t: Tally = {
     completed: 0,
     cancelled: 0,
@@ -83,7 +86,7 @@ export function tally(bookings: CountableBooking[], now: Date = new Date()): Tal
         break;
       default:
         // Live. Upcoming only while it has not started yet.
-        if (startInstant(b) > now) t.upcoming++;
+        if (startInstant(b) > wall) t.upcoming++;
     }
   }
 
@@ -93,7 +96,9 @@ export function tally(bookings: CountableBooking[], now: Date = new Date()): Tal
 /**
  * When a booking starts.
  *
- * `startsAt` is the real instant and is what everything should use.
+ * `startsAt` is what everything should use. It is Cairo wall-clock
+ * written as if it were UTC (lib/bookings/instants), so it is compared
+ * with cairoWallClock(now), never with `now` itself.
  * Rows written before that column existed have only a date, and
  * treating those as starting at midnight is the conservative reading —
  * it makes an old booking look past rather than pretending it is still
@@ -124,6 +129,7 @@ export function customerStats(
   now: Date = new Date(),
 ): CustomerStats {
   const t = tally(bookings, now);
+  const wall = cairoWallClock(now);
 
   let firstSeen: Date | null = null;
   let lastVisit: Date | null = null;
@@ -137,7 +143,7 @@ export function customerStats(
     if (b.status === "COMPLETED" && (!lastVisit || at > lastVisit)) lastVisit = at;
     if (
       LIVE_STATUSES.includes(b.status) &&
-      at > now &&
+      at > wall &&
       (!nextVisit || at < nextVisit)
     ) {
       nextVisit = at;

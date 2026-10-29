@@ -66,11 +66,19 @@ describe("tally", () => {
     const t = tally(
       [
         bk({ status: "CONFIRMED", startsAt: new Date("2026-10-06T09:00:00Z") }),
-        bk({ status: "CONFIRMED", startsAt: new Date("2026-10-06T15:00:00Z") }),
+        bk({ status: "CONFIRMED", startsAt: new Date("2026-10-06T16:00:00Z") }),
       ],
       NOW,
     );
     expect(t.upcoming).toBe(1);
+  });
+
+  it("reads startsAt as Cairo wall-clock", () => {
+    // NOW is 12:00Z, which is 15:00 in Cairo (summer time). A 14:00
+    // appointment, stored as 14:00Z, began an hour ago. Compared with
+    // the real instant it looked two hours ahead and counted.
+    const t = tally([bk({ status: "CONFIRMED", startsAt: new Date("2026-10-06T14:00:00Z") })], NOW);
+    expect(t.upcoming).toBe(0);
   });
 
   it("counts an appointment being served right now as neither upcoming nor done", () => {

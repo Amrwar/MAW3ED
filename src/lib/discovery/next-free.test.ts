@@ -12,6 +12,7 @@ const base = (over: Partial<Schedule> = {}): Schedule => ({
   hours: [0, 1, 2, 3, 4, 5, 6].map((d) => ({ dayOfWeek: d, openTime: "10:00", closeTime: "18:00", isClosed: false })),
   blocks: [],
   bookings: new Map(),
+  team: [],
   ...over,
 });
 
@@ -61,5 +62,42 @@ describe("shortest", () => {
   it("ignores zero and negative durations", () => {
     expect(shortest([0, 45, 30, -5])).toBe(30);
     expect(shortest([])).toBeNull();
+  });
+});
+
+describe("firstFree — a business with staff", () => {
+  it("does not advertise a time its only member is booked for", () => {
+    // A card saying "next free 10:00" that the widget then refuses.
+    const s = base({
+      team: [{ id: "ahmed", workingDays: [], hours: [], serviceIds: [] }],
+      bookings: new Map([["2026-10-13", [{ startMin: 600, endMin: 630, staffMemberId: "ahmed", resourceId: null }]]]),
+    });
+    expect(firstFree(s, 30)).toEqual({ dayOffset: 0, time: "10:30" });
+  });
+});
+
+describe("firstFree — only the members who do the service", () => {
+  it("does not count a member listed for other services", () => {
+    // Stylist A does haircuts and is booked at 10:00; nail tech B does
+    // nails only. For a haircut, B being free does not make 10:00 free.
+    const s = base({
+      team: [
+        { id: "a", workingDays: [], hours: [], serviceIds: ["haircut"] },
+        { id: "b", workingDays: [], hours: [], serviceIds: ["nails"] },
+      ],
+      bookings: new Map([["2026-10-13", [{ startMin: 600, endMin: 630, staffMemberId: "a", resourceId: null }]]]),
+    });
+    expect(firstFree(s, 30, null, "haircut")).toEqual({ dayOffset: 0, time: "10:30" });
+    expect(firstFree(s, 30, null, "nails")).toEqual({ dayOffset: 0, time: "10:00" });
+  });
+
+  it("owes an unassigned booking from one member's own next free time", () => {
+    // One barber, and a booking at 10:00 entered by hand with nobody on
+    // it: it is his, whatever the row says.
+    const s = base({
+      team: [{ id: "a", workingDays: [], hours: [], serviceIds: [] }],
+      bookings: new Map([["2026-10-13", [{ startMin: 600, endMin: 630, staffMemberId: null, resourceId: null }]]]),
+    });
+    expect(firstFree(s, 30, { id: "a", workingDays: [], hours: [] }, "haircut")).toEqual({ dayOffset: 0, time: "10:30" });
   });
 });

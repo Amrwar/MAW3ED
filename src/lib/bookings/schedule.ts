@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import {
   computeAvailability,
+  computeStaffedAvailability,
   type AvailabilityInput,
   type AvailabilityResult,
   type BlockRule,
@@ -45,11 +46,29 @@ export const LIVE_STATUSES = [
   "IN_PROGRESS",
 ] as const;
 
+export interface LoadedAvailability extends AvailabilityResult {
+  serviceDuration: number;
+  /**
+   * Who takes each offered slot, when the service is done by staff.
+   * For "anyone" this is the member the booking is given to; empty when
+   * the business schedules without staff.
+   */
+  assignments: Record<string, string>;
+}
+
+const NONE = (reason: AvailabilityResult["reason"], serviceDuration: number): LoadedAvailability => ({
+  slots: [],
+  reason,
+  window: null,
+  serviceDuration,
+  assignments: {},
+});
+
 export async function loadAvailability(
   q: SlotQuery,
   now: Date = new Date(),
-): Promise<AvailabilityResult & { serviceDuration: number }> {
-  const [business, service, bookings, staff, blocks] = await Promise.all([
+): Promise<LoadedAvailability> {
+  const [business, service, bookings, team, resource, branch, blocks] = await Promise.all([
     db.business.findUnique({
       where: { id: q.businessId },
       select: {
@@ -81,14 +100,29 @@ export async function loadAvailability(
         service: { select: { duration: true } },
       },
     }),
-    q.staffMemberId
-      ? db.staffMember.findFirst({
-          where: { id: q.staffMemberId, businessId: q.businessId, isActive: true },
-          select: {
-            workingDays: true,
-            hours: { select: { dayOfWeek: true, startTime: true, endTime: true, isOff: true } },
-          },
-        })
+    // Everyone who can be booked for this service: active, and either
+    // listed for it or for nothing in particular (the widget's rule).
+    db.staffMember.findMany({
+      where: {
+        businessId: q.businessId,
+        isActive: true,
+        OR: [{ services: { none: {} } }, { services: { some: { serviceId: q.serviceId } } }],
+      },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        workingDays: true,
+        hours: { select: { dayOfWeek: true, startTime: true, endTime: true, isOff: true } },
+      },
+    }),
+    // Ids arrive from the client. Each has to be this business's, and
+    // in use, or the booking would hold another tenant's room or a
+    // resource nobody can see.
+    q.resourceId
+      ? db.resource.findFirst({ where: { id: q.resourceId, businessId: q.businessId, isActive: true }, select: { id: true } })
+      : Promise.resolve(null),
+    q.branchId
+      ? db.branch.findFirst({ where: { id: q.branchId, businessId: q.businessId, isActive: true }, select: { id: true } })
       : Promise.resolve(null),
     db.timeBlock.findMany({
       where: {
@@ -118,13 +152,34 @@ export async function loadAvailability(
     }),
   ]);
 
-  if (!business || !service) {
-    return { slots: [], reason: "no-service-duration", window: null, serviceDuration: 0 };
+  if (!business || !service) return NONE("no-service-duration", 0);
+  if ((q.resourceId && !resource) || (q.branchId && !branch)) return NONE(null, service.duration);
+  // A named member who is inactive, from another business, or does not
+  // do this service. Treating them as "nobody in particular" used to
+  // book them inside business hours regardless.
+  //
+  // Except when moving a booking they already have: the owner may since
+  // have taken the service off their list, or deactivated them, and the
+  // booking still has to be movable. They count, for this request only,
+  // with their own hours — provided they belong to this business.
+  if (q.staffMemberId && !team.some((m) => m.id === q.staffMemberId)) {
+    const keeper = q.excludeBookingId
+      ? await db.staffMember.findFirst({
+          where: { id: q.staffMemberId, businessId: q.businessId },
+          select: {
+            id: true,
+            workingDays: true,
+            hours: { select: { dayOfWeek: true, startTime: true, endTime: true, isOff: true } },
+          },
+        })
+      : null;
+    if (!keeper) return NONE("staff-off", service.duration);
+    team.push(keeper);
   }
 
   const today = cairoDateString(now);
 
-  const input: AvailabilityInput = {
+  const base: Omit<AvailabilityInput, "staffMemberId" | "staffHours" | "staffWorkingDays"> = {
     date: q.date,
     dayOfWeek: weekdayOf(q.date),
     today,
@@ -140,9 +195,6 @@ export async function loadAvailability(
     },
 
     businessHours: business.availability,
-    staffMemberId: q.staffMemberId ?? null,
-    staffHours: staff?.hours ?? [],
-    staffWorkingDays: staff?.workingDays ?? [],
     branchId: q.branchId ?? null,
     blocks: blocks.map(
       (b): BlockRule => ({
@@ -168,7 +220,19 @@ export async function loadAvailability(
     resourceId: q.resourceId ?? null,
   };
 
-  return { ...computeAvailability(input), serviceDuration: service.duration };
+  // A service done by staff is the team's to answer, whether a person
+  // was named or not. Without staff, the business is the one lane.
+  if (team.length > 0) {
+    return {
+      ...computeStaffedAvailability(base, team, q.staffMemberId ?? null),
+      serviceDuration: service.duration,
+    };
+  }
+  return {
+    ...computeAvailability({ ...base, staffMemberId: null, staffHours: [], staffWorkingDays: [] }),
+    serviceDuration: service.duration,
+    assignments: {},
+  };
 }
 
 /**

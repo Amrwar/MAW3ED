@@ -40,7 +40,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ token:
         currency: true,
         customerName: true,
         customerPhone: true,
-        customer: { select: { email: true } },
+        customerEmail: true,
       },
     });
     if (!booking) return err("لم يتم العثور على هذا الحجز", 404, { code: "not-found" });
@@ -110,7 +110,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ token:
         currency: booking.currency,
         customerName: booking.customerName,
         customerPhone: booking.customerPhone,
-        customerEmail: booking.customer?.email ?? undefined,
+        customerEmail: booking.customerEmail ?? undefined,
       });
       await attachProviderOrder(payment.id, paymobOrderId);
       await db.booking.update({ where: { id: booking.id }, data: { paymobOrderId } });

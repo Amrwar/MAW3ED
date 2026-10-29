@@ -170,7 +170,7 @@ export async function POST(req: Request) {
     const parsed = ownerBookingSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
-    const { serviceId, date, startTime, customerName, customerPhone, notes } = parsed.data;
+    const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes } = parsed.data;
 
     // No monthly limit here. The free plan's allowance decides whether
     // a customer's online booking is confirmed on the spot or waits for
@@ -211,6 +211,9 @@ export async function POST(req: Request) {
           customerId:    customer.id,
           customerName,
           customerPhone,
+          // Typed by the owner for this booking. Not read back from the
+          // Customer record, which an anonymous booking may have filled.
+          customerEmail: customerEmail || null,
           date:          dateUTC,
           startTime,
           endTime,

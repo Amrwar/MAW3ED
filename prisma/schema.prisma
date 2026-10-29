@@ -714,6 +714,10 @@ model Booking {
   /// always canonical. Any country (src/lib/phone.ts). Read-only: see
   /// prisma/migrations/international_phone.sql.
   customerPhoneE164      String?
+  /// The address typed with this booking, where its emails go. Not the
+  /// Customer record's, which an anonymous booking can fill for any
+  /// phone number (prisma/migrations/phase17_booking_integrity.sql).
+  customerEmail          String?
   date                   DateTime
   startTime              String
   endTime                String?

@@ -178,7 +178,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     // The first genuinely free appointment, by the same rule the booking
     // widget applies — not simply the next time the doors open. Shared
     // with the app's business screen (src/lib/discovery/profile.ts).
-    businessNextSlot(dbBusiness.id, dbBusiness.services.map((s) => s.duration)),
+    businessNextSlot(dbBusiness.id, dbBusiness.services),
   ]);
 
   const similarBusinesses = (

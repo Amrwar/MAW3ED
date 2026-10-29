@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { cairoDayStart } from "@/lib/bookings/instants";
+import { cairoDayEnd, cairoWallClock, cairoWallDay } from "@/lib/bookings/instants";
 import {
   ABANDONED,
   LIVE_STATUSES,
@@ -72,13 +72,14 @@ export async function getDashboardKpis(
   windowDays = 30,
   now: Date = new Date(),
 ): Promise<DashboardKpis> {
-  const dayStart = cairoDayStart(now);
-  const dayEnd = new Date(dayStart.getTime() + 86_400_000);
-  const windowStart = new Date(dayEnd.getTime() - windowDays * 86_400_000);
+  // startsAt is Cairo wall-clock written as UTC; createdAt is a real
+  // instant. Each is compared with its own kind of "now".
+  const todayRange = cairoWallDay(now);
+  const windowStart = new Date(cairoDayEnd(now).getTime() - windowDays * 86_400_000);
 
   const [todayRows, windowRows, everCount] = await Promise.all([
     db.booking.findMany({
-      where: { businessId, startsAt: { gte: dayStart, lt: dayEnd } },
+      where: { businessId, startsAt: { gte: todayRange.start, lt: todayRange.end } },
       select: COUNTABLE,
     }),
     db.booking.findMany({
@@ -94,7 +95,7 @@ export async function getDashboardKpis(
     where: {
       businessId,
       status: { in: [...LIVE_STATUSES] },
-      startsAt: { gte: now },
+      startsAt: { gte: cairoWallClock(now) },
     },
     select: COUNTABLE,
   });
@@ -142,8 +143,7 @@ export const BOOKING_LIST_SELECT = {
 } as const;
 
 export async function getTodayBookings(businessId: string, now: Date = new Date()) {
-  const dayStart = cairoDayStart(now);
-  const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+  const { start: dayStart, end: dayEnd } = cairoWallDay(now);
   return db.booking.findMany({
     where: {
       businessId,
@@ -163,7 +163,7 @@ export async function getUpcomingBookings(
   const where = {
     businessId,
     status: { in: [...LIVE_STATUSES] },
-    startsAt: { gte: now },
+    startsAt: { gte: cairoWallClock(now) },
   };
   const [rows, total] = await Promise.all([
     db.booking.findMany({

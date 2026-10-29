@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { cairoNow, openState, type DayHours, type OpenState } from "@/lib/discovery/hours";
 import type { NextSlot } from "@/lib/discovery/next-free";
-import { firstFree, loadSchedule, shortest } from "@/lib/discovery/next-free";
+import { firstFree, loadSchedule, shortestService } from "@/lib/discovery/next-free";
 import { getBusinessReviews, getRatingSummary, type PublicReview, type RatingSummary } from "@/lib/reviews";
 import { canUseFeature, getEffectivePlan } from "@/lib/plans";
 import { CUTOFF_HOURS } from "@/lib/bookings/self-service";
@@ -200,7 +200,8 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
   ]);
   const { dayOfWeek, time } = cairoNow(now);
   const durationOf = new Map(b.services.map((s) => [s.id, s.duration]));
-  const nextSlot = schedule ? firstFree(schedule, shortest(b.services.map((s) => s.duration))) : null;
+  const quickest = shortestService(b.services);
+  const nextSlot = schedule && quickest ? firstFree(schedule, quickest.duration, null, quickest.id) : null;
 
   const staff: PublicStaffMember[] = b.staffMembers.map((m) => {
     // Every link, kept as it is: an empty list means "performs every
@@ -208,10 +209,11 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
     // are no longer offered must stay non-empty — they perform nothing.
     const serviceIds = m.services.map((x) => x.serviceId);
     const week = staffWeek(hours, m.workingDays, m.hours);
-    const durations =
+    const theirs =
       m.services.length === 0
-        ? [...durationOf.values()]
-        : serviceIds.flatMap((id) => (durationOf.has(id) ? [durationOf.get(id) as number] : []));
+        ? [...durationOf.entries()]
+        : serviceIds.flatMap((id) => (durationOf.has(id) ? [[id, durationOf.get(id) as number] as const] : []));
+    const quickestOfTheirs = shortestService(theirs.map(([id, duration]) => ({ id, duration })));
     return {
       id: m.id,
       nameAr: m.nameAr,
@@ -222,9 +224,15 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
       serviceIds,
       hours: week,
       // Their own first slot, as booking with them would offer it.
-      nextSlot: schedule
-        ? firstFree(schedule, shortest(durations), { id: m.id, workingDays: m.workingDays, hours: m.hours })
-        : null,
+      nextSlot:
+        schedule && quickestOfTheirs
+          ? firstFree(
+              schedule,
+              quickestOfTheirs.duration,
+              { id: m.id, workingDays: m.workingDays, hours: m.hours },
+              quickestOfTheirs.id,
+            )
+          : null,
     };
   });
 
@@ -315,9 +323,10 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
  */
 export async function businessNextSlot(
   businessId: string,
-  serviceDurations: number[],
+  services: { id: string; duration: number }[],
   now: Date = new Date(),
 ): Promise<NextSlot | null> {
   const schedule = await loadSchedule(businessId, now);
-  return schedule ? firstFree(schedule, shortest(serviceDurations)) : null;
+  const quickest = shortestService(services);
+  return schedule && quickest ? firstFree(schedule, quickest.duration, null, quickest.id) : null;
 }

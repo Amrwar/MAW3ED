@@ -29,6 +29,17 @@ describe("buildLocalBusinessJsonLd", () => {
   });
 
   it("states a price range from the services", () => {
-    expect(buildLocalBusinessJsonLd(base).priceRange).toBeTruthy();
+    expect(buildLocalBusinessJsonLd(base).priceRange).toBe("150–300 EGP");
+  });
+
+  it("does not publish an unfilled price as 0 EGP", () => {
+    // Live on two listings: "priceRange": "0 EGP".
+    expect(buildLocalBusinessJsonLd({ ...base, services: [{ price: 0, currency: "EGP" }] })).not.toHaveProperty(
+      "priceRange",
+    );
+    expect(
+      buildLocalBusinessJsonLd({ ...base, services: [{ price: 0, currency: "EGP" }, { price: 500, currency: "EGP" }] })
+        .priceRange,
+    ).toBe("500 EGP");
   });
 });

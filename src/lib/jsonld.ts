@@ -154,10 +154,14 @@ export function buildLocalBusinessJsonLd(b: LocalBusinessInput): Record<string, 
 // ─── Helpers ──────────────────────────────────────────────
 
 function buildPriceRange(services: ServicePrice[]): string | undefined {
-  if (!services.length) return undefined;
+  // As with the offers: a zero is a price nobody filled in, not a free
+  // service. Counting it published "0 EGP" for businesses that never
+  // said what they charge, and "0–500" for the rest.
+  const priced = services.filter((s) => s.price > 0);
+  if (!priced.length) return undefined;
 
-  const prices   = services.map((s) => s.price);
-  const currency = services[0].currency;
+  const currency = priced[0].currency;
+  const prices   = priced.filter((s) => s.currency === currency).map((s) => s.price);
   const min      = Math.min(...prices);
   const max      = Math.max(...prices);
 

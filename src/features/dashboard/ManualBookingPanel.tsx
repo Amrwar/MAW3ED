@@ -34,6 +34,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
   const [startTime,     setStartTime]     = useState("");
   const [customerName,  setCustomerName]  = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [notes,         setNotes]         = useState("");
 
   const [slots,         setSlots]         = useState<Slot[]>([]);
@@ -56,6 +57,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
       setStartTime("");
       setCustomerName("");
       setCustomerPhone("");
+      setCustomerEmail("");
       setNotes("");
       setSlots([]);
       setError("");
@@ -123,6 +125,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
           startTime,
           customerName:  customerName.trim(),
           customerPhone: customerPhone.trim(),
+          customerEmail: customerEmail.trim() || undefined,
           notes:         notes.trim() || undefined,
         }),
       });
@@ -301,6 +304,27 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                     dir="ltr"
                   />
                 </div>
+              </div>
+
+              {/* Where this booking's confirmation and reminder emails
+                  go. Kept on the booking, as an online booking's is. */}
+              <div>
+                <label htmlFor="manual-booking-email" className="form-label mb-1.5 block">
+                  البريد الإلكتروني — اختياري
+                </label>
+                <input
+                  id="manual-booking-email"
+                  type="email"
+                  autoComplete="off"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="input w-full"
+                  dir="ltr"
+                />
+                <p className="mt-1 text-xs text-[var(--color-subtle)]">
+                  هيوصل للعميل عليه تأكيد الحجز والتذكير.
+                </p>
               </div>
 
               {/* Notes */}

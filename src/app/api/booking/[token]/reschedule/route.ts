@@ -52,7 +52,6 @@ export async function POST(req: Request, { params }: Params) {
           },
         },
         service:  { select: { nameAr: true, duration: true } },
-        customer: { select: { email: true } },
       },
     });
 

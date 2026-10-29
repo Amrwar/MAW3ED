@@ -14,7 +14,8 @@ Four separate claims, never merged into one:
 | Phase | Verdict | Code complete | Staging | Production | Partner | Report |
 |---|---|---|---|---|---|---|
 | Baseline | PASS (docs + CI fix) | pending PR merge | NOT RUN | n/a | n/a | `docs/phases/BASELINE_REPORT.md` |
-| 17–28 | NOT STARTED | — | — | — | — | — |
+| 17 | PARTIAL (code complete; P0 fixes not yet live) | pending PR merge | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_17_REPORT.md` |
+| 18–28 | NOT STARTED | — | — | — | — | — |
 
 ## Historical phases (merged before this programme)
 
@@ -43,6 +44,7 @@ these rows record what the owner reports.
 | Migration | Needed by | Applied to production |
 |---|---|---|
 | `add_audit_followups.sql` | PR #31 (live since 2026-10-28) | **UNCONFIRMED — owner to confirm** |
+| `phase17_booking_integrity.sql` | Phase 17 PR | **NOT YET — run before that PR deploys** |
 | `prisma/data-fixes/2026-10-27-listing-cleanup.sql` | data only | UNCONFIRMED |
 | All earlier files in `prisma/migrations/` | earlier PRs | assumed, not recorded |
 

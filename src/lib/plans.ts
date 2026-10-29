@@ -18,8 +18,15 @@
  *            held for the owner), and reminders to the customer
  *   PRO      the business tools: unlimited bookings, staff, WhatsApp,
  *            analytics, and taking money from customers
- *   PREMIUM  the group tools: branches, advanced analytics, marketing,
- *            API access, priority support, own branding
+ *   PREMIUM  the group tools: more than one branch, and no ceiling on
+ *            the team
+ *
+ * Every row here is something the code enforces. The matrix once also
+ * listed advanced analytics, marketing tools, API access, priority
+ * support and removing the Maw3ed mark for PREMIUM; nothing anywhere
+ * read them, the pricing page sold them at 499 a month, and they were
+ * removed (Phase 17). A feature joins the matrix when it ships —
+ * plans.test.ts fails for one that no code checks.
  */
 
 import { arCount } from "@/lib/fmt";
@@ -94,16 +101,6 @@ export interface Entitlements {
   deposits: boolean;
   /** The dashboard analytics page. */
   analytics: boolean;
-  /** Cohorts, retention and revenue breakdowns on top of the basics. */
-  advancedAnalytics: boolean;
-  /** Campaign and customer-marketing tools. */
-  marketing: boolean;
-  /** Programmatic access. */
-  api: boolean;
-  /** Support queue priority. */
-  prioritySupport: boolean;
-  /** Hide the Maw3ed mark from the public booking page. */
-  customBranding: boolean;
 }
 
 export const PLAN_FEATURES: Record<Plan, Entitlements> = {
@@ -115,11 +112,6 @@ export const PLAN_FEATURES: Record<Plan, Entitlements> = {
     whatsapp: false,
     deposits: false,
     analytics: false,
-    advancedAnalytics: false,
-    marketing: false,
-    api: false,
-    prioritySupport: false,
-    customBranding: false,
   },
   PRO: {
     monthlyBookings: Infinity,
@@ -129,11 +121,6 @@ export const PLAN_FEATURES: Record<Plan, Entitlements> = {
     whatsapp: true,
     deposits: true,
     analytics: true,
-    advancedAnalytics: false,
-    marketing: false,
-    api: false,
-    prioritySupport: false,
-    customBranding: false,
   },
   PREMIUM: {
     monthlyBookings: Infinity,
@@ -143,11 +130,6 @@ export const PLAN_FEATURES: Record<Plan, Entitlements> = {
     whatsapp: true,
     deposits: true,
     analytics: true,
-    advancedAnalytics: true,
-    marketing: true,
-    api: true,
-    prioritySupport: true,
-    customBranding: true,
   },
 };
 
@@ -346,11 +328,6 @@ const LABELS: Record<PlanFeature, { ar: string; en: string }> = {
   whatsapp: { ar: "إشعارات واتساب", en: "WhatsApp notifications" },
   deposits: { ar: "استلام مدفوعات وعربون", en: "Take payments and deposits" },
   analytics: { ar: "لوحة الإحصائيات", en: "Analytics dashboard" },
-  advancedAnalytics: { ar: "تحليلات متقدمة", en: "Advanced analytics" },
-  marketing: { ar: "أدوات تسويق", en: "Marketing tools" },
-  api: { ar: "وصول للـ API", en: "API access" },
-  prioritySupport: { ar: "دعم بأولوية", en: "Priority support" },
-  customBranding: { ar: "إخفاء شعار موعد", en: "Remove Maw3ed branding" },
 };
 
 /** A row's name, for the label column of a comparison. */
@@ -367,11 +344,6 @@ export const FEATURE_ORDER: PlanFeature[] = [
   "whatsapp",
   "deposits",
   "analytics",
-  "advancedAnalytics",
-  "marketing",
-  "api",
-  "prioritySupport",
-  "customBranding",
 ];
 
 function countLabel(key: PlanFeature, value: number, lang: "ar" | "en"): string {
