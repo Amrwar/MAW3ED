@@ -71,11 +71,16 @@ things close it, in order of value:
    Restore → Create snapshot). Manual on Free; a schedule (daily, keep
    7–30 days) comes with the Launch plan, which also extends the
    history window to 7 days.
-3. **An off-site copy**: a scheduled GitHub Action running `pg_dump -Fc`
-   against `DATABASE_URL_UNPOOLED` (stored as a repository secret) and
-   uploading the encrypted dump to storage the owner controls; monthly,
-   kept 6 months. Not built yet; the dump/restore commands below are
-   what it would run.
+3. **An off-site copy**: `.github/workflows/db-backup.yml` dumps the
+   database every Monday (and on demand from the Actions tab), encrypts
+   it with AES-256 under `BACKUP_PASSPHRASE`, and keeps it as a GitHub
+   artifact for 90 days — a dozen restore points on a provider other
+   than Neon. It needs two repository secrets the owner sets once
+   (GitHub → Settings → Secrets and variables → Actions):
+   `DATABASE_URL_UNPOOLED` and `BACKUP_PASSPHRASE` (32+ random
+   characters, also kept in the password manager — without it a dump
+   cannot be opened). Run it once by hand after setting them and check
+   the artifact appears.
 
 **Restore drill, 2026-10-29, on isolated local infrastructure:** the QA
 database (`postgres:17-alpine`) was dumped with `pg_dump -Fc` (213 KB,

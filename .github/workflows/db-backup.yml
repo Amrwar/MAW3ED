@@ -1,0 +1,73 @@
+name: Database backup
+
+# An off-site copy of the production database, outside Neon
+# (docs/runbooks/SECURITY_OPERATIONS.md § 3). Weekly, plus on demand.
+# The dump is encrypted before it leaves the runner and kept as a
+# workflow artifact for 90 days, so a dozen restore points exist at any
+# time on a provider other than the database's.
+#
+# Needs two repository secrets:
+#   DATABASE_URL_UNPOOLED  the direct (non-pooled) Neon connection string
+#   BACKUP_PASSPHRASE      a long random passphrase; the dump is useless
+#                          without it, so keep it in the owner's password
+#                          manager (and nowhere in this repository)
+#
+# Restore (any Postgres 17):
+#   gpg --batch --passphrase "$BACKUP_PASSPHRASE" -d maw3ed-<date>.dump.gpg > maw3ed.dump
+#   pg_restore --no-owner --no-privileges -d "$TARGET_URL" maw3ed.dump
+
+on:
+  schedule:
+    - cron: "17 3 * * 1" # Mondays 03:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check the secrets are set
+        env:
+          HAS_URL: ${{ secrets.DATABASE_URL_UNPOOLED != '' }}
+          HAS_PASS: ${{ secrets.BACKUP_PASSPHRASE != '' }}
+        run: |
+          if [ "$HAS_URL" != "true" ] || [ "$HAS_PASS" != "true" ]; then
+            echo "::error::Set DATABASE_URL_UNPOOLED and BACKUP_PASSPHRASE as repository secrets."
+            exit 1
+          fi
+
+      - name: Dump with the Postgres 17 client
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+        run: |
+          STAMP=$(date -u +%Y%m%d-%H%M)
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          docker run --rm -e PGURL="$DATABASE_URL_UNPOOLED" -v "$PWD:/out" postgres:17-alpine \
+            sh -c 'pg_dump "$PGURL" -Fc -f /out/maw3ed.dump && pg_restore --list /out/maw3ed.dump | wc -l'
+          ls -l maw3ed.dump
+
+      - name: Verify the dump reads back
+        run: |
+          docker run --rm -v "$PWD:/out" postgres:17-alpine \
+            sh -c 'pg_restore --list /out/maw3ed.dump | grep -c "TABLE DATA" '
+
+      - name: Encrypt
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          gpg --batch --yes --symmetric --cipher-algo AES256 \
+            --passphrase "$BACKUP_PASSPHRASE" \
+            -o "maw3ed-$STAMP.dump.gpg" maw3ed.dump
+          shred -u maw3ed.dump
+          sha256sum "maw3ed-$STAMP.dump.gpg"
+
+      - name: Keep the encrypted copy for 90 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: maw3ed-db-${{ env.STAMP }}
+          path: maw3ed-*.dump.gpg
+          retention-days: 90
+          if-no-files-found: error
