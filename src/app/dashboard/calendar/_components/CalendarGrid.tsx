@@ -6,6 +6,7 @@ import { datesBetween, layoutDay } from "@/lib/scheduling/calendar-layout";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { minutesToTime } from "@/lib/bookings/time";
 import { cn } from "@/lib/utils";
+import { clock } from "@/lib/fmt";
 
 const AR_DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const EN_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -189,7 +190,7 @@ function TimeGrid({
                   }}
                 >
                   <span className="num block truncate text-[0.625rem] text-[var(--color-muted)]">
-                    {entry.startTime}
+                    {clock(entry.startTime)}
                   </span>
                   <span className="block truncate text-[0.6875rem] font-bold text-[var(--color-ink)]">
                     {entry.customerName}
@@ -287,7 +288,7 @@ function MonthGrid({ from, to, entries, blocks, onSelect }: Props) {
                       )}
                     >
                       <span className="num shrink-0 text-[0.5625rem] text-[var(--color-muted)]">
-                        {e.startTime}
+                        {clock(e.startTime)}
                       </span>
                       <span className="truncate text-[0.625rem] font-bold text-[var(--color-ink)]">
                         {e.customerName}

@@ -15,7 +15,7 @@ import {
 import Alert from "@/components/ui/Alert";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { arCount, money, num } from "@/lib/fmt";
+import { arCount, money, num, clock } from "@/lib/fmt";
 import { telHref, whatsappHref } from "@/lib/contact";
 
 const APPT_UP = { one: "ميعاد واحد جاي", two: "ميعادين جايين", few: "مواعيد جاية", many: "ميعاد جاي" };
@@ -260,7 +260,7 @@ export default function CustomerProfile({
                       {h.serviceName}
                     </span>
                     <span className="num mt-0.5 text-[0.75rem] text-[var(--color-subtle)]">
-                      {date(h.at)} · {h.startTime}
+                      {date(h.at)} · {clock(h.startTime)}
                       {h.staffName ? ` · ${h.staffName}` : ""}
                     </span>
                   </span>

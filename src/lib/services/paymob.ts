@@ -336,6 +336,13 @@ export interface RefundOutcome {
   ok: boolean;
   providerRefundId?: string;
   error?: string;
+  /**
+   * The provider may have moved the money and we do not know: the
+   * request timed out, the connection dropped, or Paymob answered 5xx.
+   * A definite refusal (4xx, or success:false) is not uncertain. The
+   * caller must not treat an uncertain failure as "nothing happened".
+   */
+  uncertain?: boolean;
 }
 
 /**
@@ -372,7 +379,7 @@ export async function refundTransaction(
       // unbounded one in a log line is content nobody reviewed.
       text: text.slice(0, 300),
     });
-      return { ok: false, error: `paymob ${res.status}: ${text.slice(0, 300)}` };
+      return { ok: false, error: `paymob ${res.status}: ${text.slice(0, 300)}`, uncertain: res.status >= 500 };
     }
 
     let parsed: { id?: number | string; success?: boolean } = {};
@@ -395,7 +402,7 @@ export async function refundTransaction(
     return { ok: true, providerRefundId: parsed.id != null ? String(parsed.id) : undefined };
   } catch (e) {
     log.error("[paymob] refund threw", e);
-    return { ok: false, error: e instanceof Error ? e.message : "network error" };
+    return { ok: false, error: e instanceof Error ? e.message : "network error", uncertain: true };
   }
 }
 

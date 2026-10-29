@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
+import { releaseBookingHold } from "@/lib/bookings/state";
 
 /**
  * Payments that were started and never finished.
@@ -124,6 +125,9 @@ export async function reapAbandonedPayments(now = new Date()): Promise<ReapResul
         // money did not arrive", and overlap.ts does not count it —
         // which is what puts the slot back.
         result.bookingsReleased += released.count;
+        if (released.count === 1) {
+          await releaseBookingHold(tx, { bookingId: payment.bookingId, to: "FAILED_PAYMENT", by: "system", reason: "checkout abandoned; hold released" });
+        }
       });
     } catch (e) {
       // One stuck row must not stop the rest being cleaned up.
@@ -156,7 +160,7 @@ export async function reapAbandonedPayments(now = new Date()): Promise<ReapResul
       // commits first (and this leaves the booking) or waits for this.
       const released = await db.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${b.id}))`;
-        return tx.booking.updateMany({
+        const r = await tx.booking.updateMany({
           where: {
             id: b.id,
             status: "PENDING_PAYMENT",
@@ -164,6 +168,10 @@ export async function reapAbandonedPayments(now = new Date()): Promise<ReapResul
           },
           data: { status: "FAILED_PAYMENT" },
         });
+        if (r.count === 1) {
+          await releaseBookingHold(tx, { bookingId: b.id, to: "FAILED_PAYMENT", by: "system", reason: "hold with no payment behind it; released" });
+        }
+        return r;
       });
       result.bookingsReleased += released.count;
     } catch (e) {

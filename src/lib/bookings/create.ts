@@ -43,7 +43,9 @@ export type CreateFailure =
   | { kind: "slot-taken" }
   | { kind: "limit-reached" }
   /** The offer ran out between the quote and the booking. */
-  | { kind: "discount-gone" };
+  | { kind: "discount-gone" }
+  /** More people than the table — or any table — seats. */
+  | { kind: "party-too-large" };
 
 export interface CreateBookingInput {
   businessId: string;
@@ -165,16 +167,21 @@ export async function createBooking(
         staffMemberId: input.staffMemberId ?? null,
         resourceId: input.resourceId ?? null,
         branchId: input.branchId ?? null,
+        partySize: input.partySize ?? null,
       },
       now,
     );
     if (availability.serviceDuration <= 0) return { kind: "service-not-found" };
+    if (availability.reason === "party-too-large") return { kind: "party-too-large" };
     if (!availability.slots.includes(input.startTime)) {
       return { kind: "slot-unavailable", reason: availability.reason };
     }
     const endTime = minutesToTime(timeToMinutes(input.startTime) + availability.serviceDuration);
     return {
       staffMemberId: input.staffMemberId ?? availability.assignments[input.startTime] ?? null,
+      // "Any table" is given the one the engine found free and fitting,
+      // the same way "anyone" is given a free member of staff.
+      resourceId: input.resourceId ?? availability.resourceAssignments[input.startTime] ?? null,
       endTime,
       ...bookingInstants(input.date, input.startTime, endTime, availability.serviceDuration),
     };
@@ -185,7 +192,7 @@ export async function createBooking(
 
   // ── Insert ───────────────────────────────────────────────
   for (let attempt = 0; attempt < INSERT_ATTEMPTS; attempt++) {
-    const { staffMemberId, endTime, startsAt, endsAt } = plan;
+    const { staffMemberId, resourceId, endTime, startsAt, endsAt } = plan;
     // Per attempt: a retried transaction counts the month afresh.
     let status = input.status;
     try {
@@ -227,7 +234,7 @@ export async function createBooking(
               source: input.source ?? null,
               discountCents: input.discount?.amountCents ?? 0,
               staffMemberId,
-              resourceId: input.resourceId ?? null,
+              resourceId,
               // Booking.tableId is deliberately not set. It has a foreign
               // key to Table, a resource id is not a table id, and so
               // mirroring one into the other fails the constraint the
@@ -271,6 +278,15 @@ export async function createBooking(
           // Serializable, because the limit count and the insert have to
           // see a consistent view of the month.
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          // A burst of bookings at one business queues for the connection
+          // pool. Each insert holds a connection for milliseconds, but
+          // Prisma's default gives a transaction two seconds to *start*,
+          // and under fifty simultaneous requests the ones at the back of
+          // the queue were failing with "unable to start a transaction"
+          // — a 500 for a customer who merely had to wait a moment. They
+          // wait now; the overlap constraint still decides who wins.
+          maxWait: 10_000,
+          timeout: 20_000,
         },
       );
 
@@ -278,6 +294,20 @@ export async function createBooking(
     } catch (e) {
       if (e instanceof LimitReached) return { ok: false, failure: { kind: "limit-reached" } };
       if (e instanceof DiscountGone) return { ok: false, failure: { kind: "discount-gone" } };
+
+      // The transaction never began: the pool had no connection to give
+      // within Prisma's wait. Nothing was written, so trying again after
+      // a short, jittered pause is safe — and under a burst at one
+      // business that is exactly what the requests at the back of the
+      // queue need. Only when that fails too does the caller see it
+      // (the public route answers 503 with Retry-After).
+      if (isTransactionStartTimeout(e)) {
+        if (attempt < INSERT_ATTEMPTS - 1) {
+          await new Promise((r) => setTimeout(r, 100 + Math.random() * 300));
+          continue;
+        }
+        throw e;
+      }
 
       const code = pgCode(e);
       const conflicted =
@@ -302,10 +332,11 @@ export async function createBooking(
       }
 
       // Two transactions at one business read together, or the member
-      // this booking was given went to somebody else a moment earlier.
-      // Ask again: another member may still be free. Only a time nobody
-      // can take any more is "taken".
-      const autoAssigned = !input.staffMemberId && staffMemberId !== null;
+      // (or table) this booking was given went to somebody else a moment
+      // earlier. Ask again: another may still be free. Only a time
+      // nobody can take any more is "taken".
+      const autoAssigned =
+        (!input.staffMemberId && staffMemberId !== null) || (!input.resourceId && resourceId !== null);
       if (code === PG_SERIALIZATION_FAILURE || (code === PG_EXCLUSION_VIOLATION && autoAssigned)) {
         const again = await derive();
         if ("kind" in again) {
@@ -356,9 +387,10 @@ export function countedThisMonth(businessId: string, now: Date = new Date()) {
   };
 }
 
-/** What one attempt inserts: the time, and who it was given to. */
+/** What one attempt inserts: the time, who it was given to, and what it holds. */
 interface Plan {
   staffMemberId: string | null;
+  resourceId: string | null;
   endTime: string;
   startsAt: Date;
   endsAt: Date;
@@ -370,6 +402,15 @@ class LimitReached extends Error {}
 
 /** The offer ran out between quoting the price and taking the booking. */
 class DiscountGone extends Error {}
+
+/** Prisma P2028: the interactive transaction could not be started in time. */
+export function isTransactionStartTimeout(e: unknown): boolean {
+  return (
+    e instanceof Prisma.PrismaClientKnownRequestError &&
+    e.code === "P2028" &&
+    /start a transaction/i.test(e.message)
+  );
+}
 
 function pgCode(e: unknown): string | null {
   if (e instanceof Prisma.PrismaClientKnownRequestError) {

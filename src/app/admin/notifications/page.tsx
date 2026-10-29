@@ -15,7 +15,11 @@ export default async function AdminNotificationsPage() {
     db.notificationDelivery.groupBy({ by: ["channel"], _count: { _all: true } }),
   ]);
 
-  const failed = byStatus.find((s) => s.status === "FAILED")?._count._all ?? 0;
+  const count = (status: string) => byStatus.find((s) => s.status === status)?._count._all ?? 0;
+  // FAILED rows are waiting for a retry (lib/notifications/outbox.ts);
+  // DEAD ones were given up on and need a person.
+  const retrying = count("FAILED") + count("PENDING");
+  const dead = count("DEAD");
 
   return (
     <div>
@@ -27,18 +31,22 @@ export default async function AdminNotificationsPage() {
       <Tiles
         items={[
           ...byChannel.map((c) => ({ label: c.channel, value: String(c._count._all) })),
-          { label: "فشل", value: String(failed) },
+          { label: "بيتعاد إرساله", value: String(retrying) },
+          { label: "اتوقف (محتاج تدخل)", value: String(dead) },
         ]}
       />
 
       <AdminTable
-        head={["النوع", "القناة", "الحالة", "المستقبل", "السبب", "الوقت"]}
+        head={["النوع", "القناة", "الحالة", "المحاولات", "المستقبل", "السبب", "الوقت"]}
         rows={recent.map((d) => [
           <code key="k" className="text-[0.625rem]" dir="ltr">{d.kind}</code>,
           <Pill key="c">{d.channel}</Pill>,
-          <Pill key="s" tone={d.status === "SENT" ? "ok" : d.status === "FAILED" ? "danger" : "muted"}>
+          <Pill key="s" tone={d.status === "SENT" ? "ok" : d.status === "DEAD" || d.status === "FAILED" ? "danger" : "muted"}>
             {d.status}
           </Pill>,
+          <span key="a" className="num text-[0.75rem] text-[var(--color-subtle)]" dir="ltr">
+            {d.attempts}{d.nextAttemptAt ? ` → ${when(d.nextAttemptAt)}` : ""}
+          </span>,
           <span key="r" className="text-[0.6875rem] text-[var(--color-subtle)]" dir="ltr">
             {d.recipient.length > 28 ? d.recipient.slice(0, 28) + "…" : d.recipient}
           </span>,

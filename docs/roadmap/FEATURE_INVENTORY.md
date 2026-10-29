@@ -57,7 +57,7 @@ verification is tracked separately in `PHASE_STATUS.md`.
 | Reports & analytics (bookings, revenue, customers, performance) | VERIFIED | `/dashboard/reports/*`, `src/lib/dashboard/reports.ts` |
 | Referral / attribution links, QR code for the booking page | VERIFIED | `src/lib/attribution`, `/api/business/qr` |
 | Subscriptions: FREE / PRO / PREMIUM, monthly & annual, soft cap, auto-confirm | INCOMPLETE | PR #31. Premium was sold with five unbuilt features (P17-02, fixed: Premium = multiple branches + unlimited team; a test now fails for any plan row no code checks). **Paid upgrade BLOCKED** with Paymob; no automatic renewal by design |
-| Notifications (in-app, email, WhatsApp, push) | DEFECTIVE | Customer emails went to an address any anonymous booking could set (P17-03, fixed). Reminders fired on the wrong clock (P17-06, fixed). Sends are fire-and-forget and never re-driven (P17-11, open). Live delivery not verified: `RESEND_API_KEY` and the WhatsApp variables are set in production, but no send was observed; push not verified on a device; SMS has no provider |
+| Notifications (in-app, email, WhatsApp, push) | WORKING (locally verified) | Customer emails went to an address any anonymous booking could set (P17-03, fixed). Reminders fired on the wrong clock (P17-06, fixed). Sends are now an outbox with retries and a dead letter, re-driven every 10 minutes (P17-11, fixed in Phase 19; `docs/runbooks/PAYMENT_OPERATIONS.md` § 5). Live delivery not verified: `RESEND_API_KEY` and the WhatsApp variables are set in production, but no send was observed; push not verified on a device; SMS has no provider |
 
 ## Platform administration
 
@@ -97,7 +97,7 @@ Open items with the most weight:
 
 | ID | Defect | Severity |
 |---|---|---|
-| P17-11 | Notifications fire-and-forget, claimed SENT before sending, never re-driven | P1 |
+| P17-11 | Notifications fire-and-forget, claimed SENT before sending, never re-driven | P1 — FIXED in Phase 19 |
 | P17-12 | No Sentry DSN in production: errors are not reported | P1 (owner) |
 | P17-13 | Terms say nothing about deposits, refunds, cancellation or subscriptions | P1 (owner) |
 | P17-14 | Deleted accounts' history reachable through a recycled number | P1 |

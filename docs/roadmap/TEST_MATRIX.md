@@ -10,13 +10,18 @@ anything not run says NOT RUN or BLOCKED.
 |---|---|---|---|---|---|
 | Web typecheck | static | `tsconfig.json` (strict) | `npm run typecheck` | yes | PASS — 2026-10-28, `77c8649` |
 | Web lint | static | `eslint.config.mjs` | `npm run lint` | yes | PASS — 0 errors, 6 warnings — 2026-10-28 |
-| Web unit + route tests | Vitest 5.0.5 | `src/**/*.test.ts(x)` (85 files) | `npm run test:run` | yes | PASS — 978 passed, 39 skipped (1017) — 2026-10-28, Phase 18 branch (Phase 17: 960; baseline: 934) |
+| Web unit + route tests | Vitest 5.0.5 | `src/**/*.test.ts(x)` | `npm run test:run` | yes | PASS — 1024 passed, 69 skipped (1093; 94 files) — 2026-10-29 (Phase 18: 978; Phase 17: 960; baseline: 934) |
 | Booking engine on Postgres (P17-01/03/05, R2, R5) | DB integration | `src/lib/bookings/create.db.test.ts` | `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/bookings/create.db.test.ts` | no (needs Postgres) | PASS — 5/5, five consecutive runs — 2026-10-28; 4/4 of the original tests FAIL on the pre-Phase-17 code |
 | Phase 17 end to end | Playwright + HTTP against a production build and the QA DB | `scripts/qa-phase17.mjs` | `node scripts/qa-phase17.mjs` (server on :3101) | no | PASS — 13/13 — 2026-10-28 |
 | Booking journeys (ar/en, staff / restaurant / plain, keyboard, validation, Back, retry, cancel, URL compatibility) | Playwright through the real widget | `scripts/qa-booking-e2e.mjs` | `node scripts/qa-booking-e2e.mjs` (server on :3101) | no | PASS — 19/19 — 2026-10-28 |
 | Page sweep: screenshots, axe WCAG 2.1 AA, overflow, console, focus rings, pixel comparison | Playwright + axe-core, 37 routes × ar/en × 375/768/1024/1440 | `scripts/qa-phase18.mjs` | `node scripts/qa-phase18.mjs --shots DIR [--compare BASELINE]` | no | PASS — 320 loads, 0 overflow, 0 serious/critical axe, 0 missing focus rings — 2026-10-28 |
 | Phone normalisation, SQL vs TypeScript | DB invariant | `src/lib/phone-sql.test.ts` | `PHONE_SQL_DATABASE_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/phone-sql.test.ts` | no (needs Postgres) | PASS — 34/34 against local QA Postgres — 2026-10-28 |
 | Web build | build | — | `npm run build` | yes (did not run on #28–#31, see CI note) | PASS locally on the Phase 17 branch — 2026-10-28 |
+| Booking reliability on Postgres (Phase 19: 50-way contention, idempotency, capacity, state races, discount release, absence, holiday, reschedule, tenant scope) | DB integration | `src/lib/bookings/reliability.db.test.ts` | `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/bookings/reliability.db.test.ts` | no (needs Postgres) | PASS — 13/13 — 2026-10-29 |
+| Paymob webhook on Postgres (Phase 19: signed callbacks, replay, 5-way duplicate, out of order, pending→final, decline→revive, cancel mid-payment, mismatch, refund contention + attach) | DB integration | `src/app/api/webhooks/paymob/route.db.test.ts` | same env var, that file | no | PASS — 9/9 — 2026-10-29 |
+| Notification outbox on Postgres (Phase 19: claim, outage→retry once, permanent→DEAD, fifth failure→DEAD, stale PENDING pickup, hung claim closed, undeliverable row closed, reminder dedup + stale) | DB integration | `src/lib/notifications/outbox.db.test.ts` | same env var, that file | no | PASS — 8/8 — 2026-10-29 |
+| Time zones and the clock change (Phase 19) | unit | `src/lib/bookings/instants.dst.test.ts`, `availability.overnight.test.ts` | `npm run test:run` | yes | PASS — 2026-10-29 |
+| Phase 19 end to end: deposit → fake Paymob → webhook → confirmed; replay; decline; cancel mid-payment; 50 for one table; "any table"; one idempotency key × 10; party too large; overnight hours; re-drive cron; claims settled | HTTP against a production build + QA DB | `scripts/qa-phase19.mjs` | see file header (server on :3101 with `PAYMOB_FAKE=1`) | no | PASS — 21/21 on the final build, twice in a row (2026-10-29 02:40Z). Two earlier runs on earlier builds failed E1/G1 and found P19-13 (customer upsert race → 500) and P19-14 (pool-start timeout → 500), both fixed |
 | Prettier | format | — | `npm run format:check` | non-blocking | NOT RUN at baseline (known debt) |
 | Mobile typecheck | static | `mobile/tsconfig.json` | `cd mobile && npx tsc --noEmit` | no | PASS — 2026-10-28 |
 | Mobile lint | static | `mobile/eslint.config.js` | `cd mobile && npx eslint .` | no | PASS — 2026-10-28 |
@@ -40,17 +45,17 @@ manual QA record), L = live/partner verification.
 | Booking creation, allowance, soft cap | ✔ | ✔ | ✔ (local, PR #31) | — | |
 | Plan matrix vs. enforcement | ✔ (source scan, Phase 17) | — | ✔ (pricing pages) | — | |
 | Booking email address (P17-03) | — | ✔ | ✔ | — | Live delivery not verified |
-| Status transitions | ✔ | — | ✔ | — | |
+| Status transitions | ✔ (one table) | ✔ (confirm vs. cancel race, Phase 19) | ✔ | — | |
 | Self-service links | ✔ | — | ✔ | — | |
-| Restaurant tables | partial | — | — | — | No table-assignment tests |
+| Restaurant tables | ✔ | ✔ (capacity, smallest fitting, 50-way, Phase 19) | ✔ (`qa-phase19.mjs`) | — | |
 | Multi-branch | partial | — | — | — | Branch-scoped blocks only |
 | Search / synonyms | ✔ | — | ✔ | — | |
-| Payments ledger, webhook ordering, reaping | ✔ | — | ✔ (fake provider) | **✘** | No successful real payment; refunds never called live |
+| Payments ledger, webhook ordering, reaping | ✔ | ✔ (signed callbacks on Postgres, Phase 19) | ✔ (fake provider, Phase 19) | **✘** | No successful real payment; refunds never called live |
 | Subscriptions, annual billing | ✔ | — | ✔ (local) | **✘** | Same Paymob gap |
-| Notifications pipeline | ✔ | — | partial | **✘** | Email, WhatsApp, push not verified live |
+| Notifications pipeline (outbox, retries, dedup) | ✔ | ✔ (Phase 19) | ✔ (claims settled, re-drive cron) | **✘** | Email, WhatsApp, push not verified live |
 | Auth (web, mobile tokens, OTP) | ✔ | — | ✔ | partial | WhatsApp OTP delivery depends on Meta |
 | Authorization: admin RBAC, business access, bearer coverage | ✔ | — | ✔ (`qa-security.mjs`, manual) | — | Not in CI |
-| Tenant isolation | ✔ | — | ✔ (manual) | — | Not in CI |
+| Tenant isolation | ✔ | ✔ (bookingScope on Postgres, Phase 19) | ✔ (manual) | — | DB tests not in CI |
 | Phone normalisation | ✔ | ✔ | — | — | |
 | i18n / RTL / `/en` routing | ✔ | — | ✔ | — | |
 | Accessibility | — | — | ✔ (axe on every key page, keyboard booking) | — | No real screen-reader session yet |

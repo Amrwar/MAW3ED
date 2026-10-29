@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { requireAdminPage } from "@/lib/admin/guard";
 import { AdminHeading, AdminTable, Pill } from "../_components/AdminBits";
-import { money } from "@/lib/fmt";
+import { money, clock } from "@/lib/fmt";
 import { adminMetadata } from "@/lib/admin/meta";
 import LinkPager from "@/components/ui/LinkPager";
 import { ADMIN_PAGER_LABELS, readPage } from "@/lib/admin/paging";
@@ -56,7 +56,7 @@ export default async function AdminBookingsPage({
           <span key="c" className="text-[0.78125rem]">{b.customerName}</span>,
           <span key="s" className="text-[0.78125rem]">{b.service.nameAr}</span>,
           <span key="d" className="num whitespace-nowrap text-[0.75rem]">
-            {b.date.toISOString().slice(0, 10)} {b.startTime}
+            {b.date.toISOString().slice(0, 10)} {clock(b.startTime)}
           </span>,
           <span key="m" className="num whitespace-nowrap">{money(Number(b.totalPrice), "ar", b.currency)}</span>,
           <Pill key="p" tone={TONE[b.status] ?? "muted"}>{b.status}</Pill>,

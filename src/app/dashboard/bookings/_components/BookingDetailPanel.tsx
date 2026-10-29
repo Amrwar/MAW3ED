@@ -15,6 +15,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import Modal from "@/components/ui/Modal";
 import Alert from "@/components/ui/Alert";
 import { providerLabel } from "@/lib/scheduling/resource-labels";
+import { clockRange } from "@/lib/fmt";
 
 const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
   PENDING:         { bg: "var(--color-warn-soft)", color: "var(--color-warn)" },
@@ -174,7 +175,7 @@ export default function BookingDetailPanel({
             <InfoRow label={bd.date}     value={formatDateAr(booking.date)} />
             <InfoRow
               label={bd.time}
-              value={booking.endTime ? `${booking.startTime} – ${booking.endTime}` : booking.startTime}
+              value={clockRange(booking.startTime, booking.endTime)}
               ltr
             />
             {/* The same neutral label the booking widget uses, whatever the business does. */}

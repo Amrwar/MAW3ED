@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { BUSINESS_TRANSITIONS } from "@/lib/bookings/transitions";
 
 /**
  * Keeps the buttons the app offers in step with the moves the API
@@ -38,12 +39,13 @@ function schemaStatuses(): Set<string> {
   return new Set([...match[1].matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]));
 }
 
-/** Every status VALID_TRANSITIONS can actually move a booking into. */
+/**
+ * Every status the business may actually move a booking into. The one
+ * table (lib/bookings/transitions.ts) is what PATCH /api/business/
+ * bookings/[id] checks, so it is read directly.
+ */
 function reachableStatuses(): Set<string> {
-  const source = read("src/app/api/business/bookings/[id]/route.ts");
-  const match = source.match(/VALID_TRANSITIONS[\s\S]*?=\s*\{([\s\S]*?)\n\};/);
-  if (!match) throw new Error("VALID_TRANSITIONS not found");
-  return new Set([...match[1].matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]));
+  return new Set(Object.values(BUSINESS_TRANSITIONS).flat());
 }
 
 /** The statuses the mobile app can draw as buttons. */

@@ -8,7 +8,7 @@ import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { generateReference } from "@/lib/bookings/reference";
 import { log } from "@/lib/logger";
-import { notify } from "@/lib/notifications";
+import { notifyLater } from "@/lib/notifications";
 import { isoDate, pageParam, parseQuery } from "@/lib/query-params";
 
 /** Query of GET: a bad page, status or date is a 400, not a 500. */
@@ -244,7 +244,7 @@ export async function POST(req: Request) {
     // who had just created it — and tell the customer nothing at all.
     // The customer gets their confirmation now, and the owner's alert
     // is still sent, mutable from their notification settings.
-    void notify({ type: "booking.created", bookingId: booking.id, by: "business", actorUserId: session.user.id });
+    notifyLater({ type: "booking.created", bookingId: booking.id, by: "business", actorUserId: session.user.id });
 
     return ok(
       {

@@ -51,10 +51,17 @@ export async function GET(req: Request) {
 
   for (const biz of overdueBusinesses) {
     try {
-      await db.business.update({
-        where: { id: biz.id },
+      // Conditional on what was read: a renewal paid between the query
+      // above and here moved currentPeriodEnd forward, and that business
+      // must not be downgraded the moment after it paid.
+      const { count } = await db.business.updateMany({
+        where: { id: biz.id, subscriptionStatus: "ACTIVE", currentPeriodEnd: { lt: now } },
         data:  { subscriptionStatus: "INACTIVE" },
       });
+      if (count === 0) {
+        log.info(`[subscriptions cron] – not expired after all (renewed meanwhile): ${biz.id}`);
+        continue;
+      }
 
       // The dispatcher still sends the same hand-written expiry email —
       // it also files the in-app copy, and records the send so a cron

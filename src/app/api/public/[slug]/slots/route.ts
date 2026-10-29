@@ -35,6 +35,11 @@ export async function GET(req: Request, { params }: Params) {
     });
     if (!business) return err("لم يتم العثور على هذا العمل", 404);
 
+    // How many are coming, so a table is only offered when it seats them
+    // — and, with no table named, so one that fits is chosen.
+    const partyRaw = searchParams.get("partySize");
+    const partySize = partyRaw && /^\d{1,3}$/.test(partyRaw) ? Number(partyRaw) : null;
+
     const { slots, reason } = await loadAvailability({
       businessId: business.id,
       serviceId,
@@ -42,6 +47,7 @@ export async function GET(req: Request, { params }: Params) {
       staffMemberId: searchParams.get("staffMemberId"),
       resourceId: searchParams.get("resourceId"),
       branchId: searchParams.get("branchId"),
+      partySize,
     });
 
     // `reason` says why a day is empty — closed, a holiday, past the

@@ -13,10 +13,11 @@ Four separate claims, never merged into one:
 
 | Phase | Verdict | Code complete | Staging | Production | Partner | Report |
 |---|---|---|---|---|---|---|
-| Baseline | PASS (docs + CI fix) | pending PR merge | NOT RUN | n/a | n/a | `docs/phases/BASELINE_REPORT.md` |
-| 17 | PARTIAL (code complete; P0 fixes not yet live) | pending PR merge | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_17_REPORT.md` |
-| 18 | PASS (code complete, locally verified) | pending PR merge | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_18_REPORT.md` |
-| 19–28 | NOT STARTED | — | — | — | — | — |
+| Baseline | PASS (docs + CI fix) | merged 2026-10-29 (#32) | NOT RUN | n/a | n/a | `docs/phases/BASELINE_REPORT.md` |
+| 17 | PARTIAL (code complete; P0 fixes live only once the migration is confirmed) | merged 2026-10-29 (#33) | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_17_REPORT.md` |
+| 18 | PASS (code complete, locally verified) | merged 2026-10-29 (#34) | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_18_REPORT.md` |
+| 19 | PASS (code complete, locally verified; production not verified) | pending PR merge | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_19_REPORT.md` |
+| 20–28 | NOT STARTED | — | — | — | — | — |
 
 ## Historical phases (merged before this programme)
 
@@ -45,8 +46,9 @@ these rows record what the owner reports.
 | Migration | Needed by | Applied to production |
 |---|---|---|
 | `add_audit_followups.sql` | PR #31 (live since 2026-10-28) | **UNCONFIRMED — owner to confirm** |
-| `phase17_booking_integrity.sql` | Phase 17 PR (#33) | **NOT YET — run before that PR deploys** |
-| `phase18_email_change.sql` | Phase 18 PR | **NOT YET — run before that PR deploys** |
+| `phase17_booking_integrity.sql` | PR #33 (merged 2026-10-29) | **UNCONFIRMED — the merge deployed; public booking fails until this runs. Owner to confirm** |
+| `phase18_email_change.sql` | PR #34 (merged 2026-10-29) | **UNCONFIRMED — owner to confirm** |
+| `phase19_reliability.sql` | Phase 19 PR | **NOT YET — run before that PR deploys** |
 | `prisma/data-fixes/2026-10-27-listing-cleanup.sql` | data only | UNCONFIRMED |
 | All earlier files in `prisma/migrations/` | earlier PRs | assumed, not recorded |
 
@@ -55,4 +57,5 @@ these rows record what the owner reports.
 | Commit | CI | Note |
 |---|---|---|
 | `778faef` (#27) | success | |
+| `f651e1c` (#32), `77dd334` (#33), `29d7ba3` (#34) | success | 2026-10-29 |
 | `76434ba` (#28) → `77c8649` (#31) | failure | Unit tests passed (934); the "suite not empty" check read 0 because Vitest 5 writes its JSON report to a file. The CI Build step was skipped. Fixed by the baseline PR |

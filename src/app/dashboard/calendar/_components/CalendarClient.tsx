@@ -13,7 +13,7 @@ import type {
 } from "@/lib/scheduling/calendar";
 import { addDays } from "@/lib/bookings/instants";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { num } from "@/lib/fmt";
+import { num, clockRange } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
 import CalendarGrid from "./CalendarGrid";
 
@@ -334,7 +334,7 @@ export default function CalendarClient(props: Props) {
         {detail && (
           <dl className="m-0 space-y-3">
             <Field label={c.service} value={detail.serviceName} />
-            <Field label={c.time} value={`${detail.startTime} – ${detail.endTime}`} ltr />
+            <Field label={c.time} value={clockRange(detail.startTime, detail.endTime)} ltr />
             <Field
               label={c.duration}
               value={`${num(detail.durationMinutes, lang)} ${c.minutes}`}

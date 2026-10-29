@@ -13,7 +13,7 @@ import LeaveReview from "./_components/LeaveReview";
 import { canReviewBooking } from "@/lib/reviews";
 import { CUTOFF_HOURS, customerMayCancel, customerMayChange } from "@/lib/bookings/self-service";
 import { bookingMoney, toCents } from "@/lib/payments/money";
-import { arCount, duration, money } from "@/lib/fmt";
+import { arCount, duration, money, clockRange } from "@/lib/fmt";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -137,7 +137,7 @@ export default async function BookingPage({ params }: Params) {
             <Row
               icon={<Clock size={15} />}
               label="الوقت"
-              value={booking.endTime ? `${booking.startTime} – ${booking.endTime}` : booking.startTime}
+              value={clockRange(booking.startTime, booking.endTime)}
               ltr
             />
             <Row

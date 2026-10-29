@@ -15,7 +15,7 @@
  * here first are untouched and still used; this gives them one place to
  * be called from and a record of what went out.
  */
-export { notify, type DispatchOutcome } from "./dispatch";
+export { notify, notifyLater, type DispatchOutcome } from "./dispatch";
 export {
   EVENT_AUDIENCE,
   EVENT_KIND,

@@ -1,3 +1,6 @@
+import { addDays } from "./instants";
+import { wrapClock } from "./time";
+
 /**
  * The appointment as a calendar event.
  *
@@ -52,9 +55,15 @@ function fold(line: string): string {
   return out.join("\r\n");
 }
 
-/** "20260310T140000" — local time, paired with a VTIMEZONE-free TZID. */
+/**
+ * "20260310T140000" — local time, paired with a VTIMEZONE-free TZID.
+ * A time past midnight ("25:00", a late-night table stored under the
+ * evening it belongs to) lands on the next calendar day.
+ */
 function localStamp(date: string, time: string): string {
-  return `${date.replace(/-/g, "")}T${time.replace(":", "")}00`;
+  const { time: clock, nextDay } = wrapClock(time);
+  const day = nextDay ? addDays(date, 1) : date;
+  return `${day.replace(/-/g, "")}T${clock.replace(":", "")}00`;
 }
 
 function utcStamp(now: Date): string {

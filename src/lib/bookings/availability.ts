@@ -114,7 +114,22 @@ export type UnavailableReason =
   | "staff-off"
   | "holiday"
   | "vacation"
-  | "no-service-duration";
+  | "no-service-duration"
+  /** The party is bigger than the table asked for, or than any table. */
+  | "party-too-large";
+
+/**
+ * A span given as two clock times, allowing for one that crosses
+ * midnight: "20:00"–"02:00" is 20:00 to 26:00 on the day it starts.
+ * The grid runs on minutes from the day's midnight, past 24:00 when the
+ * business does (lib/bookings/time.ts, minutesToTime).
+ */
+export function spanMinutes(startTime: string, endTime: string): Interval {
+  const start = timeToMinutes(startTime);
+  let end = timeToMinutes(endTime);
+  if (end <= start) end += 24 * 60;
+  return { start, end };
+}
 
 export interface AvailabilityResult {
   slots: string[];
@@ -138,8 +153,9 @@ function datedBlockCovers(block: BlockRule, date: string): boolean {
  * it does not apply. An all-day block covers the whole clock.
  */
 function blockInterval(block: BlockRule): Interval {
-  if (!block.startTime || !block.endTime) return { start: 0, end: 24 * 60 };
-  return { start: timeToMinutes(block.startTime), end: timeToMinutes(block.endTime) };
+  // An all-day block covers the whole business day, however late it runs.
+  if (!block.startTime || !block.endTime) return { start: 0, end: 48 * 60 };
+  return spanMinutes(block.startTime, block.endTime);
 }
 
 /** Blocks that apply to this date, this staff member and this branch. */
@@ -195,13 +211,11 @@ export function dayWindow(
   const businessRule = businessHours.find((h) => h.dayOfWeek === dayOfWeek);
   if (!businessRule || businessRule.isClosed) return { reason: "business-closed" };
 
-  let window: Interval = {
-    start: timeToMinutes(businessRule.openTime),
-    end: timeToMinutes(businessRule.closeTime),
-  };
-  // A business trading past midnight closes the next day; the grid works
-  // within one day, so the window stops at the end of this one.
-  if (window.end <= window.start) window = { start: window.start, end: 24 * 60 };
+  // A business trading past midnight ("20:00"–"02:00") closes on the
+  // next calendar day. The grid keeps counting past 24:00 on the day it
+  // opened, so the 01:00 table is Thursday night's, listed under
+  // Thursday, and never collides with Friday morning's arithmetic.
+  let window: Interval = spanMinutes(businessRule.openTime, businessRule.closeTime);
 
   // ── 2. Staff hours, narrowing the window further ─────────
   if (staff) {
@@ -213,10 +227,12 @@ export function dayWindow(
     if (staffRule) {
       if (staffRule.isOff) return { reason: "staff-off" };
       // The intersection: a member cannot be seen before the doors open
-      // or after they close, whatever their own hours say.
+      // or after they close, whatever their own hours say. A shift that
+      // crosses midnight is read the same way as the opening hours.
+      const own = spanMinutes(staffRule.startTime, staffRule.endTime);
       window = {
-        start: Math.max(window.start, timeToMinutes(staffRule.startTime)),
-        end: Math.min(window.end, timeToMinutes(staffRule.endTime)),
+        start: Math.max(window.start, own.start),
+        end: Math.min(window.end, own.end),
       };
       if (window.end <= window.start) return { reason: "staff-off" };
     }
@@ -236,8 +252,29 @@ export function computeAvailability(input: AvailabilityInput): AvailabilityResul
 
   if (input.serviceDuration <= 0) return empty("no-service-duration");
 
+  // ── 1–2. Business hours, narrowed by the person's own ────
+  //
+  // Read before the calendar gates because of one case below: a day
+  // whose hours run past midnight is still open after its own date has
+  // ended.
+  const day = dayWindow(
+    input.businessHours,
+    input.dayOfWeek,
+    input.staffMemberId ? { workingDays: input.staffWorkingDays, hours: input.staffHours } : null,
+  );
+
   // ── 10–12. Policy gates on the day as a whole ────────────
-  if (input.daysFromToday < 0) return empty("past");
+  //
+  // "Yesterday" is not past while its night is still running: at 00:20
+  // on Friday a lounge open Thursday 20:00–02:00 still has its 01:00
+  // table, stored under Thursday as "25:00". Minutes are then counted
+  // from Thursday's midnight, so "now" is 24:20.
+  const nightStillOpen =
+    input.daysFromToday === -1 &&
+    !("reason" in day) &&
+    day.window.end > 24 * 60 &&
+    input.nowMinutes + 24 * 60 < day.window.end;
+  if (input.daysFromToday < 0 && !nightStillOpen) return empty("past");
   if (input.daysFromToday > input.policy.maxAdvanceDays) return empty("too-far-ahead");
 
   if (
@@ -248,12 +285,6 @@ export function computeAvailability(input: AvailabilityInput): AvailabilityResul
     return empty("same-day-cutoff");
   }
 
-  // ── 1–2. Business hours, narrowed by the person's own ────
-  const day = dayWindow(
-    input.businessHours,
-    input.dayOfWeek,
-    input.staffMemberId ? { workingDays: input.staffWorkingDays, hours: input.staffHours } : null,
-  );
   if ("reason" in day) return empty(day.reason);
   const window = day.window;
 
@@ -305,8 +336,9 @@ export function computeAvailability(input: AvailabilityInput): AvailabilityResul
     end: b.endMin + bufferMinutes,
   }));
 
-  const earliest =
-    input.daysFromToday === 0 ? input.nowMinutes + input.policy.minNoticeMinutes : -Infinity;
+  const nowOnThisDay =
+    input.daysFromToday === 0 ? input.nowMinutes : nightStillOpen ? input.nowMinutes + 24 * 60 : null;
+  const earliest = nowOnThisDay === null ? -Infinity : nowOnThisDay + input.policy.minNoticeMinutes;
 
   const slots: string[] = [];
   for (const piece of openPieces) {

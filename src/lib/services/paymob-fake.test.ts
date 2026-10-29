@@ -17,16 +17,34 @@ function setEnv(vars: Record<string, string | undefined>) {
 }
 
 describe("the fake Paymob checkout", () => {
+  const local = { PAYMOB_FAKE: "1", VERCEL: undefined, VERCEL_ENV: undefined, PAYMOB_FAKE_BASE_URL: "http://localhost:3101", NEXT_PUBLIC_SITE_URL: undefined };
+
   it("is off unless explicitly turned on", () => {
-    setEnv({ PAYMOB_FAKE: undefined, NODE_ENV: "development", VERCEL_ENV: undefined });
+    setEnv({ ...local, PAYMOB_FAKE: undefined });
     expect(fakePaymobEnabled()).toBe(false);
   });
 
-  it("can never run in production, whatever the flag says", () => {
-    setEnv({ PAYMOB_FAKE: "1", NODE_ENV: "production", VERCEL_ENV: undefined });
+  it("can never run on Vercel, whatever the flag says", () => {
+    setEnv({ ...local, VERCEL_ENV: "production" });
     expect(fakePaymobEnabled()).toBe(false);
-    setEnv({ PAYMOB_FAKE: "1", NODE_ENV: "development", VERCEL_ENV: "production" });
+    setEnv({ ...local, VERCEL_ENV: "preview" });
     expect(fakePaymobEnabled()).toBe(false);
+    setEnv({ ...local, VERCEL: "1" });
+    expect(fakePaymobEnabled()).toBe(false);
+  });
+
+  it("can never serve its page from a public host", () => {
+    setEnv({ ...local, PAYMOB_FAKE_BASE_URL: undefined, NEXT_PUBLIC_SITE_URL: "https://www.maw3ed.net" });
+    expect(fakePaymobEnabled()).toBe(false);
+    setEnv({ ...local, PAYMOB_FAKE_BASE_URL: "https://maw3ed.net" });
+    expect(fakePaymobEnabled()).toBe(false);
+  });
+
+  it("runs for a local production build, which is what the end-to-end script tests", () => {
+    setEnv({ ...local, NODE_ENV: "production" });
+    expect(fakePaymobEnabled()).toBe(true);
+    setEnv({ ...local, PAYMOB_FAKE_BASE_URL: undefined, NEXT_PUBLIC_SITE_URL: "http://localhost:3000" });
+    expect(fakePaymobEnabled()).toBe(true);
   });
 
   it("signs callbacks the way the real webhook check expects", () => {

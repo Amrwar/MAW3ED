@@ -10,6 +10,10 @@ const calls: { op: string; args: unknown }[] = [];
 const orphanRows: { id: string }[] = [];
 
 vi.mock("@/lib/logger", () => ({ log: { info: () => undefined, error: () => undefined, warn: () => undefined } }));
+// What releasing a hold entails beyond the status (closing payment
+// pages, handing a discount back) is lib/bookings/state's and tested
+// there, against a real database.
+vi.mock("@/lib/bookings/state", () => ({ releaseBookingHold: async () => 0 }));
 vi.mock("@/lib/db", () => ({
   db: {
     payment: {

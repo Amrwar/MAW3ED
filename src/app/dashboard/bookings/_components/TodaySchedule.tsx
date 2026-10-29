@@ -3,6 +3,7 @@
 import { Clock, Plus } from "lucide-react";
 import { type DashboardBooking } from "@/features/dashboard/bookings/types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { clock } from "@/lib/fmt";
 
 interface TodayScheduleProps {
   bookings:      DashboardBooking[];
@@ -112,9 +113,9 @@ export default function TodaySchedule({ bookings, onSelect, onNewBooking }: Toda
             >
               {/* Time */}
               <div className="text-center shrink-0" style={{ minWidth: 52 }}>
-                <p className="text-sm font-extrabold text-[var(--color-ink)]" dir="ltr">{b.startTime}</p>
+                <p className="text-sm font-extrabold text-[var(--color-ink)]" dir="ltr">{clock(b.startTime)}</p>
                 {b.endTime && (
-                  <p className="text-[10px] text-[var(--color-subtle)] mt-0.5" dir="ltr">{b.endTime}</p>
+                  <p className="text-[10px] text-[var(--color-subtle)] mt-0.5" dir="ltr">{clock(b.endTime)}</p>
                 )}
               </div>
 

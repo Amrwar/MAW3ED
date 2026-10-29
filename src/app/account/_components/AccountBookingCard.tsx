@@ -19,7 +19,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import type { AccountBooking } from "@/lib/account/queries";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { telHref, whatsappHref } from "@/lib/contact";
-import { money, num } from "@/lib/fmt";
+import { money, num, clockRange } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -113,7 +113,7 @@ export default function AccountBookingCard({ booking: b, variant }: Props) {
             <Row icon={<CalendarDays size={13} />} value={dateLabel} extra={relative} />
             <Row
               icon={<Clock size={13} />}
-              value={`${b.startTime} – ${b.endTime}`}
+              value={clockRange(b.startTime, b.endTime)}
               ltr
               extra={`${num(b.durationMinutes, lang)} ${c.minutes}`}
             />

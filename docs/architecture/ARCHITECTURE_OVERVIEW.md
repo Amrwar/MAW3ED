@@ -92,6 +92,40 @@ Models in `prisma/schema.prisma` (1,458 lines):
 | i18n | `src/lib/i18n.ts` (Arabic default, English at `/en/...`), `src/lib/locale-routing.ts` |
 | Rate limiting | `src/lib/rate-limit.ts` (Postgres-backed, per bucket) |
 
+## Booking state machine and concurrency (Phase 19)
+
+- `src/lib/bookings/transitions.ts` is the one table of what may follow
+  what, for the business, the customer and the system. The dashboard's
+  buttons import it; the API checks it.
+- `src/lib/bookings/state.ts` makes a move: `UPDATE … WHERE id AND status
+  = <from>`, so of two moves racing exactly one applies (the other gets
+  409 `changed`). A cancellation or a released hold also closes open payment pages,
+  hands a redeemed discount back and flags money already paid for a
+  person to refund (completing a booking does none of that).
+- Slots: `loadAvailability` is called to offer times and again to accept
+  one. "Anyone" is given a free member of staff; "any table" the smallest
+  free one that seats the party; a named table must seat it. Under a
+  race the three exclusion constraints decide, and an auto-assigned
+  member or table is re-derived before the time is called taken.
+- Idempotency: a client key on the booking row; a retry returns the
+  original. Payments: `WebhookEvent (provider, eventId)` claims a
+  delivery; `settlePayment` moves a payment out of PENDING once; refunds
+  reserve their amount with a conditional UPDATE before Paymob is asked.
+- Time: wall-clock strings and a `startsAt` frame written as UTC; every
+  real-instant conversion asks Intl for the zone's offset at that moment
+  (`src/lib/bookings/instants.ts`). Hours may cross midnight ("25:00").
+
+## Notification outbox (Phase 19)
+
+`NotificationDelivery` is claimed PENDING with the event stored on the
+row, moved to SENT/SKIPPED/FAILED when the provider answers, retried
+with backoff (2 m, 10 m, 30 m, 2 h) and marked DEAD after five attempts,
+a permanent refusal or when the message went stale. Routes schedule
+sends with `after()`; `/api/cron/notifications` (every 10 minutes) hands
+due rows back to the dispatcher, whose claim logic re-sends only those.
+Runbooks: `docs/runbooks/BOOKING_OPERATIONS.md`,
+`docs/runbooks/PAYMENT_OPERATIONS.md`.
+
 ## Security boundaries
 
 - **Authentication:** NextAuth v5 with JWT sessions for the web; mobile

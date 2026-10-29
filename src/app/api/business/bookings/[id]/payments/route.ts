@@ -11,7 +11,7 @@ import {
 } from "@/lib/payments/ledger";
 import { balanceCents, formatCents, toCents } from "@/lib/payments/money";
 import { canUseFeature, getEffectivePlan } from "@/lib/plans";
-import { notify } from "@/lib/notifications";
+import { notifyLater } from "@/lib/notifications";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -290,9 +290,9 @@ async function advanceAfterManualPayment(bookingId: string, actorUserId: string)
   // actor and is not told). Confirmed: the customer gets the
   // confirmation; awaiting review: they get the "received" message.
   if (next === "CONFIRMED") {
-    void notify({ type: "booking.created", bookingId, only: "business", actorUserId });
-    void notify({ type: "booking.confirmed", bookingId, actorUserId });
+    notifyLater({ type: "booking.created", bookingId, only: "business", actorUserId });
+    notifyLater({ type: "booking.confirmed", bookingId, actorUserId });
   } else {
-    void notify({ type: "booking.created", bookingId, actorUserId });
+    notifyLater({ type: "booking.created", bookingId, actorUserId });
   }
 }
