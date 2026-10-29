@@ -36,6 +36,7 @@ value → deploy → revoke the old at the provider.
 | `CLOUDINARY_API_SECRET` | Uploads fail until updated | Cloudinary → settings |
 | `CRON_SECRET` | Vercel sends the new value automatically after redeploy | Vercel env |
 | `EXPO_ACCESS_TOKEN` | Push sends fail until updated | expo.dev → access tokens |
+| `SENTRY_AUTH_TOKEN` | Builds stop uploading source maps (errors still arrive, stack traces less readable) | Sentry → Settings → Organization Tokens → new token; update Vercel; revoke the old |
 
 ## 2. Account and session incidents
 
@@ -113,10 +114,16 @@ pg_restore --no-owner --no-privileges -d "$TARGET_URL" maw3ed.dump
 
 Today: Vercel runtime logs (JSON lines from `lib/logger`), the admin
 pages (`/admin/notifications`, `/admin/payments/diagnostics`,
-`/admin/audit`), and the cron responses. **Not configured:** Sentry
-(`SENTRY_DSN`), a log drain, uptime checks, alerts (S-03). Minimum to
-set up: Sentry DSN in Vercel; a Vercel log drain; an uptime check on
-`/api/version`; an alert when `/api/cron/notifications` reports `dead >
+`/admin/audit`), the cron responses, and **Sentry** (project `maw3ed` in
+org `website-builder-l5`, https://website-builder-l5.sentry.io; every
+`log.error` is forwarded with personal data redacted, `src/instrumentation.ts`).
+The DSN is public by design and is in Vercel as `SENTRY_DSN` and
+`NEXT_PUBLIC_SENTRY_DSN`. An alert rule ("Maw3ed: new, escalating or
+regressed issue") emails the team; source maps upload at build through
+`SENTRY_AUTH_TOKEN` (org token `vercel-sourcemaps-maw3ed`; rotate from
+Sentry → Settings → Organization Tokens, then update Vercel).
+**Not configured:** a Vercel log drain, uptime checks (S-03). Minimum to
+set up: a Vercel log drain; an uptime check on `/api/version`; an alert when `/api/cron/notifications` reports `dead >
 0` or the webhook logs `handler threw`.
 
 What to look at weekly: `NotificationDelivery` DEAD rows; `AuditLog`
