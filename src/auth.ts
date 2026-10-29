@@ -9,11 +9,12 @@ import { authConfig } from "./auth.config";
 import { db } from "@/lib/db";
 import { accountForVerifiedPhone, verifyLoginCode } from "@/lib/auth/login-code";
 import { normalisePhone } from "@/lib/phone";
+import { SESSION_MAX_AGE_SECONDS, needsRecheck, sessionRevoked } from "@/lib/security/session-policy";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(db),
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS, updateAge: 24 * 60 * 60 },
   providers: [
     Credentials({
       credentials: {
@@ -139,28 +140,42 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (user) {
         token.id         = user.id ?? "";
         token.businessId = (user as { businessId?: string | null }).businessId ?? null;
+        // When this session began, kept by us rather than read from
+        // `iat`, which moves every time the cookie is re-issued. It is
+        // what a later revocation is compared with.
+        token.signedInAt = Date.now();
       }
 
-      // Re-fetch when explicitly triggered (e.g. after onboarding), or
-      // once for a token minted before this field existed.
+      // Re-fetch when explicitly triggered (e.g. after onboarding), once
+      // for a token minted before this field existed, and every few
+      // minutes after that (lib/security/session-policy.ts): a token is
+      // valid for a month, and the account behind it can be revoked,
+      // lose a role or be deleted meanwhile. Returning null ends the
+      // session.
       //
       // Deliberately not "whenever businessId is falsy": a customer has
       // no business and never will, so that condition fired a database
-      // query on every single request for them. `resolved` records that
-      // the question has been asked and answered.
-      if ((trigger === "update" || !token.resolved) && token.id) {
+      // query on every single request for them.
+      const recheck = trigger === "update" || !token.resolved || needsRecheck(token.checkedAt as number | undefined);
+      if (recheck && token.id) {
         const dbUser = await db.user.findUnique({
           where:   { id: token.id as string },
-          include: { business: { select: { id: true } } },
+          select:  { phone: true, adminRole: true, sessionsRevokedAt: true, business: { select: { id: true } } },
         });
-        token.businessId = dbUser?.business?.id ?? null;
-        token.phone      = dbUser?.phone ?? null;
+        if (!dbUser) return null;
+        if (sessionRevoked(token.signedInAt as number | undefined, dbUser.sessionsRevokedAt)) {
+          log.info("[auth] web session refused: revoked", { userId: token.id });
+          return null;
+        }
+        token.businessId = dbUser.business?.id ?? null;
+        token.phone      = dbUser.phone ?? null;
         // Carried for the navigation only. Access is decided by
         // lib/admin/guard, which reads the role from the database on
         // every request — a token minted at sign-in cannot be trusted
         // to say whether somebody is still an administrator.
-        token.adminRole  = dbUser?.adminRole ?? null;
+        token.adminRole  = dbUser.adminRole ?? null;
         token.resolved   = true;
+        token.checkedAt  = Date.now();
       }
 
       return token;

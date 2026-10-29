@@ -1,5 +1,6 @@
 import { normalisePhone } from "@/lib/phone";
 import { db } from "@/lib/db";
+import { pseudonym } from "@/lib/security/pseudonym";
 import {
   PHONE_CODE_TTL_MS,
   PHONE_MAX_ATTEMPTS,
@@ -154,11 +155,19 @@ export async function accountForVerifiedPhone(phone: string): Promise<{ id: stri
     return existing;
   }
 
+  // A number a deleted account released starts afresh: nothing from
+  // before the release — not the name, not the bookings — is this
+  // person's to see (lib/account/deletion.ts).
+  const release = await db.phoneRelease.findUnique({
+    where: { phoneHash: pseudonym(phone) },
+    select: { releasedAt: true },
+  });
+
   const lastBooking = await db.booking.findFirst({
     // By the canonical column, not the one the customer typed into:
     // "01107578212" and "201107578212" are the same number, and only
     // the generated column knows that.
-    where: { customerPhoneE164: phone },
+    where: { customerPhoneE164: phone, ...(release ? { createdAt: { gte: release.releasedAt } } : {}) },
     orderBy: { createdAt: "desc" },
     select: { customerName: true },
   });
@@ -168,6 +177,7 @@ export async function accountForVerifiedPhone(phone: string): Promise<{ id: stri
       phone,
       phoneVerifiedAt: new Date(),
       name: lastBooking?.customerName ?? null,
+      historySince: release?.releasedAt ?? null,
     },
     select: { id: true },
   });

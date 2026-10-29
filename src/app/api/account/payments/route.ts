@@ -15,11 +15,11 @@ export async function GET() {
     const session = await requireSession();
     const user = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { phone: true, phoneVerifiedAt: true },
+      select: { phone: true, phoneVerifiedAt: true, historySince: true },
     });
     if (!user?.phone || !user.phoneVerifiedAt) return ok({ payments: [], needsPhone: true });
 
-    return ok({ payments: await getPaymentHistory(user.phone), needsPhone: false });
+    return ok({ payments: await getPaymentHistory(user.phone, user.historySince), needsPhone: false });
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[account payments]", e);

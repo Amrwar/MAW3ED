@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { z } from "zod";
 import { log } from "@/lib/logger";
+import { recordAccountEvent } from "@/lib/account/audit-event";
 
 const schema = z.object({
   token:    z.string().min(1),
@@ -47,13 +48,15 @@ export async function POST(req: Request) {
 
     const hashed = await bcrypt.hash(password, 12);
 
-    // A new password ends every app session too: whoever needed the
+    // A new password ends every other session too — the app's, and the
+    // web's on their next check (sessionsRevokedAt): whoever needed the
     // reset may be resetting because somebody else got in.
     await db.$transaction([
-      db.user.update({ where: { id: user.id }, data: { password: hashed } }),
+      db.user.update({ where: { id: user.id }, data: { password: hashed, sessionsRevokedAt: new Date() } }),
       db.passwordResetToken.deleteMany({ where: { email: record.email } }),
       db.mobileSession.deleteMany({ where: { userId: user.id } }),
     ]);
+    await recordAccountEvent({ userId: user.id, action: "account.password_reset", summary: "Password reset from an emailed link; every session ended." });
 
     return ok({ reset: true });
   } catch (e) {

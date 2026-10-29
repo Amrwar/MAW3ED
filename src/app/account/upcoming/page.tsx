@@ -16,7 +16,7 @@ export default async function UpcomingPage() {
   const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
 
-  const upcoming = await getUpcoming(user.phone);
+  const upcoming = await getUpcoming(user.phone, user.historySince);
 
   if (upcoming.length === 0) {
     return (

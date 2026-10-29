@@ -15,7 +15,7 @@ export default async function MyReviewsPage() {
   const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
 
-  const reviews = await getMyReviews(user.phone);
+  const reviews = await getMyReviews(user.phone, user.historySince);
 
   if (reviews.length === 0) {
     return (

@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "./auth.config";
 import { buildCsp, generateNonce } from "./lib/security/csp";
+import { hasSessionCookie, isCrossSiteMutation } from "./lib/security/origin";
 import { LANG_COOKIE, LANG_COOKIE_MAX_AGE, LANG_HEADER } from "./lib/lang";
 import { routeLocale } from "./lib/locale-routing";
 
@@ -41,6 +42,22 @@ const { auth } = NextAuth(authConfig);
  * Next 16 renamed middleware to proxy; this file was src/middleware.ts.
  */
 export default auth((req) => {
+  // A state-changing API call carrying our session cookie from another
+  // site's page: refused here, before any route sees it (lib/security/
+  // origin.ts). The cookie's SameSite attribute already keeps browsers
+  // from sending it; this is the second line.
+  if (
+    isCrossSiteMutation({
+      method: req.method,
+      pathname: req.nextUrl.pathname,
+      origin: req.headers.get("origin"),
+      host: req.headers.get("host"),
+      hasSessionCookie: hasSessionCookie(req.headers.get("cookie")),
+    })
+  ) {
+    return NextResponse.json({ error: "طلب مرفوض", code: "cross-site" }, { status: 403 });
+  }
+
   const locale = routeLocale({
     pathname: req.nextUrl.pathname,
     search: req.nextUrl.search,

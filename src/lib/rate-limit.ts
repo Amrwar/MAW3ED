@@ -81,6 +81,13 @@ export const RULES = {
   // Per address, so the form cannot be used to send one inbox a stream
   // of confirmation emails from many networks.
   waitlistEmail: { limit: 5, windowSeconds: 24 * 60 * 60 },
+  // Profile-view counting, per address. A visitor opens a few pages;
+  // this stops a script inflating a listing's "views" figure, which the
+  // owner reads as demand.
+  profileView: { limit: 60, windowSeconds: 60 * 60 },
+  // A copy of one's own data, per account. Nobody needs it more than a
+  // few times a day, and each one reads the whole history.
+  accountExport: { limit: 5, windowSeconds: 24 * 60 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type Bucket = keyof typeof RULES;

@@ -118,7 +118,7 @@ is run on the production database.
 | P17-11 | **Notifications are fire-and-forget and claimed SENT before sending.** `dispatch.ts` inserts the ledger row as SENT; callers use `void notify()`; nothing re-drives a stalled send, so a suspended function can lose a confirmation silently. Fix: `after()` from `next/server`, PENDING claims, and a cron that re-drives stale rows | FIXED in Phase 19: the ledger is an outbox (claimed PENDING, SENT/SKIPPED/FAILED on the provider's answer, retried with backoff, DEAD after five tries or a permanent refusal), routes send with `after()`, and `/api/cron/notifications` re-drives every 10 minutes. Tested on Postgres: `src/lib/notifications/outbox.db.test.ts` |
 | P17-12 | **Production error monitoring is off.** No `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` in Vercel production (names listed 2026-10-28). Errors exist only in Vercel logs | OWNER (configuration) |
 | P17-13 | **Terms of use say nothing about money.** No deposit, cancellation, refund, subscription or payout terms; dated March 2025. Paymob merchant review normally needs a refund policy | OWNER (legal text) |
-| P17-14 | **Deleted accounts stay reachable through a recycled number.** `lib/account/deletion.ts` keeps bookings, the Customer row and reviews; account history is keyed on the phone, so the next holder of the number sees the old history. Fix: anonymise on deletion | OPEN |
+| P17-14 | **Deleted accounts stay reachable through a recycled number.** `lib/account/deletion.ts` keeps bookings, the Customer row and reviews; account history is keyed on the phone, so the next holder of the number sees the old history. Fix: anonymise on deletion | FIXED in Phase 20: deletion records a keyed hash of the number (`PhoneRelease`); a later account on it carries `historySince` and every reader is fenced; the delivery ledger loses the address; audited. Tested on Postgres (`deletion.db.test.ts`). A dormant, undeleted account is still reachable by the number's new holder: `SECURITY_REPORT.md` S-02 |
 | P17-15 | **`add_audit_followups.sql` unconfirmed on production** while #31 is live. If missing, plan payments and the waitlist fail | OWNER |
 
 ## P2
@@ -219,3 +219,19 @@ All fixed in the Phase 19 PR unless marked OPEN.
 | P19-13 | P2 | **Simultaneous bookings under one phone number returned 500**: Prisma's `customer.upsert` is a read then a write, so the losers hit the unique constraint before the booking's idempotency check could answer. Found by `scripts/qa-phase19.mjs` (ten retries with one key). Fixed: the loser reads the winner's row | FIXED |
 | P19-14 | P2 | Under a burst of fifty requests for one table, requests at the back of the connection-pool queue failed with Prisma P2028 ("unable to start a transaction") and a 500. Seen once in four runs; not reproduced after the fix. Fixed: the booking transaction waits up to 10 s to start, a failed start is retried with jitter, and a true timeout is a 503 `busy` with `Retry-After` | FIXED |
 | P19-15 | P3 | Prisma logs every expected exclusion-constraint loss at `error` level (151 lines for 80 contended requests); noise in production logs, not a fault | OPEN |
+
+## Phase 20
+
+The security pass. Findings fixed and residual risks, each with an
+owner, are in `docs/security/SECURITY_REPORT.md` (S-F01…S-F10 fixed;
+S-01…S-14 open). The ones that rank as P1 here:
+
+| ID | Sev | Finding | Status |
+|---|---|---|---|
+| P20-01 | P1 | Web sessions could not be revoked; a password reset left the web cookie valid for 30 days | FIXED (S-F01) |
+| P20-02 | P1 | A recycled phone number inherited a deleted account's history (P17-14) | FIXED (S-F02) |
+| P20-03 | P1 | No second factor for administrator accounts | OPEN (S-01) — interim: unique long passwords, per-email throttle, role from DB per request, audit log |
+| P20-04 | P2 | Uploads trusted the declared MIME type and any folder | FIXED (S-F03) |
+| P20-05 | P2 | No CSRF check beyond SameSite | FIXED (S-F04) |
+| P20-06 | P2 | No account data export | FIXED (S-F07) |
+| P20-07 | P2 | Mobile `zod` 3 under advisory; Expo toolchain advisories | PARTLY FIXED (S-F09, S-07) |

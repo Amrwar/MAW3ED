@@ -46,6 +46,13 @@ const authSecret = z
 const optional = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
+  /**
+   * Keys the hashes of phone numbers released by deleted accounts
+   * (lib/security/pseudonym.ts). Set once and never rotated; falls back
+   * to the signing secret where unset (local only).
+   */
+  PSEUDONYM_SECRET: z.string().min(16).optional(),
+
   /** Public origin, used for canonical URLs, sitemap, auth and email links. */
   AUTH_URL: z.string().url().optional(),
   NEXTAUTH_URL: z.string().url().optional(),

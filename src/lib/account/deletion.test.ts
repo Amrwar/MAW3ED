@@ -7,7 +7,10 @@ vi.mock("@/lib/db", () => {
   const tx = {
     loginCode: { deleteMany: async (q: unknown) => void calls.push(`loginCode:${JSON.stringify(q)}`) },
     passwordResetToken: { deleteMany: async (q: unknown) => void calls.push(`reset:${JSON.stringify(q)}`) },
+    notificationDelivery: { updateMany: async (q: { where: unknown; data: unknown }) => void calls.push(`deliveries:${JSON.stringify(q.where)}->${JSON.stringify(q.data)}`) },
+    phoneRelease: { upsert: async (q: { where: { phoneHash: string } }) => void calls.push(`release:${q.where.phoneHash.length}`) },
     user: { delete: async () => void calls.push("user.delete") },
+    auditLog: { create: async (q: { data: { action: string } }) => void calls.push(`audit:${q.data.action}`) },
   };
   return {
     db: {
@@ -27,12 +30,16 @@ describe("deleting a customer account", () => {
     user.adminRole = null;
   });
 
-  it("removes the codes keyed by phone and email, then the user (which cascades the rest)", async () => {
+  it("removes the codes keyed by phone and email, scrubs the delivery ledger, releases the number, deletes the user, records it", async () => {
     expect(await deleteCustomerAccount("u1")).toEqual({ ok: true });
     expect(calls).toEqual([
       'loginCode:{"where":{"phone":"201000000777"}}',
       'reset:{"where":{"email":"a@b.test"}}',
+      'deliveries:{"recipient":{"in":["201000000777","a@b.test"]}}->{"recipient":"[deleted account]"}',
+      // A 64-hex keyed hash of the number, never the number.
+      "release:64",
       "user.delete",
+      "audit:account.deleted",
     ]);
   });
 

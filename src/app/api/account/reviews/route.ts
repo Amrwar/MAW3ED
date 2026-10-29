@@ -16,11 +16,11 @@ export async function GET() {
     const session = await requireSession();
     const user = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { phone: true, phoneVerifiedAt: true },
+      select: { phone: true, phoneVerifiedAt: true, historySince: true },
     });
     if (!user?.phone || !user.phoneVerifiedAt) return ok({ reviews: [], needsPhone: true });
 
-    const rows = await getMyReviews(user.phone);
+    const rows = await getMyReviews(user.phone, user.historySince);
     return ok({
       needsPhone: false,
       reviews: rows.map((r) => ({

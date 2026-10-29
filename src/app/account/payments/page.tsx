@@ -40,7 +40,7 @@ export default async function PaymentsPage() {
   const t = translations[lang] ?? translations.ar;
   const isAr = lang === "ar";
 
-  const payments = user.phone ? await getPaymentHistory(user.phone) : [];
+  const payments = user.phone ? await getPaymentHistory(user.phone, user.historySince) : [];
 
   return (
     <div className="space-y-5">

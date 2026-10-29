@@ -41,7 +41,7 @@ export async function GET(req: Request) {
 
     const user = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { phone: true, phoneVerifiedAt: true },
+      select: { phone: true, phoneVerifiedAt: true, historySince: true },
     });
 
     // An owner who signed up with an email has no verified phone. They
@@ -56,7 +56,7 @@ export async function GET(req: Request) {
     const scope = q.data.scope ?? "upcoming";
 
     if (scope === "upcoming") {
-      const bookings = await getUpcoming(user.phone);
+      const bookings = await getUpcoming(user.phone, user.historySince);
       // No total: "upcoming" is the whole list, never a page of one.
       return ok({ bookings, total: bookings.length, needsPhone: false });
     }
@@ -70,7 +70,7 @@ export async function GET(req: Request) {
     // nextCursor is additive: a client paging by skip ignores it, one
     // passing it back as `cursor` gets pages that do not shift when a
     // booking moves into history mid-scroll. null on the last page.
-    const { bookings, total, nextCursor } = await getHistory(user.phone, { take, skip, cursor: q.data.cursor });
+    const { bookings, total, nextCursor } = await getHistory(user.phone, { since: user.historySince, take, skip, cursor: q.data.cursor });
     return ok({ bookings, total, nextCursor, needsPhone: false });
   } catch (e) {
     if (e instanceof Response) return e;

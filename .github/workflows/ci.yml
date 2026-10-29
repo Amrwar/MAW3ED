@@ -45,6 +45,24 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Security gates (Phase 20). A critical advisory in a production
+      # dependency fails the build. High advisories are reported but do
+      # not block: an advisory published upstream on a Tuesday must not
+      # stop a hotfix, and the report is what somebody acts on. The
+      # mobile audit reads the lockfile alone (no install of the Expo
+      # toolchain); its remaining high advisories are tracked in
+      # docs/security/SECURITY_REPORT.md (S-07).
+      - name: Dependency audit (web, production, critical blocks)
+        run: npm audit --omit=dev --audit-level=critical
+
+      - name: Dependency audit (web, production, high reported)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Dependency audit (mobile, production, critical blocks)
+        working-directory: mobile
+        run: npm audit --omit=dev --audit-level=critical --package-lock-only
+
       - name: Test
         run: npm run test:run
 

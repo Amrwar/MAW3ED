@@ -29,7 +29,7 @@ export default async function HistoryPage({
   // treated as the start.
   const raw = (await searchParams).cursor;
   const cursor = raw && decodeHistoryCursor(raw) ? raw : null;
-  const { bookings, total, nextCursor } = await getHistory(user.phone, { take: PER_PAGE, cursor });
+  const { bookings, total, nextCursor } = await getHistory(user.phone, { take: PER_PAGE, cursor, since: user.historySince });
   // Past the end (or a stale link): back to the first page, not an
   // "empty history" that is not true.
   if (cursor && bookings.length === 0) redirect("/account/history");
