@@ -51,7 +51,7 @@ below is planned in detail yet, and no phase starts automatically.
 | 17 | Production audit and remediation | PARTIAL — code complete, awaiting merge + migration (`docs/phases/PHASE_17_REPORT.md`) |
 | 18 | Premium UI/UX and unified booking system | PASS — code complete, awaiting merge + migration (`docs/phases/PHASE_18_REPORT.md`) |
 | 19 | Production booking and payment reliability: state machine, concurrency, time zones, payments, notification outbox, runbooks | PASS (code complete, locally verified) — `docs/phases/PHASE_19_REPORT.md` |
-| 20 | Awaiting instructions | NOT STARTED |
+| 20 | Security, privacy and operational hardening: threat model, revocable sessions, recycled-number fence, CSRF and upload checks, export, audit, legal drafts, restore drill | PASS (code complete, locally verified; 14 residual risks with owners) — `docs/phases/PHASE_20_REPORT.md`, `docs/security/SECURITY_REPORT.md` |
 | 21 | Awaiting instructions | NOT STARTED |
 | 22 | Awaiting instructions | NOT STARTED |
 | 23 | Awaiting instructions | NOT STARTED |

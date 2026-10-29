@@ -10,7 +10,7 @@ anything not run says NOT RUN or BLOCKED.
 |---|---|---|---|---|---|
 | Web typecheck | static | `tsconfig.json` (strict) | `npm run typecheck` | yes | PASS — 2026-10-28, `77c8649` |
 | Web lint | static | `eslint.config.mjs` | `npm run lint` | yes | PASS — 0 errors, 6 warnings — 2026-10-28 |
-| Web unit + route tests | Vitest 5.0.5 | `src/**/*.test.ts(x)` | `npm run test:run` | yes | PASS — 1024 passed, 69 skipped (1093; 94 files) — 2026-10-29 (Phase 18: 978; Phase 17: 960; baseline: 934) |
+| Web unit + route tests | Vitest 5.0.5 | `src/**/*.test.ts(x)` | `npm run test:run` | yes | PASS — 1038 passed, 70 skipped (1108; 99 files) — 2026-10-29 (Phase 19: 1024; Phase 18: 978; Phase 17: 960; baseline: 934) |
 | Booking engine on Postgres (P17-01/03/05, R2, R5) | DB integration | `src/lib/bookings/create.db.test.ts` | `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/bookings/create.db.test.ts` | no (needs Postgres) | PASS — 5/5, five consecutive runs — 2026-10-28; 4/4 of the original tests FAIL on the pre-Phase-17 code |
 | Phase 17 end to end | Playwright + HTTP against a production build and the QA DB | `scripts/qa-phase17.mjs` | `node scripts/qa-phase17.mjs` (server on :3101) | no | PASS — 13/13 — 2026-10-28 |
 | Booking journeys (ar/en, staff / restaurant / plain, keyboard, validation, Back, retry, cancel, URL compatibility) | Playwright through the real widget | `scripts/qa-booking-e2e.mjs` | `node scripts/qa-booking-e2e.mjs` (server on :3101) | no | PASS — 19/19 — 2026-10-28 |
@@ -22,6 +22,12 @@ anything not run says NOT RUN or BLOCKED.
 | Notification outbox on Postgres (Phase 19: claim, outage→retry once, permanent→DEAD, fifth failure→DEAD, stale PENDING pickup, hung claim closed, undeliverable row closed, reminder dedup + stale) | DB integration | `src/lib/notifications/outbox.db.test.ts` | same env var, that file | no | PASS — 8/8 — 2026-10-29 |
 | Time zones and the clock change (Phase 19) | unit | `src/lib/bookings/instants.dst.test.ts`, `availability.overnight.test.ts` | `npm run test:run` | yes | PASS — 2026-10-29 |
 | Phase 19 end to end: deposit → fake Paymob → webhook → confirmed; replay; decline; cancel mid-payment; 50 for one table; "any table"; one idempotency key × 10; party too large; overnight hours; re-drive cron; claims settled | HTTP against a production build + QA DB | `scripts/qa-phase19.mjs` | see file header (server on :3101 with `PAYMOB_FAKE=1`) | no | PASS — 21/21 on the final build, twice in a row (2026-10-29 02:40Z). Two earlier runs on earlier builds failed E1/G1 and found P19-13 (customer upsert race → 500) and P19-14 (pool-start timeout → 500), both fixed |
+| Security: cross-tenant, forged claims, roles, injection (bearer tokens) | HTTP against a production build + QA DB | `scripts/qa-security.mjs` | `DATABASE_URL=<qa> AUTH_SECRET=<server's> node scripts/qa-security.mjs http://localhost:3101` | no | PASS — 32/32 — 2026-10-29 (Phase 20) |
+| Security Phase 20: headers, CSRF origin check, upload sniffing/folders, account export, sign-out-everywhere, view cap, OTP burning, admin 404 (browser session) | HTTP against a production build + QA DB | `scripts/qa-phase20.mjs` | `node scripts/qa-phase20.mjs` (server on :3101) | no | PASS — 19/19 — 2026-10-29 |
+| Account deletion and the recycled number (Postgres) | DB integration | `src/lib/account/deletion.db.test.ts` | `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/account/deletion.db.test.ts` | no | PASS — 1/1 — 2026-10-29 |
+| Route-guard coverage, origin check, session policy, image sniffing | unit | `src/lib/security/*.test.ts` | `npm run test:run` | yes | PASS — 2026-10-29 |
+| Backup and restore drill (isolated container) | ops | session scratchpad `restore-drill.sh`; procedure in `docs/runbooks/SECURITY_OPERATIONS.md` § 3 | manual | no | PASS — 10/10 tables match — 2026-10-29 |
+| Dependency audit | `npm audit --omit=dev` | web and `mobile/` | CI (web high, mobile critical) | yes (Phase 20) | web 0; mobile 11 (Expo toolchain, S-07) — 2026-10-29 |
 | Prettier | format | — | `npm run format:check` | non-blocking | NOT RUN at baseline (known debt) |
 | Mobile typecheck | static | `mobile/tsconfig.json` | `cd mobile && npx tsc --noEmit` | no | PASS — 2026-10-28 |
 | Mobile lint | static | `mobile/eslint.config.js` | `cd mobile && npx eslint .` | no | PASS — 2026-10-28 |
@@ -54,8 +60,8 @@ manual QA record), L = live/partner verification.
 | Subscriptions, annual billing | ✔ | — | ✔ (local) | **✘** | Same Paymob gap |
 | Notifications pipeline (outbox, retries, dedup) | ✔ | ✔ (Phase 19) | ✔ (claims settled, re-drive cron) | **✘** | Email, WhatsApp, push not verified live |
 | Auth (web, mobile tokens, OTP) | ✔ | — | ✔ | partial | WhatsApp OTP delivery depends on Meta |
-| Authorization: admin RBAC, business access, bearer coverage | ✔ | — | ✔ (`qa-security.mjs`, manual) | — | Not in CI |
-| Tenant isolation | ✔ | ✔ (bookingScope on Postgres, Phase 19) | ✔ (manual) | — | DB tests not in CI |
+| Authorization: admin RBAC, business access, bearer coverage, route-guard coverage | ✔ (+ source scan, Phase 20) | — | ✔ (`qa-security.mjs`, `qa-phase20.mjs`) | — | HTTP probes not in CI |
+| Tenant isolation | ✔ | ✔ (bookingScope on Postgres, Phase 19) | ✔ (`qa-security.mjs` 32/32, Phase 20) | — | DB tests not in CI |
 | Phone normalisation | ✔ | ✔ | — | — | |
 | i18n / RTL / `/en` routing | ✔ | — | ✔ | — | |
 | Accessibility | — | — | ✔ (axe on every key page, keyboard booking) | — | No real screen-reader session yet |

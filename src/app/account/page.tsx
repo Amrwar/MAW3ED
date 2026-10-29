@@ -18,8 +18,8 @@ export default async function AccountOverviewPage() {
   const t = translations[lang] ?? translations.ar;
 
   const [summary, upcoming] = await Promise.all([
-    getAccountSummary(user.id, user.phone),
-    getUpcoming(user.phone),
+    getAccountSummary(user.id, user.phone, user.historySince),
+    getUpcoming(user.phone, user.historySince),
   ]);
 
   return (

@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireBusiness } from "@/lib/api";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 
@@ -16,11 +16,41 @@ import { log } from "@/lib/logger";
  */
 export async function GET(req: Request) {
   // ── Auth ─────────────────────────────────────────────────────────────────
-  const session = await auth();
-  if (!session?.user?.businessId) {
-    return new Response("Unauthorized", { status: 401 });
+  // The business is re-read and its ownership checked, not taken from
+  // the token's snapshot (lib/api requireBusiness): a stream is held
+  // open for a long time, and must not keep flowing to an account that
+  // has stopped owning the business.
+  let businessId: string;
+  let userId: string;
+  try {
+    const got = await requireBusiness();
+    businessId = got.business.id;
+    userId = got.session.user.id;
+  } catch (e) {
+    if (e instanceof Response) return new Response("Unauthorized", { status: e.status === 404 ? 401 : e.status });
+    throw e;
   }
-  const businessId = session.user.businessId;
+  const openedAt = new Date();
+
+  /**
+   * Whether this connection may go on: the account still owns the
+   * business and its sessions were not revoked since it opened. Asked
+   * again every RECHECK_TICKS polls, because a stream outlives the check
+   * at connect by hours, and a revoked or transferred account must not
+   * keep receiving customers' names and numbers until the tab closes.
+   */
+  async function stillAllowed(): Promise<boolean> {
+    const [biz, user] = await Promise.all([
+      db.business.findUnique({ where: { id: businessId }, select: { ownerId: true } }),
+      db.user.findUnique({ where: { id: userId }, select: { sessionsRevokedAt: true } }),
+    ]);
+    if (!biz || biz.ownerId !== userId || !user) return false;
+    return !(user.sessionsRevokedAt && user.sessionsRevokedAt > openedAt);
+  }
+  /** Every 10 polls (30 s). */
+  const RECHECK_TICKS = 10;
+  /** And a hard ceiling: the client reconnects, and the check at connect runs again. */
+  const MAX_LIFETIME_MS = 30 * 60_000;
 
   // ── Stream setup ──────────────────────────────────────────────────────────
   const encoder = new TextEncoder();
@@ -47,10 +77,27 @@ export async function GET(req: Request) {
       // Send immediate heartbeat so the client knows the connection is ready
       sendHeartbeat();
 
+      let ticks = 0;
+      function end() {
+        if (closed) return;
+        closed = true;
+        clearInterval(pollInterval);
+        clearInterval(heartbeatInterval);
+        try { controller.close(); } catch { /* already closed */ }
+      }
+
       // Poll DB every 3 seconds for bookings changed since lastCheck
       const pollInterval = setInterval(async () => {
         if (closed) return;
         try {
+          ticks++;
+          if (Date.now() - openedAt.getTime() > MAX_LIFETIME_MS) return end();
+          if (ticks % RECHECK_TICKS === 0 && !(await stillAllowed())) {
+            log.info("[realtime/bookings] stream ended: access no longer holds", { businessId });
+            return end();
+          }
+          if (closed) return;
+
           const checkFrom = lastCheck;
           lastCheck = new Date();
 
@@ -112,12 +159,7 @@ export async function GET(req: Request) {
       const heartbeatInterval = setInterval(sendHeartbeat, 20_000);
 
       // Clean up when the client disconnects
-      req.signal.addEventListener("abort", () => {
-        closed = true;
-        clearInterval(pollInterval);
-        clearInterval(heartbeatInterval);
-        try { controller.close(); } catch { /* already closed */ }
-      });
+      req.signal.addEventListener("abort", end);
     },
   });
 

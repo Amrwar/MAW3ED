@@ -16,8 +16,9 @@ Four separate claims, never merged into one:
 | Baseline | PASS (docs + CI fix) | merged 2026-10-29 (#32) | NOT RUN | n/a | n/a | `docs/phases/BASELINE_REPORT.md` |
 | 17 | PARTIAL (code complete; P0 fixes live only once the migration is confirmed) | merged 2026-10-29 (#33) | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_17_REPORT.md` |
 | 18 | PASS (code complete, locally verified) | merged 2026-10-29 (#34) | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_18_REPORT.md` |
-| 19 | PASS (code complete, locally verified; production not verified) | pending PR merge | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_19_REPORT.md` |
-| 20–28 | NOT STARTED | — | — | — | — | — |
+| 19 | PASS (code complete, locally verified; production not verified) | merged 2026-10-29 (#35) | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_19_REPORT.md` |
+| 20 | PASS (code complete, locally verified; residual risks with owners in `docs/security/SECURITY_REPORT.md`) | pending PR merge | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_20_REPORT.md` |
+| 21–28 | NOT STARTED | — | — | — | — | — |
 
 ## Historical phases (merged before this programme)
 
@@ -48,7 +49,8 @@ these rows record what the owner reports.
 | `add_audit_followups.sql` | PR #31 (live since 2026-10-28) | **UNCONFIRMED — owner to confirm** |
 | `phase17_booking_integrity.sql` | PR #33 (merged 2026-10-29) | **UNCONFIRMED — the merge deployed; public booking fails until this runs. Owner to confirm** |
 | `phase18_email_change.sql` | PR #34 (merged 2026-10-29) | **UNCONFIRMED — owner to confirm** |
-| `phase19_reliability.sql` | Phase 19 PR | **NOT YET — run before that PR deploys** |
+| `phase19_reliability.sql` | PR #35 (merged 2026-10-29) | **UNCONFIRMED — the merge deployed; the notification dispatcher needs it. Owner to confirm** |
+| `phase20_security.sql` | Phase 20 PR | **NOT YET — run before that PR deploys** |
 | `prisma/data-fixes/2026-10-27-listing-cleanup.sql` | data only | UNCONFIRMED |
 | All earlier files in `prisma/migrations/` | earlier PRs | assumed, not recorded |
 

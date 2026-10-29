@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ok, err, requireSession } from "@/lib/api";
 import { readRefreshToken } from "@/lib/auth/mobile-token";
 import { log } from "@/lib/logger";
+import { recordAccountEvent } from "@/lib/account/audit-event";
 
 /**
  * The devices signed in to this account through the app.
@@ -45,6 +46,13 @@ export async function GET(req: Request) {
 const schema = z.union([
   z.object({ sessionId: z.string().min(1) }),
   z.object({ allExcept: z.string().min(10) }),
+  /**
+   * Sign out everywhere: every app session is deleted and every web
+   * session signed in before now is refused on its next check
+   * (lib/security/session-policy.ts) — the one asking included, which
+   * is what "everywhere" means after a lost phone or a shared computer.
+   */
+  z.object({ everywhere: z.literal(true) }),
 ]);
 
 export async function POST(req: Request) {
@@ -52,6 +60,26 @@ export async function POST(req: Request) {
     const session = await requireSession();
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return err("طلب غير صالح", 422);
+
+    if ("everywhere" in parsed.data) {
+      const now = new Date();
+      const [, mobile] = await db.$transaction([
+        db.user.update({ where: { id: session.user.id }, data: { sessionsRevokedAt: now } }),
+        db.mobileSession.deleteMany({ where: { userId: session.user.id } }),
+      ]);
+      await recordAccountEvent({ userId: session.user.id, action: "account.sessions_revoked", summary: "Signed out of every device and browser." });
+
+      // Other browsers are refused on their next check (within five
+      // minutes). The browser asking is signed out now: its cookie is
+      // cleared with the answer, under both names NextAuth uses, so a
+      // shared computer is not left signed in for the next person.
+      const res = ok({ ended: mobile.count, webRevokedAt: now.toISOString() });
+      if (req.headers.get("cookie")?.includes("authjs.session-token")) {
+        res.headers.append("Set-Cookie", "authjs.session-token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");
+        res.headers.append("Set-Cookie", "__Secure-authjs.session-token=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax");
+      }
+      return res;
+    }
 
     if ("sessionId" in parsed.data) {
       const { count } = await db.mobileSession.deleteMany({

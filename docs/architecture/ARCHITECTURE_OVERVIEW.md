@@ -147,6 +147,15 @@ Runbooks: `docs/runbooks/BOOKING_OPERATIONS.md`,
 - **Observability:** Sentry (`sentry.*.config.ts`, `instrumentation*.ts`),
   structured logger with redaction (`src/lib/logger.ts`).
 
+### Phase 20 additions
+
+- Web sessions are revocable (`User.sessionsRevokedAt`; re-checked every 5 minutes in the JWT callback, `src/lib/security/session-policy.ts`).
+- The proxy refuses state-changing API calls that carry the session cookie from another origin (`src/lib/security/origin.ts`).
+- Uploads must match their declared type by magic bytes and land in a listed folder (`src/lib/security/image-sniff.ts`).
+- Account deletion releases the phone number as a keyed hash (`PhoneRelease`); a later account on it is fenced by `historySince` (`lib/account/queries.ts` `ownedWhere`).
+- `GET /api/account/export`; audit entries for deletion, password reset, mass sign-out.
+- Threat model, security report and runbook: `docs/security/`, `docs/runbooks/SECURITY_OPERATIONS.md`; legal drafts: `docs/legal/`.
+
 ## Database migrations
 
 Migrations are **not** run by the build (`npm run build` is

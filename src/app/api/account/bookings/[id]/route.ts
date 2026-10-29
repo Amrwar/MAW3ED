@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, err, requireSession } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { ownedWhere } from "@/lib/account/queries";
 
 /**
  * GET /api/account/bookings/[id]
@@ -21,12 +22,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     const user = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { phone: true, phoneVerifiedAt: true },
+      select: { phone: true, phoneVerifiedAt: true, historySince: true },
     });
     if (!user?.phone || !user.phoneVerifiedAt) return err("لم يتم العثور على هذا الحجز", 404);
 
     const booking = await db.booking.findFirst({
-      where: { id, customerPhoneE164: user.phone },
+      where: { id, ...ownedWhere(user.phone, user.historySince) },
       select: { accessToken: true },
     });
     // The same answer for "not yours" and "does not exist".

@@ -30,6 +30,8 @@ export interface AccountUser {
   /** A new address waiting on its confirmation link, if any. */
   pendingEmail: string | null;
   phone: string;
+  /** Bookings before this are not this account's to see (a recycled number). */
+  historySince: Date | null;
   notifyByWhatsApp: boolean;
   notifyByEmail: boolean;
 }
@@ -47,6 +49,7 @@ export async function getAccountUser(): Promise<AccountUser | null> {
       email: true,
       phone: true,
       phoneVerifiedAt: true,
+      historySince: true,
       notifyByWhatsApp: true,
       notifyByEmail: true,
     },
@@ -63,6 +66,7 @@ export async function getAccountUser(): Promise<AccountUser | null> {
     email: user.email,
     pendingEmail: await pendingEmailFor(user.id, user.email),
     phone: user.phone,
+    historySince: user.historySince,
     notifyByWhatsApp: user.notifyByWhatsApp,
     notifyByEmail: user.notifyByEmail,
   };
@@ -247,17 +251,27 @@ function endRule(now: Date) {
   return { ended, notEnded };
 }
 
+/**
+ * The bookings an account may see at all: made under its phone, and —
+ * when the number was released by a deleted account before this one
+ * was created — made since that release. The previous holder's
+ * appointments stay with the businesses and are nobody's to read here.
+ */
+export function ownedWhere(phone: string, since?: Date | null): Prisma.BookingWhereInput {
+  return since ? { customerPhoneE164: phone, createdAt: { gte: since } } : { customerPhoneE164: phone };
+}
+
 /** Still holding a slot and not yet over: the upcoming tab. */
-export function upcomingWhere(phone: string, now: Date = new Date()): Prisma.BookingWhereInput {
-  return { customerPhoneE164: phone, status: { in: LIVE }, OR: endRule(now).notEnded };
+export function upcomingWhere(phone: string, now: Date = new Date(), since?: Date | null): Prisma.BookingWhereInput {
+  return { ...ownedWhere(phone, since), status: { in: LIVE }, OR: endRule(now).notEnded };
 }
 
 /**
  * Everything else: no longer holding a slot, or over. The exact
  * complement of upcomingWhere.
  */
-export function historyWhere(phone: string, now: Date = new Date()): Prisma.BookingWhereInput {
-  return { customerPhoneE164: phone, OR: [{ status: { notIn: LIVE } }, ...endRule(now).ended] };
+export function historyWhere(phone: string, now: Date = new Date(), since?: Date | null): Prisma.BookingWhereInput {
+  return { ...ownedWhere(phone, since), OR: [{ status: { notIn: LIVE } }, ...endRule(now).ended] };
 }
 
 /**
@@ -267,10 +281,10 @@ export function historyWhere(phone: string, now: Date = new Date()): Prisma.Book
  * is history by lunchtime, and showing it as upcoming all day is how a
  * customer ends up at a closed door.
  */
-export async function getUpcoming(phone: string): Promise<AccountBooking[]> {
+export async function getUpcoming(phone: string, since?: Date | null): Promise<AccountBooking[]> {
   const now = new Date();
   const rows = await db.booking.findMany({
-    where: upcomingWhere(phone, now),
+    where: upcomingWhere(phone, now, since),
     orderBy: [{ date: "asc" }, { startTime: "asc" }, { id: "asc" }],
     select: BOOKING_SELECT,
   });
@@ -308,13 +322,13 @@ export function decodeHistoryCursor(cursor: string): { date: Date; startTime: st
  */
 export async function getHistory(
   phone: string,
-  opts: { take?: number; skip?: number; cursor?: string | null } = {},
+  opts: { take?: number; skip?: number; cursor?: string | null; since?: Date | null } = {},
 ): Promise<{ bookings: AccountBooking[]; total: number; nextCursor: string | null }> {
   const now = new Date();
   const today = cairoDateString(now);
   const nowMin = cairoMinutes(now);
   const take = opts.take ?? 20;
-  const where = historyWhere(phone, now);
+  const where = historyWhere(phone, now, opts.since);
 
   const after = opts.cursor ? decodeHistoryCursor(opts.cursor) : null;
   const pageWhere: Prisma.BookingWhereInput = after
@@ -379,9 +393,9 @@ export async function getFavorites(userId: string) {
 }
 
 /** Reviews this customer has left, newest first. */
-export async function getMyReviews(phone: string) {
+export async function getMyReviews(phone: string, since?: Date | null) {
   return db.review.findMany({
-    where: { booking: { customerPhoneE164: phone } },
+    where: { booking: ownedWhere(phone, since) },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -437,10 +451,10 @@ export async function getNotifications(
  * count is not queried here because nothing shows it — the reviews
  * section is reached from the nav.
  */
-export async function getAccountSummary(userId: string, phone: string) {
+export async function getAccountSummary(userId: string, phone: string, since?: Date | null) {
   const [upcoming, total, favorites, unread] = await Promise.all([
-    getUpcoming(phone).then((b) => b.length),
-    db.booking.count({ where: { customerPhoneE164: phone } }),
+    getUpcoming(phone, since).then((b) => b.length),
+    db.booking.count({ where: ownedWhere(phone, since) }),
     db.favorite.count({ where: { userId } }),
     db.notification.count({ where: { userId, readAt: null } }),
   ]);
@@ -460,10 +474,10 @@ export async function getAccountSummary(userId: string, phone: string) {
  * receipt does not need to be reminded of a card that was declined
  * three weeks ago; the owner and the admin can both still see them.
  */
-export async function getPaymentHistory(phone: string) {
+export async function getPaymentHistory(phone: string, since?: Date | null) {
   const rows = await db.payment.findMany({
     where: {
-      booking: { customerPhoneE164: phone },
+      booking: ownedWhere(phone, since),
       status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"] },
     },
     orderBy: { paidAt: "desc" },

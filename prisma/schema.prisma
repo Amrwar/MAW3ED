@@ -48,6 +48,15 @@ model User {
   /// What this account may administer. Null for everybody who is not an
   /// administrator, which is almost everybody.
   adminRole        AdminRole?
+  /// Every web session signed in before this moment is refused on its
+  /// next check (lib/security/session-policy.ts). Set by a password
+  /// reset and by "sign out everywhere".
+  sessionsRevokedAt DateTime?
+  /// Bookings under this account's phone made before this moment are
+  /// not shown to it. Set when the number was released by a deleted
+  /// account (PhoneRelease), so the next holder of a recycled number
+  /// does not inherit the previous holder's appointments.
+  historySince      DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -1452,6 +1461,19 @@ model DeviceToken {
 /// email — never the thing itself, and the row expires in minutes. A
 /// table of login attempts that named the people attempting them would
 /// be a worse disclosure than the attack it guards against.
+/// A phone number whose account was deleted, kept as a keyed hash
+/// (lib/security/pseudonym.ts) and nothing else. When an account is
+/// next created for that number, bookings from before `releasedAt` stay
+/// with the businesses but are not shown to the new account: Egyptian
+/// numbers are recycled, and the next holder is not the person who
+/// booked. The number itself is not stored; without the signing secret
+/// the hash cannot be checked against a guess.
+model PhoneRelease {
+  id         String   @id @default(cuid())
+  phoneHash  String   @unique
+  releasedAt DateTime @default(now())
+}
+
 model RateLimit {
   key       String   @id
   count     Int      @default(0)
