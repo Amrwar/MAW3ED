@@ -22,6 +22,7 @@ import { buildLocalBusinessJsonLd } from "@/lib/jsonld";
 import { cdnShareImage } from "@/lib/cdn-image";
 import { siteUrl } from "@/lib/env";
 import { venuesOfBusiness } from "@/lib/venues/public";
+import { organizationsOfBusiness } from "@/lib/organizations/public";
 import { getLang } from "@/lib/lang-server";
 import { alternatesFor, DEFAULT_OG_IMAGE, ogLocale } from "@/lib/seo/meta";
 import { getPublishedBusinesses } from "@/lib/data";
@@ -174,6 +175,13 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     zone: m.zone ? (lang === "en" ? m.zone.nameEn || m.zone.nameAr : m.zone.nameAr) : null,
     unit: m.unit,
   }));
+
+  const orgLinks = (await organizationsOfBusiness(dbBusiness.id).catch(() => [])).map((o) => ({
+    slug: o.slug,
+    name: lang === "en" ? o.nameEn || o.nameAr : o.nameAr,
+  }));
+  const fromOrganization =
+    typeof sp.org === "string" && orgLinks.some((o) => o.slug === sp.org) ? sp.org : null;
 
   const [resourcesRaw, staffRaw, summary, reviewPage, nextSlot] = await Promise.all([
     // Every business, not only restaurants: a clinic schedules rooms, a
@@ -436,6 +444,8 @@ export default async function CompanyPage({ params, searchParams }: Params) {
           initialStaffId={typeof sp.staff === "string" ? sp.staff : null}
           initialBranchId={typeof sp.branch === "string" ? sp.branch : null}
           venues={venueLinks}
+          organizations={orgLinks}
+          fromOrganization={fromOrganization}
         />
       </main>
 

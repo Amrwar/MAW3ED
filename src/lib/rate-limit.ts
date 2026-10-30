@@ -85,6 +85,13 @@ export const RULES = {
   // this stops a script inflating a listing's "views" figure, which the
   // owner reads as demand.
   profileView: { limit: 60, windowSeconds: 60 * 60 },
+  // Registering a parent organization (a mall, a group). Per account:
+  // nobody needs more than a few, and a flood of pending rows is only
+  // review noise for the platform.
+  orgRegister: { limit: 3, windowSeconds: 24 * 60 * 60 },
+  // Visits to an organization page, per organization and address —
+  // the same shape as profileView.
+  orgView: { limit: 60, windowSeconds: 60 * 60 },
   // A copy of one's own data, per account. Nobody needs it more than a
   // few times a day, and each one reads the whole history.
   accountExport: { limit: 5, windowSeconds: 24 * 60 * 60 },

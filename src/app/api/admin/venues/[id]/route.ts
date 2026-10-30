@@ -25,7 +25,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // Suspending takes it down; publishing needs it ACTIVE.
     const isPublished = status !== "ACTIVE" ? false : (d.isPublished ?? before.isPublished);
     if (d.isPublished && status !== "ACTIVE") return err("لازم المكان يكون مفعّل قبل النشر", 409);
-    if (d.organizationId && !(await db.venueOrganization.findUnique({ where: { id: d.organizationId }, select: { id: true } }))) {
+    if (d.organizationId && !(await db.organization.findUnique({ where: { id: d.organizationId }, select: { id: true } }))) {
       return err("الجهة مش موجودة", 422);
     }
     let organizationId = d.organizationId;

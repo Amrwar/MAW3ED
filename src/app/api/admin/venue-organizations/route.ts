@@ -12,8 +12,8 @@ export async function POST(req: Request) {
     if (!actor) return adminNotFound();
     const parsed = organizationCreateSchema.safeParse(await readJson(req));
     if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "بيانات غير صالحة", 422);
-    if (await db.venueOrganization.findUnique({ where: { slug: parsed.data.slug } })) return err("الرابط مستخدم", 409);
-    const org = await db.venueOrganization.create({ data: parsed.data });
+    if (await db.organization.findUnique({ where: { slug: parsed.data.slug } })) return err("الرابط مستخدم", 409);
+    const org = await db.organization.create({ data: parsed.data });
     await recordAudit({ actor, action: "venue.organization.create", resourceType: "VenueOrganization", resourceId: org.id, summary: `أضاف الجهة "${org.nameAr}"` });
     return ok({ organization: org }, 201);
   });

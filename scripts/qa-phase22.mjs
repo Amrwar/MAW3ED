@@ -134,7 +134,7 @@ try {
   /* ── The manager's console ───────────────────────────── */
   const mgr = await login(mgrEmail, PASSWORD);
   const landing = await call(mgr, "/onboarding");
-  check("a venue manager with no business is sent to the venue console, not onboarding", landing.status === 307 && /\/venue-admin$/.test(landing.headers.get("location") ?? ""), `${landing.status} ${landing.headers.get("location")}`);
+  check("a venue manager with no business is sent to the console, not onboarding", landing.status === 307 && /\/org-admin$/.test(landing.headers.get("location") ?? ""), `${landing.status} ${landing.headers.get("location")}`);
   check("…and can still choose to create a business", (await call(mgr, "/onboarding?create=1")).status === 200);
   const mine = await json(await call(mgr, "/api/venues"));
   check("the manager sees exactly their venue", mine.venues?.length === 1 && mine.venues[0].id === v1.id, JSON.stringify(mine.venues?.map((v) => v.slug)));

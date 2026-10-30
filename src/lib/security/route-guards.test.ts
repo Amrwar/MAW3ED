@@ -26,6 +26,7 @@ const GUARDS = [
   "authorizeCron(",
   "requireVenueAccess(",
   "loadVenueCaller(",
+  "requireOrgAccess(",
 ];
 
 /** Routes open on purpose, with what protects them instead. */
@@ -59,6 +60,10 @@ const OPEN: Record<string, string> = {
   "public/businesses/nearby": "public read",
   "public/businesses/route": "public read",
   "public/venues/route": "public read of published venues only",
+  "public/groups/route": "public read of published organizations only",
+  "public/groups/[slug]/route": "public read of a published organization and its approved directory only",
+  "public/groups/[slug]/view": "public write of an aggregate counter; rate-limited per organization and address",
+  "public/org-invites/[token]": "the unguessable invitation token is the credential; shows only who invited",
   "public/venues/[slug]": "public read of a published venue and its approved directory only",
   "public/facets": "public read",
   "public/phone-proof": "public by design; rate-limited per number and address",

@@ -86,9 +86,13 @@ function draftPayload(d: OnboardingData): OnboardingData {
 interface Props {
   categories: Category[];
   cities:     City[];
+  /** An organization's invitation this new business will join. */
+  invite?:     { token: string; orgName: string } | null;
+  /** The link was used, cancelled or expired. */
+  inviteDead?: boolean;
 }
 
-export default function OnboardingForm({ categories, cities }: Props) {
+export default function OnboardingForm({ categories, cities, invite = null, inviteDead = false }: Props) {
   const router      = useRouter();
   const { update }  = useSession();
 
@@ -189,6 +193,7 @@ export default function OnboardingForm({ categories, cities }: Props) {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           ...finalData,
+          ...(invite ? { orgInvite: invite.token } : {}),
           availability: finalData.availability.map(({ dayOfWeek, openTime, closeTime, isClosed }) => ({
             dayOfWeek, openTime, closeTime, isClosed,
           })),
@@ -228,6 +233,16 @@ export default function OnboardingForm({ categories, cities }: Props) {
   // ── Step content ───────────────────────────────────────────
   return (
     <div>
+      {invite && (
+        <p role="status" className="m-0 mb-6 rounded-[var(--radius-md)] border border-[var(--color-jade)]/30 bg-[var(--color-jade-soft)] px-4 py-3 text-sm text-[var(--color-ok)]">
+          دعوة من <span className="font-bold">{invite.orgName}</span>: أول ما تخلّص، نشاطك هيظهر في دليلهم — ويفضل ملكك بالكامل.
+        </p>
+      )}
+      {inviteDead && (
+        <p role="alert" className="m-0 mb-6 rounded-[var(--radius-md)] border border-[var(--color-warn-line)] bg-[var(--color-warn-soft)] px-4 py-3 text-sm text-[var(--color-warn)]">
+          رابط الدعوة ده خلص أو اتلغى. تقدر تكمّل التسجيل عادي، واطلب دعوة جديدة من الجهة بعدين.
+        </p>
+      )}
       {/* ── Progress stepper ── */}
       <div className="mb-9">
         <ol className="relative flex items-start justify-between">

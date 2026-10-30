@@ -41,6 +41,8 @@ interface BookingWidgetProps {
   businessType:        "GENERAL" | "RESTAURANT" | "BARBERSHOP";
   /** The channel that brought this visitor, for attribution. */
   source?:             TrafficSource;
+  /** The organization directory the visitor came from (?org=). */
+  fromOrganization?:   string | null;
   /** Tables, rooms, chairs, machines — whatever an appointment holds. */
   resources:           PublicResource[];
   staffMembers:        PublicStaff[];
@@ -326,6 +328,7 @@ export default function BookingWidget({
   preselectedService,
   initialStaffId = null,
   initialBranchId = null,
+  fromOrganization = null,
   businessType,
   resources,
   staffMembers,
@@ -684,6 +687,7 @@ export default function BookingWidget({
           resourceId:    selectedResource?.id,
           staffMemberId: selectedStaff?.id,
           branchId:      selectedBranch?.id,
+          org:           fromOrganization ?? undefined,
           partySize:     resourcesCountSeats ? partySize : undefined,
           idempotencyKey: key,
           // Carried from the page, which read it off the link and the

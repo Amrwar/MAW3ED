@@ -76,7 +76,7 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
     await db.auditLog.deleteMany({ where: { resourceType: "Venue", resourceId: { in: ids.venues } } });
     await db.venue.deleteMany({ where: { id: { in: ids.venues } } });
     await db.compound.deleteMany({ where: { id: { in: ids.compounds } } });
-    await db.venueOrganization.deleteMany({ where: { id: { in: ids.orgs } } });
+    await db.organization.deleteMany({ where: { id: { in: ids.orgs } } });
     await db.booking.deleteMany({ where: { businessId: { in: ids.businesses } } });
     await db.lifecycleEvent.deleteMany({ where: { userId: { in: ids.users } } });
     await db.business.deleteMany({ where: { id: { in: ids.businesses } } });
@@ -85,7 +85,7 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
 
   async function setup() {
     const city = await db.city.findFirstOrThrow();
-    const org = await db.venueOrganization.create({ data: { slug: `${tag}-org`, nameAr: "جهة تجريبية" } });
+    const org = await db.organization.create({ data: { slug: `${tag}-org`, nameAr: "جهة تجريبية" } });
     ids.orgs.push(org.id);
     const compound = await db.compound.create({ data: { slug: `${tag}-cmp`, nameAr: "كمبوند تجريبي", cityId: city.id, organizationId: org.id } });
     ids.compounds.push(compound.id);

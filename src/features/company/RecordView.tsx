@@ -20,15 +20,19 @@ import type { TrafficSource } from "@prisma/client";
 export default function RecordView({
   slug,
   source,
+  endpoint,
 }: {
   slug: string;
   source: TrafficSource;
+  /** Defaults to the business counter; an organization page passes its own. */
+  endpoint?: string;
 }) {
   const sent = useRef(false);
 
   useEffect(() => {
     if (sent.current) return;
     sent.current = true;
+    const url = endpoint ?? `/api/public/${encodeURIComponent(slug)}/view`;
 
     const body = JSON.stringify({ source });
 
@@ -36,13 +40,13 @@ export default function RecordView({
     // is exactly the visit worth counting: somebody looked and left.
     if (typeof navigator !== "undefined" && navigator.sendBeacon) {
       navigator.sendBeacon(
-        `/api/public/${encodeURIComponent(slug)}/view`,
+        url,
         new Blob([body], { type: "application/json" }),
       );
       return;
     }
 
-    void fetch(`/api/public/${encodeURIComponent(slug)}/view`, {
+    void fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
@@ -51,7 +55,7 @@ export default function RecordView({
       // A view that was not counted is not worth troubling anybody
       // over. It must never affect the page.
     });
-  }, [slug, source]);
+  }, [slug, source, endpoint]);
 
   return null;
 }

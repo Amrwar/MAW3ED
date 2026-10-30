@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
     const exists =
       d.kind === "ORGANIZATION_ADMIN"
-        ? await db.venueOrganization.findUnique({ where: { id: d.organizationId! }, select: { id: true } })
+        ? await db.organization.findUnique({ where: { id: d.organizationId! }, select: { id: true } })
         : d.kind === "COMPOUND_ADMIN"
           ? await db.compound.findUnique({ where: { id: d.compoundId! }, select: { id: true } })
           : await db.venue.findUnique({ where: { id: d.venueId! }, select: { id: true } });

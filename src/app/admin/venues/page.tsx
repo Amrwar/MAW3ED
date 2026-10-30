@@ -16,7 +16,13 @@ export const generateMetadata = adminMetadata("venues.read", "الأماكن");
 export default async function AdminVenuesPage() {
   const actor = await requireAdminPage("venues.read");
   const [organizations, compounds, venues, cities, roles] = await Promise.all([
-    db.venueOrganization.findMany({ orderBy: { nameAr: "asc" }, select: { id: true, slug: true, nameAr: true } }),
+    db.organization.findMany({
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      select: {
+        id: true, slug: true, kind: true, nameAr: true, status: true, isPublished: true, createdAt: true,
+        _count: { select: { associations: { where: { status: "APPROVED" } }, venues: true } },
+      },
+    }),
     db.compound.findMany({ orderBy: { nameAr: "asc" }, select: { id: true, slug: true, nameAr: true, cityId: true, organizationId: true } }),
     db.venue.findMany({
       orderBy: { createdAt: "desc" },
@@ -45,7 +51,7 @@ export default async function AdminVenuesPage() {
       />
       <VenuesAdminClient
         canManage={can(actor.role, "venues.manage")}
-        organizations={organizations}
+        organizations={organizations.map((o) => ({ ...o, createdAt: o.createdAt.toISOString(), tenants: o._count.associations, venueCount: o._count.venues }))}
         compounds={compounds}
         cities={cities}
         venues={venues.map((v) => ({ ...v, tenants: v._count.memberships }))}

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { localizePath } from "@/lib/locale-path";
 import { siteUrl } from "@/lib/url";
 import { listPublicVenues } from "@/lib/venues/public";
+import { listPublicOrganizations } from "@/lib/organizations/public";
 import {
   getLandingCategories,
   getLandingCities,
@@ -43,7 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // A sitemap listing only the static routes is a worse sitemap; a
   // failed build ships nothing at all. On Vercel, where the database is
   // reachable, this changes nothing.
-  const [businesses, cities, categories, combos, venues] = await Promise.all([
+  const [businesses, cities, categories, combos, venues, organizations] = await Promise.all([
     prerenderHints("published businesses", () =>
       db.business.findMany({
         where: { isPublished: true },
@@ -56,6 +57,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     prerenderHints("city/category combos", getLandingCombos),
     // Only venues that list somebody: an empty directory is not indexed.
     prerenderHints("published venues", async () => (await listPublicVenues()).filter((v) => v.businesses > 0)),
+    prerenderHints("published organizations", async () => (await listPublicOrganizations()).filter((o) => o.businesses > 0)),
   ]);
 
   const now = new Date();
@@ -114,6 +116,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ]
     : [];
 
+  const organizationRoutes: MetadataRoute.Sitemap = organizations.length
+    ? [
+        { url: siteUrl("/groups"), lastModified: now, changeFrequency: "weekly" as const, priority: 0.6 },
+        ...organizations.map((o) => ({
+          url: siteUrl(`/groups/${o.slug}`),
+          lastModified: new Date(o.updatedAt),
+          changeFrequency: "weekly" as const,
+          priority: 0.75,
+        })),
+      ]
+    : [];
+
   const businessRoutes: MetadataRoute.Sitemap = businesses.map((b) => ({
     url: siteUrl(`/company/${b.slug}`),
     lastModified: b.updatedAt,
@@ -127,6 +141,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...cityRoutes,
     ...categoryRoutes,
     ...venueRoutes,
+    ...organizationRoutes,
     ...businessRoutes,
   ]);
 }

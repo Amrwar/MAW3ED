@@ -51,14 +51,14 @@ export const venueAdminPatchSchema = z
 export const venueRoleGrantSchema = z
   .object({
     email: z.string().trim().toLowerCase().email(),
-    kind: z.enum(["ORGANIZATION_ADMIN", "COMPOUND_ADMIN", "VENUE_MANAGER"]),
+    kind: z.enum(["ORGANIZATION_OWNER", "ORGANIZATION_ADMIN", "COMPOUND_ADMIN", "VENUE_MANAGER"]),
     organizationId: z.string().min(1).optional(),
     compoundId: z.string().min(1).optional(),
     venueId: z.string().min(1).optional(),
   })
   .refine(
     (v) =>
-      (v.kind === "ORGANIZATION_ADMIN" && !!v.organizationId && !v.compoundId && !v.venueId) ||
+      ((v.kind === "ORGANIZATION_ADMIN" || v.kind === "ORGANIZATION_OWNER") && !!v.organizationId && !v.compoundId && !v.venueId) ||
       (v.kind === "COMPOUND_ADMIN" && !!v.compoundId && !v.organizationId && !v.venueId) ||
       (v.kind === "VENUE_MANAGER" && !!v.venueId && !v.organizationId && !v.compoundId),
     { message: "الدور لازم يكون على نطاق واحد مناسب له" },

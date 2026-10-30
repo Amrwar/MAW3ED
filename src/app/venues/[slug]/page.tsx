@@ -104,6 +104,14 @@ export default async function VenuePage({ params, searchParams }: Props) {
               {path.slice(1).map((p) => nm(p)).join(t("، ", ", "))}
             </p>
             <h1 className="m-0 text-3xl font-extrabold text-[var(--color-ink)] md:text-4xl">{nm(venue)}</h1>
+            {venue.organization && (
+              <p className="m-0 text-sm text-[var(--color-muted)]">
+                {t("تابع لـ", "Part of")}{" "}
+                <Link href={`/groups/${venue.organization.slug}`} className="font-bold text-[var(--color-jade)] underline-offset-2 hover:underline">
+                  {nm(venue.organization)}
+                </Link>
+              </p>
+            )}
             {(en ? venue.descriptionEn || venue.descriptionAr : venue.descriptionAr) && (
               <p className="m-0 max-w-3xl leading-relaxed text-[var(--color-muted)]">
                 {en ? venue.descriptionEn || venue.descriptionAr : venue.descriptionAr}
@@ -223,7 +231,13 @@ export default async function VenuePage({ params, searchParams }: Props) {
                             </p>
                           </div>
                         </div>
-                        <Link href={`/company/${e.slug}${e.branch ? `?branch=${e.branch.id}` : ""}`} className="btn btn-primary btn-sm mt-auto">
+                        <Link
+                          href={`/company/${e.slug}?${new URLSearchParams({
+                            ...(venue.organization ? { org: venue.organization.slug } : {}),
+                            ...(e.branch ? { branch: e.branch.id } : {}),
+                          }).toString()}`.replace(/\?$/, "")}
+                          className="btn btn-primary btn-sm mt-auto"
+                        >
                           {t("احجز", "Book")}
                         </Link>
                       </li>

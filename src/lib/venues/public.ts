@@ -45,6 +45,7 @@ export interface PublicVenue {
   city: { slug: string; nameAr: string; nameEn: string; countryCode: string };
   district: { slug: string; nameAr: string; nameEn: string } | null;
   compound: { slug: string; nameAr: string; nameEn: string | null } | null;
+  organization: { slug: string; nameAr: string; nameEn: string | null } | null;
   zones: { id: string; kind: string; nameAr: string; nameEn: string | null; level: number | null }[];
   hours: { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }[];
   gates: { id: string; nameAr: string; nameEn: string | null; kind: string; latitude: number | null; longitude: number | null }[];
@@ -70,6 +71,7 @@ export async function loadPublicVenue(slug: string, now = new Date()): Promise<P
       address: true, latitude: true, longitude: true, phone: true, website: true, coverImage: true, logoImage: true,
       updatedAt: true, compoundId: true,
       city: { select: { slug: true, nameAr: true, nameEn: true, countryCode: true } },
+      organization: { select: { slug: true, nameAr: true, nameEn: true, status: true, isPublished: true } },
       neighborhood: { select: { slug: true, nameAr: true, nameEn: true } },
       compound: { select: { slug: true, nameAr: true, nameEn: true } },
       zones: { orderBy: [{ sortOrder: "asc" }, { level: "asc" }], select: { id: true, kind: true, nameAr: true, nameEn: true, level: true } },
@@ -128,6 +130,10 @@ export async function loadPublicVenue(slug: string, now = new Date()): Promise<P
     city: v.city,
     district: v.neighborhood,
     compound: v.compound,
+    organization:
+      v.organization && v.organization.status === "APPROVED" && v.organization.isPublished
+        ? { slug: v.organization.slug, nameAr: v.organization.nameAr, nameEn: v.organization.nameEn }
+        : null,
     zones: v.zones,
     hours: v.hours,
     gates: allowed.length ? gates.filter((g) => allowed.includes(g.id)) : gates,
