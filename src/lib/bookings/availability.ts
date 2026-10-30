@@ -111,6 +111,8 @@ export type UnavailableReason =
   | "too-far-ahead"
   | "same-day-cutoff"
   | "business-closed"
+  /** The venue the business is in has closed, or paused bookings, that day. */
+  | "venue-closed"
   | "staff-off"
   | "holiday"
   | "vacation"

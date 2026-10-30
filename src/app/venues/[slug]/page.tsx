@@ -145,6 +145,9 @@ export default async function VenuePage({ params, searchParams }: Props) {
                     {(en ? EXCEPTION_EN : EXCEPTION_AR)[e.kind]}
                     {e.kind === "SPECIAL_HOURS" && e.openTime && e.closeTime ? ` (${e.openTime}–${e.closeTime})` : ""}
                     {(en ? e.noteEn || e.noteAr : e.noteAr) ? `: ${en ? e.noteEn || e.noteAr : e.noteAr}` : ""}
+                    {e.kind === "CLOSED" || e.kind === "BOOKINGS_PAUSED"
+                      ? t(" — الحجز الأونلاين في الأماكن هنا متوقف في الأيام دي.", " — online booking at the businesses here is paused on these days.")
+                      : ""}
                   </li>
                 ))}
               </ul>

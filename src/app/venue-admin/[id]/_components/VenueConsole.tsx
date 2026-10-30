@@ -248,6 +248,12 @@ export default function VenueConsole({ venueId }: { venueId: string }) {
 
       <section aria-labelledby="e-h" className="card space-y-3 p-5">
         <h2 id="e-h" className="m-0 text-base font-extrabold">{t("استثناءات وتنبيهات", "Exceptions and notices")}</h2>
+        <p className="m-0 text-xs text-[var(--color-subtle)]">
+          {t(
+            "\"مقفول\" و\"الحجوزات موقوفة\" بيوقفوا الحجز الأونلاين في الأماكن المعروضة هنا في الأيام دي. باقي الأنواع معلومات للزوار بس.",
+            "\"Closed\" and \"Bookings paused\" stop online booking at the businesses listed here on those days. The other kinds are information for visitors only.",
+          )}
+        </p>
         <ul className="m-0 list-none space-y-1 p-0 text-sm">
           {venue.exceptions.map((e) => (
             <li key={e.id} className="flex items-center justify-between gap-2">
