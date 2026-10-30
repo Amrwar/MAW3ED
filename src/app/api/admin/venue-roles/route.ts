@@ -10,8 +10,10 @@ import { handle, readJson } from "@/lib/venues/route";
  * POST /api/admin/venue-roles — give an existing account authority over
  * an organisation, a compound or one venue.
  *
- * The account must already exist (found by email); nothing is created
- * and no invitation is sent. The target must exist. Granting is a
+ * The account must already exist (found by email) and have confirmed
+ * that email: anybody can sign up with an address they do not own, and
+ * a role granted to that account would hand a stranger the venue.
+ * Nothing is created and no invitation is sent. The target must exist. Granting is a
  * platform decision — a venue manager cannot appoint anybody.
  */
 export async function POST(req: Request) {
@@ -22,8 +24,14 @@ export async function POST(req: Request) {
     if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "بيانات غير صالحة", 422);
     const d = parsed.data;
 
-    const user = await db.user.findFirst({ where: { email: { equals: d.email, mode: "insensitive" } }, select: { id: true, name: true } });
+    const user = await db.user.findFirst({
+      where: { email: { equals: d.email, mode: "insensitive" } },
+      select: { id: true, name: true, emailVerified: true },
+    });
     if (!user) return err("مفيش حساب بالإيميل ده. لازم الشخص يسجّل الأول.", 404, { code: "no-account" });
+    if (!user.emailVerified) {
+      return err("الحساب ده لسه ما أكّدش إيميله. اطلب منه يأكّده الأول.", 409, { code: "email-not-verified" });
+    }
 
     const exists =
       d.kind === "ORGANIZATION_ADMIN"

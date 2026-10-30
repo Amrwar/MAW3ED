@@ -3,7 +3,7 @@ import { ok, err } from "@/lib/api";
 import { requireVenueAccess } from "@/lib/venues/guard";
 import { canEditCompoundGates } from "@/lib/venues/access";
 import { gateSchema } from "@/lib/venues/rules";
-import { handle, readJson, venueAudit } from "@/lib/venues/route";
+import { handle, readJson, sentOnly, venueAudit } from "@/lib/venues/route";
 
 type Ctx = { params: Promise<{ id: string; gateId: string }> };
 
@@ -27,9 +27,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
   return handle("venue gate PATCH", async () => {
     const { id, gateId } = await params;
     const { caller, authority } = await gateFor(id, gateId);
-    const parsed = gateSchema.partial().safeParse(await readJson(req));
+    const raw = await readJson(req);
+    const parsed = gateSchema.partial().safeParse(raw);
     if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "بيانات غير صالحة", 422);
-    await db.venueGate.update({ where: { id: gateId }, data: parsed.data });
+    await db.venueGate.update({ where: { id: gateId }, data: sentOnly(raw, parsed.data) });
     await venueAudit(caller, authority, "venue.gate.edit", id, "عدّل بوابة", { gateId });
     return ok({ saved: true });
   });

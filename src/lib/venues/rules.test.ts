@@ -11,6 +11,7 @@ import {
   type AccessPolicy,
 } from "./rules";
 import { venueSeo } from "./seo";
+import { hoursWithExceptions, venueInfoSchema } from "./rules";
 import { filterDirectory, directoryCategories, type DirectoryEntry } from "./public";
 
 const policy = (p: Partial<AccessPolicy> = {}): AccessPolicy => ({
@@ -69,6 +70,20 @@ describe("isOpenAt", () => {
   });
 });
 
+describe("hoursWithExceptions", () => {
+  const week = [0, 1, 2, 3, 4, 5, 6].map((d) => ({ dayOfWeek: d, openTime: "10:00", closeTime: "22:00", isClosed: false }));
+  it("a CLOSED day is closed, special hours replace the usual ones, other days are untouched", () => {
+    const closed = hoursWithExceptions(week, [{ kind: "CLOSED", startsOn: "2026-11-01", endsOn: "2026-11-02", openTime: null, closeTime: null }], "2026-11-01", 0);
+    expect(isOpenAt(closed, 0, 12 * 60)).toBe(false);
+    expect(isOpenAt(closed, 1, 12 * 60)).toBe(true);
+    const special = hoursWithExceptions(week, [{ kind: "SPECIAL_HOURS", startsOn: "2026-11-01", endsOn: "2026-11-01", openTime: "14:00", closeTime: "16:00" }], "2026-11-01", 0);
+    expect(isOpenAt(special, 0, 12 * 60)).toBe(false);
+    expect(isOpenAt(special, 0, 15 * 60)).toBe(true);
+    // Notices that do not change hours leave them alone.
+    expect(hoursWithExceptions(week, [{ kind: "BOOKINGS_PAUSED", startsOn: "2026-11-01", endsOn: "2026-11-01", openTime: null, closeTime: null }], "2026-11-01", 0)).toBe(week);
+  });
+});
+
 describe("locationPath", () => {
   const city = { nameAr: "القاهرة الجديدة", nameEn: "New Cairo", slug: "new-cairo" };
   it("runs country → city → district → compound → venue → zone → branch", () => {
@@ -100,6 +115,12 @@ describe("input rules", () => {
     expect(exceptionSchema.safeParse({ kind: "CLOSED", startsOn: "2026-11-02", endsOn: "2026-11-01" }).success).toBe(false);
     expect(exceptionSchema.safeParse({ kind: "SPECIAL_HOURS", startsOn: "2026-11-02", endsOn: "2026-11-02" }).success).toBe(false);
     expect(exceptionSchema.safeParse({ kind: "SPECIAL_HOURS", startsOn: "2026-11-02", endsOn: "2026-11-02", openTime: "12:00", closeTime: "18:00" }).success).toBe(true);
+  });
+  it("refuses impossible dates and non-web links", () => {
+    expect(exceptionSchema.safeParse({ kind: "CLOSED", startsOn: "2026-13-45", endsOn: "2026-13-45" }).success).toBe(false);
+    expect(exceptionSchema.safeParse({ kind: "CLOSED", startsOn: "2026-02-30", endsOn: "2026-02-30" }).success).toBe(false);
+    expect(venueInfoSchema.safeParse({ website: "javascript:alert(1)" }).success).toBe(false);
+    expect(venueInfoSchema.safeParse({ website: "https://example.com" }).success).toBe(true);
   });
   it("needs each day of the week exactly once", () => {
     const week = [0, 1, 2, 3, 4, 5, 6].map((d) => ({ dayOfWeek: d, openTime: "10:00", closeTime: "22:00", isClosed: false }));

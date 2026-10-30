@@ -10,8 +10,10 @@ anything not run says NOT RUN or BLOCKED.
 |---|---|---|---|---|---|
 | Web typecheck | static | `tsconfig.json` (strict) | `npm run typecheck` | yes | PASS — 2026-10-28, `77c8649` |
 | Web lint | static | `eslint.config.mjs` | `npm run lint` | yes | PASS — 0 errors, 6 warnings — 2026-10-30 (Phase 21) |
-| Web unit + route tests | Vitest 5.0.5 | `src/**/*.test.ts(x)` | `npm run test:run` | yes | PASS — 1059 passed, 79 skipped (1138; 105 files) — 2026-10-30 (Phase 21; Phase 20: 1038; Phase 19: 1024; Phase 18: 978; Phase 17: 960; baseline: 934) |
+| Web unit + route tests | Vitest 5.0.5 | `src/**/*.test.ts(x)` | `npm run test:run` | yes | PASS — 1082 passed, 94 skipped (1176; 108 files) — 2026-10-31 (Phase 22; Phase 21: 1059; Phase 20: 1038; Phase 19: 1024; Phase 18: 978; Phase 17: 960; baseline: 934) |
 | Phase 21 on Postgres: publish gate, email completion, suspended, test bookings (count, customer, notifications, accounts, deletion, refused once public), unpublish, import + cross-tenant rollback, downgrade keeps records | DB integration | `src/lib/business/phase21.db.test.ts` | `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/business/phase21.db.test.ts` | no | PASS — 9/9 — 2026-10-30 |
+| Phase 22 on Postgres: venues, tenancy approval and isolation, roles by scope, DB constraints, counts-only metrics, booking without a venue | DB integration | `src/lib/venues/phase22.db.test.ts` | `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/venues/phase22.db.test.ts` | no | PASS — 15/15 — 2026-10-31 |
+| Phase 22 end to end: admin hierarchy and roles, manager console and isolation, publish gate, owner request and restrictions, approval, public venue page ar/en with SEO, metrics without PII, removal, suspension | HTTP against a production build + QA DB | `scripts/qa-phase22.mjs` | `node scripts/qa-phase22.mjs` (server on :3101) | no | PASS — 56/56 — 2026-10-31 |
 | Phase 21 end to end: sign-up → server draft → private business → readiness → policies → owner preview + test booking → publish via email → unpublish → CSV import/rollback (cross-tenant 404) → entitlements and plan gates → demo, help, setup, import pages | HTTP against a production build + QA DB | `scripts/qa-phase21.mjs` | `node scripts/qa-phase21.mjs` (server on :3101) | no | PASS — 44/44 — 2026-10-30 |
 | Booking engine on Postgres (P17-01/03/05, R2, R5) | DB integration | `src/lib/bookings/create.db.test.ts` | `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/bookings/create.db.test.ts` | no (needs Postgres) | PASS — 5/5, five consecutive runs — 2026-10-28; 4/4 of the original tests FAIL on the pre-Phase-17 code |
 | Phase 17 end to end | Playwright + HTTP against a production build and the QA DB | `scripts/qa-phase17.mjs` | `node scripts/qa-phase17.mjs` (server on :3101) | no | PASS — 13/13 — 2026-10-30 (Phase 21 regression) |
@@ -38,7 +40,7 @@ anything not run says NOT RUN or BLOCKED.
 | Mobile E2E (Android emulator) | Maestro, 19 flows | `mobile/.maestro/` | `.github/workflows/e2e-android.yml` (manual or on flow changes) | separate workflow | **FAIL** — last run on `main`, 2026-10-17; last success 2026-10-14 on `release/audit-fixes` |
 | Web E2E: responsive, layout, security | Playwright scripts | `scripts/qa-responsive.mjs`, `qa-security.mjs`, fixtures | `node scripts/<name>.mjs` against a local server + QA DB | no | NOT RUN at baseline; last recorded passes in `docs/qa-phase19.md` / `qa-phase20-responsive.md` |
 | Paymob webhook verification | script | `scripts/verify-payment-webhook.mjs` | see `docs/payments-verification.md` | no | NOT RUN at baseline |
-| Accessibility (axe) | Playwright + axe-core | part of `scripts/qa-phase18.mjs` | see above | no | PASS — 0 serious/critical on 376 page loads, including the Phase 21 pages — 2026-10-30 |
+| Accessibility (axe) | Playwright + axe-core | part of `scripts/qa-phase18.mjs` | see above | no | PASS — 0 serious/critical on 400 page loads, including the Phase 21 and 22 pages, plus a filled venue page ar/en at 375/1440 — 2026-10-31 |
 
 ## Coverage by area
 

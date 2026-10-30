@@ -55,7 +55,12 @@ export interface PublicVenue {
 
 /** Published-and-approved, as one where-clause shared by every public read. */
 export const PUBLIC_VENUE = { status: "ACTIVE" as const, isPublished: true };
-export const LISTED_MEMBERSHIP = { status: "APPROVED" as const, business: { isPublished: true } };
+/** Listed: approved, the business public, and the branch (if any) still open. */
+export const LISTED_MEMBERSHIP = {
+  status: "APPROVED" as const,
+  business: { isPublished: true },
+  OR: [{ branchId: null }, { branch: { isActive: true } }],
+};
 
 export async function loadPublicVenue(slug: string, now = new Date()): Promise<PublicVenue | null> {
   const v = await db.venue.findFirst({
@@ -145,6 +150,8 @@ export async function loadPublicVenue(slug: string, now = new Date()): Promise<P
     directory: v.memberships
       // A branch the business has switched off is not somewhere to go.
       .filter((m) => !m.branch || m.branch.isActive)
+      // One entry per business and branch, whatever the history.
+      .filter((m, i, all) => all.findIndex((x) => x.business.slug === m.business.slug && x.branch?.id === m.branch?.id) === i)
       .map((m) => ({
         membershipId: m.id,
         slug: m.business.slug,
@@ -206,8 +213,8 @@ export async function listPublicVenues() {
 
 /** The venues a published business is listed in, for its own page. */
 export async function venuesOfBusiness(businessId: string) {
-  return db.venueMembership.findMany({
-    where: { businessId, status: "APPROVED", venue: PUBLIC_VENUE },
+  const rows = await db.venueMembership.findMany({
+    where: { businessId, ...LISTED_MEMBERSHIP, venue: PUBLIC_VENUE },
     select: {
       unit: true,
       branchId: true,
@@ -215,4 +222,6 @@ export async function venuesOfBusiness(businessId: string) {
       venue: { select: { slug: true, nameAr: true, nameEn: true } },
     },
   });
+  // One line per venue, however many branches are in it.
+  return rows.filter((r, i) => rows.findIndex((x) => x.venue.slug === r.venue.slug) === i);
 }

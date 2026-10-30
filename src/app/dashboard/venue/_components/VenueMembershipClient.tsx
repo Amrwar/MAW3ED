@@ -161,8 +161,8 @@ export default function VenueMembershipClient() {
               {branches.length > 0 && (
                 <label className="space-y-1 text-sm">
                   <span className="font-bold">{t("الفرع", "Branch")}</span>
-                  <select className={field} value={form.branchId} onChange={(e) => setForm({ ...form, branchId: e.target.value })}>
-                    <option value="">{t("النشاط كله", "The whole business")}</option>
+                  <select className={field} value={form.branchId} onChange={(e) => setForm({ ...form, branchId: e.target.value })} required={branches.length > 1}>
+                    {branches.length > 1 ? <option value="">{t("اختار الفرع اللي جوه المكان", "Choose the branch inside it")}</option> : <option value="">{t("النشاط كله", "The whole business")}</option>}
                     {branches.map((b) => <option key={b.id} value={b.id}>{nm(b)}</option>)}
                   </select>
                 </label>

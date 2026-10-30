@@ -52,8 +52,8 @@ below is planned in detail yet, and no phase starts automatically.
 | 18 | Premium UI/UX and unified booking system | PASS — code complete, awaiting merge + migration (`docs/phases/PHASE_18_REPORT.md`) |
 | 19 | Production booking and payment reliability: state machine, concurrency, time zones, payments, notification outbox, runbooks | PASS (code complete, locally verified; merged #35) — `docs/phases/PHASE_19_REPORT.md` |
 | 20 | Security, privacy and operational hardening: threat model, revocable sessions, recycled-number fence, CSRF and upload checks, export, audit, legal drafts, restore drill | PASS (code complete, locally verified; 14 residual risks with owners) — `docs/phases/PHASE_20_REPORT.md`, `docs/security/SECURITY_REPORT.md` |
-| 21 | Business onboarding and SaaS maturity: server drafts, readiness gate, private-until-published, owner test bookings, separate verification states, policies, entitlements, demo, CSV import, help centre, lifecycle funnel | PASS (code complete, locally verified; needs `phase21_saas.sql` on production before deploy) — `docs/phases/PHASE_21_REPORT.md` |
-| 22 | Awaiting instructions | NOT STARTED |
+| 21 | Business onboarding and SaaS maturity: server drafts, readiness gate, private-until-published, owner test bookings, separate verification states, policies, entitlements, demo, CSV import, help centre, lifecycle funnel | PASS — merged #39, live 2026-10-30 — `docs/phases/PHASE_21_REPORT.md` |
+| 22 | Multi-venue and destination architecture: organisations, compounds, venues, zones, gate metadata, visitor policies, tenancy approval, venue roles, venue console, public venue pages | PASS (code complete, locally verified; needs `phase22_venues.sql` on production before deploy) — `docs/phases/PHASE_22_REPORT.md`, `docs/architecture/VENUES.md` |
 | 23 | Awaiting instructions | NOT STARTED |
 | 24 | Awaiting instructions | NOT STARTED |
 | 25 | Awaiting instructions | NOT STARTED |

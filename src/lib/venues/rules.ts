@@ -22,7 +22,15 @@ export const venueInfoSchema = z
     descriptionEn: optText(2000),
     address: optText(300),
     phone: optText(30),
-    website: z.string().trim().url().max(300).optional().nullable().or(z.literal("").transform(() => null)),
+    website: z
+      .string()
+      .trim()
+      .url()
+      .max(300)
+      .refine((u) => /^https?:\/\//i.test(u), { message: "الرابط لازم يبدأ بـ http أو https" })
+      .optional()
+      .nullable()
+      .or(z.literal("").transform(() => null)),
     latitude: z.number().min(-90).max(90).nullable().optional(),
     longitude: z.number().min(-180).max(180).nullable().optional(),
     coverImage: z.string().url().max(500).nullable().optional(),
@@ -72,11 +80,20 @@ export const policySchema = z.object({
   accessInstructionsEn: optText(2000),
 });
 
+/** A calendar date that exists: 2026-02-30 does not. */
+const realDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((d) => {
+    const t = new Date(`${d}T00:00:00Z`);
+    return !Number.isNaN(t.getTime()) && t.toISOString().slice(0, 10) === d;
+  }, { message: "تاريخ غير صحيح" });
+
 export const exceptionSchema = z
   .object({
     kind: z.enum(["CLOSED", "ACCESS_SUSPENDED", "SPECIAL_HOURS", "BOOKINGS_PAUSED"]),
-    startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    endsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    startsOn: realDate,
+    endsOn: realDate,
     openTime: z.string().regex(HHMM).nullable().optional(),
     closeTime: z.string().regex(HHMM).nullable().optional(),
     noteAr: optText(500),
@@ -197,6 +214,24 @@ export function venueFaq(
     });
   }
   return items;
+}
+
+/**
+ * Today's hours once the venue's dated exceptions are applied: a
+ * CLOSED day is closed, SPECIAL_HOURS replace the usual ones.
+ */
+export function hoursWithExceptions<H extends { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }>(
+  hours: H[],
+  exceptions: { kind: string; startsOn: string; endsOn: string; openTime: string | null; closeTime: string | null }[],
+  today: string,
+  dayOfWeek: number,
+): { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }[] {
+  const hit = exceptions.find((e) => e.startsOn <= today && e.endsOn >= today && (e.kind === "CLOSED" || e.kind === "SPECIAL_HOURS"));
+  if (!hit) return hours;
+  const rest = hours.filter((h) => h.dayOfWeek !== dayOfWeek);
+  return hit.kind === "CLOSED"
+    ? [...rest, { dayOfWeek, openTime: "00:00", closeTime: "00:00", isClosed: true }]
+    : [...rest, { dayOfWeek, openTime: hit.openTime ?? "00:00", closeTime: hit.closeTime ?? "00:00", isClosed: !hit.openTime || !hit.closeTime }];
 }
 
 /** Open right now, for a day's hours in Cairo minutes; handles overnight. */

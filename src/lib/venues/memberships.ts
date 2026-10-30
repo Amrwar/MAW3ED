@@ -18,7 +18,10 @@ export type MembershipError =
   | "already-live"
   | "not-found"
   | "invalid-transition"
-  | "zone-not-in-venue";
+  | "zone-not-in-venue"
+  | "pick-a-branch"
+  | "overlaps-existing"
+  | "recently-rejected";
 
 export class MembershipFailure extends Error {
   constructor(readonly code: MembershipError) {
@@ -39,13 +42,47 @@ export async function requestMembership(input: {
 }) {
   const venue = await db.venue.findUnique({ where: { id: input.venueId }, select: { status: true } });
   if (!venue) throw new MembershipFailure("venue-not-found");
-  // A venue being set up can collect its tenants before it goes public;
-  // a suspended one takes nobody.
-  if (venue.status === "SUSPENDED") throw new MembershipFailure("venue-not-accepting");
+  // Only an ACTIVE venue — one the platform has accepted — takes
+  // requests, the same set the owner is shown. It can collect tenants
+  // before it is published.
+  if (venue.status !== "ACTIVE") throw new MembershipFailure("venue-not-accepting");
+
+  const activeBranches = await db.branch.findMany({
+    where: { businessId: input.businessId, isActive: true },
+    select: { id: true },
+  });
   if (input.branchId) {
-    const branch = await db.branch.findFirst({ where: { id: input.branchId, businessId: input.businessId }, select: { id: true } });
-    if (!branch) throw new MembershipFailure("branch-not-yours");
+    if (!activeBranches.some((b) => b.id === input.branchId)) throw new MembershipFailure("branch-not-yours");
+  } else if (activeBranches.length > 1) {
+    // A business with several locations is in a venue through the one
+    // branch that is there — otherwise the venue would be shown, and
+    // would count, the whole chain.
+    throw new MembershipFailure("pick-a-branch");
   }
+
+  // The business as a whole and one of its branches cannot both be
+  // listed in the same venue: it would appear twice.
+  const overlapping = await db.venueMembership.count({
+    where: {
+      venueId: input.venueId,
+      businessId: input.businessId,
+      status: { in: ["REQUESTED", "APPROVED"] },
+      ...(input.branchId ? { branchId: null } : { branchId: { not: null } }),
+    },
+  });
+  if (overlapping) throw new MembershipFailure("overlaps-existing");
+
+  // A request the venue turned down cannot be sent again for a week.
+  const rejected = await db.venueMembership.count({
+    where: {
+      venueId: input.venueId,
+      businessId: input.businessId,
+      branchId: input.branchId,
+      status: "REJECTED",
+      decidedAt: { gte: new Date(Date.now() - 7 * 86_400_000) },
+    },
+  });
+  if (rejected) throw new MembershipFailure("recently-rejected");
   try {
     return await db.venueMembership.create({
       data: {
@@ -170,4 +207,7 @@ export const MEMBERSHIP_MESSAGES: Record<MembershipError, { status: number; ar: 
   "not-found": { status: 404, ar: "الطلب ده مش موجود" },
   "invalid-transition": { status: 409, ar: "الطلب اتغير حالته بالفعل — حدّث الصفحة" },
   "zone-not-in-venue": { status: 422, ar: "الدور أو المنطقة دي مش في المكان ده" },
+  "pick-a-branch": { status: 422, ar: "نشاطك ليه أكتر من فرع — اختار الفرع اللي جوه المكان" },
+  "overlaps-existing": { status: 409, ar: "النشاط كله أو فرع منه معروض أو مطلوب بالفعل في المكان ده" },
+  "recently-rejected": { status: 429, ar: "المكان رفض الطلب ده من أقل من أسبوع — كلّم إدارة المكان الأول" },
 };

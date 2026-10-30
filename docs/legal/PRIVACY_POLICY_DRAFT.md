@@ -35,6 +35,7 @@ and the booking pages businesses embed or link to.
 | Reviews | after a completed booking | public, under your first name [DECISION: display name rule] | `Review` |
 | Onboarding draft (business owners) | while filling in the sign-up wizard | resuming on any device; deleted when the business is created or the owner starts over | `OnboardingDraft` |
 | Onboarding milestones (business owners) | registering, publishing, first booking, first paid plan | measuring whether onboarding works; one row per account and milestone, no visitor or customer data, no third party | `LifecycleEvent`, `lib/business/lifecycle.ts` |
+| Venue roles and memberships (venue staff, business owners) | a venue role is granted, or an owner asks to be listed in a venue | who manages which venue; which business is listed where. Venue staff see business names and **booking counts only** — never customers, their details, bookings, notes or payments | `VenueRole`, `VenueMembership`, `src/lib/venues/metrics.ts` |
 | Import records (business owners) | importing a CSV of customers or services | undoing an import; holds the ids created, not the file | `ImportBatch` |
 
 We do not collect: card data, precise location history, contacts,

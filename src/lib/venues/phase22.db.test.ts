@@ -179,6 +179,50 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
     expect((await db.venueMembership.findUniqueOrThrow({ where: { id: req.id } })).status).toBe("REMOVED");
   });
 
+  it("a business with several branches must name the branch; whole-business and branch rows cannot overlap", async () => {
+    const chain = await business("chain", { branches: ["فرع ١", "فرع ٢"] });
+    await expect(
+      m.requestMembership({ businessId: chain.business.id, userId: chain.owner.id, venueId: ctx.mallB.id, branchId: null, unit: null }),
+    ).rejects.toMatchObject({ code: "pick-a-branch" });
+
+    const one = await business("one-branch", { branches: ["الفرع"] });
+    await m.requestMembership({ businessId: one.business.id, userId: one.owner.id, venueId: ctx.mallB.id, branchId: null, unit: null });
+    await expect(
+      m.requestMembership({ businessId: one.business.id, userId: one.owner.id, venueId: ctx.mallB.id, branchId: one.business.branches[0].id, unit: null }),
+    ).rejects.toMatchObject({ code: "overlaps-existing" });
+  });
+
+  it("a rejected request cannot be re-sent for a week", async () => {
+    const r = await business("rejected");
+    const req = await m.requestMembership({ businessId: r.business.id, userId: r.owner.id, venueId: ctx.mallA.id, branchId: null, unit: null });
+    await m.decideMembership({ venueId: ctx.mallA.id, membershipId: req.id, decision: "reject", userId: "x", note: "not here" });
+    await expect(
+      m.requestMembership({ businessId: r.business.id, userId: r.owner.id, venueId: ctx.mallA.id, branchId: null, unit: null }),
+    ).rejects.toMatchObject({ code: "recently-rejected" });
+  });
+
+  it("a draft venue takes no requests", async () => {
+    const city = await db.city.findFirstOrThrow();
+    const d = await db.venue.create({ data: { slug: `${tag}-draft2`, nameAr: "مسودة ٢", cityId: city.id } });
+    ids.venues.push(d.id);
+    const x = await business("draft-try");
+    await expect(
+      m.requestMembership({ businessId: x.business.id, userId: x.owner.id, venueId: d.id, branchId: null, unit: null }),
+    ).rejects.toMatchObject({ code: "venue-not-accepting" });
+  });
+
+  it("a single-location business listed by its branch counts its unbranched bookings", async () => {
+    const solo = await business("solo-branch", { branches: ["الفرع الوحيد"] });
+    const req = await m.requestMembership({ businessId: solo.business.id, userId: solo.owner.id, venueId: ctx.mallA.id, branchId: solo.business.branches[0].id, unit: null });
+    await m.decideMembership({ venueId: ctx.mallA.id, membershipId: req.id, decision: "approve", userId: "x" });
+    const before = (await metrics.venueMetrics(ctx.mallA.id)).bookings.total;
+    expect((await createBooking({
+      businessId: solo.business.id, serviceId: solo.service.id, customerId: null, customerName: "زبون", customerPhone: "01012345672",
+      date, startTime: "13:00", status: "CONFIRMED", totalPrice: 100, currency: "EGP", depositAmount: null,
+    })).ok).toBe(true);
+    expect((await metrics.venueMetrics(ctx.mallA.id)).bookings.total).toBe(before + 1);
+  });
+
   it("a suspended venue takes no requests", async () => {
     const s = await business("suspended-try");
     await db.venue.update({ where: { id: ctx.mallB.id }, data: { status: "SUSPENDED" } });
@@ -215,6 +259,7 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
   });
 
   it("venue metrics are counts of approved tenants' real bookings, with no customer data", async () => {
+    const mallABefore = (await metrics.venueMetrics(ctx.mallA.id)).bookings.total;
     const shop = await business("shop");
     // Business from before it joined the venue is not the venue's.
     expect((await createBooking({
@@ -239,7 +284,7 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
     expect(k.tenants.approved).toBeGreaterThanOrEqual(1);
     expect(JSON.stringify(k)).not.toMatch(/عميل سري|01012345678|totalPrice|customer/);
     // Venue A never sees venue B's tenants' bookings.
-    expect((await metrics.venueMetrics(ctx.mallA.id)).bookings.total).toBe(0);
+    expect((await metrics.venueMetrics(ctx.mallA.id)).bookings.total).toBe(mallABefore);
   });
 
   it("a business in no venue books exactly as before", async () => {

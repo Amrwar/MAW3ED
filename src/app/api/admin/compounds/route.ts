@@ -14,6 +14,10 @@ export async function POST(req: Request) {
     if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "بيانات غير صالحة", 422);
     const d = parsed.data;
     if (await db.compound.findUnique({ where: { slug: d.slug } })) return err("الرابط مستخدم", 409);
+    if (d.organizationId && !(await db.venueOrganization.findUnique({ where: { id: d.organizationId }, select: { id: true } }))) {
+      return err("الجهة مش موجودة", 422);
+    }
+    if (!(await db.city.findUnique({ where: { id: d.cityId }, select: { id: true } }))) return err("المدينة مش موجودة", 422);
     if (d.neighborhoodId) {
       const n = await db.neighborhood.findFirst({ where: { id: d.neighborhoodId, cityId: d.cityId }, select: { id: true } });
       if (!n) return err("الحي مش في المدينة دي", 422);

@@ -25,9 +25,24 @@ export async function venueMetrics(venueId: string, windowDays = 30, now = new D
     select: { status: true, businessId: true, branchId: true, decidedAt: true },
   });
   const approved = members.filter((m) => m.status === "APPROVED");
+  // A business with one location books without naming a branch (the
+  // widget only asks when there are several), so its branch membership
+  // also counts the bookings that carry no branch.
+  const branchCounts = approved.length
+    ? await db.branch.groupBy({
+        by: ["businessId"],
+        where: { businessId: { in: approved.map((m) => m.businessId) }, isActive: true },
+        _count: { _all: true },
+      })
+    : [];
+  const single = new Set(branchCounts.filter((c) => c._count._all <= 1).map((c) => c.businessId));
   const scopes = approved.map((m) => ({
     businessId: m.businessId,
-    ...(m.branchId ? { branchId: m.branchId } : {}),
+    ...(m.branchId
+      ? single.has(m.businessId)
+        ? { OR: [{ branchId: m.branchId }, { branchId: null }] }
+        : { branchId: m.branchId }
+      : {}),
     createdAt: { gte: m.decidedAt && m.decidedAt > since ? m.decidedAt : since },
   }));
 

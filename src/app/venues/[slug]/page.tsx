@@ -11,7 +11,7 @@ import { buildBreadcrumbJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
 import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { requestNonce } from "@/lib/security/nonce";
 import { loadPublicVenue, filterDirectory, directoryCategories } from "@/lib/venues/public";
-import { venueFaq, directionsUrl, isOpenAt, locationPath } from "@/lib/venues/rules";
+import { venueFaq, directionsUrl, isOpenAt, locationPath, hoursWithExceptions } from "@/lib/venues/rules";
 import { venueSeo, kindLabel } from "@/lib/venues/seo";
 import { cairoDateString, cairoMinutes } from "@/lib/bookings/instants";
 
@@ -68,7 +68,12 @@ export default async function VenuePage({ params, searchParams }: Props) {
   const categories = directoryCategories(venue.directory);
   const faq = venueFaq(venue, venue.policy, lang);
   const now = new Date();
-  const openNow = venue.hours.length ? isOpenAt(venue.hours, new Date(`${cairoDateString(now)}T12:00:00Z`).getUTCDay(), cairoMinutes(now)) : null;
+  const today = cairoDateString(now);
+  const dow = new Date(`${today}T12:00:00Z`).getUTCDay();
+  // A dated closure or special hours today override the weekly hours.
+  const openNow = venue.hours.length
+    ? isOpenAt(hoursWithExceptions(venue.hours, venue.exceptions, today, dow), dow, cairoMinutes(now))
+    : null;
   const path = locationPath({
     countryCode: venue.city.countryCode,
     city: venue.city,
@@ -123,7 +128,7 @@ export default async function VenuePage({ params, searchParams }: Props) {
               {venue.website && (
                 <a href={venue.website} target="_blank" rel="noopener noreferrer nofollow" className="btn btn-ghost btn-sm gap-1.5">
                   <Globe size={14} aria-hidden="true" />
-                  {t("الموقع الرسمي", "Website")}
+                  {t("الموقع الإلكتروني", "Website")}
                 </a>
               )}
             </div>

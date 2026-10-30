@@ -25,15 +25,34 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // Suspending takes it down; publishing needs it ACTIVE.
     const isPublished = status !== "ACTIVE" ? false : (d.isPublished ?? before.isPublished);
     if (d.isPublished && status !== "ACTIVE") return err("لازم المكان يكون مفعّل قبل النشر", 409);
+    if (d.organizationId && !(await db.venueOrganization.findUnique({ where: { id: d.organizationId }, select: { id: true } }))) {
+      return err("الجهة مش موجودة", 422);
+    }
+    let organizationId = d.organizationId;
     if (d.compoundId) {
-      const c = await db.compound.findUnique({ where: { id: d.compoundId }, select: { cityId: true } });
+      const c = await db.compound.findUnique({ where: { id: d.compoundId }, select: { cityId: true, organizationId: true } });
       if (!c) return err("الكمبوند مش موجود", 422);
       if (c.cityId !== before.cityId) return err("الكمبوند في مدينة تانية", 422);
+      // A venue moved into a compound joins the compound's operator,
+      // unless an operator was named explicitly.
+      if (organizationId === undefined && c.organizationId) organizationId = c.organizationId;
+    }
+    if (d.compoundId !== undefined && d.compoundId !== before.compoundId) {
+      // The old compound's gates no longer serve this venue: drop them
+      // from the allowed list rather than keep ids that match nothing.
+      const policy = await db.venuePolicy.findUnique({ where: { venueId: id }, select: { allowedGateIds: true } });
+      if (policy?.allowedGateIds.length) {
+        const still = await db.venueGate.findMany({
+          where: { id: { in: policy.allowedGateIds }, OR: [{ venueId: id }, ...(d.compoundId ? [{ compoundId: d.compoundId }] : [])] },
+          select: { id: true },
+        });
+        await db.venuePolicy.update({ where: { venueId: id }, data: { allowedGateIds: still.map((g) => g.id) } });
+      }
     }
 
     const after = await db.venue.update({
       where: { id },
-      data: { ...d, status, isPublished },
+      data: { ...d, ...(organizationId !== undefined ? { organizationId } : {}), status, isPublished },
       select: { status: true, isPublished: true, organizationId: true, compoundId: true },
     });
     await recordAudit({

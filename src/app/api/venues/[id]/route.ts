@@ -66,10 +66,15 @@ export async function PATCH(req: Request, { params }: Ctx) {
     }
     if (hours) {
       const { caller, authority } = await requireVenueAccess(id, "venue.hours");
-      await db.$transaction([
-        db.venueHours.deleteMany({ where: { venueId: id } }),
-        db.venueHours.createMany({ data: hours.map((h) => ({ ...h, venueId: id })) }),
-      ]);
+      await db.$transaction(
+        hours.map((h) =>
+          db.venueHours.upsert({
+            where: { venueId_dayOfWeek: { venueId: id, dayOfWeek: h.dayOfWeek } },
+            create: { ...h, venueId: id },
+            update: { openTime: h.openTime, closeTime: h.closeTime, isClosed: h.isClosed },
+          }),
+        ),
+      );
       await venueAudit(caller, authority, "venue.hours", id, "عدّل مواعيد المكان");
     }
     if (!info && !hours) return err("مفيش حاجة تتغير", 422);

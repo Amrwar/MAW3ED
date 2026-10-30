@@ -108,6 +108,10 @@ try {
   check("a taken venue slug is refused", dup.status === 409, `status ${dup.status}`);
   check("anybody else gets 404 from the admin venue API", (await send(owner, "/api/admin/venues", "POST", { slug: `${tag}-x`, nameAr: "x", cityId: city.id })).status === 404);
 
+  const early = await send(admin, "/api/admin/venue-roles", "POST", { email: mgrEmail, kind: "VENUE_MANAGER", venueId: v1.id });
+  check("a role is refused to an account that has not confirmed its email", early.status === 409 && (await json(early)).code === "email-not-verified", `status ${early.status}`);
+  // The manager opens their confirmation link (done directly in the QA database).
+  await pg.query(`UPDATE "User" SET "emailVerified"=now() WHERE id=$1`, [mgrId]);
   const grant = await send(admin, "/api/admin/venue-roles", "POST", { email: mgrEmail, kind: "VENUE_MANAGER", venueId: v1.id });
   check("admin makes the account manager of the first venue", grant.status === 201, `status ${grant.status}`);
   const noAcct = await send(admin, "/api/admin/venue-roles", "POST", { email: `${tag}-nobody@example.test`, kind: "VENUE_MANAGER", venueId: v1.id });
@@ -129,6 +133,13 @@ try {
   const zone = (await json(await send(mgr, `/api/venues/${v1.id}/zones`, "POST", { kind: "FLOOR", nameAr: "الدور الأرضي", nameEn: "Ground floor", level: 0 }))).zone;
   const gate = (await json(await send(mgr, `/api/venues/${v1.id}/gates`, "POST", { nameAr: "البوابة الرئيسية", nameEn: "Main gate", kind: "PEDESTRIAN", code: "QA-GATE-CODE" }))).gate;
   check("the manager adds a floor and a gate", !!zone?.id && !!gate?.id);
+  await send(mgr, `/api/venues/${v1.id}/gates/${gate.id}`, "PATCH", { isActive: false });
+  await send(mgr, `/api/venues/${v1.id}/gates/${gate.id}`, "PATCH", { nameEn: "Main gate (north)" });
+  const afterRename = (await pg.query(`SELECT "isActive", kind FROM "VenueGate" WHERE id=$1`, [gate.id])).rows[0];
+  check("renaming a gate changes only its name (stays inactive, keeps its kind)", afterRename?.isActive === false && afterRename?.kind === "PEDESTRIAN", JSON.stringify(afterRename));
+  await send(mgr, `/api/venues/${v1.id}/gates/${gate.id}`, "PATCH", { isActive: true });
+  const badDate = await send(mgr, `/api/venues/${v1.id}/exceptions`, "POST", { kind: "CLOSED", startsOn: "2026-13-45", endsOn: "2026-13-45" });
+  check("an impossible date is a 422, not a server error", badDate.status === 422, `status ${badDate.status}`);
   const cgate = await send(mgr, `/api/venues/${v1.id}/gates`, "POST", { nameAr: "بوابة الكمبوند", scope: "compound" });
   check("a venue manager cannot add a compound gate (404)", cgate.status === 404, `status ${cgate.status}`);
   const pol = await send(mgr, `/api/venues/${v1.id}/policy`, "PUT", {
@@ -164,10 +175,13 @@ try {
 
   /* ── Tenancy ─────────────────────────────────────────── */
   const ownBiz = (await pg.query(`SELECT id, slug FROM "Business" WHERE slug='qa-salon'`)).rows[0];
-  const reqRes = await send(owner, "/api/business/venues/memberships", "POST", { venueId: v1.id, unit: "G-07" });
+  const noBranch = await send(owner, "/api/business/venues/memberships", "POST", { venueId: v1.id });
+  check("a business with several branches must say which branch is in the venue", noBranch.status === 422 && (await json(noBranch)).code === "pick-a-branch", `status ${noBranch.status}`);
+  const branchId = (await pg.query(`SELECT id FROM "Branch" WHERE "businessId"=$1 AND "isActive" ORDER BY "sortOrder" LIMIT 1`, [ownBiz.id])).rows[0]?.id;
+  const reqRes = await send(owner, "/api/business/venues/memberships", "POST", { venueId: v1.id, branchId, unit: "G-07" });
   const membership = (await json(reqRes)).membership;
   check("the owner asks for their business to be listed", reqRes.status === 201 && membership?.status === "REQUESTED", `status ${reqRes.status}`);
-  check("asking twice is refused", (await send(owner, "/api/business/venues/memberships", "POST", { venueId: v1.id })).status === 409);
+  check("asking twice is refused", (await send(owner, "/api/business/venues/memberships", "POST", { venueId: v1.id, branchId })).status === 409);
   check("a pending request is not public", !/qa-salon/.test(await (await call(null, `/venues/${tag}-mall`)).text()));
   check("the owner cannot approve their own request (404)", (await send(owner, `/api/venues/${v1.id}/memberships/${membership.id}`, "PATCH", { decision: "approve" })).status === 404);
 
@@ -182,7 +196,7 @@ try {
 
   const arRes = await call(null, `/venues/${tag}-mall`);
   const ar = await arRes.text();
-  check("the Arabic page lists the business with a booking link and its floor", arRes.status === 200 && ar.includes(`/company/${ownBiz.slug}`) && /الدور الأرضي/.test(ar));
+  check("the Arabic page lists the branch with a booking link that preselects it, and its floor", arRes.status === 200 && ar.includes(`/company/${ownBiz.slug}?branch=${branchId}`) && /الدور الأرضي/.test(ar));
   check("Arabic metadata: title, canonical, indexable now", /<title>[^<]*مول داخل كمبوند/.test(ar) && /rel="canonical"[^>]*\/venues\//.test(ar) && !/noindex/.test(ar));
   const en = await (await call(null, `/en/venues/${tag}-mall`)).text();
   check("English metadata and page", /<title>[^<]*Compound mall \(QA fixture\)/.test(en) && /Visitor and access information/.test(en) && /hreflang="ar"/i.test(en));
