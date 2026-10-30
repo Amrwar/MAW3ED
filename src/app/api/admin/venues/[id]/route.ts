@@ -37,23 +37,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       // unless an operator was named explicitly.
       if (organizationId === undefined && c.organizationId) organizationId = c.organizationId;
     }
-    if (d.compoundId !== undefined && d.compoundId !== before.compoundId) {
-      // The old compound's gates no longer serve this venue: drop them
-      // from the allowed list rather than keep ids that match nothing.
-      const policy = await db.venuePolicy.findUnique({ where: { venueId: id }, select: { allowedGateIds: true } });
-      if (policy?.allowedGateIds.length) {
-        const still = await db.venueGate.findMany({
-          where: { id: { in: policy.allowedGateIds }, OR: [{ venueId: id }, ...(d.compoundId ? [{ compoundId: d.compoundId }] : [])] },
-          select: { id: true },
-        });
-        await db.venuePolicy.update({ where: { venueId: id }, data: { allowedGateIds: still.map((g) => g.id) } });
+    // The venue change and the gate clean-up it implies land together.
+    const after = await db.$transaction(async (tx) => {
+      if (d.compoundId !== undefined && d.compoundId !== before.compoundId) {
+        // The old compound's gates no longer serve this venue: drop them
+        // from the allowed list rather than keep ids that match nothing.
+        const policy = await tx.venuePolicy.findUnique({ where: { venueId: id }, select: { allowedGateIds: true } });
+        if (policy?.allowedGateIds.length) {
+          const still = await tx.venueGate.findMany({
+            where: { id: { in: policy.allowedGateIds }, OR: [{ venueId: id }, ...(d.compoundId ? [{ compoundId: d.compoundId }] : [])] },
+            select: { id: true },
+          });
+          await tx.venuePolicy.update({ where: { venueId: id }, data: { allowedGateIds: still.map((g) => g.id) } });
+        }
       }
-    }
-
-    const after = await db.venue.update({
-      where: { id },
-      data: { ...d, ...(organizationId !== undefined ? { organizationId } : {}), status, isPublished },
-      select: { status: true, isPublished: true, organizationId: true, compoundId: true },
+      return tx.venue.update({
+        where: { id },
+        data: { ...d, ...(organizationId !== undefined ? { organizationId } : {}), status, isPublished },
+        select: { status: true, isPublished: true, organizationId: true, compoundId: true },
+      });
     });
     await recordAudit({
       actor,

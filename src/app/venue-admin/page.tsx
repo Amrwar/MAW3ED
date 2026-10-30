@@ -16,7 +16,6 @@ export default async function VenueAdminIndex() {
   if (!caller) redirect("/login?next=/venue-admin");
   const venues = await venuesFor(caller);
   if (!caller.platform && venues.length === 0) notFound();
-  if (venues.length === 1 && !caller.platform) redirect(`/venue-admin/${venues[0].id}`);
   const en = (await getLang()) === "en";
 
   return (
@@ -41,6 +40,14 @@ export default async function VenueAdminIndex() {
             </li>
           ))}
         </ul>
+      )}
+      {!caller.platform && (
+        <p className="m-0 text-xs text-[var(--color-subtle)]">
+          {en ? "Run a business of your own? " : "عندك نشاط خاص بيك؟ "}
+          <Link href="/onboarding?create=1" className="text-[var(--color-jade)] underline">
+            {en ? "Create its page" : "اعمل صفحته"}
+          </Link>
+        </p>
       )}
     </main>
   );

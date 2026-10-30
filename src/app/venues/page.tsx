@@ -15,8 +15,9 @@ export async function generateMetadata(): Promise<Metadata> {
     lang === "en"
       ? buildMetadata({ title: "Malls and destinations", description: "Malls, office complexes and destinations whose businesses take bookings on Maw3ed.", path: "/venues", lang })
       : buildMetadata({ title: "المولات والأماكن", description: "مولات ومجمعات وأماكن الأنشطة اللي جواها بتستقبل حجوزات على موعد.", path: "/venues" });
-  // Nothing to index until there is a venue to list.
-  return venues.length ? meta : { ...meta, robots: { index: false, follow: true } };
+  // Nothing to index until a venue lists somebody — the same rule the
+  // sitemap uses for this page and for each venue.
+  return venues.some((v) => v.businesses > 0) ? meta : { ...meta, robots: { index: false, follow: true } };
 }
 
 export default async function VenuesIndex() {

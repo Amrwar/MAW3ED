@@ -136,3 +136,23 @@ specification:
   fail a booking.
 - **What stays true:** no pass is issued from the booking flow; the
   public pages never claim one is.
+
+## Operating notes
+
+- **Signing in:** a person with a venue role and no business lands on
+  `/venue-admin` (via `/onboarding`); `/onboarding?create=1` lets them
+  create a business. An owner who also holds a venue role finds
+  "Manage venues" in the dashboard navigation.
+- **Needs your attention:** the console lists, from the venue's own
+  records, pending requests, approved tenants that visitors cannot see
+  (business unpublished or branch switched off), a policy naming an
+  inactive or deleted gate, a public venue without hours or — with
+  restricted entry — without instructions, and notices in effect today
+  (`src/lib/venues/attention.ts`).
+- **Audit:** every venue-side change is recorded with the authority it
+  was made under; owners' requests and withdrawals with actor role
+  `BUSINESS_OWNER`.
+- **Rollback:** `prisma/migrations/rollback/phase22_venues_rollback.sql`
+  drops everything Phase 22 added (and every venue entered since);
+  nothing outside these tables is touched. Deploy the pre-Phase-22 code
+  first, take a Neon snapshot, then run it. Tested on QA.

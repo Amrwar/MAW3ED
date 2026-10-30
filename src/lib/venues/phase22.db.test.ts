@@ -73,6 +73,7 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
 
   afterAll(async () => {
     if (!db) return;
+    await db.auditLog.deleteMany({ where: { resourceType: "Venue", resourceId: { in: ids.venues } } });
     await db.venue.deleteMany({ where: { id: { in: ids.venues } } });
     await db.compound.deleteMany({ where: { id: { in: ids.compounds } } });
     await db.venueOrganization.deleteMany({ where: { id: { in: ids.orgs } } });
@@ -177,6 +178,10 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
     await expect(m.withdrawMembership({ businessId: b.business.id, membershipId: req.id, userId: b.owner.id })).rejects.toMatchObject({ code: "not-found" });
     await m.withdrawMembership({ businessId: a.business.id, membershipId: req.id, userId: a.owner.id });
     expect((await db.venueMembership.findUniqueOrThrow({ where: { id: req.id } })).status).toBe("REMOVED");
+    // Both sides of tenancy are in the audit trail.
+    const audit = await db.auditLog.findMany({ where: { actorId: a.owner.id, resourceType: "Venue" }, select: { action: true, actorRole: true } });
+    expect(audit.map((x) => x.action).sort()).toEqual(["venue.membership.request", "venue.membership.withdraw"]);
+    expect(audit.every((x) => x.actorRole === "BUSINESS_OWNER")).toBe(true);
   });
 
   it("a business with several branches must name the branch; whole-business and branch rows cannot overlap", async () => {

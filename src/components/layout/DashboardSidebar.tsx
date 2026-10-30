@@ -39,6 +39,8 @@ interface DashboardSidebarProps {
   isAdmin?:      boolean;
   /** The business is not live yet: the setup checklist leads the nav. */
   needsSetup?:   boolean;
+  /** Holds a venue role: shows the venue console in the nav. */
+  hasVenueRoles?: boolean;
 }
 
 // ─── Nav item ─────────────────────────────────────────────────────────────────
@@ -152,6 +154,7 @@ export default function DashboardSidebar({
   hasBranches  = false,
   isAdmin      = false,
   needsSetup   = false,
+  hasVenueRoles = false,
 }: DashboardSidebarProps) {
   const pathname  = usePathname();
   const { t }     = useLanguage();
@@ -166,6 +169,7 @@ export default function DashboardSidebar({
     hasBranches,
     isAdmin,
     needsSetup,
+    hasVenueRoles,
   });
 
   return (

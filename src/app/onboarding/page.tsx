@@ -4,7 +4,11 @@ import { db } from "@/lib/db";
 import { getCategories, getCities } from "@/lib/data";
 import OnboardingForm from "./_components/OnboardingForm";
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ create?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -30,6 +34,15 @@ export default async function OnboardingPage() {
     select: { id: true },
   });
   if (existing) redirect("/dashboard");
+
+  // Somebody who manages a venue and owns no business signed in to run
+  // the venue, not to open a shop: sign-in sends people without a
+  // business here, so they are passed on to their console. ?create=1 is
+  // the way through for a manager who does want a business of their own.
+  const { create } = await searchParams;
+  if (create !== "1" && (await db.venueRole.count({ where: { userId: session.user.id } })) > 0) {
+    redirect("/venue-admin");
+  }
 
   const [categories, cities] = await Promise.all([
     getCategories(),

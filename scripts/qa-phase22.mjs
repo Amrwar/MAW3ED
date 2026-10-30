@@ -21,6 +21,20 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const { Client } = require("pg");
+const { SignJWT } = await import("jose");
+// Bearer tokens for the staff and expired-session checks are minted with
+// the server's AUTH_SECRET; without it those checks are reported NOT RUN.
+const SECRET = process.env.AUTH_SECRET ? new TextEncoder().encode(process.env.AUTH_SECRET) : null;
+async function bearer(userId, businessId, expires = "30m") {
+  return new SignJWT({ businessId, adminRole: null })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(userId)
+    .setIssuer("maw3ed")
+    .setAudience("maw3ed-mobile-access")
+    .setIssuedAt(expires === "past" ? Math.floor(Date.now() / 1000) - 7200 : undefined)
+    .setExpirationTime(expires === "past" ? Math.floor(Date.now() / 1000) - 3600 : expires)
+    .sign(SECRET);
+}
 
 const args = process.argv.slice(2);
 const B = args.find((a) => /^https?:/.test(a)) ?? "http://localhost:3101";
@@ -119,6 +133,9 @@ try {
 
   /* ── The manager's console ───────────────────────────── */
   const mgr = await login(mgrEmail, PASSWORD);
+  const landing = await call(mgr, "/onboarding");
+  check("a venue manager with no business is sent to the venue console, not onboarding", landing.status === 307 && /\/venue-admin$/.test(landing.headers.get("location") ?? ""), `${landing.status} ${landing.headers.get("location")}`);
+  check("…and can still choose to create a business", (await call(mgr, "/onboarding?create=1")).status === 200);
   const mine = await json(await call(mgr, "/api/venues"));
   check("the manager sees exactly their venue", mine.venues?.length === 1 && mine.venues[0].id === v1.id, JSON.stringify(mine.venues?.map((v) => v.slug)));
   check("the manager cannot open the other venue (404)", (await call(mgr, `/api/venues/${v2.id}`)).status === 404);
@@ -161,6 +178,7 @@ try {
 
   /* ── Public only once published ──────────────────────── */
   check("a draft venue has no public page", (await call(null, `/venues/${tag}-mall`)).status === 404);
+  check("an empty venues index is not indexed", /noindex/.test(await (await call(null, "/venues")).text()));
   const pubBad = await send(admin, `/api/admin/venues/${v1.id}`, "PATCH", { isPublished: true });
   check("a draft cannot be published before it is activated", pubBad.status === 409);
   await send(admin, `/api/admin/venues/${v1.id}`, "PATCH", { status: "ACTIVE" });
@@ -182,6 +200,27 @@ try {
   const membership = (await json(reqRes)).membership;
   check("the owner asks for their business to be listed", reqRes.status === 201 && membership?.status === "REQUESTED", `status ${reqRes.status}`);
   check("asking twice is refused", (await send(owner, "/api/business/venues/memberships", "POST", { venueId: v1.id, branchId })).status === 409);
+  const attention = (await json(await call(mgr, `/api/venues/${v1.id}`))).attention ?? [];
+  check("the manager's console flags the pending request for attention", attention.some((a) => a.kind === "pending-requests" && a.count === 1), JSON.stringify(attention.map((a) => a.kind)));
+
+  // Business staff, and an expired session, through bearer tokens.
+  if (SECRET) {
+    const staff = (await pg.query(`SELECT s."userId", s."businessId" FROM "StaffMember" s WHERE s."userId" IS NOT NULL LIMIT 1`)).rows[0];
+    if (staff) {
+      const st = await bearer(staff.userId, staff.businessId);
+      const h = { Authorization: `Bearer ${st}` };
+      const r1 = await fetch(`${B}/api/business/venues/memberships`, { method: "POST", headers: { ...h, "Content-Type": "application/json" }, body: JSON.stringify({ venueId: v1.id }) });
+      const r2 = await fetch(`${B}/api/venues/${v1.id}`, { headers: h });
+      const r3 = await fetch(`${B}/api/venues/${v1.id}/memberships/${membership.id}`, { method: "PATCH", headers: { ...h, "Content-Type": "application/json" }, body: JSON.stringify({ decision: "approve" }) });
+      check("business staff cannot ask, open the console or decide (404s)", r1.status === 404 && r2.status === 404 && r3.status === 404, `${r1.status}/${r2.status}/${r3.status}`);
+    } else check("business staff check", false, "no staff account with a user in the fixtures");
+    const mgrUser = (await pg.query(`SELECT id FROM "User" WHERE email=$1`, [mgrEmail])).rows[0].id;
+    const expired = await bearer(mgrUser, null, "past");
+    const r4 = await fetch(`${B}/api/venues/${v1.id}`, { headers: { Authorization: `Bearer ${expired}` } });
+    check("an expired session gets 401 from the console API", r4.status === 401, `status ${r4.status}`);
+  } else {
+    console.log("NOT RUN  business staff and expired-session checks — set AUTH_SECRET to the server's");
+  }
   check("a pending request is not public", !/qa-salon/.test(await (await call(null, `/venues/${tag}-mall`)).text()));
   check("the owner cannot approve their own request (404)", (await send(owner, `/api/venues/${v1.id}/memberships/${membership.id}`, "PATCH", { decision: "approve" })).status === 404);
 
@@ -206,7 +245,8 @@ try {
   check("the directory search filters", /مفيش نتايج للاختيار ده/.test(filtered));
   const company = await (await call(null, `/company/${ownBiz.slug}`)).text();
   check("the business page still works and says where it is", /موجود في/.test(company) && company.includes(`/venues/${tag}-mall`));
-  check("the venues index lists it", (await (await call(null, "/venues")).text()).includes(`/venues/${tag}-mall`));
+  const index = await (await call(null, "/venues")).text();
+  check("the venues index lists it and is indexable now that a venue lists somebody", index.includes(`/venues/${tag}-mall`) && !/noindex/.test(index));
   const api = await json(await call(null, `/api/public/venues/${tag}-mall`));
   check("the public API returns the approved directory and no gate codes", api.venue?.directory?.length === 1 && !JSON.stringify(api).includes("QA-GATE-CODE"));
   check("the other venue lists nothing", (await json(await call(null, `/api/public/venues/${tag}-park`))).venue?.directory?.length === 0);
@@ -221,11 +261,15 @@ try {
   check("the owner gets 404 from the venue console", (await call(owner, "/venue-admin")).status === 404);
   check("the admin venues page renders", (await call(admin, "/admin/venues")).status === 200);
   check("the owner's venue page renders", (await call(owner, "/dashboard/venue")).status === 200);
+  const rivalDash = await (await call(rival, "/dashboard")).text();
+  const ownerDash = await (await call(owner, "/dashboard")).text();
+  check("an owner who manages a venue gets a link to the console; others do not", rivalDash.includes('href="/venue-admin"') && !ownerDash.includes('href="/venue-admin"'));
 
   /* ── Removal ─────────────────────────────────────────── */
   const rm = await send(mgr, `/api/venues/${v1.id}/memberships/${membership.id}`, "PATCH", { decision: "remove" });
   check("the manager removes the business", rm.status === 200);
   check("…and it leaves the public page", !(await (await call(null, `/venues/${tag}-mall`)).text()).includes(`/company/${ownBiz.slug}`));
+  check("with nobody listed the venues index is not indexed", /noindex/.test(await (await call(null, "/venues")).text()));
   check("…and the business page no longer claims it", !(await (await call(null, `/company/${ownBiz.slug}`)).text()).includes(`/venues/${tag}-mall`));
   check("existing URLs unaffected", (await call(null, "/company/qa-rival-salon")).status === 200 && (await call(null, "/businesses")).status === 200);
 

@@ -73,6 +73,8 @@ export default async function DashboardLayout({
     select: { email: true, emailVerified: true },
   });
   const needsEmailVerification = Boolean(owner?.email && !owner.emailVerified);
+  // An owner who also manages a venue gets a way into that console.
+  const hasVenueRoles = (await db.venueRole.count({ where: { userId: session.user.id } }).catch(() => 0)) > 0;
 
   // What this business calls its rooms, chairs or tables — derived from
   // what it has created, not from its category.
@@ -94,6 +96,7 @@ export default async function DashboardLayout({
         hasBranches={capabilities.branches}
         isAdmin={Boolean(session.user.adminRole)}
         needsSetup={!business.isPublished}
+          hasVenueRoles={hasVenueRoles}
       />
 
       <div className="md:ms-64">
@@ -107,6 +110,7 @@ export default async function DashboardLayout({
           hasBranches={capabilities.branches}
           isAdmin={Boolean(session.user.adminRole)}
           needsSetup={!business.isPublished}
+          hasVenueRoles={hasVenueRoles}
         />
         <main id="main" className="p-5 md:p-7 max-w-[1400px]">
           {needsEmailVerification ? <VerifyEmailBanner email={owner?.email ?? ""} lang={lang} /> : null}
