@@ -89,7 +89,7 @@ async function dispatch(event: NotificationEvent): Promise<DispatchOutcome[]> {
     : await loadBooking(event.bookingId);
 
   if (!loaded) {
-    log.warn("[notify] subject not found", { type: event.type });
+    log.warn("[notify] subject not found or a test booking", { type: event.type });
     return [];
   }
 
@@ -406,6 +406,7 @@ export async function loadBooking(bookingId: string): Promise<Loaded | null> {
     where: { id: bookingId },
     select: {
       id: true,
+      isTest: true,
       accessToken: true,
       status: true,
       customerName: true,
@@ -425,6 +426,11 @@ export async function loadBooking(bookingId: string): Promise<Loaded | null> {
     },
   });
   if (!b) return null;
+  // An owner's test booking on their unpublished page reaches nobody,
+  // whatever happens to it afterwards — confirmed, cancelled, moved.
+  // Its phone was never proved, so a message to it would be a message
+  // to a stranger about a page that is not public.
+  if (b.isTest) return null;
 
   // The account this phone belongs to, if it has one. Matched on the
   // canonical column, because the booking stores the number as typed.

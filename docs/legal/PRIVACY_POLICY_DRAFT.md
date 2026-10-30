@@ -33,6 +33,9 @@ and the booking pages businesses embed or link to.
 | Profile-view counts | opening a business page | an aggregate per business, source and day; **no identifier** | `ProfileView` |
 | Rate-limit counters | sign-in, booking, votes | abuse prevention; stored as a keyed hash, never the address | `RateLimit` |
 | Reviews | after a completed booking | public, under your first name [DECISION: display name rule] | `Review` |
+| Onboarding draft (business owners) | while filling in the sign-up wizard | resuming on any device; deleted when the business is created or the owner starts over | `OnboardingDraft` |
+| Onboarding milestones (business owners) | registering, publishing, first booking, first paid plan | measuring whether onboarding works; one row per account and milestone, no visitor or customer data, no third party | `LifecycleEvent`, `lib/business/lifecycle.ts` |
+| Import records (business owners) | importing a CSV of customers or services | undoing an import; holds the ids created, not the file | `ImportBatch` |
 
 We do not collect: card data, precise location history, contacts,
 photos (except images a business uploads to its listing), advertising

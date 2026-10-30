@@ -28,7 +28,7 @@ export async function GET() {
 
     const [todays, pending, cancelledToday, unread, me] = await Promise.all([
       db.booking.findMany({
-        where: { ...scope, date: todayUTC, status: { in: [...LIVE] } },
+        where: { ...scope, isTest: false, date: todayUTC, status: { in: [...LIVE] } },
         orderBy: { startTime: "asc" },
         select: {
           id: true,
@@ -45,7 +45,7 @@ export async function GET() {
       }),
       // Waiting on the business, today or later — the confirmations queue.
       db.booking.findMany({
-        where: { ...scope, status: "PENDING", date: { gte: todayUTC } },
+        where: { ...scope, isTest: false, status: "PENDING", date: { gte: todayUTC } },
         orderBy: [{ date: "asc" }, { startTime: "asc" }],
         take: 20,
         select: {
@@ -59,7 +59,7 @@ export async function GET() {
       }),
       // Cancelled in the last 24 hours: what changed overnight, whatever the date.
       db.booking.findMany({
-        where: { ...scope, status: "CANCELLED", updatedAt: { gte: new Date(Date.now() - 24 * 3600_000) } },
+        where: { ...scope, isTest: false, status: "CANCELLED", updatedAt: { gte: new Date(Date.now() - 24 * 3600_000) } },
         orderBy: { updatedAt: "desc" },
         take: 10,
         select: { id: true, date: true, startTime: true, customerName: true, service: { select: { nameAr: true, nameEn: true } } },

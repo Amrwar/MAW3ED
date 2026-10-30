@@ -33,14 +33,29 @@ ALTER TABLE "Business"
 
 ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "isTest" BOOLEAN NOT NULL DEFAULT false;
 
+-- One-time backfills are marked done with a comment on their column, so
+-- running this file again after the Phase 21 code is live never repeats
+-- them: a second "publishRequestedAt = createdAt" would mark a publish
+-- request on businesses whose owners never asked, or who unpublished.
+
 -- Every business that exists already went through the old flow, where
 -- creating it was asking to be published.
-UPDATE "Business" SET "publishRequestedAt" = "createdAt" WHERE "publishRequestedAt" IS NULL;
+DO $$
+BEGIN
+  IF coalesce(col_description('"Business"'::regclass,
+       (SELECT attnum FROM pg_attribute WHERE attrelid = '"Business"'::regclass AND attname = 'publishRequestedAt')), '')
+     <> 'phase21 backfill done' THEN
+    UPDATE "Business" SET "publishRequestedAt" = "createdAt" WHERE "publishRequestedAt" IS NULL;
+    COMMENT ON COLUMN "Business"."publishRequestedAt" IS 'phase21 backfill done';
+  END IF;
+END $$;
 
 -- Identity verification from the admin audit trail, once.
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM "Business" WHERE "identityVerifiedAt" IS NOT NULL) THEN
+  IF coalesce(col_description('"Business"'::regclass,
+       (SELECT attnum FROM pg_attribute WHERE attrelid = '"Business"'::regclass AND attname = 'identityVerifiedAt')), '')
+     <> 'phase21 backfill done' THEN
     UPDATE "Business" b
        SET "identityVerifiedAt" = v.at,
            "identityVerifiedById" = v."actorId",
@@ -52,9 +67,17 @@ BEGIN
          ORDER BY "resourceId", at DESC
       ) v
      WHERE v."resourceId" = b.id AND v.action = 'business.verify';
-    UPDATE "Business" SET "isVerified" = ("identityVerifiedAt" IS NOT NULL);
+    COMMENT ON COLUMN "Business"."identityVerifiedAt" IS 'phase21 backfill done';
   END IF;
 END $$;
+
+-- The badge follows identity verification. Not one-time on purpose:
+-- between running this file and the deploy, the old code can still
+-- award the badge for contact checks; running the file again after the
+-- deploy takes those back. After the deploy the two never disagree
+-- (only the admin verify/unverify action writes either).
+UPDATE "Business" SET "isVerified" = ("identityVerifiedAt" IS NOT NULL)
+ WHERE "isVerified" IS DISTINCT FROM ("identityVerifiedAt" IS NOT NULL);
 
 CREATE TABLE IF NOT EXISTS "OnboardingDraft" (
   "id"        TEXT NOT NULL,

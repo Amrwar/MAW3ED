@@ -3,6 +3,7 @@ import { log } from "@/lib/logger";
 import { loadReadiness } from "./readiness-load";
 import type { ReadinessKey } from "./readiness";
 import { recordMilestone } from "./lifecycle";
+import { recomputeBusinessRating } from "@/lib/reviews";
 
 /**
  * Putting a business in front of the public, and taking it down.
@@ -75,15 +76,41 @@ export async function afterEmailVerified(ownerId: string): Promise<boolean> {
   return r.published;
 }
 
+class Blocked extends Error {
+  constructor(readonly status: string) {
+    super("blocked");
+  }
+}
+
 async function goLive(businessId: string, ownerId: string): Promise<PublishResult> {
   // Test bookings were the owner trying the flow on a private page.
   // They must not hold real customers' times once the page is public.
-  const [, removed] = await db.$transaction([
-    db.business.update({ where: { id: businessId }, data: { isPublished: true } }),
-    db.booking.deleteMany({ where: { businessId, isTest: true } }),
-  ]);
-  log.info("business published", { businessId, removedTestBookings: removed.count });
+  //
+  // The business row is locked first. A test booking being made right
+  // now holds a share lock on it (lib/bookings/create.ts), so it either
+  // commits before this and is deleted here, or waits and then finds the
+  // page public and stops. The status is read under the same lock, so a
+  // suspension that landed after requestPublish looked is still obeyed.
+  let removed: number;
+  try {
+    removed = await db.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ status: string }[]>`
+        SELECT status::text AS status FROM "Business" WHERE id = ${businessId} FOR UPDATE`;
+      const status = rows[0]?.status;
+      if (!status || BLOCKED.has(status)) throw new Blocked(status ?? "missing");
+      await tx.business.update({ where: { id: businessId }, data: { isPublished: true } });
+      return (await tx.booking.deleteMany({ where: { businessId, isTest: true } })).count;
+    });
+  } catch (e) {
+    if (e instanceof Blocked) return { published: false, reason: "blocked", status: e.status };
+    throw e;
+  }
+  log.info("business published", { businessId, removedTestBookings: removed });
+  // A test booking cannot be reviewed, but a rating from one made before
+  // that rule would have gone with the booking; the stored average must
+  // not keep it.
+  if (removed > 0) await recomputeBusinessRating(businessId).catch((e) => log.error("[publish] rating recompute", e));
   await recordMilestone("PROFILE_COMPLETED", { userId: ownerId, businessId });
   await recordMilestone("PUBLISHED", { userId: ownerId, businessId });
-  return { published: true, removedTestBookings: removed.count };
+  return { published: true, removedTestBookings: removed };
 }

@@ -1,7 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
-import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 import { canTransition, releasesTime, type BookingStatusValue, type Mover } from "./transitions";
 
 /**
@@ -59,9 +58,20 @@ async function applyMove(tx: Tx, input: MoveInput): Promise<MoveResult> {
   });
   if (count === 0) return { moved: false, why: "changed" };
 
+  // The first completed real booking is an onboarding milestone. Written
+  // through this transaction, so it stands or falls with the move itself
+  // and needs no second connection while this one is held.
   if (input.to === "COMPLETED") {
-    const b = await tx.booking.findUnique({ where: { id: input.bookingId }, select: { isTest: true, businessId: true } });
-    if (b && !b.isTest) await recordBusinessMilestone("FIRST_COMPLETED_BOOKING", b.businessId);
+    const b = await tx.booking.findUnique({
+      where: { id: input.bookingId },
+      select: { isTest: true, businessId: true, business: { select: { ownerId: true } } },
+    });
+    if (b && !b.isTest) {
+      await tx.lifecycleEvent.createMany({
+        data: [{ userId: b.business.ownerId, businessId: b.businessId, kind: "FIRST_COMPLETED_BOOKING" }],
+        skipDuplicates: true,
+      });
+    }
   }
 
   let refundNeededCents = 0;

@@ -23,7 +23,6 @@ export default async function AdminOnboardingPage({
   const days = WINDOWS.find((d) => String(d) === raw) ?? 30;
 
   // One clock read per request, in a server component.
-  // eslint-disable-next-line react-hooks/purity
   const to = new Date();
   const from = new Date(to.getTime() - days * 86_400_000);
 

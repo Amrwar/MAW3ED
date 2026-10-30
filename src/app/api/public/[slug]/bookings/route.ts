@@ -275,6 +275,9 @@ export async function POST(req: Request, { params }: Params) {
           return err("العرض خلص دلوقتي، جرّب تحجز من غير كود", 409, { code: "discount-gone" });
         case "party-too-large":
           return err("مفيش ترابيزة تكفي العدد ده، قلّل العدد أو كلّم المكان", 422, { code: "party-too-large", field: "partySize" });
+        case "business-published":
+          // The owner's own test booking, as the page went live.
+          return err("الصفحة اتنشرت دلوقتي — الحجز التجريبي مبقاش متاح. احجز عادي لو عايز.", 409, { code: "business-published" });
       }
     }
 

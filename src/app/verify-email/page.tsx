@@ -6,7 +6,7 @@ import ResendVerificationButton from "./_components/ResendVerificationButton";
 
 export const metadata: Metadata = { title: "تأكيد البريد الإلكتروني" };
 
-type Status = "success" | "verified" | "changed" | "taken" | "expired" | "invalid" | "error" | "busy" | "pending";
+type Status = "success" | "setup" | "verified" | "changed" | "taken" | "expired" | "invalid" | "error" | "busy" | "pending";
 
 interface Props {
   searchParams: Promise<{ status?: string }>;
@@ -19,7 +19,12 @@ const COPY: Record<
 > = {
   success: {
     title: "تم تأكيد بريدك",
-    body: "صفحة نشاطك اتنشرت وبقت تقدر تستقبل حجوزات. فاضل تأكيد رقم الواتساب عشان تاخد علامة التوثيق.",
+    body: "صفحة نشاطك منشورة وبتستقبل حجوزات.",
+    tone: "ok",
+  },
+  setup: {
+    title: "تم تأكيد بريدك",
+    body: "صفحتك لسه خاصة. من صفحة تجهيز النشاط هتشوف إيه اللي فاضل، وتجرّب حجز تجريبي، وتنشر.",
     tone: "ok",
   },
   verified: {
@@ -59,7 +64,7 @@ const COPY: Record<
   },
   pending: {
     title: "أكّد بريدك الإلكتروني",
-    body: "بعتنالك رابط تأكيد. افتح بريدك واضغط على الرابط عشان ننشر صفحة نشاطك.",
+    body: "بعتنالك رابط تأكيد. افتح بريدك واضغط على الرابط — تأكيد الإيميل مطلوب قبل نشر صفحتك.",
     tone: "neutral",
   },
 };
@@ -80,7 +85,7 @@ const TONES = {
 
 export default async function VerifyEmailPage({ searchParams }: Props) {
   const { status } = await searchParams;
-  const known = ["success", "verified", "changed", "taken", "expired", "invalid", "error", "busy"] as const;
+  const known = ["success", "setup", "verified", "changed", "taken", "expired", "invalid", "error", "busy"] as const;
   const key: Status = known.includes(status as (typeof known)[number])
     ? (status as Status)
     : "pending";
@@ -113,8 +118,12 @@ export default async function VerifyEmailPage({ searchParams }: Props) {
 
           <div className="mt-8 flex flex-col gap-2.5">
             {key === "success" ? (
-              <Link href="/dashboard/settings" className="btn btn-primary w-full">
-                أكّد رقم الواتساب
+              <Link href="/dashboard" className="btn btn-primary w-full">
+                لوحة التحكم
+              </Link>
+            ) : key === "setup" ? (
+              <Link href="/dashboard/setup" className="btn btn-primary w-full">
+                كمّل تجهيز النشاط
               </Link>
             ) : key === "verified" ? (
               <Link href="/onboarding" className="btn btn-primary w-full">
@@ -128,7 +137,7 @@ export default async function VerifyEmailPage({ searchParams }: Props) {
               <ResendVerificationButton />
             )}
 
-            {key !== "verified" ? (
+            {key !== "verified" && key !== "success" ? (
               <Link href="/dashboard" className="btn btn-outline w-full">
                 الذهاب للوحة التحكم
               </Link>

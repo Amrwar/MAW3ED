@@ -67,6 +67,18 @@ describe("GET /api/auth/verify-email/confirm", () => {
     expect(business.update).not.toHaveBeenCalled();
   });
 
+  it("says the page is live only when it is, and sends everyone else to setup", async () => {
+    tokens.findUnique.mockResolvedValue({ id: "t", userId: "u1", expiresAt: future, email: null });
+    business.findUnique.mockResolvedValue({ id: "b1", status: "APPROVED", isPublished: false });
+    afterEmailVerified.mockResolvedValueOnce(false);
+    expect(await follow()).toBe("setup");
+
+    tokens.findUnique.mockResolvedValue({ id: "t", userId: "u1", expiresAt: future, email: null });
+    business.findUnique.mockResolvedValue({ id: "b1", status: "APPROVED", isPublished: true });
+    afterEmailVerified.mockResolvedValueOnce(false);
+    expect(await follow()).toBe("success");
+  });
+
   it("does not ask for an account with no business", async () => {
     tokens.findUnique.mockResolvedValue({ id: "t", userId: "u1", expiresAt: future, email: null });
     expect(await follow()).toBe("verified");

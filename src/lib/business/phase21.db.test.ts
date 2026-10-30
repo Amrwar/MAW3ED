@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client";
 
 // lib/business/preview and friends import lib/api, which pulls in
 // next-auth; nothing here needs a session.
+vi.mock("@/auth", () => ({ auth: async () => null }));
 vi.mock("@/lib/api", () => ({
   err: (message: string, status = 400) => Response.json({ error: message }, { status }),
   requireSession: async () => {
@@ -140,9 +141,22 @@ describe.skipIf(!local)("phase 21 on a real database", () => {
     expect(await db.booking.count({ where: countedThisMonth(f.business.id) })).toBe(0);
     expect(await db.customer.count({ where: { businessId: f.business.id } })).toBe(0);
 
+    // Nobody is told about it, and it is not in the account of whoever owns that number.
+    const { loadBooking } = await import("@/lib/notifications/dispatch");
+    expect(test.ok && (await loadBooking(test.booking.id))).toBeNull();
+    const { ownedWhere } = await import("@/lib/account/queries");
+    expect(await db.booking.count({ where: ownedWhere("201012345678") })).toBe(
+      await db.booking.count({ where: { customerPhoneE164: "201012345678", isTest: false } }),
+    );
+    expect(await db.booking.count({ where: { ...ownedWhere("201012345678"), businessId: f.business.id } })).toBe(0);
+
     const r = await publish.requestPublish(f.business.id);
     expect(r).toMatchObject({ published: true, removedTestBookings: 1 });
     expect(await db.booking.count({ where: { businessId: f.business.id } })).toBe(0);
+
+    // Once public, a test booking can no longer be made, even by a request already past the route's check.
+    const late = await createBooking({ ...base, customerId: null, startTime: "11:00", isTest: true });
+    expect(late).toEqual({ ok: false, failure: { kind: "business-published" } });
     const kinds = (await db.lifecycleEvent.findMany({ where: { userId: f.owner.id } })).map((e) => e.kind);
     expect(kinds).toEqual(expect.arrayContaining(["PUBLISHED", "PROFILE_COMPLETED"]));
     expect(kinds).not.toContain("FIRST_BOOKING");

@@ -55,6 +55,7 @@ export async function getAttributionReport(
       where: {
         businessId,
         source: { not: null },
+        isTest: false,
         createdAt: { gte: from },
         // A cancelled booking still came from somewhere. What is
         // excluded is one that never became a booking at all.
@@ -66,6 +67,7 @@ export async function getAttributionReport(
       where: {
         businessId,
         source: null,
+        isTest: false,
         createdAt: { gte: from },
         status: { not: "FAILED_PAYMENT" },
       },

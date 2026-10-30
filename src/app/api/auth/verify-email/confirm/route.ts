@@ -71,8 +71,9 @@ export async function GET(req: Request) {
 
     const business = await db.business.findUnique({
       where: { ownerId: record.userId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, isPublished: true },
     });
+    let live = false;
     if (business) {
       // A publish the owner asked for that was waiting only on this
       // confirmation goes ahead now — whichever address was just proved,
@@ -80,16 +81,18 @@ export async function GET(req: Request) {
       // the same. Nothing is published that the owner did not ask for,
       // that is not ready, or that an admin took down
       // (lib/business/publish.ts).
-      await afterEmailVerified(record.userId);
+      live = (await afterEmailVerified(record.userId)) || business.isPublished;
       await syncVerifiedBadge(business.id);
     }
 
     log.info(record.email ? "email changed" : "email verified", { userId: record.userId });
 
     if (record.email) return to("changed");
-    // "Your page is live" only when there is a page: verifying mid-onboarding
-    // is common, and the business does not exist yet.
-    return to(business ? "success" : "verified");
+    // "Your page is live" only when it is: verifying mid-onboarding is
+    // common (no business yet), and a private business that is not
+    // ready, or whose owner has not asked to publish, stays private —
+    // that owner is sent to the setup checklist instead.
+    return to(!business ? "verified" : live ? "success" : "setup");
   } catch (e) {
     log.error("[verify-email/confirm]", e);
     return to("error");

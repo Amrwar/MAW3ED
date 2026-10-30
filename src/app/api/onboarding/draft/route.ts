@@ -74,6 +74,14 @@ export async function PUT(req: Request) {
       update: { step, data: data as object },
       select: { updatedAt: true },
     });
+    // A save that raced the business being created (the last autosave
+    // as the owner presses Finish) would otherwise leave a stale draft
+    // behind for the next GET. Checked after writing, so whichever lands
+    // second, the draft does not survive the business.
+    if (await db.business.findUnique({ where: { ownerId: userId }, select: { id: true } })) {
+      await db.onboardingDraft.deleteMany({ where: { userId } });
+      return err("لديك عمل مسجل بالفعل", 409, { code: "has-business" });
+    }
     await recordMilestone("ONBOARDING_STARTED", { userId });
     return ok({ savedAt: saved.updatedAt.toISOString() });
   } catch (e) {

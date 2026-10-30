@@ -74,7 +74,7 @@ export default function ForBusinessContent({
       <Link href="/pricing" className="btn btn-outline btn-pill btn-lg">
         {fb.cta2}
       </Link>
-      <Link href="/demo" className="btn btn-ghost btn-pill btn-lg">
+      <Link href="/demo" className="btn btn-outline btn-pill btn-lg">
         {lang === "en" ? "Try the demo" : "جرّب نسخة تجريبية"}
       </Link>
     </>

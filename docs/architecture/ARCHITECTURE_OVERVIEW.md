@@ -72,6 +72,10 @@ Models in `prisma/schema.prisma` (1,458 lines):
   `WaitlistRequest`.
 - **Operations:** `Notification`, `NotificationDelivery` (per-channel
   ledger), `AuditLog`, `RateLimit` (DB-backed limiter).
+- **Onboarding (Phase 21):** `OnboardingDraft` (one per account),
+  `ImportBatch` (what a CSV import created, for rollback),
+  `LifecycleEvent` (one row per account and milestone, for the funnel).
+  `Booking.isTest` marks an owner's test booking on a private page.
 
 ## Key flows and where they live
 
@@ -91,6 +95,13 @@ Models in `prisma/schema.prisma` (1,458 lines):
 | Business access (owner vs staff) | `src/lib/business-access.ts` |
 | i18n | `src/lib/i18n.ts` (Arabic default, English at `/en/...`), `src/lib/locale-routing.ts` |
 | Rate limiting | `src/lib/rate-limit.ts` (Postgres-backed, per bucket) |
+| Readiness and publishing (Phase 21) | `src/lib/business/readiness.ts` (pure checklist), `readiness-load.ts`, `publish.ts`; `/api/business/readiness`, `/api/business/publish`; `/dashboard/setup` |
+| Owner preview and test bookings (Phase 21) | `src/lib/business/preview.ts`; the public page, slots, quote and bookings routes allow the owner of an unpublished business; `isTest` bookings are excluded from counts, KPIs, reports, reminders and notifications, and deleted on publish |
+| Entitlements (Phase 21) | `src/lib/plans.ts` (the matrix), `src/lib/business/entitlements.ts`, `GET /api/business/entitlements` |
+| CSV import (Phase 21) | `src/lib/import/csv.ts` (pure parse/validate/duplicates), `run.ts` (transactional commit and rollback), `/api/business/import/**`, `/dashboard/import` |
+| Demo workspace (Phase 21) | `src/lib/demo/workspace.ts`, `/demo` — browser-only fixtures on the real availability engine |
+| Help centre (Phase 21) | `src/lib/help/articles.ts`, `/help`, `/help/[slug]` |
+| Onboarding funnel (Phase 21) | `src/lib/business/lifecycle.ts` (recording), `src/lib/admin/funnel.ts`, `/admin/onboarding` |
 
 ## Booking state machine and concurrency (Phase 19)
 

@@ -86,6 +86,8 @@ const ANON = [
   "/company/qa-salon", "/company/qa-listing-2", "/company/qa-listing-0",
   "/pricing", "/faq", "/for-business", "/contact", "/privacy", "/terms",
   "/login", "/signup", "/account-login", "/forgot-password",
+  // Phase 21
+  "/demo", "/help", "/help/test-booking",
   ...(token ? [`/booking/${token}`] : []),
   "/this-page-does-not-exist",
 ];
@@ -93,8 +95,10 @@ const OWNER = [
   "/dashboard", "/dashboard/bookings", "/dashboard/bookings/today", "/dashboard/calendar",
   "/dashboard/services", "/dashboard/staff", "/dashboard/customers", "/dashboard/reports",
   "/dashboard/settings", "/dashboard/billing", "/dashboard/offers", "/dashboard/reviews",
+  // Phase 21
+  "/dashboard/setup", "/dashboard/import",
 ];
-const ADMIN = ["/admin", "/admin/businesses", "/admin/bookings", "/admin/payments", "/admin/reviews", "/admin/customers"];
+const ADMIN = ["/admin", "/admin/businesses", "/admin/bookings", "/admin/payments", "/admin/reviews", "/admin/customers", "/admin/onboarding", "/admin/verification"];
 const KEYBOARD = ["/", "/businesses", "/company/qa-salon", "/dashboard/bookings", "/login"];
 
 const localize = (p, lang) => (lang === "en" ? (p === "/" ? "/en" : `/en${p}`) : p);

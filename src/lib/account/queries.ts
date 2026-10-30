@@ -259,7 +259,11 @@ function endRule(now: Date) {
  * appointments stay with the businesses and are nobody's to read here.
  */
 export function ownedWhere(phone: string, since?: Date | null): Prisma.BookingWhereInput {
-  return since ? { customerPhoneE164: phone, createdAt: { gte: since } } : { customerPhoneE164: phone };
+  // A business owner's test booking on their unpublished page is not
+  // this person's appointment, whatever number the owner typed into it.
+  return since
+    ? { customerPhoneE164: phone, isTest: false, createdAt: { gte: since } }
+    : { customerPhoneE164: phone, isTest: false };
 }
 
 /** Still holding a slot and not yet over: the upcoming tab. */

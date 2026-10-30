@@ -119,15 +119,21 @@ async function stepsUntilDetails(w, lang) {
     const step = await stepOf(w);
     if (step === "details") return;
     if (step === "date") {
-      await pickFirst(w); // a day: the strip advances by itself
+      // Tomorrow rather than today: late in the evening today has few
+      // times left, all inside the cancellation window, which made the
+      // journey depend on the hour it ran at.
+      const days = w.locator('button[aria-pressed]:not([disabled])');
+      await days.first().waitFor({ timeout: 15000 });
+      await ((await days.count()) > 1 ? days.nth(1) : days.first()).click(); // the strip advances by itself
       continue;
     }
-    await pickFirst(w); // service, provider, resource, branch or time
     if (step === "resource") {
-      // A table with seats shows a party-size control; ask for three.
+      // A table with seats shows a party-size control; ask for three
+      // first, as a customer would, so only tables that fit are offered.
       const more = w.getByRole("button", { name: new RegExp(`^${t(lang, "أكتر", "More")}$`) });
       if (await more.count()) await more.first().click();
     }
+    await pickFirst(w); // service, provider, resource, branch or time
     await next(w, lang);
   }
   throw new Error(`never reached details; stuck on ${await stepOf(w)}`);
