@@ -91,7 +91,9 @@ export async function loadPublicOrganization(slug: string) {
       branch: a.branch ? { id: a.branch.id, nameAr: a.branch.nameAr, nameEn: a.branch.nameEn, address: a.branch.address } : null,
     }))
     .sort((a, b) => a.sortOrder - b.sortOrder || a.nameAr.localeCompare(b.nameAr, "ar"));
-  const { associations: _dropped, ...rest } = org;
+  // The raw associations never leave; the shaped directory does.
+  const rest = { ...org, associations: undefined };
+  delete rest.associations;
   return { ...rest, updatedAt: org.updatedAt.toISOString(), directory };
 }
 

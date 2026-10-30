@@ -32,7 +32,6 @@ if (!/@(localhost|127\.0\.0\.1)[:/]/.test(DB) || !/^http:\/\/localhost[:/]/.test
   console.error("Local only.");
   process.exit(1);
 }
-const HOST = new URL(B).host;
 const pg = new Client({ connectionString: DB });
 await pg.connect();
 const results = [];
@@ -150,7 +149,7 @@ try {
 
   // ── View counter cap ────────────────────────────────────────
   const ip = `10.20.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250) + 1}`; // fresh per run: the bucket lasts an hour
-  const viewCount = async () => (await pg.query(`select coalesce(sum(count),0)::int as n from "ProfileView" where "businessId"=(select id from "Business" where slug='qa-listing-1') and day=current_date`)).rows[0].n;
+  const viewCount = async () => (await pg.query(`select coalesce(sum(count),0)::int as n from "ProfileView" where "businessId"=(select id from "Business" where slug='qa-listing-1') and day=(now() at time zone 'Africa/Cairo')::date`)).rows[0].n;
   const v0 = await viewCount();
   for (let i = 0; i < 70; i++) {
     await fetch(`${B}/api/public/qa-listing-1/view`, { method: "POST", headers: { "Content-Type": "application/json", "x-forwarded-for": ip }, body: JSON.stringify({ source: "DIRECT" }) });

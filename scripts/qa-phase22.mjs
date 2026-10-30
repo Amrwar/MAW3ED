@@ -263,7 +263,7 @@ try {
   check("the owner's venue page renders", (await call(owner, "/dashboard/venue")).status === 200);
   const rivalDash = await (await call(rival, "/dashboard")).text();
   const ownerDash = await (await call(owner, "/dashboard")).text();
-  check("an owner who manages a venue gets a link to the console; others do not", rivalDash.includes('href="/venue-admin"') && !ownerDash.includes('href="/venue-admin"'));
+  check("an owner who manages a venue gets a link to the console; others do not", rivalDash.includes('href="/org-admin"') && !ownerDash.includes('href="/org-admin"'));
 
   /* ── A venue closure stops online booking at its tenants ─ */
   const pauseDay = new Date(Date.now() + 6 * 86_400_000).toISOString().slice(0, 10);

@@ -78,6 +78,16 @@ async function refuseOverlap(organizationId: string, businessId: string, branchI
 
 /* ─── Organization side ───────────────────────────────────── */
 
+/**
+ * Only a reviewed organization can collect businesses — recruiting or
+ * being joined before review would lend it standing nobody checked.
+ */
+async function requireAccepting(organizationId: string): Promise<void> {
+  const org = await db.organization.findUnique({ where: { id: organizationId }, select: { status: true } });
+  if (!org) throw new AssociationFailure("org-not-found");
+  if (org.status !== "APPROVED") throw new AssociationFailure("org-not-accepting");
+}
+
 export async function inviteBusiness(input: {
   organizationId: string;
   byUserId: string;
@@ -87,6 +97,8 @@ export async function inviteBusiness(input: {
   relation: OrganizationBusinessRelation;
   note: string | null;
 }) {
+  // Recruiting starts after the platform's review, like requests do.
+  await requireAccepting(input.organizationId);
   const business = await db.business.findUnique({ where: { slug: input.businessSlug }, select: { id: true, nameAr: true } });
   if (!business) throw new AssociationFailure("business-not-found");
   if (input.branchId) {
@@ -170,11 +182,7 @@ export async function requestToJoin(input: {
   organizationId: string;
   branchId: string | null;
 }) {
-  const org = await db.organization.findUnique({ where: { id: input.organizationId }, select: { status: true } });
-  if (!org) throw new AssociationFailure("org-not-found");
-  // Only a reviewed organization can collect businesses: joining an
-  // unreviewed one would lend it standing nobody checked.
-  if (org.status !== "APPROVED") throw new AssociationFailure("org-not-accepting");
+  await requireAccepting(input.organizationId);
   if (input.branchId) {
     const branch = await db.branch.findFirst({ where: { id: input.branchId, businessId: input.businessId, isActive: true }, select: { id: true } });
     if (!branch) throw new AssociationFailure("branch-not-yours");
@@ -230,6 +238,7 @@ export async function createEmailInvite(input: {
   email: string;
   relation: OrganizationBusinessRelation;
 }) {
+  await requireAccepting(input.organizationId);
   const invite = await db.organizationInvite.create({
     data: {
       organizationId: input.organizationId,

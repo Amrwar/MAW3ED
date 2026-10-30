@@ -92,7 +92,7 @@ function measure() {
 
 const failures = [];
 let checked = 0;
-for (const { key, engine, defaultBrowserType, ...opts } of DEVICES) {
+for (const { key, engine, defaultBrowserType: _ignored, ...opts } of DEVICES) {
   const browser = await engine.launch();
   for (const lang of ["ar", "en"]) {
     const ctx = await browser.newContext(opts);

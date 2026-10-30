@@ -80,6 +80,21 @@ if (rivalService) {
   }
 }
 
+// Phase 22b: a published organization fixture so the public directory
+// and the organization console get swept too.
+const ownerRow = (await pg.query(`select u.id as uid, b.id as bid from "User" u join "Business" b on b."ownerId"=u.id where u.email='owner@qa.test'`)).rows[0];
+if (ownerRow) {
+  await pg.query(`insert into "VenueOrganization" (id, slug, "nameAr", "nameEn", kind, status, "isPublished", "descriptionAr", "updatedAt", "createdById")
+    values ('qa18-org-fixture', 'qa18-group', 'مجموعة فحص الوصول (بيانات اختبار)', 'Accessibility sweep group (QA fixture)', 'BUSINESS_GROUP', 'APPROVED', true, 'جهة تجريبية لفحص الوصول', now(), $1)
+    on conflict (id) do nothing`, [ownerRow.uid]);
+  await pg.query(`insert into "OrganizationBusiness" (id, "organizationId", "businessId", relation, status, "initiatedById", "updatedAt")
+    values ('qa18-org-assoc', 'qa18-org-fixture', $1, 'TENANT', 'APPROVED', $2, now())
+    on conflict (id) do nothing`, [ownerRow.bid, ownerRow.uid]);
+  await pg.query(`insert into "VenueRole" (id, "userId", kind, "organizationId", "createdAt")
+    values ('qa18-org-role', $1, 'ORGANIZATION_OWNER', 'qa18-org-fixture', now())
+    on conflict (id) do nothing`, [ownerRow.uid]);
+}
+
 const ANON = [
   "/", "/businesses", "/businesses?q=%D8%AD%D9%84%D8%A7%D9%82%D8%A9", "/businesses?q=zzzzqqq",
   "/categories", "/categories/salons", "/cities",
@@ -90,6 +105,8 @@ const ANON = [
   "/demo", "/help", "/help/test-booking",
   // Phase 22
   "/venues",
+  // Phase 22b
+  "/groups", "/groups/qa18-group",
   ...(token ? [`/booking/${token}`] : []),
   "/this-page-does-not-exist",
 ];
@@ -101,6 +118,8 @@ const OWNER = [
   "/dashboard/setup", "/dashboard/import",
   // Phase 22
   "/dashboard/venue",
+  // Phase 22b
+  "/dashboard/organizations", "/org-admin", "/org-admin/qa18-org-fixture",
 ];
 const ADMIN = ["/admin", "/admin/businesses", "/admin/bookings", "/admin/payments", "/admin/reviews", "/admin/customers", "/admin/onboarding", "/admin/verification", "/admin/venues"];
 const KEYBOARD = ["/", "/businesses", "/company/qa-salon", "/dashboard/bookings", "/login"];
@@ -221,6 +240,8 @@ try {
     }
     await pg.query(`delete from "Customer" where name='P18 Sweep'`).catch(() => {});
   }
+  await pg.query(`delete from "VenueRole" where id='qa18-org-role'`).catch(() => {});
+  await pg.query(`delete from "VenueOrganization" where id='qa18-org-fixture'`).catch(() => {});
   await pg.end();
   if (SHOTS) {
     fs.mkdirSync(SHOTS, { recursive: true });

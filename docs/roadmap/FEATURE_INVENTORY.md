@@ -95,6 +95,10 @@ verification is tracked separately in `PHASE_STATUS.md`.
 |---|---|---|
 | Malls and commercial destinations (venue with many businesses) | VERIFIED (Phase 22, locally) | Organisations, compounds, venues, floors, gate metadata, hours, visitor policy, notices; public `/venues/[slug]`; `docs/architecture/VENUES.md` |
 | Enterprise multi-venue administration | VERIFIED (Phase 22, locally) | Organisation, compound and venue roles with a scoped console (`/venue-admin`); platform admin at `/admin/venues` |
+| Parent organizations (malls, compounds, business groups, franchises) | VERIFIED (Phase 22b, locally) | Self-registration with platform review, profile/media/contact, owner + managers, console at `/org-admin`; `docs/architecture/ORGANIZATION_PLATFORM.md` |
+| Organization-business associations | VERIFIED (Phase 22b, locally) | Explicit, approved on both sides (invite by slug / request / email invite into onboarding); removal never deletes; ownership never moves; `docs/architecture/VENUE_BUSINESS_RELATIONSHIPS.md` |
+| Public organization directories | VERIFIED (Phase 22b, locally) | `/groups` and `/groups/[slug]` ar/en with search, sections, pagination, SEO; booking stays on the existing engine with `?org=` attribution only |
+| Organization marketing link + QR | VERIFIED (Phase 22b, locally) | Plain link `/groups/<slug>?src=qr`, explicitly not an entry pass; counts-only metrics (views by channel, attributed bookings); `docs/architecture/QR_AND_ACCESS_TYPES.md` |
 | Compound visitor authorization | MISSING (architecture ready) | Gate metadata, visitor policy and `accessWindow()` exist (Phase 22); no pass is issued and no gate is opened — needs an operator agreement and integration spec |
 | Authorized third-party QR / gate access (Eterna Mall, Emaar) | BLOCKED | Requires a written agreement and an API or integration spec from Emaar/the operator. Nothing may be built that simulates their approval |
 | SMS channel | BLOCKED | Channel exists and reports `sms-not-configured`; no provider chosen |
