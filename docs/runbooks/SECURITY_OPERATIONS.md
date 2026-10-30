@@ -54,11 +54,33 @@ with `SELECT at, "actorRole", action, "resourceType", "resourceId", summary FROM
 
 ## 3. Backups and restore
 
-**Provider:** Neon takes continuous backups; the point-in-time window
-depends on the plan (**owner to confirm and record here**). Encryption
-at rest and in transit is the provider's. There is no second copy
-outside Neon today (S-06): take a monthly `pg_dump -Fc` to encrypted
-storage the owner controls, and keep 6 months.
+**Provider:** Neon, project `MAW3ED` (`small-lab-69857640`, AWS
+us-east-1), branch `production` (`br-spring-frost-an7g6g13`). Confirmed
+in the console on 2026-10-29: the organisation is on the **Free plan**,
+so point-in-time restore covers only the **last 6 hours**, there are
+**no snapshots and no snapshot schedule** (schedules need a paid plan),
+and the branch is **not protected** (it can be reset or deleted from the
+console). Encryption at rest and in transit is the provider's.
+
+That is the current backup position, and it is thin (S-06). Three
+things close it, in order of value:
+
+1. **Protect the production branch** (Settings → Branch protection →
+   Protect): stops an accidental reset or delete. Free.
+2. **Create a snapshot now and after every migration** (Backup &
+   Restore → Create snapshot). Manual on Free; a schedule (daily, keep
+   7–30 days) comes with the Launch plan, which also extends the
+   history window to 7 days.
+3. **An off-site copy**: `.github/workflows/db-backup.yml` dumps the
+   database every Monday (and on demand from the Actions tab), encrypts
+   it with AES-256 under `BACKUP_PASSPHRASE`, and keeps it as a GitHub
+   artifact for 90 days — a dozen restore points on a provider other
+   than Neon. It needs two repository secrets the owner sets once
+   (GitHub → Settings → Secrets and variables → Actions):
+   `DATABASE_URL_UNPOOLED` and `BACKUP_PASSPHRASE` (32+ random
+   characters, also kept in the password manager — without it a dump
+   cannot be opened). Run it once by hand after setting them and check
+   the artifact appears.
 
 **Restore drill, 2026-10-29, on isolated local infrastructure:** the QA
 database (`postgres:17-alpine`) was dumped with `pg_dump -Fc` (213 KB,
