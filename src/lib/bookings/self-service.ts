@@ -9,7 +9,10 @@ import { timeToMinutes } from "./time";
  * page never offers what the API then refuses.
  */
 
-/** How close to the start a customer can still cancel or move it. */
+/**
+ * How close to the start a customer can still cancel or move it, unless
+ * the business set its own (Business.cancellationCutoffHours, default 2).
+ */
 export const CUTOFF_HOURS = 2;
 
 const CHANGEABLE = ["PENDING", "CONFIRMED"] as const;
@@ -37,9 +40,10 @@ export function minutesUntilStart(
 export function customerMayChange(
   booking: { status: string; date: Date; startTime: string },
   now: Date = new Date(),
+  cutoffHours: number = CUTOFF_HOURS,
 ): boolean {
   if (!(CHANGEABLE as readonly string[]).includes(booking.status)) return false;
-  return minutesUntilStart(booking.date, booking.startTime, now) > CUTOFF_HOURS * 60;
+  return minutesUntilStart(booking.date, booking.startTime, now) > cutoffHours * 60;
 }
 
 /**
@@ -54,9 +58,10 @@ export function customerMayChange(
 export function customerMayCancel(
   booking: { status: string; date: Date; startTime: string },
   now: Date = new Date(),
+  cutoffHours: number = CUTOFF_HOURS,
 ): boolean {
   if (booking.status === "PENDING_PAYMENT") {
     return minutesUntilStart(booking.date, booking.startTime, now) > 0;
   }
-  return customerMayChange(booking, now);
+  return customerMayChange(booking, now, cutoffHours);
 }

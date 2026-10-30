@@ -104,6 +104,8 @@ export interface BookingEmailData {
   previous?:     { date: string; startTime: string } | null;
   /** The amount a payment.received email is about (a balance is not the deposit). */
   paidAmount?:   number | null;
+  /** The business's own cancellation window, in hours (default 2). */
+  cutoffHours?:  number;
 }
 
 // ── Public API ────────────────────────────────────────────────

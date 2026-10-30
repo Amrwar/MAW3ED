@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { isOwnerPreview } from "@/lib/business/preview";
 import { ok, err } from "@/lib/api";
 import { loadAvailability } from "@/lib/bookings/schedule";
 import { log } from "@/lib/logger";
@@ -29,10 +30,12 @@ export async function GET(req: Request, { params }: Params) {
     if (!serviceId || !date) return err("اختار الخدمة واليوم", 400);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err("تاريخ غير صحيح", 400);
 
-    const business = await db.business.findUnique({
-      where: { slug, isPublished: true },
-      select: { id: true },
+    const found = await db.business.findUnique({
+      where: { slug },
+      select: { id: true, isPublished: true, ownerId: true },
     });
+    // Unpublished: only for its owner's preview (lib/business/preview).
+    const business = found && (found.isPublished || (await isOwnerPreview(found))) ? found : null;
     if (!business) return err("لم يتم العثور على هذا العمل", 404);
 
     // How many are coming, so a table is only offered when it seats them

@@ -16,6 +16,7 @@ import { callerKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { normalisePhone } from "@/lib/phone";
 import { phoneProofRequired, readPhoneProof } from "@/lib/bookings/phone-proof";
 import { currentCaller } from "@/lib/api";
+import { isOwnerPreview } from "@/lib/business/preview";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -50,6 +51,23 @@ export async function POST(req: Request, { params }: Params) {
 
     const phoneE164 = normalisePhone(customerPhone);
 
+    // ── Which business, and is this the owner trying their own page? ─────────
+    //
+    // An unpublished business takes bookings from nobody but its owner,
+    // previewing it (lib/business/preview). Those are test bookings:
+    // the same engine, constraints and confirmation page — which is the
+    // point of trying it — but no customer record, no payment, no
+    // notification, no count against the plan, and they are deleted
+    // when the business publishes.
+    const business = await db.business.findUnique({
+      where:   { slug },
+      include: { owner: { select: { email: true } } },
+    });
+    const isTest = !!business && !business.isPublished && (await isOwnerPreview(business));
+    if (!business || (!business.isPublished && !isTest)) {
+      return err("لم يتم العثور على هذا العمل", 404, { code: "business-not-found" });
+    }
+
     // ── Is the number theirs? ─────────────────────────────────────────────────
     //
     // Only when switched on (lib/bookings/phone-proof). A signed-in
@@ -58,7 +76,7 @@ export async function POST(req: Request, { params }: Params) {
     // before the throttle below: the first attempt of every guest booking
     // comes back here to ask for a code, and must not spend the
     // per-address booking budget doing so.
-    if (phoneProofRequired() && phoneE164) {
+    if (!isTest && phoneProofRequired() && phoneE164) {
       const proven =
         (await readPhoneProof(phoneProof)) === phoneE164 ||
         (await callerOwnsPhone(phoneE164));
@@ -78,12 +96,7 @@ export async function POST(req: Request, { params }: Params) {
     const byAddress = await rateLimit("publicBooking", `${await callerKey()}|${slugKey}`);
     if (!byAddress.ok) return tooManyRequests(byAddress);
 
-    const business = await db.business.findUnique({
-      where:   { slug, isPublished: true },
-      include: { owner: { select: { email: true } } },
-      // include subscription fields for feature gating
-    });
-    if (!business) return err("لم يتم العثور على هذا العمل", 404, { code: "business-not-found" });
+
 
     // Per number, so rotating addresses does not let a script fill a day
     // under somebody else's phone. Counted from bookings actually made,
@@ -125,8 +138,9 @@ export async function POST(req: Request, { params }: Params) {
     // with that booking (Booking.customerEmail). Sending to the record's
     // used to let whoever booked first with somebody's number receive
     // that person's later confirmations and manage links.
-    const customer = await findOrCreateCustomer(business.id, customerPhone, customerName, customerEmail || null);
-    if (customerEmail && !customer.email) {
+    // A test booking makes no customer record: the owner is not their own customer.
+    const customer = isTest ? null : await findOrCreateCustomer(business.id, customerPhone, customerName, customerEmail || null);
+    if (customer && customerEmail && !customer.email) {
       // Conditional, so two concurrent bookings cannot both "fill" it and
       // leave whichever wrote last.
       await db.customer.updateMany({
@@ -150,7 +164,10 @@ export async function POST(req: Request, { params }: Params) {
     // so a tampered payload gets the honest number rather than its own.
     const subtotalCents = toCents(service.price);
 
-    const resolved = discountCode
+    // No offer is redeemed by a test booking: it would spend a real use.
+    const resolved = !customer
+      ? null
+      : discountCode
       ? await resolveCode({
           businessId: business.id,
           serviceId: service.id,
@@ -167,7 +184,7 @@ export async function POST(req: Request, { params }: Params) {
 
     // A code the customer typed and got wrong is worth saying out loud.
     // A promotion that happens not to apply is not: nobody asked.
-    if (discountCode && resolved.ok === false) {
+    if (discountCode && resolved && resolved.ok === false) {
       return err(
         resolved.reason === "not-found" ? "الكود ده مش موجود" : FAILURE_AR[resolved.reason],
         422,
@@ -175,7 +192,7 @@ export async function POST(req: Request, { params }: Params) {
       );
     }
 
-    const applied = resolved.ok === true ? resolved.discount : null;
+    const applied = resolved?.ok === true ? resolved.discount : null;
     const totalCents = applied ? applied.totalCents : subtotalCents;
 
     // ── Determine initial status and deposit ──────────────────────────────────
@@ -187,7 +204,8 @@ export async function POST(req: Request, { params }: Params) {
     // took to nothing — so such a booking goes through as if the business
     // took no deposits. It used to be created PENDING_PAYMENT, fail to
     // open a 0-piastre payment, and hold its slot forever.
-    const depositCents = business.depositEnabled && canUseFeature(effectivePlan, "deposits") && totalCents > 0
+    // A test booking never takes money.
+    const depositCents = !isTest && business.depositEnabled && canUseFeature(effectivePlan, "deposits") && totalCents > 0
       ? calcDepositCents(totalCents / 100, business.depositPercent)
       : 0;
     const requiresDeposit = depositCents > 0;
@@ -207,7 +225,7 @@ export async function POST(req: Request, { params }: Params) {
     const result = await createBooking({
       businessId:     business.id,
       serviceId:      service.id,
-      customerId:     customer.id,
+      customerId:     customer?.id ?? null,
       customerName,
       customerPhone,
       customerEmail:  customerEmail || null,
@@ -229,7 +247,9 @@ export async function POST(req: Request, { params }: Params) {
       source:         source ?? null,
       discount:       applied ? { id: applied.id, amountCents: applied.amountCents } : null,
       idempotencyKey: idempotencyKey ?? null,
-      monthlyLimit:   getMonthlyBookingLimit(effectivePlan),
+      // A test booking is not counted against the plan.
+      monthlyLimit:   isTest ? undefined : getMonthlyBookingLimit(effectivePlan),
+      isTest,
       // Past the free plan's allowance the booking still goes in, held
       // for the owner to confirm; the owner is the one asked to upgrade.
       overLimit:      "hold",
@@ -383,12 +403,14 @@ export async function POST(req: Request, { params }: Params) {
     // plan includes WhatsApp are all decided in lib/notifications —
     // including the in-app copy the customer's account shows, which
     // this route never used to file.
-    notifyLater({ type: "booking.created", bookingId: booking.id });
+    // Nobody is told about a test booking: the owner made it and is looking at it.
+    if (!isTest) notifyLater({ type: "booking.created", bookingId: booking.id });
 
     return ok(
       {
         booking:         bookingResponse,
         requiresPayment: false,
+        testBooking:     isTest,
       },
       201,
     );

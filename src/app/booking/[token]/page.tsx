@@ -11,7 +11,7 @@ import CancelButton from "./_components/CancelButton";
 import RescheduleFlow from "./_components/RescheduleFlow";
 import LeaveReview from "./_components/LeaveReview";
 import { canReviewBooking } from "@/lib/reviews";
-import { CUTOFF_HOURS, customerMayCancel, customerMayChange } from "@/lib/bookings/self-service";
+import { customerMayCancel, customerMayChange } from "@/lib/bookings/self-service";
 import { bookingMoney, toCents } from "@/lib/payments/money";
 import { arCount, duration, money, clockRange } from "@/lib/fmt";
 
@@ -52,7 +52,7 @@ export default async function BookingPage({ params }: Params) {
   const booking = await db.booking.findUnique({
     where:   { accessToken: token },
     include: {
-      business:    { select: { nameAr: true, slug: true, phone: true } },
+      business:    { select: { nameAr: true, slug: true, phone: true, cancellationCutoffHours: true } },
       service:     { select: { id: true, nameAr: true, duration: true } },
       staffMember: { select: { nameAr: true } },
       branch:      { select: { nameAr: true } },
@@ -70,8 +70,9 @@ export default async function BookingPage({ params }: Params) {
   const StatusIcon = status.icon;
   // A booking still waiting on its deposit can be cancelled (it lets go
   // of the slot) but not moved.
-  const cancellable    = customerMayCancel(booking);
-  const reschedulable  = customerMayChange(booking);
+  const cutoffHours    = booking.business.cancellationCutoffHours;
+  const cancellable    = customerMayCancel(booking, undefined, cutoffHours);
+  const reschedulable  = customerMayChange(booking, undefined, cutoffHours);
   // Every payment against it, less refunds — the same figures the app
   // shows (lib/bookings/public-view.ts).
   const ledger         = bookingMoney(toCents(booking.totalPrice), booking.payments);
@@ -225,7 +226,7 @@ export default async function BookingPage({ params }: Params) {
             <p className="text-xs text-[var(--color-text-muted)]">
               {/* The rule the cancel and reschedule routes enforce. Nothing
                   refunds a deposit automatically, so nothing promises it. */}
-              تقدر تلغي أو تغيّر ميعاد الحجز لحد {arCount(CUTOFF_HOURS, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" })} قبل الميعاد.
+              تقدر تلغي أو تغيّر ميعاد الحجز لحد {arCount(cutoffHours, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" })} قبل الميعاد.
               {booking.depositAmount !== null && Number(booking.depositAmount) > 0
                 ? " العربون مش بيترجع تلقائيًا لو لغيت، كلّم المكان بخصوصه."
                 : ""}

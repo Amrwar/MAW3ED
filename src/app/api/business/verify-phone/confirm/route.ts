@@ -63,10 +63,13 @@ export async function POST(req: Request) {
       db.phoneVerification.deleteMany({ where: { businessId: business.id } }),
     ]);
 
-    const verified = await syncVerifiedBadge(business.id);
+    // Contact verification, which the readiness checklist reads. It does
+    // not award the public badge: that is identity verification by an
+    // administrator (lib/business-verification.ts).
+    await syncVerifiedBadge(business.id);
 
-    log.info("phone verified", { businessId: business.id, verified });
-    return ok({ verified: true, badgeEarned: verified });
+    log.info("phone verified", { businessId: business.id });
+    return ok({ verified: true });
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[verify-phone/confirm]", e);

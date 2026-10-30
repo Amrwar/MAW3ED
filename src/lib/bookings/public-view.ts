@@ -1,7 +1,7 @@
 import type { BookingStatus, DeliveryStatus, NotificationChannel, PaymentStatus, ReviewStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { minutesToTime, timeToMinutes } from "./time";
-import { CUTOFF_HOURS, customerMayCancel, customerMayChange } from "./self-service";
+import { customerMayCancel, customerMayChange } from "./self-service";
 import { bookingMoney, toCents } from "@/lib/payments/money";
 import { canEditReview, canReviewBooking } from "@/lib/review-policy";
 
@@ -120,6 +120,7 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
           latitude: true,
           longitude: true,
           logoImage: true,
+          cancellationCutoffHours: true,
           city: { select: { nameAr: true, nameEn: true } },
         },
       },
@@ -195,9 +196,9 @@ export async function getPublicBooking(token: string, now: Date = new Date()): P
       outstanding: ledger.outstandingCents / 100,
     },
     notifications: summariseDeliveries(deliveries),
-    canChange: customerMayChange(b, now),
-    canCancel: customerMayCancel(b, now),
-    changeCutoffHours: CUTOFF_HOURS,
+    canChange: customerMayChange(b, now, b.business.cancellationCutoffHours),
+    canCancel: customerMayCancel(b, now, b.business.cancellationCutoffHours),
+    changeCutoffHours: b.business.cancellationCutoffHours,
     ...reviewState(b, now),
   };
 }

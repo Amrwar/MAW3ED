@@ -7,6 +7,7 @@ import { log } from "@/lib/logger";
 import { bookingInstants, dateToUTC } from "./instants";
 import { generateReference } from "./reference";
 import { loadAvailability } from "./schedule";
+import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 import { minutesToTime, timeToMinutes } from "./time";
 
 /**
@@ -50,7 +51,8 @@ export type CreateFailure =
 export interface CreateBookingInput {
   businessId: string;
   serviceId: string;
-  customerId: string;
+  /** Null only for an owner's test booking, which makes no customer record. */
+  customerId: string | null;
   customerName: string;
   customerPhone: string;
   /**
@@ -86,6 +88,13 @@ export interface CreateBookingInput {
   discount?: { id: string; amountCents: number } | null;
   /** Client-supplied; a retry with the same value is not a second booking. */
   idempotencyKey?: string | null;
+  /**
+   * The owner trying their own unpublished page. Held like any booking
+   * (it goes through the same engine and constraints, which is the
+   * point of trying it) but never counted, never notified, and deleted
+   * on publishing (lib/business/publish.ts).
+   */
+  isTest?: boolean;
   /** Checked inside the transaction so two requests cannot both be the last. */
   monthlyLimit?: number;
   /**
@@ -233,6 +242,7 @@ export async function createBooking(
               depositAmount: input.depositAmount,
               source: input.source ?? null,
               discountCents: input.discount?.amountCents ?? 0,
+              isTest: input.isTest ?? false,
               staffMemberId,
               resourceId,
               // Booking.tableId is deliberately not set. It has a foreign
@@ -290,6 +300,8 @@ export async function createBooking(
         },
       );
 
+      // The first real booking is an onboarding milestone; a test one is not.
+      if (!input.isTest) await recordBusinessMilestone("FIRST_BOOKING", input.businessId);
       return { ok: true, booking, reused: false };
     } catch (e) {
       if (e instanceof LimitReached) return { ok: false, failure: { kind: "limit-reached" } };
@@ -384,6 +396,8 @@ export function countedThisMonth(businessId: string, now: Date = new Date()) {
       lt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
     },
     status: { notIn: ["FAILED_PAYMENT", "CANCELLED"] as ("FAILED_PAYMENT" | "CANCELLED")[] },
+    // A test booking is the owner trying their own page, not demand.
+    isTest: false,
   };
 }
 

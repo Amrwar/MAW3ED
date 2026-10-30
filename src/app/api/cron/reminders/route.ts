@@ -60,6 +60,8 @@ export async function GET(req: Request) {
   const upcoming = await db.booking.findMany({
     where: {
       status: "CONFIRMED",
+      // Nobody is reminded about the owner's own test booking.
+      isTest: false,
       startsAt: { gte: wall, lte: horizon },
     },
     select: {
@@ -142,6 +144,7 @@ export async function GET(req: Request) {
   const finished = await db.booking.findMany({
     where: {
       status: "COMPLETED",
+      isTest: false,
       endsAt: { gte: reviewFrom, lte: reviewTo },
       // Asking somebody to review something they already reviewed is
       // the fastest way to teach them to ignore us.

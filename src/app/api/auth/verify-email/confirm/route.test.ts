@@ -1,14 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { tokens, user, business } = vi.hoisted(() => ({
+const { tokens, user, business, afterEmailVerified } = vi.hoisted(() => ({
   tokens: { findUnique: vi.fn(), delete: vi.fn() },
   user: { findFirst: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
   business: { findUnique: vi.fn(), update: vi.fn() },
+  afterEmailVerified: vi.fn(async (_userId: string) => true),
 }));
 
 vi.mock("@/lib/db", () => ({ db: { emailVerificationToken: tokens, user, business } }));
 vi.mock("@/lib/rate-limit", () => ({ rateLimit: async () => ({ ok: true }) }));
 vi.mock("@/lib/business-verification", () => ({ syncVerifiedBadge: async () => {} }));
+// Whether to publish is decided in lib/business/publish (owner asked,
+// checklist passes, not taken down) and tested there against Postgres.
+vi.mock("@/lib/business/publish", () => ({ afterEmailVerified: (u: string) => afterEmailVerified(u) }));
 vi.mock("@/lib/env", () => ({ siteUrl: "https://maw3ed.test" }));
 
 import { GET } from "./route";
@@ -45,35 +49,27 @@ describe("GET /api/auth/verify-email/confirm", () => {
     expect(user.update).not.toHaveBeenCalled();
   });
 
-  it("verifies the current address as before", async () => {
+  it("verifies the current address and hands the publish decision to the publishing rules", async () => {
     tokens.findUnique.mockResolvedValue({ id: "t", userId: "u1", expiresAt: future, email: null });
     business.findUnique.mockResolvedValue({ id: "b1", status: "APPROVED" });
     expect(await follow()).toBe("success");
-    expect(business.update.mock.calls[0][0].data).toEqual({ isPublished: true });
-  });
-
-  it("does not republish a business an admin took down", async () => {
-    // P17-19: a link re-opened within 24 hours used to put a suspended
-    // listing back on the public site.
-    tokens.findUnique.mockResolvedValue({ id: "t", userId: "u1", expiresAt: future, email: null });
-    business.findUnique.mockResolvedValue({ id: "b1", status: "SUSPENDED" });
-    await follow();
+    expect(afterEmailVerified).toHaveBeenCalledWith("u1");
+    // It never publishes directly: that would bypass the checklist and
+    // the owner's own decision to publish.
     expect(business.update).not.toHaveBeenCalled();
   });
 
-  it("publishes a held-back business on an email change too", async () => {
-    // An owner who mistyped their address and corrected it has verified
-    // an address all the same; the business must not stay unpublished.
+  it("asks the same question after an email change", async () => {
     tokens.findUnique.mockResolvedValue({ id: "t", userId: "u1", expiresAt: future, email: "new@example.com" });
     business.findUnique.mockResolvedValue({ id: "b1", status: "APPROVED" });
     expect(await follow()).toBe("changed");
-    expect(business.update.mock.calls[0][0].data).toEqual({ isPublished: true });
+    expect(afterEmailVerified).toHaveBeenCalledWith("u1");
+    expect(business.update).not.toHaveBeenCalled();
   });
 
-  it("still does not republish a taken-down business on an email change", async () => {
-    tokens.findUnique.mockResolvedValue({ id: "t", userId: "u1", expiresAt: future, email: "new@example.com" });
-    business.findUnique.mockResolvedValue({ id: "b1", status: "SUSPENDED" });
-    await follow();
-    expect(business.update).not.toHaveBeenCalled();
+  it("does not ask for an account with no business", async () => {
+    tokens.findUnique.mockResolvedValue({ id: "t", userId: "u1", expiresAt: future, email: null });
+    expect(await follow()).toBe("verified");
+    expect(afterEmailVerified).not.toHaveBeenCalled();
   });
 });

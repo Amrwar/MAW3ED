@@ -4,6 +4,7 @@ import { log } from "@/lib/logger";
 import { siteUrl } from "@/lib/env";
 import { hashSecret, isExpired } from "@/lib/verification";
 import { syncVerifiedBadge } from "@/lib/business-verification";
+import { afterEmailVerified } from "@/lib/business/publish";
 
 /**
  * GET /api/auth/verify-email/confirm?token=...
@@ -73,18 +74,13 @@ export async function GET(req: Request) {
       select: { id: true, status: true },
     });
     if (business) {
-      // A business held back at signup can now go live, whichever
-      // address was just proved — an owner who mistyped theirs and
-      // corrected it has verified an address all the same. Unless an
-      // admin has since taken it down, which a re-opened link must not
-      // undo.
-      const takenDown = business.status === "SUSPENDED" || business.status === "REJECTED";
-      if (!takenDown) {
-        await db.business.update({
-          where: { id: business.id },
-          data: { isPublished: true },
-        });
-      }
+      // A publish the owner asked for that was waiting only on this
+      // confirmation goes ahead now — whichever address was just proved,
+      // since an owner who corrected a typo has verified an address all
+      // the same. Nothing is published that the owner did not ask for,
+      // that is not ready, or that an admin took down
+      // (lib/business/publish.ts).
+      await afterEmailVerified(record.userId);
       await syncVerifiedBadge(business.id);
     }
 

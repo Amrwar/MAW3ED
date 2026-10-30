@@ -4,7 +4,6 @@ import type { NextSlot } from "@/lib/discovery/next-free";
 import { firstFree, loadSchedule, shortestService } from "@/lib/discovery/next-free";
 import { getBusinessReviews, getRatingSummary, type PublicReview, type RatingSummary } from "@/lib/reviews";
 import { canUseFeature, getEffectivePlan } from "@/lib/plans";
-import { CUTOFF_HOURS } from "@/lib/bookings/self-service";
 import { staffWeek } from "@/lib/discovery/staff";
 import { overAllowance } from "@/lib/bookings/allowance";
 
@@ -129,6 +128,7 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
       slug: true,
       nameAr: true,
       nameEn: true,
+      cancellationCutoffHours: true,
       taglineAr: true,
       about: true,
       coverImage: true,
@@ -310,7 +310,7 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
       minNoticeMinutes: b.minNoticeMinutes,
       maxAdvanceDays: b.maxAdvanceDays,
       sameDayCutoff: b.sameDayCutoff,
-      changeCutoffHours: CUTOFF_HOURS,
+      changeCutoffHours: b.cancellationCutoffHours,
     },
   };
 }

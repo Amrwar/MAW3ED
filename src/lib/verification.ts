@@ -75,26 +75,6 @@ export function cooledDown(lastSentAt: Date, cooldownMs: number, now = Date.now(
 
 // Normalising and formatting numbers from any country: src/lib/phone.ts.
 
-/* ─── Earning the verified badge ─────────────────────────── */
+/* The public verified badge follows identity verification by an
+   administrator; see lib/business-verification.ts. */
 
-export interface VerificationState {
-  emailVerified: boolean;
-  phoneVerified: boolean;
-  hasServices: boolean;
-  hasProfile: boolean;
-}
-
-/**
- * The "موثّق" badge on a business page.
- *
- * It used to be a column nothing ever wrote, so it was permanently
- * false for every business — a trust signal that could not be earned
- * and therefore told a customer nothing. It is now derived: the owner
- * proved their email and their WhatsApp number, and the listing is
- * complete enough to book from.
- */
-export function qualifiesAsVerified(state: VerificationState): boolean {
-  return (
-    state.emailVerified && state.phoneVerified && state.hasServices && state.hasProfile
-  );
-}

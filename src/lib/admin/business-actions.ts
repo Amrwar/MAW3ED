@@ -54,7 +54,13 @@ export function canApply(action: BusinessAction, from: BusinessStatus): boolean 
  * An owner who finds their listing gone is owed a sentence saying why.
  * The route refuses these without one.
  */
-export const REQUIRES_REASON: BusinessAction[] = ["reject", "suspend"];
+/**
+ * Taking a listing down needs a sentence the owner will read.
+ * Verifying one needs the evidence that was checked (a commercial
+ * register, a lease, a call to the listed number): the badge says
+ * Maw3ed checked who runs this business, so the record says how.
+ */
+export const REQUIRES_REASON: BusinessAction[] = ["reject", "suspend", "verify"];
 
 /** Whether this action should also change isPublished, and to what. */
 export function publishedAfter(

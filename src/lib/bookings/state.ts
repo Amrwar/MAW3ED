@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
+import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 import { canTransition, releasesTime, type BookingStatusValue, type Mover } from "./transitions";
 
 /**
@@ -57,6 +58,11 @@ async function applyMove(tx: Tx, input: MoveInput): Promise<MoveResult> {
     data: { ...(input.data ?? {}), status: input.to },
   });
   if (count === 0) return { moved: false, why: "changed" };
+
+  if (input.to === "COMPLETED") {
+    const b = await tx.booking.findUnique({ where: { id: input.bookingId }, select: { isTest: true, businessId: true } });
+    if (b && !b.isTest) await recordBusinessMilestone("FIRST_COMPLETED_BOOKING", b.businessId);
+  }
 
   let refundNeededCents = 0;
   if (releasesTime(input.from, input.to)) {

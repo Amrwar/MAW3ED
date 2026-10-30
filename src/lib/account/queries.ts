@@ -151,6 +151,7 @@ const BOOKING_SELECT = {
       address: true,
       logoImage: true,
       coverImage: true,
+      cancellationCutoffHours: true,
       category: { select: { slug: true } },
       city: { select: { nameAr: true, nameEn: true } },
       neighborhood: { select: { nameAr: true } },
@@ -210,7 +211,7 @@ function shape(b: Row, todayDate: string, nowMin: number): AccountBooking {
     // The review route's own rule, window included, so the list never
     // offers a review the server would refuse.
     canReview: canReviewBooking(b).allowed,
-    canChange: customerMayChange(b),
+    canChange: customerMayChange(b, undefined, b.business.cancellationCutoffHours),
   };
 }
 
