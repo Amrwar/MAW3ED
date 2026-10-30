@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { cairoDayBefore } from "@/lib/attribution/day";
 import { DIRECTORY_PAGE_SIZE } from "./rules";
 
 /**
@@ -180,8 +181,10 @@ export async function attributeBooking(bookingId: string, orgSlug: string, busin
 /** Counts for the organization dashboard: visits and attributed bookings only. */
 export async function organizationMetrics(organizationId: string, windowDays = 30, now = new Date()) {
   const since = new Date(now.getTime() - windowDays * 86_400_000);
-  const sinceDay = new Date(now.toISOString().slice(0, 10));
-  sinceDay.setUTCDate(sinceDay.getUTCDate() - windowDays);
+  // Views are bucketed on the Cairo day, so the cutoff is the Cairo day
+  // windowDays-1 back: the last windowDays days including today — the
+  // same span the booking cutoff above covers in time.
+  const sinceDay = cairoDayBefore(windowDays - 1, now);
   const [views, attributed, perBusiness] = await Promise.all([
     db.organizationView.groupBy({
       by: ["source"],
@@ -189,24 +192,15 @@ export async function organizationMetrics(organizationId: string, windowDays = 3
       _sum: { count: true },
     }),
     db.organizationBookingAttribution.count({ where: { organizationId, createdAt: { gte: since } } }),
-    db.organizationBookingAttribution.findMany({
-      where: { organizationId, createdAt: { gte: since } },
-      select: { bookingId: true },
-    }).then(async (rows) => {
-      if (!rows.length) return [] as { nameAr: string; count: number }[];
-      const grouped = await db.booking.groupBy({
-        by: ["businessId"],
-        where: { id: { in: rows.map((r) => r.bookingId) } },
-        _count: { _all: true },
-      });
-      const names = await db.business.findMany({
-        where: { id: { in: grouped.map((g) => g.businessId) } },
-        select: { id: true, nameAr: true },
-      });
-      return grouped
-        .map((g) => ({ nameAr: names.find((n) => n.id === g.businessId)?.nameAr ?? "—", count: g._count._all }))
-        .sort((a, b) => b.count - a.count);
-    }),
+    // One bounded join: names and counts only, never a customer field.
+    db.$queryRaw<{ nameAr: string; count: number }[]>`
+      SELECT b."nameAr", COUNT(*)::int AS count
+      FROM "OrganizationBookingAttribution" a
+      JOIN "Booking" bk ON bk.id = a."bookingId"
+      JOIN "Business" b ON b.id = bk."businessId"
+      WHERE a."organizationId" = ${organizationId} AND a."createdAt" >= ${since}
+      GROUP BY b."nameAr"
+      ORDER BY count DESC`,
   ]);
   return {
     windowDays,

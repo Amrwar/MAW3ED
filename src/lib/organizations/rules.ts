@@ -70,12 +70,21 @@ export const emailInviteSchema = z.object({
   relation: z.enum(["OWNED", "FRANCHISE", "TENANT", "PARTNER"]).default("OWNED"),
 });
 
+/**
+ * Optional text that stays absent when the key is absent. zod runs the
+ * transform on an omitted key too, so plain optText would turn "not
+ * sent" into null — and a decision that merely omitted `section` would
+ * wipe the stored one.
+ */
+const decisionText = (max: number) =>
+  z.string().trim().max(max).nullish().transform((v) => (v === undefined ? undefined : v ? v : null));
+
 export const associationDecisionSchema = z.object({
   action: z.enum(["approve", "reject", "remove", "organize"]),
-  section: optText(60),
+  section: decisionText(60),
   sortOrder: z.number().int().min(0).max(10000).optional(),
   relation: z.enum(["OWNED", "FRANCHISE", "TENANT", "PARTNER"]).optional(),
-  note: optText(500),
+  note: decisionText(500),
 });
 
 /** How long an email invitation stays usable. */

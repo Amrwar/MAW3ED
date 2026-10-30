@@ -168,15 +168,21 @@ export default async function CompanyPage({ params, searchParams }: Params) {
   const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
 
-  // The public venues this business is listed in (approved memberships only).
-  const venueLinks = (await venuesOfBusiness(dbBusiness.id).catch(() => [])).map((m) => ({
+  // The public venues and organizations this business is listed in
+  // (approved rows only) — fetched together: these are independent of
+  // each other and sit on the hottest public page.
+  const [venueRows, orgRows] = await Promise.all([
+    venuesOfBusiness(dbBusiness.id).catch(() => []),
+    organizationsOfBusiness(dbBusiness.id).catch(() => []),
+  ]);
+  const venueLinks = venueRows.map((m) => ({
     slug: m.venue.slug,
     name: lang === "en" ? m.venue.nameEn || m.venue.nameAr : m.venue.nameAr,
     zone: m.zone ? (lang === "en" ? m.zone.nameEn || m.zone.nameAr : m.zone.nameAr) : null,
     unit: m.unit,
   }));
 
-  const orgLinks = (await organizationsOfBusiness(dbBusiness.id).catch(() => [])).map((o) => ({
+  const orgLinks = orgRows.map((o) => ({
     slug: o.slug,
     name: lang === "en" ? o.nameEn || o.nameAr : o.nameAr,
   }));

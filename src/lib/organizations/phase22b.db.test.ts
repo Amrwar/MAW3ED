@@ -210,6 +210,56 @@ describe.skipIf(!local)("organization platform on a real database", () => {
     expect(await db.business.findUnique({ where: { slug: `${tag}-invited-2` } })).toBeNull();
   });
 
+  it("suspension stops acceptance too: invitations sent earlier can no longer be accepted or claimed", async () => {
+    const mall = await organization("suspend-mall");
+    const invited = await business("suspend-invited");
+    const inv = await assoc.inviteBusiness({
+      organizationId: mall.org.id, byUserId: mall.owner.id, authority: "OWNER",
+      businessSlug: invited.business.slug, branchId: null, relation: "TENANT", note: null,
+    });
+    const einv = await assoc.createEmailInvite({ organizationId: mall.org.id, byUserId: mall.owner.id, authority: "OWNER", email: `${tag}-late@example.test`, relation: "OWNED" });
+    await db.organization.update({ where: { id: mall.org.id }, data: { status: "SUSPENDED", isPublished: false } });
+
+    await expect(
+      assoc.respondAsBusiness({ businessId: invited.business.id, userId: invited.owner.id, associationId: inv.id, action: "accept" }),
+    ).rejects.toMatchObject({ code: "org-not-accepting" });
+    await expect(assoc.readInvite(einv.token)).rejects.toMatchObject({ code: "org-not-accepting" });
+    // The transactional claim refuses too, rolling the creation back with it.
+    const lateOwner = await user("late-owner");
+    const [city, category] = await Promise.all([db.city.findFirstOrThrow(), db.category.findFirstOrThrow()]);
+    await expect(
+      db.$transaction(async (tx) => {
+        const biz = await tx.business.create({ data: { slug: `${tag}-late`, nameAr: "متأخر", ownerId: lateOwner.id, cityId: city.id, categoryId: category.id } });
+        await assoc.acceptEmailInvite(tx, einv.token, biz.id, lateOwner.id);
+      }),
+    ).rejects.toMatchObject({ code: "org-not-accepting" });
+    expect(await db.business.findUnique({ where: { slug: `${tag}-late` } })).toBeNull();
+    // Declining and leaving still work while suspended.
+    await assoc.respondAsBusiness({ businessId: invited.business.id, userId: invited.owner.id, associationId: inv.id, action: "decline" });
+  });
+
+  it("concurrent whole-business and branch attempts cannot both land (advisory lock)", async () => {
+    const mall = await organization("race-mall");
+    const chain = await business("race-chain", { branches: ["فرع"] });
+    const branch = chain.business.branches[0];
+    const results = await Promise.allSettled([
+      assoc.requestToJoin({ businessId: chain.business.id, userId: chain.owner.id, organizationId: mall.org.id, branchId: null }),
+      assoc.requestToJoin({ businessId: chain.business.id, userId: chain.owner.id, organizationId: mall.org.id, branchId: branch.id }),
+    ]);
+    const landed = results.filter((r) => r.status === "fulfilled").length;
+    expect(landed).toBe(1);
+    expect(await db.organizationBusiness.count({ where: { organizationId: mall.org.id, businessId: chain.business.id, status: { in: ["INVITED", "REQUESTED", "APPROVED"] } } })).toBe(1);
+  });
+
+  it("one role per person per scope is enforced by the database", async () => {
+    const mall = await organization("role-mall");
+    const manager = await user("dup-manager");
+    await db.venueRole.create({ data: { userId: manager.id, kind: "ORGANIZATION_ADMIN", organizationId: mall.org.id } });
+    await expect(
+      db.venueRole.create({ data: { userId: manager.id, kind: "ORGANIZATION_ADMIN", organizationId: mall.org.id } }),
+    ).rejects.toMatchObject({ code: "P2002" });
+  });
+
   it("O: a booking is attributed only to a published organization the business is approved in, never to others, and never twice", async () => {
     const mall = await organization("attr-mall");
     const rival = await organization("attr-rival");

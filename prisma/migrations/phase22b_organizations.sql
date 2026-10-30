@@ -123,3 +123,14 @@ CREATE TABLE IF NOT EXISTS "OrganizationBookingAttribution" (
 CREATE UNIQUE INDEX IF NOT EXISTS "OrganizationBookingAttribution_bookingId_key" ON "OrganizationBookingAttribution" ("bookingId");
 CREATE INDEX IF NOT EXISTS "OrganizationBookingAttribution_organizationId_createdAt_idx" ON "OrganizationBookingAttribution" ("organizationId", "createdAt");
 DO $$ BEGIN ALTER TABLE "OrganizationBookingAttribution" ADD CONSTRAINT "OrganizationBookingAttribution_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "VenueOrganization"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- One role per person per scope. The duplicate-role 409s in the members
+-- and admin role routes depend on a unique violation that nothing
+-- enforced; duplicates are merged (oldest kept) before the index.
+DELETE FROM "VenueRole" a USING "VenueRole" b
+  WHERE (a."createdAt", a.id) > (b."createdAt", b.id) AND a."userId" = b."userId" AND a."kind" = b."kind"
+    AND COALESCE(a."organizationId",'') = COALESCE(b."organizationId",'')
+    AND COALESCE(a."compoundId",'')     = COALESCE(b."compoundId",'')
+    AND COALESCE(a."venueId",'')        = COALESCE(b."venueId",'');
+CREATE UNIQUE INDEX IF NOT EXISTS "VenueRole_scope_unique" ON "VenueRole"
+  ("userId", "kind", COALESCE("organizationId",''), COALESCE("compoundId",''), COALESCE("venueId",''));

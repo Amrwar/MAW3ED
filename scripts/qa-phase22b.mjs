@@ -126,6 +126,9 @@ try {
   check("the owner fills the profile", prof.status === 200, `status ${prof.status}`);
   const addMember = await send(founder, `/api/organizations/${org.id}/members`, "POST", { email: "rival@qa.test" });
   check("the owner appoints a manager by email", addMember.status === 201, `status ${addMember.status}`);
+  check("appointing the same manager twice is a 409, not a duplicate row", (await send(founder, `/api/organizations/${org.id}/members`, "POST", { email: "rival@qa.test" })).status === 409);
+  const ownerGrant = await send(admin, "/api/admin/venue-roles", "POST", { email: regEmail, kind: "ORGANIZATION_OWNER", organizationId: org.id });
+  check("the platform admin can grant ORGANIZATION_OWNER (409 duplicate for the existing owner, never 500)", ownerGrant.status === 409, `status ${ownerGrant.status}`);
   const manager = await login("rival@qa.test", PASSWORD);
   check("the manager opens the console", (await call(manager, `/api/organizations/${org.id}`)).status === 200);
   check("the manager cannot publish (404)", (await send(manager, `/api/organizations/${org.id}`, "PATCH", { isPublished: true })).status === 404);

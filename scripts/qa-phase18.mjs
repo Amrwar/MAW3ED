@@ -170,6 +170,10 @@ async function sweep(role, pages, email) {
             dir: document.documentElement.dir || getComputedStyle(document.documentElement).direction,
           }));
           row.overflow = facts.overflow; row.htmlLang = facts.lang; row.dir = facts.dir;
+          if (row.status === 404) {
+            const own = consoleErrors.filter((t) => !/Failed to load resource:.*404/.test(t));
+            consoleErrors.length = 0; consoleErrors.push(...own);
+          }
           await page.addScriptTag({ content: AXE });
           const axe = await page.evaluate(async () => {
             const r = await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] }, resultTypes: ["violations"] });

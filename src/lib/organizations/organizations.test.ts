@@ -5,7 +5,7 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 import { ORG_ACTIONS, ORG_PERMISSIONS, orgAuthorityOver, orgCan } from "./access";
 import { pageDirectory, orgDirectoryCategories, directorySections, type OrgDirectoryEntry } from "./public";
 import { orgSeo } from "./seo";
-import { orgRegisterSchema, orgProfileSchema, orgSlugSchema } from "./rules";
+import { orgRegisterSchema, orgProfileSchema, orgSlugSchema, associationDecisionSchema as orgDecisionSchema } from "./rules";
 
 const roles = (...r: { kind: "ORGANIZATION_OWNER" | "ORGANIZATION_ADMIN" | "VENUE_MANAGER"; organizationId?: string | null }[]) =>
   r.map((x) => ({ kind: x.kind, organizationId: x.organizationId ?? null }));
@@ -94,6 +94,16 @@ describe("organization input rules", () => {
     }
     expect(orgSlugSchema.safeParse("eterna").success).toBe(true);
   });
+  it("a decision that omits section/note does not carry a wiping null", () => {
+    // zod runs transforms on omitted keys; a plain optional-null-transform
+    // would turn "not sent" into null and erase the stored section.
+    const parsed = orgDecisionSchema.parse({ action: "organize", sortOrder: 3 });
+    expect(parsed.section).toBeUndefined();
+    expect(parsed.note).toBeUndefined();
+    expect(orgDecisionSchema.parse({ action: "organize", section: "" }).section).toBeNull();
+    expect(orgDecisionSchema.parse({ action: "organize", section: "مطاعم" }).section).toBe("مطاعم");
+  });
+
   it("validates registration and profile", () => {
     expect(orgRegisterSchema.safeParse({ slug: "eterna", kind: "MALL", nameAr: "إتيرنا" }).success).toBe(true);
     expect(orgRegisterSchema.safeParse({ slug: "eterna", kind: "SHOP", nameAr: "إتيرنا" }).success).toBe(false);

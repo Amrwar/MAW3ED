@@ -81,7 +81,7 @@ export default function VenuesAdminClient(p: Props) {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="badge">{v.status}{v.isPublished ? " · منشور" : ""}</span>
-                  <Link href={`/venue-admin/${v.id}`} className="btn btn-ghost btn-sm">إدارة</Link>
+                  <Link href={`/venue-admin/${v.id}`} prefetch={false} className="btn btn-ghost btn-sm">إدارة</Link>
                   {p.canManage && (
                     <>
                       {v.status !== "ACTIVE" && <button type="button" className="btn btn-outline btn-sm" onClick={() => send(`/api/admin/venues/${v.id}`, "PATCH", { status: "ACTIVE" })}>تفعيل</button>}
@@ -145,7 +145,7 @@ function OrgRow({ o, canManage, send }: { o: Props["organizations"][number]; can
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="badge">{ORG_STATUS[o.status] ?? o.status}{o.isPublished ? " · منشورة" : ""}</span>
-          <Link href={`/org-admin/${o.id}`} className="btn btn-ghost btn-sm">فتح</Link>
+          <Link href={`/org-admin/${o.id}`} prefetch={false} className="btn btn-ghost btn-sm">فتح</Link>
           {canManage && (
             <>
               {o.status !== "APPROVED" && (

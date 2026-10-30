@@ -64,16 +64,41 @@ async function audit(actorId: string, actorRole: string, action: string, organiz
 }
 
 /** Whole-business and branch rows must not both be live for one organization. */
-async function refuseOverlap(organizationId: string, businessId: string, branchId: string | null) {
-  const overlapping = await db.organizationBusiness.count({
-    where: {
-      organizationId,
-      businessId,
-      status: { in: ["INVITED", "REQUESTED", "APPROVED"] },
-      ...(branchId ? { branchId: null } : { branchId: { not: null } }),
-    },
-  });
-  if (overlapping) throw new AssociationFailure("overlaps-existing");
+/**
+ * Creates a live association after the overlap check, both under a
+ * transaction-scoped advisory lock on (organization, business). The
+ * whole-business-vs-branch rule spans rows the unique index cannot
+ * compare, so check-then-insert must serialize: two concurrent attempts
+ * queue on the lock and the second sees the first's row. An identical
+ * triple still lands on `OrganizationBusiness_live_key` → already-linked.
+ */
+async function createAssociation(data: {
+  organizationId: string;
+  businessId: string;
+  branchId: string | null;
+  relation?: OrganizationBusinessRelation;
+  status: "INVITED" | "REQUESTED";
+  initiatedById: string;
+  note?: string | null;
+}) {
+  try {
+    return await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${data.organizationId}|${data.businessId}`}))`;
+      const overlapping = await tx.organizationBusiness.count({
+        where: {
+          organizationId: data.organizationId,
+          businessId: data.businessId,
+          status: { in: ["INVITED", "REQUESTED", "APPROVED"] },
+          ...(data.branchId ? { branchId: null } : { branchId: { not: null } }),
+        },
+      });
+      if (overlapping) throw new AssociationFailure("overlaps-existing");
+      return tx.organizationBusiness.create({ data, select: { id: true, status: true } });
+    });
+  } catch (e) {
+    if (isUnique(e)) throw new AssociationFailure("already-linked");
+    throw e;
+  }
 }
 
 /* ─── Organization side ───────────────────────────────────── */
@@ -105,26 +130,17 @@ export async function inviteBusiness(input: {
     const branch = await db.branch.findFirst({ where: { id: input.branchId, businessId: business.id, isActive: true }, select: { id: true } });
     if (!branch) throw new AssociationFailure("branch-not-yours");
   }
-  await refuseOverlap(input.organizationId, business.id, input.branchId);
-  try {
-    const row = await db.organizationBusiness.create({
-      data: {
-        organizationId: input.organizationId,
-        businessId: business.id,
-        branchId: input.branchId,
-        relation: input.relation,
-        status: "INVITED",
-        initiatedById: input.byUserId,
-        note: input.note,
-      },
-      select: { id: true, status: true },
-    });
-    await audit(input.byUserId, input.authority, "org.business.invite", input.organizationId, `دعا "${business.nameAr}" للانضمام`, { associationId: row.id, businessId: business.id, branchId: input.branchId });
-    return row;
-  } catch (e) {
-    if (isUnique(e)) throw new AssociationFailure("already-linked");
-    throw e;
-  }
+  const row = await createAssociation({
+    organizationId: input.organizationId,
+    businessId: business.id,
+    branchId: input.branchId,
+    relation: input.relation,
+    status: "INVITED",
+    initiatedById: input.byUserId,
+    note: input.note,
+  });
+  await audit(input.byUserId, input.authority, "org.business.invite", input.organizationId, `دعا "${business.nameAr}" للانضمام`, { associationId: row.id, businessId: business.id, branchId: input.branchId });
+  return row;
 }
 
 export type OrgDecision = "approve" | "reject" | "remove" | "organize";
@@ -187,24 +203,15 @@ export async function requestToJoin(input: {
     const branch = await db.branch.findFirst({ where: { id: input.branchId, businessId: input.businessId, isActive: true }, select: { id: true } });
     if (!branch) throw new AssociationFailure("branch-not-yours");
   }
-  await refuseOverlap(input.organizationId, input.businessId, input.branchId);
-  try {
-    const row = await db.organizationBusiness.create({
-      data: {
-        organizationId: input.organizationId,
-        businessId: input.businessId,
-        branchId: input.branchId,
-        status: "REQUESTED",
-        initiatedById: input.userId,
-      },
-      select: { id: true, status: true },
-    });
-    await audit(input.userId, "BUSINESS_OWNER", "org.business.request", input.organizationId, "صاحب نشاط طلب الانضمام", { associationId: row.id, businessId: input.businessId, branchId: input.branchId });
-    return row;
-  } catch (e) {
-    if (isUnique(e)) throw new AssociationFailure("already-linked");
-    throw e;
-  }
+  const row = await createAssociation({
+    organizationId: input.organizationId,
+    businessId: input.businessId,
+    branchId: input.branchId,
+    status: "REQUESTED",
+    initiatedById: input.userId,
+  });
+  await audit(input.userId, "BUSINESS_OWNER", "org.business.request", input.organizationId, "صاحب نشاط طلب الانضمام", { associationId: row.id, businessId: input.businessId, branchId: input.branchId });
+  return row;
 }
 
 /** The business owner answers an invitation, or leaves. */
@@ -219,6 +226,9 @@ export async function respondAsBusiness(input: {
     select: { organizationId: true },
   });
   if (!row) throw new AssociationFailure("not-found");
+  // Accepting re-checks the organization's standing: an invitation sent
+  // before a suspension must not keep collecting businesses after it.
+  if (input.action === "accept") await requireAccepting(row.organizationId);
   const from = input.action === "accept" || input.action === "decline" ? ["INVITED" as const] : ["APPROVED" as const, "REQUESTED" as const];
   const to = input.action === "accept" ? "APPROVED" : input.action === "decline" ? "DECLINED" : "REMOVED";
   const { count } = await db.organizationBusiness.updateMany({
@@ -265,6 +275,8 @@ export async function readInvite(token: string) {
   });
   if (!invite || invite.cancelledAt || invite.acceptedBusinessId) throw new AssociationFailure("invite-not-found");
   if (invite.expiresAt < new Date()) throw new AssociationFailure("invite-expired");
+  // A suspended or rejected organization's links go dark with the page.
+  await requireAccepting(invite.organization.id);
   return invite;
 }
 
@@ -286,6 +298,10 @@ export async function acceptEmailInvite(
   });
   if (!invite || invite.cancelledAt || invite.acceptedBusinessId) throw new AssociationFailure("invite-not-found");
   if (invite.expiresAt < new Date()) throw new AssociationFailure("invite-expired");
+  // Re-checked at claim time: suspension between sending and accepting
+  // must stop the join (and roll the whole onboarding back with it).
+  const org = await tx.organization.findUnique({ where: { id: invite.organizationId }, select: { status: true } });
+  if (org?.status !== "APPROVED") throw new AssociationFailure("org-not-accepting");
   const claimed = await tx.organizationInvite.updateMany({
     where: { id: invite.id, acceptedBusinessId: null, cancelledAt: null },
     data: { acceptedBusinessId: businessId },
