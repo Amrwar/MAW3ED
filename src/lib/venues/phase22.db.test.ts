@@ -216,6 +216,12 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
 
   it("venue metrics are counts of approved tenants' real bookings, with no customer data", async () => {
     const shop = await business("shop");
+    // Business from before it joined the venue is not the venue's.
+    expect((await createBooking({
+      businessId: shop.business.id, serviceId: shop.service.id, customerId: null, customerName: "قبل", customerPhone: "01012345671",
+      date, startTime: "09:00", status: "CONFIRMED", totalPrice: 100, currency: "EGP", depositAmount: null,
+    })).ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 20));
     const req = await m.requestMembership({ businessId: shop.business.id, userId: shop.owner.id, venueId: ctx.mallB.id, branchId: null, unit: null });
     await m.decideMembership({ venueId: ctx.mallB.id, membershipId: req.id, decision: "approve", userId: "x" });
     const base = {

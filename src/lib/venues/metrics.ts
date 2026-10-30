@@ -8,7 +8,9 @@ import { db } from "@/lib/db";
  * services, prices or payments. A clinic in a mall does not tell the
  * mall who its patients are. A branch-level membership counts that
  * branch's bookings only; a business-level one counts the business's.
- * Owners' test bookings are never counted.
+ * Owners' test bookings are never counted, and neither is anything from
+ * before the venue listed the business: its history before joining is
+ * not the venue's to see.
  */
 export interface VenueMetrics {
   windowDays: number;
@@ -20,15 +22,19 @@ export async function venueMetrics(venueId: string, windowDays = 30, now = new D
   const since = new Date(now.getTime() - windowDays * 86_400_000);
   const members = await db.venueMembership.findMany({
     where: { venueId, status: { in: ["APPROVED", "REQUESTED"] } },
-    select: { status: true, businessId: true, branchId: true },
+    select: { status: true, businessId: true, branchId: true, decidedAt: true },
   });
   const approved = members.filter((m) => m.status === "APPROVED");
-  const scopes = approved.map((m) => (m.branchId ? { businessId: m.businessId, branchId: m.branchId } : { businessId: m.businessId }));
+  const scopes = approved.map((m) => ({
+    businessId: m.businessId,
+    ...(m.branchId ? { branchId: m.branchId } : {}),
+    createdAt: { gte: m.decidedAt && m.decidedAt > since ? m.decidedAt : since },
+  }));
 
   const grouped = scopes.length
     ? await db.booking.groupBy({
         by: ["status"],
-        where: { isTest: false, createdAt: { gte: since }, OR: scopes },
+        where: { isTest: false, OR: scopes },
         _count: { _all: true },
       })
     : [];
