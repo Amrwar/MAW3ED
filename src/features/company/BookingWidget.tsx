@@ -32,6 +32,12 @@ interface BookingWidgetProps {
    * it; the provider step still shows, with them already picked.
    */
   initialStaffId?:     string | null;
+  /**
+   * A branch chosen before arriving (a venue's directory links to the
+   * branch inside it). Only an active branch of this business is used;
+   * anything else is ignored and the customer picks as usual.
+   */
+  initialBranchId?:    string | null;
   businessType:        "GENERAL" | "RESTAURANT" | "BARBERSHOP";
   /** The channel that brought this visitor, for attribution. */
   source?:             TrafficSource;
@@ -318,6 +324,7 @@ export default function BookingWidget({
   openDays,
   preselectedService,
   initialStaffId = null,
+  initialBranchId = null,
   businessType,
   resources,
   staffMembers,
@@ -421,7 +428,9 @@ export default function BookingWidget({
   const [selectedStaff,    setSelectedStaff]    = useState<PublicStaff | null>(null);
   const [partySize,        setPartySize]        = useState(2);
 
-  const [selectedBranch, setSelectedBranch] = useState<PublicBranch | null>(null);
+  const [selectedBranch, setSelectedBranch] = useState<PublicBranch | null>(
+    () => branches.find((b) => b.id === initialBranchId) ?? null,
+  );
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
 

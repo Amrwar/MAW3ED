@@ -57,6 +57,12 @@ const SECTIONS: AdminNavSection[] = [
         permissions: ["businesses.read"],
       },
       {
+        href: "/admin/venues",
+        labelAr: "الأماكن والمولات",
+        labelEn: "Venues",
+        permissions: ["venues.read"],
+      },
+      {
         href: "/admin/verification",
         labelAr: "التوثيق",
         labelEn: "Verification",

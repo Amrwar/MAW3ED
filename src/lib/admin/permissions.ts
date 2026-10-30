@@ -41,6 +41,10 @@ export const PERMISSIONS = [
   "catalogue.read", // categories, cities, services
   "catalogue.edit",
 
+  // Destinations: organisations, compounds, venues, and who manages them.
+  "venues.read",
+  "venues.manage", // create, publish, suspend, grant venue roles
+
   // Money.
   "subscriptions.read",
   "subscriptions.manage",
@@ -79,6 +83,8 @@ const ADMIN: Permission[] = [
   "bookings.manage",
   "catalogue.read",
   "catalogue.edit",
+  "venues.read",
+  "venues.manage",
   "notifications.read",
   "reports.read",
   "audit.read",

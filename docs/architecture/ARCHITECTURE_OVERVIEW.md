@@ -76,6 +76,10 @@ Models in `prisma/schema.prisma` (1,458 lines):
   `ImportBatch` (what a CSV import created, for rollback),
   `LifecycleEvent` (one row per account and milestone, for the funnel).
   `Booking.isTest` marks an owner's test booking on a private page.
+- **Destinations (Phase 22):** `VenueOrganization`, `Compound`, `Venue`,
+  `VenueZone`, `VenueGate`, `VenueHours`, `VenuePolicy`, `VenueException`,
+  `VenueMembership`, `VenueRole`; `City.countryCode`. Model, hierarchy and
+  permission matrix: `docs/architecture/VENUES.md`.
 
 ## Key flows and where they live
 
@@ -101,6 +105,7 @@ Models in `prisma/schema.prisma` (1,458 lines):
 | CSV import (Phase 21) | `src/lib/import/csv.ts` (pure parse/validate/duplicates), `run.ts` (transactional commit and rollback), `/api/business/import/**`, `/dashboard/import` |
 | Demo workspace (Phase 21) | `src/lib/demo/workspace.ts`, `/demo` — browser-only fixtures on the real availability engine |
 | Help centre (Phase 21) | `src/lib/help/articles.ts`, `/help`, `/help/[slug]` |
+| Destinations and venues (Phase 22) | `src/lib/venues/*` (access matrix, guard, memberships, metrics, public loader, rules, SEO); `/api/venues/**` (console), `/api/admin/{venue-organizations,compounds,venues,venue-roles}`, `/api/business/venues/**`, `/api/public/venues/**`; pages `/venues`, `/venues/[slug]`, `/venue-admin`, `/admin/venues`, `/dashboard/venue` — `docs/architecture/VENUES.md` |
 | Onboarding funnel (Phase 21) | `src/lib/business/lifecycle.ts` (recording), `src/lib/admin/funnel.ts`, `/admin/onboarding` |
 
 ## Booking state machine and concurrency (Phase 19)

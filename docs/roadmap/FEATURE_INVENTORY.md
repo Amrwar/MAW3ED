@@ -93,9 +93,9 @@ verification is tracked separately in `PHASE_STATUS.md`.
 
 | Feature | Status | Notes |
 |---|---|---|
-| Malls and commercial destinations (venue with many businesses) | MISSING | No venue/mall model; a business belongs to one category and city |
-| Enterprise multi-venue administration | MISSING | Admin is platform-wide; there is no organisation/tenant level above a business |
-| Compound visitor authorization | MISSING | No visitor, host, pass or gate model |
+| Malls and commercial destinations (venue with many businesses) | VERIFIED (Phase 22, locally) | Organisations, compounds, venues, floors, gate metadata, hours, visitor policy, notices; public `/venues/[slug]`; `docs/architecture/VENUES.md` |
+| Enterprise multi-venue administration | VERIFIED (Phase 22, locally) | Organisation, compound and venue roles with a scoped console (`/venue-admin`); platform admin at `/admin/venues` |
+| Compound visitor authorization | MISSING (architecture ready) | Gate metadata, visitor policy and `accessWindow()` exist (Phase 22); no pass is issued and no gate is opened — needs an operator agreement and integration spec |
 | Authorized third-party QR / gate access (Eterna Mall, Emaar) | BLOCKED | Requires a written agreement and an API or integration spec from Emaar/the operator. Nothing may be built that simulates their approval |
 | SMS channel | BLOCKED | Channel exists and reports `sms-not-configured`; no provider chosen |
 
