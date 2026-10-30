@@ -76,6 +76,7 @@ export default async function AnalyticsPage() {
   const bookings = await db.booking.findMany({
     where: {
       businessId,
+      isTest: false,
       date:   { gte: fromDate, lte: toDate },
       status: { not: "CANCELLED" },
     },

@@ -43,7 +43,15 @@ verification is tracked separately in `PHASE_STATUS.md`.
 
 | Feature | Status | Evidence / notes |
 |---|---|---|
-| Onboarding (type, details, services, hours) | VERIFIED | `/onboarding`; QA phase 19 |
+| Onboarding (type, details, services, hours) | VERIFIED | `/onboarding`; QA phase 19. Phase 21: progress saved on the server and resumed on any device (`/api/onboarding/draft`); business created private |
+| Setup checklist, readiness gate, publish / unpublish | VERIFIED (Phase 21, locally) | `/dashboard/setup`, `lib/business/readiness.ts`, `POST /api/business/publish`; required items differ by business type; email confirmation completes a pending publish. `scripts/qa-phase21.mjs` |
+| Owner preview and test bookings | VERIFIED (Phase 21, locally) | Owner-only preview of the private page; test bookings use the real engine, create no customer, send nothing, are not counted, and are deleted on publish |
+| Booking and cancellation policies (notice, advance, buffer, same-day cut-off, cancellation window) | VERIFIED (Phase 21, locally) | `/dashboard/setup#policies`, `/api/business/settings/booking`; the cancellation window is per business (was a fixed 2 h) |
+| Separate verification states (email, phone, ownership, venue) | VERIFIED (Phase 21, locally) | The Verified badge now means an administrator checked ownership with a written note; contact confirmation alone no longer awards it |
+| CSV import of customers and services with preview, duplicates, errors and rollback | VERIFIED (Phase 21, locally) | `/dashboard/import`, `lib/import/*`; owner-only, tenant-scoped |
+| Entitlements endpoint | VERIFIED (Phase 21, locally) | `GET /api/business/entitlements` from `lib/plans.ts`; analytics data and turning deposits on are now refused server-side on plans without them |
+| Help centre | VERIFIED (Phase 21, locally) | `/help`, `/help/[slug]`, ar/en, built from the same constants as the rules it explains |
+| Demo workspace | VERIFIED (Phase 21, locally) | `/demo`, fictional data in the browser only; a test fails if its code imports the database, the API or makes a request |
 | Services, staff, staff hours, staff ↔ service | VERIFIED | `/dashboard/services`, `/dashboard/staff` |
 | Staff access levels (MANAGER / PROVIDER) | VERIFIED | `business-access.test.ts` |
 | Bookings list, today, upcoming, calendar, manual booking, status changes | VERIFIED (Phase 17 branch) | Today dropped bookings from 22:00 (P17-06, fixed). Status writes race (P17-16, open) |
@@ -64,7 +72,8 @@ verification is tracked separately in `PHASE_STATUS.md`.
 | Feature | Status | Evidence / notes |
 |---|---|---|
 | Admin RBAC (MODERATOR / ADMIN / SUPER_ADMIN) | VERIFIED | `permissions.test.ts`; QA phase 19 |
-| Business approval, suspension, verification | VERIFIED | `/admin/businesses`, `/admin/verification` |
+| Business approval, suspension, verification | VERIFIED | `/admin/businesses`, `/admin/verification`. Phase 21: verifying requires an evidence note |
+| Onboarding funnel | VERIFIED (Phase 21, locally) | `/admin/onboarding`, cohort of registrations by window, from `LifecycleEvent` |
 | Review moderation | VERIFIED | `/admin/reviews` |
 | Payments, refunds, diagnostics | INCOMPLETE | Screens exist; refunds BLOCKED as above |
 | Audit log | VERIFIED | `AuditLog`, `/admin/audit` |

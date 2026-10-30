@@ -51,7 +51,7 @@ export default function SuccessScreen({ slug, nameAr, published, onDashboard }: 
       {/* Headline */}
       <div className="space-y-2">
         <h2 className="text-3xl font-extrabold text-[var(--color-text-primary)]">
-          {published ? "صفحتك جاهزة!" : "صفحتك اتعملت — فاضل خطوة"}
+          {published ? "صفحتك جاهزة!" : "صفحتك اتعملت — لسه مش منشورة"}
         </h2>
         <p className="text-lg text-[var(--color-text-secondary)]">
           تهانينا، <span className="font-bold text-[var(--color-brand)]">{nameAr}</span>
@@ -59,7 +59,7 @@ export default function SuccessScreen({ slug, nameAr, published, onDashboard }: 
         <p className="text-sm text-[var(--color-text-muted)] max-w-sm mx-auto">
           {published
             ? "صفحتك العامة الآن منشورة وجاهزة لاستقبال الحجوزات. شارك الرابط مع عملائك وابدأ!"
-            : "أكّد بريدك الإلكتروني عشان ننشر صفحتك. لحد ما تأكّده، الصفحة مش ظاهرة للعملاء ومش هتستقبل حجوزات. بعتنالك رابط التأكيد على إيميلك."}
+            : "الصفحة ظاهرة ليك بس لحد ما تنشرها. من صفحة تجهيز النشاط هتشوف إيه اللي ناقص، تجرّب حجز تجريبي، وبعدين تنشر. ولازم تأكّد إيميلك قبل النشر — بعتنالك الرابط."}
         </p>
       </div>
 
@@ -102,9 +102,9 @@ export default function SuccessScreen({ slug, nameAr, published, onDashboard }: 
         <p className="text-xs font-semibold text-[var(--color-accent)] mb-2">⚡ ما الخطوة التالية؟</p>
         <ul className="space-y-1.5">
           {[
-            published ? "شارك رابطك مع عملائك على واتساب" : "أكّد إيميلك عشان صفحتك تتنشر",
-            "راجع الحجوزات في لوحة التحكم",
-            "أضف المزيد من الخدمات وقم بتخصيص صفحتك",
+            ...(published
+              ? ["شارك رابطك مع عملائك على واتساب", "راجع الحجوزات في لوحة التحكم"]
+              : ["أكّد إيميلك", "راجع سياسات الحجز والإلغاء", "اعمل حجز تجريبي من المعاينة", "انشر صفحتك"]),
           ].map((tip) => (
             <li key={tip} className="text-xs text-[var(--color-accent)]/80 flex items-start gap-1.5">
               <span className="shrink-0">•</span>
@@ -131,7 +131,7 @@ export default function SuccessScreen({ slug, nameAr, published, onDashboard }: 
           className="btn btn-primary flex-1 gap-2"
         >
           <LayoutDashboard size={16} />
-          لوحة التحكم
+          {published ? "لوحة التحكم" : "كمّل تجهيز النشاط"}
         </button>
       </div>
     </div>

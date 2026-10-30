@@ -4,6 +4,8 @@ import { resolveSource } from "@/lib/attribution/source";
 import { OWN_HOSTS } from "@/lib/attribution/hosts";
 import RecordView from "@/features/company/RecordView";
 import { notFound } from "next/navigation";
+import { isOwnerPreview } from "@/lib/business/preview";
+import PreviewBanner from "@/features/company/PreviewBanner";
 import Link from "@/components/shared/LocaleLink";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { headers } from "next/headers";
@@ -24,7 +26,6 @@ import { alternatesFor, DEFAULT_OG_IMAGE, ogLocale } from "@/lib/seo/meta";
 import { getPublishedBusinesses } from "@/lib/data";
 import { cairoNow, openState, type DayHours } from "@/lib/discovery/hours";
 import { businessNextSlot } from "@/lib/discovery/profile";
-import { CUTOFF_HOURS } from "@/lib/bookings/self-service";
 import { getBusinessReviews, getRatingSummary } from "@/lib/reviews";
 import { translations } from "@/lib/i18n";
 
@@ -36,9 +37,11 @@ interface Params {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
 
-  const biz = await db.business.findUnique({
-    where:  { slug, isPublished: true },
+  const found = await db.business.findUnique({
+    where:  { slug },
     select: {
+      isPublished: true,
+      ownerId:     true,
       nameAr:      true,
       nameEn:      true,
       taglineAr:   true,
@@ -53,9 +56,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     },
   });
 
+  // An unpublished business exists only for its owner's preview, and a
+  // preview is never indexed.
+  const preview = found ? await isOwnerPreview(found) : false;
+  const biz = found && (found.isPublished || preview) ? found : null;
+
   const lang = await getLang();
   const en = lang === "en";
   if (!biz) return { title: en ? "Not found" : "غير موجود", robots: { index: false, follow: false } };
+  if (preview) return { title: `${en ? "Preview" : "معاينة"} — ${biz.nameAr}`, robots: { index: false, follow: false } };
 
   const alternates = alternatesFor(`/company/${slug}`, lang);
   const canonical = String(alternates.canonical);
@@ -136,7 +145,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
   });
 
   const dbBusiness = await db.business.findUnique({
-    where:   { slug, isPublished: true },
+    where:   { slug },
     include: {
       category:     true,
       city:         true,
@@ -149,6 +158,10 @@ export default async function CompanyPage({ params, searchParams }: Params) {
   });
 
   if (!dbBusiness) notFound();
+  // Not published: only its owner sees it, as a private preview with a
+  // banner, and can try a test booking through the real widget.
+  const preview = await isOwnerPreview(dbBusiness);
+  if (!dbBusiness.isPublished && !preview) notFound();
 
   const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
@@ -293,6 +306,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
 
   return (
     <>
+      {preview && <PreviewBanner lang={lang} />}
       <script
         type="application/ld+json"
         nonce={nonce}
@@ -408,7 +422,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
           branches={dbBusiness.branches.map((b) => ({ id: b.id, nameAr: b.nameAr, address: b.address }))}
           depositEnabled={dbBusiness.depositEnabled}
           depositPercent={dbBusiness.depositPercent}
-          changeCutoffHours={CUTOFF_HOURS}
+          changeCutoffHours={dbBusiness.cancellationCutoffHours}
           initialServiceId={typeof sp.service === "string" ? sp.service : null}
           initialStaffId={typeof sp.staff === "string" ? sp.staff : null}
         />

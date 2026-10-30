@@ -1068,7 +1068,16 @@ export default function BookingWidget({
                   <button
                     type="button"
                     aria-label={tr("أكتر", "More")}
-                    onClick={() => setPartySize((n) => Math.min(50, n + 1))}
+                    onClick={() => {
+                      const n = Math.min(50, partySize + 1);
+                      setPartySize(n);
+                      // A table chosen for fewer people no longer fits:
+                      // keeping it selected left every day with "no
+                      // available times" and no hint why.
+                      if (selectedResource?.capacity != null && n > selectedResource.capacity) {
+                        setSelectedResource(null);
+                      }
+                    }}
                     className="w-9 h-9 rounded-full bg-white border border-[var(--color-line-2)] text-[var(--color-muted)] font-bold flex items-center justify-center hover:border-[var(--color-jade)] transition-all text-lg leading-none"
                   >+</button>
                 </div>

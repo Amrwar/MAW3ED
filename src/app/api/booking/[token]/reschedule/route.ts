@@ -7,7 +7,7 @@ import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { Prisma } from "@prisma/client";
 import { notifyLater } from "@/lib/notifications";
 import { log } from "@/lib/logger";
-import { CUTOFF_HOURS, minutesUntilStart } from "@/lib/bookings/self-service";
+import { minutesUntilStart } from "@/lib/bookings/self-service";
 import { CUSTOMER_MOVABLE } from "@/lib/bookings/transitions";
 
 type Params = { params: Promise<{ token: string }> };
@@ -50,6 +50,7 @@ export async function POST(req: Request, { params }: Params) {
             whatsapp:    true,
             phone:       true,
             autoConfirm: true,
+            cancellationCutoffHours: true,
             owner:       { select: { email: true } },
           },
         },
@@ -68,8 +69,8 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     // ── Current booking must still be far enough ahead, on Cairo's clock ────
-    if (minutesUntilStart(booking.date, booking.startTime) <= CUTOFF_HOURS * 60) {
-      return err("مينفعش تغيّر الميعاد لما يكون فاضل عليه ساعتين أو أقل", 400, { code: "too-late" });
+    if (minutesUntilStart(booking.date, booking.startTime) <= booking.business.cancellationCutoffHours * 60) {
+      return err(`مينفعش تغيّر الميعاد لما يكون فاضل عليه ${booking.business.cancellationCutoffHours} ساعة أو أقل`, 400, { code: "too-late", cutoffHours: booking.business.cancellationCutoffHours });
     }
 
     // ── Is the new time actually available? ─────────────────────────────────

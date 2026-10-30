@@ -167,7 +167,8 @@ export async function accountForVerifiedPhone(phone: string): Promise<{ id: stri
     // By the canonical column, not the one the customer typed into:
     // "01107578212" and "201107578212" are the same number, and only
     // the generated column knows that.
-    where: { customerPhoneE164: phone, ...(release ? { createdAt: { gte: release.releasedAt } } : {}) },
+    // An owner's test booking is not this person's name.
+    where: { customerPhoneE164: phone, isTest: false, ...(release ? { createdAt: { gte: release.releasedAt } } : {}) },
     orderBy: { createdAt: "desc" },
     select: { customerName: true },
   });

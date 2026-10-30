@@ -1,93 +1,63 @@
 import { db } from "@/lib/db";
-import { qualifiesAsVerified } from "@/lib/verification";
 import { log } from "@/lib/logger";
 
 /**
- * Recomputes the "موثّق" badge for one business.
+ * Verification, as four separate facts that are never collapsed into
+ * one word.
  *
- * `isVerified` was previously a column that nothing ever wrote, so the
- * badge was permanently off for every listing — a trust signal that
- * could not be earned. It is now derived from facts, and recomputed
- * whenever one of those facts changes: the owner proved their email,
- * proved the WhatsApp number bookings are sent to, listed at least one
- * service, and filled in enough of the profile to be bookable.
+ *   email      the owner opened a link sent to the account's address
+ *   phone      the owner typed a code sent to the business's WhatsApp
+ *   identity   a Maw3ed administrator checked, from evidence, that this
+ *              person runs this business (identityVerifiedAt)
+ *   venue      the business is confirmed as a tenant of a venue (a mall,
+ *              a clinic building) — not modelled yet; no venue exists in
+ *              the data, and nothing claims it
  *
- * Never set directly from a request body. A business must not be able
- * to mark itself verified.
+ * The public "موثّق" badge (Business.isVerified) means identity and only
+ * identity. It used to be awarded automatically for a confirmed email
+ * and phone and a filled-in page, which a customer reads as "Maw3ed
+ * checked this business" when all that was checked was that two
+ * messages reached somebody (prisma/migrations/phase21_saas.sql).
+ * Contact checks now feed the readiness checklist instead.
+ */
+
+export interface VerificationStates {
+  email: boolean;
+  phone: boolean;
+  identity: { verified: boolean; at: string | null };
+  /** Always "not-applicable" until venues exist. */
+  venue: "not-applicable";
+}
+
+/**
+ * Keeps the badge in step with identity verification. Called after any
+ * change that could matter; it can only ever turn the badge OFF for a
+ * business that has not been identity-verified, never award it.
  */
 export async function syncVerifiedBadge(businessId: string): Promise<boolean> {
   const business = await db.business.findUnique({
     where: { id: businessId },
-    select: {
-      id: true,
-      isVerified: true,
-      phoneVerifiedAt: true,
-      about: true,
-      address: true,
-      logoImage: true,
-      owner: { select: { emailVerified: true } },
-      _count: { select: { services: true } },
-    },
+    select: { id: true, isVerified: true, identityVerifiedAt: true },
   });
-
   if (!business) return false;
-
-  const qualifies = qualifiesAsVerified({
-    emailVerified: business.owner.emailVerified !== null,
-    phoneVerified: business.phoneVerifiedAt !== null,
-    hasServices: business._count.services > 0,
-    hasProfile: Boolean(business.about && business.address && business.logoImage),
-  });
-
-  if (qualifies !== business.isVerified) {
-    await db.business.update({
-      where: { id: business.id },
-      data: { isVerified: qualifies },
-    });
-    log.info("verified badge changed", { businessId: business.id, verified: qualifies });
+  const verified = business.identityVerifiedAt !== null;
+  if (verified !== business.isVerified) {
+    await db.business.update({ where: { id: business.id }, data: { isVerified: verified } });
+    log.info("verified badge corrected to follow identity verification", { businessId, verified });
   }
-
-  return qualifies;
+  return verified;
 }
 
-/**
- * What the dashboard needs to tell an owner why they are not verified
- * yet, and what to do about it.
- */
-export interface VerificationChecklist {
-  emailVerified: boolean;
-  phoneVerified: boolean;
-  hasServices: boolean;
-  hasProfile: boolean;
-  isPublished: boolean;
-  isVerified: boolean;
-}
-
-export async function getVerificationChecklist(
-  businessId: string,
-): Promise<VerificationChecklist | null> {
-  const business = await db.business.findUnique({
+export async function getVerificationStates(businessId: string): Promise<VerificationStates | null> {
+  const b = await db.business.findUnique({
     where: { id: businessId },
-    select: {
-      isVerified: true,
-      isPublished: true,
-      phoneVerifiedAt: true,
-      about: true,
-      address: true,
-      logoImage: true,
-      owner: { select: { emailVerified: true } },
-      _count: { select: { services: true } },
-    },
+    select: { phoneVerifiedAt: true, identityVerifiedAt: true, owner: { select: { emailVerified: true } } },
   });
-
-  if (!business) return null;
-
+  if (!b) return null;
   return {
-    emailVerified: business.owner.emailVerified !== null,
-    phoneVerified: business.phoneVerifiedAt !== null,
-    hasServices: business._count.services > 0,
-    hasProfile: Boolean(business.about && business.address && business.logoImage),
-    isPublished: business.isPublished,
-    isVerified: business.isVerified,
+    email: b.owner.emailVerified !== null,
+    phone: b.phoneVerifiedAt !== null,
+    identity: { verified: b.identityVerifiedAt !== null, at: b.identityVerifiedAt?.toISOString() ?? null },
+    venue: "not-applicable",
   };
 }

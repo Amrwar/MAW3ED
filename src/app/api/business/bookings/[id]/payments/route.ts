@@ -122,9 +122,13 @@ export async function POST(req: Request, { params }: Params) {
         customerName: true,
         customerPhone: true,
         customerEmail: true,
+        isTest: true,
       },
     });
     if (!booking) return err("الحجز غير موجود", 404);
+    // A test booking is deleted when the page is published; money
+    // recorded against it would be left pointing at nothing.
+    if (booking.isTest) return err("ده حجز تجريبي — مفيش دفع عليه", 409, { code: "test-booking" });
 
     if (booking.status === "CANCELLED") {
       return err("الحجز ملغي", 409);

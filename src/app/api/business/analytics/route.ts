@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { isoDate } from "@/lib/query-params";
+import { businessAllows, cheapestPlanWith, type Plan, type SubscriptionStatus } from "@/lib/plans";
 
 export type RevenuePoint = { period: string; revenue: number; bookings: number };
 export type ServiceSlice  = { serviceName: string; bookings: number; revenue: number; color: string };
@@ -41,6 +42,21 @@ const AR_MONTHS = [
 export async function GET(req: Request) {
   try {
     const { business } = await requireBusiness();
+    // The page was gated by plan; the data behind it was not, so a
+    // free account could read it by calling this directly. The same rule
+    // now answers here.
+    if (
+      !businessAllows(
+        {
+          plan: business.plan as Plan,
+          subscriptionStatus: business.subscriptionStatus as SubscriptionStatus,
+          trialEndsAt: business.trialEndsAt,
+        },
+        "analytics",
+      )
+    ) {
+      return err("التحليلات متاحة في الباقات المدفوعة", 403, { code: "plan-required", upgradeTo: cheapestPlanWith("analytics") });
+    }
     const { searchParams } = new URL(req.url);
 
     const fromStr = searchParams.get("from");
@@ -63,6 +79,7 @@ export async function GET(req: Request) {
     const bookings = await db.booking.findMany({
       where: {
         businessId: business.id,
+        isTest: false,
         date:       { gte: fromDate, lte: toDate },
         status:     { not: "CANCELLED" },
       },

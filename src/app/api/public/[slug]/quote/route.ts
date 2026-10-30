@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { isOwnerPreview } from "@/lib/business/preview";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { toCents } from "@/lib/payments/money";
@@ -35,10 +36,12 @@ export async function POST(req: Request, { params }: Params) {
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return err("طلب غير صالح", 422);
 
-    const business = await db.business.findUnique({
-      where: { slug, isPublished: true },
-      select: { id: true },
+    const found = await db.business.findUnique({
+      where: { slug },
+      select: { id: true, isPublished: true, ownerId: true },
     });
+    // Unpublished: only for its owner's preview (lib/business/preview).
+    const business = found && (found.isPublished || (await isOwnerPreview(found))) ? found : null;
     if (!business) return err("النشاط غير موجود", 404);
 
     const service = await db.service.findFirst({

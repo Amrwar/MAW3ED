@@ -37,6 +37,8 @@ interface DashboardSidebarProps {
   hasBranches?:  boolean;
   /** Shows the moderation entry; nobody else sees it exists. */
   isAdmin?:      boolean;
+  /** The business is not live yet: the setup checklist leads the nav. */
+  needsSetup?:   boolean;
 }
 
 // ─── Nav item ─────────────────────────────────────────────────────────────────
@@ -149,6 +151,7 @@ export default function DashboardSidebar({
   hasResources = false,
   hasBranches  = false,
   isAdmin      = false,
+  needsSetup   = false,
 }: DashboardSidebarProps) {
   const pathname  = usePathname();
   const { t }     = useLanguage();
@@ -162,6 +165,7 @@ export default function DashboardSidebar({
     hasResources,
     hasBranches,
     isAdmin,
+    needsSetup,
   });
 
   return (

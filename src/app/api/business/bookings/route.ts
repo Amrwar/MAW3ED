@@ -8,6 +8,7 @@ import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { generateReference } from "@/lib/bookings/reference";
 import { log } from "@/lib/logger";
+import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 import { notifyLater } from "@/lib/notifications";
 import { isoDate, pageParam, parseQuery } from "@/lib/query-params";
 
@@ -129,6 +130,7 @@ export async function GET(req: Request) {
       serviceName:     b.service.nameAr,
       serviceNameEn:   b.service.nameEn ?? null,
       reference:       b.reference ?? null,
+      isTest:          b.isTest,
       serviceDuration: b.service.duration,
       date:            b.date.toISOString().split("T")[0],
       startTime:       b.startTime,
@@ -245,6 +247,7 @@ export async function POST(req: Request) {
     // The customer gets their confirmation now, and the owner's alert
     // is still sent, mutable from their notification settings.
     notifyLater({ type: "booking.created", bookingId: booking.id, by: "business", actorUserId: session.user.id });
+    await recordBusinessMilestone("FIRST_BOOKING", business.id);
 
     return ok(
       {

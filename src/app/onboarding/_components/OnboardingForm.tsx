@@ -71,6 +71,18 @@ const STEPS = [
 
 const STORAGE_KEY = "maw3ed_onboarding";
 
+/**
+ * What goes to the server draft. An image picked but not yet uploaded is
+ * a data URL that can run to megabytes; it stays in this browser only.
+ */
+function draftPayload(d: OnboardingData): OnboardingData {
+  return {
+    ...d,
+    coverImage: d.coverImage?.startsWith("data:") ? undefined : d.coverImage,
+    logoImage: d.logoImage?.startsWith("data:") ? undefined : d.logoImage,
+  };
+}
+
 interface Props {
   categories: Category[];
   cities:     City[];
@@ -86,32 +98,72 @@ export default function OnboardingForm({ categories, cities }: Props) {
   const [submitError,  setSubmitError]  = useState<string | null>(null);
   const [submitted,    setSubmitted]    = useState<{ slug: string; nameAr: string; published: boolean } | null>(null);
 
-  // Restore from localStorage on mount
+  // Where the draft stands on the server: shown under the stepper so the
+  // owner knows they can close the tab and come back on any device.
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "offline">("idle");
+  const [restored, setRestored] = useState(false);
+
+  // Restore: the server draft first (it follows the owner across
+  // devices), the browser copy if the server has none or is unreachable.
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) return;
-      const { step: savedStep, data: savedData } = JSON.parse(saved) as {
-        step: number;
-        data: OnboardingData;
-      };
-      if (savedData?.nameAr) {
-        // localStorage exists only in the browser, so the saved draft can
-        // only be read after hydration: an effect is the right place.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setData(savedData);
-        setStep(Math.min(Math.max(savedStep, 1), STEPS.length));
+    let cancelled = false;
+    (async () => {
+      let resumed = false;
+      try {
+        const res = await fetch("/api/onboarding/draft", { cache: "no-store" });
+        if (res.ok) {
+          const json = (await res.json()) as { draft: { step: number; data: Partial<OnboardingData> } | null };
+          if (!cancelled && json.draft?.data && typeof json.draft.data.nameAr === "string") {
+            setData({ ...DEFAULT_DATA, ...json.draft.data });
+            setStep(Math.min(Math.max(json.draft.step, 1), STEPS.length));
+            resumed = true;
+          }
+        }
+      } catch {}
+      if (!resumed && !cancelled) {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const { step: savedStep, data: savedData } = JSON.parse(saved) as { step: number; data: OnboardingData };
+            if (savedData?.nameAr) {
+              setData({ ...DEFAULT_DATA, ...savedData });
+              setStep(Math.min(Math.max(savedStep, 1), STEPS.length));
+            }
+          }
+        } catch {}
       }
-    } catch {}
+      if (!cancelled) setRestored(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Persist to localStorage on every change
+  // Save on every change: the browser copy at once, the server copy a
+  // moment later so typing does not send a request per key. Nothing is
+  // saved before the restore finishes, or the empty form would overwrite
+  // the draft it is about to load.
   useEffect(() => {
-    if (submitted) return; // don't save after success
+    if (submitted || !restored) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, data }));
     } catch {}
-  }, [step, data, submitted]);
+    if (!data.nameAr) return;
+    const t = setTimeout(async () => {
+      setSaveState("saving");
+      try {
+        const res = await fetch("/api/onboarding/draft", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ step, data: draftPayload(data) }),
+        });
+        setSaveState(res.ok ? "saved" : "offline");
+      } catch {
+        setSaveState("offline");
+      }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [step, data, submitted, restored]);
 
   function patch(partial: Partial<OnboardingData>) {
     setData((prev) => ({ ...prev, ...partial }));
@@ -149,7 +201,8 @@ export default function OnboardingForm({ categories, cities }: Props) {
       }
       // Refresh session JWT to include new businessId
       await update();
-      // Clear saved progress
+      // Clear saved progress (the server draft is deleted with the
+      // business creation itself).
       localStorage.removeItem(STORAGE_KEY);
       // Show success screen
       setSubmitted({ slug: finalData.slug, nameAr: finalData.nameAr, published: json.business?.isPublished === true });
@@ -167,7 +220,7 @@ export default function OnboardingForm({ categories, cities }: Props) {
         slug={submitted.slug}
         nameAr={submitted.nameAr}
         published={submitted.published}
-        onDashboard={() => router.push("/dashboard")}
+        onDashboard={() => router.push("/dashboard/setup")}
       />
     );
   }
@@ -219,6 +272,16 @@ export default function OnboardingForm({ categories, cities }: Props) {
 
         <p className="m-0 mt-5 text-center text-xs text-[var(--color-subtle)]">
           الخطوة <span className="num">{step}</span> من <span className="num">{STEPS.length}</span>
+          {saveState !== "idle" && (
+            <span role="status" className="ms-2">
+              ·{" "}
+              {saveState === "saving"
+                ? "بنحفظ…"
+                : saveState === "saved"
+                  ? "اتحفظ — تقدر تكمّل بعدين من أي جهاز"
+                  : "اتحفظ على الجهاز ده بس"}
+            </span>
+          )}
         </p>
       </div>
 

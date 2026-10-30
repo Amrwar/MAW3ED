@@ -14,7 +14,7 @@ export async function POST(_req: Request, { params }: Params) {
 
     const booking = await db.booking.findUnique({
       where:   { accessToken: token },
-      include: { business: { select: { nameAr: true } } },
+      include: { business: { select: { nameAr: true, cancellationCutoffHours: true } } },
     });
 
     if (!booking) return err("الحجز غير موجود", 404, { code: "not-found" });
@@ -25,8 +25,8 @@ export async function POST(_req: Request, { params }: Params) {
     if (!canTransition(booking.status, "CANCELLED", "customer")) {
       return err("لا يمكن إلغاء هذا الحجز", 400, { code: "not-cancellable" });
     }
-    if (!customerMayCancel(booking)) {
-      return err("لا يمكن إلغاء الحجز قبل الموعد بأقل من ساعتين", 400, { code: "too-late" });
+    if (!customerMayCancel(booking, undefined, booking.business.cancellationCutoffHours)) {
+      return err(`لا يمكن إلغاء الحجز قبل الموعد بأقل من ${booking.business.cancellationCutoffHours} ساعة`, 400, { code: "too-late", cutoffHours: booking.business.cancellationCutoffHours });
     }
 
     const awaitingPayment = booking.status === "PENDING_PAYMENT";

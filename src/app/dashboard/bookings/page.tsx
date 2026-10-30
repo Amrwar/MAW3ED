@@ -7,7 +7,15 @@ import type { DashboardBooking } from "@/features/dashboard/bookings/types";
 
 export const metadata: Metadata = { title: "الحجوزات" };
 
-export default async function BookingsPage() {
+const STATUSES = ["PENDING", "CONFIRMED", "ARRIVED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "NO_SHOW"];
+
+export default async function BookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const { status } = await searchParams;
+  const initialStatus = status && STATUSES.includes(status) ? status : null;
   const session = await auth();
   if (!session?.user?.businessId) redirect("/onboarding");
 
@@ -41,7 +49,7 @@ export default async function BookingsPage() {
       orderBy: { sortOrder: "asc" },
     }),
     // Total booking count
-    db.booking.count({ where: { businessId } }),
+    db.booking.count({ where: { businessId, isTest: false } }),
     // Slug for slot generation
     db.business.findUnique({
       where:  { id: businessId },
@@ -88,6 +96,7 @@ export default async function BookingsPage() {
       serviceOptions={serviceOptions}
       slug={business?.slug ?? ""}
       totalBookings={totalBookings}
+      initialStatus={initialStatus}
     />
   );
 }

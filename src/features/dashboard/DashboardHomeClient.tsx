@@ -3,7 +3,7 @@
 import Link from "@/components/shared/LocaleLink";
 import {
   ExternalLink, Store, Clock, CheckCircle2,
-  AlertTriangle, ChevronLeft, TrendingUp, ArrowLeft,
+  AlertTriangle, ChevronLeft, TrendingUp, ArrowLeft, ListChecks,
 } from "lucide-react";
 import KpiGrid, { type Kpis } from "@/features/dashboard/KpiGrid";
 import RecentBookings, { type RecentBooking } from "@/features/dashboard/RecentBookings";
@@ -41,6 +41,16 @@ interface Props {
   isProfileIncomplete: boolean;
   /** Bookings counted against a capped plan this month; null when uncapped. */
   allowance: { used: number; limit: number } | null;
+  /** Setup progress while the page is not yet published; null once live. */
+  setup?: {
+    percent: number;
+    requiredDone: number;
+    requiredTotal: number;
+    canPublish: boolean;
+    next: { ar: string; en: string; href: string } | null;
+  } | null;
+  /** Real bookings waiting for the owner to confirm or decline. */
+  pendingCount?: number;
 }
 
 /** A single snapshot figure. Hoisted so it is not rebuilt per render. */
@@ -95,6 +105,8 @@ export default function DashboardHomeClient({
   todayHours,
   isProfileIncomplete,
   allowance,
+  setup = null,
+  pendingCount = 0,
 }: Props) {
   const { t, lang } = useLanguage();
   const h = t.dashboard.home;
@@ -172,6 +184,49 @@ export default function DashboardHomeClient({
             <ChevronLeft size={13} aria-hidden="true" className={lang === "en" ? "rotate-180" : undefined} />
           </Link>
         </div>
+      )}
+
+      {setup && (
+        <section
+          aria-labelledby="setup-card-h"
+          className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-4"
+        >
+          <div className="min-w-0 flex-1 space-y-2">
+            <p id="setup-card-h" className="m-0 flex items-center gap-2 text-[0.9375rem] font-bold text-[var(--color-ink)]">
+              <ListChecks size={18} aria-hidden="true" className="text-[var(--color-jade)]" />
+              {lang === "en" ? "Your page is not published yet" : "صفحتك لسه مش منشورة"}
+            </p>
+            <div className="h-2 max-w-md overflow-hidden rounded-full bg-[var(--color-line)]" aria-hidden="true">
+              <div className="h-full bg-[var(--color-jade)]" style={{ width: `${setup.percent}%` }} />
+            </div>
+            <p className="m-0 text-[0.78125rem] text-[var(--color-subtle)]">
+              {setup.canPublish
+                ? lang === "en" ? "Everything required is done — you can publish." : "كل المطلوب خلص — تقدر تنشر."
+                : lang === "en"
+                  ? `${num(setup.requiredDone, lang)} of ${num(setup.requiredTotal, lang)} required steps done.${setup.next ? ` Next: ${setup.next.en}` : ""}`
+                  : `خلصت ${num(setup.requiredDone, lang)} من ${num(setup.requiredTotal, lang)} خطوات مطلوبة.${setup.next ? ` الجاي: ${setup.next.ar}` : ""}`}
+            </p>
+          </div>
+          <Link href="/dashboard/setup" className="btn btn-primary btn-sm shrink-0">
+            {setup.canPublish
+              ? lang === "en" ? "Review & publish" : "راجع وانشر"
+              : lang === "en" ? "Continue setup" : "كمّل التجهيز"}
+          </Link>
+        </section>
+      )}
+
+      {pendingCount > 0 && (
+        <Link
+          href="/dashboard/bookings?status=PENDING"
+          className="flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-warn-line)] bg-[var(--color-warn-soft)] px-5 py-3 text-[0.875rem] font-bold text-[var(--color-warn)] hover:underline"
+        >
+          <span>
+            {lang === "en"
+              ? `${num(pendingCount, lang)} booking request(s) waiting for you to confirm or decline`
+              : `${num(pendingCount, lang)} طلب حجز مستنيين تأكيدك أو رفضك`}
+          </span>
+          <ChevronLeft size={15} aria-hidden="true" className={lang === "en" ? "rotate-180" : undefined} />
+        </Link>
       )}
 
       {isProfileIncomplete && (

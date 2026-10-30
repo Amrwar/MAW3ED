@@ -64,6 +64,7 @@ export async function POST(req: Request, { params }: Params) {
         startsAt: true,
         startTime: true,
         date: true,
+        isTest: true,
         review: { select: { id: true } },
       },
     });
@@ -71,6 +72,9 @@ export async function POST(req: Request, { params }: Params) {
     // Same message whether the token is wrong or the booking is gone:
     // a 404 that distinguishes them is a way to probe for valid tokens.
     if (!booking) return err("لم يتم العثور على هذا الحجز", 404);
+    // An owner's test booking is not a customer's visit: a rating from
+    // it would be the business rating itself.
+    if (booking.isTest) return err("الحجز التجريبي مش بيتقيّم", 409, { code: "test-booking" });
 
     const check = canReviewBooking(booking);
     if (!check.allowed) {

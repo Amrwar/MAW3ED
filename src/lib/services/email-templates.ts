@@ -162,14 +162,16 @@ function button(href: string, label: string): string {
     </div>`;
 }
 
-const CUTOFF_TEXT = arCount(CUTOFF_HOURS, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" });
+function cutoffText(hours: number): string {
+  return arCount(hours, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" });
+}
 
 /** The booking link, and what it lets the customer do (self-service.ts). */
 function manageLink(d: BookingEmailData): string {
   return d.bookingUrl
     ? `${button(d.bookingUrl, "شوف الحجز ←")}
     <p style="margin:0 0 20px;font-size:12px;color:#9ca3af;">
-      من الرابط ده تقدر تشوف حجزك، وتغيّر ميعاده أو تلغيه بنفسك لحد ${CUTOFF_TEXT} قبل الميعاد.
+      من الرابط ده تقدر تشوف حجزك، وتغيّر ميعاده أو تلغيه بنفسك لحد ${cutoffText(d.cutoffHours ?? CUTOFF_HOURS)} قبل الميعاد.
     </p>`
     : "";
 }

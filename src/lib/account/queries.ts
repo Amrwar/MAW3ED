@@ -151,6 +151,7 @@ const BOOKING_SELECT = {
       address: true,
       logoImage: true,
       coverImage: true,
+      cancellationCutoffHours: true,
       category: { select: { slug: true } },
       city: { select: { nameAr: true, nameEn: true } },
       neighborhood: { select: { nameAr: true } },
@@ -210,7 +211,7 @@ function shape(b: Row, todayDate: string, nowMin: number): AccountBooking {
     // The review route's own rule, window included, so the list never
     // offers a review the server would refuse.
     canReview: canReviewBooking(b).allowed,
-    canChange: customerMayChange(b),
+    canChange: customerMayChange(b, undefined, b.business.cancellationCutoffHours),
   };
 }
 
@@ -258,7 +259,11 @@ function endRule(now: Date) {
  * appointments stay with the businesses and are nobody's to read here.
  */
 export function ownedWhere(phone: string, since?: Date | null): Prisma.BookingWhereInput {
-  return since ? { customerPhoneE164: phone, createdAt: { gte: since } } : { customerPhoneE164: phone };
+  // A business owner's test booking on their unpublished page is not
+  // this person's appointment, whatever number the owner typed into it.
+  return since
+    ? { customerPhoneE164: phone, isTest: false, createdAt: { gte: since } }
+    : { customerPhoneE164: phone, isTest: false };
 }
 
 /** Still holding a slot and not yet over: the upcoming tab. */

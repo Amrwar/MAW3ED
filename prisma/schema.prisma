@@ -64,6 +64,7 @@ model User {
   sessions      Session[]
   business      Business?
   emailTokens   EmailVerificationToken[]
+  onboardingDraft OnboardingDraft?
   favorites     Favorite[]
   notifications Notification[]
 
@@ -327,8 +328,8 @@ model Business {
   statusNote                 String?
   statusChangedAt            DateTime?
   statusChangedById          String?
-  /// Editorially promoted. Separate from isVerified, which is earned by
-  /// completing a profile and cannot be granted by anybody.
+  /// Editorially promoted. Separate from isVerified, which records that
+  /// an administrator checked the owner's identity (identityVerifiedAt).
   isFeatured                 Boolean        @default(false)
   featuredAt                 DateTime?
 
@@ -361,6 +362,25 @@ model Business {
   referralRewardedAt         DateTime? // set once referrer receives their 30-day bonus
   // ── Business Type ────────────────────────────────────────────
   businessType               BusinessType       @default(GENERAL)
+
+  // ── Setup and verification (phase21_saas.sql) ───────────────
+  /// The owner pressed Publish. A business only goes live once this is
+  /// set AND its readiness checklist passes (lib/business/readiness.ts);
+  /// an email verified later completes a publish that was waiting on it.
+  publishRequestedAt         DateTime?
+  /// The owner reviewed the booking policies (confirmation, notice,
+  /// cancellation window). Part of the readiness checklist.
+  policiesReviewedAt         DateTime?
+  /// How close to an appointment a customer may still cancel or move it.
+  cancellationCutoffHours    Int                @default(2)
+  /// Ownership or identity checked by a Maw3ed administrator, from
+  /// evidence, and nothing else. The public "موثّق" badge (isVerified)
+  /// follows this. A confirmed email or phone is contact verification,
+  /// not this.
+  identityVerifiedAt         DateTime?
+  identityVerifiedById       String?
+  identityVerificationNote   String?
+
   createdAt                  DateTime           @default(now())
   updatedAt                  DateTime           @updatedAt
 
@@ -397,6 +417,7 @@ model Business {
   timeBlocks         TimeBlock[]
   resources          Resource[]
   favorites          Favorite[]
+  importBatches      ImportBatch[]
 
   /// The discovery listing always filters on isPublished first, then on
   /// one of city / neighbourhood / category, and sorts on rating,
@@ -804,6 +825,11 @@ model Booking {
   /// is already the amount after it — see the Discount model.
   discountCents Int @default(0)
   discountRedemption DiscountRedemption?
+
+  /// Made by the owner through their own unpublished page, to try the
+  /// booking flow before going live. Never counted, never notified, and
+  /// deleted when the business publishes (lib/business/publish.ts).
+  isTest Boolean @default(false)
 
   /// This table had no indexes at all. Every slot lookup, every dashboard
   /// list and the most-booked sort scanned it.
@@ -1510,4 +1536,70 @@ model WaitlistRequest {
 
   @@unique([email, query, citySlug])
   @@index([createdAt])
+}
+
+// ─── Phase 21: onboarding, import, lifecycle ─────────────────────────
+
+/// An onboarding wizard in progress, so an owner can stop and come back
+/// on any device. One per account; deleted when the business is created.
+model OnboardingDraft {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  step      Int      @default(1)
+  /// What the wizard has collected so far, as the client shapes it.
+  /// Validated in full only when the business is created.
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ImportKind {
+  CUSTOMERS
+  SERVICES
+}
+
+/// One CSV import, so it can be listed and undone. The rows it created
+/// are named by id; rolling back removes those that nothing has used
+/// since (a customer with a booking stays, and is reported).
+model ImportBatch {
+  id           String     @id @default(cuid())
+  businessId   String
+  business     Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  kind         ImportKind
+  createdById  String
+  fileName     String?
+  rowCount     Int
+  createdIds   String[]
+  skipped      Int        @default(0)
+  createdAt    DateTime   @default(now())
+  rolledBackAt DateTime?
+  rolledBackCount Int?
+
+  @@index([businessId, createdAt])
+}
+
+/// Milestones of a business account, each recorded once, for measuring
+/// onboarding. Operational facts about the business's own use of the
+/// product — no visitor tracking, no third party, no cookie.
+enum LifecycleEventKind {
+  BUSINESS_REGISTERED
+  ONBOARDING_STARTED
+  PROFILE_COMPLETED
+  PUBLISHED
+  FIRST_BOOKING
+  FIRST_COMPLETED_BOOKING
+  FIRST_PAID_SUBSCRIPTION
+}
+
+model LifecycleEvent {
+  id         String             @id @default(cuid())
+  /// The account the milestone belongs to: the owner.
+  userId     String
+  businessId String?
+  kind       LifecycleEventKind
+  at         DateTime           @default(now())
+
+  @@unique([userId, kind])
+  @@index([kind, at])
 }

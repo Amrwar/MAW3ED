@@ -9,6 +9,7 @@ import { getEffectivePlan, getMonthlyBookingLimit, type Plan, type SubscriptionS
 import { cairoWallDay } from "@/lib/bookings/instants";
 import { type RecentBooking } from "@/features/dashboard/RecentBookings";
 import { type DashboardBooking } from "@/features/dashboard/bookings/types";
+import { loadReadiness } from "@/lib/business/readiness-load";
 
 export const metadata: Metadata = { title: "لوحة التحكم" };
 
@@ -114,6 +115,23 @@ export default async function DashboardPage() {
   const openDaysCount = business.availability.filter((a) => !a.isClosed).length;
   const isProfileIncomplete = !business.about || !business.address;
 
+  // Until the page is live, the setup checklist is the first thing on
+  // the dashboard; afterwards it steps aside.
+  const readiness = business.isPublished ? null : await loadReadiness(businessId);
+  const nextItem = readiness?.items.find((i) => i.level === "required" && !i.done)
+    ?? readiness?.items.find((i) => !i.done)
+    ?? null;
+  const setup = readiness
+    ? {
+        percent: readiness.percent,
+        requiredDone: readiness.requiredDone,
+        requiredTotal: readiness.requiredTotal,
+        canPublish: readiness.canPublish,
+        next: nextItem ? { ar: nextItem.ar, en: nextItem.en, href: nextItem.href } : null,
+      }
+    : null;
+  const pendingCount = await db.booking.count({ where: { businessId, status: "PENDING", isTest: false } });
+
   return (
     <DashboardHomeClient
       businessNameAr={business.nameAr}
@@ -125,8 +143,10 @@ export default async function DashboardPage() {
       openDaysCount={openDaysCount}
       isOpenToday={!!isOpenToday}
       todayHours={todayHours ? { openTime: todayHours.openTime, closeTime: todayHours.closeTime, isClosed: todayHours.isClosed } : null}
-      isProfileIncomplete={isProfileIncomplete}
+      isProfileIncomplete={isProfileIncomplete && !setup}
       allowance={allowance}
+      setup={setup}
+      pendingCount={pendingCount}
     />
   );
 }

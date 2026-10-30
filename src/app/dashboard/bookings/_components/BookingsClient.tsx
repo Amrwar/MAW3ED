@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 
 interface BookingsClientProps {
   initialTodayBookings: DashboardBooking[];
+  /** ?status= from the URL, already checked against the known statuses. */
+  initialStatus?:       string | null;
   services:             Array<{ id: string; nameAr: string }>;
   serviceOptions:       ServiceOption[];
   slug:                 string;
@@ -30,6 +32,7 @@ export default function BookingsClient({
   serviceOptions,
   slug,
   totalBookings,
+  initialStatus = null,
 }: BookingsClientProps) {
   const { t, lang } = useLanguage();
   const b      = t.dashboard.bookings;
@@ -46,7 +49,9 @@ export default function BookingsClient({
   // The calendar is the default surface: this is an appointments
   // product, so the day view answers "what does today look like"
   // before the table answers "find me one booking".
-  const [view,         setView]         = useState<"calendar" | "list">("calendar");
+  // A link such as the dashboard's "waiting for you" card opens the
+  // filtered list directly.
+  const [view,         setView]         = useState<"calendar" | "list">(initialStatus ? "list" : "calendar");
   const [calendarDate, setCalendarDate] = useState(getTodayISO());
   const [dayBookings,  setDayBookings]  = useState<DashboardBooking[]>(
     () => [...initialTodayBookings].sort((a, bk) => a.startTime.localeCompare(bk.startTime)),
@@ -54,7 +59,7 @@ export default function BookingsClient({
   const [dayLoading,   setDayLoading]   = useState(false);
 
   // ── Filter state ──────────────────────────────────────────
-  const [statusFilter,  setStatusFilter]  = useState("ALL");
+  const [statusFilter,  setStatusFilter]  = useState(initialStatus ?? "ALL");
   const [search,        setSearch]        = useState("");
   const [dateFrom,      setDateFrom]      = useState("");
   const [dateTo,        setDateTo]        = useState("");

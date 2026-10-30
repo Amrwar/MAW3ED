@@ -81,7 +81,12 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     if (REQUIRES_REASON.includes(action) && !reason?.trim()) {
-      return err("اكتب سبب — صاحب المكان هيشوفه", 422);
+      return err(
+        action === "verify"
+          ? "اكتب إيه اللي اتراجع (سجل تجاري، عقد، مكالمة على الرقم) — التوثيق معناه إننا اتأكدنا مين صاحب النشاط"
+          : "اكتب سبب — صاحب المكان هيشوفه",
+        422,
+      );
     }
 
     const nextStatus = STATUS_RESULT[action];
@@ -102,7 +107,13 @@ export async function POST(req: Request, { params }: Params) {
         STATUS_LABELS[nextStatus].ar,
       )}`;
     } else if (action === "verify" || action === "unverify") {
-      data.isVerified = action === "verify";
+      // Identity verification, by a person, from evidence — the only
+      // thing the public badge stands for (lib/business-verification.ts).
+      const verify = action === "verify";
+      data.isVerified = verify;
+      data.identityVerifiedAt = verify ? now : null;
+      data.identityVerifiedById = verify ? actor.id : null;
+      data.identityVerificationNote = verify ? reason!.trim() : null;
       summary = `${actor.name ?? "مشرف"} ${action === "verify" ? "وثّق" : "ألغى توثيق"} "${business.nameAr}"`;
     } else {
       data.isFeatured = action === "feature";

@@ -8,6 +8,9 @@ import {
   CreditCard,
   Gift,
   Globe,
+  LifeBuoy,
+  ListChecks,
+  Upload,
   LayoutDashboard,
   Link2,
   MessageSquare,
@@ -63,6 +66,11 @@ export interface NavContext {
   hasBranches: boolean;
   /** An administrator sees a way into the panel; nobody else does. */
   isAdmin?: boolean;
+  /**
+   * The business is not yet live: the setup checklist goes to the top,
+   * because nothing else on the dashboard matters until it is done.
+   */
+  needsSetup?: boolean;
 }
 
 export function buildNav(ctx: NavContext): NavSection[] {
@@ -70,6 +78,7 @@ export function buildNav(ctx: NavContext): NavSection[] {
 
   const operate: NavItem[] = [
     { href: "/dashboard", label: s.home, icon: LayoutDashboard },
+    ...(ctx.needsSetup ? [{ href: "/dashboard/setup", label: s.setup, icon: ListChecks }] : []),
     {
       href: "/dashboard/bookings",
       label: s.bookings,
@@ -85,6 +94,7 @@ export function buildNav(ctx: NavContext): NavSection[] {
   ];
 
   const setUp: NavItem[] = [
+    ...(ctx.needsSetup ? [] : [{ href: "/dashboard/setup", label: s.setup, icon: ListChecks }]),
     { href: "/dashboard/services", label: s.services, icon: Store },
     { href: "/dashboard/staff", label: s.staff, icon: Users2 },
   ];
@@ -99,6 +109,7 @@ export function buildNav(ctx: NavContext): NavSection[] {
   setUp.push(
     { href: "/dashboard/public-profile", label: s.publicProfile, icon: Globe },
     { href: "/dashboard/reviews", label: s.reviews, icon: MessageSquare },
+    { href: "/dashboard/import", label: s.importData, icon: Upload },
   );
 
   const grow: NavItem[] = [
@@ -124,6 +135,7 @@ export function buildNav(ctx: NavContext): NavSection[] {
   const account: NavItem[] = [
     { href: "/dashboard/billing", label: s.billing, icon: CreditCard },
     { href: "/dashboard/settings", label: s.settings, icon: Settings },
+    { href: "/help", label: s.help, icon: LifeBuoy },
   ];
 
   // The moderation queue. Only an admin has one, and the entry is

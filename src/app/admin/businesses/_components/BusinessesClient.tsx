@@ -242,7 +242,7 @@ export default function BusinessesClient({
                           </ActBtn>
                         )
                       : canApply("verify", b.status) && (
-                          <ActBtn busy={busy === b.id + "verify"} onClick={() => void act(b.id, "verify")}>
+                          <ActBtn busy={busy === b.id + "verify"} onClick={() => setAsking({ id: b.id, action: "verify" })}>
                             {ACTION_LABELS.verify.ar}
                           </ActBtn>
                         ))}
@@ -271,7 +271,9 @@ export default function BusinessesClient({
                   }}
                 >
                   <p className="m-0 mb-2 text-[0.78125rem] font-bold text-[var(--color-danger)]">
-                    {ACTION_LABELS[asking.action].ar} — صاحب المكان هيشوف السبب ده
+                    {asking.action === "verify"
+                      ? "توثيق — اكتب إيه اللي اتراجع للتأكد من صاحب النشاط (سجل تجاري، عقد إيجار، مكالمة على الرقم). تأكيد الإيميل والتليفون لوحده مش توثيق."
+                      : `${ACTION_LABELS[asking.action].ar} — صاحب المكان هيشوف السبب ده`}
                   </p>
                   <textarea
                     value={reason}
@@ -280,7 +282,7 @@ export default function BusinessesClient({
                     required
                     maxLength={1000}
                     autoFocus
-                    aria-label="السبب"
+                    aria-label={asking.action === "verify" ? "اللي اتراجع" : "السبب"}
                     className="w-full resize-y rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] p-2.5 text-[0.8125rem] outline-none focus:border-[var(--color-jade)]"
                   />
                   <div className="mt-2 flex gap-2">

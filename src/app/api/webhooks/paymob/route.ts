@@ -42,6 +42,7 @@ import type { Plan } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notifyLater } from "@/lib/notifications";
 import { releaseBookingHold } from "@/lib/bookings/state";
+import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 
 interface PaymobWebhookBody {
   type?: string;
@@ -728,6 +729,8 @@ async function handleSubscriptionSuccess(
   });
 
   if (!changed) return "already-settled";
+
+  await recordBusinessMilestone("FIRST_PAID_SUBSCRIPTION", payment.businessId);
 
   log.info("[paymob webhook] subscription activated", {
     businessId: payment.businessId,

@@ -4,6 +4,7 @@ import { ok, err, requireSession } from "@/lib/api";
 import { cookies } from "next/headers";
 import crypto from "crypto";
 import { log } from "@/lib/logger";
+import { recordMilestone } from "@/lib/business/lifecycle";
 
 /** Generate a unique 8-char uppercase hex referral code. */
 async function generateReferralCode(): Promise<string> {
@@ -76,14 +77,6 @@ export async function POST(req: Request) {
     // Pre-generate a unique referral code for the new business
     const referralCode = await generateReferralCode();
 
-    // A listing only goes in front of customers once the owner has
-    // proved the email address on the account.
-    const owner = await db.user.findUnique({
-      where:  { id: session.user.id },
-      select: { emailVerified: true },
-    });
-    const emailVerified = owner?.emailVerified !== null && owner?.emailVerified !== undefined;
-
     // Create business + services + availability in a single transaction
     const business = await db.$transaction(async (tx) => {
       const biz = await tx.business.create({
@@ -94,10 +87,12 @@ export async function POST(req: Request) {
           ownerId:      session.user.id,
           categoryId,   cityId,
           businessType,
-          // Held back until the owner verifies their email. An
-          // unverified account must not be able to put a listing in
-          // front of customers.
-          isPublished: emailVerified,
+          // Created as a private draft. It goes live when the owner
+          // presses Publish on the setup page and the readiness
+          // checklist passes — email confirmed, hours that fit a
+          // service, policies reviewed (lib/business/publish.ts). Until
+          // then the owner can preview the page and try a test booking.
+          isPublished: false,
           referralCode,
           referredById: referredById ?? undefined,
         },
@@ -129,15 +124,19 @@ export async function POST(req: Request) {
         })),
       });
 
+      // The wizard's draft has become a business.
+      await tx.onboardingDraft.deleteMany({ where: { userId: session.user.id } });
+
       return biz;
     });
+
+    await recordMilestone("BUSINESS_REGISTERED", { userId: session.user.id, businessId: business.id });
 
     // Clear referral cookie so it isn't accidentally reused
     if (refCode) cookieStore.delete("maw3ed_ref");
 
-    // isPublished tells the success screen whether the page is live or
-    // still waiting on the email to be verified; it must not claim either
-    // one by guessing.
+    // Never published at this point; the success screen sends the owner
+    // to the setup checklist, which says what is left before going live.
     return ok({ business: { id: business.id, slug: business.slug, isPublished: business.isPublished } }, 201);
   } catch (e) {
     log.error("[onboarding]", e);

@@ -15,6 +15,7 @@ export function shapeBooking(b: Row): ListedBooking {
   return {
     id: b.id,
     reference: b.reference,
+    isTest: b.isTest,
     status: b.status,
     at: b.startsAt ? b.startsAt.toISOString() : null,
     date: b.date.toISOString().slice(0, 10),

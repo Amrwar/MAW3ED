@@ -6,7 +6,6 @@ import {
   secretMatches,
   isExpired,
   cooledDown,
-  qualifiesAsVerified,
   PHONE_CODE_LENGTH,
 } from "./verification";
 
@@ -93,32 +92,3 @@ describe("cooledDown", () => {
 });
 
 // normaliseEgyptianMobile and formatEgyptianMobile became src/lib/phone.ts; their cases are in phone-cases.ts.
-
-describe("qualifiesAsVerified", () => {
-  const full = {
-    emailVerified: true,
-    phoneVerified: true,
-    hasServices: true,
-    hasProfile: true,
-  };
-
-  it("grants the badge when everything is proven", () => {
-    expect(qualifiesAsVerified(full)).toBe(true);
-  });
-
-  it("withholds it without a verified email", () => {
-    expect(qualifiesAsVerified({ ...full, emailVerified: false })).toBe(false);
-  });
-
-  it("withholds it without a verified phone", () => {
-    expect(qualifiesAsVerified({ ...full, phoneVerified: false })).toBe(false);
-  });
-
-  it("withholds it from a listing with no services", () => {
-    expect(qualifiesAsVerified({ ...full, hasServices: false })).toBe(false);
-  });
-
-  it("withholds it from an incomplete profile", () => {
-    expect(qualifiesAsVerified({ ...full, hasProfile: false })).toBe(false);
-  });
-});

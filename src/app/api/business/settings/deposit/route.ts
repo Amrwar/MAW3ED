@@ -12,6 +12,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { businessAllows, cheapestPlanWith, type Plan, type SubscriptionStatus } from "@/lib/plans";
 
 const depositSettingsSchema = z.object({
   depositEnabled: z.boolean(),
@@ -31,6 +32,24 @@ export async function PATCH(req: Request) {
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
     const { depositEnabled, depositPercent } = parsed.data;
+
+    // Turning deposits ON needs a plan that takes payments — the same
+    // rule the booking route applies when it decides whether to charge.
+    // Turning them off is always allowed, so a downgraded business can
+    // tidy its settings.
+    if (
+      depositEnabled &&
+      !businessAllows(
+        {
+          plan: business.plan as Plan,
+          subscriptionStatus: business.subscriptionStatus as SubscriptionStatus,
+          trialEndsAt: business.trialEndsAt,
+        },
+        "deposits",
+      )
+    ) {
+      return err("العربون متاح في الباقات المدفوعة", 403, { code: "plan-required", upgradeTo: cheapestPlanWith("deposits") });
+    }
 
     const updated = await db.business.update({
       where: { id: business.id },
