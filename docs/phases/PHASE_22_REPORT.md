@@ -2,7 +2,8 @@
 
 Date: 2026-10-31. Branch `phase-22-venues`, on `main` after PR #39
 (Phase 21, live). Migration: `prisma/migrations/phase22_venues.sql` —
-**run it on production before this code deploys.** Model, hierarchy and
+applied to production and verified on 2026-10-31, before the deploy.
+Merged as PR #40; live on 2026-10-31 (`fa574c2`). Model, hierarchy and
 permission matrix: `docs/architecture/VENUES.md`.
 
 ## Foundations verified from Phases 17–21
@@ -110,8 +111,10 @@ All on 2026-10-31, on the final code, against the local QA database
 
 ### Tests NOT RUN / BLOCKED
 
-- Production and staging: no staging environment; the migration has not
-  been run on production (owner action).
+- Staging: there is no staging environment. Production (after the
+  merge): migration applied and verified by query; the anonymous smoke
+  test passed (see Release readiness); signed-in venue flows not
+  exercised on production because no venue exists there yet.
 - Any gate or visitor-access integration: BLOCKED — there is no operator
   agreement or API; nothing was built or simulated.
 - Mobile app: no mobile change; not run.
@@ -173,8 +176,6 @@ venue notices do not block bookings.
 
 ## Remaining work
 
-- Owner: run `prisma/migrations/phase22_venues.sql` on production before
-  the deploy.
 - Operator data for Eterna (names, floors, gates, hours, instructions,
   managers' accounts) to enter it — entered by a platform admin, then
   published.
@@ -185,13 +186,17 @@ venue notices do not block bookings.
 
 ## Release readiness
 
-Ready to merge once the migration has run on production. Additive: with
-no venues created, the site behaves exactly as before (new pages are
-empty and `noindex`). Not verified on staging or production.
+Released 2026-10-31: migration applied and verified on production, PR
+#40 merged, production serving `fa574c2`. Anonymous smoke test on
+maw3ed.net: existing pages 200; `/venues` and `/en/venues` 200, empty and
+`noindex`; unknown venue 404; public venues API 200 with an empty list;
+venue console and owner page redirect to sign-in; console API 401;
+admin venues page 404 anonymously; no venue in the sitemap. With no
+venues created, the site behaves exactly as before. Signed-in venue
+flows are verified locally only.
 
 ## Next phase dependencies
 
-- Run `phase22_venues.sql` on production before deploying.
 - Representing Eterna needs the operator's data: names, floors, gates,
   hours, access instructions, and the people who will manage it.
 - Any gate or visitor-access integration needs a written agreement and

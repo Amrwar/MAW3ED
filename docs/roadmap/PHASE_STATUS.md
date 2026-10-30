@@ -19,7 +19,7 @@ Four separate claims, never merged into one:
 | 19 | PASS (code complete, locally verified; production not verified) | merged 2026-10-29 (#35) | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_19_REPORT.md` |
 | 20 | PASS (code complete, locally verified; residual risks with owners in `docs/security/SECURITY_REPORT.md`) | merged 2026-10-29 (#36) | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_20_REPORT.md` |
 | 21 | PASS (code complete, locally verified, live) | merged 2026-10-30 (#39) | NOT RUN | PARTIAL — 2026-10-30: production served `9e025ba`; new public pages 200, unknown help article 404, owner APIs 401 anonymously; signed-in flows not exercised on production | n/a | `docs/phases/PHASE_21_REPORT.md` |
-| 22 | PASS (code complete, locally verified; needs `phase22_venues.sql` on production before deploy) | pending PR merge | NOT RUN | NOT VERIFIED | n/a — no operator integration exists or is claimed | `docs/phases/PHASE_22_REPORT.md` |
+| 22 | PASS (code complete, locally verified, live) | merged 2026-10-31 (#40) | NOT RUN | PARTIAL — 2026-10-31: production served `fa574c2`; `/venues` and `/en/venues` 200 (empty, `noindex`), unknown venue 404, public venues API 200 with an empty list, venue console and owner page redirect to sign-in, console API 401 and admin venues page 404 anonymously, existing pages 200; signed-in venue flows not exercised on production (no venue created yet) | n/a — no operator integration exists or is claimed | `docs/phases/PHASE_22_REPORT.md` |
 | 23–28 | NOT STARTED | — | — | — | — | — |
 
 ## Historical phases (merged before this programme)
@@ -52,7 +52,7 @@ these rows record what the owner reports.
 | `phase17_booking_integrity.sql` | PR #33 (merged 2026-10-29) | APPLIED 2026-10-29; both overlap constraints present (verified by query) |
 | `phase18_email_change.sql` | PR #34 (merged 2026-10-29) | APPLIED 2026-10-29; `User_email_lower_key` present (verified by query) |
 | `phase19_reliability.sql` | PR #35 (merged 2026-10-29) | APPLIED 2026-10-29 (verified by query) |
-| `phase22_venues.sql` | Phase 22 PR | **NOT APPLIED** — run before the deploy |
+| `phase22_venues.sql` | Phase 22 PR (#40) | APPLIED 2026-10-31 before the deploy (owner ran `migrate-phase22.sh`); VERIFIED by query — every table, enum, index and constraint present, every city has a country |
 | `phase21_saas.sql` | Phase 21 PR (#39) | APPLIED 2026-10-30 before the deploy and again after it; both runs VERIFIED by query |
 | `phase20_security.sql` | Phase 20 PR (#36) | APPLIED 2026-10-29 ahead of the merge (verified by query); `PSEUDONYM_SECRET` set in Vercel (all environments) |
 | `prisma/data-fixes/2026-10-27-listing-cleanup.sql` | data only | UNCONFIRMED |
