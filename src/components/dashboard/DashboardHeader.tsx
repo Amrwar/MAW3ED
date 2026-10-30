@@ -238,6 +238,7 @@ export default function DashboardHeader({
   hasResources = false,
   hasBranches  = false,
   isAdmin      = false,
+  needsSetup   = false,
 }: {
   businessName:  string;
   cityName?:     string;
@@ -254,6 +255,8 @@ export default function DashboardHeader({
   hasBranches?:  boolean;
   /** Shows the moderation entry; nobody else sees it exists. */
   isAdmin?:      boolean;
+  /** The business is not live yet: the setup checklist leads the nav. */
+  needsSetup?:   boolean;
 }) {
   const { t, lang } = useLanguage();
   const h        = t.dashboard.header;
@@ -269,6 +272,7 @@ export default function DashboardHeader({
     hasResources,
     hasBranches,
     isAdmin,
+    needsSetup,
   });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);

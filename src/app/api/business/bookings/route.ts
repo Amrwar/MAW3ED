@@ -130,6 +130,7 @@ export async function GET(req: Request) {
       serviceName:     b.service.nameAr,
       serviceNameEn:   b.service.nameEn ?? null,
       reference:       b.reference ?? null,
+      isTest:          b.isTest,
       serviceDuration: b.service.duration,
       date:            b.date.toISOString().split("T")[0],
       startTime:       b.startTime,

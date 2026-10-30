@@ -9,7 +9,12 @@ import { daysUntil } from "@/lib/fmt";
 
 export const metadata: Metadata = { title: "الإعدادات" };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab: initialTab } = await searchParams;
   const session = await auth();
   if (!session?.user?.businessId) redirect("/dashboard");
 
@@ -88,6 +93,7 @@ export default async function SettingsPage() {
 
   return (
     <SettingsClient
+      initialTab={initialTab}
       profile={profile}
       availability={fullWeek}
       cities={cities.map((c) => ({ id: c.id, nameAr: c.nameAr }))}

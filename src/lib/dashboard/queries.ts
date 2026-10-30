@@ -79,14 +79,14 @@ export async function getDashboardKpis(
 
   const [todayRows, windowRows, everCount] = await Promise.all([
     db.booking.findMany({
-      where: { businessId, startsAt: { gte: todayRange.start, lt: todayRange.end } },
+      where: { businessId, isTest: false, startsAt: { gte: todayRange.start, lt: todayRange.end } },
       select: COUNTABLE,
     }),
     db.booking.findMany({
-      where: { businessId, createdAt: { gte: windowStart } },
+      where: { businessId, isTest: false, createdAt: { gte: windowStart } },
       select: COUNTABLE,
     }),
-    db.booking.count({ where: { businessId } }),
+    db.booking.count({ where: { businessId, isTest: false } }),
   ]);
 
   // Upcoming is not bounded by the window: an appointment three months
@@ -94,6 +94,7 @@ export async function getDashboardKpis(
   const futureRows = await db.booking.findMany({
     where: {
       businessId,
+      isTest: false,
       status: { in: [...LIVE_STATUSES] },
       startsAt: { gte: cairoWallClock(now) },
     },
@@ -124,6 +125,7 @@ export async function getDashboardKpis(
 export const BOOKING_LIST_SELECT = {
   id: true,
   reference: true,
+  isTest: true,
   status: true,
   date: true,
   startTime: true,

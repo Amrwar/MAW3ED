@@ -38,7 +38,8 @@ const SELECT = {
 
 async function load(businessId: string, period: Period) {
   return db.booking.findMany({
-    where: { businessId, createdAt: { gte: period.from, lte: period.to } },
+    // Test bookings made from the owner's preview are not business.
+    where: { businessId, isTest: false, createdAt: { gte: period.from, lte: period.to } },
     select: SELECT,
   });
 }

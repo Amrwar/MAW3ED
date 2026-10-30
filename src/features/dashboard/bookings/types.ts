@@ -13,6 +13,8 @@ export type DashboardBookingStatus =
 
 export type DashboardBooking = {
   id:              string;
+  /** Made by the owner from the unpublished page's preview; deleted on publish. */
+  isTest?:         boolean;
   customerName:    string;
   customerPhone:   string;
   serviceName:     string;

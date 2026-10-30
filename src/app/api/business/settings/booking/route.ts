@@ -12,10 +12,12 @@
  *   cancellationCutoffHours   how close to the start a customer may still
  *                             cancel or move it themselves
  *
- * Every field is optional on PATCH; only what is sent changes. Saving
- * marks the policies as reviewed for the setup checklist — that is the
- * point of the step: the owner has seen these and chosen, rather than
- * inheriting defaults they never knew existed.
+ * Every field is optional on PATCH; only what is sent changes. A save
+ * with `reviewed: true` — sent by the setup page's policies form, which
+ * shows every policy at once — marks the policies as reviewed for the
+ * setup checklist: the owner has seen them all and chosen, rather than
+ * inheriting defaults they never knew existed. Flipping one switch
+ * elsewhere does not count as reviewing the rest.
  *
  * Owner only: these are the business's word to its customers.
  */
@@ -35,6 +37,7 @@ export const bookingPolicySchema = z
     bufferMinutes: z.number().int().min(0).max(240),
     sameDayCutoff: z.string().regex(HHMM, "وقت غير صحيح").nullable(),
     cancellationCutoffHours: z.number().int().min(0).max(168),
+    reviewed: z.literal(true),
   })
   .partial();
 
@@ -66,9 +69,10 @@ export async function PATCH(req: Request) {
     const parsed = bookingPolicySchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "قيمة غير صالحة", 422);
 
+    const { reviewed, ...policies } = parsed.data;
     const updated = await db.business.update({
       where: { id: business.id },
-      data: { ...parsed.data, policiesReviewedAt: new Date() },
+      data: { ...policies, ...(reviewed ? { policiesReviewedAt: new Date() } : {}) },
       select: SELECT,
     });
     return ok({ ...updated, policiesReviewedAt: updated.policiesReviewedAt?.toISOString() ?? null });

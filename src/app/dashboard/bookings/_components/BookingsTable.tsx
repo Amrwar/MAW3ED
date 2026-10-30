@@ -197,7 +197,14 @@ export default function BookingsTable({
                           {b.customerName[0]}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-[var(--color-ink)] leading-snug">{b.customerName}</p>
+                          <p className="text-sm font-semibold text-[var(--color-ink)] leading-snug">
+                            {b.customerName}
+                            {b.isTest && (
+                              <span className="badge badge-warning ms-2 align-middle text-[0.6875rem]">
+                                {lang === "ar" ? "حجز تجريبي" : "Test booking"}
+                              </span>
+                            )}
+                          </p>
                           <p className="text-xs text-[var(--color-subtle)]" dir="ltr">{b.customerPhone}</p>
                         </div>
                       </div>

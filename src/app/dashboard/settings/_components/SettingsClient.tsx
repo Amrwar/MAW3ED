@@ -47,6 +47,8 @@ export type CategoryItem = { id: string; nameAr: string; nameEn: string; icon: s
 export type ServicePreview = { nameAr: string; duration: number; price: number; currency: string };
 
 type Props = {
+  /** ?tab= from a link such as the setup checklist; "hours" is an alias for availability. */
+  initialTab?:        string;
   profile:            Profile;
   availability:       AvailabilityDay[];
   cities:             City[];
@@ -69,6 +71,7 @@ const TAB_ICONS = [User, Clock, CreditCard, Bell, Zap, Eye];
 type Tab = typeof TAB_IDS[number];
 
 export default function SettingsClient({
+  initialTab,
   profile,
   availability,
   cities,
@@ -84,7 +87,10 @@ export default function SettingsClient({
   effectivePlan,
   daysUntilExpiry,
 }: Props) {
-  const [tab,            setTab]            = useState<Tab>("profile");
+  const [tab,            setTab]            = useState<Tab>(() => {
+    const wanted = initialTab === "hours" ? "availability" : initialTab;
+    return (TAB_IDS as readonly string[]).includes(wanted ?? "") ? (wanted as Tab) : "profile";
+  });
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
   const { t } = useLanguage();
   const st = t.dashboard.settings;

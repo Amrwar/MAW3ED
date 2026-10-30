@@ -95,7 +95,7 @@ export const translations = {
       eyebrow:         "ليه موعد",
       title:           "حجز تقدر تعتمد عليه",
       verifiedTitle:   "علامة توثيق ليها معنى",
-      verifiedBody:    "علامة «موثّق» مش بتتحط بالطلب: النشاط لازم يأكّد بريده ورقم واتساب، ويكمّل صفحته بخدمة وعنوان ونبذة وشعار.",
+      verifiedBody:    "علامة «موثّق» معناها إن فريق موعد اتأكد بنفسه من صاحب النشاط بمستندات. تأكيد الإيميل أو رقم التليفون لوحده مش بيدّي العلامة.",
       instantTitle:    "مواعيد فاضية فعلًا",
       instantBody:     "بتشوف المواعيد الفاضية فعلاً وتحجز في ثواني، من غير مكالمات. أماكن كتير بتأكّد على طول، والباقي بيأكّد بنفسه وبيوصلك التأكيد.",
       noFeesTitle:     "من غير رسوم حجز",
@@ -841,6 +841,8 @@ export const translations = {
     dashboard: {
       sidebar: {
         home:         "الرئيسية",
+        setup:        "تجهيز النشاط",
+        importData:   "استيراد البيانات",
         bookings:     "الحجوزات",
         reservations: "الحجوزات",
         appointments: "المواعيد",
@@ -1154,7 +1156,7 @@ export const translations = {
       eyebrow:         "Why Maw3ed",
       title:           "Booking you can rely on",
       verifiedTitle:   "A badge that means something",
-      verifiedBody:    "The Verified badge is earned, not set: a business has to confirm its email and WhatsApp number and complete its page with a service, an address, a description and a logo.",
+      verifiedBody:    "The Verified badge means the Maw3ed team checked the owner's identity or ownership from documents. Confirming an email or phone number alone never earns it.",
       instantTitle:    "Times that are really free",
       instantBody:     "You see the openings that are actually free and book in seconds, without a phone call. Many places confirm on the spot; the rest confirm themselves and you are told.",
       noFeesTitle:     "No booking fees",
@@ -1900,6 +1902,8 @@ export const translations = {
     dashboard: {
       sidebar: {
         home:         "Dashboard",
+        setup:        "Setup",
+        importData:   "Import data",
         bookings:     "Bookings",
         reservations: "Reservations",
         appointments: "Appointments",

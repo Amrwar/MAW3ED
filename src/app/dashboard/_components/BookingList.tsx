@@ -11,6 +11,8 @@ import { telHref } from "@/lib/contact";
 export interface ListedBooking {
   id: string;
   reference: string | null;
+  /** Made by the owner from the unpublished page's preview. */
+  isTest?: boolean;
   status: string;
   at: string | null;
   date: string;
@@ -129,6 +131,11 @@ export default function BookingList({
                         </Link>
                       ) : (
                         b.customerName
+                      )}
+                      {b.isTest && (
+                        <span className="badge badge-warning ms-2 align-middle text-[0.6875rem]">
+                          {ar ? "حجز تجريبي" : "Test booking"}
+                        </span>
                       )}
                     </p>
                     <p className="m-0 mt-0.5 text-[0.8125rem] text-[var(--color-subtle)]">

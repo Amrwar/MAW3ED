@@ -20,9 +20,10 @@ export default async function AdminReportsPage() {
   const since = new Date(Date.now() - 30 * 86_400_000);
 
   const [statuses, completed, newBusinesses, newCustomers, topBusinesses] = await Promise.all([
-    db.booking.groupBy({ by: ["status"], _count: { _all: true } }),
+    // Owners' test bookings from their unpublished previews are not business.
+    db.booking.groupBy({ by: ["status"], where: { isTest: false }, _count: { _all: true } }),
     db.booking.aggregate({
-      where: { status: "COMPLETED" },
+      where: { status: "COMPLETED", isTest: false },
       _sum: { totalPrice: true },
       _count: { _all: true },
     }),

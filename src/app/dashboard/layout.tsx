@@ -28,21 +28,21 @@ export default async function DashboardLayout({
   let business = tokenBusinessId
     ? await db.business.findUnique({
         where:  { id: tokenBusinessId },
-        select: { id: true, nameAr: true, nameEn: true, businessType: true, city: { select: { nameAr: true, nameEn: true } } },
+        select: { id: true, nameAr: true, nameEn: true, businessType: true, isPublished: true, city: { select: { nameAr: true, nameEn: true } } },
       })
     : null;
 
   if (!business) {
     business = await db.business.findUnique({
       where:  { ownerId: session.user.id },
-      select: { id: true, nameAr: true, nameEn: true, businessType: true, city: { select: { nameAr: true, nameEn: true } } },
+      select: { id: true, nameAr: true, nameEn: true, businessType: true, isPublished: true, city: { select: { nameAr: true, nameEn: true } } },
     });
   }
 
   if (!business) redirect(await noBusinessDestination(session.user.id));
 
   const pendingCount = await db.booking.count({
-    where: { businessId: business.id, status: "PENDING" },
+    where: { businessId: business.id, status: "PENDING", isTest: false },
   });
 
   // Subscription fields — separate query with fallback so dashboard loads
@@ -93,6 +93,7 @@ export default async function DashboardLayout({
         hasResources={capabilities.resources}
         hasBranches={capabilities.branches}
         isAdmin={Boolean(session.user.adminRole)}
+        needsSetup={!business.isPublished}
       />
 
       <div className="md:ms-64">
@@ -105,6 +106,7 @@ export default async function DashboardLayout({
           hasResources={capabilities.resources}
           hasBranches={capabilities.branches}
           isAdmin={Boolean(session.user.adminRole)}
+          needsSetup={!business.isPublished}
         />
         <main id="main" className="p-5 md:p-7 max-w-[1400px]">
           {needsEmailVerification ? <VerifyEmailBanner email={owner?.email ?? ""} lang={lang} /> : null}

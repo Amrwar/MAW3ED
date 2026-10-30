@@ -328,8 +328,8 @@ model Business {
   statusNote                 String?
   statusChangedAt            DateTime?
   statusChangedById          String?
-  /// Editorially promoted. Separate from isVerified, which is earned by
-  /// completing a profile and cannot be granted by anybody.
+  /// Editorially promoted. Separate from isVerified, which records that
+  /// an administrator checked the owner's identity (identityVerifiedAt).
   isFeatured                 Boolean        @default(false)
   featuredAt                 DateTime?
 
