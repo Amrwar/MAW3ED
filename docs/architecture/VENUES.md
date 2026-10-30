@@ -43,7 +43,7 @@ Country (City.countryCode, "EG" for every existing city)
 | `VenueGate` | An entry point, **metadata only** | Belongs to a venue **or** a compound (CHECK constraint); `code` is the operator's id and is never public |
 | `VenueHours` | The venue's own opening hours | One row per day (unique, 0–6 CHECK); each business keeps its own hours |
 | `VenuePolicy` | Visitor eligibility, access window, guests, re-entry, allowed gates, published instructions | Configuration only — authorises nothing |
-| `VenueException` | Dated closure, special hours, access suspension, booking pause | Shown publicly; cancels nothing |
+| `VenueException` | Dated closure, special hours, access suspension, booking pause | Shown publicly. CLOSED and BOOKINGS_PAUSED stop new online bookings at the venue's approved tenants on those dates (`src/lib/venues/pause.ts`); existing bookings are not cancelled; the others are information |
 | `VenueMembership` | A business/branch listed in a venue | REQUESTED → APPROVED / REJECTED, APPROVED → REMOVED; one live (REQUESTED/APPROVED) row per venue + business + branch (partial unique index); a business with several active branches joins by branch; the whole business and one of its branches cannot both be live in one venue |
 | `VenueRole` | A person's authority over part of a destination | ORGANIZATION_ADMIN / COMPOUND_ADMIN / VENUE_MANAGER, exactly one matching scope (CHECK constraint) |
 
@@ -136,3 +136,23 @@ specification:
   fail a booking.
 - **What stays true:** no pass is issued from the booking flow; the
   public pages never claim one is.
+
+## Operating notes
+
+- **Signing in:** a person with a venue role and no business lands on
+  `/venue-admin` (via `/onboarding`); `/onboarding?create=1` lets them
+  create a business. An owner who also holds a venue role finds
+  "Manage venues" in the dashboard navigation.
+- **Needs your attention:** the console lists, from the venue's own
+  records, pending requests, approved tenants that visitors cannot see
+  (business unpublished or branch switched off), a policy naming an
+  inactive or deleted gate, a public venue without hours or — with
+  restricted entry — without instructions, and notices in effect today
+  (`src/lib/venues/attention.ts`).
+- **Audit:** every venue-side change is recorded with the authority it
+  was made under; owners' requests and withdrawals with actor role
+  `BUSINESS_OWNER`.
+- **Rollback:** `prisma/migrations/rollback/phase22_venues_rollback.sql`
+  drops everything Phase 22 added (and every venue entered since);
+  nothing outside these tables is touched. Deploy the pre-Phase-22 code
+  first, take a Neon snapshot, then run it. Tested on QA.

@@ -5,6 +5,8 @@ import { requireVenueAccess } from "@/lib/venues/guard";
 import { venueInfoSchema, venueHoursSchema } from "@/lib/venues/rules";
 import { handle, readJson, venueAudit } from "@/lib/venues/route";
 import { canEditCompoundGates, venueCan } from "@/lib/venues/access";
+import { venueAttention } from "@/lib/venues/attention";
+import { cairoDateString } from "@/lib/bookings/instants";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -36,9 +38,31 @@ export async function GET(_req: Request, { params }: Ctx) {
     const compoundGates = v.compoundId
       ? await db.venueGate.findMany({ where: { compoundId: v.compoundId }, orderBy: { createdAt: "asc" } })
       : [];
+    // What needs the manager's attention, from this venue's own records.
+    const memberships = await db.venueMembership.findMany({
+      where: { venueId: id, status: { in: ["REQUESTED", "APPROVED"] } },
+      select: { status: true, business: { select: { nameAr: true, isPublished: true } }, branch: { select: { isActive: true } } },
+    });
+    const attention = venueAttention({
+      memberships: memberships.map((m) => ({
+        status: m.status,
+        businessName: m.business.nameAr,
+        businessPublished: m.business.isPublished,
+        branchActive: m.branch ? m.branch.isActive : null,
+      })),
+      gates: [...v.gates, ...compoundGates],
+      allowedGateIds: v.policy?.allowedGateIds ?? [],
+      visitorEligibility: v.policy?.visitorEligibility ?? null,
+      hasInstructions: !!(v.policy?.accessInstructionsAr || v.policy?.accessInstructionsEn),
+      hoursCount: v.hours.length,
+      isPublished: v.isPublished && v.status === "ACTIVE",
+      notices: v.exceptions.map((e) => ({ kind: e.kind, startsOn: e.startsOn.toISOString().slice(0, 10), endsOn: e.endsOn.toISOString().slice(0, 10) })),
+      today: cairoDateString(),
+    });
     return ok({
       venue: v,
       compoundGates,
+      attention,
       authority,
       can: {
         editInfo: venueCan(authority, "venue.editInfo"),

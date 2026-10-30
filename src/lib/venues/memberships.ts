@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
 
 /**
  * Tenancy: a business asking to be listed in a venue, and the venue
@@ -84,7 +85,7 @@ export async function requestMembership(input: {
   });
   if (rejected) throw new MembershipFailure("recently-rejected");
   try {
-    return await db.venueMembership.create({
+    const created = await db.venueMembership.create({
       data: {
         venueId: input.venueId,
         businessId: input.businessId,
@@ -94,19 +95,45 @@ export async function requestMembership(input: {
       },
       select: { id: true, status: true },
     });
+    await ownerAudit(input.userId, "venue.membership.request", input.venueId, { membershipId: created.id, businessId: input.businessId, branchId: input.branchId });
+    return created;
   } catch (e) {
     if (isUniqueViolation(e)) throw new MembershipFailure("already-live");
     throw e;
   }
 }
 
+/** The business side of tenancy, in the same audit trail as the venue side. */
+async function ownerAudit(userId: string, action: string, venueId: string, metadata: Record<string, unknown>) {
+  try {
+    await db.auditLog.create({
+      data: {
+        actorId: userId,
+        actorRole: "BUSINESS_OWNER",
+        action,
+        resourceType: "Venue",
+        resourceId: venueId,
+        summary: action === "venue.membership.request" ? "صاحب نشاط طلب يتعرض في المكان" : "صاحب نشاط سحب طلبه أو خرج من المكان",
+        metadata: metadata as object,
+      },
+    });
+  } catch (e) {
+    log.error("[venue audit] FAILED TO RECORD", e, { action, venueId });
+  }
+}
+
 /** The owner withdraws a request, or leaves a venue. */
 export async function withdrawMembership(input: { businessId: string; membershipId: string; userId: string }) {
+  const row = await db.venueMembership.findFirst({
+    where: { id: input.membershipId, businessId: input.businessId },
+    select: { venueId: true },
+  });
   const { count } = await db.venueMembership.updateMany({
     where: { id: input.membershipId, businessId: input.businessId, status: { in: ["REQUESTED", "APPROVED"] } },
     data: { status: "REMOVED", decidedById: input.userId, decidedAt: new Date(), decisionNote: "withdrawn by the business" },
   });
-  if (count === 0) throw new MembershipFailure("not-found");
+  if (count === 0 || !row) throw new MembershipFailure("not-found");
+  await ownerAudit(input.userId, "venue.membership.withdraw", row.venueId, { membershipId: input.membershipId, businessId: input.businessId });
 }
 
 export type Decision = "approve" | "reject" | "remove" | "place";

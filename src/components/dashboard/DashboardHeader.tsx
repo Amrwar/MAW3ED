@@ -239,6 +239,7 @@ export default function DashboardHeader({
   hasBranches  = false,
   isAdmin      = false,
   needsSetup   = false,
+  hasVenueRoles = false,
 }: {
   businessName:  string;
   cityName?:     string;
@@ -257,6 +258,8 @@ export default function DashboardHeader({
   isAdmin?:      boolean;
   /** The business is not live yet: the setup checklist leads the nav. */
   needsSetup?:   boolean;
+  /** Holds a venue role: shows the venue console in the nav. */
+  hasVenueRoles?: boolean;
 }) {
   const { t, lang } = useLanguage();
   const h        = t.dashboard.header;
@@ -273,6 +276,7 @@ export default function DashboardHeader({
     hasBranches,
     isAdmin,
     needsSetup,
+    hasVenueRoles,
   });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);

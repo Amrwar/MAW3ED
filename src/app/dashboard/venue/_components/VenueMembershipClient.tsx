@@ -37,9 +37,14 @@ export default function VenueMembershipClient() {
     setMemberships(json.memberships);
   }, []);
 
+  const [loadFailed, setLoadFailed] = useState(false);
+
   const reload = useCallback(async () => {
-    const res = await fetch("/api/business/venues", { cache: "no-store" });
-    if (res.ok) apply(await res.json());
+    const res = await fetch("/api/business/venues", { cache: "no-store" }).catch(() => null);
+    if (res?.ok) {
+      apply(await res.json());
+      setLoadFailed(false);
+    } else setLoadFailed(true);
   }, [apply]);
 
   useEffect(() => {
@@ -47,9 +52,13 @@ export default function VenueMembershipClient() {
     fetch("/api/business/venues", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
-        if (live && j) apply(j);
+        if (!live) return;
+        if (j) apply(j);
+        else setLoadFailed(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (live) setLoadFailed(true);
+      });
     return () => {
       live = false;
     };
@@ -100,6 +109,13 @@ export default function VenueMembershipClient() {
           {t("إدارة المكان بتشوف اسم نشاطك وفرعك وعدد الحجوزات بس — مش عملاءك ولا تفاصيل حجوزاتهم ولا مدفوعاتهم.", "The venue sees your business and branch name and booking counts only — never your customers, their bookings or payments.")}
         </p>
       </header>
+
+      {loadFailed && (
+        <p role="alert" className="m-0 flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-warn-line)] bg-[var(--color-warn-soft)] p-3 text-sm text-[var(--color-warn)]">
+          {t("مقدرناش نحمّل البيانات.", "Could not load your venue information.")}
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => void reload()}>{t("جرّب تاني", "Try again")}</button>
+        </p>
+      )}
 
       <section className="card space-y-3 p-5" aria-labelledby="mine-h">
         <h2 id="mine-h" className="m-0 text-base font-extrabold">{t("طلباتك", "Your requests")}</h2>

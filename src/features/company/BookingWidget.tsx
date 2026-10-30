@@ -153,6 +153,7 @@ function emptyDayMessage(reason: string | null, lang: Lang): string {
   const en = lang === "en";
   switch (reason) {
     case "business-closed": return en ? "Closed on this day" : "المكان مقفول في اليوم ده";
+    case "venue-closed":    return en ? "The mall or complex it is in is closed, or has paused bookings, on this day" : "المول أو المجمع اللي فيه مقفول أو موقف الحجز في اليوم ده";
     case "staff-off":       return en ? "This provider isn't available on this day" : "مقدّم الخدمة ده مش متاح في اليوم ده";
     case "holiday":         return en ? "Public holiday" : "إجازة رسمية";
     case "vacation":        return en ? "The provider is on leave" : "مقدّم الخدمة في إجازة";

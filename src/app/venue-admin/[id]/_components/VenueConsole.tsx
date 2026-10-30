@@ -28,6 +28,18 @@ interface Membership {
   business: { slug: string; nameAr: string; isPublished: boolean; category: { nameAr: string; nameEn: string } | null };
 }
 interface Metrics { windowDays: number; tenants: { approved: number; requested: number }; bookings: { total: number; byStatus: Record<string, number> } }
+interface Attention { kind: string; severity: number; count: number; ar: string; en: string; names?: string[] }
+
+/* Words for the values the console shows, so neither language sees an enum. */
+const LABELS: Record<string, [string, string]> = {
+  DRAFT: ["مسودة", "Draft"], ACTIVE: ["مفعّل", "Active"], SUSPENDED: ["موقوف", "Suspended"],
+  FLOOR: ["دور", "Floor"], ZONE: ["منطقة", "Zone"], WING: ["جناح", "Wing"],
+  VEHICLE: ["سيارات", "Vehicles"], PEDESTRIAN: ["مشاة", "Pedestrians"], MIXED: ["سيارات ومشاة", "Mixed"],
+  CLOSED: ["مقفول", "Closed"], SPECIAL_HOURS: ["مواعيد خاصة", "Special hours"],
+  ACCESS_SUSPENDED: ["دخول الزوار موقوف", "Visitor access suspended"], BOOKINGS_PAUSED: ["الحجوزات موقوفة", "Bookings paused"],
+  PLATFORM: ["إدارة موعد", "Maw3ed administrator"], ORGANIZATION_ADMIN: ["مدير الجهة", "Organisation admin"],
+  COMPOUND_ADMIN: ["مدير الكمبوند", "Compound admin"], VENUE_MANAGER: ["مدير المكان", "Venue manager"],
+};
 
 const DAYS_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const DAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -40,7 +52,8 @@ async function api(path: string, method = "GET", body?: unknown): Promise<{ ok: 
     headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  return { ok: res.ok, json: (await res.json().catch(() => ({}))) as Record<string, unknown> };
+  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  return { ok: res.ok, json: { ...json, __status: res.status } };
 }
 
 export default function VenueConsole({ venueId }: { venueId: string }) {
@@ -56,48 +69,79 @@ export default function VenueConsole({ venueId }: { venueId: string }) {
   const [members, setMembers] = useState<Membership[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [attention, setAttention] = useState<Attention[]>([]);
+  // Why the console cannot show anything: the session ran out, the role
+  // was taken away, or the server failed. Never an endless "Loading".
+  const [failure, setFailure] = useState<"signin" | "gone" | "error" | null>(null);
 
-  const load = useCallback(async () => {
-    const [v, m, k] = await Promise.all([api(base), api(`${base}/memberships`), api(`${base}/metrics`)]);
-    if (v.ok) {
-      setVenue(v.json.venue as Venue);
-      setCompoundGates((v.json.compoundGates as Gate[]) ?? []);
-      setCan(v.json.can as { compoundGates: boolean; publish: boolean });
-      setAuthority(String(v.json.authority ?? ""));
+  const fetchAll = useCallback(
+    () => Promise.all([api(base), api(`${base}/memberships`), api(`${base}/metrics`)]).catch(() => null),
+    [base],
+  );
+
+  const apply = useCallback((r: Awaited<ReturnType<typeof fetchAll>>) => {
+    if (!r) return setFailure("error");
+    const [v, m, k] = r;
+    if (!v.ok) {
+      const status = Number(v.json.__status ?? 0);
+      return setFailure(status === 401 ? "signin" : status === 404 ? "gone" : "error");
     }
+    setFailure(null);
+    setVenue(v.json.venue as Venue);
+    setCompoundGates((v.json.compoundGates as Gate[]) ?? []);
+    setAttention((v.json.attention as Attention[]) ?? []);
+    setCan(v.json.can as { compoundGates: boolean; publish: boolean });
+    setAuthority(String(v.json.authority ?? ""));
     if (m.ok) setMembers(m.json.memberships as Membership[]);
     if (k.ok) setMetrics(k.json as unknown as Metrics);
-  }, [base]);
+  }, []);
+
+  const load = useCallback(async () => apply(await fetchAll()), [apply, fetchAll]);
 
   useEffect(() => {
     let live = true;
-    // The first load; later ones follow each change.
-    Promise.all([api(base), api(`${base}/memberships`), api(`${base}/metrics`)]).then(([v, m, k]) => {
-      if (!live) return;
-      if (v.ok) {
-        setVenue(v.json.venue as Venue);
-        setCompoundGates((v.json.compoundGates as Gate[]) ?? []);
-        setCan(v.json.can as { compoundGates: boolean; publish: boolean });
-        setAuthority(String(v.json.authority ?? ""));
-      }
-      if (m.ok) setMembers(m.json.memberships as Membership[]);
-      if (k.ok) setMetrics(k.json as unknown as Metrics);
+    fetchAll().then((r) => {
+      if (live) apply(r);
     });
     return () => {
       live = false;
     };
-  }, [base]);
+  }, [fetchAll, apply]);
 
   async function act(path: string, method: string, body?: unknown, done?: string) {
     setMsg(null);
     const r = await api(path, method, body);
     setMsg({ ok: r.ok, text: r.ok ? done ?? t("اتحفظ.", "Saved.") : String(r.json.error ?? t("حصلت مشكلة.", "Something went wrong.")) });
-    if (r.ok) await load();
+    // A refusal because the session ended or access was taken away is
+    // not a form error: reload, which shows why the console is closed.
+    const status = Number(r.json.__status ?? 0);
+    if (r.ok || status === 401 || status === 404) await load();
     return r.ok;
   }
 
-  if (!venue) return <main className="p-8 text-sm text-[var(--color-subtle)]">{t("بنحمّل…", "Loading…")}</main>;
+  if (failure) {
+    return (
+      <main id="main" className="mx-auto max-w-xl space-y-3 p-8 text-sm" dir={en ? "ltr" : "rtl"} role="alert">
+        <p className="m-0 font-bold">
+          {failure === "signin"
+            ? t("الجلسة خلصت. سجّل دخولك تاني.", "Your session has ended. Please sign in again.")
+            : failure === "gone"
+              ? t("مبقاش عندك صلاحية على المكان ده.", "You no longer have access to this venue.")
+              : t("مقدرناش نحمّل المكان. جرّب تاني بعد شوية.", "Could not load the venue. Try again shortly.")}
+        </p>
+        {failure === "signin" ? (
+          <Link href={`/login?next=/venue-admin/${venueId}`} className="btn btn-primary btn-sm">{t("تسجيل الدخول", "Sign in")}</Link>
+        ) : failure === "gone" ? (
+          <Link href="/venue-admin" className="btn btn-outline btn-sm">{t("الأماكن اللي بتديرها", "Venues you manage")}</Link>
+        ) : (
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => void load()}>{t("جرّب تاني", "Try again")}</button>
+        )}
+      </main>
+    );
+  }
+  if (!venue) return <main className="p-8 text-sm text-[var(--color-subtle)]" aria-busy="true">{t("بنحمّل…", "Loading…")}</main>;
   const nm = (x: { nameAr: string; nameEn?: string | null }) => (en ? x.nameEn || x.nameAr : x.nameAr);
+  const lab = (v: string) => (LABELS[v] ? (en ? LABELS[v][1] : LABELS[v][0]) : v);
   const allGates = [...venue.gates, ...compoundGates];
 
   return (
@@ -107,8 +151,8 @@ export default function VenueConsole({ venueId }: { venueId: string }) {
           <Link href="/venue-admin" className="text-xs text-[var(--color-jade)] underline">{t("كل الأماكن", "All venues")}</Link>
           <h1 className="m-0 text-2xl font-black">{nm(venue)}</h1>
           <p className="m-0 text-xs text-[var(--color-subtle)]">
-            {nm(venue.city)}{venue.compound ? ` · ${venue.compound.nameAr}` : ""} · {venue.status} ·{" "}
-            {venue.isPublished ? t("منشور", "public") : t("مش منشور — النشر من إدارة موعد", "not public — Maw3ed's administrators publish venues")} · {authority}
+            {nm(venue.city)}{venue.compound ? ` · ${venue.compound.nameAr}` : ""} · {lab(venue.status)} ·{" "}
+            {venue.isPublished ? t("منشور", "public") : t("مش منشور — النشر من إدارة موعد", "not public — Maw3ed's administrators publish venues")} · {lab(authority)}
           </p>
         </div>
         {venue.isPublished && venue.status === "ACTIVE" && (
@@ -120,6 +164,22 @@ export default function VenueConsole({ venueId }: { venueId: string }) {
       </header>
 
       <p role="status" className={`m-0 min-h-5 text-sm ${msg?.ok ? "text-[var(--color-ok)]" : "text-[var(--color-danger)]"}`}>{msg?.text}</p>
+
+      <section aria-labelledby="att-h" className="card space-y-2 p-5">
+        <h2 id="att-h" className="m-0 text-base font-extrabold">{t("محتاج انتباهك", "Needs your attention")}</h2>
+        {attention.length === 0 ? (
+          <p className="m-0 text-sm text-[var(--color-ok)]">{t("مفيش حاجة مستنياك.", "Nothing needs your attention.")}</p>
+        ) : (
+          <ul className="m-0 list-none space-y-1.5 p-0 text-sm">
+            {attention.map((a) => (
+              <li key={a.kind} className={a.severity >= 2 ? "text-[var(--color-warn)]" : ""}>
+                <span className="font-bold">{en ? a.en : a.ar}</span>
+                {a.names?.length ? <span className="text-xs text-[var(--color-subtle)]"> — {a.names.slice(0, 5).join("، ")}{a.names.length > 5 ? "…" : ""}</span> : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {metrics && (
         <section aria-labelledby="m-h" className="card space-y-2 p-5">
@@ -147,7 +207,7 @@ export default function VenueConsole({ venueId }: { venueId: string }) {
         <ul className="m-0 list-none space-y-1 p-0 text-sm">
           {venue.zones.map((z) => (
             <li key={z.id} className="flex items-center justify-between gap-2">
-              <span>{nm(z)} <span className="text-xs text-[var(--color-subtle)]">{z.kind}{z.level != null ? ` · ${z.level}` : ""}</span></span>
+              <span>{nm(z)} <span className="text-xs text-[var(--color-subtle)]">{lab(z.kind)}{z.level != null ? ` · ${z.level}` : ""}</span></span>
               <button type="button" className="btn btn-ghost btn-sm" aria-label={t("حذف", "Delete")} onClick={() => act(`${base}/zones/${z.id}`, "DELETE")}>
                 <Trash2 size={14} aria-hidden="true" />
               </button>
@@ -166,12 +226,17 @@ export default function VenueConsole({ venueId }: { venueId: string }) {
           {allGates.map((g) => (
             <li key={g.id} className="flex items-center justify-between gap-2">
               <span>
-                {nm(g)} <span className="text-xs text-[var(--color-subtle)]">{g.kind}{g.code ? ` · ${g.code}` : ""}{g.compoundId ? t(" · بوابة الكمبوند", " · compound gate") : ""}{g.isActive ? "" : t(" · متوقفة", " · inactive")}</span>
+                {nm(g)} <span className="text-xs text-[var(--color-subtle)]">{lab(g.kind)}{g.code ? ` · ${g.code}` : ""}{g.compoundId ? t(" · بوابة الكمبوند", " · compound gate") : ""}{g.isActive ? "" : t(" · متوقفة", " · inactive")}</span>
               </span>
               {(g.venueId || can.compoundGates) && (
-                <button type="button" className="btn btn-ghost btn-sm" aria-label={t("حذف", "Delete")} onClick={() => act(`${base}/gates/${g.id}`, "DELETE")}>
-                  <Trash2 size={14} aria-hidden="true" />
-                </button>
+                <span className="flex items-center gap-1">
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => act(`${base}/gates/${g.id}`, "PATCH", { isActive: !g.isActive })}>
+                    {g.isActive ? t("وقّفها", "Turn off") : t("شغّلها", "Turn on")}
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm" aria-label={t("حذف", "Delete")} onClick={() => act(`${base}/gates/${g.id}`, "DELETE")}>
+                    <Trash2 size={14} aria-hidden="true" />
+                  </button>
+                </span>
               )}
             </li>
           ))}
@@ -183,11 +248,17 @@ export default function VenueConsole({ venueId }: { venueId: string }) {
 
       <section aria-labelledby="e-h" className="card space-y-3 p-5">
         <h2 id="e-h" className="m-0 text-base font-extrabold">{t("استثناءات وتنبيهات", "Exceptions and notices")}</h2>
+        <p className="m-0 text-xs text-[var(--color-subtle)]">
+          {t(
+            "\"مقفول\" و\"الحجوزات موقوفة\" بيوقفوا الحجز الأونلاين في الأماكن المعروضة هنا في الأيام دي. باقي الأنواع معلومات للزوار بس.",
+            "\"Closed\" and \"Bookings paused\" stop online booking at the businesses listed here on those days. The other kinds are information for visitors only.",
+          )}
+        </p>
         <ul className="m-0 list-none space-y-1 p-0 text-sm">
           {venue.exceptions.map((e) => (
             <li key={e.id} className="flex items-center justify-between gap-2">
               <span dir="ltr" className="num">{e.startsOn.slice(0, 10)} → {e.endsOn.slice(0, 10)}</span>
-              <span className="flex-1 px-2">{e.kind}{e.noteAr ? ` — ${e.noteAr}` : ""}</span>
+              <span className="flex-1 px-2">{lab(e.kind)}{e.noteAr ? ` — ${e.noteAr}` : ""}</span>
               <button type="button" className="btn btn-ghost btn-sm" aria-label={t("حذف", "Delete")} onClick={() => act(`${base}/exceptions/${e.id}`, "DELETE")}>
                 <Trash2 size={14} aria-hidden="true" />
               </button>

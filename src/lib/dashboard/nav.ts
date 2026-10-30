@@ -72,6 +72,8 @@ export interface NavContext {
    * because nothing else on the dashboard matters until it is done.
    */
   needsSetup?: boolean;
+  /** Holds a venue role: a way into the venue console. */
+  hasVenueRoles?: boolean;
 }
 
 export function buildNav(ctx: NavContext): NavSection[] {
@@ -139,6 +141,9 @@ export function buildNav(ctx: NavContext): NavSection[] {
     { href: "/dashboard/settings", label: s.settings, icon: Settings },
     { href: "/help", label: s.help, icon: LifeBuoy },
   ];
+  if (ctx.hasVenueRoles) {
+    account.push({ href: "/venue-admin", label: s.venueConsole, icon: Landmark });
+  }
 
   // The moderation queue. Only an admin has one, and the entry is
   // absent rather than disabled for everybody else — a greyed-out link

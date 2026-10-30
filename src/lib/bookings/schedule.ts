@@ -1,3 +1,4 @@
+import { venuePauses } from "@/lib/venues/pause";
 import { db } from "@/lib/db";
 import {
   computeAvailability,
@@ -179,6 +180,10 @@ export async function loadAvailability(
 
   if (!business || !service) return NONE("no-service-duration", 0);
   if (q.branchId && !branch) return NONE(null, service.duration);
+  // A venue the business trades in has closed or paused bookings that
+  // day (lib/venues/pause.ts). Asked after the cheap checks, and almost
+  // always answered by one indexed lookup that finds no listing.
+  if (await venuePauses(q.businessId, q.branchId ?? null, q.date)) return NONE("venue-closed", service.duration);
 
   // ── Which resource(s) the booking may hold ──────────────────
   const party = q.partySize && q.partySize > 0 ? q.partySize : null;

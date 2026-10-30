@@ -321,6 +321,8 @@ export function emptyDayReason(reason: string | null, lang: Lang): string {
   switch (reason) {
     case "business-closed":
       return T(lang, "المكان مقفول في اليوم ده", "They're closed on this day");
+    case "venue-closed":
+      return T(lang, "المول أو المجمع اللي فيه مقفول أو موقف الحجز في اليوم ده", "The mall or complex it's in is closed or has paused bookings that day");
     case "staff-off":
       return T(lang, "الشخص ده مش شغال في اليوم ده", "This person isn't working on this day");
     case "holiday":

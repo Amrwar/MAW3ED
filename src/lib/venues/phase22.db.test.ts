@@ -73,6 +73,7 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
 
   afterAll(async () => {
     if (!db) return;
+    await db.auditLog.deleteMany({ where: { resourceType: "Venue", resourceId: { in: ids.venues } } });
     await db.venue.deleteMany({ where: { id: { in: ids.venues } } });
     await db.compound.deleteMany({ where: { id: { in: ids.compounds } } });
     await db.venueOrganization.deleteMany({ where: { id: { in: ids.orgs } } });
@@ -177,6 +178,10 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
     await expect(m.withdrawMembership({ businessId: b.business.id, membershipId: req.id, userId: b.owner.id })).rejects.toMatchObject({ code: "not-found" });
     await m.withdrawMembership({ businessId: a.business.id, membershipId: req.id, userId: a.owner.id });
     expect((await db.venueMembership.findUniqueOrThrow({ where: { id: req.id } })).status).toBe("REMOVED");
+    // Both sides of tenancy are in the audit trail.
+    const audit = await db.auditLog.findMany({ where: { actorId: a.owner.id, resourceType: "Venue" }, select: { action: true, actorRole: true } });
+    expect(audit.map((x) => x.action).sort()).toEqual(["venue.membership.request", "venue.membership.withdraw"]);
+    expect(audit.every((x) => x.actorRole === "BUSINESS_OWNER")).toBe(true);
   });
 
   it("a business with several branches must name the branch; whole-business and branch rows cannot overlap", async () => {
@@ -221,6 +226,49 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
       date, startTime: "13:00", status: "CONFIRMED", totalPrice: 100, currency: "EGP", depositAmount: null,
     })).ok).toBe(true);
     expect((await metrics.venueMetrics(ctx.mallA.id)).bookings.total).toBe(before + 1);
+  });
+
+  it("a CLOSED or BOOKINGS_PAUSED notice stops online slots and bookings at listed businesses that day only", async () => {
+    const { loadAvailability } = await import("@/lib/bookings/schedule");
+    const listed = await business("paused-tenant", { branches: ["فرع المول", "فرع بره"] });
+    const [inside, outside] = listed.business.branches;
+    const req = await m.requestMembership({ businessId: listed.business.id, userId: listed.owner.id, venueId: ctx.mallB.id, branchId: inside.id, unit: null });
+    const other = await business("not-in-venue");
+    const asking = await business("only-asking");
+    await m.requestMembership({ businessId: asking.business.id, userId: asking.owner.id, venueId: ctx.mallB.id, branchId: null, unit: null });
+
+    const slots = (b: typeof listed, branchId: string | null) =>
+      loadAvailability({ businessId: b.business.id, serviceId: b.service.id, date, branchId });
+    // Before approval nothing changes.
+    await db.venueException.create({ data: { venueId: ctx.mallB.id, kind: "BOOKINGS_PAUSED", startsOn: new Date(`${date}T00:00:00Z`), endsOn: new Date(`${date}T00:00:00Z`) } });
+    expect((await slots(listed, inside.id)).slots.length).toBeGreaterThan(0);
+
+    await m.decideMembership({ venueId: ctx.mallB.id, membershipId: req.id, decision: "approve", userId: "x" });
+    const paused = await slots(listed, inside.id);
+    expect(paused).toMatchObject({ slots: [], reason: "venue-closed" });
+    // The branch outside the venue, a business in no venue, and one only asking to join are unaffected.
+    expect((await slots(listed, outside.id)).slots.length).toBeGreaterThan(0);
+    expect((await slots(other, null)).slots.length).toBeGreaterThan(0);
+    expect((await slots(asking, null)).slots.length).toBeGreaterThan(0);
+    // Another day is unaffected.
+    const nextDay = new Date(new Date(`${date}T00:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10);
+    expect((await loadAvailability({ businessId: listed.business.id, serviceId: listed.service.id, date: nextDay, branchId: inside.id })).slots.length).toBeGreaterThan(0);
+    // The booking path refuses it too — the server, not only the widget.
+    const refused = await createBooking({
+      businessId: listed.business.id, serviceId: listed.service.id, customerId: null, customerName: "زبون", customerPhone: "01012345673",
+      date, startTime: "10:00", branchId: inside.id, status: "CONFIRMED", totalPrice: 100, currency: "EGP", depositAmount: null,
+    });
+    expect(refused).toMatchObject({ ok: false, failure: { kind: "slot-unavailable", reason: "venue-closed" } });
+    // An informational notice does not pause anything; a suspended venue pauses nobody.
+    await db.venueException.deleteMany({ where: { venueId: ctx.mallB.id } });
+    await db.venueException.create({ data: { venueId: ctx.mallB.id, kind: "ACCESS_SUSPENDED", startsOn: new Date(`${date}T00:00:00Z`), endsOn: new Date(`${date}T00:00:00Z`) } });
+    expect((await slots(listed, inside.id)).slots.length).toBeGreaterThan(0);
+    await db.venueException.create({ data: { venueId: ctx.mallB.id, kind: "CLOSED", startsOn: new Date(`${date}T00:00:00Z`), endsOn: new Date(`${date}T00:00:00Z`) } });
+    expect((await slots(listed, inside.id)).reason).toBe("venue-closed");
+    await db.venue.update({ where: { id: ctx.mallB.id }, data: { status: "SUSPENDED" } });
+    expect((await slots(listed, inside.id)).slots.length).toBeGreaterThan(0);
+    await db.venue.update({ where: { id: ctx.mallB.id }, data: { status: "ACTIVE" } });
+    await db.venueException.deleteMany({ where: { venueId: ctx.mallB.id } });
   });
 
   it("a suspended venue takes no requests", async () => {

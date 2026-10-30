@@ -165,9 +165,10 @@ venue notices do not block bookings.
 - No visitor pass is issued and no gate is opened. The policy, gate
   metadata and `accessWindow()` are ready for a separate service once an
   operator provides a written agreement and an integration spec.
-- Venue opening hours are informational; booking availability still
-  follows each business's own hours. A venue CLOSED exception does not
-  block bookings.
+- Venue weekly opening hours are informational; booking availability
+  follows each business's own hours. Dated CLOSED and BOOKINGS_PAUSED
+  notices do stop online booking at the venue's tenants (completion
+  audit, A12).
 - Venue roles are granted to existing accounts only; there is no
   invitation email.
 - Venue pages have no images upload UI yet (cover/logo accept URLs via
@@ -224,3 +225,46 @@ addressed:
 | 10 | Impossible dates, unknown operator ids and racing hour edits gave 500 | 422 for invalid dates and references, 409 for conflicts; hours saved by upsert |
 | 11 | Moving a venue between compounds left a mismatched operator and stale gates | Operator follows the compound unless named; stale gate ids are dropped from the policy |
 | 12 | Arabic "official website" label | Now "الموقع الإلكتروني" |
+
+## Completion audit (2026-10-31, after release)
+
+A release-blocking review of the released code found eleven defects.
+All are fixed on branch `phase-22-qa`, with regression checks. Until
+that branch is merged, production runs the code *without* these fixes.
+
+| # | Defect found | Evidence it existed | Fix | Regression check |
+|---|---|---|---|---|
+| A1 | A venue manager with no business was sent to `/onboarding` after signing in, not to the console | Browser probe: login landed on `/onboarding` | `/onboarding` sends a user with a venue role and no business to `/venue-admin`; `?create=1` still lets them create a business; the console index links to it | `qa-phase22.mjs` (landing 307 → `/venue-admin`; `?create=1` 200); `qa-venue-console.mjs` logs in and lands on the console |
+| A2 | The console showed "Loading…" forever when its request failed (expired session, role revoked, server error) | Code reading: no error branch | Explicit sign-in / no-access / retry states; an action refused with 401/404 reloads into them | `qa-venue-console.mjs`: role revoked mid-session → "You no longer have access", the change refused |
+| A3 | "Review operational exceptions" had no review surface | Requirement check | "Needs your attention" panel from the venue's own records: pending requests, approved tenants hidden (business unpublished or branch off), policy naming an inactive or deleted gate, public venue without hours or (restricted entry) without instructions, notices in effect today | `attention.test.ts` (5); `qa-phase22.mjs` (pending request flagged); console probe (instructions missing flagged) |
+| A4 | Gates could not be switched off from the console (API only) | Code reading | Turn on / Turn off per gate | Console probe: toggle persists, kind unchanged |
+| A5 | Raw enum values (DRAFT, FLOOR, VENUE_MANAGER…) shown in the console | Code reading | Labels in both languages | Console probe: no raw enum on screen, ar and en |
+| A6 | An owner who also manages a venue had no way into the console from the dashboard | Code reading | "Manage venues" in the dashboard nav for venue-role holders | `qa-phase22.mjs`: shown for such an owner, absent for others |
+| A7 | Owners' membership requests and withdrawals were not audited | Code reading | Audit rows `venue.membership.request` / `.withdraw`, actor role `BUSINESS_OWNER` | `phase22.db.test.ts` |
+| A8 | Moving a venue between compounds updated the venue and pruned gates in two separate writes | Code reading | One transaction | Code review; the existing admin PATCH paths in `qa-phase22.mjs` |
+| A9 | `/venues` was indexable while no venue listed anybody (sitemap disagreed) | Code reading | `noindex` until some venue lists a business | `qa-phase22.mjs`: empty index `noindex`, indexable once listed, `noindex` again after removal |
+| A10 | The owner's venue page ignored a failed load | Code reading | Error notice with retry | Code review |
+| A11 | No rollback procedure for the migration | Requirement check | `prisma/migrations/rollback/phase22_venues_rollback.sql` | Run twice on QA: business, branch, booking, customer, city, review and payment counts identical before and after; migration re-applied and verified |
+| A12 | Venue CLOSED / BOOKINGS_PAUSED notices were shown but did not stop bookings ("booking exceptions" only informational) | Second audit pass | Enforced in the slot loader every online booking path uses (`src/lib/venues/pause.ts`, `src/lib/bookings/schedule.ts`): no online slots and a refused booking, reason `venue-closed`, for the venue's approved tenants on those dates — branch-scoped like the listing; businesses outside the venue, only asking to join, or in a suspended venue are unaffected; ACCESS_SUSPENDED and SPECIAL_HOURS stay informational; owners adding a booking by hand keep their existing override. Wording on web, mobile, the public page and the console | `pause.test.ts` (4); `phase22.db.test.ts` (slots and `createBooking` through the real engine); `qa-phase22.mjs` (public slots empty with `venue-closed`, booking 409, page says so, removal reopens) |
+
+Not changed, by decision and documented: venue managers' text edits go
+live without platform review (audited); API error messages are Arabic in
+both languages, as everywhere else in the API.
+
+### Re-verification after the fixes (final build, 2026-10-31)
+
+| Command | Result |
+|---|---|
+| `npx tsc --noEmit` | exit 0 |
+| `npx eslint src` | 0 errors, 6 warnings (same as `main`) |
+| `npx next build` | compiled successfully |
+| `npx vitest run` | 1091 passed, 95 skipped (1186; 110 files) |
+| `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run --no-file-parallelism` | 1152 passed, 34 skipped |
+| `cd mobile && npx tsc --noEmit && npx vitest run` | exit 0; 199 passed |
+| `AUTH_SECRET=<server's> node scripts/qa-phase22.mjs` | 68/68 (adds staff token 404s, expired token 401, landing, attention, nav, index indexing, venue closure stops booking) |
+| `node scripts/qa-venue-console.mjs` | all clean, twice in a row |
+| `node scripts/qa-venue-page.mjs` | all clean (ar/en × 375/1440) |
+| `node scripts/qa-phase18.mjs` | 400 page loads, 0 serious/critical axe, 0 overflow; only the deliberate 404 page flagged, as in Phase 18 |
+| Regression: `qa-phase21` 44/44, `qa-phase19` 21/21, `qa-booking-e2e` 19/19, `qa-phase17` 13/13, `qa-phase20` 19/19, `qa-security` 32/32 | all pass |
+| `npm audit --omit=dev` | 0 vulnerabilities |
+| Rollback SQL on QA, twice, then re-apply + verify | data counts unchanged; verify passes |

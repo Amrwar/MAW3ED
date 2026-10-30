@@ -470,6 +470,8 @@ function unavailableMessage(reason: string | null): string {
       return "قفل الحجز لليوم، جرّب بكرة";
     case "business-closed":
       return "النشاط مقفول في الوقت ده";
+    case "venue-closed":
+      return "المول أو المجمع اللي فيه النشاط مقفول أو موقف الحجز في اليوم ده";
     case "staff-off":
       return "الموظف ده مش متاح في الوقت ده";
     case "holiday":
