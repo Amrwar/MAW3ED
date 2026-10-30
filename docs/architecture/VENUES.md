@@ -43,7 +43,7 @@ Country (City.countryCode, "EG" for every existing city)
 | `VenueGate` | An entry point, **metadata only** | Belongs to a venue **or** a compound (CHECK constraint); `code` is the operator's id and is never public |
 | `VenueHours` | The venue's own opening hours | One row per day (unique, 0–6 CHECK); each business keeps its own hours |
 | `VenuePolicy` | Visitor eligibility, access window, guests, re-entry, allowed gates, published instructions | Configuration only — authorises nothing |
-| `VenueException` | Dated closure, special hours, access suspension, booking pause | Shown publicly; cancels nothing |
+| `VenueException` | Dated closure, special hours, access suspension, booking pause | Shown publicly. CLOSED and BOOKINGS_PAUSED stop new online bookings at the venue's approved tenants on those dates (`src/lib/venues/pause.ts`); existing bookings are not cancelled; the others are information |
 | `VenueMembership` | A business/branch listed in a venue | REQUESTED → APPROVED / REJECTED, APPROVED → REMOVED; one live (REQUESTED/APPROVED) row per venue + business + branch (partial unique index); a business with several active branches joins by branch; the whole business and one of its branches cannot both be live in one venue |
 | `VenueRole` | A person's authority over part of a destination | ORGANIZATION_ADMIN / COMPOUND_ADMIN / VENUE_MANAGER, exactly one matching scope (CHECK constraint) |
 

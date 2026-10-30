@@ -265,6 +265,22 @@ try {
   const ownerDash = await (await call(owner, "/dashboard")).text();
   check("an owner who manages a venue gets a link to the console; others do not", rivalDash.includes('href="/venue-admin"') && !ownerDash.includes('href="/venue-admin"'));
 
+  /* ── A venue closure stops online booking at its tenants ─ */
+  const pauseDay = new Date(Date.now() + 6 * 86_400_000).toISOString().slice(0, 10);
+  const svc = (await pg.query(`SELECT id FROM "Service" WHERE "businessId"=$1 AND "isAvailable" ORDER BY "sortOrder" LIMIT 1`, [ownBiz.id])).rows[0].id;
+  const slotsFor = async () => json(await call(null, `/api/public/${ownBiz.slug}/slots?serviceId=${svc}&date=${pauseDay}&branchId=${branchId}`));
+  const open = await slotsFor();
+  const pausedRes = await send(mgr, `/api/venues/${v1.id}/exceptions`, "POST", { kind: "BOOKINGS_PAUSED", startsOn: pauseDay, endsOn: pauseDay, noteAr: "صيانة" });
+  const pausedId = (await json(pausedRes)).exception?.id;
+  const closed = await slotsFor();
+  check("a 'bookings paused' notice empties the listed branch's slots that day", open.slots?.length > 0 && closed.slots?.length === 0 && closed.reason === "venue-closed", `${open.slots?.length} → ${closed.slots?.length} ${closed.reason}`);
+  const tryBook = await send(null, `/api/public/${ownBiz.slug}/bookings`, "POST", { serviceId: svc, date: pauseDay, startTime: open.slots?.[0], branchId, customerName: "زبون الإيقاف", customerPhone: "01019222001" });
+  const tryBody = await json(tryBook);
+  check("…and the server refuses a booking for it", tryBook.status === 409 && tryBody.code === "slot-unavailable" && tryBody.reason === "venue-closed", `${tryBook.status} ${tryBody.code} ${tryBody.reason}`);
+  check("the public venue page says online booking is paused", /الحجز الأونلاين في الأماكن هنا متوقف/.test(await (await call(null, `/venues/${tag}-mall`)).text()));
+  if (pausedId) await send(mgr, `/api/venues/${v1.id}/exceptions/${pausedId}`, "DELETE");
+  check("removing the notice reopens the slots", (await slotsFor()).slots?.length > 0);
+
   /* ── Removal ─────────────────────────────────────────── */
   const rm = await send(mgr, `/api/venues/${v1.id}/memberships/${membership.id}`, "PATCH", { decision: "remove" });
   check("the manager removes the business", rm.status === 200);

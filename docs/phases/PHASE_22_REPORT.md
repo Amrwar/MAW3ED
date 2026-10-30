@@ -165,9 +165,10 @@ venue notices do not block bookings.
 - No visitor pass is issued and no gate is opened. The policy, gate
   metadata and `accessWindow()` are ready for a separate service once an
   operator provides a written agreement and an integration spec.
-- Venue opening hours are informational; booking availability still
-  follows each business's own hours. A venue CLOSED exception does not
-  block bookings.
+- Venue weekly opening hours are informational; booking availability
+  follows each business's own hours. Dated CLOSED and BOOKINGS_PAUSED
+  notices do stop online booking at the venue's tenants (completion
+  audit, A12).
 - Venue roles are granted to existing accounts only; there is no
   invitation email.
 - Venue pages have no images upload UI yet (cover/logo accept URLs via
@@ -244,12 +245,11 @@ that branch is merged, production runs the code *without* these fixes.
 | A9 | `/venues` was indexable while no venue listed anybody (sitemap disagreed) | Code reading | `noindex` until some venue lists a business | `qa-phase22.mjs`: empty index `noindex`, indexable once listed, `noindex` again after removal |
 | A10 | The owner's venue page ignored a failed load | Code reading | Error notice with retry | Code review |
 | A11 | No rollback procedure for the migration | Requirement check | `prisma/migrations/rollback/phase22_venues_rollback.sql` | Run twice on QA: business, branch, booking, customer, city, review and payment counts identical before and after; migration re-applied and verified |
+| A12 | Venue CLOSED / BOOKINGS_PAUSED notices were shown but did not stop bookings ("booking exceptions" only informational) | Second audit pass | Enforced in the slot loader every online booking path uses (`src/lib/venues/pause.ts`, `src/lib/bookings/schedule.ts`): no online slots and a refused booking, reason `venue-closed`, for the venue's approved tenants on those dates — branch-scoped like the listing; businesses outside the venue, only asking to join, or in a suspended venue are unaffected; ACCESS_SUSPENDED and SPECIAL_HOURS stay informational; owners adding a booking by hand keep their existing override. Wording on web, mobile, the public page and the console | `pause.test.ts` (4); `phase22.db.test.ts` (slots and `createBooking` through the real engine); `qa-phase22.mjs` (public slots empty with `venue-closed`, booking 409, page says so, removal reopens) |
 
-Not changed, by decision and documented: venue notices (CLOSED,
-BOOKINGS_PAUSED, ACCESS_SUSPENDED) are published information and do not
-block bookings at tenants; venue managers' text edits go live without
-platform review (audited); API error messages are Arabic in both
-languages, as everywhere else in the API.
+Not changed, by decision and documented: venue managers' text edits go
+live without platform review (audited); API error messages are Arabic in
+both languages, as everywhere else in the API.
 
 ### Re-verification after the fixes (final build, 2026-10-31)
 
@@ -258,9 +258,10 @@ languages, as everywhere else in the API.
 | `npx tsc --noEmit` | exit 0 |
 | `npx eslint src` | 0 errors, 6 warnings (same as `main`) |
 | `npx next build` | compiled successfully |
-| `npx vitest run` | 1087 passed, 94 skipped (1181; 109 files) |
-| `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run --no-file-parallelism` | 1147 passed, 34 skipped |
-| `AUTH_SECRET=<server's> node scripts/qa-phase22.mjs` | 64/64 (adds staff token 404s, expired token 401, landing, attention, nav, index indexing) |
+| `npx vitest run` | 1091 passed, 95 skipped (1186; 110 files) |
+| `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run --no-file-parallelism` | 1152 passed, 34 skipped |
+| `cd mobile && npx tsc --noEmit && npx vitest run` | exit 0; 199 passed |
+| `AUTH_SECRET=<server's> node scripts/qa-phase22.mjs` | 68/68 (adds staff token 404s, expired token 401, landing, attention, nav, index indexing, venue closure stops booking) |
 | `node scripts/qa-venue-console.mjs` | all clean, twice in a row |
 | `node scripts/qa-venue-page.mjs` | all clean (ar/en × 375/1440) |
 | `node scripts/qa-phase18.mjs` | 400 page loads, 0 serious/critical axe, 0 overflow; only the deliberate 404 page flagged, as in Phase 18 |
