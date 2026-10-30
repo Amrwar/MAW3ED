@@ -50,8 +50,11 @@ export async function requireBusinessPage() {
 export async function noBusinessDestination(userId: string): Promise<string> {
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { password: true, phoneVerifiedAt: true, adminRole: true },
+    select: { password: true, phoneVerifiedAt: true, adminRole: true, _count: { select: { venueRoles: true } } },
   });
+  // Somebody who manages a venue and owns no business is not an owner
+  // who has not finished onboarding: their work is in the venue console.
+  if (user?._count?.venueRoles) return "/venue-admin";
   const isCustomer = !!user?.phoneVerifiedAt && !user.password && !user.adminRole;
   return isCustomer ? "/account?notice=no-business" : "/onboarding";
 }

@@ -8,6 +8,7 @@ import {
   CreditCard,
   Gift,
   Globe,
+  Landmark,
   LifeBuoy,
   ListChecks,
   Upload,
@@ -110,6 +111,7 @@ export function buildNav(ctx: NavContext): NavSection[] {
     { href: "/dashboard/public-profile", label: s.publicProfile, icon: Globe },
     { href: "/dashboard/reviews", label: s.reviews, icon: MessageSquare },
     { href: "/dashboard/import", label: s.importData, icon: Upload },
+    { href: "/dashboard/venue", label: s.venue, icon: Landmark },
   );
 
   const grow: NavItem[] = [

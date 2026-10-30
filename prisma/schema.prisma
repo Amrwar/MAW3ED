@@ -65,6 +65,7 @@ model User {
   business      Business?
   emailTokens   EmailVerificationToken[]
   onboardingDraft OnboardingDraft?
+  venueRoles      VenueRole[]
   favorites     Favorite[]
   notifications Notification[]
 
@@ -418,6 +419,7 @@ model Business {
   resources          Resource[]
   favorites          Favorite[]
   importBatches      ImportBatch[]
+  venueMemberships   VenueMembership[]
 
   /// The discovery listing always filters on isPublished first, then on
   /// one of city / neighbourhood / category, and sorts on rating,
@@ -455,6 +457,7 @@ model Branch {
   bookings   Booking[]
   timeBlocks TimeBlock[]
   resources  Resource[]
+  venueMemberships VenueMembership[]
 
   @@index([businessId, isActive, sortOrder])
   /// The nearby query's bounding box (add_business_location.sql).
@@ -521,9 +524,15 @@ model City {
   slug   String @unique
   nameAr String
   nameEn String
+  /// ISO 3166-1 alpha-2. The top of the location hierarchy
+  /// (country, city, district, compound, venue, zone, branch); every
+  /// existing city is Egyptian (phase22_venues.sql).
+  countryCode String @default("EG")
 
   businesses    Business[]
   neighborhoods Neighborhood[]
+  compounds     Compound[]
+  venues        Venue[]
 }
 
 /// A district inside a city — Maadi, Zamalek, Sheikh Zayed. Optional on a
@@ -538,6 +547,8 @@ model Neighborhood {
   city   City   @relation(fields: [cityId], references: [id], onDelete: Cascade)
 
   businesses Business[]
+  compounds  Compound[]
+  venues     Venue[]
 
   /// Slugs only have to be unique inside their city: two governorates may
   /// each have a "wasat el balad".
@@ -1602,4 +1613,297 @@ model LifecycleEvent {
 
   @@unique([userId, kind])
   @@index([kind, at])
+}
+
+// ─── Phase 22: destinations — compounds, venues, tenancy ────────────────────
+//
+// A business is never required to be in a venue. A venue lists a business
+// (or one of its branches) only through an APPROVED VenueMembership, which
+// the business asks for and a venue manager decides. Venue roles are scoped
+// to an organisation, a compound or one venue, and never reach a customer's
+// bookings, notes or payments: venue metrics are counts.
+// docs/architecture/VENUES.md has the model and the permission matrix.
+
+/// Who runs one or more compounds and venues — a developer, a mall
+/// operator. Data the operator supplies; nothing here implies a
+/// partnership with Maw3ed.
+model VenueOrganization {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  nameAr    String
+  nameEn    String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  compounds Compound[]
+  venues    Venue[]
+  roles     VenueRole[]
+}
+
+/// A gated compound or development that may contain venues.
+model Compound {
+  id             String             @id @default(cuid())
+  slug           String             @unique
+  nameAr         String
+  nameEn         String?
+  organizationId String?
+  organization   VenueOrganization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  cityId         String
+  city           City               @relation(fields: [cityId], references: [id])
+  neighborhoodId String?
+  neighborhood   Neighborhood?      @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
+  latitude       Float?
+  longitude      Float?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  venues Venue[]
+  gates  VenueGate[]
+  roles  VenueRole[]
+
+  @@index([cityId])
+  @@index([organizationId])
+}
+
+enum VenueKind {
+  MALL
+  OFFICE_COMPLEX
+  BUSINESS_PARK
+  MIXED_USE
+  COMMUNITY_CENTER
+  OTHER
+}
+
+enum VenueStatus {
+  /// Being set up; never public.
+  DRAFT
+  ACTIVE
+  /// Taken down by a platform administrator.
+  SUSPENDED
+}
+
+model Venue {
+  id             String             @id @default(cuid())
+  slug           String             @unique
+  kind           VenueKind          @default(MALL)
+  status         VenueStatus        @default(DRAFT)
+  /// Public only when ACTIVE and published.
+  isPublished    Boolean            @default(false)
+  nameAr         String
+  nameEn         String?
+  descriptionAr  String?
+  descriptionEn  String?
+  organizationId String?
+  organization   VenueOrganization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  compoundId     String?
+  compound       Compound?          @relation(fields: [compoundId], references: [id], onDelete: SetNull)
+  cityId         String
+  city           City               @relation(fields: [cityId], references: [id])
+  neighborhoodId String?
+  neighborhood   Neighborhood?      @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
+  address        String?
+  latitude       Float?
+  longitude      Float?
+  phone          String?
+  website        String?
+  coverImage     String?
+  logoImage      String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  zones       VenueZone[]
+  gates       VenueGate[]
+  hours       VenueHours[]
+  policy      VenuePolicy?
+  exceptions  VenueException[]
+  memberships VenueMembership[]
+  roles       VenueRole[]
+
+  @@index([isPublished, status, cityId])
+  @@index([compoundId])
+  @@index([organizationId])
+}
+
+enum VenueZoneKind {
+  FLOOR
+  ZONE
+  WING
+}
+
+model VenueZone {
+  id        String        @id @default(cuid())
+  venueId   String
+  venue     Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  kind      VenueZoneKind @default(FLOOR)
+  nameAr    String
+  nameEn    String?
+  /// Floor number, when it is one: -1 basement, 0 ground.
+  level     Int?
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  memberships VenueMembership[]
+
+  @@index([venueId, sortOrder])
+}
+
+enum GateKind {
+  VEHICLE
+  PEDESTRIAN
+  MIXED
+}
+
+/// An entry point, as metadata only: Maw3ed does not open gates.
+/// Belongs to a venue, or to a compound when it serves several venues.
+model VenueGate {
+  id         String    @id @default(cuid())
+  venueId    String?
+  venue      Venue?    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  compoundId String?
+  compound   Compound? @relation(fields: [compoundId], references: [id], onDelete: Cascade)
+  nameAr     String
+  nameEn     String?
+  kind       GateKind  @default(MIXED)
+  /// The operator's own identifier, for a future access integration.
+  code       String?
+  latitude   Float?
+  longitude  Float?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  @@index([venueId])
+  @@index([compoundId])
+}
+
+model VenueHours {
+  id        String  @id @default(cuid())
+  venueId   String
+  venue     Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  dayOfWeek Int
+  openTime  String
+  closeTime String
+  isClosed  Boolean @default(false)
+
+  @@unique([venueId, dayOfWeek])
+}
+
+enum VisitorEligibility {
+  /// Anyone may enter during opening hours.
+  OPEN
+  /// Visitors need a booking at a business inside.
+  BOOKING_REQUIRED
+  /// Entry is arranged by the operator; Maw3ed only shows the instructions.
+  OPERATOR_MANAGED
+  CLOSED_TO_VISITORS
+}
+
+/// How visitors get in. Configuration and published instructions only —
+/// nothing here authorises entry. A separate visitor-access service will
+/// read it (docs/architecture/VENUES.md, visitor access).
+model VenuePolicy {
+  id                   String             @id @default(cuid())
+  venueId              String             @unique
+  venue                Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  visitorEligibility   VisitorEligibility @default(OPEN)
+  /// Minutes before a booking a visitor may arrive, and after it ends they may stay.
+  accessBeforeMinutes  Int                @default(30)
+  accessAfterMinutes   Int                @default(30)
+  /// Guests one booking may bring, beyond the person who booked.
+  maxGuestsPerBooking  Int                @default(0)
+  reentryAllowed       Boolean            @default(false)
+  allowedGateIds       String[]           @default([])
+  accessInstructionsAr String?
+  accessInstructionsEn String?
+  updatedAt            DateTime           @updatedAt
+  updatedById          String?
+}
+
+enum VenueExceptionKind {
+  CLOSED
+  ACCESS_SUSPENDED
+  SPECIAL_HOURS
+  BOOKINGS_PAUSED
+}
+
+/// A dated departure from the venue's normal hours or access policy.
+model VenueException {
+  id          String             @id @default(cuid())
+  venueId     String
+  venue       Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  kind        VenueExceptionKind
+  startsOn    DateTime           @db.Date
+  endsOn      DateTime           @db.Date
+  openTime    String?
+  closeTime   String?
+  noteAr      String?
+  noteEn      String?
+  createdById String?
+  createdAt   DateTime           @default(now())
+
+  @@index([venueId, startsOn])
+}
+
+enum MembershipStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  /// Ended by the venue or withdrawn by the business.
+  REMOVED
+}
+
+/// A business — or one of its branches — trading inside a venue. Asked
+/// for by the business owner, decided by the venue. Only APPROVED rows
+/// are ever public. At most one REQUESTED or APPROVED row per venue,
+/// business and branch (partial unique index in phase22_venues.sql).
+model VenueMembership {
+  id            String           @id @default(cuid())
+  venueId       String
+  venue         Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  businessId    String
+  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId      String?
+  branch        Branch?          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  zoneId        String?
+  zone          VenueZone?       @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  unit          String?
+  status        MembershipStatus @default(REQUESTED)
+  requestedById String
+  requestedAt   DateTime         @default(now())
+  decidedById   String?
+  decidedAt     DateTime?
+  decisionNote  String?
+  updatedAt     DateTime         @updatedAt
+
+  @@index([venueId, status])
+  @@index([businessId, status])
+}
+
+enum VenueRoleKind {
+  /// Every compound and venue of one organisation.
+  ORGANIZATION_ADMIN
+  /// Every venue in one compound, and the compound's gates.
+  COMPOUND_ADMIN
+  /// One venue.
+  VENUE_MANAGER
+}
+
+/// A person's authority over part of a destination. Exactly one of
+/// organizationId / compoundId / venueId is set, matching the kind.
+/// Granted by a platform administrator.
+model VenueRole {
+  id             String             @id @default(cuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind           VenueRoleKind
+  organizationId String?
+  organization   VenueOrganization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  compoundId     String?
+  compound       Compound?          @relation(fields: [compoundId], references: [id], onDelete: Cascade)
+  venueId        String?
+  venue          Venue?             @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  grantedById    String?
+  createdAt      DateTime           @default(now())
+
+  @@index([userId])
 }

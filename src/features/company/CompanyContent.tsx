@@ -11,6 +11,7 @@ import FAQSection from "./FAQSection";
 import BookingWidget from "./BookingWidget";
 import ProfileNav, { type NavSection } from "./ProfileNav";
 import BusinessCard from "@/components/shared/BusinessCard";
+import Link from "@/components/shared/LocaleLink";
 import type { Service } from "@/types/service";
 import type { Business } from "@/types/business";
 import type { PublicBusiness } from "@/lib/data";
@@ -74,6 +75,10 @@ interface Props {
   initialServiceId?: string | null;
   /** With it, the provider they chose: ?staff=<id>. */
   initialStaffId?:   string | null;
+  /** ?branch= from a venue directory: that branch starts selected. */
+  initialBranchId?:  string | null;
+  /** Public venues this business is listed in. */
+  venues?:           { slug: string; name: string; zone: string | null; unit: string | null }[];
 }
 
 export default function CompanyContent({
@@ -99,6 +104,8 @@ export default function CompanyContent({
   changeCutoffHours,
   initialServiceId = null,
   initialStaffId = null,
+  initialBranchId = null,
+  venues = [],
 }: Props) {
   const { t, lang } = useLanguage();
   const [preselected, setPreselected] = useState<Service | null>(
@@ -173,6 +180,20 @@ export default function CompanyContent({
                 <GallerySection images={images} businessName={business.nameAr} />
               )}
 
+              {venues.length > 0 && (
+                <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--color-muted)]">
+                  <span className="font-bold text-[var(--color-ink)]">{lang === "en" ? "Located in" : "موجود في"}</span>
+                  {venues.map((v, i) => (
+                    <span key={v.slug}>
+                      {i > 0 ? "، " : ""}
+                      <Link href={`/venues/${v.slug}`} className="text-[var(--color-jade)] underline-offset-2 hover:underline">{v.name}</Link>
+                      {v.zone ? ` · ${v.zone}` : ""}
+                      {v.unit ? ` · ${lang === "en" ? "Unit" : "وحدة"} ${v.unit}` : ""}
+                    </span>
+                  ))}
+                </p>
+              )}
+
               <LocationSection
                 name={business.nameAr}
                 address={business.address ?? null}
@@ -221,6 +242,7 @@ export default function CompanyContent({
                 openDays={openDays}
                 preselectedService={preselected}
                 initialStaffId={initialStaffId}
+                initialBranchId={initialBranchId}
                 businessType={businessType}
                 source={source}
                 resources={resources}

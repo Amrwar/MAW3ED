@@ -24,6 +24,8 @@ const GUARDS = [
   "requireAdminApi(",
   "currentCaller(",
   "authorizeCron(",
+  "requireVenueAccess(",
+  "loadVenueCaller(",
 ];
 
 /** Routes open on purpose, with what protects them instead. */
@@ -56,6 +58,8 @@ const OPEN: Record<string, string> = {
   "public/booking/[token]/slots": "the booking's access token in the path",
   "public/businesses/nearby": "public read",
   "public/businesses/route": "public read",
+  "public/venues/route": "public read of published venues only",
+  "public/venues/[slug]": "public read of a published venue and its approved directory only",
   "public/facets": "public read",
   "public/phone-proof": "public by design; rate-limited per number and address",
   "public/reviews/[id]/helpful": "public; rate-limited; vote keyed on a signed anonymous identity",
