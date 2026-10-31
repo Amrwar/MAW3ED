@@ -7,7 +7,10 @@ import { Trash2 } from "lucide-react";
 
 interface Props {
   canManage: boolean;
-  organizations: { id: string; slug: string; nameAr: string }[];
+  organizations: {
+    id: string; slug: string; kind: string; nameAr: string; status: string; isPublished: boolean;
+    createdAt: string; tenants: number; venueCount: number;
+  }[];
   compounds: { id: string; slug: string; nameAr: string; cityId: string; organizationId: string | null }[];
   cities: { id: string; nameAr: string }[];
   venues: {
@@ -46,6 +49,22 @@ export default function VenuesAdminClient(p: Props) {
     <div className="space-y-6">
       <p role="status" className={`m-0 min-h-5 text-sm ${msg?.ok ? "text-[var(--color-ok)]" : "text-[var(--color-danger)]"}`}>{msg?.text}</p>
 
+      <section className="card space-y-3 p-5" aria-labelledby="o-h">
+        <h2 id="o-h" className="m-0 text-base font-extrabold">الجهات (مولات، مجموعات…)</h2>
+        <p className="m-0 text-xs text-[var(--color-subtle)]">
+          أي حساب مؤكد يقدر يسجّل جهة؛ بتبدأ قيد المراجعة ومش بتقدر تدعو أنشطة أو تنشر صفحة غير بعد الاعتماد من هنا.
+        </p>
+        {p.organizations.length === 0 ? (
+          <p className="m-0 text-sm text-[var(--color-subtle)]">لسه مفيش جهات.</p>
+        ) : (
+          <ul className="m-0 list-none divide-y divide-[var(--color-line)] p-0">
+            {p.organizations.map((o) => (
+              <OrgRow key={o.id} o={o} canManage={p.canManage} send={send} />
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section className="card space-y-3 p-5" aria-labelledby="v-h">
         <h2 id="v-h" className="m-0 text-base font-extrabold">الأماكن</h2>
         {p.venues.length === 0 ? (
@@ -62,7 +81,7 @@ export default function VenuesAdminClient(p: Props) {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="badge">{v.status}{v.isPublished ? " · منشور" : ""}</span>
-                  <Link href={`/venue-admin/${v.id}`} className="btn btn-ghost btn-sm">إدارة</Link>
+                  <Link href={`/venue-admin/${v.id}`} prefetch={false} className="btn btn-ghost btn-sm">إدارة</Link>
                   {p.canManage && (
                     <>
                       {v.status !== "ACTIVE" && <button type="button" className="btn btn-outline btn-sm" onClick={() => send(`/api/admin/venues/${v.id}`, "PATCH", { status: "ACTIVE" })}>تفعيل</button>}
@@ -105,6 +124,70 @@ export default function VenuesAdminClient(p: Props) {
 }
 
 type Send = (path: string, method: string, body?: unknown, done?: string) => Promise<boolean>;
+
+const ORG_STATUS: Record<string, string> = {
+  PENDING: "قيد المراجعة", APPROVED: "معتمدة", REJECTED: "مرفوضة", SUSPENDED: "موقوفة",
+};
+
+function OrgRow({ o, canManage, send }: { o: Props["organizations"][number]; canManage: boolean; send: Send }) {
+  const [reason, setReason] = useState("");
+  const [asking, setAsking] = useState<"REJECTED" | "SUSPENDED" | null>(null);
+  return (
+    <li className="space-y-2 py-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="m-0 font-bold">
+            {o.nameAr} <span className="text-xs font-normal text-[var(--color-subtle)]" dir="ltr">/groups/{o.slug}</span>
+          </p>
+          <p className="m-0 text-xs text-[var(--color-subtle)]">
+            {o.kind} · {o.tenants} نشاط معروض · {o.venueCount} مكان · سُجلت {o.createdAt.slice(0, 10)}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="badge">{ORG_STATUS[o.status] ?? o.status}{o.isPublished ? " · منشورة" : ""}</span>
+          <Link href={`/org-admin/${o.id}`} prefetch={false} className="btn btn-ghost btn-sm">فتح</Link>
+          {canManage && (
+            <>
+              {o.status !== "APPROVED" && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => send(`/api/admin/organizations/${o.id}`, "PATCH", { status: "APPROVED" }, "اتعتمدت.")}>
+                  اعتماد
+                </button>
+              )}
+              {o.status === "PENDING" && (
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => setAsking(asking === "REJECTED" ? null : "REJECTED")}>رفض…</button>
+              )}
+              {o.status === "APPROVED" && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAsking(asking === "SUSPENDED" ? null : "SUSPENDED")}>إيقاف…</button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+      {asking && (
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (await send(`/api/admin/organizations/${o.id}`, "PATCH", { status: asking, reason: reason.trim() }, asking === "REJECTED" ? "اترفضت." : "اتوقفت.")) {
+              setAsking(null);
+              setReason("");
+            }
+          }}
+        >
+          <input
+            className={field + " min-w-[16rem] flex-1"}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="السبب — بيظهر للجهة"
+            required
+            maxLength={1000}
+          />
+          <button type="submit" className="btn btn-outline btn-sm">{asking === "REJECTED" ? "تأكيد الرفض" : "تأكيد الإيقاف"}</button>
+        </form>
+      )}
+    </li>
+  );
+}
 
 function CreateForms(p: Props & { send: Send }) {
   const [org, setOrg] = useState({ slug: "", nameAr: "", nameEn: "", website: "" });

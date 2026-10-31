@@ -20,7 +20,8 @@ Four separate claims, never merged into one:
 | 20 | PASS (code complete, locally verified; residual risks with owners in `docs/security/SECURITY_REPORT.md`) | merged 2026-10-29 (#36) | NOT RUN | NOT VERIFIED | n/a | `docs/phases/PHASE_20_REPORT.md` |
 | 21 | PASS (code complete, locally verified, live) | merged 2026-10-30 (#39) | NOT RUN | PARTIAL — 2026-10-30: production served `9e025ba`; new public pages 200, unknown help article 404, owner APIs 401 anonymously; signed-in flows not exercised on production | n/a | `docs/phases/PHASE_21_REPORT.md` |
 | 22 | PASS (code complete, locally verified, live) | merged 2026-10-31 (#40) | NOT RUN | PARTIAL — 2026-10-31: production served `fa574c2`; `/venues` and `/en/venues` 200 (empty, `noindex`), unknown venue 404, public venues API 200 with an empty list, venue console and owner page redirect to sign-in, console API 401 and admin venues page 404 anonymously, existing pages 200; signed-in venue flows not exercised on production (no venue created yet) | n/a — no operator integration exists or is claimed | `docs/phases/PHASE_22_REPORT.md` |
-| 23–28 | NOT STARTED | — | — | — | — | — |
+| 22b | PASS (code complete, locally verified; review findings fixed) | PR open | NOT RUN | NOT VERIFIED — needs `phase22b_organizations.sql` before the deploy | n/a — no gate integration exists or is claimed | `docs/phases/PHASE_22B_REPORT.md` |
+| 23–28 | NOT STARTED (23–24 rescoped: `docs/roadmap/UPDATED_PHASES_22_24.md`) | — | — | — | — | — |
 
 ## Historical phases (merged before this programme)
 
@@ -54,6 +55,7 @@ these rows record what the owner reports.
 | `phase19_reliability.sql` | PR #35 (merged 2026-10-29) | APPLIED 2026-10-29 (verified by query) |
 | `phase22_venues.sql` | Phase 22 PR (#40) | APPLIED 2026-10-31 before the deploy (owner ran `migrate-phase22.sh`); VERIFIED by query — every table, enum, index and constraint present, every city has a country |
 | `phase21_saas.sql` | Phase 21 PR (#39) | APPLIED 2026-10-30 before the deploy and again after it; both runs VERIFIED by query |
+| `phase22b_organizations.sql` | Phase 22b PR (#43) | APPLIED 2026-10-31 before the merge (owner ran `migrate-phase22b.sh`); VERIFIED by query — every table, enum, column, index and constraint present, every organization has a status |
 | `phase20_security.sql` | Phase 20 PR (#36) | APPLIED 2026-10-29 ahead of the merge (verified by query); `PSEUDONYM_SECRET` set in Vercel (all environments) |
 | `prisma/data-fixes/2026-10-27-listing-cleanup.sql` | data only | UNCONFIRMED |
 | All earlier files in `prisma/migrations/` | earlier PRs | assumed, not recorded |

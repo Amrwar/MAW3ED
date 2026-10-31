@@ -33,12 +33,14 @@ export async function POST(req: Request) {
       return err("الحساب ده لسه ما أكّدش إيميله. اطلب منه يأكّده الأول.", 409, { code: "email-not-verified" });
     }
 
-    const exists =
-      d.kind === "ORGANIZATION_ADMIN"
-        ? await db.venueOrganization.findUnique({ where: { id: d.organizationId! }, select: { id: true } })
-        : d.kind === "COMPOUND_ADMIN"
-          ? await db.compound.findUnique({ where: { id: d.compoundId! }, select: { id: true } })
-          : await db.venue.findUnique({ where: { id: d.venueId! }, select: { id: true } });
+    // The schema guarantees exactly one scope id matching the kind
+    // (ORGANIZATION_OWNER and ORGANIZATION_ADMIN both carry an
+    // organizationId), so branch on the id that is present.
+    const exists = d.organizationId
+      ? await db.organization.findUnique({ where: { id: d.organizationId }, select: { id: true } })
+      : d.compoundId
+        ? await db.compound.findUnique({ where: { id: d.compoundId }, select: { id: true } })
+        : await db.venue.findUnique({ where: { id: d.venueId! }, select: { id: true } });
     if (!exists) return err("النطاق ده مش موجود", 422);
 
     try {

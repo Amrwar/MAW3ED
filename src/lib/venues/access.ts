@@ -6,6 +6,7 @@ import type { VenueRoleKind } from "@prisma/client";
  * Authority over a venue comes from exactly one of:
  *
  *   PLATFORM            a Maw3ed administrator with "venues.manage"
+ *   ORGANIZATION_OWNER  the account the organization belongs to
  *   ORGANIZATION_ADMIN  every compound and venue of one operator
  *   COMPOUND_ADMIN      every venue in one compound, and its gates
  *   VENUE_MANAGER       one venue
@@ -57,6 +58,10 @@ const OPERATOR: VenueAction[] = [
 
 export const VENUE_PERMISSIONS: Record<VenueAuthority, readonly VenueAction[]> = {
   PLATFORM: VENUE_ACTIONS,
+  // Over VENUES the owner and the manager can do the same things;
+  // what only the owner may do (publish the organization's page,
+  // manage its members) lives in lib/organizations/access.ts.
+  ORGANIZATION_OWNER: OPERATOR,
   ORGANIZATION_ADMIN: OPERATOR,
   COMPOUND_ADMIN: OPERATOR,
   VENUE_MANAGER: OPERATOR,
@@ -78,7 +83,7 @@ export interface VenueScope {
 }
 
 /** Widest first, so the strongest applicable authority is reported. */
-const ORDER: VenueRoleKind[] = ["ORGANIZATION_ADMIN", "COMPOUND_ADMIN", "VENUE_MANAGER"];
+const ORDER: VenueRoleKind[] = ["ORGANIZATION_OWNER", "ORGANIZATION_ADMIN", "COMPOUND_ADMIN", "VENUE_MANAGER"];
 
 /**
  * The caller's authority over this venue, or null. `platform` is true
@@ -93,7 +98,7 @@ export function authorityOver(
     const hit = caller.roles.some(
       (r) =>
         r.kind === kind &&
-        ((kind === "ORGANIZATION_ADMIN" && !!venue.organizationId && r.organizationId === venue.organizationId) ||
+        (((kind === "ORGANIZATION_OWNER" || kind === "ORGANIZATION_ADMIN") && !!venue.organizationId && r.organizationId === venue.organizationId) ||
           (kind === "COMPOUND_ADMIN" && !!venue.compoundId && r.compoundId === venue.compoundId) ||
           (kind === "VENUE_MANAGER" && r.venueId === venue.id)),
     );
@@ -119,6 +124,6 @@ export function canEditCompoundGates(
   return caller.roles.some(
     (r) =>
       (r.kind === "COMPOUND_ADMIN" && r.compoundId === compound.id) ||
-      (r.kind === "ORGANIZATION_ADMIN" && !!compound.organizationId && r.organizationId === compound.organizationId),
+      ((r.kind === "ORGANIZATION_ADMIN" || r.kind === "ORGANIZATION_OWNER") && !!compound.organizationId && r.organizationId === compound.organizationId),
   );
 }

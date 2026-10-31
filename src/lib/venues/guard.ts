@@ -76,7 +76,9 @@ export async function venuesFor(caller: VenueCaller) {
     compoundId: true,
   } as const;
   if (caller.platform) return db.venue.findMany({ select, orderBy: { createdAt: "desc" } });
-  const orgIds = caller.roles.filter((r) => r.kind === "ORGANIZATION_ADMIN" && r.organizationId).map((r) => r.organizationId!);
+  const orgIds = caller.roles
+    .filter((r) => (r.kind === "ORGANIZATION_ADMIN" || r.kind === "ORGANIZATION_OWNER") && r.organizationId)
+    .map((r) => r.organizationId!);
   const compoundIds = caller.roles.filter((r) => r.kind === "COMPOUND_ADMIN" && r.compoundId).map((r) => r.compoundId!);
   const venueIds = caller.roles.filter((r) => r.kind === "VENUE_MANAGER" && r.venueId).map((r) => r.venueId!);
   if (!orgIds.length && !compoundIds.length && !venueIds.length) return [];

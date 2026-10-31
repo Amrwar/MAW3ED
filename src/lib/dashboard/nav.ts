@@ -9,6 +9,7 @@ import {
   Gift,
   Globe,
   Landmark,
+  Network,
   LifeBuoy,
   ListChecks,
   Upload,
@@ -114,6 +115,7 @@ export function buildNav(ctx: NavContext): NavSection[] {
     { href: "/dashboard/reviews", label: s.reviews, icon: MessageSquare },
     { href: "/dashboard/import", label: s.importData, icon: Upload },
     { href: "/dashboard/venue", label: s.venue, icon: Landmark },
+    { href: "/dashboard/organizations", label: s.organizations, icon: Network },
   );
 
   const grow: NavItem[] = [
@@ -142,7 +144,7 @@ export function buildNav(ctx: NavContext): NavSection[] {
     { href: "/help", label: s.help, icon: LifeBuoy },
   ];
   if (ctx.hasVenueRoles) {
-    account.push({ href: "/venue-admin", label: s.venueConsole, icon: Landmark });
+    account.push({ href: "/org-admin", label: s.venueConsole, icon: Landmark });
   }
 
   // The moderation queue. Only an admin has one, and the entry is

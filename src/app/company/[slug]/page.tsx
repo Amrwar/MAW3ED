@@ -22,6 +22,7 @@ import { buildLocalBusinessJsonLd } from "@/lib/jsonld";
 import { cdnShareImage } from "@/lib/cdn-image";
 import { siteUrl } from "@/lib/env";
 import { venuesOfBusiness } from "@/lib/venues/public";
+import { organizationsOfBusiness } from "@/lib/organizations/public";
 import { getLang } from "@/lib/lang-server";
 import { alternatesFor, DEFAULT_OG_IMAGE, ogLocale } from "@/lib/seo/meta";
 import { getPublishedBusinesses } from "@/lib/data";
@@ -167,13 +168,26 @@ export default async function CompanyPage({ params, searchParams }: Params) {
   const lang = await getLang();
   const t = translations[lang] ?? translations.ar;
 
-  // The public venues this business is listed in (approved memberships only).
-  const venueLinks = (await venuesOfBusiness(dbBusiness.id).catch(() => [])).map((m) => ({
+  // The public venues and organizations this business is listed in
+  // (approved rows only) — fetched together: these are independent of
+  // each other and sit on the hottest public page.
+  const [venueRows, orgRows] = await Promise.all([
+    venuesOfBusiness(dbBusiness.id).catch(() => []),
+    organizationsOfBusiness(dbBusiness.id).catch(() => []),
+  ]);
+  const venueLinks = venueRows.map((m) => ({
     slug: m.venue.slug,
     name: lang === "en" ? m.venue.nameEn || m.venue.nameAr : m.venue.nameAr,
     zone: m.zone ? (lang === "en" ? m.zone.nameEn || m.zone.nameAr : m.zone.nameAr) : null,
     unit: m.unit,
   }));
+
+  const orgLinks = orgRows.map((o) => ({
+    slug: o.slug,
+    name: lang === "en" ? o.nameEn || o.nameAr : o.nameAr,
+  }));
+  const fromOrganization =
+    typeof sp.org === "string" && orgLinks.some((o) => o.slug === sp.org) ? sp.org : null;
 
   const [resourcesRaw, staffRaw, summary, reviewPage, nextSlot] = await Promise.all([
     // Every business, not only restaurants: a clinic schedules rooms, a
@@ -436,6 +450,8 @@ export default async function CompanyPage({ params, searchParams }: Params) {
           initialStaffId={typeof sp.staff === "string" ? sp.staff : null}
           initialBranchId={typeof sp.branch === "string" ? sp.branch : null}
           venues={venueLinks}
+          organizations={orgLinks}
+          fromOrganization={fromOrganization}
         />
       </main>
 

@@ -67,9 +67,9 @@ if (restaurant) {
  * widget. Everything is looked up inside the widget: the page around it
  * has its own pressable buttons (save, gallery filters, review votes).
  */
-async function openWidget(ctx, slug, lang) {
+async function openWidget(ctx, slug, lang, query = "") {
   const page = await ctx.newPage();
-  await page.goto(`${B}${lang === "en" ? "/en" : ""}/company/${slug}`, { waitUntil: "networkidle" });
+  await page.goto(`${B}${lang === "en" ? "/en" : ""}/company/${slug}${query}`, { waitUntil: "networkidle" });
   const w = page.getByTestId("booking-widget");
   await w.waitFor({ timeout: 30000 });
   return { page, w };
@@ -266,6 +266,34 @@ try {
     await ctx.close();
   }
 
+  // ── 4b. A booking that started on an organization's page ───────
+  // The full chain in a real browser: /company/…?org=… → the page
+  // validates the membership → the widget sends it → the booking is
+  // attributed to the organization, and to nobody on a direct booking.
+  {
+    const biz = (await pg.query(`select b.id, b."ownerId" from "Business" b where b.slug='qa-listing-0'`)).rows[0];
+    await pg.query(`insert into "VenueOrganization" (id, slug, "nameAr", kind, status, "isPublished", "updatedAt", "createdById")
+      values ('qa22be2e-org', 'qa22be2e-group', 'مجموعة حجز تجريبية (بيانات اختبار)', 'BUSINESS_GROUP', 'APPROVED', true, now(), $1)
+      on conflict (id) do nothing`, [biz.ownerId]);
+    await pg.query(`insert into "OrganizationBusiness" (id, "organizationId", "businessId", relation, status, "initiatedById", "updatedAt")
+      values ('qa22be2e-assoc', 'qa22be2e-org', $1, 'TENANT', 'APPROVED', $2, now())
+      on conflict (id) do nothing`, [biz.id, biz.ownerId]);
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.addCookies([{ name: "maw3ed-lang", value: "ar", url: B }]);
+    const { page, w } = await openWidget(ctx, "qa-listing-0", "ar", "?org=qa22be2e-group");
+    check("Org: the business page names the organization it came from", (await page.getByText("تابع لـ").count()) >= 1);
+    await stepsUntilDetails(w, "ar");
+    await fillDetails(w, "ar", 9);
+    await next(w, "ar");
+    await confirm(w, "ar");
+    await doneState(w, "ar");
+    const row = (await bookingRow(9))[0];
+    const attr = row && (await pg.query(`select "organizationId" from "OrganizationBookingAttribution" where "bookingId"=$1`, [row.id])).rows;
+    check("Org: the widget booking is attributed to the organization", attr?.length === 1 && attr[0].organizationId === 'qa22be2e-org', JSON.stringify(attr));
+    check("Org: the earlier direct booking was attributed to nobody", (await pg.query(`select 1 from "OrganizationBookingAttribution" a join "Booking" b on b.id=a."bookingId" where b."customerName"=$1`, [`${TAG} 1`])).rows.length === 0);
+    await ctx.close();
+  }
+
   // ── 4. Addresses people already have ───────────────────────────
   {
     const token = (await bookingRow(1))[0]?.accessToken;
@@ -296,6 +324,7 @@ try {
     await pg.query(`delete from "Booking" where id = any($1)`, [ids]);
   }
   await pg.query(`delete from "Customer" where name like $1`, [`${TAG}%`]).catch(() => {});
+  await pg.query(`delete from "VenueOrganization" where id='qa22be2e-org'`).catch((e) => console.log("org cleanup:", e.message));
   if (addedHours.length) await pg.query(`delete from "AvailabilityRule" where id = any($1)`, [addedHours]);
   await pg.end();
   const passed = results.filter((r) => r.ok).length;

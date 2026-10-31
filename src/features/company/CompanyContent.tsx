@@ -79,6 +79,9 @@ interface Props {
   initialBranchId?:  string | null;
   /** Public venues this business is listed in. */
   venues?:           { slug: string; name: string; zone: string | null; unit: string | null }[];
+  /** Published organizations it belongs to, and the one the visitor came from. */
+  organizations?:    { slug: string; name: string }[];
+  fromOrganization?: string | null;
 }
 
 export default function CompanyContent({
@@ -106,6 +109,8 @@ export default function CompanyContent({
   initialStaffId = null,
   initialBranchId = null,
   venues = [],
+  organizations = [],
+  fromOrganization = null,
 }: Props) {
   const { t, lang } = useLanguage();
   const [preselected, setPreselected] = useState<Service | null>(
@@ -180,6 +185,18 @@ export default function CompanyContent({
                 <GallerySection images={images} businessName={business.nameAr} />
               )}
 
+              {organizations.length > 0 && (
+                <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--color-muted)]">
+                  <span className="font-bold text-[var(--color-ink)]">{lang === "en" ? "Part of" : "تابع لـ"}</span>
+                  {organizations.map((o, i) => (
+                    <span key={o.slug}>
+                      {i > 0 ? "، " : ""}
+                      <Link href={`/groups/${o.slug}`} className="text-[var(--color-jade)] underline-offset-2 hover:underline">{o.name}</Link>
+                    </span>
+                  ))}
+                </p>
+              )}
+
               {venues.length > 0 && (
                 <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--color-muted)]">
                   <span className="font-bold text-[var(--color-ink)]">{lang === "en" ? "Located in" : "موجود في"}</span>
@@ -243,6 +260,7 @@ export default function CompanyContent({
                 preselectedService={preselected}
                 initialStaffId={initialStaffId}
                 initialBranchId={initialBranchId}
+                fromOrganization={fromOrganization}
                 businessType={businessType}
                 source={source}
                 resources={resources}

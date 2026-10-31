@@ -36,7 +36,7 @@ try {
       await p.goto(`${B}/login`, { waitUntil: "networkidle" });
       await p.fill("#login-email", email);
       await p.fill("#login-password", PASSWORD);
-      await Promise.all([p.waitForURL(/venue-admin/, { timeout: 60000 }), p.click('button[type="submit"]')]);
+      await Promise.all([p.waitForURL(/org-admin|venue-admin/, { timeout: 60000 }), p.click('button[type="submit"]')]);
       await p.goto(`${B}/venue-admin/${v}`, { waitUntil: "networkidle" });
       await p.getByText(lang === "en" ? "Needs your attention" : "محتاج انتباهك").waitFor({ timeout: 20000 });
       const flagged = await p.getByText(lang === "en" ? "no access instructions are published" : "مفيش تعليمات دخول منشورة", { exact: false }).count();

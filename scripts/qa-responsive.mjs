@@ -92,7 +92,8 @@ function measure() {
 
 const failures = [];
 let checked = 0;
-for (const { key, engine, defaultBrowserType, ...opts } of DEVICES) {
+for (const { key, engine, ...opts } of DEVICES) {
+  delete opts.defaultBrowserType; // a device descriptor field newContext refuses
   const browser = await engine.launch();
   for (const lang of ["ar", "en"]) {
     const ctx = await browser.newContext(opts);

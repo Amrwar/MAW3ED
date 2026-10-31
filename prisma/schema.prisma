@@ -420,6 +420,7 @@ model Business {
   favorites          Favorite[]
   importBatches      ImportBatch[]
   venueMemberships   VenueMembership[]
+  organizationLinks  OrganizationBusiness[]
 
   /// The discovery listing always filters on isPublished first, then on
   /// one of city / neighbourhood / category, and sorts on rating,
@@ -458,6 +459,7 @@ model Branch {
   timeBlocks TimeBlock[]
   resources  Resource[]
   venueMemberships VenueMembership[]
+  organizationLinks OrganizationBusiness[]
 
   @@index([businessId, isActive, sortOrder])
   /// The nearby query's bounding box (add_business_location.sql).
@@ -533,6 +535,7 @@ model City {
   neighborhoods Neighborhood[]
   compounds     Compound[]
   venues        Venue[]
+  organizations Organization[] @relation("OrganizationCity")
 }
 
 /// A district inside a city — Maadi, Zamalek, Sheikh Zayed. Optional on a
@@ -1624,21 +1627,58 @@ model LifecycleEvent {
 // bookings, notes or payments: venue metrics are counts.
 // docs/architecture/VENUES.md has the model and the permission matrix.
 
-/// Who runs one or more compounds and venues — a developer, a mall
-/// operator. Data the operator supplies; nothing here implies a
-/// partnership with Maw3ed.
-model VenueOrganization {
+/// A parent organization: a mall, compound, commercial building,
+/// business group, franchise or company presenting several businesses
+/// under one account. Generic — any destination (Eterna included) is a
+/// row here, never code. It relates to businesses through approved
+/// OrganizationBusiness associations and NEVER owns them: each business
+/// keeps its own owner, staff, services, bookings, customers, money and
+/// subscription. docs/architecture/ORGANIZATION_PLATFORM.md.
+model Organization {
   id        String   @id @default(cuid())
   slug      String   @unique
+  kind      OrganizationKind @default(OTHER)
+  /// PENDING until a platform administrator approves it; the page is
+  /// public only when APPROVED and isPublished.
+  status      BusinessStatus @default(PENDING)
+  isPublished Boolean        @default(false)
   nameAr    String
   nameEn    String?
+  descriptionAr String?
+  descriptionEn String?
+  logoImage  String?
+  coverImage String?
+  phone      String?
+  email      String?
+  instagram  String?
+  facebook   String?
+  address    String?
+  cityId     String?
+  city       City?   @relation("OrganizationCity", fields: [cityId], references: [id], onDelete: SetNull)
   website   String?
+  createdById String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  compounds Compound[]
-  venues    Venue[]
-  roles     VenueRole[]
+  compounds    Compound[]
+  venues       Venue[]
+  roles        VenueRole[]
+  associations OrganizationBusiness[]
+  invites      OrganizationInvite[]
+  views        OrganizationView[]
+  attributions OrganizationBookingAttribution[]
+
+  @@index([status, isPublished])
+  @@map("VenueOrganization")
+}
+
+enum OrganizationKind {
+  MALL
+  COMPOUND
+  BUSINESS_GROUP
+  FRANCHISE
+  COMMERCIAL_BUILDING
+  OTHER
 }
 
 /// A gated compound or development that may contain venues.
@@ -1648,7 +1688,7 @@ model Compound {
   nameAr         String
   nameEn         String?
   organizationId String?
-  organization   VenueOrganization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   cityId         String
   city           City               @relation(fields: [cityId], references: [id])
   neighborhoodId String?
@@ -1695,7 +1735,7 @@ model Venue {
   descriptionAr  String?
   descriptionEn  String?
   organizationId String?
-  organization   VenueOrganization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   compoundId     String?
   compound       Compound?          @relation(fields: [compoundId], references: [id], onDelete: SetNull)
   cityId         String
@@ -1880,6 +1920,9 @@ model VenueMembership {
 }
 
 enum VenueRoleKind {
+  /// The account the organization belongs to: everything a manager can,
+  /// plus publishing its page and managing its members.
+  ORGANIZATION_OWNER
   /// Every compound and venue of one organisation.
   ORGANIZATION_ADMIN
   /// Every venue in one compound, and the compound's gates.
@@ -1897,7 +1940,7 @@ model VenueRole {
   user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   kind           VenueRoleKind
   organizationId String?
-  organization   VenueOrganization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   compoundId     String?
   compound       Compound?          @relation(fields: [compoundId], references: [id], onDelete: Cascade)
   venueId        String?
@@ -1906,4 +1949,99 @@ model VenueRole {
   createdAt      DateTime           @default(now())
 
   @@index([userId])
+}
+
+// ─── Phase 22b: organization ↔ business associations ────────────────────────
+
+enum OrganizationBusinessRelation {
+  /// The organization's own brand (it still has its own owner account).
+  OWNED
+  /// Operated by a franchisee under the organization's brand.
+  FRANCHISE
+  /// Independently owned, trading in the organization's property.
+  TENANT
+  PARTNER
+}
+
+enum OrganizationBusinessStatus {
+  /// The organization asked; the business owner decides.
+  INVITED
+  /// The business asked; the organization decides.
+  REQUESTED
+  APPROVED
+  DECLINED
+  REJECTED
+  REMOVED
+}
+
+/// A business (or one branch of it) in an organization's directory.
+/// Association only: ownership never moves. One live row per
+/// organization + business + branch (partial unique, migration).
+model OrganizationBusiness {
+  id             String                      @id @default(cuid())
+  organizationId String
+  organization   Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  businessId     String
+  business       Business                    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId       String?
+  branch         Branch?                     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  relation       OrganizationBusinessRelation @default(TENANT)
+  status         OrganizationBusinessStatus
+  /// A directory heading the organization chooses ("Dining", "Clinics").
+  section        String?
+  sortOrder      Int                         @default(0)
+  initiatedById  String
+  decidedById    String?
+  decidedAt      DateTime?
+  note           String?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  @@index([organizationId, status])
+  @@index([businessId, status])
+}
+
+/// An email invitation to create a NEW business under the organization.
+/// Accepting = completing onboarding with the token; the new business
+/// belongs to the account that accepted, and the association is
+/// APPROVED on creation.
+model OrganizationInvite {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email              String
+  relation           OrganizationBusinessRelation @default(OWNED)
+  token              String       @unique
+  invitedById        String
+  expiresAt          DateTime
+  acceptedBusinessId String?
+  cancelledAt        DateTime?
+  createdAt          DateTime     @default(now())
+
+  @@index([organizationId])
+}
+
+/// Visits to the organization's public page: a counter by channel and
+/// day, like ProfileView. No identifier of who visited.
+model OrganizationView {
+  id             String        @id @default(cuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  source         TrafficSource
+  day            DateTime      @db.Date
+  count          Int           @default(0)
+
+  @@unique([organizationId, source, day])
+}
+
+/// A booking whose customer arrived through the organization's page.
+/// A separate row: the booking itself, and who owns it, never change.
+model OrganizationBookingAttribution {
+  id             String       @id @default(cuid())
+  bookingId      String       @unique
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
 }

@@ -1,3 +1,4 @@
+import { readInvite } from "@/lib/organizations/associations";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -7,7 +8,7 @@ import OnboardingForm from "./_components/OnboardingForm";
 export default async function OnboardingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ create?: string }>;
+  searchParams: Promise<{ create?: string; org_invite?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -39,9 +40,23 @@ export default async function OnboardingPage({
   // the venue, not to open a shop: sign-in sends people without a
   // business here, so they are passed on to their console. ?create=1 is
   // the way through for a manager who does want a business of their own.
-  const { create } = await searchParams;
-  if (create !== "1" && (await db.venueRole.count({ where: { userId: session.user.id } })) > 0) {
-    redirect("/venue-admin");
+  const { create, org_invite } = await searchParams;
+  if (create !== "1" && !org_invite && (await db.venueRole.count({ where: { userId: session.user.id } })) > 0) {
+    redirect("/org-admin");
+  }
+
+  // Arrived through an organization's invitation: say who is inviting,
+  // and hand the token to the wizard. A dead link is said plainly here
+  // rather than failing at the last step.
+  let invite: { token: string; orgName: string } | null = null;
+  let inviteDead = false;
+  if (org_invite) {
+    try {
+      const read = await readInvite(org_invite);
+      invite = { token: org_invite, orgName: read.organization.nameAr };
+    } catch {
+      inviteDead = true;
+    }
   }
 
   const [categories, cities] = await Promise.all([
@@ -49,5 +64,5 @@ export default async function OnboardingPage({
     getCities(),
   ]);
 
-  return <OnboardingForm categories={categories} cities={cities} />;
+  return <OnboardingForm categories={categories} cities={cities} invite={invite} inviteDead={inviteDead} />;
 }

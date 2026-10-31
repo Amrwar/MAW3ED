@@ -1,3 +1,4 @@
+import { AssociationFailure, ASSOCIATION_MESSAGES, acceptEmailInvite } from "@/lib/organizations/associations";
 import { db } from "@/lib/db";
 import { onboardingSchema } from "@/lib/validations";
 import { ok, err, requireSession } from "@/lib/api";
@@ -35,8 +36,7 @@ export async function POST(req: Request) {
       nameAr, nameEn, categoryId, cityId,
       phone, whatsapp, address, taglineAr, about,
       coverImage, logoImage,
-      services, availability, slug,
-    } = parsed.data;
+      services, availability, slug, orgInvite } = parsed.data;
 
     // Ensure user doesn't already have a business
     const existing = await db.business.findUnique({
@@ -127,6 +127,12 @@ export async function POST(req: Request) {
       // The wizard's draft has become a business.
       await tx.onboardingDraft.deleteMany({ where: { userId: session.user.id } });
 
+      // Invited by an organization to set up here: the new business is
+      // linked to its directory from the start — and stays entirely the
+      // owner's. A dead or used invite fails the whole creation loudly,
+      // so the owner is not left thinking they joined.
+      if (orgInvite) await acceptEmailInvite(tx, orgInvite, biz.id, session.user.id);
+
       return biz;
     });
 
@@ -139,6 +145,12 @@ export async function POST(req: Request) {
     // to the setup checklist, which says what is left before going live.
     return ok({ business: { id: business.id, slug: business.slug, isPublished: business.isPublished } }, 201);
   } catch (e) {
+    if (e instanceof AssociationFailure) {
+      const msg = ASSOCIATION_MESSAGES[e.code];
+      // The whole creation rolled back: the owner must not think they
+      // registered and joined when the invitation was dead.
+      return err(`النشاط ما اتسجلش: ${msg.ar}. اطلب دعوة جديدة من الجهة، أو سجّل عادي من غير رابط الدعوة.`, msg.status, { code: e.code });
+    }
     log.error("[onboarding]", e);
     return err("حدث خطأ أثناء حفظ البيانات", 500);
   }

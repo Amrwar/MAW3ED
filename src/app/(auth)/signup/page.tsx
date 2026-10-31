@@ -70,7 +70,10 @@ export default function SignupPage() {
       return;
     }
 
-    router.push("/onboarding");
+    // An organization's invitation travels with the new account into
+    // onboarding, where the created business joins its directory.
+    const orgInvite = new URLSearchParams(window.location.search).get("org_invite");
+    router.push(orgInvite ? `/onboarding?org_invite=${encodeURIComponent(orgInvite)}` : "/onboarding");
     router.refresh();
   }
 

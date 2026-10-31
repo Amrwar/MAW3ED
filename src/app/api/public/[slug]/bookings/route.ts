@@ -1,3 +1,4 @@
+import { attributeBooking } from "@/lib/organizations/public";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { resolveAutomatic, resolveCode } from "@/lib/discounts/resolve";
@@ -47,7 +48,7 @@ export async function POST(req: Request, { params }: Params) {
 
     const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes,
             tableId, resourceId, staffMemberId, branchId, partySize, idempotencyKey,
-            source, discountCode, phoneProof } = parsed.data;
+            source, discountCode, phoneProof, org } = parsed.data;
 
     const phoneE164 = normalisePhone(customerPhone);
 
@@ -282,6 +283,11 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const { booking, reused } = result;
+
+    // Where the customer came from, when it was an organization's
+    // directory. A statistic for that organization; it never changes
+    // who owns the booking and never fails it (lib/organizations/public).
+    if (org && !isTest && !reused) await attributeBooking(booking.id, org, business.id);
     const endTime = booking.endTime ?? startTime;
     const accessToken = booking.accessToken!;
 

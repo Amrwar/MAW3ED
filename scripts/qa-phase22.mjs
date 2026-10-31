@@ -134,7 +134,7 @@ try {
   /* ── The manager's console ───────────────────────────── */
   const mgr = await login(mgrEmail, PASSWORD);
   const landing = await call(mgr, "/onboarding");
-  check("a venue manager with no business is sent to the venue console, not onboarding", landing.status === 307 && /\/venue-admin$/.test(landing.headers.get("location") ?? ""), `${landing.status} ${landing.headers.get("location")}`);
+  check("a venue manager with no business is sent to the console, not onboarding", landing.status === 307 && /\/org-admin$/.test(landing.headers.get("location") ?? ""), `${landing.status} ${landing.headers.get("location")}`);
   check("…and can still choose to create a business", (await call(mgr, "/onboarding?create=1")).status === 200);
   const mine = await json(await call(mgr, "/api/venues"));
   check("the manager sees exactly their venue", mine.venues?.length === 1 && mine.venues[0].id === v1.id, JSON.stringify(mine.venues?.map((v) => v.slug)));
@@ -263,7 +263,7 @@ try {
   check("the owner's venue page renders", (await call(owner, "/dashboard/venue")).status === 200);
   const rivalDash = await (await call(rival, "/dashboard")).text();
   const ownerDash = await (await call(owner, "/dashboard")).text();
-  check("an owner who manages a venue gets a link to the console; others do not", rivalDash.includes('href="/venue-admin"') && !ownerDash.includes('href="/venue-admin"'));
+  check("an owner who manages a venue gets a link to the console; others do not", rivalDash.includes('href="/org-admin"') && !ownerDash.includes('href="/org-admin"'));
 
   /* ── A venue closure stops online booking at its tenants ─ */
   const pauseDay = new Date(Date.now() + 6 * 86_400_000).toISOString().slice(0, 10);

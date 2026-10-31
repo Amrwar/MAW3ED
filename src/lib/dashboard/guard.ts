@@ -54,7 +54,7 @@ export async function noBusinessDestination(userId: string): Promise<string> {
   });
   // Somebody who manages a venue and owns no business is not an owner
   // who has not finished onboarding: their work is in the venue console.
-  if (user?._count?.venueRoles) return "/venue-admin";
+  if (user?._count?.venueRoles) return "/org-admin";
   const isCustomer = !!user?.phoneVerifiedAt && !user.password && !user.adminRole;
   return isCustomer ? "/account?notice=no-business" : "/onboarding";
 }

@@ -58,6 +58,9 @@ export const onboardingSchema = z.object({
   logoImage:  z.string().url().optional(),
   services:   z.array(serviceItemSchema).min(1, "أضف خدمة واحدة على الأقل"),
   availability: z.array(availabilityDaySchema).length(7),
+  /// An organization's email invitation (signup?org_invite=...): the new
+  /// business joins that organization's directory on creation.
+  orgInvite:  z.string().trim().max(100).optional(),
   slug:       z
     .string()
     .min(3, "الرابط قصير جدًا")
@@ -201,6 +204,10 @@ export const bookingSchema = z.object({
   // From POST /api/public/phone-proof, when guest bookings must prove
   // their number (BOOKING_PHONE_VERIFICATION).
   phoneProof:    z.string().max(2000).optional(),
+  /// The published organization directory the customer came from
+  /// (?org= on the business page). Attribution only; checked
+  /// server-side against an APPROVED association before it counts.
+  org:           z.string().trim().toLowerCase().max(60).optional(),
   /**
    * Client-generated, stable across retries of the same submission. A
    * second request carrying the same key returns the first booking
