@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { DelegationScope, OrganizationBusinessRelation } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { BusinessAction } from "@/lib/business-access";
@@ -94,7 +95,15 @@ function operableWhere(userId: string, now: Date, businessId?: string) {
  * Several relationships (an owning group and a managing company, say)
  * add up; a branch-limited one adds only its own branch's bookings.
  */
-export async function resolveDelegation(userId: string, businessId: string, now = new Date()): Promise<Delegation | null> {
+export async function resolveDelegation(userId: string, businessId: string, now?: Date): Promise<Delegation | null> {
+  // Without an explicit clock, one database read per request however many
+  // guards ask (layout, page, route); tests pass `now` and bypass it.
+  return now ? loadDelegation(userId, businessId, now) : cachedDelegation(userId, businessId);
+}
+
+const cachedDelegation = cache((userId: string, businessId: string) => loadDelegation(userId, businessId, new Date()));
+
+async function loadDelegation(userId: string, businessId: string, now: Date): Promise<Delegation | null> {
   const rows = await db.organizationBusiness.findMany({
     where: operableWhere(userId, now, businessId),
     select: {
@@ -148,6 +157,16 @@ export async function operableBusinesses(userId: string, now = new Date()) {
  */
 
 /** The acting business id from the current request, or null outside one. */
+/**
+ * Whether this request is operating a business for an organization
+ * through a delegation that still holds. A stale cookie answers false,
+ * so it never locks an owner out of their own routes.
+ */
+export async function isActingElsewhere(userId: string): Promise<boolean> {
+  const acting = await readActingBusinessId();
+  return !!acting && !!(await resolveDelegation(userId, acting));
+}
+
 export async function readActingBusinessId(): Promise<string | null> {
   try {
     const { cookies } = await import("next/headers");

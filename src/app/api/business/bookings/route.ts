@@ -64,7 +64,11 @@ export async function GET(req: Request) {
       where.staffMemberId = staffId;
     }
     if (branchId) {
-      where.branchId = branchId;
+      // Narrows within the scope, never widens it: a delegate limited to
+      // some branches asking for another branch gets that branch AND its
+      // own — nothing.
+      const allowed = actor.role === "DELEGATE" ? actor.delegation?.branchIds : null;
+      where.branchId = allowed ? { in: allowed.filter((b) => b === branchId) } : branchId;
     }
     if (calendar) {
       // Both dates in the one format the filter below reads, or the range

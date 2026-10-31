@@ -1,4 +1,4 @@
-import { requireBusinessAccess } from "@/lib/business-access";
+import { can, requireBusinessAccess } from "@/lib/business-access";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
@@ -18,8 +18,8 @@ import { db } from "@/lib/db";
  */
 async function ownedBusiness() {
   try {
-    const { business } = await requireBusinessAccess("staff.manage");
-    return business;
+    const { business, actor } = await requireBusinessAccess("staff.manage");
+    return Object.assign(business, { canManageAccess: can(actor, "staff.manageAccess") });
   } catch (e) {
     if (e instanceof Response) return e;
     throw e;
@@ -58,6 +58,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     ownServiceIds = mine.map((x) => x.id);
   }
 
+  // Deactivating someone who signs in ends their access: that is the
+  // owner's power over sign-in (staff.manageAccess), not a staff edit.
+  if (!guard.canManageAccess && rest.isActive != null && rest.isActive !== existing.isActive && (existing.userId || existing.access)) {
+    return NextResponse.json({ error: "تفعيل وإيقاف حساب دخول الموظف لصاحب النشاط بس", code: "forbidden" }, { status: 403 });
+  }
+
   const member = await db.staffMember.update({
     where: { id },
     data: {
@@ -78,7 +84,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     include: { services: { include: { service: { select: { id: true, nameAr: true } } } } },
   });
 
-  return NextResponse.json(member);
+  // Who signs in, and with which number, is the owner's to see.
+  const { loginPhone, userId, ...visible } = member;
+  return NextResponse.json(guard.canManageAccess ? { ...visible, loginPhone, linked: Boolean(userId) } : visible);
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -88,6 +96,10 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const existing = await getOwned(id, guard.id);
   if (!existing) return NextResponse.json({ error: "الموظف ده مش موجود" }, { status: 404 });
+  // Removing someone who signs in removes their access too: the owner's.
+  if (!guard.canManageAccess && (existing.userId || existing.access)) {
+    return NextResponse.json({ error: "حذف موظف له حساب دخول لصاحب النشاط بس", code: "forbidden" }, { status: 403 });
+  }
 
   await db.staffMember.delete({ where: { id } });
   return NextResponse.json({ ok: true });

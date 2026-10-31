@@ -43,7 +43,7 @@ export async function GET(_req: Request, { params }: Params) {
       createdAt:       customer.createdAt.toISOString(),
       bookingCount:    activeBookings.length,
       // Money is the owner's; a manager sees the visits, not the spend.
-      totalSpend: can(actor, "reports.read") ? totalSpend : null,
+      totalSpend: can(actor, "finance.read") ? totalSpend : null,
       currency,
       lastBookingDate: lastBooking?.date.toISOString().split("T")[0] ?? null,
       bookings: customer.bookings.map((b) => ({

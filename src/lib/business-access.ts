@@ -1,5 +1,6 @@
 import type { Business, StaffAccess } from "@prisma/client";
 import { db } from "@/lib/db";
+import { cache } from "react";
 import { err, requireSession } from "@/lib/api";
 import { readActingBusinessId, resolveDelegation, type Delegation } from "@/lib/organizations/delegation";
 
@@ -162,7 +163,7 @@ export async function resolveBusinessAccess(userId: string): Promise<{ business:
  * The delegated access the request's acting cookie stands for, or null:
  * no cookie, or one that no longer grants anything.
  */
-export async function actingAccess(userId: string): Promise<{ business: Business; actor: BusinessActor } | null> {
+export const actingAccess = cache(async (userId: string): Promise<{ business: Business; actor: BusinessActor } | null> => {
   const businessId = await readActingBusinessId();
   if (!businessId) return null;
   const delegation = await resolveDelegation(userId, businessId);
@@ -170,7 +171,7 @@ export async function actingAccess(userId: string): Promise<{ business: Business
   const business = await db.business.findUnique({ where: { id: businessId } });
   if (!business) return null;
   return { business, actor: { role: "DELEGATE", userId, staffMemberId: null, delegation } };
-}
+});
 
 /**
  * The guard for business routes that staff may use. Throws a 404 when

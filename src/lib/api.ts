@@ -3,7 +3,7 @@ import { installArabicZodErrors } from "./zod-arabic";
 import { auth } from "@/auth";
 import { readAccessToken } from "@/lib/auth/mobile-token";
 import { db } from "@/lib/db";
-import { readActingBusinessId, resolveDelegation } from "@/lib/organizations/delegation";
+import { isActingElsewhere } from "@/lib/organizations/delegation";
 
 // Installed here as well as in validations.ts: a route with its own
 // inline z.object() need not import that module, and every API route
@@ -138,9 +138,7 @@ export async function requireBusiness() {
  * delegation ended — is ignored, so it never locks an owner out.
  */
 export async function refuseWhileActing(userId: string): Promise<void> {
-  const acting = await readActingBusinessId();
-  if (!acting) return;
-  if (await resolveDelegation(userId, acting)) {
+  if (await isActingElsewhere(userId)) {
     throw err("إنت بتدير نشاط تاني دلوقتي — اخرج من وضع الإدارة الأول", 409, { code: "acting-elsewhere" });
   }
 }

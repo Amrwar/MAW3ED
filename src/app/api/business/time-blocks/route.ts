@@ -62,7 +62,9 @@ function neededFor(staffMemberId: string | null | undefined): BusinessAction[] {
 
 export async function GET() {
   try {
-    const ctx = await requireBusinessAccessAny(["schedule.read", "staff.read"]);
+    // Not staff.read, which every staff member holds: colleagues' time off
+    // and its reasons are for whoever manages staff or the schedule.
+    const ctx = await requireBusinessAccessAny(["schedule.read", "staff.manage"]);
     // Without the schedule, only people's own blocks.
     const wholeSchedule = can(ctx.actor, "schedule.read");
 

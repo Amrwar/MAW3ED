@@ -102,7 +102,10 @@ export async function POST(req: Request) {
     },
   });
 
-    return NextResponse.json(member, { status: 201 });
+    // A new member has no login yet; the reply carries none of those fields either way.
+    const { loginPhone: _lp, userId: _uid, ...visible } = member;
+    void _lp; void _uid;
+    return NextResponse.json(visible, { status: 201 });
   } catch (e) {
     if (e instanceof Response) return e;
     throw e;

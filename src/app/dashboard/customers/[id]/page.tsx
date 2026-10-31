@@ -1,3 +1,4 @@
+import { can } from "@/lib/business-access";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireDashboardAccess } from "@/lib/dashboard/guard";
@@ -11,7 +12,8 @@ export default async function CustomerPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { business } = await requireDashboardAccess("customers.read");
+  const { business, actor } = await requireDashboardAccess("customers.read");
+  const seeMoney = can(actor, "finance.read");
   const { id } = await params;
 
   // Scoped to this business inside the query: an id belonging to
@@ -36,7 +38,7 @@ export default async function CustomerPage({
         cancelled: customer.stats.cancelled,
         noShows: customer.stats.noShows,
         upcoming: customer.stats.upcoming,
-        spend: customer.stats.revenue,
+        spend: seeMoney ? customer.stats.revenue : 0,
         noShowRate: customer.stats.noShowRate,
         firstSeen: customer.stats.firstSeen?.toISOString() ?? null,
         lastVisit: customer.stats.lastVisit?.toISOString() ?? null,

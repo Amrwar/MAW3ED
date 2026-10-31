@@ -58,17 +58,26 @@ CREATE UNIQUE INDEX IF NOT EXISTS "OrganizationBusiness_live_rel_key"
   WHERE "status" IN ('INVITED', 'REQUESTED', 'APPROVED', 'SUSPENDED');
 DROP INDEX IF EXISTS "OrganizationBusiness_live_key";
 
--- 5. A business has at most one owning organization.
+-- 5. A business has at most one owning organization — decided by
+--    approval, not by invitation: a pending invitation never occupies the
+--    place (an organization cannot block the real owner just by inviting),
+--    and one organization may own several branches. The application
+--    refuses a second owning organization under a per-business lock when
+--    an ownership is accepted or approved; the database backstop is that
+--    a business has at most one approved whole-business owner. Should two
+--    exist, every one but the oldest is marked REMOVED (kept, not deleted).
 UPDATE "OrganizationBusiness" a SET "status" = 'REMOVED', "updatedAt" = now()
   FROM "OrganizationBusiness" b
   WHERE a."relation"::text = 'OWNED' AND b."relation"::text = 'OWNED'
     AND a."businessId" = b."businessId" AND a.id <> b.id
-    AND a."status"::text IN ('INVITED', 'REQUESTED', 'APPROVED', 'SUSPENDED')
-    AND b."status"::text IN ('INVITED', 'REQUESTED', 'APPROVED', 'SUSPENDED')
+    AND a."branchId" IS NULL AND b."branchId" IS NULL
+    AND a."status"::text IN ('APPROVED', 'SUSPENDED')
+    AND b."status"::text IN ('APPROVED', 'SUSPENDED')
     AND (a."createdAt", a.id) > (b."createdAt", b.id);
-CREATE UNIQUE INDEX IF NOT EXISTS "OrganizationBusiness_one_owner_key"
+DROP INDEX IF EXISTS "OrganizationBusiness_one_owner_key";
+CREATE UNIQUE INDEX IF NOT EXISTS "OrganizationBusiness_one_whole_owner_key"
   ON "OrganizationBusiness" ("businessId")
-  WHERE "relation" = 'OWNED' AND "status" IN ('INVITED', 'REQUESTED', 'APPROVED', 'SUSPENDED');
+  WHERE "relation" = 'OWNED' AND "status" IN ('APPROVED', 'SUSPENDED') AND "branchId" IS NULL;
 
 -- 6. The platform's written reason for a rejection or suspension, kept on
 --    the organization (it used to be read back from the audit log, which

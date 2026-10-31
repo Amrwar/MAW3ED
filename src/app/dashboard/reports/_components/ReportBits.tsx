@@ -110,7 +110,9 @@ export function Rows({
           {empty}
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        // A table wider than a phone scrolls sideways; a scrollable region
+        // must be reachable by keyboard, and named for screen readers.
+        <div className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-[var(--color-jade)]" tabIndex={0} role="region" aria-label={title}>
           <table className="w-full border-collapse text-[0.8125rem]">
             <thead>
               <tr>

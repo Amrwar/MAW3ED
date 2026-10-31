@@ -268,3 +268,175 @@ both languages, as everywhere else in the API.
 | Regression: `qa-phase21` 44/44, `qa-phase19` 21/21, `qa-booking-e2e` 19/19, `qa-phase17` 13/13, `qa-phase20` 19/19, `qa-security` 32/32 | all pass |
 | `npm audit --omit=dev` | 0 vulnerabilities |
 | Rollback SQL on QA, twice, then re-apply + verify | data counts unchanged; verify passes |
+
+---
+
+# Phase 22 final: organizations, ownership, hosting and management (2026-10-31)
+
+The owner's "Phase 22 final implementation" prompt, built on Phase 22
+(venues, PR #40/#42), Phase 22b (the generic organization platform, PR
+#43) and its completion audit (PR #45). Branch `phase-22-final`.
+
+## Inspection and gap analysis (before any change)
+
+Read: this report, `PHASE_22B_REPORT.md`, the organization architecture
+documents, the schema, and every business API route and dashboard page
+with its guard. Findings:
+
+| Area | State before | Gap |
+|---|---|---|
+| Registration, review, profile, media, members, directory, link/QR, booking attribution | Working (22b + audit) | — |
+| Relationship types | `OWNED/FRANCHISE/TENANT/PARTNER` labels with **no** permission meaning | OWNED / HOSTED / MANAGED semantics |
+| Delegated management | None: the web dashboard was owner-only (40 routes on `requireBusiness`); staff used 10 routes via `requireBusinessAccess` from the app | Scopes, branch limits, expiry, revocation, and a way to operate a business |
+| Rules | No one-owner rule; one row per org/business regardless of type; no suspension | One owner; one row per type; pause/resume |
+| Hierarchy | None | Parent organizations, cycle-safe, bounded |
+| Kinds | No restaurant or clinic group | Two new kinds |
+| Directory | Venue hours/coordinates loaded but not shown; directions searched the name | Hours today, directions from real coordinates |
+
+## What was built
+
+- **Relationships** (`ORGANIZATION_RELATIONSHIPS.md`): OWNED (operate
+  within granted scopes), HOSTED (listing only; no scope can ever be
+  granted), MANAGED (granted scopes, optional expiry, never finance). One
+  business holds several at once without any duplication. Type fixed at
+  creation. One owning organization, decided by approval (a pending
+  invitation never blocks the real owner); one organization may own
+  several branches. Pause/resume by either side, resumable only by the
+  side that paused. Legacy labels migrated by meaning and still accepted
+  from old clients.
+- **Delegation** (`ORGANIZATION_PERMISSIONS.md`): eight scopes
+  (reservations, customers, services, staff, schedules, profile, reports,
+  finance) granted by the business owner alone — on acceptance, on a
+  request, or later (narrow, widen, withdraw all, set an end date). A
+  new `DELEGATE` actor in `business-access.ts` whose powers are exactly
+  its scopes; re-read on every request.
+- **Operating a business**: the delegate chooses a business
+  (`POST /api/organizations/acting`, audited); the regular dashboard opens
+  with a banner saying whose business and for whom, a navigation of only
+  the granted areas, and a delegate home. Owner-only routes refuse while
+  acting (409 `acting-elsewhere`), owner-only pages are not reachable
+  (proxy), the owner's private settings are never sent to a delegate's
+  browser, money is stripped server-side without FINANCE, branch-limited
+  delegates see their branch only, the live bookings stream serves them
+  within scope. 10 API routes moved from owner-only to a precise action;
+  the other 30 stay owner-only by default.
+- **Hierarchy**: parent organizations (owning both to link; either to
+  unlink), refused cycles and depth > 3 by a database trigger serialized
+  by an advisory lock; public pages show one level each way.
+- **Screens**: organization console (relationship type and requested
+  scopes on invites, the portfolio with what each business granted,
+  pause/resume, "Manage this business", pagination of 50, parent link);
+  the business owner's page (accept with chosen scopes and end date,
+  change or withdraw grants, pause, request with grants); the
+  onboarding banner shows what an email invitation will grant before the
+  business is created; the console landing lists every business the
+  person may operate.
+- **Public directory**: today's hours and directions (from coordinates
+  only) per venue; "part of" and "organizations within".
+
+## Database changes
+
+`phase22c_relationship_enums.sql` (part 1: enum values — separate
+because PostgreSQL cannot use a new enum value in the transaction that
+added it) and `phase22c_relationships.sql` (part 2: scope columns,
+`statusReason`, legacy-label mapping, three CHECK constraints, the
+per-type live index, the whole-business one-owner index, the hierarchy
+column/FK/CHECK/trigger). Both idempotent, applied repeatedly on QA.
+Data preservation proven (test 21). **Run both, in order, before the
+deploy** — helper `migrate-phase22c.sh` with `verify-phase22c.sql`.
+
+## Tests executed (local QA, final build)
+
+| Command | Result |
+|---|---|
+| `npx tsc --noEmit` | 0 errors |
+| `npx eslint .` | 0 errors, 6 warnings (same six as `main`) |
+| `npx next build` | compiled |
+| `BOOKING_DB_TEST_URL=… npx vitest run` | **1203 passed**, 34 skipped (incl. organization unit 25, DB 26) |
+| `AUTH_SECRET=… node scripts/qa-phase22c.mjs` | **56/56** (HTTP + real browser; incl. 12 code-review regressions) |
+| `node scripts/qa-phase22b.mjs` | 83/83 |
+| Regressions 17 / 19 / 20 / 21 / 22 | 13/13, 21/21, 19/19, 44/44, 68/68 |
+| `node scripts/qa-booking-e2e.mjs` | 22/22 |
+| `qa-venue-console.mjs`, `qa-venue-page.mjs` | clean |
+| `node scripts/qa-security.mjs http://localhost:3101` | 32/32 |
+| Accessibility sweep `qa-phase18.mjs` (now with a delegate role) | 544 page loads (anonymous, owner, admin and the new delegate role × ar/en × 375/768/1024/1440): one axe finding, `scrollable-region-focusable` on a report table at 375px — fixed (report tables are now labelled, focusable regions); re-sweep of delegate (104 loads) and owner (144 loads): **0 flagged** |
+| Migration preservation (test 21) | counts identical across 10 tables; legacy labels mapped; no scopes granted |
+
+Per-test mapping (the owner's 1–26): `docs/testing/ORGANIZATION_ACCEPTANCE_MATRIX.md`.
+
+Two problems this phase's own tests caught and fixed before handoff:
+`loading.tsx` on `/groups` turned "not found" into a 200 soft-404 (the
+22b suite's status checks failed) — removed; and an ungranted delegate
+page delivered its redirect as a streamed 200 (the dashboard's loading
+boundary) — confirmed to render no data, and the test now asserts that.
+
+## Independent code review
+
+Two reviews ran. The first was pointed at the wrong range (the #45
+audit commit); its nine findings were still valid in this branch and
+were fixed (organization owner detection for self-appointment, audit
+values, the rejection reason now stored on the row, image URLs limited
+to this platform's Cloudinary cloud, unchanged images not re-sent, rate
+limit charged per well-formed lookup, a redundant query, the sitemap's
+doc comment). The second, scoped to this phase's diff, found ten — five
+authorization or data-leak bugs, all fixed with regression tests
+(matrix R1–R10): a branch filter that widened a branch-limited view; the
+full business record readable by staff and delegates; spend gated on
+REPORTS instead of FINANCE (and a ranking by spend); STAFF delegates
+seeing login numbers and switching off people who sign in; staff
+reading colleagues' time off; a stale acting cookie locking an owner
+out (now self-heals); the one-owner rule letting a pending invite block
+the real owner; the live stream refusing delegates; a parent unable to
+detach a child; repeated delegation lookups per request (now cached).
+
+## Requirement status
+
+| Requirement | Status |
+|---|---|
+| OWNED / HOSTED / MANAGED with the stated access rules | PASS |
+| Ownership needs verified relationship + authorized role, never automatic | PASS |
+| Hosted venue never reaches records, bookings, medical data, finance, payments, payroll, settings | PASS |
+| Delegation: scopes, branch limits, expiry, immediate revocation, audit, no escalation | PASS |
+| Multiple simultaneous relationships, no duplication | PASS |
+| Registration of every listed type with identity, branding, contact, location, members, directory, URL, QR, dashboard, settings | PASS |
+| Associations: create through a parent, invite, approve/reject, accept with verification, suspend, revoke, remove without deleting, multiple venues and branches, business-controlled hosting | PASS |
+| No cycles or invalid hierarchies | PASS |
+| Directory: profile, listings, search, filters, detail navigation, book-now, opening hours, directions, ar/en, SEO, responsive, empty/error states | PASS |
+| Directory loading state | PARTIAL — no skeleton: a route `loading.tsx` turned 404s into soft-404s and was removed; the page renders from one server query |
+| Public URL + QR + copy/share/download + attribution, separate from booking credentials and gate passes | PASS |
+| Booking steps 1–6 through the existing engine; source tracked without moving ownership | PASS |
+| Booking step 7 — view booking details | PASS (manage link) · check-in QR is Phase 23 |
+| Role dashboards: parent owner, org manager, venue manager, business owner, delegated manager | PASS |
+| Backward-compatible migrations, constraints, transitions | PASS |
+| Required documents | PASS |
+| Production verification | NOT RUN — the migrations and this code are not deployed |
+| External gate integration (Emaar hardware) | BLOCKED (external; does not block any of the above) |
+
+## Known limitations
+
+- Delegated management is in the **web** dashboard. The mobile app's
+  bearer sessions have no acting context; staff app access is unchanged.
+- A delegate's page refusal arrives as a streamed redirect (200 with
+  `NEXT_REDIRECT`) because of the dashboard's existing loading boundary;
+  no data is rendered.
+- A parent organization does not inherit its children's delegations.
+- Different organizations owning different branches of one business is
+  refused by the application under a lock; the database backstop covers
+  whole-business ownership only.
+- Per-booking prices are visible with RESERVATIONS/CUSTOMERS (they are
+  what staff quote); aggregate spend and revenue need FINANCE.
+- Privacy: a `[DECISION]` for counsel on processor terms when a business
+  grants an organization customer access (`PRIVACY_POLICY_DRAFT.md`).
+- Inherited: the sitemap regenerates hourly; `npm audit` reports 5
+  moderate advisories in Sentry's build-time tooling (unreachable from
+  requests); an intermittent booking-contention test timeout under load.
+
+## Release verdict
+
+**PARTIAL.** Every mandatory requirement of this prompt is implemented
+and verified locally, with one deliberate partial (the directory loading
+skeleton). It is not deployed: the two migrations must run on production
+first, then the PR, then a signed-in production check (register → approve
+→ invite as OWNED → accept with a grant → operate → withdraw). Phase 22 is
+complete when that check passes; external gate integration stays a
+separate, externally blocked milestone.

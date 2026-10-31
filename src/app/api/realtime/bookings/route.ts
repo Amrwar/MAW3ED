@@ -1,4 +1,6 @@
-import { requireBusiness } from "@/lib/api";
+import { err } from "@/lib/api";
+import { bookingScope, requireBusinessAccess, type BusinessActor } from "@/lib/business-access";
+import { resolveDelegation } from "@/lib/organizations/delegation";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 
@@ -22,10 +24,20 @@ export async function GET(req: Request) {
   // has stopped owning the business.
   let businessId: string;
   let userId: string;
+  let role: BusinessActor["role"];
+  // What this stream may carry: the whole business for the owner, a
+  // delegate's granted (possibly branch-limited) bookings. Recomputed on
+  // every recheck, so narrowing a grant narrows an open stream.
+  let scope: ReturnType<typeof bookingScope>;
   try {
-    const got = await requireBusiness();
+    const got = await requireBusinessAccess("bookings.read");
+    // The web dashboard's stream: the owner, or a delegate operating the
+    // business. Staff use the app, as before.
+    if (got.actor.role !== "OWNER" && got.actor.role !== "DELEGATE") throw err("Unauthorized", 401);
     businessId = got.business.id;
     userId = got.session.user.id;
+    role = got.actor.role;
+    scope = bookingScope(got.business, got.actor);
   } catch (e) {
     if (e instanceof Response) return new Response("Unauthorized", { status: e.status === 404 ? 401 : e.status });
     throw e;
@@ -44,8 +56,13 @@ export async function GET(req: Request) {
       db.business.findUnique({ where: { id: businessId }, select: { ownerId: true } }),
       db.user.findUnique({ where: { id: userId }, select: { sessionsRevokedAt: true } }),
     ]);
-    if (!biz || biz.ownerId !== userId || !user) return false;
-    return !(user.sessionsRevokedAt && user.sessionsRevokedAt > openedAt);
+    if (!biz || !user) return false;
+    if (user.sessionsRevokedAt && user.sessionsRevokedAt > openedAt) return false;
+    if (role === "OWNER") return biz.ownerId === userId;
+    const delegation = await resolveDelegation(userId, businessId, new Date());
+    if (!delegation?.actions.includes("bookings.read")) return false;
+    scope = bookingScope({ id: businessId }, { role: "DELEGATE", userId, staffMemberId: null, delegation });
+    return true;
   }
   /** Every 10 polls (30 s). */
   const RECHECK_TICKS = 10;
@@ -103,7 +120,7 @@ export async function GET(req: Request) {
 
           const changed = await db.booking.findMany({
             where: {
-              businessId,
+              ...scope,
               updatedAt: { gt: checkFrom },
             },
             select: {

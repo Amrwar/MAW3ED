@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -35,6 +35,16 @@ export default function ActingBanner({
     router.push("/org-admin");
     router.refresh();
   }
+
+  // An acting cookie that no longer grants anything (withdrawn, expired,
+  // or never valid) is cleared as soon as it is noticed, so it cannot keep
+  // the proxy turning the account away from its own pages.
+  useEffect(() => {
+    if (mode !== "ended") return;
+    void fetch("/api/organizations/acting", { method: "DELETE" })
+      .catch(() => null)
+      .then(() => router.refresh());
+  }, [mode, router]);
 
   return (
     <div

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { can, resolveBusinessAccess, type BusinessAction } from "@/lib/business-access";
-import { readActingBusinessId, resolveDelegation } from "@/lib/organizations/delegation";
+import { isActingElsewhere } from "@/lib/organizations/delegation";
 
 /**
  * The business behind the current dashboard page.
@@ -17,8 +17,7 @@ export async function requireBusinessPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   // Owner-only pages are off while operating another business.
-  const acting = await readActingBusinessId();
-  if (acting && (await resolveDelegation(session.user.id, acting))) redirect("/dashboard");
+  if (await isActingElsewhere(session.user.id)) redirect("/dashboard");
 
   const tokenBusinessId = session.user.businessId;
 

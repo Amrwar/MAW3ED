@@ -210,22 +210,41 @@ describe.skipIf(!local)("organization relationships and delegation on a real dat
     expect((await del.resolveDelegation(group.owner.id, abc.business.id))?.scopes).toEqual(["REPORTS", "FINANCE"]);
     expect((await del.resolveDelegation(ops.owner.id, abc.business.id))?.scopes).toEqual(["RESERVATIONS"]);
     expect(await del.resolveDelegation(mall.owner.id, abc.business.id)).toBeNull();
-    // A second owner is refused.
+    // A second owner: established ownership refuses another organization's
+    // ownership invitation outright…
     const rival = await organization("abc-rival", "BUSINESS_GROUP");
     await expect(
       assoc.inviteBusiness({ organizationId: rival.org.id, byUserId: rival.owner.id, authority: "OWNER", businessSlug: abc.business.slug, branchId: null, relation: "OWNED", note: null }),
     ).rejects.toMatchObject({ code: "already-owned" });
   });
 
-  it("one owner even under concurrency (advisory lock + unique index)", async () => {
+  it("one owner: a pending invitation never blocks; acceptance decides, even under concurrency", async () => {
     const x = await organization("race-x", "BUSINESS_GROUP");
     const y = await organization("race-y", "BUSINESS_GROUP");
     const target = await business("race-target");
-    const tries = await Promise.allSettled(
+    // Both organizations may invite: an invitation is not ownership, so a
+    // rogue invite cannot lock the real owner out.
+    const invites = await Promise.all(
       [x, y].map((o) => assoc.inviteBusiness({ organizationId: o.org.id, byUserId: o.owner.id, authority: "OWNER", businessSlug: target.business.slug, branchId: null, relation: "OWNED", note: null })),
     );
-    expect(tries.filter((r) => r.status === "fulfilled")).toHaveLength(1);
-    expect(await db.organizationBusiness.count({ where: { businessId: target.business.id, relation: "OWNED" } })).toBe(1);
+    // The owner accepts both at once: exactly one ownership is established.
+    const accepted = await Promise.allSettled(
+      invites.map((inv) => assoc.respondAsBusiness({ businessId: target.business.id, userId: target.owner.id, associationId: inv.id, action: "accept", scopes: [] })),
+    );
+    expect(accepted.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(accepted.find((r) => r.status === "rejected")).toMatchObject({ reason: { code: "already-owned" } });
+    expect(await db.organizationBusiness.count({ where: { businessId: target.business.id, relation: "OWNED", status: "APPROVED" } })).toBe(1);
+  });
+
+  it("one organization may own several branches of a business", async () => {
+    const group = await organization("branch-owner", "BUSINESS_GROUP");
+    const chain = await business("owned-branches", { branches: ["فرع ١", "فرع ٢"] });
+    for (const br of chain.business.branches) {
+      const inv = await assoc.inviteBusiness({ organizationId: group.org.id, byUserId: group.owner.id, authority: "OWNER", businessSlug: chain.business.slug, branchId: br.id, relation: "OWNED", note: null });
+      await assoc.respondAsBusiness({ businessId: chain.business.id, userId: chain.owner.id, associationId: inv.id, action: "accept", scopes: ["RESERVATIONS"] });
+    }
+    expect(await db.organizationBusiness.count({ where: { businessId: chain.business.id, relation: "OWNED", status: "APPROVED" } })).toBe(2);
+    expect((await del.resolveDelegation(group.owner.id, chain.business.id))?.branchIds?.sort()).toEqual(chain.business.branches.map((b) => b.id).sort());
   });
 
   it("6/12: branch-limited management sees only its branch, and removal keeps every record", async () => {

@@ -124,13 +124,7 @@ async function createAssociation(data: {
   try {
     return await db.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`org-business|${data.businessId}`}))`;
-      if (data.relation === "OWNED") {
-        const owned = await tx.organizationBusiness.findFirst({
-          where: { businessId: data.businessId, relation: "OWNED", status: { in: [...LIVE] } },
-          select: { organizationId: true },
-        });
-        if (owned) throw new AssociationFailure(owned.organizationId === data.organizationId ? "already-linked" : "already-owned");
-      }
+      if (data.relation === "OWNED") await refuseOtherOwner(tx, data.businessId, data.organizationId);
       const overlapping = await tx.organizationBusiness.count({
         where: {
           organizationId: data.organizationId,
@@ -145,6 +139,41 @@ async function createAssociation(data: {
     });
   } catch (e) {
     if (isUnique(e)) throw new AssociationFailure("already-linked");
+    throw e;
+  }
+}
+
+/**
+ * A business has one owning organization: refused when ANOTHER
+ * organization already holds an approved (or paused) ownership. Pending
+ * invitations and requests never count — so nobody can block the real
+ * owner by inviting first. Called under the per-business lock when an
+ * ownership is created, accepted or approved.
+ */
+async function refuseOtherOwner(tx: Prisma.TransactionClient, businessId: string, organizationId: string) {
+  const other = await tx.organizationBusiness.findFirst({
+    where: { businessId, relation: "OWNED", status: { in: ["APPROVED", "SUSPENDED"] }, organizationId: { not: organizationId } },
+    select: { id: true },
+  });
+  if (other) throw new AssociationFailure("already-owned");
+}
+
+/**
+ * Runs a state change on one association under the per-business lock,
+ * re-checking the one-owner rule first when the change establishes an
+ * ownership (an invitation accepted, a request approved).
+ */
+async function underBusinessLock<T>(associationId: string, establishes: boolean, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  try {
+    return await db.$transaction(async (tx) => {
+      const row = await tx.organizationBusiness.findUnique({ where: { id: associationId }, select: { businessId: true, organizationId: true, relation: true } });
+      if (!row) throw new AssociationFailure("not-found");
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`org-business|${row.businessId}`}))`;
+      if (establishes && row.relation === "OWNED") await refuseOtherOwner(tx, row.businessId, row.organizationId);
+      return fn(tx);
+    });
+  } catch (e) {
+    if (isUnique(e)) throw new AssociationFailure("already-owned");
     throw e;
   }
 }
@@ -253,14 +282,16 @@ export async function decideAssociation(input: {
         : input.action === "resume"
           ? { status: "APPROVED" as const, suspendedAt: null, suspendedById: null }
           : { status: ORG_TO[input.action], decidedById: input.byUserId, decidedAt: new Date(), note: input.note ?? undefined };
-  const { count } = await db.organizationBusiness.updateMany({
-    where: {
-      id: input.associationId,
-      organizationId: input.organizationId,
-      ...(input.action === "organize" ? { status: { in: [...LIVE] } } : { status: { in: ORG_FROM[input.action] } }),
-    },
-    data: { ...organize, ...transition },
-  });
+  const { count } = await underBusinessLock(input.associationId, input.action === "approve" || input.action === "resume", (tx) =>
+    tx.organizationBusiness.updateMany({
+      where: {
+        id: input.associationId,
+        organizationId: input.organizationId,
+        ...(input.action === "organize" ? { status: { in: [...LIVE] } } : { status: { in: ORG_FROM[input.action] } }),
+      },
+      data: { ...organize, ...transition },
+    }),
+  );
   if (count === 0) throw new AssociationFailure("invalid-transition");
   await audit(input.byUserId, input.authority, `org.business.${input.action}`, input.organizationId, `قرار على ارتباط نشاط: ${input.action}`, { associationId: input.associationId });
 }
@@ -361,10 +392,12 @@ export async function respondAsBusiness(input: {
             : input.action === "resume"
               ? { status: "APPROVED" as const, suspendedAt: null, suspendedById: null }
               : { scopes: scopes!, expiresAt: scopes!.length ? (input.expiresAt ?? null) : null };
-  const { count } = await db.organizationBusiness.updateMany({
-    where: { id: input.associationId, businessId: input.businessId, status: { in: BUSINESS_FROM[input.action] } },
-    data,
-  });
+  const { count } = await underBusinessLock(input.associationId, input.action === "accept" || input.action === "resume", (tx) =>
+    tx.organizationBusiness.updateMany({
+      where: { id: input.associationId, businessId: input.businessId, status: { in: BUSINESS_FROM[input.action] } },
+      data,
+    }),
+  );
   if (count === 0) throw new AssociationFailure("invalid-transition");
   await audit(input.userId, "BUSINESS_OWNER", `org.business.${input.action}`, row.organizationId, BUSINESS_SUMMARY[input.action], {
     associationId: input.associationId,
@@ -446,7 +479,8 @@ export async function acceptEmailInvite(
   });
   if (claimed.count === 0) throw new AssociationFailure("invite-not-found");
   // Creating the business under this invitation, after being shown what
-  // it asks to operate, is the new owner's consent to exactly that.
+  // it asks to operate, is the new owner's consent to exactly that. (A
+  // brand-new business has no other owner, so the one-owner rule holds.)
   const relation = requireRelationship(invite.relation);
   const scopes = requireScopes(relation, null, invite.requestedScopes);
   await tx.organizationBusiness.create({

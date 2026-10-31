@@ -24,6 +24,13 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const { Client } = require("pg");
 const { chromium } = require("playwright");
+const { SignJWT } = await import("jose");
+// A staff member's mobile bearer token, minted with the server's secret
+// (checks needing it report NOT RUN without AUTH_SECRET).
+const SECRET = process.env.AUTH_SECRET ? new TextEncoder().encode(process.env.AUTH_SECRET) : null;
+const bearer = (userId, businessId) =>
+  new SignJWT({ businessId, adminRole: null }).setProtectedHeader({ alg: "HS256" }).setSubject(userId)
+    .setIssuer("maw3ed").setAudience("maw3ed-mobile-access").setIssuedAt().setExpirationTime("30m").sign(SECRET);
 
 const args = process.argv.slice(2);
 const B = args.find((a) => /^https?:/.test(a)) ?? "http://localhost:3101";
@@ -86,7 +93,7 @@ const json = async (r) => r.json().catch(() => ({}));
 
 const tag = `qa22c-${Date.now()}`;
 const PASSWORD = "QaPassword123!";
-const created = { users: [], orgs: [], services: [] };
+const created = { users: [], orgs: [], services: [], staff: [] };
 
 try {
   const admin = await login("admin@qa.test");
@@ -192,7 +199,7 @@ try {
   check("9: not even the owner can hand a hosting mall finance (422)", forceGrant.status === 422, `status ${forceGrant.status}`);
   check("8/9: the mall's owner cannot operate the hosted salon (404)", (await send(founder, "/api/organizations/acting", "POST", { businessId: salon.id })).status === 404);
   const twoOwners = await send(founder, `/api/organizations/${mall.id}/businesses`, "POST", { businessSlug: salon.slug, relation: "OWNED" });
-  check("a second owning organization is refused (409 already-owned)", twoOwners.status === 409, `status ${twoOwners.status}`);
+  check("a second owning organization is refused while an ownership stands (409 already-owned)", twoOwners.status === 409 && (await json(twoOwners)).error, `status ${twoOwners.status}`);
   const managedFinance = await send(founder, `/api/organizations/${mall.id}/businesses`, "POST", { businessSlug: rivalSalon.slug, relation: "MANAGED", requestedScopes: ["FINANCE"] });
   check("10: a managing company cannot be given finance (422)", managedFinance.status === 422, `status ${managedFinance.status}`);
 
@@ -210,6 +217,70 @@ try {
   /* ── 22: audit ── */
   const audit = (await pg.query(`SELECT DISTINCT action FROM "AuditLog" WHERE "resourceType"='Organization' AND "resourceId"=$1`, [group.id])).rows.map((r) => r.action);
   check("22: relationship changes and operating sessions are audited", ["org.business.invite", "org.business.accept", "org.business.grant", "org.operate.start", "org.parent.set"].every((a) => audit.includes(a)), audit.join(","));
+
+  /* ── Code-review regressions (2026-10-31): each failed on the pre-fix code ── */
+  // An operator with two organizations: one managing branch A's reservations
+  // only, one holding the customer book and reports (no finance).
+  const opEmail = `${tag}-operator@example.test`;
+  await fetch(`${B}/api/auth/signup`, { method: "POST", headers: { "Content-Type": "application/json", Origin: B }, body: JSON.stringify({ name: "QA Operator", email: opEmail, password: PASSWORD }) });
+  const opId = (await pg.query(`SELECT id FROM "User" WHERE email=$1`, [opEmail])).rows[0]?.id;
+  created.users.push(opId);
+  const [brA, brB] = (await pg.query(`SELECT id FROM "Branch" WHERE "businessId"=$1 AND "isActive" ORDER BY "sortOrder" LIMIT 2`, [salon.id])).rows.map((r) => r.id);
+  for (const [oid, branchId, scopes] of [[`${tag}-ops1`, brA, "{RESERVATIONS}"], [`${tag}-ops2`, null, "{CUSTOMERS,REPORTS}"]]) {
+    await pg.query(`INSERT INTO "VenueOrganization"(id,slug,"nameAr",kind,status,"isPublished","updatedAt") VALUES ($1,$1,'مشغّل (بيانات اختبار)','BUSINESS_GROUP','APPROVED',false,now())`, [oid]);
+    created.orgs.push(oid);
+    await pg.query(`INSERT INTO "VenueRole"(id,"userId",kind,"organizationId","createdAt") VALUES ($1,$2,'ORGANIZATION_ADMIN',$3,now())`, [`${oid}-role`, opId, oid]);
+    await pg.query(`INSERT INTO "OrganizationBusiness"(id,"organizationId","businessId","branchId",relation,status,"initiatedById",scopes,"updatedAt") VALUES ($1,$2,$3,$4,'MANAGED','APPROVED',$5,$6,now())`, [`${oid}-a`, oid, salon.id, branchId, opId, scopes]);
+  }
+  const op = await login(opEmail);
+  await send(op, "/api/organizations/acting", "POST", { businessId: salon.id });
+  const bkScope = async (q) => {
+    const j = await json(await call(op, `/api/business/bookings?limit=100${q}`));
+    const ids = (j.bookings ?? []).map((b) => b.id);
+    return ids.length ? (await pg.query(`SELECT DISTINCT "branchId" FROM "Booking" WHERE id = ANY($1)`, [ids])).rows.map((r) => r.branchId) : [];
+  };
+  const own = await bkScope("");
+  check("R1: a branch-limited delegate sees only its branch", own.every((b) => b === brA), JSON.stringify(own));
+  check("R1: …and ?branchId= of another branch widens nothing", (await bkScope(`&branchId=${brB}`)).length === 0);
+  const custs = await json(await call(op, "/api/business/customers?limit=50"));
+  check("R3: CUSTOMERS+REPORTS without FINANCE sees no spend", (custs.customers ?? custs.items ?? []).length > 0 && (custs.customers ?? custs.items).every((c) => c.totalSpend === null), JSON.stringify((custs.customers ?? custs.items ?? []).slice(0, 2).map((c) => c.totalSpend)));
+  const custHtml = await (await call(op, "/dashboard/customers?sort=spend")).text();
+  check("R3: …the customers page sends no spend figures to the browser", !/"spend":[1-9]/.test(custHtml));
+  check("R2: the full business record is not readable by a delegate", [404, 409].includes((await call(op, "/api/business")).status));
+  await send(op, "/api/organizations/acting", "DELETE");
+
+  // STAFF delegate: no login details, no sign-in control.
+  await send(owner, `/api/business/organizations/${ownedId}`, "PATCH", { action: "grant", scopes: ["RESERVATIONS", "STAFF", "PROFILE"] });
+  rival.cookies.delete("maw3ed-acting");
+  await send(rival, "/api/organizations/acting", "POST", { businessId: salon.id });
+  const tmp = (await pg.query(`INSERT INTO "StaffMember"(id,"businessId","nameAr",access,"loginPhone","isActive","updatedAt") VALUES ($1,$2,'موظف بدخول (اختبار)','PROVIDER','01000099991',true,now()) RETURNING id`, [`${tag}-staff`, salon.id])).rows[0].id;
+  created.staff.push(tmp);
+  const edited = await send(rival, `/api/business/staff/${tmp}`, "PUT", { role: "تجربة" });
+  const editedBody = await json(edited);
+  check("R4: a STAFF delegate's edit reply carries no login number or linked account", edited.status === 200 && !("loginPhone" in editedBody) && !("userId" in editedBody), JSON.stringify(Object.keys(editedBody)));
+  check("R4: …cannot switch off someone who signs in (403)", (await send(rival, `/api/business/staff/${tmp}`, "PUT", { isActive: false })).status === 403);
+  check("R4: …cannot delete someone who signs in (403)", (await send(rival, `/api/business/staff/${tmp}`, "DELETE")).status === 403);
+  const prof = (await pg.query(`SELECT "nameAr" FROM "Business" WHERE id=$1`, [salon.id])).rows[0];
+  const put = await send(rival, "/api/business", "PUT", { nameAr: prof.nameAr });
+  const putBody = await json(put);
+  check("R2: a PROFILE delegate's save reply carries only the profile", put.status === 200 && !["plan", "notificationEmail", "notificationPhone", "ownerId", "depositPercent", "subscriptionStatus"].some((k) => k in putBody), `${put.status} ${Object.keys(putBody).join(",").slice(0, 120)}`);
+  check("R8: the live bookings stream serves a delegate (no endless 409 reconnects)", await (async () => {
+    const ac = new AbortController();
+    const r = await fetch(`${B}/api/realtime/bookings`, { headers: { Cookie: rival.header() }, signal: ac.signal });
+    const ok = r.status === 200 && (r.headers.get("content-type") ?? "").includes("text/event-stream");
+    ac.abort();
+    return ok;
+  })());
+  await send(rival, "/api/organizations/acting", "DELETE");
+
+  // R5: staff time off is not every staff member's to read.
+  if (SECRET) {
+    const mgr = (await pg.query(`SELECT "userId", "businessId" FROM "StaffMember" WHERE access='MANAGER' AND "userId" IS NOT NULL LIMIT 1`)).rows[0];
+    if (mgr) {
+      const r = await fetch(`${B}/api/business/time-blocks`, { headers: { Authorization: `Bearer ${await bearer(mgr.userId, mgr.businessId)}` } });
+      check("R5: a staff manager's token cannot list colleagues' time off (403)", r.status === 403, `status ${r.status}`);
+    } else check("R5: staff time-off check", false, "no MANAGER staff login in the fixtures");
+  } else console.log("NOT RUN  R5 — set AUTH_SECRET to the server's");
 
   /* ── 20: the acting banner and exit, in a real browser ── */
   await send(owner, `/api/business/organizations/${ownedId}`, "PATCH", { action: "grant", scopes: ["RESERVATIONS"] });
@@ -233,6 +304,19 @@ try {
       check(`…at ${w}px "stop managing" ends it and returns to the console`, !cookies.some((c) => c.name === "maw3ed-acting" && c.value));
       await ctx.close();
     }
+    // R6: a stale or forged acting cookie heals itself instead of locking
+    // the owner out of their own pages.
+    const octx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await octx.addCookies([...owner.cookies].map(([name, value]) => ({ name, value, url: B })));
+    await octx.addCookies([{ name: "maw3ed-acting", value: "forgedcookievalue123", url: B }]);
+    const op2 = await octx.newPage();
+    await op2.goto(`${B}/dashboard/billing`, { waitUntil: "networkidle" });
+    await op2.waitForFunction(() => !document.cookie.includes("maw3ed-acting=forged"), null, { timeout: 15000 }).catch(() => {});
+    await op2.waitForTimeout(1500);
+    const healed = !(await octx.cookies()).some((c) => c.name === "maw3ed-acting" && c.value);
+    await op2.goto(`${B}/dashboard/billing`, { waitUntil: "networkidle" });
+    check("R6: a forged acting cookie is cleared and the owner reaches their own billing page", healed && /\/dashboard\/billing$/.test(op2.url()), op2.url());
+    await octx.close();
   } finally {
     await browser.close();
   }
@@ -242,6 +326,7 @@ try {
   check("script ran to the end", false, String(e?.stack ?? e));
 } finally {
   if (created.services.length) await pg.query(`DELETE FROM "Service" WHERE id = ANY($1)`, [created.services]);
+  if (created.staff.length) await pg.query(`DELETE FROM "StaffMember" WHERE id = ANY($1)`, [created.staff]);
   const orgs = created.orgs.filter(Boolean);
   if (orgs.length) {
     await pg.query(`UPDATE "VenueOrganization" SET "parentId"=NULL WHERE id = ANY($1)`, [orgs]);
