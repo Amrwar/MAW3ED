@@ -19,6 +19,7 @@ export default function PerformanceView({
   sampleSize,
   byStaff,
   byService,
+  showMoney = true,
 }: {
   completionRate: number | null;
   cancellationRate: number | null;
@@ -26,6 +27,8 @@ export default function PerformanceView({
   sampleSize: number;
   byStaff: { id: string; name: string; nameEn?: string | null; completed: number; noShows: number; revenue: number }[];
   byService: { name: string; nameEn?: string | null; completed: number; cancelled: number }[];
+  /** False for a delegate without FINANCE: no revenue column. */
+  showMoney?: boolean;
 }) {
   const { lang } = useLanguage();
   const ar = lang === "ar";
@@ -59,13 +62,13 @@ export default function PerformanceView({
           ar ? "الاسم" : "Name",
           ar ? "تمّت" : "Completed",
           ar ? "غياب" : "No-shows",
-          ar ? "إيراد" : "Revenue",
+          ...(showMoney ? [ar ? "إيراد" : "Revenue"] : []),
         ]}
         rows={byStaff.map((s) => [
           !ar && s.nameEn ? s.nameEn : s.name,
           num(s.completed, lang),
           num(s.noShows, lang),
-          money(s.revenue, lang),
+          ...(showMoney ? [money(s.revenue, lang)] : []),
         ])}
         empty={
           ar

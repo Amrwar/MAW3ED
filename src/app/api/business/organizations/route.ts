@@ -1,8 +1,8 @@
-import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { requestToJoin } from "@/lib/organizations/associations";
 import { orgHandle, readJson } from "@/lib/organizations/route";
+import { joinRequestSchema } from "@/lib/organizations/rules";
 
 /**
  * GET  /api/business/organizations — for the owner: organizations that
@@ -14,7 +14,7 @@ import { orgHandle, readJson } from "@/lib/organizations/route";
  */
 export async function GET() {
   return orgHandle("business organizations GET", async () => {
-    const { business } = await requireBusiness();
+    const { session, business } = await requireBusiness();
     const [organizations, branches, associations] = await Promise.all([
       db.organization.findMany({
         where: { status: "APPROVED" },
@@ -31,6 +31,7 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
         select: {
           id: true, status: true, relation: true, note: true, createdAt: true, decidedAt: true,
+          requestedScopes: true, scopes: true, expiresAt: true, suspendedAt: true, suspendedById: true,
           branch: { select: { nameAr: true, nameEn: true } },
           organization: { select: { id: true, slug: true, kind: true, nameAr: true, nameEn: true, isPublished: true, status: true } },
         },
@@ -39,26 +40,33 @@ export async function GET() {
     return ok({
       organizations,
       branches,
-      associations: associations.map((a) => ({ ...a, createdAt: a.createdAt.toISOString(), decidedAt: a.decidedAt?.toISOString() ?? null })),
+      associations: associations.map(({ suspendedById, ...a }) => ({
+        ...a,
+        createdAt: a.createdAt.toISOString(),
+        decidedAt: a.decidedAt?.toISOString() ?? null,
+        expiresAt: a.expiresAt?.toISOString() ?? null,
+        suspendedAt: a.suspendedAt?.toISOString() ?? null,
+        // Who paused it decides who may resume it; the owner needs to know which.
+        suspendedByBusiness: !!suspendedById && suspendedById === session.user.id,
+      })),
     });
   });
 }
 
-const schema = z.object({
-  organizationId: z.string().min(1),
-  branchId: z.string().min(1).nullable().optional(),
-});
 
 export async function POST(req: Request) {
   return orgHandle("business organizations POST", async () => {
     const { session, business } = await requireBusiness();
-    const parsed = schema.safeParse(await readJson(req));
-    if (!parsed.success) return err("بيانات غير صالحة", 422);
+    const parsed = joinRequestSchema.safeParse(await readJson(req));
+    if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "بيانات غير صالحة", 422);
     const row = await requestToJoin({
       businessId: business.id,
       userId: session.user.id,
       organizationId: parsed.data.organizationId,
       branchId: parsed.data.branchId ?? null,
+      relation: parsed.data.relation,
+      scopes: parsed.data.scopes,
+      expiresAt: parsed.data.expiresAt ?? null,
     });
     return ok({ association: row }, 201);
   });

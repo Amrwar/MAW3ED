@@ -75,10 +75,17 @@ export interface NavContext {
   needsSetup?: boolean;
   /** Holds a venue role: a way into the venue console. */
   hasVenueRoles?: boolean;
+  /**
+   * Set while operating a business for an organization: the actions the
+   * granted scopes allow. The nav then holds only what those open —
+   * an entry for a page the delegate cannot use is a dead end.
+   */
+  delegatePermissions?: readonly string[] | null;
 }
 
 export function buildNav(ctx: NavContext): NavSection[] {
   const { labels: s, pendingCount } = ctx;
+  if (ctx.delegatePermissions) return buildDelegateNav(ctx, ctx.delegatePermissions);
 
   const operate: NavItem[] = [
     { href: "/dashboard", label: s.home, icon: LayoutDashboard },
@@ -158,6 +165,67 @@ export function buildNav(ctx: NavContext): NavSection[] {
     { title: null, items: operate },
     { title: s.groupSetUp, items: setUp },
     { title: s.groupGrow, items: grow },
+    { title: s.groupAccount, items: account },
+  ];
+}
+
+/** The navigation of someone operating a business for an organization. */
+function buildDelegateNav(ctx: NavContext, perms: readonly string[]): NavSection[] {
+  const { labels: s, pendingCount } = ctx;
+  const has = (a: string) => perms.includes(a);
+
+  const operate: NavItem[] = [{ href: "/dashboard", label: s.home, icon: LayoutDashboard }];
+  if (has("bookings.read")) {
+    operate.push({
+      href: "/dashboard/bookings",
+      label: s.bookings,
+      icon: CalendarCheck,
+      badge: pendingCount || null,
+      children: [
+        { href: "/dashboard/bookings/today", label: s.today, icon: Sun },
+        { href: "/dashboard/bookings/upcoming", label: s.upcoming, icon: CalendarClock },
+        { href: "/dashboard/calendar", label: s.calendar, icon: CalendarDays },
+      ],
+    });
+  }
+  if (has("customers.read")) operate.push({ href: "/dashboard/customers", label: s.customers, icon: Users });
+
+  const setUp: NavItem[] = [];
+  if (has("services.manage")) setUp.push({ href: "/dashboard/services", label: s.services, icon: Store });
+  if (has("staff.manage")) setUp.push({ href: "/dashboard/staff", label: s.staff, icon: Users2 });
+  if (has("profile.manage") || has("schedule.manage")) {
+    setUp.push({
+      href: has("profile.manage") ? "/dashboard/settings" : "/dashboard/settings?tab=availability",
+      label: s.settings,
+      icon: Settings,
+    });
+  }
+
+  const grow: NavItem[] = [];
+  if (has("reports.read")) {
+    grow.push({
+      href: "/dashboard/reports",
+      label: s.reports,
+      icon: BarChart3,
+      children: [
+        ...(has("finance.read") ? [{ href: "/dashboard/reports/revenue", label: s.revenue, icon: BarChart3 }] : []),
+        { href: "/dashboard/reports/bookings", label: s.bookings, icon: CalendarCheck },
+        ...(has("customers.read") ? [{ href: "/dashboard/reports/customers", label: s.customers, icon: Users }] : []),
+        { href: "/dashboard/reports/performance", label: s.performance, icon: Megaphone },
+      ],
+    });
+  }
+
+  // The way back to the organization this access comes through.
+  const account: NavItem[] = [
+    { href: "/org-admin", label: s.venueConsole, icon: Landmark },
+    { href: "/help", label: s.help, icon: LifeBuoy },
+  ];
+
+  return [
+    { title: null, items: operate },
+    ...(setUp.length ? [{ title: s.groupSetUp, items: setUp }] : []),
+    ...(grow.length ? [{ title: s.groupGrow, items: grow }] : []),
     { title: s.groupAccount, items: account },
   ];
 }

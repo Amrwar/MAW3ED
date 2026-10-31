@@ -41,6 +41,8 @@ interface DashboardSidebarProps {
   needsSetup?:   boolean;
   /** Holds a venue role: shows the venue console in the nav. */
   hasVenueRoles?: boolean;
+  /** Operating for an organization: what the granted scopes allow. */
+  delegatePermissions?: readonly string[] | null;
 }
 
 // ─── Nav item ─────────────────────────────────────────────────────────────────
@@ -155,6 +157,7 @@ export default function DashboardSidebar({
   isAdmin      = false,
   needsSetup   = false,
   hasVenueRoles = false,
+  delegatePermissions = null,
 }: DashboardSidebarProps) {
   const pathname  = usePathname();
   const { t }     = useLanguage();
@@ -170,7 +173,10 @@ export default function DashboardSidebar({
     isAdmin,
     needsSetup,
     hasVenueRoles,
+    delegatePermissions,
   });
+  // The plan is the owner's subscription, not a delegate's business.
+  const isDelegate = Boolean(delegatePermissions);
 
   return (
     <aside className="fixed inset-y-0 start-0 z-40 hidden w-64 flex-col bg-[var(--color-night)] md:flex">
@@ -199,9 +205,11 @@ export default function DashboardSidebar({
             )}
           </div>
 
-          <span className={cn("shrink-0 rounded-full px-2 py-1 text-[0.625rem] font-bold", planStyle.cls)}>
-            {t.dashboard.sidebar.planBadge[plan] ?? planStyle.label}
-          </span>
+          {!isDelegate && (
+            <span className={cn("shrink-0 rounded-full px-2 py-1 text-[0.625rem] font-bold", planStyle.cls)}>
+              {t.dashboard.sidebar.planBadge[plan] ?? planStyle.label}
+            </span>
+          )}
         </div>
       </div>
 
@@ -217,7 +225,7 @@ export default function DashboardSidebar({
 
       {/* ── Bottom ── */}
       <div className="shrink-0 border-t border-[var(--color-night-line)] px-3 py-4">
-        {plan === "FREE" && (
+        {plan === "FREE" && !isDelegate && (
           <Link
             href="/dashboard/settings?tab=subscription"
             className="mb-3 flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--color-night-line)] bg-[var(--color-night-2)] p-3.5 transition-colors hover:border-[var(--color-jade)]"

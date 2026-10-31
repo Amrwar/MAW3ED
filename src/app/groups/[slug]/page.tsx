@@ -17,6 +17,8 @@ import { OWN_HOSTS } from "@/lib/attribution/hosts";
 import { loadPublicOrganization, pageDirectory, orgDirectoryCategories, directorySections } from "@/lib/organizations/public";
 import { orgSeo, orgKindLabel } from "@/lib/organizations/seo";
 import { directionsUrl } from "@/lib/venues/rules";
+import { cairoDateString } from "@/lib/bookings/instants";
+import { todaysHours } from "@/lib/organizations/hours";
 import SharePage from "@/components/shared/SharePage";
 import { kindLabel } from "@/lib/venues/seo";
 
@@ -108,7 +110,7 @@ export default async function GroupPage({ params, searchParams }: Props) {
             )}
             <div className="flex flex-wrap gap-2">
               {org.address && (
-                <a href={directionsUrl({ latitude: null, longitude: null, label: `${org.nameAr} ${org.city?.nameAr ?? ""}` })} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm gap-1.5">
+                <a href={directionsUrl({ latitude: null, longitude: null, label: [org.address, org.city?.nameAr].filter(Boolean).join("، ") })} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm gap-1.5">
                   <Navigation size={14} aria-hidden="true" />
                   {t("الاتجاهات", "Directions")}
                 </a>
@@ -147,25 +149,66 @@ export default async function GroupPage({ params, searchParams }: Props) {
             </div>
           </header>
 
+          {org.parent && (
+            <p className="m-0 text-sm text-[var(--color-subtle)]">
+              {t("تابعة لـ ", "Part of ")}
+              <Link href={`/groups/${org.parent.slug}`} className="font-bold text-[var(--color-jade)] underline">{nm(org.parent)}</Link>
+            </p>
+          )}
+
+          {org.children.length > 0 && (
+            <section aria-labelledby="sub-h" className="space-y-3">
+              <h2 id="sub-h" className="m-0 text-xl font-extrabold">{t("الجهات التابعة", "Organizations within")}</h2>
+              <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+                {org.children.map((c) => (
+                  <li key={c.slug}>
+                    <Link href={`/groups/${c.slug}`} className="btn btn-outline btn-sm">{nm(c)}</Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {org.venues.length > 0 && (
             <section aria-labelledby="loc-h" className="space-y-3">
               <h2 id="loc-h" className="m-0 text-xl font-extrabold">{t("المواقع", "Locations")}</h2>
               <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2">
-                {org.venues.map((v) => (
-                  <li key={v.slug}>
-                    <Link href={`/venues/${v.slug}`} className="card block h-full p-4 hover:border-[var(--color-jade)]">
+                {org.venues.map((v) => {
+                  const today = todaysHours(v.hours, cairoDateString());
+                  // Directions only from coordinates the venue actually has;
+                  // a guessed address search would send people astray.
+                  const hasLocation = v.latitude != null && v.longitude != null;
+                  return (
+                    <li key={v.slug} className="card flex h-full flex-col gap-1 p-4">
                       <p className="m-0 flex items-center gap-2 text-xs text-[var(--color-subtle)]">
                         <MapPin size={13} aria-hidden="true" />
                         {kindLabel(v.kind, lang)} · {nm(v.city)}
                       </p>
-                      <p className="m-0 mt-1 font-bold text-[var(--color-ink)]">{nm(v)}</p>
-                      <p className="m-0 mt-0.5 text-xs text-[var(--color-subtle)]">
+                      <Link href={`/venues/${v.slug}`} className="font-bold text-[var(--color-ink)] hover:text-[var(--color-jade)]">{nm(v)}</Link>
+                      <p className="m-0 text-xs text-[var(--color-subtle)]">
                         {v._count.memberships} {t("مكان", "places")}
                         {v.address ? ` · ${v.address}` : ""}
                       </p>
-                    </Link>
-                  </li>
-                ))}
+                      {today && (
+                        <p className="m-0 text-xs">
+                          <span className="font-bold">{t("النهارده: ", "Today: ")}</span>
+                          {today.closed ? t("مقفول", "Closed") : <span dir="ltr" className="num">{today.open}–{today.close}</span>}
+                        </p>
+                      )}
+                      {hasLocation && (
+                        <a
+                          href={directionsUrl({ latitude: v.latitude, longitude: v.longitude, label: nm(v) })}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 inline-flex w-fit items-center gap-1.5 text-xs font-bold text-[var(--color-jade)] underline"
+                        >
+                          <Navigation size={13} aria-hidden="true" />
+                          {t("الاتجاهات", "Directions")}
+                        </a>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           )}

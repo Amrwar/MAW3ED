@@ -10,11 +10,19 @@ import { cairoWallDay } from "@/lib/bookings/instants";
 import { type RecentBooking } from "@/features/dashboard/RecentBookings";
 import { type DashboardBooking } from "@/features/dashboard/bookings/types";
 import { loadReadiness } from "@/lib/business/readiness-load";
+import { actingAccess } from "@/lib/business-access";
+import DelegateHome from "./_components/DelegateHome";
 
 export const metadata: Metadata = { title: "لوحة التحكم" };
 
 export default async function DashboardPage() {
   const session = await auth();
+  // Operating a business for an organization: the delegate's own home,
+  // whether or not this account also owns a business.
+  if (session?.user?.id) {
+    const acting = await actingAccess(session.user.id);
+    if (acting) return <DelegateHome business={acting.business} actor={acting.actor} />;
+  }
   if (!session?.user?.businessId) redirect("/onboarding");
 
   const business = await db.business.findUnique({

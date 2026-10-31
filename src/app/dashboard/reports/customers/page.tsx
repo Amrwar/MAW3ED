@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { requireBusinessPage } from "@/lib/dashboard/guard";
+import { redirect } from "next/navigation";
+import { can } from "@/lib/business-access";
+import { requireDashboardAccess } from "@/lib/dashboard/guard";
 import { getCustomersReport, lastDays } from "@/lib/dashboard/reports";
 import ReportShell from "../_components/ReportShell";
 import CustomersView from "./CustomersView";
@@ -11,7 +13,11 @@ export default async function CustomersReportPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { business } = await requireBusinessPage();
+  // This report names customers: REPORTS alone is not enough, it also
+  // takes CUSTOMERS; and what they spent takes FINANCE.
+  const { business, actor } = await requireDashboardAccess("reports.read");
+  if (!can(actor, "customers.read")) redirect("/dashboard/reports/bookings");
+  const showMoney = can(actor, "finance.read");
   const sp = await searchParams;
   const days = Number(Array.isArray(sp.days) ? sp.days[0] : (sp.days ?? 30)) || 30;
 
@@ -25,7 +31,9 @@ export default async function CustomersReportPage({
         returningInPeriod={r.returningInPeriod}
         repeatCustomers={r.repeatCustomers}
         averageVisits={r.averageVisits}
-        top={r.top}
+        // Stripped here, not hidden in the browser: what is not sent cannot leak.
+        top={showMoney ? r.top : r.top.map((c) => ({ ...c, spend: 0 }))}
+        showMoney={showMoney}
         days={days}
       />
     </ReportShell>

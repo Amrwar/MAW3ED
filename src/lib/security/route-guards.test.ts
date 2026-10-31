@@ -21,6 +21,7 @@ const GUARDS = [
   "requireSession(",
   "requireBusiness(",
   "requireBusinessAccess(",
+  "requireBusinessAccessAny(",
   "requireAdminApi(",
   "currentCaller(",
   "authorizeCron(",

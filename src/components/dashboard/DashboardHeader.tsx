@@ -240,6 +240,7 @@ export default function DashboardHeader({
   isAdmin      = false,
   needsSetup   = false,
   hasVenueRoles = false,
+  delegatePermissions = null,
 }: {
   businessName:  string;
   cityName?:     string;
@@ -260,6 +261,8 @@ export default function DashboardHeader({
   needsSetup?:   boolean;
   /** Holds a venue role: shows the venue console in the nav. */
   hasVenueRoles?: boolean;
+  /** Operating for an organization: what the granted scopes allow. */
+  delegatePermissions?: readonly string[] | null;
 }) {
   const { t, lang } = useLanguage();
   const h        = t.dashboard.header;
@@ -277,7 +280,9 @@ export default function DashboardHeader({
     isAdmin,
     needsSetup,
     hasVenueRoles,
+    delegatePermissions,
   });
+  const isDelegate = Boolean(delegatePermissions);
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [toasts,        setToasts]        = useState<ToastItem[]>([]);
@@ -633,14 +638,16 @@ export default function DashboardHeader({
                 </p>
               )}
             </div>
-            <span
-              className="shrink-0 text-[0.625rem]"
-              style={{ fontWeight: 700,
-                padding: "3px 8px", borderRadius: 100,
-                background: planStyle.bg, color: planStyle.text }}
-            >
-              {t.dashboard.sidebar.planBadge[plan] ?? planStyle.label}
-            </span>
+            {!isDelegate && (
+              <span
+                className="shrink-0 text-[0.625rem]"
+                style={{ fontWeight: 700,
+                  padding: "3px 8px", borderRadius: 100,
+                  background: planStyle.bg, color: planStyle.text }}
+              >
+                {t.dashboard.sidebar.planBadge[plan] ?? planStyle.label}
+              </span>
+            )}
           </div>
         </div>
 
@@ -669,7 +676,7 @@ export default function DashboardHeader({
           style={{ borderTop: "1.5px solid var(--color-surface-3)" }}
         >
           {/* Upgrade card — FREE plan only */}
-          {plan === "FREE" && (
+          {plan === "FREE" && !isDelegate && (
             <Link
               href="/dashboard/settings?tab=subscription"
               className="flex items-start gap-3 rounded-[var(--radius-lg)] p-3.5 mb-3 transition-all duration-150"

@@ -16,6 +16,7 @@ export default function CustomersView({
   averageVisits,
   top,
   days,
+  showMoney = true,
 }: {
   totalCustomers: number;
   newInPeriod: number;
@@ -24,6 +25,8 @@ export default function CustomersView({
   averageVisits: number | null;
   top: { id: string; name: string; visits: number; spend: number }[];
   days: number;
+  /** False for a delegate without FINANCE: the spend column is not shown (nor sent). */
+  showMoney?: boolean;
 }) {
   const { lang } = useLanguage();
   const ar = lang === "ar";
@@ -58,9 +61,9 @@ export default function CustomersView({
         head={[
           ar ? "العميل" : "Customer",
           ar ? "زيارات" : "Visits",
-          ar ? "أنفق" : "Spent",
+          ...(showMoney ? [ar ? "أنفق" : "Spent"] : []),
         ]}
-        rows={top.map((c) => [c.name, num(c.visits, lang), money(c.spend, lang)])}
+        rows={top.map((c) => [c.name, num(c.visits, lang), ...(showMoney ? [money(c.spend, lang)] : [])])}
         empty={
           ar
             ? "لسه مفيش مواعيد تمّت"
