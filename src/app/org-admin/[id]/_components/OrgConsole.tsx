@@ -609,7 +609,12 @@ function ProfileForm({ t, en, org, cities, onSave }: { t: T; en: boolean; org: O
       aria-labelledby="prof-h"
       onSubmit={(e) => {
         e.preventDefault();
-        void onSave({ ...v, cityId: v.cityId || null, logoImage, coverImage });
+        void onSave({
+          ...v,
+          cityId: v.cityId || null,
+          ...(logoImage !== org.logoImage ? { logoImage } : {}),
+          ...(coverImage !== org.coverImage ? { coverImage } : {}),
+        });
       }}
     >
       <h2 id="prof-h" className="m-0 text-base font-extrabold">{t("بيانات الجهة", "Organization details")}</h2>

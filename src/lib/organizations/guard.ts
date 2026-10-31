@@ -1,3 +1,4 @@
+import type { OrganizationKind } from "@prisma/client";
 import { db } from "@/lib/db";
 import { err } from "@/lib/api";
 import { loadVenueCaller, type VenueCaller } from "@/lib/venues/guard";
@@ -13,14 +14,14 @@ export async function requireOrgAccess(
   action: OrgAction,
 ): Promise<{
   caller: VenueCaller;
-  organization: { id: string; slug: string; status: string; isPublished: boolean; nameAr: string };
+  organization: { id: string; slug: string; status: string; isPublished: boolean; nameAr: string; nameEn: string | null; kind: OrganizationKind };
   authority: OrgAuthority;
 }> {
   const caller = await loadVenueCaller();
   if (!caller) throw err("سجّل دخولك الأول", 401);
   const organization = await db.organization.findUnique({
     where: { id: organizationId },
-    select: { id: true, slug: true, status: true, isPublished: true, nameAr: true },
+    select: { id: true, slug: true, status: true, isPublished: true, nameAr: true, nameEn: true, kind: true },
   });
   if (!organization) throw err("غير موجود", 404);
   const authority = orgAuthorityOver(caller, organizationId);

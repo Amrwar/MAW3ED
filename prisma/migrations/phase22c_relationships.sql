@@ -70,7 +70,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS "OrganizationBusiness_one_owner_key"
   ON "OrganizationBusiness" ("businessId")
   WHERE "relation" = 'OWNED' AND "status" IN ('INVITED', 'REQUESTED', 'APPROVED', 'SUSPENDED');
 
--- 6. Organization hierarchy: a parent, never a cycle, at most three levels.
+-- 6. The platform's written reason for a rejection or suspension, kept on
+--    the organization (it used to be read back from the audit log, which
+--    is written best-effort and could lose it).
+ALTER TABLE "VenueOrganization" ADD COLUMN IF NOT EXISTS "statusReason" TEXT;
+
+-- 7. Organization hierarchy: a parent, never a cycle, at most three levels.
 ALTER TABLE "VenueOrganization" ADD COLUMN IF NOT EXISTS "parentId" TEXT;
 DO $$ BEGIN ALTER TABLE "VenueOrganization" ADD CONSTRAINT "VenueOrganization_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "VenueOrganization"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER TABLE "VenueOrganization" ADD CONSTRAINT "VenueOrganization_not_own_parent_chk" CHECK ("parentId" IS NULL OR "parentId" <> "id"); EXCEPTION WHEN duplicate_object THEN NULL; END $$;

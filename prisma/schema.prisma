@@ -1641,6 +1641,9 @@ model Organization {
   /// PENDING until a platform administrator approves it; the page is
   /// public only when APPROVED and isPublished.
   status      BusinessStatus @default(PENDING)
+  /// The platform's written reason for REJECTED or SUSPENDED, shown to the
+  /// organization; cleared on approval.
+  statusReason String?
   isPublished Boolean        @default(false)
   nameAr    String
   nameEn    String?

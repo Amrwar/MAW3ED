@@ -41,16 +41,22 @@ Conflicts found and how they are resolved:
 
 ## Model
 
+Relationship types and their rules: `ORGANIZATION_RELATIONSHIPS.md`.
+Who may do what, and how it is enforced: `ORGANIZATION_PERMISSIONS.md`.
+
 ```
-Organization (type: MALL | COMPOUND | BUSINESS_GROUP | FRANCHISE | COMMERCIAL_BUILDING | OTHER)
+Organization (type: MALL | COMPOUND | BUSINESS_GROUP | RESTAURANT_GROUP | CLINIC_GROUP | FRANCHISE | COMMERCIAL_BUILDING | OTHER)
+ ├─ parent: at most one parent organization (≤ 3 levels, never a cycle — DB trigger)
  ├─ profile: names, descriptions, logo, cover, contact, socials, website, HQ location
  ├─ status: PENDING_REVIEW → APPROVED (platform) | REJECTED | SUSPENDED; isPublished (owner, once APPROVED)
  ├─ members: VenueRole rows scoped to the organization — ORGANIZATION_OWNER, ORGANIZATION_ADMIN (manager)
  ├─ locations (optional): Compound, Venue (+ floors, gates, hours, visitor policy)
- ├─ OrganizationBusiness (the association; relation OWNED | FRANCHISE | TENANT | PARTNER)
- │     invitation (organization → business, or → email to create one)
- │     request    (business → organization)
- │     status INVITED | REQUESTED | APPROVED | DECLINED | REJECTED | REMOVED
+ ├─ OrganizationBusiness (one row per relationship: OWNED | HOSTED | MANAGED; one business may have several)
+ │     invitation (organization → business, or → email to create one), asking for scopes
+ │     request    (business → organization), granting scopes up front
+ │     status INVITED | REQUESTED | APPROVED | SUSPENDED | DECLINED | REJECTED | REMOVED
+ │     scopes granted by the business (OWNED/MANAGED only), optional expiresAt
+ │     at most one OWNED per business (DB unique)
  │     optional venue placement on acceptance; directory section and order
  ├─ VenueMembership (placement of a business/branch in one of its venues — Phase 22)
  ├─ OrganizationView (visits by source and day — a counter)
@@ -79,7 +85,9 @@ the booking.
 | Venue details, hours, floors, gates, policy, tenants | ✔ | ✔ | ✔ | own venue | — | — | — |
 | Organization link, QR, visits, attributed bookings | ✔ | ✔ | ✔ | — | — | — | — |
 | Organization audit log | ✔ | ✔ | ✔ | — | — | — | — |
-| Read a business's customers, bookings' contents, notes, payments, staff, subscription | own business only | ✘ | ✘ | ✘ | ✔ own | per staff role | own bookings |
+| Read a business's customers, bookings' contents, notes, staff | own business only | only within scopes the business granted (OWNED/MANAGED); never for HOSTED | same as owner | ✘ | ✔ own | per staff role | own bookings |
+| Payments, billing, subscription, sign-in access, publishing | own business only | ✘ (no scope reaches them) | ✘ | ✘ | ✔ own | per staff role | — |
+| Grant, change, withdraw an organization's scopes | ✘ | ✘ | ✘ | ✘ | ✔ own only | ✘ | — |
 | Browse published organization pages; book | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 
 Every rule is enforced on the server (`src/lib/organizations/access.ts`,
@@ -87,7 +95,10 @@ Every rule is enforced on the server (`src/lib/organizations/access.ts`,
 discoverable. Organization metrics are counts — visits by source and
 bookings attributed to the organization page, and per-business counts of
 attributed bookings — never customer details, services booked, prices or
-payments. Mall management never sees patient details or tenant finances.
+payments. Mall management never sees patient details or tenant finances:
+a hosted relationship cannot carry any scope (refused by the database).
+An owning or managing organization sees exactly what the business owner
+granted, and nothing once withdrawn — see `ORGANIZATION_PERMISSIONS.md`.
 
 ## Public experience
 

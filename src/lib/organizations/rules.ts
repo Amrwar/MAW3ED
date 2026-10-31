@@ -24,12 +24,22 @@ const name = z.string().trim().min(2).max(120);
  * Anything else would render as a broken image at best and, through the
  * Open Graph tags, hand crawlers a URL of the registrant's choosing.
  */
+function isOurUpload(u: string): boolean {
+  // In production this is our own Cloudinary cloud's upload path — not
+  // any account's, which would still be a URL of the registrant's
+  // choosing. Without Cloudinary configured (local development), any
+  // image host the CSP allows.
+  const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+  if (cloud) return u.startsWith(`https://res.cloudinary.com/${cloud}/image/upload/`);
+  return IMAGE_HOSTS.some((h) => u.startsWith(`${h}/`));
+}
+
 const imageUrl = z
   .string()
   .trim()
   .url()
   .max(500)
-  .refine((u) => IMAGE_HOSTS.some((h) => u.startsWith(`${h}/`)), "الصورة لازم تكون مرفوعة على موعد")
+  .refine((u) => isOurUpload(u), "الصورة لازم تكون مرفوعة على موعد")
   .nullable()
   .optional();
 const optText = (max: number) => z.string().trim().max(max).optional().nullable().transform((v) => (v ? v : null));

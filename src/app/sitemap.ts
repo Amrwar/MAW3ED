@@ -12,6 +12,13 @@ import {
   prerenderHints,} from "@/lib/seo/landing";
 
 /**
+ * Regenerated hourly. Built once and kept forever, it listed only what
+ * existed at deploy time: an organization or business published after a
+ * deploy was missing until the next one.
+ */
+export const revalidate = 3600;
+
+/**
  * The sitemap offers exactly the pages that exist.
  *
  * It used to list every city and every category in the database: 41
@@ -32,13 +39,6 @@ import {
  * by the pages that emit it, and a sitemap entry for a page we have
  * asked not to be indexed is a contradiction.
  */
-/**
- * Regenerated hourly. Built once and kept forever, it listed only what
- * existed at deploy time: an organization or business published after a
- * deploy was missing until the next one.
- */
-export const revalidate = 3600;
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Each of the four is allowed to come back empty.
   //
