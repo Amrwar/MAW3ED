@@ -32,8 +32,20 @@ export async function GET(_req: Request, { params }: Ctx) {
         },
       },
     });
+    // A rejection or suspension carries the administrator's written
+    // reason, which the admin screen promises the organization will see.
+    const statusReason =
+      org.status === "REJECTED" || org.status === "SUSPENDED"
+        ? ((
+            await db.auditLog.findFirst({
+              where: { resourceType: "Organization", resourceId: id, action: `org.${org.status.toLowerCase()}` },
+              orderBy: { at: "desc" },
+              select: { metadata: true },
+            })
+          )?.metadata as { reason?: string | null } | null)?.reason ?? null
+        : null;
     return ok({
-      organization: org,
+      organization: { ...org, statusReason },
       authority,
       can: {
         edit: orgCan(authority, "org.edit"),
@@ -62,19 +74,38 @@ export async function PATCH(req: Request, { params }: Ctx) {
     const { profile, isPublished } = parsed.data;
     if (!profile && isPublished === undefined) return err("مفيش حاجة تتغير", 422);
 
+    let reReview = false;
     if (profile && Object.keys(profile).length) {
       const { caller, organization, authority } = await requireOrgAccess(id, "org.edit");
       if (profile.cityId && !(await db.city.findUnique({ where: { id: profile.cityId }, select: { id: true } }))) {
         return err("المدينة مش موجودة", 422);
       }
-      await db.organization.update({ where: { id }, data: profile });
+      // The platform approved a name and a kind. Changing either after
+      // approval sends the organization back to review (and its page
+      // offline) — otherwise "approved as a small group" could become
+      // "a famous mall" without anybody looking.
+      const current = await db.organization.findUniqueOrThrow({ where: { id }, select: { nameAr: true, nameEn: true, kind: true } });
+      const identityChanged =
+        (profile.nameAr !== undefined && profile.nameAr !== current.nameAr) ||
+        (profile.nameEn !== undefined && (profile.nameEn ?? null) !== (current.nameEn ?? null)) ||
+        (profile.kind !== undefined && profile.kind !== current.kind);
+      reReview = identityChanged && organization.status === "APPROVED" && authority !== "PLATFORM";
+      await db.organization.update({
+        where: { id },
+        data: { ...profile, ...(reReview ? { status: "PENDING", isPublished: false } : {}) },
+      });
       await recordAudit({
-        actor: null, action: "org.edit", resourceType: "Organization", resourceId: id,
-        summary: `تعديل بيانات الجهة "${organization.nameAr}"`,
-        metadata: { byUserId: caller.userId, authority, fields: Object.keys(profile) },
+        actor: null, action: reReview ? "org.identity.changed" : "org.edit", resourceType: "Organization", resourceId: id,
+        summary: reReview
+          ? `غيّرت الجهة "${current.nameAr}" اسمها أو نوعها — رجعت للمراجعة`
+          : `تعديل بيانات الجهة "${organization.nameAr}"`,
+        metadata: {
+          byUserId: caller.userId, authority, fields: Object.keys(profile),
+          ...(reReview ? { from: current, to: { nameAr: profile.nameAr ?? current.nameAr, nameEn: profile.nameEn ?? current.nameEn, kind: profile.kind ?? current.kind } } : {}),
+        },
       });
     }
-    if (isPublished !== undefined) {
+    if (isPublished !== undefined && !reReview) {
       const { caller, organization, authority } = await requireOrgAccess(id, "org.publish");
       if (isPublished && organization.status !== "APPROVED") {
         return err("لازم موعد يراجع الجهة ويعتمدها قبل النشر", 409, { code: "not-approved" });
@@ -86,6 +117,6 @@ export async function PATCH(req: Request, { params }: Ctx) {
         metadata: { byUserId: caller.userId, authority },
       });
     }
-    return ok({ saved: true });
+    return ok({ saved: true, reReview });
   });
 }

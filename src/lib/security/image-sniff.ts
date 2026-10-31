@@ -32,4 +32,4 @@ export function sniffImageType(bytes: Uint8Array): ImageType | null {
  * media is grouped; it may not name any other, or a path outside the
  * account's area of the media store.
  */
-export const UPLOAD_FOLDERS = new Set(["maw3ed/businesses", "maw3ed/services", "maw3ed/staff", "maw3ed/reviews", "maw3ed/resources"]);
+export const UPLOAD_FOLDERS = new Set(["maw3ed/businesses", "maw3ed/services", "maw3ed/staff", "maw3ed/reviews", "maw3ed/resources", "maw3ed/organizations"]);
