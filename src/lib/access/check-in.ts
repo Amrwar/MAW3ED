@@ -5,6 +5,7 @@ import { moveBooking } from "@/lib/bookings/state";
 import { ARRIVE_EARLY_MINUTES } from "@/lib/bookings/progress-guard";
 import { bookingStart, cairoWallClock } from "@/lib/bookings/instants";
 import { timeToMinutes } from "@/lib/bookings/time";
+import { siteUrl } from "@/lib/url";
 import { CODE_PATTERN, deriveCheckInCode, randomToken, sha256 } from "./crypto";
 
 /**
@@ -97,8 +98,8 @@ export function wallTime(d: Date): string {
   return d.toISOString().slice(11, 16);
 }
 
-export function checkInUrl(code: string, siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ""): string {
-  return `${siteUrl.replace(/\/$/, "")}/c/${code}`;
+export function checkInUrl(code: string): string {
+  return siteUrl(`/c/${code}`);
 }
 
 /** The code inside whatever the scanner read: a bare code, or our /c/<code> URL. */
