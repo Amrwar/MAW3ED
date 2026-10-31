@@ -56,7 +56,7 @@ these rows record what the owner reports.
 | `phase19_reliability.sql` | PR #35 (merged 2026-10-29) | APPLIED 2026-10-29 (verified by query) |
 | `phase22_venues.sql` | Phase 22 PR (#40) | APPLIED 2026-10-31 before the deploy (owner ran `migrate-phase22.sh`); VERIFIED by query — every table, enum, index and constraint present, every city has a country |
 | `phase21_saas.sql` | Phase 21 PR (#39) | APPLIED 2026-10-30 before the deploy and again after it; both runs VERIFIED by query |
-| `phase22c_relationship_enums.sql`, then `phase22c_relationships.sql` | Phase 22 final PR | NOT APPLIED YET — run `migrate-phase22c.sh` (session scratchpad: both files in order, then `verify-phase22c.sql`) BEFORE merging |
+| `phase22c_relationship_enums.sql`, then `phase22c_relationships.sql` | Phase 22 final PR (#46) | APPLIED 2026-10-31 before the merge (owner ran `migrate-phase22c.sh`: both files in order); VERIFIED by query — every enum value, column, index, constraint and trigger present, no legacy relationship labels; production served the pre-#46 code (`f1b7a04`) healthily on the migrated schema (no organizations existed) |
 | `phase22b_organizations.sql` | Phase 22b PR (#43) | APPLIED 2026-10-31 before the merge (owner ran `migrate-phase22b.sh`); VERIFIED by query — every table, enum, column, index and constraint present, every organization has a status |
 | `phase20_security.sql` | Phase 20 PR (#36) | APPLIED 2026-10-29 ahead of the merge (verified by query); `PSEUDONYM_SECRET` set in Vercel (all environments) |
 | `prisma/data-fixes/2026-10-27-listing-cleanup.sql` | data only | UNCONFIRMED |
