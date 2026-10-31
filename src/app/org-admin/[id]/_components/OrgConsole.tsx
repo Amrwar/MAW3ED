@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Copy, Check, Download, ExternalLink, Trash2 } from "lucide-react";
 import Link from "@/components/shared/LocaleLink";
+import ImageUpload from "@/components/shared/ImageUpload";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Org {
@@ -10,6 +11,9 @@ interface Org {
   nameAr: string; nameEn: string | null; descriptionAr: string | null; descriptionEn: string | null;
   phone: string | null; email: string | null; instagram: string | null; facebook: string | null;
   address: string | null; website: string | null;
+  logoImage: string | null; coverImage: string | null; cityId: string | null;
+  /** The administrator's written reason, when REJECTED or SUSPENDED. */
+  statusReason: string | null;
   venues: { id: string; slug: string; nameAr: string; nameEn: string | null; status: string; isPublished: boolean }[];
   roles: { id: string; kind: string; user: { name: string | null; email: string | null } }[];
   invites: { id: string; email: string; relation: string; token: string; expiresAt: string }[];
@@ -34,7 +38,9 @@ async function api(path: string, method = "GET", body?: unknown) {
   return { ok: !!res?.ok, status: res?.status ?? 0, json };
 }
 
-export default function OrgConsole({ organizationId }: { organizationId: string }) {
+type City = { id: string; nameAr: string; nameEn: string };
+
+export default function OrgConsole({ organizationId, cities }: { organizationId: string; cities: City[] }) {
   const { lang } = useLanguage();
   const en = lang === "en";
   const t = (ar: string, e: string) => (en ? e : ar);
@@ -108,8 +114,8 @@ export default function OrgConsole({ organizationId }: { organizationId: string 
   const STATUS: Record<string, [string, string]> = {
     PENDING: ["قيد مراجعة موعد — هتقدر تدعو أنشطة وتنشر الصفحة بعد الاعتماد", "Under Maw3ed review — inviting businesses and publishing open up once approved"],
     APPROVED: ["معتمدة", "Approved"],
-    REJECTED: ["مرفوضة — كلّم الدعم", "Rejected — contact support"],
-    SUSPENDED: ["موقوفة من موعد — كلّم الدعم", "Suspended by Maw3ed — contact support"],
+    REJECTED: ["مرفوضة", "Rejected"],
+    SUSPENDED: ["موقوفة من موعد", "Suspended by Maw3ed"],
   };
 
   return (
@@ -122,6 +128,13 @@ export default function OrgConsole({ organizationId }: { organizationId: string 
             {en ? STATUS[org.status]?.[1] : STATUS[org.status]?.[0]}
             {org.status === "APPROVED" ? (org.isPublished ? t(" · الصفحة منشورة", " · page public") : t(" · الصفحة مش منشورة", " · page not public")) : ""}
           </p>
+          {(org.status === "REJECTED" || org.status === "SUSPENDED") && (
+            <p className="m-0 text-xs" role="status">
+              <span className="font-bold">{t("السبب: ", "Reason: ")}</span>
+              {org.statusReason ?? t("مفيش سبب مكتوب.", "No reason was written.")}
+              {t(" — للاستفسار كلّم الدعم.", " — contact support with questions.")}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {org.isPublished && (
@@ -199,7 +212,7 @@ export default function OrgConsole({ organizationId }: { organizationId: string 
 
       <Businesses t={t} nm={nm} associations={associations} canManage={can.edit} onAct={act} base={base} orgStatus={org.status} invites={org.invites} />
 
-      {can.edit && <ProfileForm t={t} org={org} onSave={(profile) => act(base, "PATCH", { profile })} />}
+      {can.edit && <ProfileForm t={t} en={en} org={org} cities={cities} onSave={(profile) => act(base, "PATCH", { profile })} />}
 
       {can.members && (
         <section aria-labelledby="mem-h" className="card space-y-3 p-5">
@@ -421,20 +434,33 @@ function AssocActions({ t, a, base, onAct }: { t: T; a: Association; base: strin
   );
 }
 
-function ProfileForm({ t, org, onSave }: { t: T; org: Org; onSave: (profile: Record<string, unknown>) => Promise<boolean> }) {
+const KIND_LABELS: Record<string, [string, string]> = {
+  MALL: ["مول", "Mall"],
+  COMPOUND: ["كمبوند", "Compound"],
+  BUSINESS_GROUP: ["مجموعة أنشطة", "Business group"],
+  FRANCHISE: ["فرانشايز", "Franchise"],
+  COMMERCIAL_BUILDING: ["مبنى تجاري", "Commercial building"],
+  OTHER: ["أخرى", "Other"],
+};
+
+function ProfileForm({ t, en, org, cities, onSave }: { t: T; en: boolean; org: Org; cities: City[]; onSave: (profile: Record<string, unknown>) => Promise<boolean> }) {
   const [v, setV] = useState({
     nameAr: org.nameAr, nameEn: org.nameEn ?? "", descriptionAr: org.descriptionAr ?? "", descriptionEn: org.descriptionEn ?? "",
     phone: org.phone ?? "", email: org.email ?? "", instagram: org.instagram ?? "", facebook: org.facebook ?? "",
-    address: org.address ?? "", website: org.website ?? "",
+    address: org.address ?? "", website: org.website ?? "", kind: org.kind, cityId: org.cityId ?? "",
   });
-  const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setV((p) => ({ ...p, [k]: e.target.value }));
+  const [logoImage, setLogo] = useState<string | null>(org.logoImage);
+  const [coverImage, setCover] = useState<string | null>(org.coverImage);
+  const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setV((p) => ({ ...p, [k]: e.target.value }));
+  // Name and kind are what the platform reviewed.
+  const identityChanged = v.nameAr.trim() !== org.nameAr || (v.nameEn.trim() || null) !== (org.nameEn || null) || v.kind !== org.kind;
   return (
     <form
       className="card space-y-3 p-5"
       aria-labelledby="prof-h"
       onSubmit={(e) => {
         e.preventDefault();
-        void onSave(v);
+        void onSave({ ...v, cityId: v.cityId || null, logoImage, coverImage });
       }}
     >
       <h2 id="prof-h" className="m-0 text-base font-extrabold">{t("بيانات الجهة", "Organization details")}</h2>
@@ -449,7 +475,30 @@ function ProfileForm({ t, org, onSave }: { t: T; org: Org; onSave: (profile: Rec
         <L label="Facebook"><input className={field} value={v.facebook} onChange={set("facebook")} dir="ltr" /></L>
         <L label={t("العنوان", "Address")}><input className={field} value={v.address} onChange={set("address")} /></L>
         <L label={t("الموقع الإلكتروني", "Website")}><input className={field} type="url" value={v.website} onChange={set("website")} dir="ltr" /></L>
+        <L label={t("النوع", "Kind")}>
+          <select className={field} value={v.kind} onChange={set("kind")}>
+            {Object.entries(KIND_LABELS).map(([k, [ar, e]]) => <option key={k} value={k}>{en ? e : ar}</option>)}
+          </select>
+        </L>
+        <L label={t("المدينة", "City")}>
+          <select className={field} value={v.cityId} onChange={set("cityId")}>
+            <option value="">{t("— من غير مدينة —", "— No city —")}</option>
+            {cities.map((c) => <option key={c.id} value={c.id}>{en ? c.nameEn : c.nameAr}</option>)}
+          </select>
+        </L>
       </div>
+      <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+        <ImageUpload variant="logo" folder="maw3ed/organizations" label={t("الشعار", "Logo")} value={logoImage} onChange={setLogo} onRemove={() => setLogo(null)} />
+        <ImageUpload variant="cover" folder="maw3ed/organizations" label={t("صورة الغلاف", "Cover image")} value={coverImage} onChange={setCover} onRemove={() => setCover(null)} />
+      </div>
+      {identityChanged && org.status === "APPROVED" && (
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--color-line)] p-3 text-xs" role="status">
+          {t(
+            "تغيير الاسم أو النوع بيرجّع الجهة لمراجعة موعد، وصفحتها هتتقفل لحد ما تتعتمد تاني.",
+            "Changing the name or kind sends the organization back to Maw3ed review; its page goes offline until it is approved again.",
+          )}
+        </p>
+      )}
       <button type="submit" className="btn btn-primary">{t("احفظ", "Save")}</button>
     </form>
   );

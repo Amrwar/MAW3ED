@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { IMAGE_HOSTS } from "@/lib/security/csp";
 
 /** Input rules for organizations. */
 
@@ -18,6 +19,19 @@ export const orgSlugSchema = z
   .refine((s) => !RESERVED_ORG_SLUGS.has(s), "الرابط ده محجوز");
 
 const name = z.string().trim().min(2).max(120);
+/**
+ * An uploaded image: https on a host the page's CSP will actually show.
+ * Anything else would render as a broken image at best and, through the
+ * Open Graph tags, hand crawlers a URL of the registrant's choosing.
+ */
+const imageUrl = z
+  .string()
+  .trim()
+  .url()
+  .max(500)
+  .refine((u) => IMAGE_HOSTS.some((h) => u.startsWith(`${h}/`)), "الصورة لازم تكون مرفوعة على موعد")
+  .nullable()
+  .optional();
 const optText = (max: number) => z.string().trim().max(max).optional().nullable().transform((v) => (v ? v : null));
 const webUrl = z
   .string()
@@ -45,8 +59,8 @@ export const orgProfileSchema = z
     kind: z.enum(ORG_KINDS),
     descriptionAr: optText(2000),
     descriptionEn: optText(2000),
-    logoImage: z.string().url().max(500).nullable().optional(),
-    coverImage: z.string().url().max(500).nullable().optional(),
+    logoImage: imageUrl,
+    coverImage: imageUrl,
     phone: optText(30),
     email: z.string().trim().toLowerCase().email().max(200).optional().nullable().or(z.literal("").transform(() => null)),
     instagram: optText(100),

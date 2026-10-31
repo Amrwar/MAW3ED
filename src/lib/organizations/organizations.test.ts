@@ -5,6 +5,8 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 import { ORG_ACTIONS, ORG_PERMISSIONS, orgAuthorityOver, orgCan } from "./access";
 import { pageDirectory, orgDirectoryCategories, directorySections, type OrgDirectoryEntry } from "./public";
 import { orgSeo } from "./seo";
+import { orgInviteEmail } from "./invite-email";
+import { UPLOAD_FOLDERS } from "@/lib/security/image-sniff";
 import { orgRegisterSchema, orgProfileSchema, orgSlugSchema, associationDecisionSchema as orgDecisionSchema } from "./rules";
 
 const roles = (...r: { kind: "ORGANIZATION_OWNER" | "ORGANIZATION_ADMIN" | "VENUE_MANAGER"; organizationId?: string | null }[]) =>
@@ -70,6 +72,12 @@ describe("directory paging (an organization with hundreds of businesses)", () =>
     expect(directorySections(many)).toEqual(["A"]);
     expect(orgDirectoryCategories(many).map((c) => c.slug)).toEqual(["clinics", "cafes"]);
   });
+  it("a fractional or non-numeric page lands on a whole page (audit D4)", () => {
+    expect(pageDirectory(many, { page: 2.5 }).page).toBe(2);
+    expect(pageDirectory(many, { page: 2.5 }).entries[0].slug).toBe("biz-24");
+    expect(pageDirectory(many, { page: Number.NaN }).page).toBe(1);
+    expect(pageDirectory(many, { page: Number.POSITIVE_INFINITY }).page).toBe(1);
+  });
   it("an empty directory pages to one empty page", () => {
     expect(pageDirectory([], {})).toEqual({ entries: [], total: 0, page: 1, pages: 1 });
   });
@@ -104,10 +112,38 @@ describe("organization input rules", () => {
     expect(orgDecisionSchema.parse({ action: "organize", section: "مطاعم" }).section).toBe("مطاعم");
   });
 
+  it("images must be https uploads on a host the page can show (audit D6)", () => {
+    for (const bad of ["javascript:alert(1)", "data:image/png;base64,AAAA", "http://res.cloudinary.com/x.png", "https://evil.example/x.png", "https://res.cloudinary.com.evil.example/x.png"]) {
+      expect(orgProfileSchema.safeParse({ logoImage: bad }).success, bad).toBe(false);
+      expect(orgProfileSchema.safeParse({ coverImage: bad }).success, bad).toBe(false);
+    }
+    expect(orgProfileSchema.safeParse({ logoImage: "https://res.cloudinary.com/demo/image/upload/logo.png" }).success).toBe(true);
+    expect(orgProfileSchema.safeParse({ logoImage: null }).success).toBe(true);
+  });
+
   it("validates registration and profile", () => {
     expect(orgRegisterSchema.safeParse({ slug: "eterna", kind: "MALL", nameAr: "إتيرنا" }).success).toBe(true);
     expect(orgRegisterSchema.safeParse({ slug: "eterna", kind: "SHOP", nameAr: "إتيرنا" }).success).toBe(false);
     expect(orgProfileSchema.safeParse({ website: "javascript:alert(1)" }).success).toBe(false);
     expect(orgProfileSchema.safeParse({ website: "https://example.com", email: "" }).success).toBe(true);
+  });
+});
+
+describe("audit regressions (2026-10-31)", () => {
+  it("D10: an organization's name cannot add markup or headers to the invite email", () => {
+    const { subject, html } = orgInviteEmail('Evil <a href="https://phish.example">click</a>\r\nBcc: x@y.z', "https://maw3ed.net/signup?org_invite=t&x=1");
+    expect(html).not.toContain('<a href="https://phish.example">');
+    expect(html).toContain("&lt;a href=&quot;https://phish.example&quot;&gt;");
+    expect(html).toContain("org_invite=t&amp;x=1");
+    expect(subject).not.toMatch(/[\r\n]/);
+  });
+
+  it("D1: organizations have an upload folder of their own", () => {
+    expect(UPLOAD_FOLDERS.has("maw3ed/organizations")).toBe(true);
+  });
+
+  it("D3: the sitemap regenerates instead of freezing at build", async () => {
+    const mod = await import("@/app/sitemap");
+    expect((mod as { revalidate?: number }).revalidate).toBe(3600);
   });
 });

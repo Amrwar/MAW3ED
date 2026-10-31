@@ -10,18 +10,18 @@ local QA; nothing here is a production claim).
 | # | Requirement | How it is proved | Where | Last result |
 |---|---|---|---|---|
 | A | Create a mall organization | Register → PENDING → platform approves → owner publishes (E2E, kind BUSINESS_GROUP; kinds incl. MALL accepted by schema, unit); venues attach to organizations via the Phase 22 admin flow, re-run green | E2E + unit + Phase 22 suite | PASS |
-| B | Create a restaurant-group organization | Register with kind BUSINESS_GROUP; no venue; two brands listed, each keeping its own owner | DB | PASS 12/12 |
-| C | Create a clinic-group organization | Same path, kind BUSINESS_GROUP; isolation rows Q/S cover records | DB | PASS 12/12 |
+| B | Create a restaurant-group organization | Register with kind BUSINESS_GROUP; no venue; two brands listed, each keeping its own owner | DB | PASS 14/14 |
+| C | Create a clinic-group organization | Same path, kind BUSINESS_GROUP; isolation rows Q/S cover records | DB | PASS 14/14 |
 | D | Add newly created businesses | Email invite → `acceptEmailInvite` inside onboarding's transaction → association APPROVED on creation; replayed token rolls the whole creation back (DB); invite link lifecycle incl. public read and cancel (E2E) | DB + E2E | PASS |
-| E | Invite existing businesses | Organization invites by slug → owner sees it named → accepts → listed | E2E | PASS 69/69 |
+| E | Invite existing businesses | Organization invites by slug → owner sees it named → accepts → listed | E2E | PASS 83/83 |
 | F | Accept and reject invitations | Accept one, decline another; a declined row is never listed and cannot be re-accepted | DB + E2E | PASS |
 | G | Prevent unauthorized association | Stranger 404, anonymous 401, organization cannot answer its own invitation (409), business cannot use another's branch, pending org cannot recruit or be joined, suspended org re-checked at acceptance and claim | DB + E2E | PASS |
 | H | Remove a business without deleting its data | Remove association; business row, services, bookings counts unchanged; still bookable | DB + E2E | PASS |
-| I | Businesses listed under the correct organization | Two organizations, overlapping tenants; each page lists only its own approved ones, before and after removal | DB | PASS 12/12 |
-| J | A business in multiple approved locations | One brand: branch 1 in mall A, branch 2 in group B; each directory shows its branch; whole-business overlap refused (and under concurrency, via advisory lock) | DB | PASS 12/12 |
-| K | Public organization URL resolution | `/groups/<slug>` 200 published; pending, approved-unpublished and suspended 404 | E2E | PASS 69/69 |
-| L | Organization QR encodes the canonical public URL | The endpoint's SVG equals a locally generated QR of `/groups/<slug>?src=qr` byte for byte (same decode); PNG served; public gets 401 | E2E | PASS 69/69 |
-| M | Business QR resolves to the booking page | `/api/business/qr` SVG equals a locally generated QR of `/company/<slug>?src=qr` | E2E (regression) | PASS 69/69 |
+| I | Businesses listed under the correct organization | Two organizations, overlapping tenants; each page lists only its own approved ones, before and after removal | DB | PASS 14/14 |
+| J | A business in multiple approved locations | One brand: branch 1 in mall A, branch 2 in group B; each directory shows its branch; whole-business overlap refused (and under concurrency, via advisory lock) | DB | PASS 14/14 |
+| K | Public organization URL resolution | `/groups/<slug>` 200 published; pending, approved-unpublished and suspended 404 | E2E | PASS 83/83 |
+| L | Organization QR encodes the canonical public URL | The endpoint's SVG equals a locally generated QR of `/groups/<slug>?src=qr` byte for byte (same decode); PNG served; public gets 401 | E2E | PASS 83/83 |
+| M | Business QR resolves to the booking page | `/api/business/qr` SVG equals a locally generated QR of `/company/<slug>?src=qr` | E2E (regression) | PASS 83/83 |
 | N | Booking from an organization directory | Directory carries `/company/<slug>?org=<org>`; a real browser walks the widget from that URL and books | E2E + browser (`qa-booking-e2e.mjs` §4b) | PASS 22/22 |
 | O | Booking attribution correctness | Attribution row for N; a forged slug books fine and credits nobody; double call writes once; direct bookings unattributed; the booking row untouched | DB + E2E + browser | PASS |
 | P | Cancellation and rescheduling | The widget suites (cancel from the manage link, retry-once) re-run green on this build | E2E (`qa-booking-e2e.mjs` 22/22, suites 17/19 green) | PASS |
@@ -36,4 +36,20 @@ local QA; nothing here is a production claim).
 | Y | Optional access module disabled | No provider configured: pages, bookings, dashboards fine; access area absent/unavailable | E2E (Phase 23 extends) | NOT RUN — Phase 23 |
 | Z | External provider unavailable | Provider outage never touches booking paths (Phase 23 jobs) | DB (Phase 23) | NOT RUN — Phase 23 |
 | AA | Visitor credential revocation | Cancel → credential revoked via provider confirmation (Phase 23) | DB (Phase 23) | NOT RUN — Phase 23 |
-| AB | Existing business and booking regression | Full earlier QA set re-run on this build | E2E suites 17–22 | PASS — 17: 13/13, 19: 21/21, 20: 19/19, 21: 44/44, 22: 68/68 (re-run after review fixes), security: 32/32, booking E2E: 22/22 (re-run after review fixes), venue console + venue page clean, vitest 1172 passed |
+| AB | Existing business and booking regression | Full earlier QA set re-run on this build | E2E suites 17–22 | PASS — 17: 13/13, 19: 21/21, 20: 19/19, 21: 44/44, 22: 68/68 (re-run after review fixes), security: 32/32, booking E2E: 22/22 (re-run after review fixes), venue console + venue page clean, vitest 1179 passed (re-run in the completion audit) |
+
+## Completion audit additions (2026-10-31)
+
+| Defect | Requirement it touched | Proof | Result |
+|---|---|---|---|
+| D1 media, city and kind not editable | A (profile/media) | E2E: browser saves city, upload controls present, logo saved through the API | PASS |
+| D9 rename without re-review | A, G (trust) | E2E: rename → PENDING, offline, cannot republish, re-approval restores | PASS |
+| D10 unescaped name in email | security | unit: hostile name escaped, subject on one line | PASS |
+| D2 unlimited invites and member lookups | G (abuse) | E2E: the 11th lookup is 429 | PASS |
+| D3 sitemap frozen at build | V (SEO) | unit: revalidate 3600; build shows the revalidate column | PASS |
+| D8 reason never shown | A (review) | E2E: the organization reads the suspension reason | PASS |
+| D6 any image URL accepted | security | unit (fails on `main`), E2E 422 | PASS |
+| D7 metrics count disagreed | S (metrics) | DB: delete a business, counts agree | PASS |
+| D5 internal field leaked | S | DB: response shape | PASS |
+| D4 fractional page | X (paging) | unit (fails on `main`) | PASS |
+| D11 owner self-appointment | Q (authority) | E2E 409 | PASS |
