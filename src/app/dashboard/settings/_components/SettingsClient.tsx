@@ -63,6 +63,10 @@ type Props = {
   currentPeriodEnd:   string | null;
   effectivePlan:      Plan;
   daysUntilExpiry:    number | null;
+  /** The tabs this person may open (a delegate's granted ones); all when absent. */
+  tabs?:              readonly Tab[];
+  /** Auto-confirm is a booking policy, the owner's alone. */
+  showAutoConfirm?:   boolean;
 };
 
 const TAB_IDS = ["profile", "availability", "payments", "notifications", "subscription", "preview"] as const;
@@ -86,10 +90,13 @@ export default function SettingsClient({
   currentPeriodEnd,
   effectivePlan,
   daysUntilExpiry,
+  tabs: allowedTabs,
+  showAutoConfirm = true,
 }: Props) {
+  const openable: readonly Tab[] = allowedTabs ?? TAB_IDS;
   const [tab,            setTab]            = useState<Tab>(() => {
     const wanted = initialTab === "hours" ? "availability" : initialTab;
-    return (TAB_IDS as readonly string[]).includes(wanted ?? "") ? (wanted as Tab) : "profile";
+    return openable.includes(wanted as Tab) ? (wanted as Tab) : openable[0] ?? "profile";
   });
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
   const { t } = useLanguage();
@@ -100,7 +107,7 @@ export default function SettingsClient({
     id,
     label: st.tabs[id as keyof typeof st.tabs],
     Icon:  TAB_ICONS[i],
-  }));
+  })).filter(({ id }) => openable.includes(id));
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -176,10 +183,12 @@ export default function SettingsClient({
       )}
       {tab === "availability" && (
         <>
-          <AutoConfirmSetting
-            initial={autoConfirm}
-            monthlyLimit={Number.isFinite(monthlyLimit) ? monthlyLimit : null}
-          />
+          {showAutoConfirm && (
+            <AutoConfirmSetting
+              initial={autoConfirm}
+              monthlyLimit={Number.isFinite(monthlyLimit) ? monthlyLimit : null}
+            />
+          )}
           <AvailabilityForm initialAvailability={availability} />
         </>
       )}

@@ -1,12 +1,13 @@
+import { requireBusinessAccess } from "@/lib/business-access";
 import { db } from "@/lib/db";
 import { availabilitySchema } from "@/lib/validations";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
 
 /** GET /api/business/availability */
 export async function GET() {
   try {
-    const { business } = await requireBusiness();
+    const { business } = await requireBusinessAccess("schedule.read");
 
     const rules = await db.availabilityRule.findMany({
       where:   { businessId: business.id },
@@ -24,7 +25,7 @@ export async function GET() {
 /** PUT /api/business/availability — replace full week */
 export async function PUT(req: Request) {
   try {
-    const { business } = await requireBusiness();
+    const { business } = await requireBusinessAccess("schedule.manage");
     const body = await req.json();
     const parsed = availabilitySchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);

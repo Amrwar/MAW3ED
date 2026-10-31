@@ -1,6 +1,7 @@
+import { requireBusinessAccess } from "@/lib/business-access";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
 import { timeToMinutes } from "@/lib/bookings/time";
 import { log } from "@/lib/logger";
 
@@ -38,7 +39,8 @@ const hoursSchema = z.object({
 
 export async function PUT(req: Request, { params }: Params) {
   try {
-    const ctx = await requireBusiness().catch(() => null);
+    // A person's own hours are part of their staff record.
+    const ctx = await requireBusinessAccess("staff.manage").catch(() => null);
     if (!ctx) return err("غير مصرح", 401);
 
     const { id } = await params;

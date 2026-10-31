@@ -2,7 +2,7 @@ import { getLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { requireBusiness } from "@/lib/api";
+import { requireDashboardAccess } from "@/lib/dashboard/guard";
 import { cairoDateString } from "@/lib/bookings/instants";
 import { timeToMinutes } from "@/lib/bookings/time";
 import { loadCalendar, parseView, type CalendarFilters } from "@/lib/scheduling/calendar";
@@ -33,10 +33,11 @@ const VALID_STATUSES = new Set([
 ]);
 
 export default async function CalendarPage({ searchParams }: Props) {
-  // requireBusiness resolves the owner's business, so the page never
-  // has to trust an id from the URL.
-  const ctx = await requireBusiness().catch(() => null);
-  if (!ctx) redirect("/login");
+  // The business comes from the account (owner, or a delegate with
+  // reservations), never from an id in the URL.
+  const ctx = await requireDashboardAccess("bookings.read");
+  // A delegate limited to some branches sees only those.
+  const allowedBranches = ctx.actor.delegation?.branchIds ?? null;
 
   const business = await db.business.findUnique({
     where: { id: ctx.business.id },
@@ -59,7 +60,9 @@ export default async function CalendarPage({ searchParams }: Props) {
   const filters: CalendarFilters = {
     staffMemberId: id(params.staff),
     serviceId: id(params.service),
-    branchId: id(params.branch),
+    branchId: allowedBranches
+      ? (allowedBranches.includes(id(params.branch) ?? "") ? id(params.branch) : allowedBranches[0])
+      : id(params.branch),
     resourceId: id(params.resource),
     statuses: (one(params.status) ?? "")
       .split(",")
@@ -81,7 +84,7 @@ export default async function CalendarPage({ searchParams }: Props) {
       orderBy: { sortOrder: "asc" },
     }),
     db.branch.findMany({
-      where: { businessId: business.id, isActive: true },
+      where: { businessId: business.id, isActive: true, ...(allowedBranches ? { id: { in: allowedBranches } } : {}) },
       select: { id: true, nameAr: true },
       orderBy: { sortOrder: "asc" },
     }),

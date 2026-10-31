@@ -1,6 +1,7 @@
+import { requireBusinessAccess } from "@/lib/business-access";
 import { db } from "@/lib/db";
 import { serviceSchema } from "@/lib/validations";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
@@ -8,7 +9,7 @@ type Params = { params: Promise<{ id: string }> };
 /** PUT /api/business/services/[id] */
 export async function PUT(req: Request, { params }: Params) {
   try {
-    const { business } = await requireBusiness();
+    const { business } = await requireBusinessAccess("services.manage");
     const { id } = await params;
     const body = await req.json();
     const parsed = serviceSchema.partial().safeParse(body);
@@ -36,7 +37,7 @@ export async function PUT(req: Request, { params }: Params) {
 /** DELETE /api/business/services/[id] */
 export async function DELETE(_req: Request, { params }: Params) {
   try {
-    const { business } = await requireBusiness();
+    const { business } = await requireBusinessAccess("services.manage");
     const { id } = await params;
 
     const service = await db.service.findFirst({

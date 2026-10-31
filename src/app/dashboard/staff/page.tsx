@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
+import { requireDashboardAccess } from "@/lib/dashboard/guard";
 import StaffClient from "./_components/StaffClient";
 
 export const metadata: Metadata = { title: "الفريق" };
 
 export default async function StaffPage() {
-  const session = await auth();
-  if (!session?.user?.businessId) redirect("/dashboard");
+  // An editor: the owner, or a delegate granted STAFF.
+  const { business } = await requireDashboardAccess("staff.manage");
+  const businessId = business.id;
 
   const [staffMembers, services, businessHours, timeBlocks] = await Promise.all([
     db.staffMember.findMany({
-      where:   { businessId: session.user.businessId },
+      where:   { businessId: businessId },
       include: {
         services: { include: { service: { select: { id: true, nameAr: true } } } },
         hours:    { orderBy: { dayOfWeek: "asc" } },
@@ -20,19 +20,19 @@ export default async function StaffPage() {
       orderBy: { createdAt: "asc" },
     }),
     db.service.findMany({
-      where:   { businessId: session.user.businessId, isAvailable: true },
+      where:   { businessId: businessId, isAvailable: true },
       select:  { id: true, nameAr: true },
       orderBy: { sortOrder: "asc" },
     }),
     db.availabilityRule.findMany({
-      where:  { businessId: session.user.businessId },
+      where:  { businessId: businessId },
       select: { dayOfWeek: true, openTime: true, closeTime: true, isClosed: true },
       orderBy: { dayOfWeek: "asc" },
     }),
     // Only the blocks that belong to a person; whole-business holidays
     // are managed from settings, not from one member's panel.
     db.timeBlock.findMany({
-      where:  { businessId: session.user.businessId, staffMemberId: { not: null } },
+      where:  { businessId: businessId, staffMemberId: { not: null } },
       orderBy: [{ startsOn: "asc" }, { dayOfWeek: "asc" }],
     }),
   ]);

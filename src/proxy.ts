@@ -5,6 +5,7 @@ import { buildCsp, generateNonce } from "./lib/security/csp";
 import { hasSessionCookie, isCrossSiteMutation } from "./lib/security/origin";
 import { LANG_COOKIE, LANG_COOKIE_MAX_AGE, LANG_HEADER } from "./lib/lang";
 import { routeLocale } from "./lib/locale-routing";
+import { ACTING_COOKIE, actingRedirect } from "./lib/organizations/acting-paths";
 
 // The lightweight config (no DB), shared with auth.config.ts's authorized().
 const { auth } = NextAuth(authConfig);
@@ -57,6 +58,11 @@ export default auth((req) => {
   ) {
     return NextResponse.json({ error: "طلب مرفوض", code: "cross-site" }, { status: 403 });
   }
+
+  // Operating a business for an organization: only the dashboard pages
+  // a delegate can have exist (lib/organizations/acting-paths.ts).
+  const actingTo = actingRedirect(req.nextUrl.pathname, Boolean(req.cookies.get(ACTING_COOKIE)?.value));
+  if (actingTo) return NextResponse.redirect(new URL(actingTo, req.nextUrl), 307);
 
   const locale = routeLocale({
     pathname: req.nextUrl.pathname,

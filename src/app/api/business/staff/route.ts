@@ -6,7 +6,6 @@ import {
   limitOf,
   wouldExceed,
 } from "@/lib/plans";
-import { requireBusiness } from "@/lib/api";
 import { can, requireBusinessAccess } from "@/lib/business-access";
 import { db } from "@/lib/db";
 
@@ -51,7 +50,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { business: owned } = await requireBusiness();
+    const { business: owned } = await requireBusinessAccess("staff.manage");
 
     const body = await req.json();
   const { nameAr, nameEn, role, photo, isActive, workingDays, specialties, serviceIds } = body;

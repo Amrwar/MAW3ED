@@ -1,5 +1,5 @@
+import { requireBusinessAccess } from "@/lib/business-access";
 import { NextResponse } from "next/server";
-import { requireBusiness } from "@/lib/api";
 import { db } from "@/lib/db";
 
 /**
@@ -18,7 +18,7 @@ import { db } from "@/lib/db";
  */
 async function ownedBusiness() {
   try {
-    const { business } = await requireBusiness();
+    const { business } = await requireBusinessAccess("staff.manage");
     return business;
   } catch (e) {
     if (e instanceof Response) return e;

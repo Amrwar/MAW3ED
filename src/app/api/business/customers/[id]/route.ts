@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
 import { can, requireBusinessAccess } from "@/lib/business-access";
 import { z } from "zod";
 import { log } from "@/lib/logger";
@@ -80,7 +80,7 @@ const patchSchema = z.object({
  */
 export async function PATCH(req: Request, { params }: Params) {
   try {
-    const { business } = await requireBusiness();
+    const { business } = await requireBusinessAccess("customers.manage");
     const { id } = await params;
 
     const body   = await req.json();

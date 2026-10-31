@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
+import { bookingScope, can } from "@/lib/business-access";
+import { requireDashboardAccess } from "@/lib/dashboard/guard";
 import BookingsClient from "./_components/BookingsClient";
 import type { DashboardBooking } from "@/features/dashboard/bookings/types";
 
@@ -16,10 +16,11 @@ export default async function BookingsPage({
 }) {
   const { status } = await searchParams;
   const initialStatus = status && STATUSES.includes(status) ? status : null;
-  const session = await auth();
-  if (!session?.user?.businessId) redirect("/onboarding");
-
-  const businessId = session.user.businessId;
+  // The owner, or a delegate whose granted scopes include reservations.
+  const { business: acting, actor } = await requireDashboardAccess("bookings.read");
+  const businessId = acting.id;
+  // A delegate limited to some branches sees only those branches' bookings.
+  const scope = bookingScope(acting, actor);
 
   // Today's UTC midnight for date-exact query
   const now = new Date();
@@ -31,7 +32,7 @@ export default async function BookingsPage({
     // Today's bookings (all statuses except cancelled, ordered by startTime)
     db.booking.findMany({
       where: {
-        businessId,
+        ...scope,
         date:   todayUTC,
         status: { not: "CANCELLED" },
       },
@@ -49,7 +50,7 @@ export default async function BookingsPage({
       orderBy: { sortOrder: "asc" },
     }),
     // Total booking count
-    db.booking.count({ where: { businessId, isTest: false } }),
+    db.booking.count({ where: { ...scope, isTest: false } }),
     // Slug for slot generation
     db.business.findUnique({
       where:  { id: businessId },
@@ -97,6 +98,10 @@ export default async function BookingsPage({
       slug={business?.slug ?? ""}
       totalBookings={totalBookings}
       initialStatus={initialStatus}
+      // Keying a booking in carries no branch (so not for a branch-limited
+      // delegate); collecting money is the owner's, or FINANCE's.
+      canCreate={can(actor, "bookings.create") && !(actor.role === "DELEGATE" && actor.delegation?.branchIds)}
+      canCollect={actor.role === "OWNER"}
     />
   );
 }

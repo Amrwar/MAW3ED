@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireBusinessPage } from "@/lib/dashboard/guard";
+import { requireDashboardAccess } from "@/lib/dashboard/guard";
 import { getCustomers, type CustomerSort } from "@/lib/dashboard/queries";
 import CustomersClient from "./_components/CustomersClient";
 
@@ -23,7 +23,7 @@ export default async function CustomersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { business } = await requireBusinessPage();
+  const { business } = await requireDashboardAccess("customers.read");
   const sp = await searchParams;
 
   const one = (k: string) => {

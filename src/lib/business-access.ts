@@ -1,6 +1,7 @@
 import type { Business, StaffAccess } from "@prisma/client";
 import { db } from "@/lib/db";
 import { err, requireSession } from "@/lib/api";
+import { readActingBusinessId, resolveDelegation, type Delegation } from "@/lib/organizations/delegation";
 
 /**
  * Who is acting for a business, and what they may do.
@@ -11,7 +12,11 @@ import { err, requireSession } from "@/lib/api";
  *  - a MANAGER — a staff member the owner gave manager access — every
  *    booking and customer, and the day's actions on them;
  *  - a PROVIDER — a staff member with provider access — the bookings
- *    with them, and moving those through the day.
+ *    with them, and moving those through the day;
+ *  - a DELEGATE — a member of an organization that owns or manages the
+ *    business, operating it within the scopes the business granted
+ *    (lib/organizations/delegation.ts). Never the owner's other powers:
+ *    billing, publishing, who may sign in, settings outside the scopes.
  *
  * Everything is read from the database on every request. Nothing about
  * the business comes from the caller: not a businessId in the token
@@ -21,13 +26,15 @@ import { err, requireSession } from "@/lib/api";
  * access away ends it on their next request.
  */
 
-export type BusinessRole = "OWNER" | StaffAccess;
+export type BusinessRole = "OWNER" | StaffAccess | "DELEGATE";
 
 export interface BusinessActor {
   role: BusinessRole;
   userId: string;
   /** The staff member this person is, for a manager or provider. */
   staffMemberId: string | null;
+  /** For a DELEGATE: what the organizations' grants add up to. */
+  delegation?: Delegation;
 }
 
 export type BusinessAction =
@@ -47,7 +54,20 @@ export type BusinessAction =
   | "staff.manageAccess"
   | "services.read"
   | "profile.read"
-  | "reports.read";
+  | "reports.read"
+  /** Add a booking by hand (phone, walk-in). */
+  | "bookings.create"
+  /** Notes and details on a customer. */
+  | "customers.manage"
+  | "services.manage"
+  /** Staff records — not who may sign in, which is staff.manageAccess. */
+  | "staff.manage"
+  /** Opening hours, staff hours, time blocks. */
+  | "schedule.read"
+  | "schedule.manage"
+  | "profile.manage"
+  /** Revenue and money figures. */
+  | "finance.read";
 
 const RULES: Record<BusinessAction, readonly BusinessRole[]> = {
   "bookings.read": ["OWNER", "MANAGER", "PROVIDER"],
@@ -66,14 +86,28 @@ const RULES: Record<BusinessAction, readonly BusinessRole[]> = {
   "profile.read": ["OWNER", "MANAGER", "PROVIDER"],
   // Revenue and figures stay with the owner.
   "reports.read": ["OWNER"],
+  // Before delegation these were simply "the owner's routes"; they stay
+  // the owner's for staff. A DELEGATE gets them only through a scope.
+  "bookings.create": ["OWNER"],
+  "customers.manage": ["OWNER"],
+  "services.manage": ["OWNER"],
+  "staff.manage": ["OWNER"],
+  "schedule.read": ["OWNER"],
+  "schedule.manage": ["OWNER"],
+  "profile.manage": ["OWNER"],
+  "finance.read": ["OWNER"],
 };
 
-export function can(actor: Pick<BusinessActor, "role">, action: BusinessAction): boolean {
+type Actor = Pick<BusinessActor, "role"> & { delegation?: Pick<Delegation, "actions"> };
+
+export function can(actor: Actor, action: BusinessAction): boolean {
+  // A delegate's powers are exactly the granted scopes, never a role's.
+  if (actor.role === "DELEGATE") return actor.delegation?.actions.includes(action) ?? false;
   return RULES[action].includes(actor.role);
 }
 
 /** Every action this actor may take — what the app shows or hides. */
-export function permissionsOf(actor: Pick<BusinessActor, "role">): BusinessAction[] {
+export function permissionsOf(actor: Actor): BusinessAction[] {
   return (Object.keys(RULES) as BusinessAction[]).filter((a) => can(actor, a));
 }
 
@@ -87,6 +121,13 @@ export function permissionsOf(actor: Pick<BusinessActor, "role">): BusinessActio
  * phone — verified, by a one-time code — signs in.
  */
 export async function resolveBusinessAccess(userId: string): Promise<{ business: Business; actor: BusinessActor } | null> {
+  // Operating a business for an organization comes first while chosen:
+  // the person asked to act there. An acting cookie that no longer
+  // grants anything (scopes cleared, relationship suspended, membership
+  // ended) is ignored, and the account falls back to its own place.
+  const acting = await actingAccess(userId);
+  if (acting) return acting;
+
   const owned = await db.business.findUnique({ where: { ownerId: userId } });
   if (owned) return { business: owned, actor: { role: "OWNER", userId, staffMemberId: null } };
 
@@ -118,6 +159,20 @@ export async function resolveBusinessAccess(userId: string): Promise<{ business:
 }
 
 /**
+ * The delegated access the request's acting cookie stands for, or null:
+ * no cookie, or one that no longer grants anything.
+ */
+export async function actingAccess(userId: string): Promise<{ business: Business; actor: BusinessActor } | null> {
+  const businessId = await readActingBusinessId();
+  if (!businessId) return null;
+  const delegation = await resolveDelegation(userId, businessId);
+  if (!delegation) return null;
+  const business = await db.business.findUnique({ where: { id: businessId } });
+  if (!business) return null;
+  return { business, actor: { role: "DELEGATE", userId, staffMemberId: null, delegation } };
+}
+
+/**
  * The guard for business routes that staff may use. Throws a 404 when
  * the account works for no business — the same answer requireBusiness
  * gives, which does not confirm that anything exists — and a 403 when
@@ -131,12 +186,25 @@ export async function requireBusinessAccess(action: BusinessAction) {
   return { session, ...access };
 }
 
+/** As requireBusinessAccess, passing when the actor may take any one of `actions`. */
+export async function requireBusinessAccessAny(actions: readonly BusinessAction[]) {
+  const session = await requireSession();
+  const access = await resolveBusinessAccess(session.user.id);
+  if (!access) throw err("لم يتم العثور على عملك", 404);
+  if (!actions.some((a) => can(access.actor, a))) throw err("مش مسموح لك بالإجراء ده", 403, { code: "forbidden" });
+  return { session, ...access };
+}
+
 /**
  * The bookings this actor may see, as a where-clause fragment: the whole
  * business for an owner or manager, only their own for a provider. Every
  * booking query a staff member can reach is built on this.
  */
 export function bookingScope(business: Pick<Business, "id">, actor: BusinessActor) {
+  // A delegate limited to some branches sees those branches' bookings.
+  if (actor.role === "DELEGATE" && actor.delegation?.branchIds) {
+    return { businessId: business.id, branchId: { in: actor.delegation.branchIds } };
+  }
   return can(actor, "bookings.readAll")
     ? { businessId: business.id }
     : { businessId: business.id, staffMemberId: actor.staffMemberId ?? "__none__" };
@@ -159,7 +227,7 @@ export interface StaffSummary {
  */
 export async function staffSummaryFor(userId: string): Promise<StaffSummary | null> {
   const access = await resolveBusinessAccess(userId);
-  if (!access || access.actor.role === "OWNER" || !access.actor.staffMemberId) return null;
+  if (!access || access.actor.role === "OWNER" || access.actor.role === "DELEGATE" || !access.actor.staffMemberId) return null;
   return {
     businessId: access.business.id,
     businessName: access.business.nameAr,

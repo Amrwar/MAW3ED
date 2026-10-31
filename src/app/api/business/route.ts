@@ -1,12 +1,13 @@
+import { requireBusinessAccess } from "@/lib/business-access";
 import { db } from "@/lib/db";
 import { businessUpdateSchema } from "@/lib/validations";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
 
 /** GET /api/business — current user's business with relations */
 export async function GET() {
   try {
-    const { business } = await requireBusiness().catch(() => ({
+    const { business } = await requireBusinessAccess("profile.read").catch(() => ({
       business: null,
     }));
     if (!business) return err("لم يتم العثور على عملك", 404);
@@ -33,7 +34,7 @@ export async function GET() {
 /** PUT /api/business — update business profile */
 export async function PUT(req: Request) {
   try {
-    const { business } = await requireBusiness();
+    const { business } = await requireBusinessAccess("profile.manage");
     const body = await req.json();
     const parsed = businessUpdateSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
