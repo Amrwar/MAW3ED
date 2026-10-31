@@ -2,6 +2,7 @@ import type { DelegationScope, OrganizationBusinessRelation } from "@prisma/clie
 import { db } from "@/lib/db";
 import type { BusinessAction } from "@/lib/business-access";
 import { ACTING_COOKIE } from "./acting-paths";
+import { DELEGATION_SCOPES } from "./scopes";
 
 export { ACTING_COOKIE };
 
@@ -31,20 +32,8 @@ export { ACTING_COOKIE };
  * suspending the organization therefore ends access on the next request.
  */
 
-export const DELEGATION_SCOPES = [
-  "RESERVATIONS",
-  "CUSTOMERS",
-  "SERVICES",
-  "STAFF",
-  "SCHEDULES",
-  "PROFILE",
-  "REPORTS",
-  "FINANCE",
-] as const satisfies readonly DelegationScope[];
-
-/** The relationship types new rows may use; the rest are legacy labels. */
-export const RELATIONSHIPS = ["OWNED", "HOSTED", "MANAGED"] as const satisfies readonly OrganizationBusinessRelation[];
-export type Relationship = (typeof RELATIONSHIPS)[number];
+export { DELEGATION_SCOPES, RELATIONSHIPS, SCOPE_LABELS, RELATIONSHIP_LABELS, allowedScopes, checkScopes } from "./scopes";
+export type { Relationship } from "./scopes";
 
 /** What each scope lets a delegate do, in the business's own action words. */
 export const SCOPE_ACTIONS: Record<DelegationScope, readonly BusinessAction[]> = {
@@ -65,51 +54,6 @@ export const SCOPE_ACTIONS: Record<DelegationScope, readonly BusinessAction[]> =
   REPORTS: ["reports.read"],
   FINANCE: ["finance.read", "reports.read"],
 };
-
-export const SCOPE_LABELS: Record<DelegationScope, [ar: string, en: string]> = {
-  RESERVATIONS: ["الحجوزات", "Reservations"],
-  CUSTOMERS: ["العملاء", "Customers"],
-  SERVICES: ["الخدمات", "Services"],
-  STAFF: ["الفريق", "Staff"],
-  SCHEDULES: ["المواعيد وساعات العمل", "Schedules and hours"],
-  PROFILE: ["بيانات النشاط", "Business profile"],
-  REPORTS: ["التقارير", "Reports"],
-  FINANCE: ["الإيرادات", "Revenue and finance"],
-};
-
-export const RELATIONSHIP_LABELS: Record<Relationship, [ar: string, en: string]> = {
-  OWNED: ["مملوك للجهة", "Owned"],
-  HOSTED: ["مستضاف عندها", "Hosted"],
-  MANAGED: ["تديره الجهة", "Managed"],
-};
-
-/**
- * The scopes a relationship may carry at all. The database enforces the
- * same three rules as CHECK constraints; this is the friendly version.
- *
- *  - HOSTED carries none.
- *  - FINANCE only to an owner.
- *  - A relationship limited to one branch can only run that branch's
- *    reservations: customers, services, staff, hours, profile and reports
- *    are business-wide and would show the other branches.
- */
-export function allowedScopes(relation: OrganizationBusinessRelation, branchId: string | null): DelegationScope[] {
-  if (relation === "HOSTED" || !RELATIONSHIPS.includes(relation as Relationship)) return [];
-  if (branchId) return ["RESERVATIONS"];
-  return relation === "OWNED" ? [...DELEGATION_SCOPES] : DELEGATION_SCOPES.filter((s) => s !== "FINANCE");
-}
-
-/** Every requested scope must be allowed; returns them de-duplicated in canonical order. */
-export function checkScopes(
-  relation: OrganizationBusinessRelation,
-  branchId: string | null,
-  scopes: readonly string[],
-): { ok: true; scopes: DelegationScope[] } | { ok: false; refused: string[] } {
-  const allowed = allowedScopes(relation, branchId);
-  const refused = scopes.filter((s) => !allowed.includes(s as DelegationScope));
-  if (refused.length) return { ok: false, refused: [...new Set(refused)] };
-  return { ok: true, scopes: DELEGATION_SCOPES.filter((s) => scopes.includes(s)) };
-}
 
 /** The business actions a set of scopes adds up to. */
 export function actionsFor(scopes: readonly DelegationScope[]): BusinessAction[] {

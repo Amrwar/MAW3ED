@@ -47,8 +47,17 @@ export const ORG_KINDS = [
   "MALL", "COMPOUND", "BUSINESS_GROUP", "RESTAURANT_GROUP", "CLINIC_GROUP", "FRANCHISE", "COMMERCIAL_BUILDING", "OTHER",
 ] as const;
 
-/** New rows take one of the three relationship types; legacy labels are refused. */
-const relationship = z.enum(["OWNED", "HOSTED", "MANAGED"]);
+/**
+ * New rows take one of the three relationship types. The labels used
+ * before relationship semantics are still accepted from older clients
+ * and mean what the migration made of stored rows: TENANT and PARTNER
+ * are hosted, FRANCHISE is managed.
+ */
+const LEGACY_RELATION: Record<string, string> = { TENANT: "HOSTED", PARTNER: "HOSTED", FRANCHISE: "MANAGED" };
+const relationship = z.preprocess(
+  (v) => (typeof v === "string" && v in LEGACY_RELATION ? LEGACY_RELATION[v] : v),
+  z.enum(["OWNED", "HOSTED", "MANAGED"]),
+);
 const scopeList = z.array(z.enum(["RESERVATIONS", "CUSTOMERS", "SERVICES", "STAFF", "SCHEDULES", "PROFILE", "REPORTS", "FINANCE"])).max(8);
 /** A grant's end: a future instant, or null for "until revoked". */
 const grantExpiry = z

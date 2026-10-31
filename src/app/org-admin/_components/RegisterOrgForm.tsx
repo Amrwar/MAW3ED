@@ -70,6 +70,8 @@ export default function RegisterOrgForm() {
             <option value="MALL">{t("مول", "Mall")}</option>
             <option value="COMPOUND">{t("كمبوند", "Compound")}</option>
             <option value="BUSINESS_GROUP">{t("مجموعة أعمال", "Business group")}</option>
+            <option value="RESTAURANT_GROUP">{t("مجموعة مطاعم", "Restaurant group")}</option>
+            <option value="CLINIC_GROUP">{t("مجموعة عيادات", "Clinic group")}</option>
             <option value="FRANCHISE">{t("فرنشايز", "Franchise")}</option>
             <option value="COMMERCIAL_BUILDING">{t("مبنى تجاري", "Commercial building")}</option>
             <option value="OTHER">{t("غير ذلك", "Other")}</option>

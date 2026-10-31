@@ -32,7 +32,7 @@ export async function GET() {
         select: {
           id: true, status: true, relation: true, note: true, createdAt: true, decidedAt: true,
           requestedScopes: true, scopes: true, expiresAt: true, suspendedAt: true, suspendedById: true,
-          branch: { select: { nameAr: true, nameEn: true } },
+          branch: { select: { id: true, nameAr: true, nameEn: true } },
           organization: { select: { id: true, slug: true, kind: true, nameAr: true, nameEn: true, isPublished: true, status: true } },
         },
       }),

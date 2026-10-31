@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Copy, Check, Download, ExternalLink, Trash2 } from "lucide-react";
 import Link from "@/components/shared/LocaleLink";
 import ImageUpload from "@/components/shared/ImageUpload";
+import ScopePicker from "@/components/organizations/ScopePicker";
+import ManageBusinessButton from "@/components/organizations/ManageBusinessButton";
+import { RELATIONSHIP_HINTS, RELATIONSHIP_LABELS, SCOPE_LABELS, type Relationship } from "@/lib/organizations/scopes";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Org {
@@ -14,14 +17,17 @@ interface Org {
   logoImage: string | null; coverImage: string | null; cityId: string | null;
   /** The administrator's written reason, when REJECTED or SUSPENDED. */
   statusReason: string | null;
+  parent: { id: string; slug: string; nameAr: string; nameEn: string | null } | null;
+  _count: { children: number };
   venues: { id: string; slug: string; nameAr: string; nameEn: string | null; status: string; isPublished: boolean }[];
   roles: { id: string; kind: string; user: { name: string | null; email: string | null } }[];
   invites: { id: string; email: string; relation: string; token: string; expiresAt: string }[];
 }
 interface Association {
   id: string; status: string; relation: string; section: string | null; sortOrder: number; note: string | null;
+  requestedScopes: string[]; scopes: string[]; expiresAt: string | null; suspendedAt: string | null;
   branch: { id: string; nameAr: string; nameEn: string | null } | null;
-  business: { slug: string; nameAr: string; nameEn: string | null; isPublished: boolean; category: { nameAr: string; nameEn: string } | null; city: { nameAr: string; nameEn: string } | null };
+  business: { id: string; slug: string; nameAr: string; nameEn: string | null; isPublished: boolean; category: { nameAr: string; nameEn: string } | null; city: { nameAr: string; nameEn: string } | null };
 }
 interface Metrics { windowDays: number; viewsTotal: number; views: Record<string, number>; attributedBookings: number; perBusiness: { nameAr: string; count: number }[] }
 
@@ -49,6 +55,11 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
   const [org, setOrg] = useState<Org | null>(null);
   const [can, setCan] = useState({ edit: false, publish: false, members: false, review: false });
   const [associations, setAssociations] = useState<Association[]>([]);
+  // One page of associations at a time: a large organization's console
+  // never loads its whole portfolio.
+  const [assocPage, setAssocPage] = useState(1);
+  const [assocMeta, setAssocMeta] = useState({ total: 0, approved: 0, pages: 1 });
+  const [parentOptions, setParentOptions] = useState<{ id: string; nameAr: string; nameEn: string | null }[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [audit, setAudit] = useState<{ id: string; summary: string; at: string }[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -56,7 +67,7 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
-    const [o, a, m, au] = await Promise.all([api(base), api(`${base}/businesses`), api(`${base}/metrics`), api(`${base}/audit`)]);
+    const [o, a, m, au] = await Promise.all([api(base), api(`${base}/businesses?page=${assocPage}`), api(`${base}/metrics`), api(`${base}/audit`)]);
     if (!o.ok) {
       setFailure(o.status === 401 ? "signin" : o.status === 404 ? "gone" : "error");
       return;
@@ -64,10 +75,14 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
     setFailure(null);
     setOrg(o.json.organization as Org);
     setCan(o.json.can as typeof can);
-    if (a.ok) setAssociations(a.json.associations as Association[]);
+    if (a.ok) {
+      setAssociations(a.json.associations as Association[]);
+      setAssocMeta({ total: Number(a.json.total ?? 0), approved: Number(a.json.approved ?? 0), pages: Number(a.json.pages ?? 1) });
+    }
+    setParentOptions((o.json.parentOptions as typeof parentOptions) ?? []);
     if (m.ok) setMetrics(m.json as unknown as Metrics);
     if (au.ok) setAudit((au.json.entries as typeof audit) ?? []);
-  }, [base]);
+  }, [base, assocPage]);
 
   useEffect(() => {
     let live = true;
@@ -192,7 +207,7 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
             <Tile label={t("زيارات الصفحة", "Page visits")} value={metrics.viewsTotal} />
             <Tile label={t("منها QR", "From QR")} value={metrics.views.QR ?? 0} />
             <Tile label={t("حجوزات جت من الصفحة", "Bookings from the page")} value={metrics.attributedBookings} />
-            <Tile label={t("أنشطة معروضة", "Listed businesses")} value={associations.filter((a) => a.status === "APPROVED").length} />
+            <Tile label={t("أنشطة مرتبطة", "Linked businesses")} value={assocMeta.approved} />
           </div>
           {metrics.perBusiness.length > 0 && (
             <ul className="m-0 list-none space-y-1 p-0 text-sm">
@@ -210,7 +225,25 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
         </section>
       )}
 
-      <Businesses t={t} nm={nm} associations={associations} canManage={can.edit} onAct={act} base={base} orgStatus={org.status} invites={org.invites} />
+      <Businesses
+        t={t}
+        en={en}
+        nm={nm}
+        associations={associations}
+        canManage={can.edit}
+        onAct={act}
+        base={base}
+        orgStatus={org.status}
+        invites={org.invites}
+        page={assocPage}
+        pages={assocMeta.pages}
+        total={assocMeta.total}
+        onPage={setAssocPage}
+      />
+
+      {can.members && (
+        <ParentSection t={t} nm={nm} org={org} options={parentOptions} onSet={(parentId) => act(`${base}/parent`, "PUT", { parentId }, t("اتحفظ.", "Saved."))} />
+      )}
 
       {can.edit && <ProfileForm t={t} en={en} org={org} cities={cities} onSave={(profile) => act(base, "PATCH", { profile })} />}
 
@@ -265,8 +298,9 @@ function Tile({ label, value }: { label: string; value: number }) {
 type T = (ar: string, en: string) => string;
 type Act = (path: string, method: string, body?: unknown, done?: string) => Promise<boolean>;
 
-function Businesses({ t, nm, associations, canManage, onAct, base, orgStatus, invites }: {
+function Businesses({ t, en, nm, associations, canManage, onAct, base, orgStatus, invites, page, pages, total, onPage }: {
   t: T;
+  en: boolean;
   nm: (x: { nameAr: string; nameEn?: string | null }) => string;
   associations: Association[];
   canManage: boolean;
@@ -274,18 +308,31 @@ function Businesses({ t, nm, associations, canManage, onAct, base, orgStatus, in
   base: string;
   orgStatus: string;
   invites: Org["invites"];
+  page: number;
+  pages: number;
+  total: number;
+  onPage: (p: number) => void;
 }) {
   const [slug, setSlug] = useState("");
-  const [relation, setRelation] = useState("TENANT");
+  const [relation, setRelation] = useState<Relationship>("HOSTED");
+  const [requested, setRequested] = useState<string[]>([]);
   const [email, setEmail] = useState("");
+  const [inviteRelation, setInviteRelation] = useState<Relationship>("OWNED");
+  const [inviteScopes, setInviteScopes] = useState<string[]>(["RESERVATIONS"]);
   const [lastLink, setLastLink] = useState<string | null>(null);
   const label: Record<string, string> = {
-    INVITED: t("دعوة مبعوتة", "Invited"), REQUESTED: t("طلب جديد", "Requested"), APPROVED: t("معروض", "Listed"),
-    DECLINED: t("رفض الدعوة", "Declined"), REJECTED: t("مرفوض", "Rejected"), REMOVED: t("اتشال", "Removed"),
+    INVITED: t("دعوة مبعوتة", "Invited"), REQUESTED: t("طلب جديد", "Requested"), APPROVED: t("مرتبط", "Linked"),
+    SUSPENDED: t("موقوف مؤقتًا", "Paused"), DECLINED: t("رفض الدعوة", "Declined"), REJECTED: t("مرفوض", "Rejected"), REMOVED: t("اتشال", "Removed"),
   };
-  const REL: Record<string, string> = {
-    OWNED: t("ملك الجهة", "Own brand"), FRANCHISE: t("فرنشايز", "Franchise"), TENANT: t("مستأجر", "Tenant"), PARTNER: t("شريك", "Partner"),
+  const relName = (r: string) => {
+    const l = RELATIONSHIP_LABELS[r as Relationship];
+    return l ? (en ? l[1] : l[0]) : r;
   };
+  const scopeNames = (list: string[]) =>
+    list.map((sc) => SCOPE_LABELS[sc as keyof typeof SCOPE_LABELS]?.[en ? 1 : 0] ?? sc).join(en ? ", " : "، ");
+  const relOptions = (["HOSTED", "OWNED", "MANAGED"] as const).map((r) => (
+    <option key={r} value={r}>{relName(r)}</option>
+  ));
 
   return (
     <section aria-labelledby="biz-h" className="card space-y-4 p-5">
@@ -305,19 +352,36 @@ function Businesses({ t, nm, associations, canManage, onAct, base, orgStatus, in
                   <span className="font-bold">{nm(a.business)}</span>
                   {a.branch ? ` · ${nm(a.branch)}` : ""}
                   {a.business.category ? <span className="text-xs text-[var(--color-subtle)]"> · {nm(a.business.category)}</span> : null}
-                  <span className="text-xs text-[var(--color-subtle)]"> · {REL[a.relation] ?? a.relation}</span>
+                  <span className="text-xs text-[var(--color-subtle)]"> · {relName(a.relation)}</span>
                   {!a.business.isPublished && a.status === "APPROVED" && (
                     <span className="text-xs text-[var(--color-warn)]"> · {t("صفحته مش منشورة — مش ظاهر", "its page is not public — not shown")}</span>
                   )}
                 </p>
                 <span className="badge">{label[a.status] ?? a.status}</span>
               </div>
-              {canManage && (a.status === "REQUESTED" || a.status === "APPROVED") && (
+              {(a.relation === "OWNED" || a.relation === "MANAGED") && (
+                <p className="m-0 text-xs text-[var(--color-subtle)]">
+                  {a.scopes.length
+                    ? <>{t("صاحب النشاط سمح بـ: ", "The business granted: ")}{scopeNames(a.scopes)}</>
+                    : t("لسه مفيش صلاحيات ممنوحة من صاحب النشاط.", "No access granted by the business yet.")}
+                  {a.expiresAt ? <> · {t("لحد ", "until ")}<span className="num" dir="ltr">{a.expiresAt.slice(0, 10)}</span></> : null}
+                  {a.status === "INVITED" && a.requestedScopes.length ? <> · {t("مطلوب: ", "requested: ")}{scopeNames(a.requestedScopes)}</> : null}
+                </p>
+              )}
+              {canManage && (a.status === "REQUESTED" || a.status === "APPROVED" || a.status === "SUSPENDED" || a.status === "INVITED") && (
                 <AssocActions t={t} a={a} base={base} onAct={onAct} />
               )}
             </li>
           ))}
         </ul>
+      )}
+      {pages > 1 && (
+        <nav aria-label={t("صفحات الأنشطة", "Business pages")} className="flex items-center gap-2 text-sm">
+          <button type="button" className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>{t("السابق", "Previous")}</button>
+          <span className="num">{page} / {pages}</span>
+          <span className="text-xs text-[var(--color-subtle)]">({total})</span>
+          <button type="button" className="btn btn-ghost btn-sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>{t("التالي", "Next")}</button>
+        </nav>
       )}
 
       {canManage && orgStatus === "APPROVED" && (
@@ -326,7 +390,11 @@ function Businesses({ t, nm, associations, canManage, onAct, base, orgStatus, in
             className="flex flex-wrap items-end gap-2 text-sm"
             onSubmit={async (e) => {
               e.preventDefault();
-              if (await onAct(`${base}/businesses`, "POST", { businessSlug: slug.trim(), relation }, t("الدعوة اتبعتت لصاحب النشاط.", "Invitation sent to the business owner."))) setSlug("");
+              const body = { businessSlug: slug.trim(), relation, requestedScopes: relation === "HOSTED" ? [] : requested };
+              if (await onAct(`${base}/businesses`, "POST", body, t("الدعوة اتبعتت لصاحب النشاط.", "Invitation sent to the business owner."))) {
+                setSlug("");
+                setRequested([]);
+              }
             }}
           >
             <label className="space-y-1">
@@ -337,22 +405,27 @@ function Businesses({ t, nm, associations, canManage, onAct, base, orgStatus, in
               </span>
             </label>
             <label className="space-y-1">
-              <span className="block text-xs font-bold">{t("العلاقة", "Relation")}</span>
-              <select className={field} value={relation} onChange={(e) => setRelation(e.target.value)}>
-                <option value="TENANT">{REL.TENANT}</option>
-                <option value="OWNED">{REL.OWNED}</option>
-                <option value="FRANCHISE">{REL.FRANCHISE}</option>
-                <option value="PARTNER">{REL.PARTNER}</option>
+              <span className="block text-xs font-bold">{t("نوع العلاقة", "Relationship")}</span>
+              <select className={field} value={relation} onChange={(e) => { setRelation(e.target.value as Relationship); setRequested([]); }}>
+                {relOptions}
               </select>
             </label>
             <button type="submit" className="btn btn-outline btn-sm">{t("ابعت الدعوة", "Invite")}</button>
+            <p className="m-0 w-full text-xs text-[var(--color-subtle)]">{en ? RELATIONSHIP_HINTS[relation][1] : RELATIONSHIP_HINTS[relation][0]}</p>
+            <div className="w-full">
+              <ScopePicker relation={relation} value={requested} onChange={setRequested} en={en} legend={t("الصلاحيات اللي بتطلبها (صاحب النشاط بيقرر):", "Access you are asking for (the business decides):")} />
+            </div>
           </form>
 
           <form
             className="flex flex-wrap items-end gap-2 text-sm"
             onSubmit={async (e) => {
               e.preventDefault();
-              const r = await fetch(`${base}/invites`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim(), relation: "OWNED" }) }).catch(() => null);
+              const r = await fetch(`${base}/invites`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email.trim(), relation: inviteRelation, requestedScopes: inviteRelation === "HOSTED" ? [] : inviteScopes }),
+              }).catch(() => null);
               const json = ((await r?.json().catch(() => ({}))) ?? {}) as { invite?: { link: string; emailed: boolean }; error?: string };
               if (r?.ok && json.invite) {
                 setLastLink(json.invite.link);
@@ -365,7 +438,16 @@ function Businesses({ t, nm, associations, canManage, onAct, base, orgStatus, in
               <span className="block text-xs font-bold">{t("ادعُ حد ينشئ نشاط جديد تحت الجهة (بالإيميل)", "Invite somebody to create a new business under the organization (by email)")}</span>
               <input className={field} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required dir="ltr" />
             </label>
+            <label className="space-y-1">
+              <span className="block text-xs font-bold">{t("نوع العلاقة", "Relationship")}</span>
+              <select className={field} value={inviteRelation} onChange={(e) => setInviteRelation(e.target.value as Relationship)}>
+                {relOptions}
+              </select>
+            </label>
             <button type="submit" className="btn btn-outline btn-sm">{t("اعمل دعوة", "Create invite")}</button>
+            <div className="w-full">
+              <ScopePicker relation={inviteRelation} value={inviteScopes} onChange={setInviteScopes} en={en} legend={t("الصلاحيات (هتتعرض على صاحب النشاط الجديد قبل ما ينشئه):", "Access (shown to the new owner before they create the business):")} />
+            </div>
           </form>
           {lastLink && (
             <p className="m-0 break-all text-xs text-[var(--color-muted)]" dir="ltr">
@@ -390,10 +472,59 @@ function Businesses({ t, nm, associations, canManage, onAct, base, orgStatus, in
 
       <p className="m-0 text-xs text-[var(--color-subtle)]">
         {t(
-          "شيل نشاط من الدليل مش بيمسح منه حاجة: صاحبه بيفضل مالكه بكل بياناته وحجوزاته.",
-          "Removing a business from the directory deletes nothing: its owner keeps it with all its data and bookings.",
+          "شيل نشاط مش بيمسح منه حاجة: صاحبه بيفضل مالكه بكل بياناته وحجوزاته. الصلاحيات بيمنحها صاحب النشاط بس، ويقدر يسحبها في أي وقت.",
+          "Removing a business deletes nothing: its owner keeps it with all its data and bookings. Access is granted by the business owner alone, who can withdraw it at any time.",
         )}
       </p>
+    </section>
+  );
+}
+
+function ParentSection({ t, nm, org, options, onSet }: {
+  t: T;
+  nm: (x: { nameAr: string; nameEn?: string | null }) => string;
+  org: Org;
+  options: { id: string; nameAr: string; nameEn: string | null }[];
+  onSet: (parentId: string | null) => Promise<boolean>;
+}) {
+  const [choice, setChoice] = useState("");
+  return (
+    <section aria-labelledby="par-h" className="card space-y-2 p-5">
+      <h2 id="par-h" className="m-0 text-base font-extrabold">{t("الجهة الأم", "Parent organization")}</h2>
+      <p className="m-0 text-xs text-[var(--color-subtle)]">
+        {t(
+          "لو الجهة دي تبع شركة أكبر بتملكها إنت كمان (زي شركة قابضة فوق مول). ممنوع الدواير، وأقصى حاجة 3 مستويات.",
+          "If this organization belongs to a larger one you also own (a holding company over a mall). No cycles; at most three levels.",
+        )}
+      </p>
+      {org.parent ? (
+        <p className="m-0 flex flex-wrap items-center gap-2 text-sm">
+          {t("تابعة لـ ", "Part of ")}<span className="font-bold">{nm(org.parent)}</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => void onSet(null)}>{t("فك الارتباط", "Unlink")}</button>
+        </p>
+      ) : options.length ? (
+        <form
+          className="flex flex-wrap items-end gap-2 text-sm"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (choice) void onSet(choice);
+          }}
+        >
+          <label className="space-y-1">
+            <span className="block text-xs font-bold">{t("اختار الجهة الأم", "Choose the parent")}</span>
+            <select className={field} value={choice} onChange={(e) => setChoice(e.target.value)} required>
+              <option value="">—</option>
+              {options.map((o) => <option key={o.id} value={o.id}>{nm(o)}</option>)}
+            </select>
+          </label>
+          <button type="submit" className="btn btn-outline btn-sm">{t("اربط", "Link")}</button>
+        </form>
+      ) : (
+        <p className="m-0 text-sm text-[var(--color-subtle)]">{t("مفيش جهات تانية معتمدة بتملكها.", "No other approved organization that you own.")}</p>
+      )}
+      {org._count.children > 0 && (
+        <p className="m-0 text-xs text-[var(--color-subtle)]">{t(`تحتها ${org._count.children} جهة`, `${org._count.children} organization(s) within`)}</p>
+      )}
     </section>
   );
 }
@@ -420,14 +551,30 @@ function AssocActions({ t, a, base, onAct }: { t: T; a: Association; base: strin
             {t("رفض", "Reject")}
           </button>
         </>
+      ) : a.status === "INVITED" ? (
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onAct(`${base}/businesses/${a.id}`, "PATCH", { action: "remove" }, t("الدعوة اتسحبت.", "Invitation withdrawn."))}>
+          {t("اسحب الدعوة", "Withdraw invitation")}
+        </button>
       ) : (
         <>
           <button type="button" className="btn btn-outline btn-sm" onClick={() => onAct(`${base}/businesses/${a.id}`, "PATCH", { action: "organize", section: section || null, sortOrder: Number(sortOrder) || 0 })}>
             {t("حفظ التنظيم", "Save placement")}
           </button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onAct(`${base}/businesses/${a.id}`, "PATCH", { action: "remove" }, t("اتشال من الدليل.", "Removed from the directory."))}>
-            {t("شيل من الدليل", "Remove")}
+          {a.status === "APPROVED" ? (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => onAct(`${base}/businesses/${a.id}`, "PATCH", { action: "suspend" }, t("اتوقف مؤقتًا.", "Paused."))}>
+              {t("إيقاف مؤقت", "Pause")}
+            </button>
+          ) : (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => onAct(`${base}/businesses/${a.id}`, "PATCH", { action: "resume" }, t("رجع.", "Resumed."))}>
+              {t("رجّعه", "Resume")}
+            </button>
+          )}
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onAct(`${base}/businesses/${a.id}`, "PATCH", { action: "remove" }, t("اتشال.", "Removed."))}>
+            {t("شيل", "Remove")}
           </button>
+          {a.status === "APPROVED" && a.scopes.length > 0 && (a.relation === "OWNED" || a.relation === "MANAGED") && (
+            <ManageBusinessButton businessId={a.business.id} />
+          )}
         </>
       )}
     </div>
@@ -438,6 +585,8 @@ const KIND_LABELS: Record<string, [string, string]> = {
   MALL: ["مول", "Mall"],
   COMPOUND: ["كمبوند", "Compound"],
   BUSINESS_GROUP: ["مجموعة أنشطة", "Business group"],
+  RESTAURANT_GROUP: ["مجموعة مطاعم", "Restaurant group"],
+  CLINIC_GROUP: ["مجموعة عيادات", "Clinic group"],
   FRANCHISE: ["فرانشايز", "Franchise"],
   COMMERCIAL_BUILDING: ["مبنى تجاري", "Commercial building"],
   OTHER: ["أخرى", "Other"],

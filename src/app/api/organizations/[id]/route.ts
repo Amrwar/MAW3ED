@@ -13,11 +13,13 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function GET(_req: Request, { params }: Ctx) {
   return orgHandle("organization GET", async () => {
     const { id } = await params;
-    const { authority } = await requireOrgAccess(id, "org.view");
+    const { caller, authority } = await requireOrgAccess(id, "org.view");
     const org = await db.organization.findUniqueOrThrow({
       where: { id },
       include: {
         city: { select: { id: true, nameAr: true, nameEn: true } },
+        parent: { select: { id: true, slug: true, nameAr: true, nameEn: true } },
+        _count: { select: { children: true } },
         venues: {
           orderBy: { createdAt: "desc" },
           select: { id: true, slug: true, nameAr: true, nameEn: true, status: true, isPublished: true },
@@ -44,7 +46,23 @@ export async function GET(_req: Request, { params }: Ctx) {
             })
           )?.metadata as { reason?: string | null } | null)?.reason ?? null
         : null;
+    // Parent choices, for an owner: other approved organizations this
+    // person also owns (linking needs ownership of both).
+    const ownsHere = authority === "OWNER" || authority === "PLATFORM";
+    const parentOptions = ownsHere
+      ? await db.organization.findMany({
+          where: {
+            id: { not: id },
+            status: "APPROVED",
+            ...(authority === "PLATFORM" ? {} : { roles: { some: { userId: caller.userId, kind: "ORGANIZATION_OWNER" } } }),
+          },
+          orderBy: { nameAr: "asc" },
+          take: 100,
+          select: { id: true, nameAr: true, nameEn: true },
+        })
+      : [];
     return ok({
+      parentOptions,
       organization: { ...org, statusReason },
       authority,
       can: {

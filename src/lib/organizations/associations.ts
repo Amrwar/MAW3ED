@@ -474,7 +474,10 @@ export async function acceptEmailInvite(
  */
 export async function listAssociations(organizationId: string, page = 1) {
   const where = { organizationId };
-  const total = await db.organizationBusiness.count({ where });
+  const [total, approved] = await Promise.all([
+    db.organizationBusiness.count({ where }),
+    db.organizationBusiness.count({ where: { organizationId, status: "APPROVED" } }),
+  ]);
   const pages = Math.max(1, Math.ceil(total / ASSOCIATIONS_PAGE_SIZE));
   const current = Math.min(Math.max(Math.floor(Number.isFinite(page) ? page : 1), 1), pages);
   const rows = await db.organizationBusiness.findMany({
@@ -504,6 +507,7 @@ export async function listAssociations(organizationId: string, page = 1) {
       suspendedAt: r.suspendedAt?.toISOString() ?? null,
     })),
     total,
+    approved,
     page: current,
     pages,
   };

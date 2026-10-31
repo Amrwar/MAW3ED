@@ -1,5 +1,6 @@
 "use client";
 
+import { RELATIONSHIP_LABELS, SCOPE_LABELS } from "@/lib/organizations/scopes";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -87,7 +88,8 @@ interface Props {
   categories: Category[];
   cities:     City[];
   /** An organization's invitation this new business will join. */
-  invite?:     { token: string; orgName: string } | null;
+  /** The scopes are granted when the business is created: shown here first, as consent. */
+  invite?:     { token: string; orgName: string; relation: string; scopes: string[] } | null;
   /** The link was used, cancelled or expired. */
   inviteDead?: boolean;
 }
@@ -235,7 +237,15 @@ export default function OnboardingForm({ categories, cities, invite = null, invi
     <div>
       {invite && (
         <p role="status" className="m-0 mb-6 rounded-[var(--radius-md)] border border-[var(--color-jade)]/30 bg-[var(--color-jade-soft)] px-4 py-3 text-sm text-[var(--color-ok)]">
-          دعوة من <span className="font-bold">{invite.orgName}</span>: أول ما تخلّص، نشاطك هيظهر في دليلهم — ويفضل ملكك بالكامل.
+          دعوة من <span className="font-bold">{invite.orgName}</span>
+          {" "}({RELATIONSHIP_LABELS[invite.relation as keyof typeof RELATIONSHIP_LABELS]?.[0] ?? invite.relation}): أول ما تخلّص، نشاطك هيترتبط بيهم — ويفضل ملكك بالكامل.
+          {invite.scopes.length > 0 && (
+            <span className="mt-1 block text-[var(--color-ink)]">
+              بإنشاء النشاط بالدعوة دي، إنت بتسمح للجهة تدير:{" "}
+              <span className="font-bold">{invite.scopes.map((sc) => SCOPE_LABELS[sc as keyof typeof SCOPE_LABELS]?.[0] ?? sc).join("، ")}</span>.
+              {" "}تقدر تغيّر ده أو تسحبه في أي وقت من «الجهات والمجموعات».
+            </span>
+          )}
         </p>
       )}
       {inviteDead && (

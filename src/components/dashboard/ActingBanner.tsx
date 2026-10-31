@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -25,12 +26,14 @@ export default function ActingBanner({
 }) {
   const { lang } = useLanguage();
   const en = lang === "en";
+  const router = useRouter();
   const [leaving, setLeaving] = useState(false);
 
   async function exit() {
     setLeaving(true);
     await fetch("/api/organizations/acting", { method: "DELETE" }).catch(() => null);
-    window.location.href = "/org-admin";
+    router.push("/org-admin");
+    router.refresh();
   }
 
   return (
