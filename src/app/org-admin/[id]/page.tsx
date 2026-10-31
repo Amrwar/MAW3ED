@@ -17,5 +17,6 @@ export default async function OrgConsolePage({ params }: { params: Promise<{ id:
   if (!caller) redirect(`/login?next=/org-admin/${id}`);
   const org = await db.organization.findUnique({ where: { id }, select: { id: true } });
   if (!org || !orgCan(orgAuthorityOver(caller, id), "org.view")) notFound();
-  return <OrgConsole organizationId={id} />;
+  const cities = await db.city.findMany({ orderBy: { nameAr: "asc" }, select: { id: true, nameAr: true, nameEn: true } });
+  return <OrgConsole organizationId={id} cities={cities} />;
 }

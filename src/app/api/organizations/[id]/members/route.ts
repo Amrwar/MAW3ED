@@ -4,6 +4,7 @@ import { ok, err } from "@/lib/api";
 import { requireOrgAccess } from "@/lib/organizations/guard";
 import { orgHandle, readJson } from "@/lib/organizations/route";
 import { recordAudit } from "@/lib/admin/audit";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const schema = z.object({ email: z.string().trim().toLowerCase().email() });
@@ -17,6 +18,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return orgHandle("org members POST", async () => {
     const { id } = await params;
     const { caller, organization, authority } = await requireOrgAccess(id, "org.members");
+    const limited = await rateLimit("orgMember", caller.userId);
+    if (!limited.ok) return tooManyRequests(limited);
     const parsed = schema.safeParse(await readJson(req));
     if (!parsed.success) return err("إيميل غير صالح", 422);
     const user = await db.user.findFirst({
@@ -25,6 +28,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
     if (!user) return err("مفيش حساب بالإيميل ده. لازم الشخص يسجّل الأول.", 404, { code: "no-account" });
     if (!user.emailVerified) return err("الحساب ده لسه ما أكّدش إيميله.", 409, { code: "email-not-verified" });
+    // The owner already holds every manager permission; a second role
+    // row for the same person would only be a duplicate authority.
+    if (user.id === caller.userId) return err("إنت مالك الجهة بالفعل", 409, { code: "already-owner" });
     try {
       const role = await db.venueRole.create({
         data: { userId: user.id, kind: "ORGANIZATION_ADMIN", organizationId: id, grantedById: caller.userId },

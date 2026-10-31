@@ -21,7 +21,7 @@
  */
 
 /** Hosts that serve images, mirroring next.config.ts remotePatterns. */
-const IMAGE_HOSTS = ["https://res.cloudinary.com", "https://images.unsplash.com"];
+export const IMAGE_HOSTS = ["https://res.cloudinary.com", "https://images.unsplash.com"];
 
 export interface CspOptions {
   nonce: string;

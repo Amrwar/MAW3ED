@@ -22,6 +22,7 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const { Client } = require("pg");
 const QRCode = require("qrcode");
+const { chromium } = require("playwright");
 
 const args = process.argv.slice(2);
 const B = args.find((a) => /^https?:/.test(a)) ?? "http://localhost:3101";
@@ -126,6 +127,7 @@ try {
   check("the owner fills the profile", prof.status === 200, `status ${prof.status}`);
   const addMember = await send(founder, `/api/organizations/${org.id}/members`, "POST", { email: "rival@qa.test" });
   check("the owner appoints a manager by email", addMember.status === 201, `status ${addMember.status}`);
+  check("the owner cannot appoint themselves as manager (409)", (await send(founder, `/api/organizations/${org.id}/members`, "POST", { email: regEmail })).status === 409);
   check("appointing the same manager twice is a 409, not a duplicate row", (await send(founder, `/api/organizations/${org.id}/members`, "POST", { email: "rival@qa.test" })).status === 409);
   const ownerGrant = await send(admin, "/api/admin/venue-roles", "POST", { email: regEmail, kind: "ORGANIZATION_OWNER", organizationId: org.id });
   check("the platform admin can grant ORGANIZATION_OWNER (409 duplicate for the existing owner, never 500)", ownerGrant.status === 409, `status ${ownerGrant.status}`);
@@ -136,6 +138,11 @@ try {
   check("approved but unpublished: still no public page", (await call(null, `/groups/${tag}-grp`)).status === 404);
   const pub = await send(founder, `/api/organizations/${org.id}`, "PATCH", { isPublished: true });
   check("the owner publishes", pub.status === 200, `status ${pub.status}`);
+  const logo = "https://res.cloudinary.com/demo/image/upload/qa22b-logo.png";
+  const badImg = await send(founder, `/api/organizations/${org.id}`, "PATCH", { profile: { logoImage: "javascript:alert(1)" } });
+  check("a non-upload image URL is refused (422)", badImg.status === 422, `status ${badImg.status}`);
+  const goodImg = await send(founder, `/api/organizations/${org.id}`, "PATCH", { profile: { logoImage: logo, coverImage: logo } });
+  check("an uploaded logo and cover are saved", goodImg.status === 200 && (await pg.query(`SELECT "logoImage" FROM "VenueOrganization" WHERE id=$1`, [org.id])).rows[0].logoImage === logo, `status ${goodImg.status}`);
 
   const emptyRes = await call(null, `/groups/${tag}-grp`);
   const emptyHtml = await emptyRes.text();
@@ -233,6 +240,53 @@ try {
 
   /* ── Pages ───────────────────────────────────────────── */
   check("the founder's console page renders", (await call(founder, "/org-admin")).status === 200 && (await call(founder, `/org-admin/${org.id}`)).status === 200);
+
+  /* ── The profile form in a real browser persists city and kind-safe edits ── */
+  {
+    const browser = await chromium.launch();
+    try {
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      await ctx.addCookies([...founder.cookies].map(([name, value]) => ({ name, value, url: B })));
+      const page = await ctx.newPage();
+      await page.goto(`${B}/org-admin/${org.id}`, { waitUntil: "networkidle" });
+      const cityId = (await pg.query(`SELECT id FROM "City" ORDER BY "nameAr" DESC LIMIT 1`)).rows[0].id;
+      const form = page.locator('form[aria-labelledby="prof-h"]');
+      await form.locator("select").nth(1).selectOption(cityId);
+      check("the console offers logo and cover uploads", (await form.locator('input[type="file"]').count()) === 2);
+      await form.getByRole("button", { name: /احفظ|Save/ }).click();
+      await page.waitForResponse((r) => r.url().endsWith(`/api/organizations/${org.id}`) && r.request().method() === "PATCH");
+      await page.waitForTimeout(500);
+      const saved = (await pg.query(`SELECT "cityId", status FROM "VenueOrganization" WHERE id=$1`, [org.id])).rows[0];
+      check("choosing a city in the browser form persists it, and leaves the approval alone", saved.cityId === cityId && saved.status === "APPROVED", JSON.stringify(saved));
+      // Changing the name shows the re-review warning before saving.
+      await form.locator("input").first().fill("مجموعة باسم جديد");
+      check("the form warns that a new name goes back to review", await form.getByRole("status").isVisible());
+    } finally {
+      await browser.close();
+    }
+  }
+
+  /* ── A new name after approval goes back to review ── */
+  const renamed = await send(founder, `/api/organizations/${org.id}`, "PATCH", { profile: { nameAr: "مول مشهور جدًا (بيانات اختبار)" } });
+  const renamedBody = await json(renamed);
+  const afterRename = (await pg.query(`SELECT status, "isPublished" FROM "VenueOrganization" WHERE id=$1`, [org.id])).rows[0];
+  check("renaming an approved organization sends it back to review and offline", renamed.status === 200 && renamedBody.reReview === true && afterRename.status === "PENDING" && afterRename.isPublished === false, JSON.stringify(afterRename));
+  check("…its page is gone until re-approved", (await call(null, `/groups/${tag}-grp`)).status === 404);
+  check("…and it cannot republish itself", (await send(founder, `/api/organizations/${org.id}`, "PATCH", { isPublished: true })).status === 409);
+  const sameName = await send(founder, `/api/organizations/${org.id}`, "PATCH", { profile: { descriptionAr: "وصف بس" } });
+  check("…while editing other fields while pending is fine", sameName.status === 200 && (await json(sameName)).reReview === false);
+  await send(admin, `/api/admin/organizations/${org.id}`, "PATCH", { status: "APPROVED" });
+  await send(founder, `/api/organizations/${org.id}`, "PATCH", { isPublished: true });
+  check("after re-approval it publishes again", (await call(null, `/groups/${tag}-grp`)).status === 200);
+  const descOnly = await send(founder, `/api/organizations/${org.id}`, "PATCH", { profile: { descriptionAr: "وصف تاني" } });
+  check("editing a description does not trigger review", (await json(descOnly)).reReview === false && (await pg.query(`SELECT status FROM "VenueOrganization" WHERE id=$1`, [org.id])).rows[0].status === "APPROVED");
+
+  /* ── Member appointments are rate-limited (they reveal whether an account exists) ── */
+  await pg.query(`DELETE FROM "RateLimit"`);
+  const probes = [];
+  for (let i = 0; i < 11; i++) probes.push((await send(founder, `/api/organizations/${org.id}/members`, "POST", { email: `${tag}-probe-${i}@example.test` })).status);
+  check("the 11th member lookup within an hour is refused (429)", probes.slice(0, 10).every((c) => c === 404) && probes[10] === 429, probes.join(","));
+  await pg.query(`DELETE FROM "RateLimit"`);
   check("a stranger gets 404 from that console page", (await call(owner, `/org-admin/${org.id}`)).status === 404);
   check("the owner's organizations page renders", (await call(owner, "/dashboard/organizations")).status === 200);
   check("the admin venues page (with the review section) renders", (await call(admin, "/admin/venues")).status === 200);
@@ -248,6 +302,8 @@ try {
   check("suspension needs a reason", susNoReason.status === 422);
   await send(admin, `/api/admin/organizations/${org.id}`, "PATCH", { status: "SUSPENDED", reason: "فحص QA" });
   check("a suspended organization disappears from the public site", (await call(null, `/groups/${tag}-grp`)).status === 404);
+  const suspendedView = await json(await call(founder, `/api/organizations/${org.id}`));
+  check("the organization sees the administrator's written reason", suspendedView.organization?.statusReason === "فحص QA", JSON.stringify(suspendedView.organization?.statusReason));
   check("…and can no longer recruit", (await send(founder, `/api/organizations/${org.id}/businesses`, "POST", { businessSlug: ownBiz.slug, relation: "TENANT" })).status === 409);
   check("existing URLs unaffected", (await call(null, `/company/${ownBiz.slug}`)).status === 200 && (await call(null, "/businesses")).status === 200);
 } catch (e) {

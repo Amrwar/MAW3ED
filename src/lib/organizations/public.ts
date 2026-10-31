@@ -117,7 +117,7 @@ export function pageDirectory(
   );
   const pageSize = f.pageSize ?? DIRECTORY_PAGE_SIZE;
   const pages = Math.max(1, Math.ceil(matched.length / pageSize));
-  const page = Math.min(Math.max(f.page ?? 1, 1), pages);
+  const page = Math.min(Math.max(Math.floor(Number.isFinite(f.page) ? (f.page as number) : 1), 1), pages);
   return { entries: matched.slice((page - 1) * pageSize, page * pageSize), total: matched.length, page, pages };
 }
 
@@ -147,7 +147,7 @@ export async function listPublicOrganizations() {
       _count: { select: { associations: { where: LISTED_ASSOCIATION } }, },
     },
   });
-  return rows.map((r) => ({ ...r, updatedAt: r.updatedAt.toISOString(), businesses: r._count.associations }));
+  return rows.map(({ _count, ...r }) => ({ ...r, updatedAt: r.updatedAt.toISOString(), businesses: _count.associations }));
 }
 
 /** The published organizations a business's page should say it belongs to. */
@@ -191,7 +191,14 @@ export async function organizationMetrics(organizationId: string, windowDays = 3
       where: { organizationId, day: { gte: sinceDay } },
       _sum: { count: true },
     }),
-    db.organizationBookingAttribution.count({ where: { organizationId, createdAt: { gte: since } } }),
+    // Counted through Booking, like the per-business rows below, so the
+    // headline and its breakdown agree when a business (and with it its
+    // bookings) is deleted — attribution rows carry no foreign key.
+    db.$queryRaw<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n
+      FROM "OrganizationBookingAttribution" a
+      JOIN "Booking" bk ON bk.id = a."bookingId"
+      WHERE a."organizationId" = ${organizationId} AND a."createdAt" >= ${since}`.then((r) => r[0]?.n ?? 0),
     // One bounded join: names and counts only, never a customer field.
     db.$queryRaw<{ nameAr: string; count: number }[]>`
       SELECT b."nameAr", COUNT(*)::int AS count

@@ -150,6 +150,11 @@ UTC), and a Phase 22 check still expected the sidebar link at
   yet).
 - Email invites return the link always; actual delivery depends on
   Resend being configured (prod has it; QA proves the fallback).
+- An organization's ownership cannot be transferred from its console;
+  the platform does it through the admin role API
+  (`docs/runbooks/ORGANIZATION_OPERATIONS.md`).
+- The sitemap regenerates hourly, so a newly published organization
+  reaches it within an hour, not instantly.
 
 ## Code review of this phase's changes
 
@@ -193,9 +198,86 @@ the production CSP's `upgrade-insecure-requests` turned the prefetch's
 locale redirect into a failing https request), and the sweep no longer
 counts a 404 page's own expected load error as a console defect.
 
+## Completion audit (2026-10-31, after release)
+
+A release-blocking re-audit of the merged code (`a89df6f`), done by
+reading the code against the requirements rather than trusting the
+earlier report. It found **eleven defects the earlier review had not**.
+All are fixed on branch `phase-22b-audit`, each with a regression test
+that fails on the pre-fix code where that is mechanically checkable
+(D4 and D6 were run against `main`'s files: both fail there and pass
+after).
+
+| # | Severity | Defect | Fix | Proof |
+|---|---|---|---|---|
+| D1 | High — requirement gap | The console could not set logo, cover, city or kind, though the public page shows them: "media" was undeliverable | Profile form gains kind and city selects and logo and cover uploads (shared `ImageUpload`, new `maw3ed/organizations` folder) | E2E: a real browser picks a city and saves, and the DB row changes; upload controls present; logo saved through the API |
+| D9 | High — trust | An approved organization could rename itself or change its kind without re-review ("approved as a small group" → "a famous mall") | A name or kind change by the organization sends it back to PENDING and offline, audited as `org.identity.changed` with old and new values; the form warns before saving; platform edits are exempt | E2E: rename → PENDING, page 404, cannot republish, description-only edit is not re-reviewed, re-approval restores |
+| D10 | Medium — security | The organization's name was interpolated unescaped into invite-email HTML (markup or links in mail from our domain) and the subject (newlines) | `orgInviteEmail()` escapes the body and forces the subject onto one line | Unit test with a hostile name |
+| D2 | Medium — abuse | No rate limit on email invites (each sends mail) or member appointments (each reveals whether an address has an account) | Buckets `orgInvite` 30/h and `orgMember` 10/h per user | E2E: the 11th lookup is 429; bucket sanity test |
+| D3 | Medium — SEO | The sitemap was built once at deploy and never refreshed: organizations (and businesses) published later were missing until the next deploy. The earlier E2E check was removed on the wrong premise that this was expected | `revalidate = 3600` | Unit test pins it. Seen locally: `x-nextjs-cache: HIT` with a published, listed organization absent |
+| D8 | Medium — honesty | The admin screen promised the rejection or suspension reason would be "shown to the organization"; it never was | The console API returns the latest reason from the audit log; the console shows it | E2E: after suspension the organization reads the reason |
+| D6 | Low | Logo and cover accepted any URL scheme (`javascript:`, `data:`, any host) and fed Open Graph tags | https on the CSP image hosts only | Unit (fails on `main`); E2E 422 |
+| D7 | Low | The "attributed bookings" headline counted rows whose booking had been deleted (no FK); the breakdown joined, so the two disagreed | The headline joins `Booking` too; no migration needed | DB test: delete a business, the counts agree |
+| D5 | Low | The public groups API leaked an internal `_count` field | Stripped | DB test on the shape |
+| D4 | Low | `?page=2.5` produced a fractional page | Floored; NaN and Infinity land on page 1 | Unit (fails on `main`) |
+| D11 | Low | An owner could appoint themselves as manager (a duplicate authority row, which also breaks a rollback step) | Refused 409 `already-owner` | E2E |
+
+**Break-it probe** (`scratchpad/break-22b.mjs`, 16 attacks, all held):
+malformed JSON, form-encoded body, a 100k-character name, three
+concurrent registrations of one slug (exactly one 201, two 409s, one
+row), unknown ids, garbage and 5000-character invite tokens, a forged
+session cookie, hostile `?page=` values, a 500-character and an
+injection-shaped `org` on a booking.
+
+**Checked and found sound:** owner-only business routes (staff get
+404); the link builders (`tel:`, `mailto:`, https-only website, social
+handles on a fixed host); provider outage (`sendEmail` never throws, so
+the invite still returns its link); FK deletion behaviour (cascades;
+actor ids deliberately carry no FK, so deleting a user never blocks);
+atomicity (registration, review, removal and invite claim are each one
+statement or one transaction); the join list showing approved but
+unpublished organizations to owners (intended: they recruit before
+going public, and only name, kind and city are shown).
+
+**Database safety.** The audit added no migration. A rollback
+procedure now exists (`docs/runbooks/ORGANIZATION_OPERATIONS.md`). The
+pre-22b Prisma client cannot read `ORGANIZATION_OWNER`, so owner roles
+are re-expressed as manager roles before a code rollback and restored
+after. The SQL was dry-run on QA (1 → 0 → 1 owner rows). The claim that
+the old client would fail follows from how Prisma handles enums; it was
+not executed against a pre-22b build.
+
+**Dependency advisories.** `npm audit --omit=dev` now reports 5
+moderate advisories (glob, minimatch), published after the phase ran.
+They arrive only through `@sentry/bundler-plugins`, the build-time
+source-map uploader; application code never calls glob. Both advisories
+need attacker-controlled patterns or an AbortSignal, and no request can
+reach either. The only fix offered is a major-version Sentry downgrade;
+even the latest Sentry (11.10.0) pins the vulnerable range. This is a
+residual risk, not a phase defect: re-check when Sentry ships a fix.
+
+### Re-verification after the audit fixes (final build, 2026-10-31)
+
+| Command | Result |
+|---|---|
+| `npx tsc --noEmit` | PASS, 0 errors |
+| `npx eslint .` | PASS, 0 errors, 6 warnings (same six as `main`) |
+| `npx next build` | PASS; the sitemap now shows a 1h revalidate |
+| `BOOKING_DB_TEST_URL=… npx vitest run` | **1179 passed**, 34 skipped (org unit 15/15, org DB 14/14) |
+| `node scripts/qa-phase22b.mjs` | **83/83**, including a real-browser profile save |
+| break-it probe | **16/16 held** |
+| qa-phase17 / 19 / 20 / 21 / 22 | 13/13, 21/21, 19/19, 44/44, 68/68 |
+| `node scripts/qa-booking-e2e.mjs` | 22/22 |
+| `qa-venue-console.mjs`, `qa-venue-page.mjs` | clean |
+| `node scripts/qa-security.mjs http://localhost:3101` | 32/32 |
+| `node scripts/qa-phase18.mjs` (axe, ar/en × 4 widths) | 440 page loads, 0 flagged, 0 serious or critical |
+| `npm audit --omit=dev` | 5 moderate, build-time only, unreachable from requests (see above) |
+
 ## Release readiness
 
-Code complete and locally verified, review findings fixed and re-verified.
+Code complete and locally verified. The review findings and the
+completion-audit defects are fixed and re-verified. The audit fixes
+need **no migration**: merging their PR is the only production step.
 
 Deploy order: run `phase22b_organizations.sql` on production **before**
 merging the PR (helper: `migrate-phase22b.sh` in the session scratchpad,
@@ -205,7 +287,7 @@ verify included), then merge.
 
 1. **Organization registration and management** — **PASS (local)**:
    register → review → approve → profile/publish/members, proven by
-   E2E 67/67 and DB 9/9.
+   E2E 83/83 and DB 14/14 (after the completion audit).
 2. **Venue and business association** — **PASS (local)**: invite /
    request / email-invite flows, approvals both sides, overlap and
    branch rules, removal without deletion; DB + E2E.
@@ -227,3 +309,12 @@ verify included), then merge.
 
 Phase 22b is complete when items 1–5 are also verified on production
 after the migration + deploy; 6 and 7 are explicitly out of its scope.
+
+**Release verdict after the completion audit: PARTIAL.** Every
+mandatory requirement passes locally, and the migration is live and
+verified on production. The audit's fixes (two of them high severity:
+media editing and re-review on rename) are not deployed yet, and no
+signed-in organization flow has been exercised on production, because
+no organization exists there. Once the audit PR is merged and a
+signed-in check is run on production (register → approve → publish →
+invite → book), the verdict becomes PASS.

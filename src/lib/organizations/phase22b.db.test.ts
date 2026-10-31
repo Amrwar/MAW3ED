@@ -299,6 +299,35 @@ describe.skipIf(!local)("organization platform on a real database", () => {
     expect(JSON.stringify(metrics)).not.toMatch(/زبون|010123456|customerPhone|totalPrice/);
   });
 
+  it("audit D7: when a business is deleted, the attributed-bookings headline and its breakdown still agree", async () => {
+    const mall = await organization("del-mall");
+    const keep = await business("del-keep");
+    const gone = await business("del-gone");
+    for (const b of [keep, gone]) {
+      const req = await assoc.requestToJoin({ businessId: b.business.id, userId: b.owner.id, organizationId: mall.org.id, branchId: null });
+      await assoc.decideAssociation({ organizationId: mall.org.id, associationId: req.id, byUserId: mall.owner.id, authority: "OWNER", action: "approve" });
+      const booked = await createBooking({
+        businessId: b.business.id, serviceId: b.service.id, customerId: null, customerName: "زبون", customerPhone: "01012345675",
+        date, startTime: "12:00", status: "CONFIRMED", totalPrice: 100, currency: "EGP", depositAmount: null,
+      });
+      if (booked.ok) await pub.attributeBooking(booked.booking.id, mall.org.slug, b.business.id);
+    }
+    expect((await pub.organizationMetrics(mall.org.id)).attributedBookings).toBe(2);
+    // The business goes (its bookings cascade with it); its attribution row stays behind.
+    await db.booking.deleteMany({ where: { businessId: gone.business.id } });
+    await db.business.delete({ where: { id: gone.business.id } });
+    const m = await pub.organizationMetrics(mall.org.id);
+    expect(m.attributedBookings).toBe(1);
+    expect(m.perBusiness.reduce((n, r) => n + r.count, 0)).toBe(m.attributedBookings);
+  });
+
+  it("audit D5: the public organization list carries no internal fields", async () => {
+    const mall = await organization("shape-mall");
+    const row = (await pub.listPublicOrganizations()).find((o) => o.slug === mall.org.slug);
+    expect(row).toBeDefined();
+    expect(Object.keys(row!)).not.toContain("_count");
+  });
+
   it("Q/S: authority is per organization, and one organization's manager has none over another", async () => {
     const a = await organization("auth-a");
     const bOrg = await organization("auth-b");
