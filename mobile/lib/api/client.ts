@@ -156,6 +156,12 @@ function refreshOnce(): Promise<RefreshOutcome> {
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = (async (): Promise<RefreshOutcome> => {
+    // Bounded like every other request: a refresh stuck on a captive
+    // portal or a half-open socket would otherwise never settle, and every
+    // later 401 would wait on it forever. Aborting covers reading the body
+    // too.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
     try {
       const tokens = await getTokens();
       if (!tokens?.refreshToken) return "ended";
@@ -166,6 +172,7 @@ function refreshOnce(): Promise<RefreshOutcome> {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+          signal: controller.signal,
         });
       } catch {
         return "unavailable";
@@ -188,6 +195,7 @@ function refreshOnce(): Promise<RefreshOutcome> {
       // and the next attempt gets another chance to store the new one.
       return "unavailable";
     } finally {
+      clearTimeout(timer);
       refreshInFlight = null;
     }
   })();

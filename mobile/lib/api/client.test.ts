@@ -89,6 +89,36 @@ describe("the app's request client always terminates", () => {
     expect(tokens).not.toBeNull(); // signal loss is not a sign-out
   });
 
+  it("a refresh that hangs (never answers) is aborted, so it cannot freeze every request behind it", { timeout: 5000 }, async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", vi.fn((url: string, init: RequestInit) => {
+      calls.push({ url: String(url), auth: null });
+      if (String(url).endsWith("/refresh")) {
+        return new Promise((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        });
+      }
+      return Promise.resolve(json(401));
+    }));
+    const { apiFetch } = await import("./client");
+    // Two requests 401 together and wait on the same (hung) refresh.
+    const a = apiFetch("/api/a");
+    const b = apiFetch("/api/b");
+    const settledA = expect(a).rejects.toMatchObject({ name: expect.stringMatching(/Network/) });
+    const settledB = expect(b).rejects.toMatchObject({ name: expect.stringMatching(/Network/) });
+    await vi.advanceTimersByTimeAsync(15_001);
+    await settledA;
+    await settledB;
+    expect(refreshes()).toBe(1);
+    // The next request is not stuck behind the dead refresh: it starts a new one.
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      calls.push({ url: String(url), auth: null });
+      return String(url).endsWith("/refresh") ? json(401) : json(401);
+    }));
+    await expect(apiFetch("/api/c")).rejects.toBeDefined();
+    expect(refreshes()).toBe(2);
+  });
+
   it("a request that never answers is aborted at its timeout", { timeout: 5000 }, async () => {
     vi.useFakeTimers();
     vi.stubGlobal("fetch", vi.fn((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {

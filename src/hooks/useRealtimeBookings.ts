@@ -37,6 +37,7 @@ export function useRealtimeBookings(
         if (e.type === "BOOKING_CREATED") {
           onEventRef.current({ type: "BOOKING_CREATED", booking: e.payload as DashboardBooking });
         } else {
+          // The stream delivers objects only (null and arrays are dropped there).
           const { id, status, customerName } = e.payload as { id: string; status: string; customerName: string };
           onEventRef.current({ type: "BOOKING_UPDATED", id, status, customerName });
         }

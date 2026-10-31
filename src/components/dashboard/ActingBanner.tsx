@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -39,20 +39,27 @@ export default function ActingBanner({
   // An acting cookie that no longer grants anything (withdrawn, expired,
   // or never valid) is cleared as soon as it is noticed, so it cannot keep
   // the proxy turning the account away from its own pages.
-  // Once per mount: if clearing fails (offline, server error) it is not
-  // retried in a loop — the button stays, and the next page load tries
-  // again. A refresh only follows a successful clear, so a failure cannot
-  // re-render into another attempt.
-  const healed = useRef(false);
+  // At most one attempt per page the person opens: this banner lives in
+  // the persistent dashboard layout, so "per mount" would mean never
+  // again after one failure. A failure (offline, server error) is not
+  // retried by itself — the next navigation tries once more, and the
+  // button is always there. A refresh only follows a successful clear,
+  // so a failure cannot re-render into another attempt.
+  const pathname = usePathname();
+  const triedOn = useRef<string | null>(null);
   useEffect(() => {
-    if (mode !== "ended" || healed.current) return;
-    healed.current = true;
+    if (mode !== "ended") {
+      triedOn.current = null; // re-armed for a later "ended"
+      return;
+    }
+    if (triedOn.current === pathname) return;
+    triedOn.current = pathname;
     void fetch("/api/organizations/acting", { method: "DELETE" })
       .then((r) => {
         if (r.ok) router.refresh();
       })
       .catch(() => null);
-  }, [mode, router]);
+  }, [mode, pathname, router]);
 
   return (
     <div

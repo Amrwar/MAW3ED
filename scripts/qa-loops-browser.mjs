@@ -8,13 +8,18 @@
  *  3. the acting banner's self-heal sends its DELETE once, even when the
  *     server keeps failing it;
  *  4. idle pages issue no repeated requests (render/refetch loops);
- *  5. repeated navigation does not grow the JS heap without bound.
+ *  5. repeated navigation does not grow the JS heap without bound;
+ *  6. events still reach subscribers through the shared stream.
+ *
+ * Run against a PRODUCTION build (next start): in development, React
+ * StrictMode mounts twice on purpose, which this script would count.
  *
  * Local only.  node scripts/qa-loops-browser.mjs [baseUrl]
  */
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
+const { Client } = require("pg");
 
 const B = process.argv.slice(2).find((a) => /^https?:/.test(a)) ?? "http://localhost:3101";
 if (!/^http:\/\/localhost[:/]/.test(B)) {
@@ -141,6 +146,32 @@ try {
     for (let i = 0; i < 6; i++) await nav();
     const last = await heap();
     check("5: 35 client-side navigations do not grow the heap by more than 25%", last <= first * 1.25, `${first.toFixed(1)} MB → ${last.toFixed(1)} MB`);
+    await ctx.close();
+  }
+  // 6. A real event reaches a subscriber through the shared stream.
+  {
+    const pg = new Client({ connectionString: "postgresql://qa:qa@localhost:5450/maw3ed_qa" });
+    await pg.connect();
+    const ctx = await signedIn("owner@qa.test");
+    const page = await ctx.newPage();
+    await page.goto(`${B}/dashboard/bookings`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(2000); // stream open
+    const salon = (await pg.query(`SELECT id, slug FROM "Business" WHERE slug='qa-salon'`)).rows[0];
+    const svc = (await pg.query(`SELECT id FROM "Service" WHERE "businessId"=$1 AND "isAvailable" ORDER BY "sortOrder" LIMIT 1`, [salon.id])).rows[0].id;
+    const branch = (await pg.query(`SELECT id FROM "Branch" WHERE "businessId"=$1 AND "isActive" ORDER BY "sortOrder" LIMIT 1`, [salon.id])).rows[0]?.id;
+    const day = new Date(Date.now() + 8 * 86_400_000).toISOString().slice(0, 10);
+    const slots = await (await fetch(`${B}/api/public/${salon.slug}/slots?serviceId=${svc}&date=${day}&branchId=${branch}`)).json();
+    const name = `حلقة-${Date.now()}`;
+    const r = await fetch(`${B}/api/public/${salon.slug}/bookings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: B },
+      body: JSON.stringify({ serviceId: svc, date: day, startTime: slots.slots?.[0], branchId: branch, customerName: name, customerPhone: "01019555001" }),
+    });
+    const shown = await page.getByText(name).first().waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+    check("6: a new booking reaches the header through the shared stream (toast within 15 s)", r.status === 201 && shown, `booking ${r.status}, shown ${shown}`);
+    await pg.query(`DELETE FROM "Payment" WHERE "bookingId" IN (SELECT id FROM "Booking" WHERE "customerPhone"='01019555001')`);
+    await pg.query(`DELETE FROM "Booking" WHERE "customerPhone"='01019555001'`);
+    await pg.end();
     await ctx.close();
   }
 } catch (e) {

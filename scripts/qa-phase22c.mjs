@@ -154,6 +154,26 @@ try {
   const homeHtml = await home.text();
   check("the dashboard says whose business, for whom", home.status === 200 && /بتدير|Managing/.test(homeHtml) && homeHtml.includes("مجموعة مطاعم") && !homeHtml.includes(rivalSalon.nameAr), `status ${home.status}`);
   check("…the bookings page opens", (await call(rival, "/dashboard/bookings")).status === 200);
+
+  // Rescheduling (a journey nothing else exercised). qa-salon takes
+  // deposits, so a public booking waits for payment and is rightly not
+  // movable; the owner keys one in instead (confirmed, no deposit) — with
+  // no acting cookie, so it lands on the owner's own business.
+  const bookSvcId = (await pg.query(`SELECT id FROM "Service" WHERE "businessId"=$1 AND "isAvailable" ORDER BY "sortOrder" LIMIT 1`, [salon.id])).rows[0].id;
+  const day = (n) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+  const ownSlots = await json(await call(null, `/api/public/${salon.slug}/slots?serviceId=${bookSvcId}&date=${day(6)}`));
+  const booked = await send(owner, "/api/business/bookings", "POST", { serviceId: bookSvcId, date: day(6), startTime: ownSlots.slots?.[0], customerName: `${tag} زبون`, customerPhone: "01019444001" });
+  const bookedBody = await json(booked);
+  const bookingRow = { id: bookedBody.id ?? bookedBody.booking?.id };
+  created.bookings = [bookingRow.id].filter(Boolean);
+  const moveSlots = await json(await call(rival, `/api/business/bookings/${bookingRow.id}/reschedule?date=${day(7)}`));
+  const moved = await send(rival, `/api/business/bookings/${bookingRow.id}/reschedule`, "POST", { date: day(7), startTime: moveSlots.slots?.[0] });
+  const afterMove = (await pg.query(`SELECT "businessId", to_char(date,'YYYY-MM-DD') AS d, "startTime" FROM "Booking" WHERE id=$1`, [bookingRow.id])).rows[0];
+  check(
+    "a delegate with RESERVATIONS reschedules a booking, which stays the business's",
+    booked.status === 201 && moved.status === 200 && afterMove.d === day(7) && afterMove.startTime === moveSlots.slots?.[0] && afterMove.businessId === salon.id,
+    `${booked.status}/${moved.status} ${JSON.stringify(afterMove)}`,
+  );
   const billing = await call(rival, "/dashboard/billing");
   check("…owner pages are not reachable (billing → /dashboard)", billing.status === 307 && /\/dashboard$/.test(billing.headers.get("location") ?? ""), `${billing.status} ${billing.headers.get("location")}`);
   // The dashboard has a loading boundary, so a page's own redirect arrives
@@ -178,7 +198,13 @@ try {
   const svcRow = (await pg.query(`SELECT "businessId" FROM "Service" WHERE id=$1`, [svcId])).rows[0];
   check("…the service lands on qa-salon, not on the delegate's own business", svcRow?.businessId === salon.id);
 
+  // The owner moves it back (the owner's path through the same route).
+  const backSlots = await json(await call(owner, `/api/business/bookings/${bookingRow.id}/reschedule?date=${day(6)}`));
+  check("the owner reschedules it back", (await send(owner, `/api/business/bookings/${bookingRow.id}/reschedule`, "POST", { date: day(6), startTime: backSlots.slots?.[0] })).status === 200);
+
   await send(owner, `/api/business/organizations/${ownedId}`, "PATCH", { action: "grant", scopes: [] });
+  const noMove = await send(rival, `/api/business/bookings/${bookingRow.id}/reschedule`, "POST", { date: day(7), startTime: moveSlots.slots?.[0] });
+  check("…and once access is withdrawn the delegate can no longer reschedule it", noMove.status === 404 || noMove.status === 403, `status ${noMove.status}`);
   const after = await json(await call(rival, "/api/business/bookings?limit=50"));
   const afterIds = (after.bookings ?? after.data ?? []).map((b) => b.id);
   const afterOwners = afterIds.length ? (await pg.query(`SELECT DISTINCT "businessId" FROM "Booking" WHERE id = ANY($1)`, [afterIds])).rows.map((r) => r.businessId) : [];
@@ -327,6 +353,10 @@ try {
 } finally {
   if (created.services.length) await pg.query(`DELETE FROM "Service" WHERE id = ANY($1)`, [created.services]);
   if (created.staff.length) await pg.query(`DELETE FROM "StaffMember" WHERE id = ANY($1)`, [created.staff]);
+  if (created.bookings?.length) {
+    await pg.query(`DELETE FROM "Payment" WHERE "bookingId" = ANY($1)`, [created.bookings]);
+    await pg.query(`DELETE FROM "Booking" WHERE id = ANY($1)`, [created.bookings]);
+  }
   const orgs = created.orgs.filter(Boolean);
   if (orgs.length) {
     await pg.query(`UPDATE "VenueOrganization" SET "parentId"=NULL WHERE id = ANY($1)`, [orgs]);
