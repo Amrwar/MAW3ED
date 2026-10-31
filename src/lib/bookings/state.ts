@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { canTransition, releasesTime, type BookingStatusValue, type Mover } from "./transitions";
+import { accessAfterMove } from "@/lib/access/hooks";
 
 /**
  * Moving a booking from one status to another, safely.
@@ -84,6 +85,10 @@ async function applyMove(tx: Tx, input: MoveInput): Promise<MoveResult> {
       actorUserId: input.actorUserId ?? null,
     });
   }
+
+  // The booking's check-in code and any visitor passes follow it, in this
+  // same transaction (lib/access/hooks.ts).
+  await accessAfterMove(tx, input.bookingId, input.to);
   return { moved: true, refundNeededCents };
 }
 

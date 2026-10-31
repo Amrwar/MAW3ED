@@ -9,6 +9,7 @@ import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
 import { notifyLater } from "@/lib/notifications";
 import { log } from "@/lib/logger";
 import { CUSTOMER_MOVABLE } from "@/lib/bookings/transitions";
+import { accessAfterReschedule } from "@/lib/access/hooks";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -127,6 +128,10 @@ export async function POST(req: Request, { params }: Params) {
       }
       throw e;
     }
+
+    // Visitor passes move with the appointment (the check-in code reads
+    // the booking at the scan and needs nothing).
+    await accessAfterReschedule(booking.id);
 
     notifyLater({
       type: "booking.rescheduled",

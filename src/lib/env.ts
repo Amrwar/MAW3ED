@@ -83,6 +83,16 @@ const optional = z.object({
   PAYMOB_FAKE_BASE_URL: z.string().optional(),
   PAYMOB_FAKE_RETURN_URL: z.string().optional(),
 
+  // Visitor access (Phase 23). A dedicated 32-byte key (base64) for
+  // check-in codes and stored pass tokens; without it each purpose gets
+  // a key derived from AUTH_SECRET (lib/access/crypto.ts). Changing it
+  // replaces every check-in code (they re-issue themselves) and makes
+  // stored pass tokens unreadable (the holder asks again).
+  ACCESS_CREDENTIAL_KEY: z.string().optional(),
+  // Local QA only: "1" lets the SANDBOX access provider run in a
+  // production build on this machine. Never honoured on Vercel.
+  ACCESS_SANDBOX: z.string().optional(),
+
   // Push (Expo). Optional: with "enhanced push security" on in the Expo
   // dashboard, Expo refuses pushes that do not carry this token.
   EXPO_ACCESS_TOKEN: z.string().optional(),

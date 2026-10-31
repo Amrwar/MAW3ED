@@ -3,6 +3,7 @@ import { ok, err } from "@/lib/api";
 import { requireVenueAccess } from "@/lib/venues/guard";
 import { exceptionSchema } from "@/lib/venues/rules";
 import { handle, readJson, venueAudit } from "@/lib/venues/route";
+import { venueAccessChanged } from "@/lib/access/venue-desk";
 
 /**
  * POST /api/venues/:id/exceptions — a dated closure, special hours, an
@@ -30,6 +31,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       },
     });
     await venueAudit(caller, authority, "venue.exception.create", id, `استثناء ${d.kind} من ${d.startsOn} لـ ${d.endsOn}`);
+    // A notice suspending visitor access (or closing the venue) holds passes for those days.
+    venueAccessChanged(id);
     return ok({ exception }, 201);
   });
 }

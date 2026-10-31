@@ -9,6 +9,7 @@ import { notifyLater } from "@/lib/notifications";
 import { log } from "@/lib/logger";
 import { minutesUntilStart } from "@/lib/bookings/self-service";
 import { CUSTOMER_MOVABLE } from "@/lib/bookings/transitions";
+import { accessAfterReschedule } from "@/lib/access/hooks";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -157,6 +158,10 @@ export async function POST(req: Request, { params }: Params) {
       }
       throw e;
     }
+
+    // Visitor passes move with the appointment — or are held while the
+    // new time waits for the business (lib/access/passes.ts).
+    await accessAfterReschedule(booking.id);
 
     // One call for both sides. Note this now respects the WhatsApp
     // plan gate, which this route never checked while the booking route

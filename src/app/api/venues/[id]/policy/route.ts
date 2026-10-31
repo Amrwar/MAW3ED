@@ -3,6 +3,7 @@ import { ok, err } from "@/lib/api";
 import { requireVenueAccess } from "@/lib/venues/guard";
 import { policySchema } from "@/lib/venues/rules";
 import { handle, readJson, venueAudit } from "@/lib/venues/route";
+import { venueAccessChanged } from "@/lib/access/venue-desk";
 
 /**
  * PUT /api/venues/:id/policy — visitor eligibility, access window,
@@ -38,6 +39,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     await venueAudit(caller, authority, "venue.policy", id, "عدّل سياسة دخول الزوار", {
       visitorEligibility: data.visitorEligibility,
     });
+    // Live visitor passes follow the new rules (window, gates, guests…).
+    venueAccessChanged(id);
     return ok({ policy });
   });
 }

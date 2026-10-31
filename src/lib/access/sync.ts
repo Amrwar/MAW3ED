@@ -1,0 +1,377 @@
+import { after } from "next/server";
+import type { AccessCredential, AccessEntitlement, AccessProvider, AccessSyncJob, Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
+import { log } from "@/lib/logger";
+import { sealToken, sha256 } from "./crypto";
+import {
+  adapterFor,
+  ProviderUnavailableError,
+  TransientProviderError,
+  type CallContext,
+  type IssueResult,
+  type PassRequest,
+} from "./provider";
+
+/**
+ * Talking to access providers, reliably and boundedly.
+ *
+ * Every call to a provider is a row first (AccessSyncJob), written in
+ * the same transaction as the change that needs it, so a change is
+ * never made without its call and a call never made for a change that
+ * rolled back. A worker then claims due jobs and makes the calls:
+ *
+ *   - claimed with a lease (leasedUntil), conditionally, so two workers
+ *     never make the same call and a worker that died mid-call releases
+ *     it when the lease runs out;
+ *   - each call bounded by a timeout (PROVIDER_TIMEOUT_MS), with an
+ *     AbortSignal the adapter honours and a race that stops waiting even
+ *     if it does not;
+ *   - sent with the job's idempotency key, so a retried call is the same
+ *     call to the provider;
+ *   - retried with exponential backoff on transient failure, and after
+ *     MAX_ATTEMPTS marked DEAD — never retried forever. A dead PROVISION
+ *     leaves the credential FAILED (the customer sees it and may ask
+ *     again); a dead REVOKE raises an ESCALATION event for a person,
+ *     because Maw3ed cannot claim a credential is withdrawn until the
+ *     provider says so;
+ *   - a run stops claiming once its time budget is spent.
+ *
+ * Nothing loops: work happens when something changes (kickAccessJobs,
+ * after the response) and on the cron (/api/cron/access); a run takes at
+ * most `limit` jobs.
+ *
+ * docs/architecture/ACCESS_PROVIDER_INTERFACE.md.
+ */
+
+export const PROVIDER_TIMEOUT_MS = 8_000;
+export const MAX_ATTEMPTS = 6;
+export const LEASE_MS = 60_000;
+const BASE_BACKOFF_MS = 30_000;
+const MAX_BACKOFF_MS = 60 * 60_000;
+
+/** Delay before attempt n+1, after n failed attempts. */
+export function backoffMs(attempts: number): number {
+  return Math.min(BASE_BACKOFF_MS * 2 ** Math.max(0, attempts - 1), MAX_BACKOFF_MS);
+}
+
+type Tx = Prisma.TransactionClient;
+
+/** Queues a call; the same (credential, kind, version) is queued once. */
+export async function enqueueJob(
+  tx: Tx,
+  credential: Pick<AccessCredential, "id" | "correlationId">,
+  kind: "PROVISION" | "UPDATE" | "REVOKE",
+  version: number,
+): Promise<void> {
+  await tx.accessSyncJob.createMany({
+    data: [{ credentialId: credential.id, kind, idempotencyKey: `${credential.id}:${kind}:${version}`, correlationId: credential.correlationId }],
+    skipDuplicates: true,
+  });
+}
+
+/** Runs due jobs once the response is sent (or at once, outside a request). */
+export function kickAccessJobs(): void {
+  const run = () => runAccessJobs({ limit: 10, budgetMs: 15_000 }).catch((e) => log.error("[access] job run failed", e));
+  try {
+    after(run);
+  } catch {
+    void run();
+  }
+}
+
+/** A provider call with a hard timeout. */
+export async function withTimeout<T>(fn: (signal: AbortSignal) => Promise<T>, ms = PROVIDER_TIMEOUT_MS): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new TransientProviderError(`provider call timed out after ${ms} ms`));
+    }, ms);
+  });
+  try {
+    return await Promise.race([fn(controller.signal), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+type CredentialFull = AccessCredential & {
+  provider: AccessProvider;
+  entitlement: AccessEntitlement & {
+    visitor: { displayName: string; phoneE164: string | null };
+    venue: { accessSiteRef: string | null; policy: { identityRequirement: string } | null; gates: { id: string; code: string | null }[] };
+  };
+};
+
+/** What a credential's entitlement asks the provider for. */
+export function passRequest(c: CredentialFull): PassRequest {
+  const e = c.entitlement;
+  const codes = e.allowedGateIds
+    .map((id) => e.venue.gates.find((g) => g.id === id)?.code)
+    .filter((x): x is string => !!x);
+  const firstName = e.visitor.displayName.trim().split(/\s+/)[0] ?? "";
+  return {
+    externalRef: c.id,
+    siteRef: e.venue.accessSiteRef,
+    holderLabel: firstName.slice(0, 40),
+    holderPhone: e.venue.policy?.identityRequirement === "NAME_AND_PHONE" ? e.visitor.phoneE164 : null,
+    validFrom: e.validFrom,
+    validUntil: e.validUntil,
+    entryUntil: e.entryUntil,
+    gateCodes: codes,
+    reentryAllowed: e.reentryAllowed,
+    version: c.version,
+  };
+}
+
+const includeFull = {
+  provider: true,
+  entitlement: {
+    include: {
+      visitor: { select: { displayName: true, phoneE164: true } },
+      venue: { select: { accessSiteRef: true, policy: { select: { identityRequirement: true } }, gates: { select: { id: true, code: true } } } },
+    },
+  },
+} as const;
+
+export interface RunResult {
+  claimed: number;
+  done: number;
+  retried: number;
+  dead: number;
+}
+
+/** Claims and runs up to `limit` due jobs, within `budgetMs`. */
+export async function runAccessJobs(opts: { limit?: number; budgetMs?: number; now?: () => Date; timeoutMs?: number } = {}): Promise<RunResult> {
+  const limit = opts.limit ?? 20;
+  const now = opts.now ?? (() => new Date());
+  const deadline = Date.now() + (opts.budgetMs ?? 20_000);
+  const result: RunResult = { claimed: 0, done: 0, retried: 0, dead: 0 };
+
+  const t = now();
+  const due = await db.accessSyncJob.findMany({
+    where: { status: "PENDING", nextAttemptAt: { lte: t }, OR: [{ leasedUntil: null }, { leasedUntil: { lt: t } }] },
+    orderBy: { nextAttemptAt: "asc" },
+    take: limit,
+    select: { id: true },
+  });
+
+  for (const { id } of due) {
+    if (Date.now() >= deadline) break;
+    const at = now();
+    const claim = await db.accessSyncJob.updateMany({
+      where: { id, status: "PENDING", OR: [{ leasedUntil: null }, { leasedUntil: { lt: at } }] },
+      data: { leasedUntil: new Date(at.getTime() + LEASE_MS), attempts: { increment: 1 } },
+    });
+    if (claim.count !== 1) continue; // another worker has it
+    result.claimed++;
+    const job = await db.accessSyncJob.findUnique({ where: { id } });
+    if (!job) continue;
+    const outcome = await runOne(job, now, opts.timeoutMs ?? PROVIDER_TIMEOUT_MS);
+    result[outcome]++;
+  }
+  return result;
+}
+
+async function runOne(job: AccessSyncJob, now: () => Date, timeoutMs: number): Promise<"done" | "retried" | "dead"> {
+  const credential = (await db.accessCredential.findUnique({ where: { id: job.credentialId }, include: includeFull })) as CredentialFull | null;
+  if (!credential) return finish(job, "DONE", null);
+
+  const ctx = (signal: AbortSignal): CallContext => ({ idempotencyKey: job.idempotencyKey, correlationId: job.correlationId, signal });
+  try {
+    const adapter = await adapterFor(credential.provider);
+    switch (job.kind) {
+      case "PROVISION": {
+        // Superseded while waiting: nothing to ask for any more. A REVOKE
+        // job (if any) takes care of whatever the provider may hold.
+        if (credential.status !== "PENDING_PROVIDER" || credential.providerRef) return finish(job, "DONE", null);
+        const r = await withTimeout((signal) => adapter.provision(passRequest(credential), ctx(signal)), timeoutMs);
+        await applyIssue(credential, r, now());
+        return finish(job, "DONE", null);
+      }
+      case "UPDATE": {
+        if (credential.status !== "ACTIVE" && credential.status !== "PENDING_PROVIDER") return finish(job, "DONE", null);
+        if (!credential.providerRef) return retryLater(job, "waiting for the provider's reference", now());
+        // Only the newest version is worth sending.
+        if ((credential.confirmedVersion ?? 0) >= credential.version) return finish(job, "DONE", null);
+        const r = await withTimeout((signal) => adapter.update(credential.providerRef!, passRequest(credential), ctx(signal)), timeoutMs);
+        await applyIssue(credential, r, now());
+        return finish(job, "DONE", null);
+      }
+      case "REVOKE": {
+        if (credential.status !== "REVOKE_PENDING") return finish(job, "DONE", null);
+        let ref = credential.providerRef;
+        if (!ref) {
+          const provisioning = await db.accessSyncJob.count({
+            where: { credentialId: credential.id, kind: "PROVISION", status: "PENDING", leasedUntil: { gt: now() } },
+          });
+          if (provisioning) return retryLater(job, "a provision call is still in flight", now());
+          const asked = await db.accessSyncJob.findFirst({ where: { credentialId: credential.id, kind: "PROVISION", attempts: { gt: 0 } } });
+          if (asked) {
+            // The provision may have reached the provider with its answer
+            // lost. Asking again with the same idempotency key returns the
+            // same pass (or a refusal: nothing exists), so it can be revoked.
+            const again = await withTimeout((signal) =>
+              adapter.provision(passRequest(credential), { idempotencyKey: asked.idempotencyKey, correlationId: credential.correlationId, signal }),
+            timeoutMs);
+            ref = again.outcome === "refused" ? null : again.providerRef;
+            if (ref) await db.accessCredential.updateMany({ where: { id: credential.id, providerRef: null }, data: { providerRef: ref } });
+          }
+        }
+        if (ref) await withTimeout((signal) => adapter.revoke(ref!, "revoked", ctx(signal)), timeoutMs);
+        await confirmRevoked(credential.id, now());
+        return finish(job, "DONE", null);
+      }
+    }
+  } catch (e) {
+    if (e instanceof ProviderUnavailableError) return giveUp(job, credential, `provider unavailable: ${e.code}`, now());
+    const message = e instanceof Error ? e.message : "provider call failed";
+    if (!(e instanceof TransientProviderError)) log.error("[access] provider call failed", e, { job: job.id, correlationId: job.correlationId });
+    if (job.attempts >= MAX_ATTEMPTS) return giveUp(job, credential, message, now());
+    return retryLater(job, message, now());
+  }
+}
+
+async function finish(job: AccessSyncJob, status: "DONE" | "DEAD", error: string | null): Promise<"done" | "dead"> {
+  await db.accessSyncJob.update({ where: { id: job.id }, data: { status, leasedUntil: null, lastError: error?.slice(0, 500) ?? null } });
+  return status === "DONE" ? "done" : "dead";
+}
+
+async function retryLater(job: AccessSyncJob, error: string, at: Date): Promise<"retried" | "dead"> {
+  if (job.attempts >= MAX_ATTEMPTS) {
+    await db.accessSyncJob.update({ where: { id: job.id }, data: { status: "DEAD", leasedUntil: null, lastError: error.slice(0, 500) } });
+    return "dead";
+  }
+  await db.accessSyncJob.update({
+    where: { id: job.id },
+    data: { leasedUntil: null, lastError: error.slice(0, 500), nextAttemptAt: new Date(at.getTime() + backoffMs(job.attempts)) },
+  });
+  return "retried";
+}
+
+/** Out of attempts (or the provider cannot be used): a terminal state, never a silent one. */
+async function giveUp(job: AccessSyncJob, credential: CredentialFull, error: string, at: Date): Promise<"dead"> {
+  await db.$transaction(async (tx) => {
+    await tx.accessSyncJob.update({ where: { id: job.id }, data: { status: "DEAD", leasedUntil: null, lastError: error.slice(0, 500) } });
+    if (job.kind === "PROVISION") {
+      await tx.accessCredential.updateMany({
+        where: { id: credential.id, status: "PENDING_PROVIDER" },
+        data: { status: "FAILED", lastError: error.slice(0, 500) },
+      });
+      await tx.accessEvent.create({
+        data: {
+          venueId: credential.entitlement.venueId, providerId: credential.providerId, credentialId: credential.id,
+          entitlementId: credential.entitlementId, kind: "CREDENTIAL_FAILED", occurredAt: at, reason: error.slice(0, 200),
+          correlationId: credential.correlationId,
+        },
+      });
+    } else if (job.kind === "REVOKE") {
+      // Maw3ed has withdrawn it (its own screens and checks refuse it),
+      // but cannot say the provider has. A person must follow up.
+      await tx.accessEvent.create({
+        data: {
+          venueId: credential.entitlement.venueId, providerId: credential.providerId, credentialId: credential.id,
+          entitlementId: credential.entitlementId, kind: "ESCALATION", occurredAt: at,
+          reason: "provider did not confirm a revocation", correlationId: credential.correlationId, details: { error: error.slice(0, 200) },
+        },
+      });
+    } else {
+      await tx.accessEvent.create({
+        data: {
+          venueId: credential.entitlement.venueId, providerId: credential.providerId, credentialId: credential.id,
+          entitlementId: credential.entitlementId, kind: "PROVIDER_ERROR", occurredAt: at, reason: error.slice(0, 200),
+          correlationId: credential.correlationId,
+        },
+      });
+    }
+  });
+  log.warn("[access] job dead-lettered", { job: job.id, kind: job.kind, correlationId: job.correlationId });
+  return "dead";
+}
+
+/**
+ * Records the provider's answer to provision or update. Conditional on
+ * the credential's state, so an answer arriving after the credential was
+ * withdrawn never revives it — the reference is kept so the withdrawal
+ * can reach the provider.
+ */
+export async function applyIssue(credential: Pick<AccessCredential, "id" | "correlationId" | "providerId" | "entitlementId"> & { entitlement: { venueId: string } }, r: IssueResult, at: Date): Promise<void> {
+  if (r.outcome === "refused") {
+    await db.$transaction(async (tx) => {
+      const n = await tx.accessCredential.updateMany({
+        where: { id: credential.id, status: { in: ["PENDING_PROVIDER", "ACTIVE"] } },
+        data: { status: "FAILED", lastError: r.reason.slice(0, 500) },
+      });
+      if (n.count) {
+        await tx.accessEvent.create({
+          data: {
+            venueId: credential.entitlement.venueId, providerId: credential.providerId, credentialId: credential.id,
+            entitlementId: credential.entitlementId, kind: "CREDENTIAL_FAILED", occurredAt: at, reason: r.reason.slice(0, 200),
+            correlationId: credential.correlationId,
+          },
+        });
+      }
+    });
+    return;
+  }
+  // Keep the reference whatever the state, so a later revoke can name it.
+  await db.accessCredential.updateMany({ where: { id: credential.id, providerRef: null }, data: { providerRef: r.providerRef } });
+  if (r.outcome === "accepted") return; // confirmation arrives as an event
+  await activate(credential, { token: r.token, displayFormat: r.displayFormat, expiresAt: r.expiresAt, version: r.version }, at, null);
+}
+
+/** The provider confirmed a credential (at a version). Never moves a withdrawn one. */
+export async function activate(
+  credential: Pick<AccessCredential, "id" | "correlationId" | "providerId" | "entitlementId"> & { entitlement: { venueId: string } },
+  p: { token: string | null; displayFormat: string | null; expiresAt: Date | null; version: number | null },
+  at: Date,
+  providerEventId: string | null,
+): Promise<boolean> {
+  return db.$transaction(async (tx) => {
+    const current = await tx.accessCredential.findUnique({ where: { id: credential.id }, select: { status: true, confirmedVersion: true, version: true } });
+    if (!current || (current.status !== "PENDING_PROVIDER" && current.status !== "ACTIVE")) return false;
+    const version = p.version ?? current.version;
+    // Out of order: an older confirmation never replaces a newer one.
+    if (current.confirmedVersion !== null && version < current.confirmedVersion) return false;
+    const sealed = p.token ? sealToken(p.token) : undefined;
+    await tx.accessCredential.update({
+      where: { id: credential.id },
+      data: {
+        status: "ACTIVE",
+        confirmedVersion: version,
+        confirmedAt: at,
+        lastError: null,
+        ...(p.token ? { tokenHash: sha256(p.token), tokenCiphertext: sealed ?? null } : {}),
+        ...(p.displayFormat ? { displayFormat: p.displayFormat } : {}),
+        ...(p.expiresAt ? { expiresAt: p.expiresAt } : {}),
+      },
+    });
+    if (!providerEventId) {
+      await tx.accessEvent.create({
+        data: {
+          venueId: credential.entitlement.venueId, providerId: credential.providerId, credentialId: credential.id,
+          entitlementId: credential.entitlementId, kind: current.status === "ACTIVE" ? "CREDENTIAL_UPDATED" : "CREDENTIAL_ACTIVE",
+          occurredAt: at, correlationId: credential.correlationId, details: { version },
+        },
+      });
+    }
+    return true;
+  });
+}
+
+/** The provider has withdrawn it (or never had it). */
+export async function confirmRevoked(credentialId: string, at: Date): Promise<void> {
+  await db.$transaction(async (tx) => {
+    const c = await tx.accessCredential.findUnique({ where: { id: credentialId }, include: { entitlement: { select: { venueId: true } } } });
+    if (!c || c.status === "REVOKED") return;
+    await tx.accessCredential.update({ where: { id: credentialId }, data: { status: "REVOKED", revokedAt: c.revokedAt ?? at } });
+    await tx.accessRevocation.updateMany({ where: { credentialId, confirmedAt: null }, data: { confirmedAt: at } });
+    await tx.accessEvent.create({
+      data: {
+        venueId: c.entitlement.venueId, providerId: c.providerId, credentialId, entitlementId: c.entitlementId,
+        kind: "CREDENTIAL_REVOKED", occurredAt: at, correlationId: c.correlationId,
+      },
+    });
+  });
+}

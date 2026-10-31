@@ -22,6 +22,7 @@ import {
   Store,
   Ticket,
   Sun,
+  ScanLine,
   Users,
   Users2,
   type LucideIcon,
@@ -99,6 +100,7 @@ export function buildNav(ctx: NavContext): NavSection[] {
         { href: "/dashboard/bookings/today", label: s.today, icon: Sun },
         { href: "/dashboard/bookings/upcoming", label: s.upcoming, icon: CalendarClock },
         { href: "/dashboard/calendar", label: s.calendar, icon: CalendarDays },
+        { href: "/dashboard/check-in", label: s.checkIn, icon: ScanLine },
       ],
     },
     { href: "/dashboard/customers", label: s.customers, icon: Users },
@@ -185,6 +187,7 @@ function buildDelegateNav(ctx: NavContext, perms: readonly string[]): NavSection
         { href: "/dashboard/bookings/today", label: s.today, icon: Sun },
         { href: "/dashboard/bookings/upcoming", label: s.upcoming, icon: CalendarClock },
         { href: "/dashboard/calendar", label: s.calendar, icon: CalendarDays },
+        ...(has("bookings.progress") ? [{ href: "/dashboard/check-in", label: s.checkIn, icon: ScanLine }] : []),
       ],
     });
   }

@@ -10,6 +10,7 @@ import Logo from "@/components/shared/Logo";
 import CancelButton from "./_components/CancelButton";
 import RescheduleFlow from "./_components/RescheduleFlow";
 import LeaveReview from "./_components/LeaveReview";
+import AccessPanel from "./_components/AccessPanel";
 import { canReviewBooking } from "@/lib/reviews";
 import { customerMayCancel, customerMayChange } from "@/lib/bookings/self-service";
 import { bookingMoney, toCents } from "@/lib/payments/money";
@@ -192,6 +193,12 @@ export default async function BookingPage({ params }: Params) {
             )}
           </div>
         </div>
+
+        {/* Getting in: the booking's check-in QR, and a venue's visitor
+            passes where it offers them (Phase 23). */}
+        {["PENDING", "CONFIRMED", "ARRIVED", "IN_PROGRESS"].includes(booking.status) && (
+          <AccessPanel token={token} customerName={booking.customerName} />
+        )}
 
         {/* Add to calendar — a plain .ics, which every calendar opens
             and which sends the appointment to nobody. */}

@@ -363,7 +363,10 @@ describe.skipIf(!local)("phase 22 on a real database", () => {
 
   it("every existing city got a country, and no existing business was put in a venue", async () => {
     expect(await db.city.count({ where: { NOT: { countryCode: "EG" } } })).toBe(0);
-    const outsideTest = await db.venueMembership.count({ where: { business: { slug: { not: { startsWith: "p22-" } } } } });
+    // Other suites' own test businesses (p23-, running in parallel) are not "existing" ones.
+    const outsideTest = await db.venueMembership.count({
+      where: { business: { AND: [{ slug: { not: { startsWith: "p22-" } } }, { slug: { not: { startsWith: "p23-" } } }] } },
+    });
     expect(outsideTest).toBe(0);
   });
 });
