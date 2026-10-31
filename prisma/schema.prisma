@@ -1641,6 +1641,9 @@ model Organization {
   /// PENDING until a platform administrator approves it; the page is
   /// public only when APPROVED and isPublished.
   status      BusinessStatus @default(PENDING)
+  /// The platform's written reason for REJECTED or SUSPENDED, shown to the
+  /// organization; cleared on approval.
+  statusReason String?
   isPublished Boolean        @default(false)
   nameAr    String
   nameEn    String?
@@ -1657,6 +1660,11 @@ model Organization {
   city       City?   @relation("OrganizationCity", fields: [cityId], references: [id], onDelete: SetNull)
   website   String?
   createdById String?
+  /// The organization this one belongs to (a holding company over a
+  /// mall). At most three levels; a database trigger refuses cycles.
+  parentId    String?
+  parent      Organization?  @relation("OrganizationParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Organization[] @relation("OrganizationParent")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1669,6 +1677,7 @@ model Organization {
   attributions OrganizationBookingAttribution[]
 
   @@index([status, isPublished])
+  @@index([parentId])
   @@map("VenueOrganization")
 }
 
@@ -1676,6 +1685,8 @@ enum OrganizationKind {
   MALL
   COMPOUND
   BUSINESS_GROUP
+  RESTAURANT_GROUP
+  CLINIC_GROUP
   FRANCHISE
   COMMERCIAL_BUILDING
   OTHER
@@ -1953,14 +1964,35 @@ model VenueRole {
 
 // ─── Phase 22b: organization ↔ business associations ────────────────────────
 
+/// What an organization is to a business. One business can have several
+/// at once — owned by a group, hosted by a mall, managed by an operator —
+/// each its own row, none of them copying the business.
 enum OrganizationBusinessRelation {
-  /// The organization's own brand (it still has its own owner account).
+  /// The organization owns or legitimately controls the business. Its
+  /// members may operate it only within the scopes the business granted.
   OWNED
-  /// Operated by a franchisee under the organization's brand.
+  /// A mall, compound or building where an independent business trades.
+  /// Directory listing only: never any operational access.
+  HOSTED
+  /// An outside company runs selected functions under delegated scopes.
+  MANAGED
+  /// Legacy labels from before relationship semantics (2026-10-31);
+  /// migrated to HOSTED/MANAGED and refused for new rows.
   FRANCHISE
-  /// Independently owned, trading in the organization's property.
   TENANT
   PARTNER
+}
+
+/// One function of a business that can be delegated to an organization.
+enum DelegationScope {
+  RESERVATIONS
+  CUSTOMERS
+  SERVICES
+  STAFF
+  SCHEDULES
+  PROFILE
+  REPORTS
+  FINANCE
 }
 
 enum OrganizationBusinessStatus {
@@ -1969,6 +2001,8 @@ enum OrganizationBusinessStatus {
   /// The business asked; the organization decides.
   REQUESTED
   APPROVED
+  /// Paused by either side: not listed, no delegated access; resumable.
+  SUSPENDED
   DECLINED
   REJECTED
   REMOVED
@@ -1985,8 +2019,17 @@ model OrganizationBusiness {
   business       Business                    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   branchId       String?
   branch         Branch?                     @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  relation       OrganizationBusinessRelation @default(TENANT)
+  relation       OrganizationBusinessRelation @default(HOSTED)
   status         OrganizationBusinessStatus
+  /// What the organization asked to operate (OWNED/MANAGED only).
+  requestedScopes DelegationScope[]          @default([])
+  /// What the business owner granted. Evaluated on every request, so
+  /// narrowing or clearing it revokes access immediately.
+  scopes          DelegationScope[]          @default([])
+  /// Delegated access ends at this moment (null: until revoked).
+  expiresAt       DateTime?
+  suspendedAt     DateTime?
+  suspendedById   String?
   /// A directory heading the organization chooses ("Dining", "Clinics").
   section        String?
   sortOrder      Int                         @default(0)
@@ -2011,6 +2054,9 @@ model OrganizationInvite {
   organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   email              String
   relation           OrganizationBusinessRelation @default(OWNED)
+  /// Shown to the invitee before they create the business; granted when
+  /// they do, since creating it under this invitation is their consent.
+  requestedScopes    DelegationScope[] @default([])
   token              String       @unique
   invitedById        String
   expiresAt          DateTime

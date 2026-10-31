@@ -48,12 +48,12 @@ export default async function OnboardingPage({
   // Arrived through an organization's invitation: say who is inviting,
   // and hand the token to the wizard. A dead link is said plainly here
   // rather than failing at the last step.
-  let invite: { token: string; orgName: string } | null = null;
+  let invite: { token: string; orgName: string; relation: string; scopes: string[] } | null = null;
   let inviteDead = false;
   if (org_invite) {
     try {
       const read = await readInvite(org_invite);
-      invite = { token: org_invite, orgName: read.organization.nameAr };
+      invite = { token: org_invite, orgName: read.organization.nameAr, relation: read.relation, scopes: read.requestedScopes };
     } catch {
       inviteDead = true;
     }

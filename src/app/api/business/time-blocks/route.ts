@@ -1,6 +1,7 @@
+import { can, requireBusinessAccessAny, type BusinessAction } from "@/lib/business-access";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
 import { dateToUTC } from "@/lib/bookings/instants";
 import { timeToMinutes } from "@/lib/bookings/time";
 import { log } from "@/lib/logger";
@@ -50,13 +51,25 @@ const blockSchema = z
     path: ["startTime"],
   });
 
+/**
+ * Who may touch a block depends on what it closes: one person's time off
+ * is part of their staff record (STAFF or SCHEDULES), a business-wide
+ * closure is the business's schedule (SCHEDULES only).
+ */
+function neededFor(staffMemberId: string | null | undefined): BusinessAction[] {
+  return staffMemberId ? ["staff.manage", "schedule.manage"] : ["schedule.manage"];
+}
+
 export async function GET() {
   try {
-    const ctx = await requireBusiness().catch(() => null);
-    if (!ctx) return err("غير مصرح", 401);
+    // Not staff.read, which every staff member holds: colleagues' time off
+    // and its reasons are for whoever manages staff or the schedule.
+    const ctx = await requireBusinessAccessAny(["schedule.read", "staff.manage"]);
+    // Without the schedule, only people's own blocks.
+    const wholeSchedule = can(ctx.actor, "schedule.read");
 
     const blocks = await db.timeBlock.findMany({
-      where: { businessId: ctx.business.id },
+      where: { businessId: ctx.business.id, ...(wholeSchedule ? {} : { staffMemberId: { not: null } }) },
       orderBy: [{ startsOn: "asc" }, { dayOfWeek: "asc" }],
       include: {
         staffMember: { select: { id: true, nameAr: true } },
@@ -66,6 +79,7 @@ export async function GET() {
 
     return ok({ blocks });
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[time-blocks GET]", e);
     return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
@@ -73,13 +87,11 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const ctx = await requireBusiness().catch(() => null);
-    if (!ctx) return err("غير مصرح", 401);
-
     const parsed = blockSchema.safeParse(await req.json());
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
     const v = parsed.data;
+    const ctx = await requireBusinessAccessAny(neededFor(v.staffMemberId));
 
     // Both ids must belong to this business, or an owner could close
     // somebody else's calendar.
@@ -119,6 +131,7 @@ export async function POST(req: Request) {
 
     return ok({ block }, 201);
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[time-blocks POST]", e);
     return err("حدث خطأ أثناء الحفظ", 500);
   }
@@ -126,17 +139,21 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const ctx = await requireBusiness().catch(() => null);
-    if (!ctx) return err("غير مصرح", 401);
+    // Anyone who may touch some block may look; the block itself then
+    // decides whether this one is theirs to remove.
+    const ctx = await requireBusinessAccessAny(["schedule.manage", "staff.manage"]);
 
     const id = new URL(req.url).searchParams.get("id");
     if (!id) return err("اختار الوقت المقفول اللي عايز تشيله", 400);
 
     const owned = await db.timeBlock.findFirst({
       where: { id, businessId: ctx.business.id },
-      select: { id: true },
+      select: { id: true, staffMemberId: true },
     });
     if (!owned) return err("غير موجود", 404);
+    if (!neededFor(owned.staffMemberId).some((a) => can(ctx.actor, a))) {
+      return err("مش مسموح لك بالإجراء ده", 403, { code: "forbidden" });
+    }
 
     // Nothing points at a time block, so it is a real delete. Removing
     // one re-opens the time; it does not touch a booking that was made
@@ -144,6 +161,7 @@ export async function DELETE(req: Request) {
     await db.timeBlock.delete({ where: { id } });
     return ok({ deleted: true });
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[time-blocks DELETE]", e);
     return err("حدث خطأ أثناء الحذف", 500);
   }

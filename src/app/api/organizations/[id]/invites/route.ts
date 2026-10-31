@@ -31,6 +31,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       authority,
       email: parsed.data.email,
       relation: parsed.data.relation,
+      requestedScopes: parsed.data.requestedScopes,
     });
     const link = siteUrl(`/signup?org_invite=${invite.token}`);
     let emailed = false;

@@ -46,7 +46,8 @@ export async function GET(req: Request) {
     const { business, actor } = await requireBusinessAccess("customers.read");
     // Spend is money, and money is the owner's: managers get the customer
     // book without it.
-    const seeMoney = can(actor, "reports.read");
+    // Money is FINANCE (owner organizations only), not REPORTS.
+    const seeMoney = can(actor, "finance.read");
     const { searchParams } = new URL(req.url);
 
     const q = parseQuery(searchParams, query);
@@ -105,7 +106,8 @@ export async function GET(req: Request) {
       switch (sort) {
         case "name":         return dir * a.name.localeCompare(b.name, "ar");
         case "bookingCount": return dir * (a.bookingCount - b.bookingCount);
-        case "totalSpend":   return dir * ((a.totalSpend ?? 0) - (b.totalSpend ?? 0));
+        // A ranking by spend is spend: without FINANCE it ranks by visits.
+        case "totalSpend":   return seeMoney ? dir * ((a.totalSpend ?? 0) - (b.totalSpend ?? 0)) : dir * (a.bookingCount - b.bookingCount);
         case "lastVisit": {
           const da = a.lastBookingDate ?? "0000-00-00";
           const db = b.lastBookingDate ?? "0000-00-00";

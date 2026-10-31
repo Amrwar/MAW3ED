@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
+import { requireDashboardAccess } from "@/lib/dashboard/guard";
 import ServicesClient from "./_components/ServicesClient";
 
 export const metadata: Metadata = { title: "الخدمات" };
 
 export default async function ServicesPage() {
-  const session = await auth();
-  if (!session?.user?.businessId) redirect("/dashboard");
+  // An editor: the owner, or a delegate granted SERVICES.
+  const { business } = await requireDashboardAccess("services.manage");
 
   const services = await db.service.findMany({
-    where:   { businessId: session.user.businessId },
+    where:   { businessId: business.id },
     orderBy: { sortOrder: "asc" },
   });
 

@@ -6,6 +6,8 @@ import { getLang } from "@/lib/lang-server";
 import { loadVenueCaller, venuesFor } from "@/lib/venues/guard";
 import { organizationsFor } from "@/lib/organizations/guard";
 import RegisterOrgForm from "./_components/RegisterOrgForm";
+import ManageBusinessButton from "@/components/organizations/ManageBusinessButton";
+import { operableBusinesses, SCOPE_LABELS } from "@/lib/organizations/delegation";
 
 export const metadata: Metadata = { title: "إدارة الجهات والأماكن", robots: { index: false, follow: false } };
 
@@ -17,7 +19,12 @@ export const metadata: Metadata = { title: "إدارة الجهات والأما
 export default async function OrgAdminIndex() {
   const caller = await loadVenueCaller();
   if (!caller) redirect("/login?next=/org-admin");
-  const [organizations, venues, lang] = await Promise.all([organizationsFor(caller), venuesFor(caller), getLang()]);
+  const [organizations, venues, operable, lang] = await Promise.all([
+    organizationsFor(caller),
+    venuesFor(caller),
+    operableBusinesses(caller.userId),
+    getLang(),
+  ]);
   const en = lang === "en";
   const t = (ar: string, e: string) => (en ? e : ar);
   const STATUS: Record<string, string> = {
@@ -55,6 +62,32 @@ export default async function OrgAdminIndex() {
           </ul>
         )}
       </section>
+
+      {operable.length > 0 && (
+        <section aria-labelledby="op-h" className="space-y-2">
+          <h2 id="op-h" className="m-0 text-base font-extrabold">{t("أنشطة تقدر تديرها", "Businesses you can manage")}</h2>
+          <p className="m-0 text-xs text-[var(--color-subtle)]">
+            {t("بالصلاحيات اللي أصحابها منحوها لجهاتك بس، ويقدروا يسحبوها في أي وقت.", "Only with the access their owners granted your organizations, which they can withdraw at any time.")}
+          </p>
+          <ul className="m-0 list-none space-y-2 p-0">
+            {operable.map((r) => (
+              <li key={r.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
+                <span className="min-w-0">
+                  <span className="block font-bold">
+                    {en ? r.business.nameEn || r.business.nameAr : r.business.nameAr}
+                    {r.branch ? <span className="font-normal text-[var(--color-subtle)]"> · {en ? r.branch.nameEn || r.branch.nameAr : r.branch.nameAr}</span> : null}
+                  </span>
+                  <span className="block text-xs text-[var(--color-subtle)]">
+                    {r.scopes.map((s) => SCOPE_LABELS[s][en ? 1 : 0]).join(en ? ", " : "، ")}
+                    {r.expiresAt ? ` · ${t("لحد", "until")} ${r.expiresAt.toISOString().slice(0, 10)}` : ""}
+                  </span>
+                </span>
+                <ManageBusinessButton businessId={r.business.id} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {venues.length > 0 && (
         <section aria-labelledby="v-h" className="space-y-2">

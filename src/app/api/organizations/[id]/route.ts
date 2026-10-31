@@ -13,11 +13,13 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function GET(_req: Request, { params }: Ctx) {
   return orgHandle("organization GET", async () => {
     const { id } = await params;
-    const { authority } = await requireOrgAccess(id, "org.view");
+    const { caller, authority } = await requireOrgAccess(id, "org.view");
     const org = await db.organization.findUniqueOrThrow({
       where: { id },
       include: {
         city: { select: { id: true, nameAr: true, nameEn: true } },
+        parent: { select: { id: true, slug: true, nameAr: true, nameEn: true } },
+        _count: { select: { children: true } },
         venues: {
           orderBy: { createdAt: "desc" },
           select: { id: true, slug: true, nameAr: true, nameEn: true, status: true, isPublished: true },
@@ -32,20 +34,24 @@ export async function GET(_req: Request, { params }: Ctx) {
         },
       },
     });
-    // A rejection or suspension carries the administrator's written
-    // reason, which the admin screen promises the organization will see.
-    const statusReason =
-      org.status === "REJECTED" || org.status === "SUSPENDED"
-        ? ((
-            await db.auditLog.findFirst({
-              where: { resourceType: "Organization", resourceId: id, action: `org.${org.status.toLowerCase()}` },
-              orderBy: { at: "desc" },
-              select: { metadata: true },
-            })
-          )?.metadata as { reason?: string | null } | null)?.reason ?? null
-        : null;
+    // Parent choices, for an owner: other approved organizations this
+    // person also owns (linking needs ownership of both).
+    const ownsHere = authority === "OWNER" || authority === "PLATFORM";
+    const parentOptions = ownsHere
+      ? await db.organization.findMany({
+          where: {
+            id: { not: id },
+            status: "APPROVED",
+            ...(authority === "PLATFORM" ? {} : { roles: { some: { userId: caller.userId, kind: "ORGANIZATION_OWNER" } } }),
+          },
+          orderBy: { nameAr: "asc" },
+          take: 100,
+          select: { id: true, nameAr: true, nameEn: true },
+        })
+      : [];
     return ok({
-      organization: { ...org, statusReason },
+      parentOptions,
+      organization: org,
       authority,
       can: {
         edit: orgCan(authority, "org.edit"),
@@ -84,7 +90,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
       // approval sends the organization back to review (and its page
       // offline) — otherwise "approved as a small group" could become
       // "a famous mall" without anybody looking.
-      const current = await db.organization.findUniqueOrThrow({ where: { id }, select: { nameAr: true, nameEn: true, kind: true } });
+      const current = { nameAr: organization.nameAr, nameEn: organization.nameEn, kind: organization.kind };
       const identityChanged =
         (profile.nameAr !== undefined && profile.nameAr !== current.nameAr) ||
         (profile.nameEn !== undefined && (profile.nameEn ?? null) !== (current.nameEn ?? null)) ||
@@ -101,7 +107,17 @@ export async function PATCH(req: Request, { params }: Ctx) {
           : `تعديل بيانات الجهة "${organization.nameAr}"`,
         metadata: {
           byUserId: caller.userId, authority, fields: Object.keys(profile),
-          ...(reReview ? { from: current, to: { nameAr: profile.nameAr ?? current.nameAr, nameEn: profile.nameEn ?? current.nameEn, kind: profile.kind ?? current.kind } } : {}),
+          // `!== undefined`, not `??`: clearing the English name (null) is a change.
+          ...(reReview
+            ? {
+                from: current,
+                to: {
+                  nameAr: profile.nameAr !== undefined ? profile.nameAr : current.nameAr,
+                  nameEn: profile.nameEn !== undefined ? profile.nameEn : current.nameEn,
+                  kind: profile.kind !== undefined ? profile.kind : current.kind,
+                },
+              }
+            : {}),
         },
       });
     }

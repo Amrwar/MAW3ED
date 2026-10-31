@@ -24,6 +24,10 @@ interface BookingsClientProps {
   serviceOptions:       ServiceOption[];
   slug:                 string;
   totalBookings:        number;
+  /** Whether this person may key a booking in (owner, or a delegate with reservations). */
+  canCreate?:           boolean;
+  /** Whether the detail panel offers collecting a balance (the owner's). */
+  canCollect?:          boolean;
 }
 
 export default function BookingsClient({
@@ -33,6 +37,8 @@ export default function BookingsClient({
   slug,
   totalBookings,
   initialStatus = null,
+  canCreate = true,
+  canCollect = true,
 }: BookingsClientProps) {
   const { t, lang } = useLanguage();
   const b      = t.dashboard.bookings;
@@ -255,10 +261,12 @@ export default function BookingsClient({
             </button>
           </div>
 
-          <button type="button" onClick={() => setNewBookingOpen(true)} className="btn btn-primary">
-            <Plus size={16} strokeWidth={2.4} aria-hidden="true" />
-            {b.newBtn}
-          </button>
+          {canCreate && (
+            <button type="button" onClick={() => setNewBookingOpen(true)} className="btn btn-primary">
+              <Plus size={16} strokeWidth={2.4} aria-hidden="true" />
+              {b.newBtn}
+            </button>
+          )}
         </div>
       </div>
 
@@ -270,7 +278,7 @@ export default function BookingsClient({
           isToday={calendarDate === getTodayISO()}
           onDateChange={setCalendarDate}
           onSelect={setSelectedBooking}
-          onNewBooking={() => setNewBookingOpen(true)}
+          onNewBooking={canCreate ? () => setNewBookingOpen(true) : undefined}
         />
       ) : (
         <>
@@ -304,6 +312,7 @@ export default function BookingsClient({
           booking={selectedBooking}
           onClose={() => setSelectedBooking(null)}
           onStatusChange={handleStatusChange}
+          canCollect={canCollect}
         />
       )}
 

@@ -3,6 +3,7 @@ import { installArabicZodErrors } from "./zod-arabic";
 import { auth } from "@/auth";
 import { readAccessToken } from "@/lib/auth/mobile-token";
 import { db } from "@/lib/db";
+import { isActingElsewhere } from "@/lib/organizations/delegation";
 
 // Installed here as well as in validations.ts: a route with its own
 // inline z.object() need not import that module, and every API route
@@ -108,6 +109,10 @@ export interface CallerSession {
  */
 export async function requireBusiness() {
   const session = await requireSession();
+  // While operating another business for an organization, the owner-only
+  // routes of one's own business are off: a click meant for the business
+  // on screen must not land on a different one.
+  await refuseWhileActing(session.user.id);
   if (!session.user.businessId) throw err("لم يتم العثور على عملك", 404);
 
   const business = await db.business.findUnique({
@@ -127,3 +132,13 @@ export async function requireBusiness() {
   return { session, business };
 }
 
+/**
+ * Refuses (409 `acting-elsewhere`) while the request carries a live
+ * acting context for another business. A stale acting cookie — the
+ * delegation ended — is ignored, so it never locks an owner out.
+ */
+export async function refuseWhileActing(userId: string): Promise<void> {
+  if (await isActingElsewhere(userId)) {
+    throw err("إنت بتدير نشاط تاني دلوقتي — اخرج من وضع الإدارة الأول", 409, { code: "acting-elsewhere" });
+  }
+}

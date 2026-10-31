@@ -1,5 +1,6 @@
+import { can } from "@/lib/business-access";
 import type { Metadata } from "next";
-import { requireBusinessPage } from "@/lib/dashboard/guard";
+import { requireDashboardAccess } from "@/lib/dashboard/guard";
 import { getCustomers, type CustomerSort } from "@/lib/dashboard/queries";
 import CustomersClient from "./_components/CustomersClient";
 
@@ -23,7 +24,9 @@ export default async function CustomersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { business } = await requireBusinessPage();
+  const { business, actor } = await requireDashboardAccess("customers.read");
+  // Spend is FINANCE: stripped here, and no ranking by it, without it.
+  const seeMoney = can(actor, "finance.read");
   const sp = await searchParams;
 
   const one = (k: string) => {
@@ -32,7 +35,8 @@ export default async function CustomersPage({
   };
 
   const page = Math.max(1, Number(one("page") ?? 1) || 1);
-  const sort = (one("sort") ?? "recent") as CustomerSort;
+  const wanted = (one("sort") ?? "recent") as CustomerSort;
+  const sort = !seeMoney && wanted === "spend" ? ("recent" as CustomerSort) : wanted;
 
   const { items, total, allTags } = await getCustomers(business.id, {
     q: one("q"),
@@ -56,7 +60,7 @@ export default async function CustomersPage({
         visits: c.stats.visits,
         cancelled: c.stats.cancelled,
         noShows: c.stats.noShows,
-        spend: c.stats.revenue,
+        spend: seeMoney ? c.stats.revenue : 0,
         noShowRate: c.stats.noShowRate,
         lastVisit: c.stats.lastVisit?.toISOString() ?? null,
         nextVisit: c.stats.nextVisit?.toISOString() ?? null,

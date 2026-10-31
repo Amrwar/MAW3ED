@@ -14,8 +14,15 @@ import { DIRECTORY_PAGE_SIZE } from "./rules";
  */
 
 export const PUBLIC_ORG = { status: "APPROVED" as const, isPublished: true };
+/**
+ * Listed publicly: businesses an organization owns or hosts. Who manages
+ * a business's back office (MANAGED) is not something its customers need
+ * to see on a directory page. Suspended relationships are not listed.
+ */
+export const LISTED_RELATIONS = ["OWNED", "HOSTED", "TENANT", "PARTNER", "FRANCHISE"] as const;
 export const LISTED_ASSOCIATION = {
   status: "APPROVED" as const,
+  relation: { in: [...LISTED_RELATIONS] },
   business: { isPublished: true },
   OR: [{ branchId: null }, { branch: { isActive: true } }],
 };
@@ -45,6 +52,10 @@ export async function loadPublicOrganization(slug: string) {
       logoImage: true, coverImage: true, phone: true, email: true, instagram: true, facebook: true,
       address: true, website: true, updatedAt: true,
       city: { select: { slug: true, nameAr: true, nameEn: true } },
+      // One level each way, never traversed further: the page shows where
+      // this organization belongs and what belongs directly to it.
+      parent: { where: PUBLIC_ORG, select: { slug: true, nameAr: true, nameEn: true, kind: true } },
+      children: { where: PUBLIC_ORG, orderBy: { nameAr: "asc" }, take: 50, select: { slug: true, nameAr: true, nameEn: true, kind: true } },
       venues: {
         where: { status: "ACTIVE", isPublished: true },
         orderBy: { nameAr: "asc" },
@@ -153,7 +164,7 @@ export async function listPublicOrganizations() {
 /** The published organizations a business's page should say it belongs to. */
 export async function organizationsOfBusiness(businessId: string) {
   const rows = await db.organizationBusiness.findMany({
-    where: { businessId, status: "APPROVED", organization: PUBLIC_ORG },
+    where: { businessId, status: "APPROVED", relation: { in: [...LISTED_RELATIONS] }, organization: PUBLIC_ORG },
     select: { organization: { select: { slug: true, nameAr: true, nameEn: true } } },
   });
   return rows.filter((r, i) => rows.findIndex((x) => x.organization.slug === r.organization.slug) === i).map((r) => r.organization);
@@ -168,7 +179,7 @@ export async function organizationsOfBusiness(businessId: string) {
 export async function attributeBooking(bookingId: string, orgSlug: string, businessId: string): Promise<void> {
   try {
     const org = await db.organization.findFirst({
-      where: { slug: orgSlug, ...PUBLIC_ORG, associations: { some: { businessId, status: "APPROVED" } } },
+      where: { slug: orgSlug, ...PUBLIC_ORG, associations: { some: { businessId, status: "APPROVED", relation: { in: [...LISTED_RELATIONS] } } } },
       select: { id: true },
     });
     if (!org) return;

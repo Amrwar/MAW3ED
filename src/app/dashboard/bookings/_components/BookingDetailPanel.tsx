@@ -50,12 +50,15 @@ interface BookingDetailPanelProps {
   booking:        DashboardBooking;
   onClose:        () => void;
   onStatusChange: (id: string, status: DashboardBookingStatus) => Promise<void>;
+  /** Recording money is the owner's; hidden for a delegate. */
+  canCollect?:    boolean;
 }
 
 export default function BookingDetailPanel({
   booking,
   onClose,
   onStatusChange,
+  canCollect = true,
 }: BookingDetailPanelProps) {
   const [loading,       setLoading]       = useState(false);
   const [actionError,   setActionError]   = useState<string | null>(null);
@@ -201,9 +204,11 @@ export default function BookingDetailPanel({
             {/* What has actually been collected, and how to collect the
                 rest. Read from the ledger rather than from the booking,
                 which only ever knew about the deposit. */}
-            <div className="mt-3 border-t border-[var(--color-line)] pt-3">
-              <CollectBalance bookingId={booking.id} />
-            </div>
+            {canCollect && (
+              <div className="mt-3 border-t border-[var(--color-line)] pt-3">
+                <CollectBalance bookingId={booking.id} />
+              </div>
+            )}
           </Section>
 
           {/* Notes */}

@@ -1,5 +1,10 @@
 # Venue and business relationships
 
+> **Superseded in part (2026-10-31):** relationship types (OWNED / HOSTED /
+> MANAGED), delegated scopes, suspension and the organization hierarchy
+> are documented in `ORGANIZATION_RELATIONSHIPS.md` and
+> `ORGANIZATION_PERMISSIONS.md`. Venue placement below is unchanged.
+
 Three relationships, modeled separately because they mean different
 things. None of them transfers ownership of a business.
 

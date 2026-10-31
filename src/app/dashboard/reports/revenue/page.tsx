@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireBusinessPage } from "@/lib/dashboard/guard";
+import { requireDashboardAccess } from "@/lib/dashboard/guard";
 import { getRevenueReport, lastDays } from "@/lib/dashboard/reports";
 import ReportShell from "../_components/ReportShell";
 import RevenueView from "./RevenueView";
@@ -11,7 +11,7 @@ export default async function RevenueReportPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { business } = await requireBusinessPage();
+  const { business } = await requireDashboardAccess("finance.read");
   const sp = await searchParams;
   const days = Number(Array.isArray(sp.days) ? sp.days[0] : (sp.days ?? 30)) || 30;
 

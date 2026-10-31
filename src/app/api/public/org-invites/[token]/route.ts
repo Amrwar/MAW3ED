@@ -16,6 +16,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       invite: {
         organization: invite.organization,
         relation: invite.relation,
+        // What creating the business under this invitation grants: shown first.
+        requestedScopes: invite.requestedScopes,
         expiresAt: invite.expiresAt.toISOString(),
       },
     });

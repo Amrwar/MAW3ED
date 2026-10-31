@@ -144,11 +144,16 @@ export const BOOKING_LIST_SELECT = {
   customer: { select: { id: true } },
 } as const;
 
-export async function getTodayBookings(businessId: string, now: Date = new Date()) {
+/**
+ * `branchIds`: for a delegate limited to some branches, only those
+ * branches' bookings (lib/business-access bookingScope); null for all.
+ */
+export async function getTodayBookings(businessId: string, now: Date = new Date(), branchIds: string[] | null = null) {
   const { start: dayStart, end: dayEnd } = cairoWallDay(now);
   return db.booking.findMany({
     where: {
       businessId,
+      ...(branchIds ? { branchId: { in: branchIds } } : {}),
       startsAt: { gte: dayStart, lt: dayEnd },
       status: { notIn: [...ABANDONED] },
     },
@@ -159,11 +164,12 @@ export async function getTodayBookings(businessId: string, now: Date = new Date(
 
 export async function getUpcomingBookings(
   businessId: string,
-  opts: { take?: number; skip?: number } = {},
+  opts: { take?: number; skip?: number; branchIds?: string[] | null } = {},
   now: Date = new Date(),
 ) {
   const where = {
     businessId,
+    ...(opts.branchIds ? { branchId: { in: opts.branchIds } } : {}),
     status: { in: [...LIVE_STATUSES] },
     startsAt: { gte: cairoWallClock(now) },
   };

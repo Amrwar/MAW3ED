@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireBusinessPage } from "@/lib/dashboard/guard";
+import { requireDashboardAccess } from "@/lib/dashboard/guard";
 import { getUpcomingBookings } from "@/lib/dashboard/queries";
 import BookingList from "../../_components/BookingList";
 import { shapeBooking } from "../../_components/shape";
@@ -8,8 +8,8 @@ export const metadata: Metadata = { title: "المواعيد الجاية" };
 
 /** Everything still ahead, nearest first. */
 export default async function UpcomingPage() {
-  const { business } = await requireBusinessPage();
-  const { rows, total } = await getUpcomingBookings(business.id, { take: 100 });
+  const { business, actor } = await requireDashboardAccess("bookings.read");
+  const { rows, total } = await getUpcomingBookings(business.id, { take: 100, branchIds: actor.delegation?.branchIds ?? null });
 
   return (
     <div className="space-y-5">

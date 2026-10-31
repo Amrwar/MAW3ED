@@ -2,7 +2,7 @@ import { BookingStatus, type Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { ownerBookingSchema } from "@/lib/validations";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
 import { bookingScope, can, requireBusinessAccess } from "@/lib/business-access";
 import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
@@ -64,7 +64,11 @@ export async function GET(req: Request) {
       where.staffMemberId = staffId;
     }
     if (branchId) {
-      where.branchId = branchId;
+      // Narrows within the scope, never widens it: a delegate limited to
+      // some branches asking for another branch gets that branch AND its
+      // own — nothing.
+      const allowed = actor.role === "DELEGATE" ? actor.delegation?.branchIds : null;
+      where.branchId = allowed ? { in: allowed.filter((b) => b === branchId) } : branchId;
     }
     if (calendar) {
       // Both dates in the one format the filter below reads, or the range
@@ -169,7 +173,12 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
-    const { session, business } = await requireBusiness();
+    const { session, business, actor } = await requireBusinessAccess("bookings.create");
+    // A booking keyed in here carries no branch, so a delegate limited
+    // to some branches would create one outside their own view.
+    if (actor.role === "DELEGATE" && actor.delegation?.branchIds) {
+      return err("الإدارة المفوّضة على فرع واحد مش بتضيف حجوزات يدوي", 403, { code: "forbidden" });
+    }
     const body   = await req.json();
     const parsed = ownerBookingSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);

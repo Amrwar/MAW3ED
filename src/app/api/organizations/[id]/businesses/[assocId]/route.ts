@@ -6,8 +6,10 @@ import { orgHandle, readJson } from "@/lib/organizations/route";
 
 /**
  * PATCH /api/organizations/:id/businesses/:assocId — approve or reject
- * a request, remove a listed business (its data stays its own), or
- * organize it (section, order, relation).
+ * a request, pause or resume (only a pause the organization made), remove
+ * a business (its data stays its own), or organize it in the directory
+ * (section, order). The relationship type and the granted scopes are not
+ * the organization's to change.
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string; assocId: string }> }) {
   return orgHandle("org business PATCH", async () => {
@@ -24,7 +26,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       action: action.data.action,
       section: action.data.section,
       sortOrder: action.data.sortOrder,
-      relation: action.data.relation,
       note: action.data.note,
     });
     return ok({ saved: true });

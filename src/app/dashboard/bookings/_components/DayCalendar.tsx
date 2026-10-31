@@ -91,7 +91,8 @@ interface Props {
   loading?: boolean;
   onDateChange: (iso: string) => void;
   onSelect: (booking: DashboardBooking) => void;
-  onNewBooking: () => void;
+  /** Absent when this person may not key bookings in. */
+  onNewBooking?: () => void;
   isToday: boolean;
 }
 
@@ -205,10 +206,12 @@ export default function DayCalendar({
               {label.today}
             </button>
           )}
-          <button type="button" onClick={onNewBooking} className="btn btn-primary btn-sm">
-            <Plus size={15} strokeWidth={2.4} aria-hidden="true" />
-            {b.newBtn}
-          </button>
+          {onNewBooking && (
+            <button type="button" onClick={onNewBooking} className="btn btn-primary btn-sm">
+              <Plus size={15} strokeWidth={2.4} aria-hidden="true" />
+              {b.newBtn}
+            </button>
+          )}
         </div>
       </div>
 
@@ -224,10 +227,12 @@ export default function DayCalendar({
             </span>
             <h3 className="m-0 text-base font-bold text-[var(--color-ink)]">{label.empty}</h3>
             <p className="m-0 max-w-[40ch] text-sm text-[var(--color-subtle)]">{label.emptyBody}</p>
-            <button type="button" onClick={onNewBooking} className="btn btn-primary btn-sm mt-3">
-              <Plus size={15} strokeWidth={2.4} aria-hidden="true" />
-              {b.newBtn}
-            </button>
+            {onNewBooking && (
+              <button type="button" onClick={onNewBooking} className="btn btn-primary btn-sm mt-3">
+                <Plus size={15} strokeWidth={2.4} aria-hidden="true" />
+                {b.newBtn}
+              </button>
+            )}
           </div>
         ) : (
           <div

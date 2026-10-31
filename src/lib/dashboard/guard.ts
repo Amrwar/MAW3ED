@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { can, resolveBusinessAccess, type BusinessAction } from "@/lib/business-access";
+import { isActingElsewhere } from "@/lib/organizations/delegation";
 
 /**
  * The business behind the current dashboard page.
@@ -14,6 +16,8 @@ import { db } from "@/lib/db";
 export async function requireBusinessPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+  // Owner-only pages are off while operating another business.
+  if (await isActingElsewhere(session.user.id)) redirect("/dashboard");
 
   const tokenBusinessId = session.user.businessId;
 
@@ -57,4 +61,23 @@ export async function noBusinessDestination(userId: string): Promise<string> {
   if (user?._count?.venueRoles) return "/org-admin";
   const isCustomer = !!user?.phoneVerifiedAt && !user.password && !user.adminRole;
   return isCustomer ? "/account?notice=no-business" : "/onboarding";
+}
+
+/**
+ * The guard for dashboard pages a delegate may also open. The owner
+ * passes as always; a delegate operating a business passes only with
+ * the page's action among their granted scopes. Staff managers and
+ * providers keep using the mobile app — the web dashboard stays the
+ * owner's and the delegates'.
+ */
+export async function requireDashboardAccess(action: BusinessAction | readonly BusinessAction[]) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const access = await resolveBusinessAccess(session.user.id);
+  if (!access || (access.actor.role !== "OWNER" && access.actor.role !== "DELEGATE")) {
+    redirect(await noBusinessDestination(session.user.id));
+  }
+  const wanted = typeof action === "string" ? [action] : action;
+  if (!wanted.some((a) => can(access.actor, a))) redirect("/dashboard");
+  return { session, business: access.business, actor: access.actor };
 }

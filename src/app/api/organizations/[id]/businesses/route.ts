@@ -6,12 +6,13 @@ import { orgHandle, readJson } from "@/lib/organizations/route";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** GET /api/organizations/:id/businesses — associations of this organization only. */
-export async function GET(_req: Request, { params }: Ctx) {
+/** GET /api/organizations/:id/businesses?page= — this organization's associations, one page at a time. */
+export async function GET(req: Request, { params }: Ctx) {
   return orgHandle("org businesses GET", async () => {
     const { id } = await params;
     await requireOrgAccess(id, "org.view");
-    return ok({ associations: await listAssociations(id) });
+    const page = Number(new URL(req.url).searchParams.get("page") ?? 1);
+    return ok(await listAssociations(id, page));
   });
 }
 
@@ -34,6 +35,7 @@ export async function POST(req: Request, { params }: Ctx) {
       branchId: parsed.data.branchId ?? null,
       relation: parsed.data.relation,
       note: parsed.data.note ?? null,
+      requestedScopes: parsed.data.requestedScopes,
     });
     return ok({ association: row }, 201);
   });

@@ -94,6 +94,22 @@ if (ownerRow) {
     values ('qa18-org-role', $1, 'ORGANIZATION_OWNER', 'qa18-org-fixture', now())
     on conflict (id) do nothing`, [ownerRow.uid]);
 }
+// Phase 22 final: rival@qa.test manages the fixture organization, which
+// owns qa-salon with every scope granted — so the delegate's dashboard
+// (banner, reduced nav, delegate home, filtered settings) is swept too.
+const rivalRow = (await pg.query(`select id from "User" where email='rival@qa.test'`)).rows[0];
+if (ownerRow && rivalRow) {
+  await pg.query(`insert into "VenueRole" (id, "userId", kind, "organizationId", "createdAt")
+    values ('qa18-del-role', $1, 'ORGANIZATION_ADMIN', 'qa18-org-fixture', now()) on conflict (id) do nothing`, [rivalRow.id]);
+  await pg.query(`insert into "OrganizationBusiness" (id, "organizationId", "businessId", relation, status, "initiatedById", scopes, "updatedAt")
+    values ('qa18-del-assoc', 'qa18-org-fixture', $1, 'OWNED', 'APPROVED', $2,
+      '{RESERVATIONS,CUSTOMERS,SERVICES,STAFF,SCHEDULES,PROFILE,REPORTS,FINANCE}', now()) on conflict (id) do nothing`, [ownerRow.bid, ownerRow.uid]);
+}
+const DELEGATE = [
+  "/dashboard", "/dashboard/bookings", "/dashboard/bookings/today", "/dashboard/bookings/upcoming", "/dashboard/calendar",
+  "/dashboard/customers", "/dashboard/services", "/dashboard/staff", "/dashboard/settings",
+  "/dashboard/reports/bookings", "/dashboard/reports/revenue", "/dashboard/reports/customers", "/dashboard/reports/performance",
+];
 
 const ANON = [
   "/", "/businesses", "/businesses?q=%D8%AD%D9%84%D8%A7%D9%82%D8%A9", "/businesses?q=zzzzqqq",
@@ -137,7 +153,7 @@ async function login(ctx, email) {
   await p.close();
 }
 
-async function sweep(role, pages, email) {
+async function sweep(role, pages, email, cookies = []) {
   if (ONLY && ONLY !== role) return;
   for (const lang of ["ar", "en"]) {
     for (const width of WIDTHS) {
@@ -152,6 +168,7 @@ async function sweep(role, pages, email) {
           continue;
         }
       }
+      if (cookies.length) await ctx.addCookies(cookies.map((c) => ({ ...c, url: B })));
       for (const route of pages) {
         const page = await ctx.newPage();
         const consoleErrors = [];
@@ -233,6 +250,7 @@ try {
   await sweep("anon", ANON, null);
   await sweep("owner", OWNER, "owner@qa.test");
   if (admin) await sweep("admin", ADMIN, admin);
+  if (ownerRow && rivalRow) await sweep("delegate", DELEGATE, "rival@qa.test", [{ name: "maw3ed-acting", value: ownerRow.bid }]);
 } finally {
   await browser.close();
   if (token) {
@@ -244,7 +262,7 @@ try {
     }
     await pg.query(`delete from "Customer" where name='P18 Sweep'`).catch(() => {});
   }
-  await pg.query(`delete from "VenueRole" where id='qa18-org-role'`).catch(() => {});
+  await pg.query(`delete from "VenueRole" where id in ('qa18-org-role','qa18-del-role')`).catch(() => {});
   await pg.query(`delete from "VenueOrganization" where id='qa18-org-fixture'`).catch(() => {});
   await pg.end();
   if (SHOTS) {

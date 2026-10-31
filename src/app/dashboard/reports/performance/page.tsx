@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { requireBusinessPage } from "@/lib/dashboard/guard";
+import { can } from "@/lib/business-access";
+import { requireDashboardAccess } from "@/lib/dashboard/guard";
 import { getPerformanceReport, lastDays } from "@/lib/dashboard/reports";
 import ReportShell from "../_components/ReportShell";
 import PerformanceView from "./PerformanceView";
@@ -11,7 +12,9 @@ export default async function PerformanceReportPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { business } = await requireBusinessPage();
+  const { business, actor } = await requireDashboardAccess("reports.read");
+  // Revenue per staff member is money: FINANCE only, stripped server-side.
+  const showMoney = can(actor, "finance.read");
   const sp = await searchParams;
   const days = Number(Array.isArray(sp.days) ? sp.days[0] : (sp.days ?? 30)) || 30;
 
@@ -24,7 +27,8 @@ export default async function PerformanceReportPage({
         cancellationRate={r.cancellationRate}
         noShowRate={r.noShowRate}
         sampleSize={r.sampleSize}
-        byStaff={r.byStaff}
+        byStaff={showMoney ? r.byStaff : r.byStaff.map((s) => ({ ...s, revenue: 0 }))}
+        showMoney={showMoney}
         byService={r.byService}
       />
     </ReportShell>

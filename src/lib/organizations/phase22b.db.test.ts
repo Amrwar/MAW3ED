@@ -107,7 +107,7 @@ describe.skipIf(!local)("organization platform on a real database", () => {
   it("F: an invitation can be declined, and a declined one is never listed", async () => {
     const mall = await organization("decline-mall");
     const b = await business("decliner");
-    const inv = await assoc.inviteBusiness({ organizationId: mall.org.id, byUserId: mall.owner.id, authority: "OWNER", businessSlug: b.business.slug, branchId: null, relation: "TENANT", note: null });
+    const inv = await assoc.inviteBusiness({ organizationId: mall.org.id, byUserId: mall.owner.id, authority: "OWNER", businessSlug: b.business.slug, branchId: null, relation: "HOSTED", note: null });
     await assoc.respondAsBusiness({ businessId: b.business.id, userId: b.owner.id, associationId: inv.id, action: "decline" });
     expect((await pub.loadPublicOrganization(mall.org.slug))!.directory).toHaveLength(0);
     // Declining is final for that row; accepting it afterwards is refused.
@@ -215,7 +215,7 @@ describe.skipIf(!local)("organization platform on a real database", () => {
     const invited = await business("suspend-invited");
     const inv = await assoc.inviteBusiness({
       organizationId: mall.org.id, byUserId: mall.owner.id, authority: "OWNER",
-      businessSlug: invited.business.slug, branchId: null, relation: "TENANT", note: null,
+      businessSlug: invited.business.slug, branchId: null, relation: "HOSTED", note: null,
     });
     const einv = await assoc.createEmailInvite({ organizationId: mall.org.id, byUserId: mall.owner.id, authority: "OWNER", email: `${tag}-late@example.test`, relation: "OWNED" });
     await db.organization.update({ where: { id: mall.org.id }, data: { status: "SUSPENDED", isPublished: false } });

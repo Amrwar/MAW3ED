@@ -8,6 +8,8 @@ const KIND: Record<string, [string, string]> = {
   MALL: ["مول", "mall"],
   COMPOUND: ["كمبوند", "compound"],
   BUSINESS_GROUP: ["مجموعة أعمال", "business group"],
+  RESTAURANT_GROUP: ["مجموعة مطاعم", "restaurant group"],
+  CLINIC_GROUP: ["مجموعة عيادات", "clinic group"],
   FRANCHISE: ["فرنشايز", "franchise"],
   COMMERCIAL_BUILDING: ["مبنى تجاري", "commercial building"],
   OTHER: ["جهة", "organization"],

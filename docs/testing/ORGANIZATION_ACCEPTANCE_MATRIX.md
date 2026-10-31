@@ -1,5 +1,76 @@
 # Organization platform — acceptance matrix
 
+## Phase 22 final — the owner's required tests 1–26
+
+All runs on 2026-10-31, local QA (Docker Postgres with every migration
+applied + a production build on :3101). Nothing here is a production
+claim. Sources:
+
+- **DB** — `src/lib/organizations/phase22c.db.test.ts` (12 tests) and `phase22b.db.test.ts` (14)
+- **unit** — `src/lib/organizations/delegation.test.ts` (12), `organizations.test.ts` (13)
+- **E2E** — `scripts/qa-phase22c.mjs` (56 checks, HTTP + real browser), `scripts/qa-phase22b.mjs` (83)
+- **mig** — `scratchpad/migration-preservation.sh` (legacy rows + row counts around a re-run of both migrations)
+
+Command: `BOOKING_DB_TEST_URL=postgresql://qa:qa@localhost:5450/maw3ed_qa npx vitest run src/lib/organizations` → 51 passed;
+`AUTH_SECRET=<server's> node scripts/qa-phase22c.mjs` → 56/56; `node scripts/qa-phase22b.mjs` → 83/83.
+
+| # | Requirement | Proof | Result |
+|---|---|---|---|
+| 1 | Create every supported organization type | DB "1": all 8 kinds (incl. RESTAURANT_GROUP, CLINIC_GROUP); E2E: register both new group kinds through the API | **PASS** |
+| 2 | Parent company with owned businesses | DB "2/11": group owns two brands, operates one within its grant; owning on paper with no grant = no access; E2E 2 | **PASS** |
+| 3 | Invite and approve hosted businesses | DB "3/8/9"; E2E 3/8 (hosted invite asking for access refused 422; plain hosted accepted) | **PASS** |
+| 4 | Delegate and revoke management | DB "4/22": narrow, expiry, pause (and the org cannot undo the business's pause), org suspension, member removal, withdraw-all — each ends access at once; E2E 4: withdrawal ends access on the very next request | **PASS** |
+| 5 | One business owned by a group and hosted by a mall | DB "5/13": OWNED + HOSTED + MANAGED on one business, no duplicate rows; E2E: qa-salon owned by the group and hosted by the mall | **PASS** |
+| 6 | Membership removal preserves records | DB "6/12" (bookings, business intact after removal); 22b DB "H/I" | **PASS** |
+| 7 | Unauthorized membership denied | DB "7/10" (stranger, other org's manager, legacy label, self-grant: all refused); 22b E2E (stranger 404, anonymous 401) | **PASS** |
+| 8 | Hosted mall cannot access tenant bookings | DB "3/8/9" (code, API and DB CHECK all refuse); E2E 8/9 (mall owner cannot start operating: 404) | **PASS** |
+| 9 | Hosted mall cannot access tenant finances | DB + E2E 9 (even the business cannot hand a hosted mall FINANCE: 422) | **PASS** |
+| 10 | Organization manager cannot escalate | unit (no scope reaches `staff.manageAccess`); DB "7/10" (FINANCE refused to MANAGED by code and DB); E2E 10 (403 on services/customers/profile/sign-in access without scope; managers cannot reorganize ownership); R4 (STAFF delegates cannot switch off or delete people who sign in) | **PASS** |
+| 11 | Business owner keeps independent control | DB "2/11" (owner stays OWNER with every power); E2E 11 (a delegate's own business's owner routes refuse while acting; only the owner grants) | **PASS** |
+| 12 | Multiple venues/branches do not mix data | DB "6/12" (branch-limited delegate sees only its branch); E2E R1 (`?branchId=` of another branch returns nothing); Phase 22 suite 68/68 (venue isolation) | **PASS** |
+| 13 | Directories show the correct approved businesses | DB "5/13" (owned + hosted listed, managed and suspended not); E2E 13 | **PASS** |
+| 14 | Organization QR resolves to the public URL | 22b E2E: SVG byte-equal to a QR of `/groups/<slug>?src=qr` | **PASS** |
+| 15 | Business QR resolves to its booking page | 22b E2E: byte-equal to `/company/<slug>?src=qr` | **PASS** |
+| 16 | Booking from an organization page | `qa-booking-e2e.mjs` 22/22 (real browser from `?org=`) | **PASS** |
+| 17 | Attribution without duplicate bookings | 22b DB "O" (one attribution row, booking untouched, forged slug credits nobody) | **PASS** |
+| 18 | Standalone businesses keep working | E2E 18; every earlier suite (17, 19, 20, 21, 22, booking E2E) green | **PASS** |
+| 19 | Arabic and English | 22b E2E (ar/en titles, hreflang); delegate UI bilingual; sweep ar + en over every delegate page | **PASS** — sweep: 544 page loads (anonymous, owner, admin and the new delegate role × ar/en × 375/768/1024/1440): one axe finding, `scrollable-region-focusable` on a report table at 375px — fixed (report tables are now labelled, focusable regions); re-sweep of delegate (104 loads) and owner (144 loads): **0 flagged** |
+| 20 | Mobile and desktop | E2E 20: banner, nav and exit at 390px and 1440px, no overflow; sweep at 375/768/1024/1440 | **PASS** — sweep: 544 page loads (anonymous, owner, admin and the new delegate role × ar/en × 375/768/1024/1440): one axe finding, `scrollable-region-focusable` on a report table at 375px — fixed (report tables are now labelled, focusable regions); re-sweep of delegate (104 loads) and owner (144 loads): **0 flagged** |
+| 21 | Migrations preserve existing data | mig: counts of Business, Booking, Customer, Payment, Service, StaffMember, User, Review, Organization, association identical around a re-run of both files; legacy TENANT → HOSTED, FRANCHISE → MANAGED; migrated rows carry no scopes; both files applied twice cleanly | **PASS** |
+| 22 | Relationship changes are auditable | DB "4/22"; E2E 22 (invite, accept, grant, operate.start, parent.set all in the audit log) | **PASS** |
+| 23 | Circular relationships rejected | DB "23/25" (cycle, 4th level, self, foreign parent); E2E 23 (409); SQL probe of the trigger | **PASS** |
+| 24 | Large lists paginate safely | DB "24" (120 associations → 3 pages of 50, page clamp, no duplicates across pages); 22b DB "X" (150-tenant directory) | **PASS** |
+| 25 | No unbounded traversal or recursive rendering | DB "23/25" (public page shows parent + direct children only; a grandchild never appears); depth ≤ 3 enforced by trigger | **PASS** |
+| 26 | Existing booking, payment, notification, subscription regressions | Vitest 1203 passed (booking engine, payments, notification outbox, plans); 17: 13/13, 19: 21/21, 20: 19/19, 21: 44/44, 22: 68/68, booking E2E 22/22, security 32/32 | **PASS** — see note |
+
+**Note on 26.** In two full-suite runs earlier on this branch, three
+booking-contention tests in `reliability.db.test.ts` timed out (60 s). They
+pass alone (13/13), and an alternating A/B of six full-suite runs (this
+branch vs `phase-22b-audit`) passed 6/6. The branch changes nothing in the
+booking engine, database client or scheduling. Recorded as an
+intermittent, load-dependent timeout, not a regression; the final run
+passed.
+
+### Code-review regressions (independent review of this phase's diff)
+
+| # | Defect found | Proof it is fixed | Result |
+|---|---|---|---|
+| R1 | `?branchId=` widened a branch-limited delegate's bookings | E2E R1 | PASS |
+| R2 | `GET /api/business` exposed the full record to staff/delegates; `PUT` echoed it | E2E R2 ×2 | PASS |
+| R3 | Spend gated on REPORTS (MANAGED can hold it), not FINANCE; sort by spend leaked ranking | E2E R3 ×2 | PASS |
+| R4 | STAFF delegates saw login numbers and could switch off or delete people who sign in | E2E R4 ×3 | PASS |
+| R5 | Every staff member could list colleagues' time off | E2E R5 (staff manager token: 403) | PASS |
+| R6 | A stale or forged acting cookie locked the owner out of their own pages | E2E R6 (browser: cleared, billing reachable) | PASS |
+| R7 | One-owner index let a pending invite block the real owner; forbade per-branch ownership by one org | DB "one owner…" (concurrent accepts: exactly one), "one organization may own several branches" | PASS |
+| R8 | Live bookings stream refused delegates (endless 409 reconnects) | E2E R8 (event stream served) | PASS |
+| R9 | A parent's owner could not detach a child | route rewritten to compute both sides' authority | PASS (code) |
+| R10 | Delegation resolved several times per request | `cache()` per request; one shared `isActingElsewhere` | PASS (code) |
+
+---
+
+## Phase 22b matrix (A–AB, retained)
+
+
 One row per required test (owner's list A–AB). "DB" =
 `src/lib/organizations/phase22b.db.test.ts` on the QA Postgres; "E2E" =
 `scripts/qa-phase22b.mjs` over HTTP against a production build with real

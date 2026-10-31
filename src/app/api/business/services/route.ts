@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { serviceSchema } from "@/lib/validations";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
 import { requireBusinessAccess } from "@/lib/business-access";
 import { log } from "@/lib/logger";
 
@@ -25,7 +25,7 @@ export async function GET() {
 /** POST /api/business/services */
 export async function POST(req: Request) {
   try {
-    const { business } = await requireBusiness();
+    const { business } = await requireBusinessAccess("services.manage");
     const body = await req.json();
     const parsed = serviceSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);

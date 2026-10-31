@@ -31,7 +31,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!before) return adminNotFound();
     await db.organization.update({
       where: { id },
-      data: { status, ...(status !== "APPROVED" ? { isPublished: false } : {}) },
+      // The reason travels with the status, in one write.
+      data: { status, statusReason: status === "APPROVED" ? null : reason!.trim(), ...(status !== "APPROVED" ? { isPublished: false } : {}) },
     });
     await recordAudit({
       actor,
