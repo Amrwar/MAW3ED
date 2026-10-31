@@ -347,6 +347,32 @@ describe.skipIf(!local)("organization relationships and delegation on a real dat
     expect(JSON.stringify(top)).not.toContain(wing.slug);
   });
 
+  it("loop audit: a cycle that got into the data anyway (trigger bypassed) cannot trap any walk", { timeout: 15_000 }, async () => {
+    const a = await organization("cyc-a", "BUSINESS_GROUP");
+    const b = await organization("cyc-b", "BUSINESS_GROUP");
+    const c = await organization("cyc-c", "BUSINESS_GROUP");
+    // As a manual SQL fix or a restore could do: A ⇄ B, behind the trigger's back.
+    await db.$executeRawUnsafe(`ALTER TABLE "VenueOrganization" DISABLE TRIGGER "VenueOrganization_parent_guard"`);
+    try {
+      await db.$executeRawUnsafe(`UPDATE "VenueOrganization" SET "parentId" = '${b.org.id}' WHERE id = '${a.org.id}'`);
+      await db.$executeRawUnsafe(`UPDATE "VenueOrganization" SET "parentId" = '${a.org.id}' WHERE id = '${b.org.id}'`);
+    } finally {
+      await db.$executeRawUnsafe(`ALTER TABLE "VenueOrganization" ENABLE TRIGGER "VenueOrganization_parent_guard"`);
+    }
+    // The trigger's own walk up from A circles A→B→A…: its step limit ends it.
+    await expect(
+      assoc.setParentOrganization({ childId: c.org.id, parentId: a.org.id, byUserId: c.owner.id, childAuthority: "OWNER", parentAuthority: "OWNER" }),
+    ).rejects.toMatchObject({ code: "hierarchy-invalid" });
+    // The public page reads one level each way and never follows the chain.
+    const page = await pub.loadPublicOrganization(a.org.slug);
+    expect(page!.parent?.slug).toBe(b.org.slug);
+    expect(page!.children.map((x) => x.slug)).toEqual([b.org.slug]);
+    // Delegation never walks the hierarchy at all.
+    expect(await del.resolveDelegation(a.owner.id, "no-such-business")).toBeNull();
+    // Unlinking repairs it (the trigger lets a NULL parent through at once).
+    await db.organization.updateMany({ where: { id: { in: [a.org.id, b.org.id] } }, data: { parentId: null } });
+  });
+
   it("24: a large portfolio pages safely in the console", async () => {
     const big = await organization("portfolio", "RESTAURANT_GROUP");
     const [city, category] = await Promise.all([db.city.findFirstOrThrow(), db.category.findFirstOrThrow()]);
