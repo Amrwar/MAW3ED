@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { canTransition, releasesTime, type BookingStatusValue, type Mover } from "./transitions";
 import { accessAfterMove } from "@/lib/access/hooks";
+import { inBookingQueue, takeBookingQueueFor } from "./queue";
 
 /**
  * Moving a booking from one status to another, safely.
@@ -48,8 +49,20 @@ type Tx = Prisma.TransactionClient;
 
 export async function moveBooking(input: MoveInput, tx?: Tx): Promise<MoveResult> {
   if (!canTransition(input.from, input.to, input.by)) return { moved: false, why: "not-allowed" };
-  if (tx) return applyMove(tx, input);
-  return db.$transaction((t) => applyMove(t, input));
+  // A move into a live status writes a new row version that the overlap
+  // constraints check again, so it waits in the business's booking queue
+  // (lib/bookings/queue.ts) like any write of a time. A move that ends
+  // the booking leaves the constraints and needs no turn.
+  const live = !endsBooking(input.to);
+  if (tx) {
+    // The caller's transaction must not hold a booking row lock yet.
+    if (live) await takeBookingQueueFor(tx, input.bookingId);
+    return applyMove(tx, input);
+  }
+  if (!live) return db.$transaction((t) => applyMove(t, input));
+  const row = await db.booking.findUnique({ where: { id: input.bookingId }, select: { businessId: true } });
+  if (!row) return { moved: false, why: "changed" };
+  return inBookingQueue(row.businessId, (t) => applyMove(t, input));
 }
 
 const ENDING: readonly string[] = ["CANCELLED", "NO_SHOW", "COMPLETED", "FAILED_PAYMENT"];

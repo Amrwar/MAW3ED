@@ -10,6 +10,7 @@ import {
   recordManualPayment,
 } from "@/lib/payments/ledger";
 import { balanceCents, formatCents, toCents } from "@/lib/payments/money";
+import { inBookingQueue } from "@/lib/bookings/queue";
 import { canUseFeature, getEffectivePlan } from "@/lib/plans";
 import { notifyLater } from "@/lib/notifications";
 
@@ -267,6 +268,7 @@ async function advanceAfterManualPayment(bookingId: string, actorUserId: string)
     where: { id: bookingId },
     select: {
       status: true,
+      businessId: true,
       totalPrice: true,
       depositAmount: true,
       business: { select: { autoConfirm: true } },
@@ -278,10 +280,14 @@ async function advanceAfterManualPayment(bookingId: string, actorUserId: string)
   if (paid < toCents(booking.depositAmount ?? booking.totalPrice)) return;
 
   const next = booking.business.autoConfirm ? "CONFIRMED" : "PENDING";
-  const moved = await db.booking.updateMany({
-    where: { id: bookingId, status: "PENDING_PAYMENT" },
-    data: { status: next },
-  });
+  // In the business's booking queue (lib/bookings/queue.ts): the new
+  // status is a new row version the overlap constraints check again.
+  const moved = await inBookingQueue(booking.businessId, (tx) =>
+    tx.booking.updateMany({
+      where: { id: bookingId, status: "PENDING_PAYMENT" },
+      data: { status: next },
+    }),
+  );
   if (moved.count === 0) return;
 
   await db.payment.updateMany({

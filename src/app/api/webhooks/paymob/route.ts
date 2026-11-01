@@ -42,7 +42,7 @@ import type { Plan } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notifyLater } from "@/lib/notifications";
 import { releaseBookingHold } from "@/lib/bookings/state";
-import { inBookingQueue } from "@/lib/bookings/queue";
+import { inBookingQueue, takeBookingQueueFor } from "@/lib/bookings/queue";
 import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 
 interface PaymobWebhookBody {
@@ -411,6 +411,11 @@ async function handleBookingSuccess(
     method: methodOf(obj),
     onFirstSettle: async (tx, settled) => {
       if (!settled.bookingId) return;
+
+      // The business's booking queue first, before any booking row lock
+      // (lib/bookings/queue.ts): confirming writes a new row version the
+      // overlap constraints check again.
+      await takeBookingQueueFor(tx, settled.bookingId);
 
       // Locked before it is read: a customer cancel (or anything else)
       // committing between this read and the write below would otherwise
