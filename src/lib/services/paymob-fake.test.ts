@@ -79,7 +79,7 @@ describe("the webhook's booking rules", () => {
   it("revives a released booking outside the settlement, so a taken slot cannot lose the payment", () => {
     const fn = source.slice(source.indexOf("async function handleBookingSuccess("));
     const settled = fn.indexOf('if (!changed) return "already-settled";');
-    const revive = fn.indexOf('where: { id: payment.bookingId, status: "FAILED_PAYMENT" }');
+    const revive = fn.indexOf('where: { id: bookingId, status: "FAILED_PAYMENT" }');
     expect(settled).toBeGreaterThan(-1);
     // After the settlement has committed, never inside it.
     expect(revive).toBeGreaterThan(settled);

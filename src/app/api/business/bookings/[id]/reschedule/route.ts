@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { bookingScope, requireBusinessAccess } from "@/lib/business-access";
 import { loadAvailability } from "@/lib/bookings/schedule";
+import { inBookingQueue } from "@/lib/bookings/queue";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
 import { notifyLater } from "@/lib/notifications";
@@ -110,14 +111,17 @@ export async function POST(req: Request, { params }: Params) {
       // customer's, or a colleague's) landing in the same moment is not
       // turned back into a live booking at a new time. A booking that
       // had nobody, or no table, is given the one free at the new time.
-      const moved = await db.booking.updateMany({
-        where: { id: booking.id, status: booking.status },
-        data: {
-          date: dateToUTC(date), startTime, endTime, startsAt, endsAt, customerReminderSentAt: null,
-          staffMemberId: booking.staffMemberId ?? availability.assignments[startTime] ?? null,
-          resourceId: booking.resourceId ?? availability.resourceAssignments[startTime] ?? null,
-        },
-      });
+      // In the business's booking queue, like every write of a time.
+      const moved = await inBookingQueue(booking.businessId, (tx) =>
+        tx.booking.updateMany({
+          where: { id: booking.id, status: booking.status },
+          data: {
+            date: dateToUTC(date), startTime, endTime, startsAt, endsAt, customerReminderSentAt: null,
+            staffMemberId: booking.staffMemberId ?? availability.assignments[startTime] ?? null,
+            resourceId: booking.resourceId ?? availability.resourceAssignments[startTime] ?? null,
+          },
+        }),
+      );
       if (moved.count === 0) {
         return err("الحجز اتغيّر دلوقتي، حدّث الصفحة وجرّب تاني", 409, { code: "changed" });
       }

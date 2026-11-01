@@ -6,6 +6,7 @@ import { ok, err } from "@/lib/api";
 import { bookingScope, can, requireBusinessAccess } from "@/lib/business-access";
 import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
+import { inBookingQueue } from "@/lib/bookings/queue";
 import { generateReference } from "@/lib/bookings/reference";
 import { log } from "@/lib/logger";
 import { recordBusinessMilestone } from "@/lib/business/lifecycle";
@@ -217,32 +218,35 @@ export async function POST(req: Request) {
     // and the violation is reported rather than swallowed.
     let booking;
     try {
-      booking = await db.booking.create({
-        data: {
-          businessId:    business.id,
-          serviceId,
-          customerId:    customer.id,
-          customerName,
-          customerPhone,
-          // Typed by the owner for this booking. Not read back from the
-          // Customer record, which an anonymous booking may have filled.
-          customerEmail: customerEmail || null,
-          date:          dateUTC,
-          startTime,
-          endTime,
-          startsAt,
-          endsAt,
-          reference:     generateReference(),
-          status:        "CONFIRMED",
-          totalPrice:    service.price,
-          currency:      service.currency,
-          notes:         notes || null,
-        },
-        include: {
-          service:  { select: { nameAr: true, duration: true } },
-          business: { include: { owner: { select: { email: true } } } },
-        },
-      });
+      // In the business's booking queue, like every write of a time.
+      booking = await inBookingQueue(business.id, (tx) =>
+        tx.booking.create({
+          data: {
+            businessId:    business.id,
+            serviceId,
+            customerId:    customer.id,
+            customerName,
+            customerPhone,
+            // Typed by the owner for this booking. Not read back from the
+            // Customer record, which an anonymous booking may have filled.
+            customerEmail: customerEmail || null,
+            date:          dateUTC,
+            startTime,
+            endTime,
+            startsAt,
+            endsAt,
+            reference:     generateReference(),
+            status:        "CONFIRMED",
+            totalPrice:    service.price,
+            currency:      service.currency,
+            notes:         notes || null,
+          },
+          include: {
+            service:  { select: { nameAr: true, duration: true } },
+            business: { include: { owner: { select: { email: true } } } },
+          },
+        }),
+      );
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       if (message.includes("booking_no_overlap")) {

@@ -7,6 +7,7 @@ import { log } from "@/lib/logger";
 import { bookingInstants, dateToUTC } from "./instants";
 import { generateReference } from "./reference";
 import { loadAvailability } from "./schedule";
+import { takeBookingQueue } from "./queue";
 import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 import { minutesToTime, timeToMinutes } from "./time";
 
@@ -142,9 +143,8 @@ const BOOKING_SELECT = {
 
 /**
  * Attempts at the insert. A reference collision draws a new one; a
- * write conflict or deadlock (Prisma P2034) — now only against the writes
- * that do not take the queue, such as a manual booking — is retried as a
- * whole, since the overlap constraint still holds whatever the retry does.
+ * write conflict or deadlock (Prisma P2034) — which the queue should
+ * leave no room for — is retried as a whole, since the overlap constraint still holds whatever the retry does.
  */
 const INSERT_ATTEMPTS = 6;
 
@@ -210,15 +210,8 @@ export async function createBooking(
     try {
       const booking = await db.$transaction(
         async (tx) => {
-          // One insert at a time per business. Two simultaneous inserts
-          // for the same time each add their row to both overlap
-          // constraints and then wait on the other's unfinished row: a
-          // deadlock Postgres takes a second to break. Retried at once,
-          // a burst at one business collided again and again — a minute
-          // of storm, and customers told "taken" with tables still free.
-          // Queued, each insert takes milliseconds and the constraint
-          // still decides who wins.
-          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`booking-insert:${input.businessId}`}, 0))`;
+          // One booking write at a time per business (lib/bookings/queue).
+          await takeBookingQueue(tx, input.businessId);
 
           // A test booking exists only on a private page. Publishing
           // locks the business row and deletes test bookings in one
@@ -371,7 +364,7 @@ export async function createBooking(
         if (existing) return { ok: true, booking: existing, reused: true };
       }
 
-      // A conflict with a write outside the queue, or the member
+      // A write conflict, or the member
       // (or table) this booking was given went to somebody else a moment
       // earlier. Ask again: another may still be free. Only a time
       // nobody can take any more is "taken".

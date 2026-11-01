@@ -42,6 +42,7 @@ import type { Plan } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notifyLater } from "@/lib/notifications";
 import { releaseBookingHold } from "@/lib/bookings/state";
+import { inBookingQueue } from "@/lib/bookings/queue";
 import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 
 interface PaymobWebhookBody {
@@ -467,10 +468,15 @@ async function handleBookingSuccess(
   let revived = false;
   if (payment.bookingId && before === "FAILED_PAYMENT") {
     try {
-      const { count } = await db.booking.updateMany({
-        where: { id: payment.bookingId, status: "FAILED_PAYMENT" },
-        data: { status: "CONFIRMED", paymobTransactionId: transactionId },
-      });
+      // Its time comes back into the overlap constraints, so it waits
+      // in the business's booking queue like any other write of a time.
+      const bookingId = payment.bookingId;
+      const { count } = await inBookingQueue(payment.businessId, (tx) =>
+        tx.booking.updateMany({
+          where: { id: bookingId, status: "FAILED_PAYMENT" },
+          data: { status: "CONFIRMED", paymobTransactionId: transactionId },
+        }),
+      );
       revived = count === 1;
     } catch (e) {
       log.error("[paymob webhook] paid after the slot was released and retaken — needs a refund or a new time", {
