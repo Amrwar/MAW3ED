@@ -321,7 +321,9 @@ describe("the booking page words the cancel and reschedule refusals in English",
   it("uses the code and its details, and leaves unknown codes to the status wording", () => {
     expect(bookingRefusalEn({ code: "too-late", cutoffHours: 24 }, "cancel")).toBe("It's too close to the appointment to cancel it online (the limit is 24 hours before). Contact the place.");
     expect(bookingRefusalEn({ code: "slot-unavailable", reason: "past" }, "change")).toBe("That date has passed. Choose another date.");
-    expect(bookingRefusalEn({ code: "slot-unavailable", reason: "full" }, "change")).toBe("That time isn't available. Choose another.");
+    expect(bookingRefusalEn({ code: "slot-unavailable", reason: "party-too-large" }, "change")).toBe("That time isn't available. Choose another.");
     expect(bookingRefusalEn({ code: "something-new" }, "change")).toBeNull();
+    expect(bookingRefusalEn({ code: "slot-unavailable", reason: "business-closed" }, "change")).toBe("The place is closed that day. Choose another date.");
+    expect(bookingRefusalEn(null, "cancel")).toBeNull();
   });
 });

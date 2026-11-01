@@ -26,13 +26,26 @@ export function localName(en: boolean, nameAr: string, nameEn: string | null | u
 
 const ARABIC = /[\u0600-\u06FF]/;
 
+/* Why a whole day cannot be booked (lib/bookings/availability UnavailableReason): another time that day will not do. */
+const DAY_UNAVAILABLE_EN: Record<string, string> = {
+  past: "That date has passed. Choose another date.",
+  "too-far-ahead": "That date is too far ahead to book. Choose an earlier date.",
+  "same-day-cutoff": "It's too late to book for today. Choose another date.",
+  "business-closed": "The place is closed that day. Choose another date.",
+  "venue-closed": "The venue is closed that day. Choose another date.",
+  "staff-off": "Your provider isn't working that day. Choose another date.",
+  holiday: "The place is closed for a holiday that day. Choose another date.",
+  vacation: "Your provider is away that day. Choose another date.",
+};
+
 /**
  * The cancel and reschedule routes' refusals in English, from the code
  * (and details) they send. The routes answer in Arabic, and the app uses
  * them too, so the booking page words them here; null for a code this
  * does not know, which then falls to refusalText.
  */
-export function bookingRefusalEn(data: { code?: unknown; reason?: unknown; cutoffHours?: unknown }, action: "cancel" | "change"): string | null {
+export function bookingRefusalEn(body: { code?: unknown; reason?: unknown; cutoffHours?: unknown } | null, action: "cancel" | "change"): string | null {
+  const data = body ?? {};
   const hours = typeof data.cutoffHours === "number" ? `${data.cutoffHours} hour${data.cutoffHours === 1 ? "" : "s"}` : null;
   switch (data.code) {
     case "not-found": return "Booking not found.";
@@ -42,7 +55,7 @@ export function bookingRefusalEn(data: { code?: unknown; reason?: unknown; cutof
       return `It's too close to the appointment to ${action} it online${hours ? ` (the limit is ${hours} before)` : ""}. Contact the place.`;
     case "invalid": return "Choose a date and a time.";
     case "slot-unavailable":
-      return data.reason === "past" ? "That date has passed. Choose another date." : "That time isn't available. Choose another.";
+      return (typeof data.reason === "string" && DAY_UNAVAILABLE_EN[data.reason]) || "That time isn't available. Choose another.";
     case "slot-taken": return "Someone just booked that time. Choose another.";
     case "changed": return "The booking just changed. Refresh the page and try again.";
     default: return null;
