@@ -175,3 +175,13 @@ Verdict: **PARTIAL**, because E is externally blocked, production is not yet ver
 See `docs/qa/PHASE_23_POST_AUDIT.md`, `PHASE_23_LOOP_AUDIT.md`, `PHASE_23_REGRESSION_RESULTS.md` and `PHASE_23_OPEN_ISSUES.md`.
 
 Phase 24 has not been started.
+
+## English for the Phase 23 screens, and the realtime fix (2026-11-01)
+
+The check-in desk, `/c/<code>`, the venue security desk, the booking
+page's access panel and the guest pass now follow the visitor's
+language, with their APIs (`?lang=en`). Sentry MAW3ED-2 (an empty
+service query on every poll of the dashboard's live stream) is fixed.
+Details, review outcomes and test results:
+`docs/qa/PHASE_23_ENGLISH.md`. Open issues P23-A8 to A10:
+`docs/qa/PHASE_23_OPEN_ISSUES.md`. No migration is added.
