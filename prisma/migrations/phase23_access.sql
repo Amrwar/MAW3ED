@@ -95,6 +95,9 @@ CREATE TABLE IF NOT EXISTS "AccessEntitlement" (
 CREATE UNIQUE INDEX IF NOT EXISTS "AccessEntitlement_bookingGuestId_key" ON "AccessEntitlement" ("bookingGuestId");
 CREATE INDEX IF NOT EXISTS "AccessEntitlement_venueId_validFrom_idx" ON "AccessEntitlement" ("venueId", "validFrom");
 CREATE INDEX IF NOT EXISTS "AccessEntitlement_bookingId_idx" ON "AccessEntitlement" ("bookingId");
+-- The cron's round-robin (lib/access/reconcile.ts step 1).
+CREATE INDEX IF NOT EXISTS "AccessEntitlement_status_validUntil_idx" ON "AccessEntitlement" ("status", "validUntil");
+CREATE INDEX IF NOT EXISTS "AccessEntitlement_status_updatedAt_idx" ON "AccessEntitlement" ("status", "updatedAt");
 DO $$ BEGIN ALTER TABLE "AccessEntitlement" ADD CONSTRAINT "AccessEntitlement_bookingGuestId_fkey" FOREIGN KEY ("bookingGuestId") REFERENCES "BookingGuest"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER TABLE "AccessEntitlement" ADD CONSTRAINT "AccessEntitlement_venueId_fkey" FOREIGN KEY ("venueId") REFERENCES "Venue"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER TABLE "AccessEntitlement" ADD CONSTRAINT "AccessEntitlement_visitorId_fkey" FOREIGN KEY ("visitorId") REFERENCES "Visitor"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -159,6 +162,7 @@ CREATE TABLE IF NOT EXISTS "AccessSyncJob" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "AccessSyncJob_idempotencyKey_key" ON "AccessSyncJob" ("idempotencyKey");
 CREATE INDEX IF NOT EXISTS "AccessSyncJob_status_nextAttemptAt_idx" ON "AccessSyncJob" ("status", "nextAttemptAt");
+CREATE INDEX IF NOT EXISTS "AccessSyncJob_credentialId_idx" ON "AccessSyncJob" ("credentialId");
 DO $$ BEGIN ALTER TABLE "AccessSyncJob" ADD CONSTRAINT "AccessSyncJob_credentialId_fkey" FOREIGN KEY ("credentialId") REFERENCES "AccessCredential"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- 7. The audit trail.
@@ -182,6 +186,8 @@ CREATE TABLE IF NOT EXISTS "AccessEvent" (
 CREATE UNIQUE INDEX IF NOT EXISTS "AccessEvent_providerId_providerEventId_key" ON "AccessEvent" ("providerId", "providerEventId");
 CREATE INDEX IF NOT EXISTS "AccessEvent_venueId_occurredAt_idx" ON "AccessEvent" ("venueId", "occurredAt");
 CREATE INDEX IF NOT EXISTS "AccessEvent_credentialId_idx" ON "AccessEvent" ("credentialId");
+-- "Has anyone on this booking been let in?" — every syncBookingAccess.
+CREATE INDEX IF NOT EXISTS "AccessEvent_entitlementId_kind_idx" ON "AccessEvent" ("entitlementId", "kind");
 DO $$ BEGIN ALTER TABLE "AccessEvent" ADD CONSTRAINT "AccessEvent_venueId_fkey" FOREIGN KEY ("venueId") REFERENCES "Venue"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER TABLE "AccessEvent" ADD CONSTRAINT "AccessEvent_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "AccessProvider"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER TABLE "AccessEvent" ADD CONSTRAINT "AccessEvent_credentialId_fkey" FOREIGN KEY ("credentialId") REFERENCES "AccessCredential"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;

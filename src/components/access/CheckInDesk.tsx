@@ -11,7 +11,14 @@ import { Camera, CheckCircle, Loader2, ScanLine, XCircle } from "lucide-react";
  *
  * The camera loop reads at most one frame every SCAN_INTERVAL_MS, stops
  * the moment a code is read, and is torn down when the component goes:
- * nothing keeps the camera on in the background.
+ * nothing keeps the camera on in the background. Each start is a new
+ * scan session; a stream or loop from an older session (a double click,
+ * a quick stop/start, leaving the page while the browser asks for the
+ * camera) is stopped the moment it is noticed.
+ *
+ * "Check in" acts on the code whose booking is on screen, never on
+ * whatever has since been typed into the field, and only the newest
+ * request's answer is shown.
  */
 
 type State = "valid" | "checked-in" | "completed" | "too-early" | "expired" | "cancelled" | "not-confirmed" | "no-show" | "not-found";
@@ -71,27 +78,35 @@ export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [camera, setCamera] = useState<"off" | "on" | "unsupported">("off");
+  // The code whose booking `result` describes: what "check in" acts on.
+  const [shown, setShown] = useState<string | null>(null);
+  const [camera, setCamera] = useState<"off" | "starting" | "on" | "denied" | "unsupported">("off");
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const session = useRef(0); // bumped on every camera start and stop
+  const request = useRef(0); // only the newest request's answer is shown
 
-  const show = useCallback((r: Answer) => {
+  const show = useCallback((n: number, value: string, r: Answer) => {
+    if (n !== request.current) return false; // a newer request owns the screen
     setResult(r.result);
+    setShown(r.result ? value : null);
     setError(r.error);
+    return true;
   }, []);
 
   const call = useCallback(async (value: string, action: "verify" | "check-in") => {
+    const n = ++request.current;
     setBusy(true);
     setError(null);
-    show(await post(value, action));
-    setBusy(false);
+    if (show(n, value, await post(value, action))) setBusy(false);
   }, [show]);
 
   useEffect(() => {
     if (!initialCode) return;
     let live = true;
+    const n = ++request.current;
     void post(initialCode, "verify").then((r) => {
-      if (live) show(r);
+      if (live) show(n, initialCode, r);
     });
     return () => {
       live = false;
@@ -99,9 +114,10 @@ export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
   }, [initialCode, show]);
 
   const stopCamera = useCallback(() => {
+    session.current++;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-    setCamera((c) => (c === "on" ? "off" : c));
+    setCamera((c) => (c === "on" || c === "starting" ? "off" : c));
   }, []);
 
   useEffect(() => stopCamera, [stopCamera]);
@@ -112,18 +128,26 @@ export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
       setCamera("unsupported");
       return;
     }
+    const mine = ++session.current;
+    setCamera("starting");
+    let stream: MediaStream | null = null;
+    const release = () => stream?.getTracks().forEach((t) => t.stop());
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      // Stopped, restarted or unmounted while the browser was asking.
+      if (mine !== session.current || !videoRef.current) return release();
       streamRef.current = stream;
-      setCamera("on");
-      const video = videoRef.current!;
+      const video = videoRef.current;
       video.srcObject = stream;
       await video.play();
       const detector = new Ctor({ formats: ["qr_code"] });
+      if (mine !== session.current) return release();
+      setCamera("on");
       const tick = async () => {
-        if (!streamRef.current) return;
+        if (mine !== session.current) return;
         try {
           const found = await detector.detect(video);
+          if (mine !== session.current) return;
           if (found[0]?.rawValue) {
             stopCamera();
             setCode(found[0].rawValue);
@@ -136,8 +160,12 @@ export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
         setTimeout(tick, SCAN_INTERVAL_MS);
       };
       void tick();
-    } catch {
-      setCamera("unsupported");
+    } catch (e) {
+      release();
+      if (streamRef.current === stream) streamRef.current = null;
+      if (mine !== session.current) return;
+      // A refusal can be undone in the browser's settings, so the button stays.
+      setCamera(e instanceof DOMException && e.name === "NotAllowedError" ? "denied" : "unsupported");
     }
   }
 
@@ -159,8 +187,9 @@ export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
             <ScanLine size={14} aria-hidden="true" /> اتحقق
           </button>
           {camera !== "on" ? (
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => void startCamera()} disabled={camera === "unsupported"}>
-              <Camera size={14} aria-hidden="true" /> {camera === "unsupported" ? "الكاميرا مش متاحة هنا" : "امسح بالكاميرا"}
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => void startCamera()} disabled={camera === "unsupported" || camera === "starting"}>
+              <Camera size={14} aria-hidden="true" />{" "}
+              {camera === "unsupported" ? "الكاميرا مش متاحة هنا" : camera === "denied" ? "اسمح بالكاميرا وجرّب تاني" : camera === "starting" ? "بيفتح الكاميرا…" : "امسح بالكاميرا"}
             </button>
           ) : (
             <button type="button" className="btn btn-outline btn-sm" onClick={stopCamera}>اقفل الكاميرا</button>
@@ -190,8 +219,8 @@ export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
               {result.booking.reference && (<><dt className="text-[var(--color-muted)]">رقم الحجز</dt><dd dir="ltr" className="text-end">{result.booking.reference}</dd></>)}
             </dl>
           )}
-          {result.state === "valid" && result.canCheckIn !== false && (
-            <button type="button" className="btn btn-primary w-full" disabled={busy} onClick={() => void call(code.trim(), "check-in")}>
+          {result.state === "valid" && result.canCheckIn !== false && shown && (
+            <button type="button" className="btn btn-primary w-full" disabled={busy} onClick={() => void call(shown, "check-in")}>
               سجّل الوصول
             </button>
           )}

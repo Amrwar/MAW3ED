@@ -2237,6 +2237,8 @@ model AccessEntitlement {
 
   @@index([venueId, validFrom])
   @@index([bookingId])
+  @@index([status, validUntil])
+  @@index([status, updatedAt])
 }
 
 enum CredentialStatus {
@@ -2329,6 +2331,7 @@ model AccessSyncJob {
   updatedAt      DateTime         @updatedAt
 
   @@index([status, nextAttemptAt])
+  @@index([credentialId])
 }
 
 enum AccessEventKind {
@@ -2369,6 +2372,7 @@ model AccessEvent {
   @@unique([providerId, providerEventId])
   @@index([venueId, occurredAt])
   @@index([credentialId])
+  @@index([entitlementId, kind])
 }
 
 /// THE SANDBOX PROVIDER'S OWN STORE — an imitation of an external gate

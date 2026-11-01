@@ -29,9 +29,11 @@ import { enqueueJob, kickAccessJobs } from "./sync";
  * and brings the entitlement and its credential into line — queuing the
  * provider calls (lib/access/sync) in the same transaction. Every path
  * that changes a booking calls it (lib/access/hooks.ts), and the cron
- * re-runs it for live passes, so a change made anywhere — a business
- * suspended, a venue switching passes off — reaches the pass within one
- * cron interval at the latest.
+ * re-runs it for live passes in a bounded round-robin. Changes with no
+ * booking of their own are pushed too: a venue's (venueAccessChanged) and
+ * a business's status (accessAfterBusinessChange), each for up to 200
+ * bookings at once; whatever they do not reach, the cron does, at 50
+ * bookings a run.
  *
  * Terminal states stay terminal: a REVOKED or EXPIRED entitlement never
  * becomes ELIGIBLE again (a reinstated security suspension is SUSPENDED,
@@ -109,6 +111,8 @@ export async function venueContext(
   if (!memberships.length) return null;
   const venues = await tx.venue.findMany({
     where: { id: { in: [...new Set(memberships.map((m) => m.venueId))] } },
+    // Stable, so a business listed in two venues keeps the same one run to run.
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     select: { id: true, nameAr: true, nameEn: true, status: true, accessEnabled: true, accessProviderId: true },
   });
   const activeBranchCount = await tx.branch.count({ where: { businessId: booking.businessId, isActive: true } });
@@ -203,7 +207,7 @@ function sameList(a: string[], b: string[]): boolean {
  * Returns whether any provider call was queued (the caller kicks the
  * job runner after its transaction commits).
  */
-export async function syncBookingAccess(bookingId: string, opts: { tx?: Tx; now?: Date } = {}): Promise<{ queued: boolean }> {
+export async function syncBookingAccess(bookingId: string, opts: { tx?: Tx; now?: Date; kick?: boolean } = {}): Promise<{ queued: boolean }> {
   const run = async (tx: Tx) => {
     await lockBooking(tx, bookingId);
     const guests = await loadGuests(tx, bookingId);
@@ -229,7 +233,7 @@ export async function syncBookingAccess(bookingId: string, opts: { tx?: Tx; now?
     return { queued };
   };
   const result = opts.tx ? await run(opts.tx) : await db.$transaction(run);
-  if (result.queued && !opts.tx) kickAccessJobs();
+  if (result.queued && !opts.tx && opts.kick !== false) kickAccessJobs();
   return result;
 }
 
@@ -278,8 +282,9 @@ async function reconcile(
       },
       include: { credentials: true },
     });
-  } else if ((ent.status === "ELIGIBLE" || ent.status === "SUSPENDED") && ent.validUntil <= now) {
-    // Whatever else is true, a window that has passed is over.
+  } else if ((ent.status === "ELIGIBLE" || ent.status === "SUSPENDED") && ent.validUntil <= now && !(granted && decision.validUntil > now)) {
+    // Whatever else is true, a window that has passed is over — unless the
+    // booking has since moved to a time still to come (a late reschedule).
     ent = await tx.accessEntitlement.update({ where: { id: ent.id }, data: { status: "EXPIRED", reason: "window-passed" }, include: { credentials: true } });
   } else if (ent.status === "ELIGIBLE" || ent.status === "SUSPENDED") {
     const movedVenue = !ctx || ctx.venue.id !== ent.venueId;
@@ -395,7 +400,12 @@ export async function requestPass(
   await db.$transaction(async (tx) => {
     const existing = await tx.bookingGuest.findFirst({ where: { bookingId, role: "HOLDER" } });
     if (existing) {
+      const before = await tx.visitor.findUnique({ where: { id: existing.visitorId }, select: { displayName: true, phoneE164: true } });
       await tx.visitor.update({ where: { id: existing.visitorId }, data: { displayName: holder.displayName, phoneE164: holder.phoneE164 } });
+      // The provider has the old name or phone: a new version sends it.
+      if (before && (before.displayName !== holder.displayName || before.phoneE164 !== holder.phoneE164)) {
+        await tx.accessEntitlement.updateMany({ where: { bookingGuestId: existing.id }, data: { version: { increment: 1 } } });
+      }
       return;
     }
     const visitor = await tx.visitor.create({ data: { displayName: holder.displayName, phoneE164: holder.phoneE164, userId: holder.userId } });
@@ -458,7 +468,10 @@ export async function retryPass(bookingId: string, guestId: string): Promise<Acc
     // Decided again under the lock: a concurrent retry may have issued already.
     const live = await tx.accessCredential.count({ where: { entitlementId: ent.id, status: { in: LIVE } } });
     if (live) return false;
-    return issueCredential(tx, ent, provider.id);
+    // ...and a cancellation or expiry may have ended the right to one.
+    const fresh = await tx.accessEntitlement.findUnique({ where: { id: ent.id } });
+    if (!fresh || fresh.status !== "ELIGIBLE") return false;
+    return issueCredential(tx, fresh, provider.id);
   });
   if (!issued) return { ok: true };
   kickAccessJobs();

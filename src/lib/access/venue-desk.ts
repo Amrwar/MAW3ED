@@ -1,9 +1,8 @@
-import { after } from "next/server";
 import { db } from "@/lib/db";
-import { log } from "@/lib/logger";
 import { cairoDayStart, wallToInstant } from "@/lib/bookings/instants";
-import { syncBookingAccess } from "./passes";
+import { resyncLiveAccess } from "./hooks";
 import { providerUsable } from "./provider";
+import { reasonText } from "./eligibility";
 
 /**
  * What a venue's operators and security desk see of visitor passes.
@@ -24,6 +23,8 @@ export interface DeskRow {
   businessName: string;
   status: string;
   reason: string | null;
+  /** The reason in words, for the desk; `reason` stays the code. */
+  reasonText: string | null;
   validFrom: string;
   validUntil: string;
   entryUntil: string | null;
@@ -89,6 +90,7 @@ export async function venueDesk(venueId: string, day?: string) {
       businessName: e.bookingGuest.booking.business.nameAr,
       status: e.status,
       reason: e.reason,
+      reasonText: reasonText(e.reason, false),
       validFrom: e.validFrom.toISOString(),
       validUntil: e.validUntil.toISOString(),
       entryUntil: e.entryUntil?.toISOString() ?? null,
@@ -119,8 +121,8 @@ export async function venueDesk(venueId: string, day?: string) {
       identityRequirement: venue.policy?.identityRequirement ?? "NAME",
     },
     rows,
-    events: events.slice(0, 100).map((e) => ({ kind: e.kind, at: e.occurredAt.toISOString(), gate: gateName(e.gateId), reason: e.reason, byStaff: !!e.actorUserId })),
-    attention: escalations.map((e) => ({ id: e.id, kind: e.kind, at: e.occurredAt.toISOString(), reason: e.reason })),
+    events: events.slice(0, 100).map((e) => ({ kind: e.kind, at: e.occurredAt.toISOString(), gate: gateName(e.gateId), reason: reasonText(e.reason, false), byStaff: !!e.actorUserId })),
+    attention: escalations.map((e) => ({ id: e.id, kind: e.kind, at: e.occurredAt.toISOString(), reason: reasonText(e.reason, false) })),
   };
 }
 
@@ -131,20 +133,5 @@ export async function venueDesk(venueId: string, day?: string) {
  * does not reach.
  */
 export function venueAccessChanged(venueId: string): void {
-  const run = async () => {
-    const live = await db.accessEntitlement.findMany({
-      where: { venueId, status: { in: ["ELIGIBLE", "SUSPENDED"] }, validUntil: { gt: new Date() } },
-      select: { bookingId: true },
-      distinct: ["bookingId"],
-      take: 200,
-    });
-    for (const { bookingId } of live) {
-      await syncBookingAccess(bookingId).catch((e) => log.error("[access] venue resync failed for a booking", e, { bookingId }));
-    }
-  };
-  try {
-    after(run);
-  } catch {
-    void run();
-  }
+  resyncLiveAccess({ venueId });
 }

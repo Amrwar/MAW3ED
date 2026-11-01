@@ -12,6 +12,7 @@ import { loginSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Alert from "@/components/ui/Alert";
+import { loginDestination } from "@/lib/auth/login-destination";
 
 type LoginForm = { email: string; password: string };
 
@@ -137,28 +138,9 @@ export default function LoginPage() {
   );
 }
 
-/**
- * Where a successful login goes: back to the dashboard page that sent
- * the person here (NextAuth's callbackUrl), else the home of what the
- * account is — the dashboard for an owner, the admin for an
- * administrator without a business, onboarding for an owner who has not
- * set one up yet. Only same-site dashboard paths are honoured.
- */
+/** Where a successful login goes (lib/auth/login-destination.ts). */
 async function homeAfterLogin(): Promise<string> {
   const session = await getSession();
   const user = session?.user as { businessId?: string | null; adminRole?: string | null } | undefined;
-  if (!user?.businessId) return user?.adminRole ? "/admin" : "/onboarding";
-
-  const raw = new URLSearchParams(window.location.search).get("callbackUrl");
-  if (raw) {
-    try {
-      const url = new URL(raw, window.location.origin);
-      if (url.origin === window.location.origin && url.pathname.startsWith("/dashboard")) {
-        return url.pathname + url.search;
-      }
-    } catch {
-      /* not a URL: ignored */
-    }
-  }
-  return "/dashboard";
+  return loginDestination(window.location.search, window.location.origin, user);
 }

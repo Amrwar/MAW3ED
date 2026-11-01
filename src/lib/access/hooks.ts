@@ -1,4 +1,6 @@
 import type { Prisma } from "@prisma/client";
+import { after } from "next/server";
+import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { syncBookingAccess } from "./passes";
 import { kickAccessJobs } from "./sync";
@@ -27,6 +29,50 @@ export async function accessAfterMove(tx: Prisma.TransactionClient, bookingId: s
   // Runs after the response, by when this transaction has committed; the
   // cron picks up anything it misses.
   if (queued) kickAccessJobs();
+}
+
+/** How many bookings one change re-decides at once; the cron reaches the rest. */
+export const RESYNC_LIMIT = 200;
+
+/**
+ * Something passes depend on changed without a booking moving (a venue's
+ * switch, policy or notices; a business's status): decide those bookings'
+ * live passes again, after the response, RESYNC_LIMIT at most, with one
+ * job run at the end rather than one per booking.
+ */
+export function resyncLiveAccess(where: Prisma.AccessEntitlementWhereInput): void {
+  const run = async () => {
+    const live = await db.accessEntitlement.findMany({
+      where: { ...where, status: { in: ["ELIGIBLE", "SUSPENDED"] }, validUntil: { gt: new Date() } },
+      select: { bookingId: true },
+      distinct: ["bookingId"],
+      take: RESYNC_LIMIT,
+    });
+    let queued = false;
+    for (const { bookingId } of live) {
+      try {
+        queued = (await syncBookingAccess(bookingId, { kick: false })).queued || queued;
+      } catch (e) {
+        log.error("[access] resync failed for a booking", e, { bookingId });
+      }
+    }
+    if (queued) kickAccessJobs();
+  };
+  try {
+    after(run);
+  } catch {
+    void run();
+  }
+}
+
+/** A business's status changed (suspended, closed, reopened): its passes follow. */
+export async function accessAfterBusinessChange(businessId: string): Promise<void> {
+  const bookings = await db.booking.findMany({
+    where: { businessId, accessGuests: { some: { entitlement: { status: { in: ["ELIGIBLE", "SUSPENDED"] } } } } },
+    select: { id: true },
+    take: RESYNC_LIMIT,
+  });
+  if (bookings.length) resyncLiveAccess({ bookingId: { in: bookings.map((b) => b.id) } });
 }
 
 /** After a booking's time moved (its own transaction; never fails the move). */

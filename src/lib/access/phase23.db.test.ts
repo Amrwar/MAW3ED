@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@prisma/client";
 
-// Provider calls run only when a test says so (no background kicks).
-vi.mock("next/server", () => ({ after: () => {} }));
+// Provider calls run only when a test says so (no background kicks):
+// work handed to after() is kept here, and run only by a test that asks.
+const afterQueue = vi.hoisted(() => [] as (() => unknown)[]);
+vi.mock("next/server", () => ({ after: (fn: () => unknown) => void afterQueue.push(fn) }));
 vi.mock("@/auth", () => ({ auth: async () => null }));
 vi.mock("@/lib/api", () => ({
   err: (message: string, status = 400, extra?: Record<string, unknown>) => Response.json({ error: message, ...extra }, { status }),
@@ -766,4 +768,185 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
     await drain(1);
     expect((await passes.bookingAccessView(b.id)).holder?.state).toBe("active");
   });
+  // ─── Post-phase audit (docs/qa/PHASE_23_POST_AUDIT.md, A1–A12) ────────
+  // Each fails on the code before the audit's fix. Watchdog: every test
+  // has its own timeout, so a real loop fails instead of hanging the run.
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  async function activePass(n: string) {
+    const a = await business(n);
+    const v = await venue(n, a);
+    const b = await booking(a, "CONFIRMED", 60);
+    await passes.requestPass(b.id, { displayName: "منى", phoneE164: null, userId: null });
+    await drain(1);
+    const c = (await live(b.id))[0];
+    expect(c.status).toBe("ACTIVE");
+    const full = await db.accessCredential.findUniqueOrThrow({ where: { id: c.id }, include: { entitlement: { select: { venueId: true } } } });
+    return { a, v, b, c, full };
+  }
+
+  it("A1: a provider confirmation racing a withdrawal never revives the withdrawn pass", async () => {
+    const { c, full } = await activePass("a1");
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    // The withdrawal holds the row, uncommitted, while the confirmation arrives.
+    const withdrawing = db.$transaction(async (tx) => {
+      await sync.withdrawCredential(tx, c, "booking-cancelled", "race", new Date());
+      await gate;
+    }, { timeout: 10_000 });
+    await sleep(200);
+    const activating = sync.activate(full, { token: null, displayFormat: null, expiresAt: null, version: c.version }, new Date(), null);
+    await sleep(300);
+    release();
+    await withdrawing;
+    expect(await activating).toBe(false);
+    expect((await db.accessCredential.findUniqueOrThrow({ where: { id: c.id } })).status).toBe("REVOKE_PENDING");
+    expect(await db.accessSyncJob.count({ where: { credentialId: c.id, kind: "REVOKE" } })).toBe(1);
+  }, 30_000);
+
+  it("A2: a refused update withdraws the pass the provider still holds, instead of leaving it valid", async () => {
+    const { c, full } = await activePass("a2");
+    await sync.applyIssue(full, { outcome: "refused", reason: "update not allowed" }, new Date());
+    const after = await db.accessCredential.findUniqueOrThrow({ where: { id: c.id } });
+    expect(after.status).toBe("REVOKE_PENDING");
+    expect(await db.accessSyncJob.count({ where: { credentialId: c.id, kind: "REVOKE" } })).toBe(1);
+    await drain(1);
+    expect((await db.accessCredential.findUniqueOrThrow({ where: { id: c.id } })).status).toBe("REVOKED");
+    expect((await db.sandboxAccessPass.findUniqueOrThrow({ where: { providerRef: c.providerRef! } })).status).not.toBe("ACTIVE");
+  }, 30_000);
+
+  it("A4: a retry racing a cancellation issues nothing", async () => {
+    const a = await business("a4");
+    await venue("a4", a);
+    const b = await booking(a, "CONFIRMED", 60);
+    await sandbox.setSandboxMode("REFUSE");
+    try {
+      await passes.requestPass(b.id, { displayName: "منى", phoneE164: null, userId: null });
+      await drain(1);
+    } finally {
+      await sandbox.setSandboxMode("NORMAL");
+    }
+    const holder = await db.bookingGuest.findFirstOrThrow({ where: { bookingId: b.id, role: "HOLDER" }, include: { entitlement: true } });
+    expect((await db.accessCredential.findFirstOrThrow({ where: { entitlementId: holder.entitlement!.id } })).status).toBe("FAILED");
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    // A cancellation holds the booking's access lock, its entitlement ended but not committed.
+    const cancelling = db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`access:${b.id}`}, 0))`;
+      await tx.accessEntitlement.update({ where: { id: holder.entitlement!.id }, data: { status: "REVOKED", reason: "booking-cancelled" } });
+      await gate;
+    }, { timeout: 10_000 });
+    await sleep(200);
+    const retrying = passes.retryPass(b.id, holder.id);
+    await sleep(500);
+    release();
+    await cancelling;
+    await retrying;
+    expect(await live(b.id)).toHaveLength(0);
+  }, 30_000);
+
+  it("A5: suspending a business reaches its passes at once, not on the cron's round-robin", async () => {
+    const { a, b } = await activePass("a5");
+    const { accessAfterBusinessChange } = await import("./hooks");
+    afterQueue.length = 0;
+    await db.business.update({ where: { id: a.business.id }, data: { status: "SUSPENDED" } });
+    await accessAfterBusinessChange(a.business.id);
+    for (const fn of afterQueue.splice(0)) await fn();
+    expect(await db.accessEntitlement.findFirstOrThrow({ where: { bookingId: b.id } })).toMatchObject({ status: "SUSPENDED", reason: "business-unavailable" });
+    expect((await live(b.id))[0]?.status).toBe("REVOKE_PENDING");
+  }, 30_000);
+
+  it("A7: a job that cannot be processed does not stop the run, and one interrupted on its last attempt is given up without another call", async () => {
+    // Interrupted on its last attempt: claimed again, it is ended, not re-run.
+    const a = await business("a7");
+    await venue("a7", a);
+    const b = await booking(a, "CONFIRMED", 60);
+    await sandbox.setSandboxMode("DOWN");
+    try {
+      await passes.requestPass(b.id, { displayName: "منى", phoneE164: null, userId: null });
+      await runJobs();
+    } finally {
+      await sandbox.setSandboxMode("NORMAL");
+    }
+    const cred = (await live(b.id))[0];
+    await db.accessSyncJob.updateMany({ where: { credentialId: cred.id }, data: { attempts: sync.MAX_ATTEMPTS, leasedUntil: new Date(0), nextAttemptAt: new Date(0) } });
+    await runJobs();
+    const job = await db.accessSyncJob.findFirstOrThrow({ where: { credentialId: cred.id } });
+    expect(job.status).toBe("DEAD");
+    const after = await db.accessCredential.findUniqueOrThrow({ where: { id: cred.id } });
+    expect(after.status).toBe("FAILED");
+    expect(after.providerRef).toBeNull(); // the provider was not asked again
+
+    // A job whose processing throws (not a provider failure): the next job still runs.
+    const one = await activePass("a7-one");
+    const two = await activePass("a7-two");
+    for (const x of [one, two]) {
+      await db.accessSyncJob.create({ data: { credentialId: x.c.id, kind: "UPDATE", idempotencyKey: `${x.c.id}:a7`, correlationId: x.c.correlationId, nextAttemptAt: new Date(0) } });
+      await db.accessCredential.update({ where: { id: x.c.id }, data: { version: { increment: 1 } } });
+    }
+    const real = db.accessCredential.findUnique.bind(db.accessCredential);
+    let thrown = 0;
+    const spy = vi.spyOn(db.accessCredential, "findUnique").mockImplementation(((args: { where: { id?: string } }) => {
+      if (args.where.id === one.c.id) {
+        thrown++;
+        return Promise.reject(new Error("a bad row")) as never;
+      }
+      return real(args as never) as never;
+    }) as never);
+    try {
+      await runJobs();
+    } finally {
+      spy.mockRestore();
+    }
+    expect(thrown).toBe(1);
+    const poisoned = await db.accessSyncJob.findUniqueOrThrow({ where: { idempotencyKey: `${one.c.id}:a7` } });
+    expect(poisoned.status).toBe("PENDING");
+    expect(poisoned.nextAttemptAt.getTime()).toBeGreaterThan(Date.now());
+    expect(poisoned.leasedUntil).toBeNull();
+    expect((await db.accessSyncJob.findUniqueOrThrow({ where: { idempotencyKey: `${two.c.id}:a7` } })).status).toBe("DONE");
+  }, 60_000);
+
+  it("A9: an update still waiting for the provider's reference when out of attempts is withdrawn, not dropped silently", async () => {
+    const { c } = await activePass("a9");
+    await db.accessCredential.update({ where: { id: c.id }, data: { providerRef: null, version: { increment: 1 } } });
+    await db.accessSyncJob.create({ data: { credentialId: c.id, kind: "UPDATE", idempotencyKey: `${c.id}:a9`, correlationId: c.correlationId, attempts: sync.MAX_ATTEMPTS - 1, nextAttemptAt: new Date(0) } });
+    await runJobs();
+    expect((await db.accessSyncJob.findUniqueOrThrow({ where: { idempotencyKey: `${c.id}:a9` } })).status).toBe("DEAD");
+    expect((await db.accessCredential.findUniqueOrThrow({ where: { id: c.id } })).status).toBe("REVOKE_PENDING");
+    expect(await db.accessEvent.count({ where: { credentialId: c.id, kind: "PROVIDER_ERROR" } })).toBe(1);
+  }, 30_000);
+
+  it("A11: a booking moved to a later time after its old window passed keeps its pass, moved", async () => {
+    const { b } = await activePass("a11");
+    const ent = await db.accessEntitlement.findFirstOrThrow({ where: { bookingId: b.id } });
+    // As if the old window has just passed, and the business then moved the booking to later today.
+    await db.accessEntitlement.update({ where: { id: ent.id }, data: { validFrom: new Date(Date.now() - 2 * 60 * 60_000), validUntil: new Date(Date.now() - 60_000), entryUntil: null } });
+    await passes.syncBookingAccess(b.id);
+    const after = await db.accessEntitlement.findUniqueOrThrow({ where: { id: ent.id } });
+    expect(after.status).toBe("ELIGIBLE");
+    expect(after.validUntil.getTime()).toBeGreaterThan(Date.now());
+    expect(after.version).toBe(ent.version + 1);
+  }, 30_000);
+
+  it("A12: a changed name reaches the provider as a new version", async () => {
+    const { b, c } = await activePass("a12");
+    await passes.requestPass(b.id, { displayName: "منى محمود", phoneE164: null, userId: null });
+    await drain(1);
+    const after = await db.accessCredential.findUniqueOrThrow({ where: { id: c.id } });
+    expect(after.confirmedVersion).toBe(c.version + 1);
+    // Asking again with the same details sends nothing.
+    await passes.requestPass(b.id, { displayName: "منى محمود", phoneE164: null, userId: null });
+    expect((await db.accessCredential.findUniqueOrThrow({ where: { id: c.id } })).version).toBe(after.version);
+  }, 30_000);
+
+  it("loops: the cron converges — with nothing changing, repeated runs queue and call nothing", async () => {
+    await activePass("conv");
+    await reconcile.reconcileAccess({ batch: 500 });
+    await drain(1);
+    const jobs = await db.accessSyncJob.count();
+    const events = await db.accessEvent.count();
+    for (let i = 0; i < 3; i++) await reconcile.reconcileAccess({ batch: 500 });
+    expect(await db.accessSyncJob.count()).toBe(jobs);
+    expect(await db.accessEvent.count()).toBe(events);
+  }, 120_000);
 });

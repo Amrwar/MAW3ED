@@ -215,7 +215,26 @@ export async function runAccessJobs(opts: { limit?: number; budgetMs?: number; n
     result.claimed++;
     const job = await db.accessSyncJob.findUnique({ where: { id } });
     if (!job) continue;
-    const outcome = await runOne(job, now, opts.timeoutMs ?? PROVIDER_TIMEOUT_MS);
+    let outcome: "done" | "retried" | "dead";
+    try {
+      outcome = await runOne(job, now, opts.timeoutMs ?? PROVIDER_TIMEOUT_MS);
+    } catch (e) {
+      // Not a provider failure (those are handled in runOne): a database
+      // error, a bad row. The rest of the run goes on; this job waits its
+      // backoff, and is dead-lettered once out of attempts. If even that
+      // write fails, its lease runs out and the next claim counts again.
+      log.error("[access] a job could not be processed", e, { job: job.id, correlationId: job.correlationId });
+      const dead = job.attempts >= MAX_ATTEMPTS;
+      await db.accessSyncJob
+        .update({
+          where: { id: job.id },
+          data: dead
+            ? { status: "DEAD", leasedUntil: null, lastError: "could not be processed" }
+            : { leasedUntil: null, lastError: "could not be processed", nextAttemptAt: new Date(at.getTime() + backoffMs(job.attempts)) },
+        })
+        .catch(() => {});
+      outcome = dead ? "dead" : "retried";
+    }
     result[outcome]++;
   }
   return result;
@@ -224,6 +243,9 @@ export async function runAccessJobs(opts: { limit?: number; budgetMs?: number; n
 async function runOne(job: AccessSyncJob, now: () => Date, timeoutMs: number): Promise<"done" | "retried" | "dead"> {
   const credential = (await db.accessCredential.findUnique({ where: { id: job.credentialId }, include: includeFull })) as CredentialFull | null;
   if (!credential) return finish(job, "DONE", null);
+  // Claimed again after its last attempt never finished (the process was
+  // stopped mid-call): give it up now rather than call once more.
+  if (job.attempts > MAX_ATTEMPTS) return giveUp(job, credential, "interrupted on its last attempt", now());
 
   const ctx = (signal: AbortSignal): CallContext => ({ idempotencyKey: job.idempotencyKey, correlationId: job.correlationId, signal });
   try {
@@ -239,7 +261,7 @@ async function runOne(job: AccessSyncJob, now: () => Date, timeoutMs: number): P
       }
       case "UPDATE": {
         if (credential.status !== "ACTIVE" && credential.status !== "PENDING_PROVIDER") return finish(job, "DONE", null);
-        if (!credential.providerRef) return retryLater(job, "waiting for the provider's reference", now());
+        if (!credential.providerRef) return waitOrGiveUp(job, credential, "waiting for the provider's reference", now());
         // Only the newest version is worth sending.
         if ((credential.confirmedVersion ?? 0) >= credential.version) return finish(job, "DONE", null);
         const r = await withTimeout((signal) => adapter.update(credential.providerRef!, passRequest(credential), ctx(signal)), timeoutMs);
@@ -253,7 +275,7 @@ async function runOne(job: AccessSyncJob, now: () => Date, timeoutMs: number): P
           const provisioning = await db.accessSyncJob.count({
             where: { credentialId: credential.id, kind: "PROVISION", status: "PENDING", leasedUntil: { gt: now() } },
           });
-          if (provisioning) return retryLater(job, "a provision call is still in flight", now());
+          if (provisioning) return waitOrGiveUp(job, credential, "a provision call is still in flight", now());
           // The provision may have reached the provider with its answer
           // lost. Asking again with the same idempotency key returns the
           // same pass (or a refusal: nothing exists), so it can be revoked.
@@ -273,6 +295,11 @@ async function runOne(job: AccessSyncJob, now: () => Date, timeoutMs: number): P
     if (job.attempts >= MAX_ATTEMPTS) return giveUp(job, credential, message, now());
     return retryLater(job, message, now());
   }
+}
+
+/** Waiting on something else: try later, and once out of attempts end it as a failure would. */
+function waitOrGiveUp(job: AccessSyncJob, credential: CredentialFull, why: string, at: Date): Promise<"retried" | "dead"> {
+  return job.attempts >= MAX_ATTEMPTS ? giveUp(job, credential, why, at) : retryLater(job, why, at);
 }
 
 async function finish(job: AccessSyncJob, status: "DONE" | "DEAD", error: string | null): Promise<"done" | "dead"> {
@@ -350,11 +377,21 @@ async function giveUp(job: AccessSyncJob, credential: CredentialFull, error: str
 export async function applyIssue(credential: Pick<AccessCredential, "id" | "correlationId" | "providerId" | "entitlementId"> & { entitlement: { venueId: string } }, r: IssueResult, at: Date): Promise<void> {
   if (r.outcome === "refused") {
     await db.$transaction(async (tx) => {
-      const n = await tx.accessCredential.updateMany({
-        where: { id: credential.id, status: { in: ["PENDING_PROVIDER", "ACTIVE"] } },
-        data: { status: "FAILED", lastError: r.reason.slice(0, 500) },
-      });
-      if (n.count) {
+      const current = await tx.accessCredential.findUnique({ where: { id: credential.id }, select: { status: true, providerRef: true, version: true } });
+      if (!current) return;
+      // A refused UPDATE (the provider already issued this pass, or
+      // accepted it): the old pass is still valid at the gate with the
+      // old window. Withdraw it, as an update that dies is withdrawn,
+      // rather than mark it failed and leave it admitting people. A
+      // refused first issue has nothing to withdraw.
+      const holds = current.status === "ACTIVE" || !!current.providerRef;
+      const ended = holds
+        ? await withdrawCredential(tx, { id: credential.id, correlationId: credential.correlationId, version: current.version }, "update-refused", r.reason.slice(0, 500), at)
+        : (await tx.accessCredential.updateMany({
+            where: { id: credential.id, status: { in: ["PENDING_PROVIDER", "ACTIVE"] } },
+            data: { status: "FAILED", lastError: r.reason.slice(0, 500) },
+          })).count > 0;
+      if (ended) {
         await tx.accessEvent.create({
           data: {
             venueId: credential.entitlement.venueId, providerId: credential.providerId, credentialId: credential.id,
@@ -386,8 +423,15 @@ export async function activate(
     // Out of order: an older confirmation never replaces a newer one.
     if (current.confirmedVersion !== null && version < current.confirmedVersion) return false;
     const sealed = p.token ? sealToken(p.token) : undefined;
-    await tx.accessCredential.update({
-      where: { id: credential.id },
+    // Conditional, so a withdrawal that commits between the read above and
+    // this write (a cancellation racing a confirmation) is never undone:
+    // Postgres re-checks the condition once it holds the row.
+    const n = await tx.accessCredential.updateMany({
+      where: {
+        id: credential.id,
+        status: { in: ["PENDING_PROVIDER", "ACTIVE"] },
+        OR: [{ confirmedVersion: null }, { confirmedVersion: { lte: version } }],
+      },
       data: {
         status: "ACTIVE",
         confirmedVersion: version,
@@ -398,6 +442,7 @@ export async function activate(
         ...(p.expiresAt ? { expiresAt: p.expiresAt } : {}),
       },
     });
+    if (!n.count) return false;
     if (!providerEventId) {
       await tx.accessEvent.create({
         data: {

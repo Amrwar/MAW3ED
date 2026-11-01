@@ -45,6 +45,7 @@ export async function reconcileAccess(opts: { now?: Date; batch?: number; budget
   // 1. Decide again: ended windows first, then the longest-undecided live ones.
   const ended = await db.accessEntitlement.findMany({
     where: { status: { in: ["ELIGIBLE", "SUSPENDED"] }, validUntil: { lte: now } },
+    orderBy: { updatedAt: "asc" },
     select: { bookingId: true },
     take: batch,
   });
@@ -59,13 +60,17 @@ export async function reconcileAccess(opts: { now?: Date; batch?: number; budget
   for (const id of bookingIds) {
     if (Date.now() >= deadline) break;
     try {
-      await syncBookingAccess(id, { now });
-      // Touch so the round-robin moves on even when nothing changed.
-      await db.accessEntitlement.updateMany({ where: { bookingId: id, status: { in: ["ELIGIBLE", "SUSPENDED"] } }, data: { updatedAt: now } });
+      // Step 4 runs the jobs this queues; no runner per booking.
+      await syncBookingAccess(id, { now, kick: false });
       resynced++;
     } catch (e) {
       log.error("[access] reconcile failed for a booking", e, { bookingId: id });
     }
+    // Touched either way, so the round-robin moves on when nothing changed
+    // and a booking that keeps failing cannot hold the front of the queue.
+    await db.accessEntitlement
+      .updateMany({ where: { bookingId: id, status: { in: ["ELIGIBLE", "SUSPENDED"] } }, data: { updatedAt: now } })
+      .catch((e) => log.error("[access] reconcile could not move a booking on", e, { bookingId: id }));
   }
 
   // 2. Accepted but never confirmed.

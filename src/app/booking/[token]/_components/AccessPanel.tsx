@@ -47,6 +47,7 @@ export default function AccessPanel({ token, customerName }: { token: string; cu
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [polls, setPolls] = useState(0);
+  const [confirmNewCode, setConfirmNewCode] = useState(false);
 
   const fetchPayload = useCallback(async (): Promise<Payload | null> => {
     try {
@@ -147,15 +148,33 @@ export default function AccessPanel({ token, customerName }: { token: string; cu
               <p className="text-[0.7rem] text-[var(--color-muted)]">
                 لو الكود مش بيتقري، قول اسمك ({customerName}) ورقم الحجز للاستقبال.
               </p>
-              <button
-                type="button"
-                className="text-xs underline text-[var(--color-muted)]"
-                disabled={busy}
-                onClick={() => void act("/check-in", "POST", undefined, "اتعمل كود جديد، والقديم بطل يشتغل.")}
-              >
-                <RefreshCw size={12} className="inline me-1" aria-hidden="true" />
-                حد تاني شاف الكود؟ اعمل كود جديد
-              </button>
+              {confirmNewCode ? (
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span>الكود الحالي هيبطل يشتغل خالص. متأكد؟</span>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    disabled={busy}
+                    onClick={() => {
+                      setConfirmNewCode(false);
+                      void act("/check-in", "POST", undefined, "اتعمل كود جديد، والقديم بطل يشتغل.");
+                    }}
+                  >
+                    أيوه، اعمل كود جديد
+                  </button>
+                  <button type="button" className="underline" onClick={() => setConfirmNewCode(false)}>لأ</button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="text-xs underline text-[var(--color-muted)]"
+                  disabled={busy}
+                  onClick={() => setConfirmNewCode(true)}
+                >
+                  <RefreshCw size={12} className="inline me-1" aria-hidden="true" />
+                  حد تاني شاف الكود؟ اعمل كود جديد
+                </button>
+              )}
             </>
           )}
         </section>
@@ -206,7 +225,9 @@ export default function AccessPanel({ token, customerName }: { token: string; cu
                         className="btn btn-outline btn-sm flex-1"
                         onClick={() => {
                           const url = `${window.location.origin}/pass/${g.inviteToken}`;
-                          void navigator.clipboard?.writeText(url).then(() => setMsg(`اتنسخ رابط ${g.displayName}. ابعته له.`), () => setMsg(url));
+                          // No clipboard (an in-app browser, plain http): show the link to copy by hand.
+                          if (!navigator.clipboard) return setMsg(url);
+                          void navigator.clipboard.writeText(url).then(() => setMsg(`اتنسخ رابط ${g.displayName}. ابعته له.`), () => setMsg(url));
                         }}
                       >
                         انسخ رابط التصريح

@@ -22,7 +22,10 @@ export async function GET(req: Request) {
   if (!allowed.ok) return allowed.response;
   const now = new Date();
   try {
-    const result = await reconcileAccess({ now, budgetMs: 45_000 });
+    // Checked before each item; the slowest item (a status call and a
+    // replay, 2 × 8 s) and the health checks must still end inside
+    // maxDuration, or the platform kills the run mid-call.
+    const result = await reconcileAccess({ now, budgetMs: 30_000 });
     return Response.json({ ok: true, at: now.toISOString(), ...result });
   } catch (e) {
     log.error("[access cron] failed", e);

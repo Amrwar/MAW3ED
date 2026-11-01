@@ -6,7 +6,7 @@ import Link from "@/components/shared/LocaleLink";
 
 /* The shapes GET /api/venues/:id/access returns (lib/access/venue-desk.ts). */
 interface Row {
-  entitlementId: string; visitorName: string; role: "HOLDER" | "GUEST"; businessName: string; status: string; reason: string | null;
+  entitlementId: string; visitorName: string; role: "HOLDER" | "GUEST"; businessName: string; status: string; reason: string | null; reasonText: string | null;
   validFrom: string; validUntil: string; entryUntil: string | null; gates: string[]; reentryAllowed: boolean; phoneOnFile: boolean;
   pass: { status: string; confirmedAt: string | null; lastError: string | null } | null;
   lastEvent: { kind: string; at: string; gate: string | null } | null;
@@ -44,20 +44,27 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [day, setDay] = useState("");
+  // The day the rows on screen belong to: until the new day's answer
+  // arrives, the old rows are marked as not this day's.
+  const [deskDay, setDeskDay] = useState("");
+  const [confirmOff, setConfirmOff] = useState(false);
 
-  const fetchDesk = useCallback(async (): Promise<{ desk: Desk | null; failure: string | null }> => {
+  const fetchDesk = useCallback(async (): Promise<{ desk: Desk | null; failure: string | null; day: string }> => {
     try {
       const res = await fetch(`${base}${day ? `?day=${day}` : ""}`, { cache: "no-store" });
       if (!res.ok) {
-        return { desk: null, failure: res.status === 401 ? "سجّل دخولك تاني." : res.status === 404 ? "مالكش صلاحية هنا." : "حصلت مشكلة." };
+        return { desk: null, day, failure: res.status === 401 ? "سجّل دخولك تاني." : res.status === 404 ? "مالكش صلاحية هنا." : "حصلت مشكلة." };
       }
-      return { desk: (await res.json()) as Desk, failure: null };
+      return { desk: (await res.json()) as Desk, failure: null, day };
     } catch {
-      return { desk: null, failure: "تعذّر الاتصال." };
+      return { desk: null, failure: "تعذّر الاتصال.", day };
     }
   }, [base, day]);
-  const apply = useCallback((r: { desk: Desk | null; failure: string | null }) => {
-    if (r.desk) setDesk(r.desk);
+  const apply = useCallback((r: { desk: Desk | null; failure: string | null; day: string }) => {
+    if (r.desk) {
+      setDesk(r.desk);
+      setDeskDay(r.day);
+    }
     setFailure(r.failure);
   }, []);
   const load = useCallback(async () => apply(await fetchDesk()), [apply, fetchDesk]);
@@ -81,6 +88,9 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
       setMsg({ ok: res.ok, text: res.ok ? done : j.error ?? "حصلت مشكلة." });
       await load();
       return res.ok;
+    } catch {
+      setMsg({ ok: false, text: "تعذّر الاتصال، ومحصلش أي تغيير. جرّب تاني." });
+      return false;
     } finally {
       setBusy(false);
     }
@@ -89,6 +99,7 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
   if (failure && !desk) return <main className="max-w-4xl mx-auto p-6 text-sm" dir="rtl">{failure}</main>;
   if (!desk) return <main className="max-w-4xl mx-auto p-6 text-sm" dir="rtl">بيحمّل…</main>;
   const s = desk.settings;
+  const stale = deskDay !== day;
 
   return (
     <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-5" dir="rtl">
@@ -107,6 +118,7 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
       </header>
 
       {msg && <p className={`text-sm ${msg.ok ? "text-[var(--color-ok)]" : "text-[var(--color-danger)]"}`} role="status">{msg.text}</p>}
+      {failure && <p className="text-sm text-[var(--color-danger)]" role="alert">مقدرناش نحدّث: {failure} اللي ظاهر ممكن يكون قديم.</p>}
 
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-4 space-y-3">
         <h2 className="font-bold text-sm">الإعدادات</h2>
@@ -124,16 +136,32 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
             المزوّد ده بيئة تجريبية: تصاريحه مش صالحة عند أي بوابة حقيقية.
           </p>
         )}
-        {desk.can.enable && (
+        {desk.can.enable && (confirmOff ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span>كل التصاريح الحالية هتتوقف لحد ما تتشغل تاني. متأكد؟</span>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              disabled={busy}
+              onClick={() => {
+                setConfirmOff(false);
+                void send("", "PUT", { accessEnabled: false }, "اتقفلت — التصاريح الحالية اتوقفت مؤقتًا.");
+              }}
+            >
+              أيوه، اقفلها
+            </button>
+            <button type="button" className="underline" onClick={() => setConfirmOff(false)}>لأ</button>
+          </div>
+        ) : (
           <button
             type="button"
             className="btn btn-outline btn-sm"
             disabled={busy || (!s.accessEnabled && !s.provider?.usable)}
-            onClick={() => void send("", "PUT", { accessEnabled: !s.accessEnabled }, s.accessEnabled ? "اتقفلت — التصاريح الحالية اتوقفت مؤقتًا." : "اشتغلت.")}
+            onClick={() => (s.accessEnabled ? setConfirmOff(true) : void send("", "PUT", { accessEnabled: true }, "اشتغلت."))}
           >
             {s.accessEnabled ? "اقفل تصاريح الزوار" : "شغّل تصاريح الزوار"}
           </button>
-        )}
+        ))}
         {desk.can.provider && <ProviderForm desk={desk} busy={busy} send={send} />}
       </section>
 
@@ -148,10 +176,11 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
 
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-4 space-y-3">
         <h2 className="font-bold text-sm">التصاريح ({desk.rows.length})</h2>
+        {stale && <p className="text-xs text-[var(--color-muted)]" role="status">بيحمّل اليوم اللي اخترته… اللي تحت لسه بتاع يوم تاني.</p>}
         {desk.rows.length === 0 ? (
           <p className="text-sm text-[var(--color-muted)]">مفيش تصاريح في اليوم ده.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className={`overflow-x-auto ${stale ? "opacity-50" : ""}`}>
             <table className="w-full text-sm">
               <thead><tr className="text-xs text-[var(--color-muted)] text-start">
                 <th className="p-2 text-start">الزائر</th><th className="p-2 text-start">رايح لـ</th><th className="p-2 text-start">الوقت</th>
@@ -164,7 +193,7 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
                     <td className="p-2">{r.visitorName}<div className="text-xs text-[var(--color-muted)]">{w(r.role)}</div></td>
                     <td className="p-2">{r.businessName}</td>
                     <td className="p-2" dir="ltr">{t(r.validFrom)}–{t(r.validUntil)}{r.entryUntil ? <div className="text-xs">≤ {t(r.entryUntil)}</div> : null}</td>
-                    <td className="p-2">{w(r.status)}{r.reason ? <div className="text-xs text-[var(--color-muted)]">{r.reason}</div> : null}</td>
+                    <td className="p-2">{w(r.status)}{r.reasonText ? <div className="text-xs text-[var(--color-muted)]">{r.reasonText}</div> : null}</td>
                     <td className="p-2">{r.pass ? w(r.pass.status) : "—"}{r.pass?.lastError ? <div className="text-xs text-[var(--color-danger)]">{r.pass.lastError}</div> : null}</td>
                     <td className="p-2">{r.lastEvent ? `${w(r.lastEvent.kind)} ${t(r.lastEvent.at)}${r.lastEvent.gate ? ` — ${r.lastEvent.gate}` : ""}` : "—"}</td>
                     {desk.can.override && (
