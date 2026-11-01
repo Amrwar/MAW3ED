@@ -27,6 +27,29 @@ export function localName(en: boolean, nameAr: string, nameEn: string | null | u
 const ARABIC = /[\u0600-\u06FF]/;
 
 /**
+ * The cancel and reschedule routes' refusals in English, from the code
+ * (and details) they send. The routes answer in Arabic, and the app uses
+ * them too, so the booking page words them here; null for a code this
+ * does not know, which then falls to refusalText.
+ */
+export function bookingRefusalEn(data: { code?: unknown; reason?: unknown; cutoffHours?: unknown }, action: "cancel" | "change"): string | null {
+  const hours = typeof data.cutoffHours === "number" ? `${data.cutoffHours} hour${data.cutoffHours === 1 ? "" : "s"}` : null;
+  switch (data.code) {
+    case "not-found": return "Booking not found.";
+    case "not-cancellable": return "This booking can't be cancelled.";
+    case "not-changeable": return "This booking's time can't be changed.";
+    case "too-late":
+      return `It's too close to the appointment to ${action} it online${hours ? ` (the limit is ${hours} before)` : ""}. Contact the place.`;
+    case "invalid": return "Choose a date and a time.";
+    case "slot-unavailable":
+      return data.reason === "past" ? "That date has passed. Choose another date." : "That time isn't available. Choose another.";
+    case "slot-taken": return "Someone just booked that time. Choose another.";
+    case "changed": return "The booking just changed. Refresh the page and try again.";
+    default: return null;
+  }
+}
+
+/**
  * A refused request's message for the screen. The access routes word
  * their own errors in English when asked, but shared pieces (sign-in
  * and role guards, the rate limiter) answer in Arabic, so an English

@@ -5,15 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { refusalText } from "@/lib/lang";
-
-/* The cancel route's refusals, worded from their code in English (the route answers in Arabic). */
-const REFUSED_EN: Record<string, string> = {
-  "not-found": "Booking not found.",
-  "not-cancellable": "This booking can't be cancelled.",
-  "too-late": "It's too close to the appointment to cancel online. Contact the place.",
-  changed: "The booking just changed. Refresh the page and try again.",
-};
+import { bookingRefusalEn, refusalText } from "@/lib/lang";
 
 interface Props {
   token: string;
@@ -53,7 +45,7 @@ export default function CancelButton({ token }: Props) {
       const res = await fetch(`/api/booking/${token}/cancel`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError((en && REFUSED_EN[data.code]) || refusalText(res.status, data.error, en, "حدث خطأ أثناء الإلغاء"));
+        setError((en && bookingRefusalEn(data, "cancel")) || refusalText(res.status, data.error, en, "حدث خطأ أثناء الإلغاء"));
         setConfirming(false);
         return;
       }

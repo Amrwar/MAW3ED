@@ -15,7 +15,7 @@ import { backoffMs, MAX_ATTEMPTS, withTimeout } from "./sync";
 import { TransientProviderError, sandboxAllowed } from "./provider";
 import { VENUE_PERMISSIONS, authorityOver, venueCan } from "@/lib/venues/access";
 import { failure, invalidVisitor, refusal } from "./customer-routes";
-import { localName, refusalText } from "@/lib/lang";
+import { bookingRefusalEn, localName, refusalText } from "@/lib/lang";
 
 /**
  * Phase 23 — the parts of booking QR codes and visitor passes that need
@@ -314,5 +314,14 @@ describe("English fallbacks for names and shared refusals", () => {
     expect(long.error).toBe("The name is too long (80 characters at most)");
     const short = await invalidVisitor({ path: ["displayName"], code: "too_small", message: "اكتب الاسم" }, false).json();
     expect(short.error).toBe("اكتب الاسم");
+  });
+});
+
+describe("the booking page words the cancel and reschedule refusals in English", () => {
+  it("uses the code and its details, and leaves unknown codes to the status wording", () => {
+    expect(bookingRefusalEn({ code: "too-late", cutoffHours: 24 }, "cancel")).toBe("It's too close to the appointment to cancel it online (the limit is 24 hours before). Contact the place.");
+    expect(bookingRefusalEn({ code: "slot-unavailable", reason: "past" }, "change")).toBe("That date has passed. Choose another date.");
+    expect(bookingRefusalEn({ code: "slot-unavailable", reason: "full" }, "change")).toBe("That time isn't available. Choose another.");
+    expect(bookingRefusalEn({ code: "something-new" }, "change")).toBeNull();
   });
 });

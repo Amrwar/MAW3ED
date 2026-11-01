@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CalendarDays, Clock, Loader2, CheckCircle2, ArrowLeft, RefreshCw } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { refusalText } from "@/lib/lang";
+import { bookingRefusalEn, refusalText } from "@/lib/lang";
 import type { Lang } from "@/lib/i18n";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -37,17 +37,6 @@ function formatDate(iso: string, lang: Lang): string {
   return `${AR_DAYS[date.getDay()]}، ${d} ${AR_MONTHS[m - 1]} ${y}`;
 }
 
-/* The reschedule route's refusals, worded from their code in English (the route answers in Arabic). */
-const REFUSED_EN: Record<string, string> = {
-  invalid: "Choose a date and a time.",
-  "not-found": "Booking not found.",
-  "not-changeable": "This booking's time can't be changed.",
-  "too-late": "It's too close to the appointment to change it online. Contact the place.",
-  "slot-unavailable": "That time isn't available. Choose another.",
-  changed: "The booking just changed. Refresh the page and try again.",
-  "slot-taken": "Someone just booked that time. Choose another.",
-};
-
 function todayEgypt(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
 }
@@ -63,7 +52,6 @@ export default function RescheduleFlow({
   const { lang } = useLanguage();
   const en = lang === "en";
   const t = (ar: string, english: string) => (en ? english : ar);
-  const formatDateAr = (iso: string) => formatDate(iso, lang);
   const [step,       setStep]       = useState<Step>("idle");
   const [newDate,    setNewDate]    = useState("");
   const [slots,      setSlots]      = useState<string[]>([]);
@@ -84,7 +72,7 @@ export default function RescheduleFlow({
       // where it sits, which the public grid could not know to ignore.
       const query = new URLSearchParams({ date: newDate });
       const res  = await fetch(`/api/public/booking/${token}/slots?${query}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) { setSlotsError(refusalText(res.status, data.error, en, "تعذّر تحميل المواعيد")); return; }
       const available: string[] = data.slots ?? [];
       if (available.length === 0) {
@@ -116,8 +104,8 @@ export default function RescheduleFlow({
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ date: newDate, startTime: newStart }),
       });
-      const data = await res.json();
-      if (!res.ok) { setApiError((en && REFUSED_EN[data.code]) || refusalText(res.status, data.error, en, "حدث خطأ أثناء إعادة الجدولة")); return; }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setApiError((en && bookingRefusalEn(data, "change")) || refusalText(res.status, data.error, en, "حدث خطأ أثناء إعادة الجدولة")); return; }
       setStep("done");
       setTimeout(() => window.location.reload(), 2500);
     } catch {
@@ -156,7 +144,7 @@ export default function RescheduleFlow({
         <CheckCircle2 size={32} className="mx-auto text-[var(--color-ok)]" />
         <p className="font-bold text-[var(--color-ok)]">{t("اتغيّر ميعادك", "Your time is changed")}</p>
         <p className="text-sm text-[var(--color-ok)]">
-          {formatDateAr(newDate)} · {newStart}
+          {formatDate(newDate, lang)} · {newStart}
         </p>
         {/* The reschedule route puts the booking back to PENDING for the
             business to confirm the new time. */}
@@ -187,7 +175,7 @@ export default function RescheduleFlow({
         <div className="rounded-[var(--radius-md)] bg-[var(--color-surface-2)] px-4 py-3 text-sm">
           <p className="text-xs text-[var(--color-text-muted)] mb-1">{t("الموعد الحالي", "Current time")}</p>
           <p className="font-semibold text-[var(--color-text-primary)]">
-            {formatDateAr(currentDate)}
+            {formatDate(currentDate, lang)}
           </p>
           <p className="text-[var(--color-text-secondary)]" dir="ltr">
             {currentStart} – {currentEnd}
@@ -234,7 +222,7 @@ export default function RescheduleFlow({
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                 <Clock size={14} className="inline ms-1" />
-                {formatDateAr(newDate)}
+                {formatDate(newDate, lang)}
               </p>
               <button
                 onClick={() => setStep("date")}
@@ -267,7 +255,7 @@ export default function RescheduleFlow({
               <div className="px-4 py-3 bg-[var(--color-danger-soft)]">
                 <p className="text-xs text-[var(--color-danger)] mb-0.5">{t("الموعد الحالي", "Current time")}</p>
                 <p className="font-semibold text-[var(--color-danger)] line-through">
-                  {formatDateAr(currentDate)}
+                  {formatDate(currentDate, lang)}
                 </p>
                 <p className="text-[var(--color-danger)] line-through" dir="ltr">
                   {currentStart} – {currentEnd}
@@ -276,7 +264,7 @@ export default function RescheduleFlow({
               <div className="px-4 py-3 bg-[var(--color-ok-soft)]">
                 <p className="text-xs text-[var(--color-ok)] mb-0.5">{t("الموعد الجديد", "New time")}</p>
                 <p className="font-semibold text-[var(--color-ok)]">
-                  {formatDateAr(newDate)}
+                  {formatDate(newDate, lang)}
                 </p>
                 <p className="text-[var(--color-ok)]" dir="ltr">{newStart}</p>
               </div>

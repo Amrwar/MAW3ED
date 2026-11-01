@@ -93,6 +93,7 @@ export default async function BookingPage({ params }: Params) {
   const en           = lang === "en";
   const say          = (ar: string, english: string) => (en ? english : ar);
   const businessName = localName(en, booking.business.nameAr, booking.business.nameEn);
+  const cutoff       = countIn(lang, cutoffHours, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" }, { one: "hour" });
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-2)]" dir={en ? "ltr" : "rtl"}>
@@ -245,10 +246,7 @@ export default async function BookingPage({ params }: Params) {
             <p className="text-xs text-[var(--color-text-muted)]">
               {/* The rule the cancel and reschedule routes enforce. Nothing
                   refunds a deposit automatically, so nothing promises it. */}
-              {say(
-                `تقدر تلغي أو تغيّر ميعاد الحجز لحد ${countIn(lang, cutoffHours, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" }, { one: "hour" })} قبل الميعاد.`,
-                `You can cancel or change this booking up to ${countIn(lang, cutoffHours, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" }, { one: "hour" })} before it.`,
-              )}
+              {say(`تقدر تلغي أو تغيّر ميعاد الحجز لحد ${cutoff} قبل الميعاد.`, `You can cancel or change this booking up to ${cutoff} before it.`)}
               {booking.depositAmount !== null && Number(booking.depositAmount) > 0
                 ? say(" العربون مش بيترجع تلقائيًا لو لغيت، كلّم المكان بخصوصه.", " A deposit isn't refunded automatically if you cancel; contact the place about it.")
                 : ""}

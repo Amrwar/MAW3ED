@@ -207,7 +207,7 @@ try {
   check("EN customer page: no console errors", eerr.length === 0, eerr.slice(0, 3).join(" | "));
 
   // The rest of the booking page, in English.
-  const { rows: [svc] } = await pg.query(`SELECT s."nameAr", s."nameEn" FROM "Service" s JOIN "Booking" bk ON bk."serviceId" = s.id WHERE bk.id = $1`, [b2.id]);
+  const { rows: [svc] } = await pg.query(`SELECT s."nameAr" FROM "Service" s JOIN "Booking" bk ON bk."serviceId" = s.id WHERE bk.id = $1`, [b2.id]);
   const pageData = [...names, salon.nameAr, svc.nameAr];
   check("EN booking page: left to right, with the status and details in English",
     (await ep.locator("main").evaluate((e) => getComputedStyle(e).direction)) === "ltr" &&
@@ -220,7 +220,7 @@ try {
   const b3 = await booking(200);
   await ep.goto(`${B}/booking/${b3.token}`, { waitUntil: "networkidle" });
   const manageText = await ep.locator("main").innerText();
-  check("EN booking page: the manage section and its cut-off rule are English", /Manage booking/.test(manageText) && /up to 2 hours before it/.test(manageText), manageText.slice(0, 0));
+  check("EN booking page: the manage section and its cut-off rule are English", /Manage booking/.test(manageText) && /up to 2 hours before it/.test(manageText), manageText.slice(0, 300));
   await ep.getByRole("button", { name: "Change the time" }).click();
   await ep.getByText("Choose a new date").waitFor({ timeout: 10000 });
   const tomorrow = new Date(cairoWall().getTime() + 86_400_000).toISOString().slice(0, 10);
