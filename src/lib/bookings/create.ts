@@ -209,6 +209,16 @@ export async function createBooking(
     try {
       const booking = await db.$transaction(
         async (tx) => {
+          // One insert at a time per business. Two simultaneous inserts
+          // for the same time each add their row to both overlap
+          // constraints and then wait on the other's unfinished row: a
+          // deadlock Postgres takes a second to break. Retried at once,
+          // a burst at one business collided again and again — a minute
+          // of storm, and customers told "taken" with tables still free.
+          // Queued, each insert takes milliseconds and the constraint
+          // still decides who wins.
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`booking-insert|${input.businessId}`}))`;
+
           // A test booking exists only on a private page. Publishing
           // locks the business row and deletes test bookings in one
           // transaction (lib/business/publish.ts); taking a share lock
