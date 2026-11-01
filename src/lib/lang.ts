@@ -58,6 +58,7 @@ export function bookingRefusalEn(body: { code?: unknown; reason?: unknown; cutof
       return (typeof data.reason === "string" && DAY_UNAVAILABLE_EN[data.reason]) || "That time isn't available. Choose another.";
     case "slot-taken": return "Someone just booked that time. Choose another.";
     case "changed": return "The booking just changed. Refresh the page and try again.";
+    case "busy": return "Busy right now. Try again in a few seconds.";
     default: return null;
   }
 }

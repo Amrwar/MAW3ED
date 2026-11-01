@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { loadAvailability } from "@/lib/bookings/schedule";
-import { inBookingQueue } from "@/lib/bookings/queue";
+import { inBookingQueue, isBookingQueueBusy } from "@/lib/bookings/queue";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { Prisma } from "@prisma/client";
 import { notifyLater } from "@/lib/notifications";
@@ -184,6 +184,7 @@ export async function POST(req: Request, { params }: Params) {
       status:    nextStatus,
     });
   } catch (e) {
+    if (isBookingQueueBusy(e)) return err("في ضغط دلوقتي، جرّب تاني بعد ثواني", 503, { code: "busy" });
     log.error("[booking reschedule]", e);
     return err("حصلت مشكلة وإحنا بنغيّر الميعاد، جرّب تاني بعد شوية", 500);
   }

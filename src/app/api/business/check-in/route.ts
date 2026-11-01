@@ -5,6 +5,7 @@ import { bookingScope, can, requireBusinessAccess } from "@/lib/business-access"
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { checkIn, lookupScan, withoutId } from "@/lib/access/check-in";
 import { failure } from "@/lib/access/customer-routes";
+import { isBookingQueueBusy } from "@/lib/bookings/queue";
 import { isEnglish } from "@/lib/lang";
 
 const schema = z.object({
@@ -43,6 +44,9 @@ export async function POST(req: Request) {
     const result = withoutId(await lookupScan(parsed.data.code, scope, new Date(), en));
     return ok({ ...result, canCheckIn: result.state === "valid" && can(actor, "bookings.progress") });
   } catch (e) {
+    if (isBookingQueueBusy(e)) {
+      return err(en ? "Busy right now. Try again in a few seconds." : "في ضغط دلوقتي، جرّب تاني بعد ثواني", 503, { code: "busy" });
+    }
     return failure("[business check-in]", e, log, en);
   }
 }

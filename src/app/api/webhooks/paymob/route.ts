@@ -472,17 +472,22 @@ async function handleBookingSuccess(
       // Its time comes back into the overlap constraints, so it waits
       // in the business's booking queue like any other write of a time.
       const bookingId = payment.bookingId;
-      const { count } = await inBookingQueue(payment.businessId, (tx) =>
-        tx.booking.updateMany({
-          where: { id: bookingId, status: "FAILED_PAYMENT" },
-          data: { status: "CONFIRMED", paymobTransactionId: transactionId },
-        }),
+      // Paymob will not send this again, so a busy queue is waited out
+      // a couple of times before a person is asked to step in.
+      const { count } = await inBookingQueue(
+        payment.businessId,
+        (tx) =>
+          tx.booking.updateMany({
+            where: { id: bookingId, status: "FAILED_PAYMENT" },
+            data: { status: "CONFIRMED", paymobTransactionId: transactionId },
+          }),
+        { busyRetries: 2 },
       );
       revived = count === 1;
     } catch (e) {
       // The overlap constraint refusing it means somebody took the time.
-      // Anything else (the queue's transaction never started, after its
-      // retries) is not that, and is recorded as what it was; either way
+      // Anything else (no turn in a busy queue, after its retries) is
+      // not that, and is recorded as what it was; either way
       // a person sorts it out, since Paymob will not send this again.
       retaken = String(e instanceof Error ? e.message : e).includes("booking_no_overlap");
       log.error(

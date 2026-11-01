@@ -7,6 +7,7 @@ import { notifyLater } from "@/lib/notifications";
 import { ARRIVE_EARLY_MINUTES, allowedNow, isTooEarly } from "@/lib/bookings/progress-guard";
 import { CUSTOMER_MOVABLE, canTransition, transitionsFrom } from "@/lib/bookings/transitions";
 import { moveBooking } from "@/lib/bookings/state";
+import { isBookingQueueBusy } from "@/lib/bookings/queue";
 import { businessPassSummary } from "@/lib/access/passes";
 
 type Params = { params: Promise<{ id: string }> };
@@ -196,6 +197,7 @@ export async function PATCH(req: Request, { params }: Params) {
     });
   } catch (e) {
     if (e instanceof Response) return e;
+    if (isBookingQueueBusy(e)) return err("في ضغط دلوقتي، جرّب تاني بعد ثواني", 503, { code: "busy" });
     log.error("[bookings PATCH]", e);
     return err("حدث خطأ أثناء تحديث الحالة", 500);
   }

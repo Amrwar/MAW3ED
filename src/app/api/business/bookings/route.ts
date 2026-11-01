@@ -6,7 +6,7 @@ import { ok, err } from "@/lib/api";
 import { bookingScope, can, requireBusinessAccess } from "@/lib/business-access";
 import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
-import { inBookingQueue } from "@/lib/bookings/queue";
+import { inBookingQueue, isBookingQueueBusy } from "@/lib/bookings/queue";
 import { generateReference } from "@/lib/bookings/reference";
 import { log } from "@/lib/logger";
 import { recordBusinessMilestone } from "@/lib/business/lifecycle";
@@ -287,6 +287,7 @@ export async function POST(req: Request) {
     );
   } catch (e) {
     if (e instanceof Response) return e;
+    if (isBookingQueueBusy(e)) return err("في ضغط دلوقتي، جرّب تاني بعد ثواني", 503, { code: "busy" });
     log.error("[bookings POST]", e);
     return err("حدث خطأ أثناء إنشاء الحجز", 500);
   }

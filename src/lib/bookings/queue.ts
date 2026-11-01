@@ -39,10 +39,12 @@ export async function takeBookingQueue(tx: Prisma.TransactionClient, businessId:
  *
  * The wait is bounded like the pool's: a request that has not reached
  * its turn in WAIT_MS gives up before doing anything, and it never runs
- * later, after its caller was told it failed. It fails as Prisma's
- * P2028, so the public route answers "busy, try again" (503) — but it is
- * not retried here: the line is genuinely backed up, and joining its end
- * again would only make the wait longer.
+ * later, after its caller was told it failed. It fails as
+ * BookingQueueBusy — Prisma's P2028, so the public route answers "busy,
+ * try again" (503), and the other routes say the same. It is not retried
+ * by default: the line is genuinely backed up, and joining its end again
+ * would only make the wait longer. A write nobody will send again (a
+ * webhook's) asks for a couple of retries.
  */
 const lines = new Map<string, Promise<void>>();
 /** How long a request waits for its turn, and then for a connection. */
@@ -99,7 +101,7 @@ async function inLine<T>(businessId: string, run: () => Promise<T>): Promise<T> 
     // are not held up by a request that is no longer waiting.
     release();
     void tail.then(forget);
-    throw lineBusy();
+    throw new BookingQueueBusy();
   }
   const mine: Held = { businessIds: new Set([...(held?.businessIds ?? []), businessId]), active: true };
   try {
@@ -113,12 +115,19 @@ async function inLine<T>(businessId: string, run: () => Promise<T>): Promise<T> 
   }
 }
 
-/** Prisma's "could not start a transaction" code, without the words that would retry it. */
-function lineBusy(): Prisma.PrismaClientKnownRequestError {
-  return new Prisma.PrismaClientKnownRequestError(
-    "The business's booking queue is busy: no turn within the wait.",
-    { code: "P2028", clientVersion: Prisma.prismaVersion.client },
-  );
+/** No turn in the business's booking queue within the wait. P2028, as a transaction that could not start. */
+export class BookingQueueBusy extends Prisma.PrismaClientKnownRequestError {
+  constructor() {
+    super("The business's booking queue is busy: no turn within the wait.", {
+      code: "P2028",
+      clientVersion: Prisma.prismaVersion.client,
+    });
+    this.name = "BookingQueueBusy";
+  }
+}
+
+export function isBookingQueueBusy(e: unknown): e is BookingQueueBusy {
+  return e instanceof BookingQueueBusy;
 }
 
 /** One transaction in the business's queue; createBooking retries around it itself. */
@@ -153,11 +162,20 @@ const ATTEMPTS = 4;
  * does not take the queue: either way it was rolled back whole, so the
  * write simply runs again and meets the constraint afresh.
  */
-export async function inBookingQueue<T>(businessId: string, write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+export async function inBookingQueue<T>(
+  businessId: string,
+  write: (tx: Prisma.TransactionClient) => Promise<T>,
+  { busyRetries = 0 }: { busyRetries?: number } = {},
+): Promise<T> {
+  let busy = 0;
   for (let attempt = 1; ; attempt++) {
     try {
       return await queuedTransaction(businessId, write);
     } catch (e) {
+      if (isBookingQueueBusy(e)) {
+        if (busy++ >= busyRetries) throw e;
+        continue;
+      }
       if (!(isTransactionStartTimeout(e) || isWriteConflict(e)) || attempt >= ATTEMPTS) throw e;
       await new Promise((r) => setTimeout(r, 100 + Math.random() * 300));
     }
@@ -167,6 +185,7 @@ export async function inBookingQueue<T>(businessId: string, write: (tx: Prisma.T
 /** Prisma P2028: the interactive transaction could not be started in time. */
 export function isTransactionStartTimeout(e: unknown): boolean {
   return (
+    !(e instanceof BookingQueueBusy) &&
     e instanceof Prisma.PrismaClientKnownRequestError &&
     e.code === "P2028" &&
     /start a transaction/i.test(e.message)

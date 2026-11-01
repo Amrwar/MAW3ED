@@ -10,7 +10,7 @@ import {
   recordManualPayment,
 } from "@/lib/payments/ledger";
 import { balanceCents, formatCents, toCents } from "@/lib/payments/money";
-import { inBookingQueue } from "@/lib/bookings/queue";
+import { inBookingQueue, isBookingQueueBusy } from "@/lib/bookings/queue";
 import { canUseFeature, getEffectivePlan } from "@/lib/plans";
 import { notifyLater } from "@/lib/notifications";
 
@@ -282,12 +282,25 @@ async function advanceAfterManualPayment(bookingId: string, actorUserId: string)
   const next = booking.business.autoConfirm ? "CONFIRMED" : "PENDING";
   // In the business's booking queue (lib/bookings/queue.ts): the new
   // status is a new row version the overlap constraints check again.
-  const moved = await inBookingQueue(booking.businessId, (tx) =>
-    tx.booking.updateMany({
-      where: { id: bookingId, status: "PENDING_PAYMENT" },
-      data: { status: next },
-    }),
-  );
+  // The payment is already recorded, so a busy queue is waited out a
+  // couple of times; if it stays busy, the booking stays awaiting
+  // payment and the owner can confirm it by hand.
+  let moved: { count: number };
+  try {
+    moved = await inBookingQueue(
+      booking.businessId,
+      (tx) =>
+        tx.booking.updateMany({
+          where: { id: bookingId, status: "PENDING_PAYMENT" },
+          data: { status: next },
+        }),
+      { busyRetries: 2 },
+    );
+  } catch (e) {
+    if (!isBookingQueueBusy(e)) throw e;
+    log.error("[booking payments] paid in full, but the booking queue stayed busy; left awaiting payment", { bookingId });
+    return;
+  }
   if (moved.count === 0) return;
 
   await db.payment.updateMany({
