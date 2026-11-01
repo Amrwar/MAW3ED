@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
@@ -15,19 +16,16 @@ import { db } from "@/lib/db";
  * decides who wins.
  *
  * Held until the transaction ends, and taken before any booking row is
- * locked, so it cannot form a cycle with a row lock. Taken first, the
+ * locked, so it cannot form a cycle with a row lock. (The Paymob
+ * confirm of a booking awaiting payment does not take it: that runs in
+ * the payment's settlement, which must not wait on anything, and the
+ * booking keeps the time it already holds.) Taken first, the
  * statements after it — at Read Committed — see everything committed
  * ahead in the queue, which is what keeps the monthly count in
  * createBooking exact.
  */
 export async function takeBookingQueue(tx: Prisma.TransactionClient, businessId: string): Promise<void> {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`booking-write:${businessId}`}, 0))`;
-}
-
-/** The queue for a booking's business, inside a transaction the caller already holds. */
-export async function takeBookingQueueFor(tx: Prisma.TransactionClient, bookingId: string): Promise<void> {
-  const row = await tx.booking.findUnique({ where: { id: bookingId }, select: { businessId: true } });
-  if (row) await takeBookingQueue(tx, row.businessId);
 }
 
 /*
@@ -38,22 +36,55 @@ export async function takeBookingQueueFor(tx: Prisma.TransactionClient, bookingI
  * business for the queue; the database lock above still orders
  * processes against each other. The wait here does not count toward
  * the transaction's timeout either: the transaction begins at its turn.
+ *
+ * The wait is bounded like the pool's: a request that has not reached
+ * its turn in LINE_WAIT_MS gives up before doing anything, with the same
+ * error as a transaction that could not start, so callers retry or
+ * answer "busy" as they already do — and it never runs later, after its
+ * caller was told it failed.
  */
 const lines = new Map<string, Promise<void>>();
+const LINE_WAIT_MS = 10_000;
+/** The businesses whose turn the current async context holds. */
+const holding = new AsyncLocalStorage<ReadonlySet<string>>();
 
 async function inLine<T>(businessId: string, run: () => Promise<T>): Promise<T> {
+  // A write that, inside its own turn, asked for another at the same
+  // business would wait on itself for ever. Refuse it at once.
+  const held = holding.getStore();
+  if (held?.has(businessId)) throw new Error(`booking queue re-entered for business ${businessId}`);
+
   let release!: () => void;
   const turn = new Promise<void>((r) => (release = r));
   const ahead = lines.get(businessId) ?? Promise.resolve();
   const tail = ahead.then(() => turn);
   lines.set(businessId, tail);
-  await ahead;
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const reached = await Promise.race([
+    ahead.then(() => true),
+    new Promise<false>((r) => (timer = setTimeout(() => r(false), LINE_WAIT_MS))),
+  ]);
+  clearTimeout(timer);
+  if (!reached) {
+    // Our turn passes straight on when it comes, so those behind us
+    // are not held up by a request that is no longer waiting.
+    release();
+    throw lineTimeout();
+  }
   try {
-    return await run();
+    return await holding.run(new Set([...(held ?? []), businessId]), run);
   } finally {
     release();
     if (lines.get(businessId) === tail) lines.delete(businessId);
   }
+}
+
+function lineTimeout(): Prisma.PrismaClientKnownRequestError {
+  return new Prisma.PrismaClientKnownRequestError(
+    "Unable to start a transaction in the given time: waited too long in the business's booking queue.",
+    { code: "P2028", clientVersion: Prisma.prismaVersion.client },
+  );
 }
 
 /** One transaction in the business's queue; createBooking retries around it itself. */
@@ -108,7 +139,14 @@ export function isTransactionStartTimeout(e: unknown): boolean {
   );
 }
 
-/** Prisma P2034: a write conflict or deadlock; the transaction was rolled back. */
+/**
+ * A write conflict or deadlock; the transaction was rolled back. Prisma
+ * reports it as P2034, or as P2010 carrying the Postgres code when it was
+ * raised by a raw statement.
+ */
 function isWriteConflict(e: unknown): boolean {
-  return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034";
+  if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (e.code === "P2034") return true;
+  const code = (e.meta as { code?: string } | undefined)?.code;
+  return e.code === "P2010" && (code === "40P01" || code === "40001");
 }

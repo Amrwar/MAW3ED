@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { moveBooking } from "@/lib/bookings/state";
+import { inBookingQueue } from "@/lib/bookings/queue";
 import { ARRIVE_EARLY_MINUTES } from "@/lib/bookings/progress-guard";
 import { bookingStart, cairoWallClock } from "@/lib/bookings/instants";
 import { timeToMinutes } from "@/lib/bookings/time";
@@ -270,7 +271,12 @@ export async function checkIn(
   }
   const bookingId = found.booking.id;
   const checkInId = found.checkInId;
-  const moved = await db.$transaction(async (tx) => {
+  // Arriving is a move into a live status, so it waits in the business's
+  // booking queue (lib/bookings/queue.ts), with the move and its record
+  // in one transaction.
+  const owner = await db.booking.findUnique({ where: { id: bookingId }, select: { businessId: true } });
+  if (!owner) return withoutId(await lookupScan(scanned, scope, now, en));
+  const moved = await inBookingQueue(owner.businessId, async (tx) => {
     const move = await moveBooking({ bookingId, from: "CONFIRMED", to: "ARRIVED", by: "business", actorUserId }, tx);
     if (!move.moved) return false;
     await tx.bookingCheckIn.update({ where: { id: checkInId }, data: { checkedInAt: now, checkedInById: actorUserId } });
