@@ -4,7 +4,8 @@ import { log } from "@/lib/logger";
 import { bookingScope, can, requireBusinessAccess } from "@/lib/business-access";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { checkIn, lookupScan, withoutId } from "@/lib/access/check-in";
-import { isEnglish } from "@/lib/access/customer-routes";
+import { failure } from "@/lib/access/customer-routes";
+import { isEnglish } from "@/lib/lang";
 
 const schema = z.object({
   code: z.string().trim().min(1).max(500),
@@ -42,8 +43,6 @@ export async function POST(req: Request) {
     const result = withoutId(await lookupScan(parsed.data.code, scope, new Date(), en));
     return ok({ ...result, canCheckIn: result.state === "valid" && can(actor, "bookings.progress") });
   } catch (e) {
-    if (e instanceof Response) return e;
-    log.error("[business check-in]", e);
-    return err(en ? "Something went wrong on our side. Try again shortly." : "حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
+    return failure("[business check-in]", e, log, en);
   }
 }

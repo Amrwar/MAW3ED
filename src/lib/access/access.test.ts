@@ -14,7 +14,8 @@ import { parseEventBody } from "./sandbox";
 import { backoffMs, MAX_ATTEMPTS, withTimeout } from "./sync";
 import { TransientProviderError, sandboxAllowed } from "./provider";
 import { VENUE_PERMISSIONS, authorityOver, venueCan } from "@/lib/venues/access";
-import { failure, refusal } from "./customer-routes";
+import { failure, invalidVisitor, refusal } from "./customer-routes";
+import { localName, refusalText } from "@/lib/lang";
 
 /**
  * Phase 23 — the parts of booking QR codes and visitor passes that need
@@ -291,5 +292,27 @@ describe("customer pass errors follow the caller's language", () => {
     const log = { error: () => {} };
     expect((await failure("t", new Error("x"), log, true).json()).error).toMatch(/^Something went wrong/);
     expect(failure("t", new Error("x"), log).status).toBe(500);
+  });
+});
+
+describe("English fallbacks for names and shared refusals", () => {
+  it("uses the English name only when there is one, blank counting as none", () => {
+    expect(localName(true, "مول", "Mall")).toBe("Mall");
+    expect(localName(true, "مول", "  ")).toBe("مول");
+    expect(localName(true, "مول", null)).toBe("مول");
+    expect(localName(false, "مول", "Mall")).toBe("مول");
+  });
+  it("words Arabic-only refusals (guards, rate limit) by status on an English screen", () => {
+    expect(refusalText(429, "محاولات كتير. استنى شوية وحاول تاني.", true, "x")).toBe("Too many attempts. Wait a moment and try again.");
+    expect(refusalText(404, "غير موجود", true, "x")).toMatch(/^Not found/);
+    expect(refusalText(409, "Already added", true, "x")).toBe("Already added");
+    expect(refusalText(429, "محاولات كتير", false, "x")).toBe("محاولات كتير");
+    expect(refusalText(500, undefined, false, "حصلت مشكلة")).toBe("حصلت مشكلة");
+  });
+  it("says which visitor field is wrong in English", async () => {
+    const long = await invalidVisitor({ path: ["displayName"], code: "too_big", message: "x" }, true).json();
+    expect(long.error).toBe("The name is too long (80 characters at most)");
+    const short = await invalidVisitor({ path: ["displayName"], code: "too_small", message: "اكتب الاسم" }, false).json();
+    expect(short.error).toBe("اكتب الاسم");
   });
 });

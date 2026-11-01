@@ -7,7 +7,7 @@ import { handle, readJson, venueAudit } from "@/lib/venues/route";
 import { venueAccessChanged, venueDesk } from "@/lib/access/venue-desk";
 import { providerUsable, sandboxAllowed } from "@/lib/access/provider";
 import { ensureSandboxProvider } from "@/lib/access/sandbox";
-import { isEnglish } from "@/lib/access/customer-routes";
+import { isEnglish, localName } from "@/lib/lang";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -36,7 +36,7 @@ export async function GET(req: Request, { params }: Ctx) {
     const desk = await venueDesk(id, parsedDay.data, en);
     if (!desk) return err(en ? "Not found" : "غير موجود", 404);
     const providers = venueCan(authority, "venue.access.provider")
-      ? (await listProviders()).map((p) => ({ slug: p.slug, kind: p.kind, name: (en && p.nameEn) || p.nameAr, usable: providerUsable(p) }))
+      ? (await listProviders()).map((p) => ({ slug: p.slug, kind: p.kind, name: localName(en, p.nameAr, p.nameEn), usable: providerUsable(p) }))
       : [];
     return ok({
       ...desk,
@@ -64,12 +64,22 @@ const putSchema = z
   })
   .refine((v) => v.accessEnabled !== undefined || v.providerSlug !== undefined || v.siteRef !== undefined, { message: "مفيش تغيير" });
 
+/* The English for a field putSchema refuses; a refusal of the whole body is "nothing to change". */
+const PUT_ISSUE_EN: Record<string, string> = {
+  accessEnabled: "Visitor passes can only be switched on or off",
+  providerSlug: "That provider is not valid",
+  siteRef: "The venue code at the provider is too long (120 characters at most)",
+};
+
 export async function PUT(req: Request, { params }: Ctx) {
   return handle("venue access PUT", async () => {
     const { id } = await params;
     const en = isEnglish(req);
     const parsed = putSchema.safeParse(await readJson(req));
-    if (!parsed.success) return err(en ? "Nothing to change" : parsed.error.issues[0]?.message ?? "بيانات غير صالحة", 422);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      return err(en ? PUT_ISSUE_EN[String(issue?.path[0])] ?? "Nothing to change" : issue?.message ?? "بيانات غير صالحة", 422);
+    }
     const body = parsed.data;
     const needsProvider = body.providerSlug !== undefined || body.siteRef !== undefined;
     const { caller, authority } = await requireVenueAccess(id, needsProvider ? "venue.access.provider" : "venue.access.enable");

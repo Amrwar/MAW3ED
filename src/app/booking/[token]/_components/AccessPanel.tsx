@@ -5,6 +5,7 @@ import { QrCode, RefreshCw, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import PassCard, { type PassViewJson } from "@/components/access/PassCard";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { localeFor } from "@/lib/fmt";
+import { refusalText } from "@/lib/lang";
 
 /**
  * The booking page's "getting in" section: the booking's own check-in QR
@@ -100,7 +101,7 @@ export default function AccessPanel({ token, customerName }: { token: string; cu
         body: body ? JSON.stringify(body) : undefined,
       });
       const j = await res.json().catch(() => ({}));
-      setMsg(res.ok ? done ?? null : j.error ?? t("حصلت مشكلة، جرّب تاني", "Something went wrong. Try again."));
+      setMsg(res.ok ? done ?? null : refusalText(res.status, j.error, en, "حصلت مشكلة، جرّب تاني"));
       setPolls(0);
       await load();
       return res.ok ? j : null;

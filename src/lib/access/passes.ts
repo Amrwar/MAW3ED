@@ -1,3 +1,4 @@
+import { localName } from "@/lib/lang";
 import type { AccessCredential, AccessEntitlement, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
@@ -565,7 +566,7 @@ function toView(
   const token = (state === "active" || state === "updating") && credential ? openToken(credential.tokenCiphertext) : null;
   const gateName = (id: string) => {
     const gate = ctx?.gates.find((x) => x.id === id);
-    return gate ? (en ? gate.nameEn ?? gate.nameAr : gate.nameAr) : null;
+    return gate ? localName(en, gate.nameAr, gate.nameEn) : null;
   };
   return {
     guestId: g.id,
@@ -582,6 +583,12 @@ function toView(
     canRetry: state === "failed" && failedCount(ent?.credentials ?? []) < MAX_CREDENTIALS_PER_ENTITLEMENT,
     ...(includeInvite && g.role === "GUEST" ? { inviteToken: g.inviteToken } : {}),
   };
+}
+
+/** The venue's instructions in the chosen language; the Arabic ones when there is no English. */
+function instructionsFor(ctx: VenueContext, en: boolean): string | null {
+  const ar = ctx.policy?.accessInstructionsAr ?? null;
+  return ar === null ? (en && ctx.policy?.accessInstructionsEn?.trim()) || null : localName(en, ar, ctx.policy?.accessInstructionsEn);
 }
 
 /** Everything the booking holder's screen (web or app) shows about visitor access. */
@@ -609,8 +616,8 @@ export async function bookingAccessView(bookingId: string, en = false): Promise<
     offered: true,
     venue: {
       id: ctx.venue.id,
-      name: en ? ctx.venue.nameEn ?? ctx.venue.nameAr : ctx.venue.nameAr,
-      instructions: (en ? ctx.policy?.accessInstructionsEn ?? ctx.policy?.accessInstructionsAr : ctx.policy?.accessInstructionsAr) ?? null,
+      name: localName(en, ctx.venue.nameAr, ctx.venue.nameEn),
+      instructions: instructionsFor(ctx, en),
     },
     sandbox,
     eligibility: { eligible, reason: reasonText(reason, en) },
@@ -631,7 +638,7 @@ export async function guestPassView(inviteToken: string, en = false) {
   const ctx = await venueContext(db, g.booking);
   const sandbox = ctx?.venue.accessProvider?.kind === "SANDBOX";
   return {
-    venue: ctx ? { name: en ? ctx.venue.nameEn ?? ctx.venue.nameAr : ctx.venue.nameAr, instructions: (en ? ctx.policy?.accessInstructionsEn ?? ctx.policy?.accessInstructionsAr : ctx.policy?.accessInstructionsAr) ?? null } : null,
+    venue: ctx ? { name: localName(en, ctx.venue.nameAr, ctx.venue.nameEn), instructions: instructionsFor(ctx, en) } : null,
     sandbox,
     pass: toView(g, ctx, en, sandbox, false, null),
   };

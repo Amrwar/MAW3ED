@@ -3,6 +3,7 @@ import { cairoDayStart, wallToInstant } from "@/lib/bookings/instants";
 import { resyncLiveAccess } from "./hooks";
 import { providerUsable } from "./provider";
 import { reasonText } from "./eligibility";
+import { localName } from "@/lib/lang";
 
 /**
  * What a venue's operators and security desk see of visitor passes.
@@ -78,7 +79,7 @@ export async function venueDesk(venueId: string, day?: string, en = false) {
   if (!venue) return null;
   const gateName = (id: string | null) => {
     const gate = id ? venue.gates.find((g) => g.id === id) : null;
-    return gate ? (en && gate.nameEn) || gate.nameAr : null;
+    return gate ? localName(en, gate.nameAr, gate.nameEn) : null;
   };
   const lastByEnt = new Map<string, (typeof events)[number]>();
   for (const e of events) if (e.entitlementId && !lastByEnt.has(e.entitlementId)) lastByEnt.set(e.entitlementId, e);
@@ -90,7 +91,7 @@ export async function venueDesk(venueId: string, day?: string, en = false) {
       entitlementId: e.id,
       visitorName: e.visitor.displayName,
       role: e.bookingGuest.role,
-      businessName: (en && e.bookingGuest.booking.business.nameEn) || e.bookingGuest.booking.business.nameAr,
+      businessName: localName(en, e.bookingGuest.booking.business.nameAr, e.bookingGuest.booking.business.nameEn),
       status: e.status,
       reason: e.reason,
       reasonText: reasonText(e.reason, en),
@@ -113,7 +114,7 @@ export async function venueDesk(venueId: string, day?: string, en = false) {
         ? {
             slug: venue.accessProvider.slug,
             kind: venue.accessProvider.kind,
-            name: (en && venue.accessProvider.nameEn) || venue.accessProvider.nameAr,
+            name: localName(en, venue.accessProvider.nameAr, venue.accessProvider.nameEn),
             usable: providerUsable(venue.accessProvider),
             health: venue.accessProvider.lastHealthAt
               ? { at: venue.accessProvider.lastHealthAt.toISOString(), ok: venue.accessProvider.lastHealthOk, detail: venue.accessProvider.lastHealthDetail }

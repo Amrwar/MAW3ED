@@ -4,7 +4,7 @@ import { requireVenueAccess } from "@/lib/venues/guard";
 import { handle, readJson, venueAudit } from "@/lib/venues/route";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { securityReinstate, securitySuspend } from "@/lib/access/passes";
-import { isEnglish } from "@/lib/access/customer-routes";
+import { isEnglish } from "@/lib/lang";
 
 type Ctx = { params: Promise<{ id: string; entitlementId: string }> };
 
@@ -32,7 +32,12 @@ export async function POST(req: Request, { params }: Ctx) {
     if (!limited.ok) return tooManyRequests(limited);
     const en = isEnglish(req);
     const parsed = schema.safeParse(await readJson(req));
-    if (!parsed.success) return err(en ? "Write the reason (at least 3 characters)" : parsed.error.issues[0]?.message ?? "بيانات غير صالحة", 422);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const english =
+        issue?.path[0] !== "note" ? "Invalid request" : issue.code === "too_big" ? "The reason is too long (300 characters at most)" : "Write the reason (at least 3 characters)";
+      return err(en ? english : issue?.message ?? "بيانات غير صالحة", 422);
+    }
     const { action, note } = parsed.data;
     const done =
       action === "suspend"

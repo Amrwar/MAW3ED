@@ -3,6 +3,7 @@ import Link from "@/components/shared/LocaleLink";
 import Logo from "@/components/shared/Logo";
 import { auth } from "@/auth";
 import { getLang } from "@/lib/lang-server";
+import { localName } from "@/lib/lang";
 import { resolveBusinessAccess } from "@/lib/business-access";
 import { extractCode } from "@/lib/access/check-in";
 import CheckInDesk from "@/components/access/CheckInDesk";
@@ -34,7 +35,7 @@ export default async function ScannedCodePage({ params }: { params: Promise<{ co
         {staff && valid ? (
           <>
             <h1 className="text-lg font-bold">
-              {en ? "Check-in" : "تسجيل وصول"} — {(en && staff.business.nameEn) || staff.business.nameAr}
+              {en ? "Check-in" : "تسجيل وصول"} — {localName(en, staff.business.nameAr, staff.business.nameEn)}
             </h1>
             <CheckInDesk initialCode={valid} />
           </>

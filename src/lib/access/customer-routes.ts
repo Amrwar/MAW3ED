@@ -32,10 +32,6 @@ export async function limitWrites(bookingId: string): Promise<void> {
   if (!limited.ok) throw tooManyRequests(limited);
 }
 
-export function isEnglish(req: Request): boolean {
-  return new URL(req.url).searchParams.get("lang") === "en";
-}
-
 const MESSAGES: Record<string, [number, ar: string, en: string]> = {
   "not-offered": [409, "تصاريح الدخول مش متاحة للحجز ده", "Visitor passes are not available for this booking"],
   ineligible: [409, "الحجز مش مؤهل لتصريح دخول دلوقتي", "This booking cannot have a visitor pass right now"],
@@ -46,8 +42,16 @@ const MESSAGES: Record<string, [number, ar: string, en: string]> = {
 };
 
 /** A visitor's details that did not pass the schema, in the caller's language. */
-export function invalidVisitor(issue: string | undefined, en: boolean): Response {
-  return err(en ? "Enter a name (2 to 80 characters) and a valid mobile number" : issue ?? "بيانات غير صالحة", 422);
+export function invalidVisitor(issue: { path: PropertyKey[]; code: string; message: string } | undefined, en: boolean): Response {
+  if (!en) return err(issue?.message ?? "بيانات غير صالحة", 422);
+  const field = issue?.path[0];
+  const message =
+    field === "displayName"
+      ? issue?.code === "too_big" ? "The name is too long (80 characters at most)" : "Enter a name (at least 2 characters)"
+      : field === "phone"
+        ? "The mobile number is too long"
+        : "Those details are not valid";
+  return err(message, 422);
 }
 
 /** PHONE_INVALID, in the caller's language. */

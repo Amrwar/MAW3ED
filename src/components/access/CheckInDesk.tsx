@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, CheckCircle, Loader2, ScanLine, XCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { refusalText } from "@/lib/lang";
 
 /**
  * The front desk's check-in: scan a customer's booking QR (camera, where
@@ -68,8 +69,7 @@ async function post(value: string, action: "verify" | "check-in", en: boolean): 
     });
     const j = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const fallback = en ? "Something went wrong" : "حصلت مشكلة";
-      return { result: null, error: res.status === 401 ? (en ? "Sign in first" : "سجّل دخولك الأول") : j.error ?? fallback };
+      return { result: null, error: res.status === 401 ? (en ? "Sign in first" : "سجّل دخولك الأول") : refusalText(res.status, j.error, en, "حصلت مشكلة") };
     }
     return { result: j as Result, error: null };
   } catch {

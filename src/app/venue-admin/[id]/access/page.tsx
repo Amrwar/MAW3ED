@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { authorityOver, venueCan } from "@/lib/venues/access";
 import AccessDesk from "./_components/AccessDesk";
 import { getLang } from "@/lib/lang-server";
+import { localName } from "@/lib/lang";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getLang()) === "en" ? "Visitor access" : "دخول الزوار", robots: { index: false, follow: false } };
@@ -23,5 +24,5 @@ export default async function VenueAccessPage({ params }: { params: Promise<{ id
   const venue = await db.venue.findUnique({ where: { id }, select: { id: true, organizationId: true, compoundId: true, nameAr: true, nameEn: true } });
   if (!venue || !venueCan(authorityOver(caller, venue), "venue.access.view")) notFound();
   const en = (await getLang()) === "en";
-  return <AccessDesk venueId={id} venueName={(en && venue.nameEn) || venue.nameAr} />;
+  return <AccessDesk venueId={id} venueName={localName(en, venue.nameAr, venue.nameEn)} />;
 }

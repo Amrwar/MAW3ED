@@ -1,3 +1,4 @@
+import { localName } from "@/lib/lang";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
@@ -239,8 +240,8 @@ export async function lookupScan(
       id: b.id,
       reference: b.reference,
       customerName: b.customerName,
-      serviceName: (en && b.service.nameEn) || b.service.nameAr,
-      staffName: b.staffMember ? (en && b.staffMember.nameEn) || b.staffMember.nameAr : null,
+      serviceName: localName(en, b.service.nameAr, b.service.nameEn),
+      staffName: b.staffMember ? localName(en, b.staffMember.nameAr, b.staffMember.nameEn) : null,
       date: b.date.toISOString().slice(0, 10),
       startTime: b.startTime,
       endTime: b.endTime,

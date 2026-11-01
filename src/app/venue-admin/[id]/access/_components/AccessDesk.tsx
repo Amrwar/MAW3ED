@@ -5,6 +5,7 @@ import { AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
 import Link from "@/components/shared/LocaleLink";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { localeFor } from "@/lib/fmt";
+import { refusalText } from "@/lib/lang";
 import type { Lang } from "@/lib/i18n";
 
 /* The shapes GET /api/venues/:id/access returns (lib/access/venue-desk.ts). */
@@ -38,6 +39,13 @@ const WORD: Record<string, [ar: string, en: string]> = {
   HOLDER: ["صاحب الحجز", "Booking holder"], GUEST: ["مرافق", "Guest"],
 };
 type Say = (ar: string, en: string) => string;
+type Failure = "signin" | "gone" | "error" | "offline";
+const FAILURE: Record<Failure, [ar: string, en: string]> = {
+  signin: ["سجّل دخولك تاني.", "Sign in again."],
+  gone: ["مالكش صلاحية هنا.", "You don't have access here."],
+  error: ["حصلت مشكلة.", "Something went wrong."],
+  offline: ["تعذّر الاتصال.", "Couldn't connect."],
+};
 const clock = (iso: string, lang: Lang) =>
   new Intl.DateTimeFormat(localeFor(lang), { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 const field = "w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm";
@@ -53,7 +61,8 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
   // The server words reasons, gates and errors in this language.
   const q = en ? "lang=en" : "";
   const [desk, setDesk] = useState<Desk | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
+  // Why the desk could not refresh, worded at render so it follows a language switch.
+  const [failure, setFailure] = useState<Failure | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [day, setDay] = useState("");
@@ -67,21 +76,17 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
     chosen.current = day;
   }, [day]);
 
-  const fetchDesk = useCallback(async (): Promise<{ desk: Desk | null; failure: string | null; day: string }> => {
+  const fetchDesk = useCallback(async (): Promise<{ desk: Desk | null; failure: Failure | null; day: string }> => {
     try {
       const query = [day ? `day=${day}` : "", q].filter(Boolean).join("&");
       const res = await fetch(`${base}${query ? `?${query}` : ""}`, { cache: "no-store" });
-      if (!res.ok) {
-        const failure =
-          res.status === 401 ? (q ? "Sign in again." : "سجّل دخولك تاني.") : res.status === 404 ? (q ? "You don't have access here." : "مالكش صلاحية هنا.") : q ? "Something went wrong." : "حصلت مشكلة.";
-        return { desk: null, day, failure };
-      }
+      if (!res.ok) return { desk: null, day, failure: res.status === 401 ? "signin" : res.status === 404 ? "gone" : "error" };
       return { desk: (await res.json()) as Desk, failure: null, day };
     } catch {
-      return { desk: null, failure: q ? "Couldn't connect." : "تعذّر الاتصال.", day };
+      return { desk: null, failure: "offline", day };
     }
   }, [base, day, q]);
-  const apply = useCallback((r: { desk: Desk | null; failure: string | null; day: string }) => {
+  const apply = useCallback((r: { desk: Desk | null; failure: Failure | null; day: string }) => {
     if (r.day !== chosen.current) return; // an answer for a day no longer on screen
     if (r.desk) {
       setDesk(r.desk);
@@ -107,7 +112,7 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
     try {
       const res = await fetch(`${base}${path}${q ? `?${q}` : ""}`, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const j = await res.json().catch(() => ({}));
-      const refused = res.status === 401 ? t("سجّل دخولك تاني.", "Sign in again.") : j.error ?? t("حصلت مشكلة.", "Something went wrong.");
+      const refused = res.status === 401 ? t("سجّل دخولك تاني.", "Sign in again.") : refusalText(res.status, j.error, en, "حصلت مشكلة.");
       setMsg({ ok: res.ok, text: res.ok ? done : refused });
       await load();
       return res.ok;
@@ -119,7 +124,8 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
     }
   }
 
-  if (failure && !desk) return <main className="max-w-4xl mx-auto p-6 text-sm" dir={dir}>{failure}</main>;
+  const why = failure && t(...FAILURE[failure]);
+  if (why && !desk) return <main className="max-w-4xl mx-auto p-6 text-sm" dir={dir}>{why}</main>;
   if (!desk) return <main className="max-w-4xl mx-auto p-6 text-sm" dir={dir}>{t("بيحمّل…", "Loading…")}</main>;
   const s = desk.settings;
   const stale = deskDay !== day && !failure;
@@ -144,7 +150,7 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
       </header>
 
       {msg && <p className={`text-sm ${msg.ok ? "text-[var(--color-ok)]" : "text-[var(--color-danger)]"}`} role="status">{msg.text}</p>}
-      {failure && <p className="text-sm text-[var(--color-danger)]" role="alert">{t(`مقدرناش نحدّث: ${failure} اللي ظاهر ممكن يكون قديم.`, `Couldn't refresh: ${failure} What's shown may be out of date.`)}</p>}
+      {why && <p className="text-sm text-[var(--color-danger)]" role="alert">{t(`مقدرناش نحدّث: ${why} اللي ظاهر ممكن يكون قديم.`, `Couldn't refresh: ${why} What's shown may be out of date.`)}</p>}
 
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-4 space-y-3">
         <h2 className="font-bold text-sm">{t("الإعدادات", "Settings")}</h2>
