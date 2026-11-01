@@ -278,7 +278,10 @@ try {
   // STAFF delegate: no login details, no sign-in control.
   await send(owner, `/api/business/organizations/${ownedId}`, "PATCH", { action: "grant", scopes: ["RESERVATIONS", "STAFF", "PROFILE"] });
   rival.cookies.delete("maw3ed-acting");
-  await send(rival, "/api/organizations/acting", "POST", { businessId: salon.id });
+  // Must be acting for the salon before the writes below: otherwise they
+  // land on the delegate's own business (and rename the QA rival fixture).
+  const actingAgain = await send(rival, "/api/organizations/acting", "POST", { businessId: salon.id });
+  if (!actingAgain.ok) throw new Error(`could not act for the salon (${actingAgain.status}); stopping before writing to the wrong business`);
   const tmp = (await pg.query(`INSERT INTO "StaffMember"(id,"businessId","nameAr",access,"loginPhone","isActive","updatedAt") VALUES ($1,$2,'موظف بدخول (اختبار)','PROVIDER','01000099991',true,now()) RETURNING id`, [`${tag}-staff`, salon.id])).rows[0].id;
   created.staff.push(tmp);
   const edited = await send(rival, `/api/business/staff/${tmp}`, "PUT", { role: "تجربة" });

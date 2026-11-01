@@ -163,4 +163,15 @@ Notifications are unchanged. A booking outside any venue moves exactly as before
 | P23-O4 | A real gate provider (E) needs, in order: an agreement, the operator's specification, credentials and an approved integration test. Then one adapter file (see the interface doc) |
 | O4 (existing) | `bookings/reliability.db.test.ts` timeouts under a loaded parallel run |
 
+## Post-phase audit (2026-11-01)
+
+An independent post-phase audit re-verified this phase:
+* It found 24 more defects (none P0; nine P2), fixed in `9278bfe`. One (A3) was fixed in part; its remainder is open.
+* A review of that fix commit found 10 issues: 9 fixed in `1055dbb`, 1 dismissed with a reason.
+* It added 10 DB tests, 6 unit tests and a 15-check browser loop script (`scripts/qa-phase23-loops.mjs`). It also added four indexes to `phase23_access.sql`; the migration is still unapplied in production, so these go in with it.
+
+Verdict: **PARTIAL**, because E is externally blocked, production is not yet verified, and the Phase 23 screens are Arabic only.
+
+See `docs/qa/PHASE_23_POST_AUDIT.md`, `PHASE_23_LOOP_AUDIT.md`, `PHASE_23_REGRESSION_RESULTS.md` and `PHASE_23_OPEN_ISSUES.md`.
+
 Phase 24 has not been started.
