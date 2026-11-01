@@ -466,7 +466,7 @@ async function handleBookingSuccess(
   // still free: the exclusion constraint decides, and a time somebody
   // else has taken since is left with them.
   let revived = false;
-  let retaken = true;
+  let retaken = false;
   if (payment.bookingId && before === "FAILED_PAYMENT") {
     try {
       // Its time comes back into the overlap constraints, so it waits

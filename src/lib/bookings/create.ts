@@ -424,7 +424,6 @@ class LimitReached extends Error {}
 class DiscountGone extends Error {}
 class PublishedMeanwhile extends Error {}
 
-
 function pgCode(e: unknown): string | null {
   if (e instanceof Prisma.PrismaClientKnownRequestError) {
     // Prisma maps some of these to its own P-codes but keeps the
