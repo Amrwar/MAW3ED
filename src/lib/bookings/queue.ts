@@ -38,21 +38,46 @@ export async function takeBookingQueue(tx: Prisma.TransactionClient, businessId:
  * the transaction's timeout either: the transaction begins at its turn.
  *
  * The wait is bounded like the pool's: a request that has not reached
- * its turn in LINE_WAIT_MS gives up before doing anything, with the same
- * error as a transaction that could not start, so callers retry or
- * answer "busy" as they already do — and it never runs later, after its
- * caller was told it failed.
+ * its turn in WAIT_MS gives up before doing anything, and it never runs
+ * later, after its caller was told it failed. It fails as Prisma's
+ * P2028, so the public route answers "busy, try again" (503) — but it is
+ * not retried here: the line is genuinely backed up, and joining its end
+ * again would only make the wait longer.
  */
 const lines = new Map<string, Promise<void>>();
-const LINE_WAIT_MS = 10_000;
-/** The businesses whose turn the current async context holds. */
-const holding = new AsyncLocalStorage<ReadonlySet<string>>();
+/** How long a request waits for its turn, and then for a connection. */
+const WAIT_MS = 10_000;
+
+/** The turns the current async context holds; a turn ends when its write does. */
+interface Held {
+  readonly businessIds: ReadonlySet<string>;
+  active: boolean;
+}
+const holding = new AsyncLocalStorage<Held>();
+
+function heldNow(): Held | undefined {
+  const held = holding.getStore();
+  return held?.active ? held : undefined;
+}
+
+/** True inside a queued write for this business. */
+export function holdsBookingQueue(businessId: string): boolean {
+  return heldNow()?.businessIds.has(businessId) ?? false;
+}
+
+/** A write asked, inside its own turn, for another turn at the same business. */
+export class BookingQueueReentered extends Error {
+  constructor(businessId: string) {
+    super(`booking queue re-entered for business ${businessId}`);
+    this.name = "BookingQueueReentered";
+  }
+}
 
 async function inLine<T>(businessId: string, run: () => Promise<T>): Promise<T> {
   // A write that, inside its own turn, asked for another at the same
   // business would wait on itself for ever. Refuse it at once.
-  const held = holding.getStore();
-  if (held?.has(businessId)) throw new Error(`booking queue re-entered for business ${businessId}`);
+  const held = heldNow();
+  if (held?.businessIds.has(businessId)) throw new BookingQueueReentered(businessId);
 
   let release!: () => void;
   const turn = new Promise<void>((r) => (release = r));
@@ -63,26 +88,35 @@ async function inLine<T>(businessId: string, run: () => Promise<T>): Promise<T> 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const reached = await Promise.race([
     ahead.then(() => true),
-    new Promise<false>((r) => (timer = setTimeout(() => r(false), LINE_WAIT_MS))),
+    new Promise<false>((r) => (timer = setTimeout(() => r(false), WAIT_MS))),
   ]);
   clearTimeout(timer);
+  const forget = () => {
+    if (lines.get(businessId) === tail) lines.delete(businessId);
+  };
   if (!reached) {
     // Our turn passes straight on when it comes, so those behind us
     // are not held up by a request that is no longer waiting.
     release();
-    throw lineTimeout();
+    void tail.then(forget);
+    throw lineBusy();
   }
+  const mine: Held = { businessIds: new Set([...(held?.businessIds ?? []), businessId]), active: true };
   try {
-    return await holding.run(new Set([...(held ?? []), businessId]), run);
+    return await holding.run(mine, run);
   } finally {
+    // Work the write started and left running keeps this context, but
+    // no longer holds the turn.
+    mine.active = false;
     release();
-    if (lines.get(businessId) === tail) lines.delete(businessId);
+    forget();
   }
 }
 
-function lineTimeout(): Prisma.PrismaClientKnownRequestError {
+/** Prisma's "could not start a transaction" code, without the words that would retry it. */
+function lineBusy(): Prisma.PrismaClientKnownRequestError {
   return new Prisma.PrismaClientKnownRequestError(
-    "Unable to start a transaction in the given time: waited too long in the business's booking queue.",
+    "The business's booking queue is busy: no turn within the wait.",
     { code: "P2028", clientVersion: Prisma.prismaVersion.client },
   );
 }
@@ -103,7 +137,7 @@ export function queuedTransaction<T>(businessId: string, write: (tx: Prisma.Tran
         isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
         // Prisma's default gives a transaction two seconds to *start*;
         // under a burst across businesses the pool can take longer.
-        maxWait: 10_000,
+        maxWait: WAIT_MS,
         timeout: 20_000,
       },
     ),

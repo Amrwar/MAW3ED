@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { canTransition, releasesTime, type BookingStatusValue, type Mover } from "./transitions";
 import { accessAfterMove } from "@/lib/access/hooks";
-import { inBookingQueue } from "./queue";
+import { holdsBookingQueue, inBookingQueue } from "./queue";
 
 /**
  * Moving a booking from one status to another, safely.
@@ -53,10 +53,18 @@ export async function moveBooking(input: MoveInput, tx?: Tx): Promise<MoveResult
   // constraints check again, so it waits in the business's booking queue
   // (lib/bookings/queue.ts) like any write of a time. A move that ends
   // the booking leaves the constraints and needs no turn.
-  // A caller passing its own transaction runs it in the queue already
-  // when the move is live (check-in does, through inBookingQueue).
+  // A caller passing its own transaction must run it in the queue when
+  // the move is live (check-in does, through inBookingQueue).
   const live = !endsBooking(input.to);
-  if (tx) return applyMove(tx, input);
+  if (tx) {
+    if (live) {
+      const row = await tx.booking.findUnique({ where: { id: input.bookingId }, select: { businessId: true } });
+      if (row && !holdsBookingQueue(row.businessId)) {
+        throw new Error(`moveBooking to ${input.to} in a transaction outside the booking queue (lib/bookings/queue.ts)`);
+      }
+    }
+    return applyMove(tx, input);
+  }
   if (!live) return db.$transaction((t) => applyMove(t, input));
   const row = await db.booking.findUnique({ where: { id: input.bookingId }, select: { businessId: true } });
   if (!row) return { moved: false, why: "changed" };
