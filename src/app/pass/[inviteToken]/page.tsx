@@ -33,7 +33,7 @@ export default async function GuestPassPage({ params }: { params: Promise<{ invi
           {en ? `${view.venue ? `${view.venue.name} ` : ""}visitor pass` : `تصريح دخول${view.venue ? ` ${view.venue.name}` : ""}`}
         </h1>
         {view.sandbox && (
-          <p className="rounded-[var(--radius-sm)] bg-[var(--color-warn-soft)] px-3 py-2 text-xs font-bold text-[var(--color-star)]">
+          <p className="rounded-[var(--radius-sm)] bg-[var(--color-warn-soft)] px-3 py-2 text-xs font-bold text-[var(--color-warn)]">
             {en ? "Test environment: this pass is not valid at any real gate." : "بيئة تجريبية: التصريح ده مش صالح عند أي بوابة حقيقية."}
           </p>
         )}

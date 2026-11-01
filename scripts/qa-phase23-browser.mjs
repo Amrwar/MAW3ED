@@ -20,6 +20,22 @@ import { randomBytes } from "crypto";
 const require = createRequire(import.meta.url);
 const { Client } = require("pg");
 const { chromium } = require("playwright");
+const fs = require("fs");
+const AXE = fs.readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
+/** Text that fails WCAG AA contrast on the page now, as "selector: ratio" (axe-core). */
+async function lowContrast(page) {
+  // Measured once the page is at rest: a button fading back from its
+  // disabled (busy) look reads as low contrast mid-transition.
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(600);
+  await page.addScriptTag({ content: AXE });
+  return page.evaluate(async () =>
+    (await window.axe.run(document, { runOnly: ["color-contrast"] })).violations.flatMap((v) =>
+      v.nodes.map((n) => {
+        const d = n.any[0]?.data ?? {};
+        return `${n.html.slice(0, 90)} ${d.fgColor}/${d.bgColor} ${d.contrastRatio ?? "?"}`;
+      })));
+}
 
 const B = process.argv.slice(2).find((a) => /^https?:/.test(a)) ?? "http://localhost:3101";
 const DB = "postgresql://qa:qa@localhost:5450/maw3ed_qa";
@@ -128,6 +144,8 @@ try {
   await page.getByRole("button", { name: "اطلب تصريح دخول" }).click();
   await page.getByText("مستني موافقة نظام الدخول").waitFor({ timeout: 15000 });
   check("customer page: asking shows the pass as pending (not active)", true);
+  const pendingContrast = await lowContrast(page);
+  check("customer page: pending badge and sandbox notice meet contrast (axe)", pendingContrast.length === 0, pendingContrast.slice(0, 3).join(" | "));
   await fetch(`${B}/api/cron/access`, { headers: cron });
   await fetch(`${B}/api/dev/access-sandbox`, { method: "POST", headers: cron, body: JSON.stringify({ action: "mode", mode: "NORMAL" }) });
   await fetch(`${B}/api/dev/access-sandbox`, { method: "POST", headers: cron, body: JSON.stringify({ action: "confirm" }) });
@@ -205,6 +223,8 @@ try {
   check("EN customer page: no Arabic left in the panel (names aside)", !arabicLeft(panel, names), arabicLeft(panel, names));
   check("EN customer page: times use Western digits", !ARABIC_DIGITS.test(panel));
   check("EN customer page: no console errors", eerr.length === 0, eerr.slice(0, 3).join(" | "));
+  const enContrast = await lowContrast(ep);
+  check("EN customer page: text meets contrast (axe)", enContrast.length === 0, enContrast.slice(0, 3).join(" | "));
 
   // The rest of the booking page, in English.
   const { rows: [svc] } = await pg.query(`SELECT s."nameAr" FROM "Service" s JOIN "Booking" bk ON bk."serviceId" = s.id WHERE bk.id = $1`, [b2.id]);
@@ -241,6 +261,8 @@ try {
   const passText = await ep.locator("main").innerText();
   check("EN guest pass page: English, left to right", /Browser Mall visitor pass/.test(passText) && (await ep.locator("main").evaluate((e) => getComputedStyle(e).direction)) === "ltr");
   check("EN guest pass page: no Arabic left", !arabicLeft(passText), arabicLeft(passText));
+  const passContrast = await lowContrast(ep);
+  check("EN guest pass page: text meets contrast (axe)", passContrast.length === 0, passContrast.slice(0, 3).join(" | "));
   const code2 = (await (await fetch(`${B}/api/booking/${b2.token}/access`)).json()).checkIn.url;
   await ep.goto(code2, { waitUntil: "networkidle" });
   check("EN /c/<code> signed out: explains the code in English", await ep.getByText("This is a booking check-in code").count() === 1 && await ep.getByText("Work there? Sign in to check the customer in").count() === 1);
@@ -280,6 +302,8 @@ try {
   const data = [...names, "ضيف المتصفح", salon.nameAr, "فحص QA"];
   check("EN security desk: no Arabic left (Arabic data aside)", !arabicLeft(secText, data), arabicLeft(secText, data));
   check("EN security desk: no console errors", eserr.length === 0, eserr.slice(0, 3).join(" | "));
+  const deskContrast = await lowContrast(esp);
+  check("EN security desk: text meets contrast (axe)", deskContrast.length === 0, deskContrast.slice(0, 3).join(" | "));
   await esec.close();
 } catch (e) {
   check("script ran to completion", false, e instanceof Error ? e.stack : String(e));

@@ -172,7 +172,7 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
           <div><dt className="text-xs text-[var(--color-muted)]">{t("التصعيد", "Escalation")}</dt><dd>{s.escalationContact ?? "—"}</dd></div>
         </dl>
         {s.provider?.kind === "SANDBOX" && (
-          <p className="rounded-[var(--radius-sm)] bg-[var(--color-warn-soft)] px-3 py-2 text-xs font-bold text-[var(--color-star)]">
+          <p className="rounded-[var(--radius-sm)] bg-[var(--color-warn-soft)] px-3 py-2 text-xs font-bold text-[var(--color-warn)]">
             {t("المزوّد ده بيئة تجريبية: تصاريحه مش صالحة عند أي بوابة حقيقية.", "This provider is a test environment: its passes are not valid at any real gate.")}
           </p>
         )}

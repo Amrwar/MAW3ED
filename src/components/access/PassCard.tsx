@@ -25,10 +25,10 @@ export interface PassViewJson {
 
 const STATE: Record<PassViewJson["state"], { label: [ar: string, en: string]; tone: string }> = {
   ineligible: { label: ["مش مؤهل", "Not eligible"], tone: "text-[var(--color-subtle)] bg-[var(--color-surface-2)]" },
-  pending: { label: ["مستني موافقة نظام الدخول", "Waiting for the access system"], tone: "text-[var(--color-star)] bg-[var(--color-warn-soft)]" },
+  pending: { label: ["مستني موافقة نظام الدخول", "Waiting for the access system"], tone: "text-[var(--color-warn)] bg-[var(--color-warn-soft)]" },
   active: { label: ["فعّال", "Active"], tone: "text-[var(--color-ok)] bg-[var(--color-ok-soft)]" },
   updating: { label: ["فعّال — بيتحدّث بالميعاد الجديد", "Active — updating to the new time"], tone: "text-[var(--color-info)] bg-[var(--color-info-soft)]" },
-  suspended: { label: ["موقوف مؤقتًا", "Temporarily suspended"], tone: "text-[var(--color-star)] bg-[var(--color-warn-soft)]" },
+  suspended: { label: ["موقوف مؤقتًا", "Temporarily suspended"], tone: "text-[var(--color-warn)] bg-[var(--color-warn-soft)]" },
   revoked: { label: ["اتلغى", "Cancelled"], tone: "text-[var(--color-danger)] bg-[var(--color-danger-soft)]" },
   withdrawing: { label: ["بيتلغي", "Being cancelled"], tone: "text-[var(--color-danger)] bg-[var(--color-danger-soft)]" },
   expired: { label: ["انتهى", "Expired"], tone: "text-[var(--color-subtle)] bg-[var(--color-surface-2)]" },
@@ -58,7 +58,7 @@ export default function PassCard({ v, onRetry, busy }: { v: PassViewJson; onRetr
       {showCode && v.qrSvg && (
         <div className="space-y-2">
           {v.pass!.sandbox && (
-            <p className="rounded-[var(--radius-sm)] bg-[var(--color-warn-soft)] px-3 py-2 text-xs font-bold text-[var(--color-star)]">
+            <p className="rounded-[var(--radius-sm)] bg-[var(--color-warn-soft)] px-3 py-2 text-xs font-bold text-[var(--color-warn)]">
               {t("تصريح تجريبي — مش صالح عند أي بوابة حقيقية", "Test pass — not valid at any real gate")}
             </p>
           )}

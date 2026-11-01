@@ -216,7 +216,7 @@ export default function AccessPanel({ token, customerName }: { token: string; cu
             )}
           </p>
           {va.sandbox && (
-            <p className="rounded-[var(--radius-sm)] bg-[var(--color-warn-soft)] px-3 py-2 text-xs font-bold text-[var(--color-star)]">
+            <p className="rounded-[var(--radius-sm)] bg-[var(--color-warn-soft)] px-3 py-2 text-xs font-bold text-[var(--color-warn)]">
               {t("بيئة تجريبية: التصاريح هنا مش صالحة عند أي بوابة حقيقية.", "Test environment: passes here are not valid at any real gate.")}
             </p>
           )}

@@ -43,9 +43,9 @@ function formatDate(date: Date, lang: Lang): string {
 // customer. The two payment states were missing, so a customer whose
 // card failed — the person most likely to open this page — got an error.
 const STATUS_CONFIG = {
-  PENDING_PAYMENT: { label: "بانتظار الدفع", labelEn: "Pending Payment", icon: CreditCard, color: "text-[var(--color-star)]", bg: "bg-[var(--color-warn-soft)]", border: "border-[var(--color-warn-line)]" },
+  PENDING_PAYMENT: { label: "بانتظار الدفع", labelEn: "Pending Payment", icon: CreditCard, color: "text-[var(--color-warn)]", bg: "bg-[var(--color-warn-soft)]", border: "border-[var(--color-warn-line)]" },
   FAILED_PAYMENT:  { label: "لم يكتمل الدفع", labelEn: "Payment Failed", icon: XCircle,   color: "text-[var(--color-danger)]", bg: "bg-[var(--color-danger-soft)]", border: "border-[var(--color-danger-line)]" },
-  PENDING:     { label: "في الانتظار", labelEn: "Pending",  icon: Clock,        color: "text-[var(--color-star)]",  bg: "bg-[var(--color-warn-soft)]",  border: "border-[var(--color-warn-line)]" },
+  PENDING:     { label: "في الانتظار", labelEn: "Pending",  icon: Clock,        color: "text-[var(--color-warn)]",  bg: "bg-[var(--color-warn-soft)]",  border: "border-[var(--color-warn-line)]" },
   CONFIRMED:   { label: "مؤكد", labelEn: "Confirmed",         icon: CheckCircle,  color: "text-[var(--color-ok)]",  bg: "bg-[var(--color-ok-soft)]",  border: "border-[var(--color-ok-line)]" },
   ARRIVED:     { label: "وصلت", labelEn: "Arrived",         icon: CheckCircle,  color: "text-[var(--color-jade)]", bg: "bg-[var(--color-jade-soft)]", border: "border-[var(--color-jade-line)]" },
   IN_PROGRESS: { label: "جاري التنفيذ", labelEn: "In progress", icon: Clock,        color: "text-[var(--color-info)]", bg: "bg-[var(--color-info-soft)]", border: "border-[var(--color-info-line)]" },
