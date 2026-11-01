@@ -103,8 +103,8 @@ All on this branch, against the QA database and a production build with `ACCESS_
 | Suite | Result |
 |---|---|
 | Phase 23 unit (`src/lib/access/access.test.ts`) | 24/24 |
-| Phase 23 DB (`src/lib/access/phase23.db.test.ts`), including 6 review-finding tests | 26/26 |
-| Full suite with DB suites | 1265 passed, 34 skipped (second run). The first run had 3 timeouts in `bookings/reliability.db.test.ts`, which passes 13/13 alone and in the next full run: known flake O4, and booking creation does not touch Phase 23 code |
+| Phase 23 DB (`src/lib/access/phase23.db.test.ts`), including 7 review-finding tests | 27/27 |
+| Full suite with DB suites | 1266 passed, 34 skipped. Two earlier full runs each had one or three contention tests time out or race (`bookings/reliability.db.test.ts`, `bookings/create.db.test.ts`). Both pass alone, repeatedly, and in the next full run: the known load flake O4. Booking creation does not touch Phase 23 code |
 | Lint | 0 errors (6 warnings, all in files this phase does not touch) |
 | Type check | clean |
 | `scripts/qa-phase23.mjs` (HTTP) | 48/48 |
@@ -142,6 +142,7 @@ Notifications are unchanged. A booking outside any venue moves exactly as before
 | The QR URL was relative when `NEXT_PUBLIC_SITE_URL` was not set at build. Fix: the existing `siteUrl()` helper | HTTP QA |
 | Repo guard tests: undeclared env vars, rate limits above the house maximum, open routes without reasons | Full suite |
 | Ten code-review findings (security-hold bypass, lost confirmations, stuck revocations, stale passes after a failed update, booking moves exposed to access failures, unhelpful cancelled-code result, retry cap counting re-issues, an over-broad security role, holder phone). All fixed, each with a test where one is possible | Code review; see the matrix ("R1–R10") |
+| Ten further findings from re-reviewing the fix commit (retry rounds that could starve or never end, a cancellation whose withdrawal could roll back, a recovery replay that could strand a live pass, callback status, lock wait, escalation check, re-issue bound, duplicated logic). All addressed; one more test ("R4b") | Second code review |
 
 ## Deploying
 

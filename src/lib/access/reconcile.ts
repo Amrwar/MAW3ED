@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { syncBookingAccess } from "./passes";
 import { adapterFor } from "./provider";
-import { applyIssue, includeFull, passRequest, runAccessJobs, withTimeout, type CredentialFull, type RunResult } from "./sync";
+import { applyIssue, includeFull, replayProvision, runAccessJobs, withdrawCredential, withTimeout, type CredentialFull, type RunResult } from "./sync";
 
 /**
  * The access cron's work (/api/cron/access, every five minutes). Each step
@@ -72,11 +72,11 @@ export async function reconcileAccess(opts: { now?: Date; batch?: number; budget
   const stale = { asked: 0, failed: 0, recovered: 0 };
   const pending = await db.accessCredential.findMany({
     where: { status: "PENDING_PROVIDER", providerRef: { not: null }, updatedAt: { lte: new Date(now.getTime() - STALE_PENDING_MS) } },
-    include: { provider: true },
+    include: includeFull,
     orderBy: { updatedAt: "asc" },
     take: Math.min(batch, 20),
   });
-  for (const c of pending) {
+  for (const c of pending as CredentialFull[]) {
     if (Date.now() >= deadline) break;
     if (now.getTime() - c.createdAt.getTime() >= GIVE_UP_PENDING_MS) {
       await db.accessCredential.updateMany({
@@ -98,14 +98,18 @@ export async function reconcileAccess(opts: { now?: Date; batch?: number; budget
         stale.failed++;
       } else if (remote.status === "ACTIVE") {
         // Issued there, but its confirmation never reached us. Asking for
-        // it again with the original idempotency key returns the same pass
+        // it again with the original key and request returns the same pass
         // (and its token), which is then recorded as any answer is.
-        const job = await db.accessSyncJob.findFirst({ where: { credentialId: c.id, kind: "PROVISION" }, orderBy: { createdAt: "asc" } });
-        const full = (await db.accessCredential.findUnique({ where: { id: c.id }, include: includeFull })) as CredentialFull | null;
-        if (job && full) {
-          const r = await withTimeout((signal) => adapter.provision(passRequest(full), { idempotencyKey: job.idempotencyKey, correlationId: c.correlationId, signal }));
-          await applyIssue(full, r, now);
+        const r = await replayProvision(adapter, c);
+        if (r?.outcome === "active") {
+          await applyIssue(c, r, now);
           stale.recovered++;
+        } else if (r?.outcome === "refused") {
+          // It holds an active pass it will not describe again: withdraw
+          // it rather than mark it failed and leave it valid at the gate.
+          await db.$transaction((tx) => withdrawCredential(tx, c, "unconfirmed-pass", "the provider would not confirm a pass it holds", now));
+        } else {
+          await db.accessCredential.update({ where: { id: c.id }, data: { updatedAt: now } });
         }
       } else {
         // Still pending there: ask again next time (touching moves it to the back).
@@ -127,11 +131,34 @@ export async function reconcileAccess(opts: { now?: Date; batch?: number; budget
       jobs: { none: { status: "PENDING" } },
       updatedAt: { lte: new Date(now.getTime() - ROUND_MS) },
     },
-    select: { id: true, correlationId: true, version: true, _count: { select: { jobs: { where: { kind: "REVOKE" } } } } },
+    select: { id: true, correlationId: true, version: true, providerId: true, entitlementId: true, entitlement: { select: { venueId: true } }, _count: { select: { jobs: { where: { kind: "REVOKE" } } } } },
+    orderBy: { updatedAt: "asc" },
     take: Math.min(batch, 20),
   });
   for (const c of stuck) {
-    if (c._count.jobs > REVOKE_ROUNDS) continue;
+    if (c._count.jobs > REVOKE_ROUNDS) {
+      // A day of asking: stop. It stays withdrawn on Maw3ed's side, and is
+      // closed (REVOKED, its revocation still unconfirmed) so the person
+      // can be issued a pass again; a person is told to check the gate
+      // system by hand. Leaving it pending would block that person forever
+      // and keep it in this batch.
+      await db.$transaction(async (tx) => {
+        const n = await tx.accessCredential.updateMany({
+          where: { id: c.id, status: "REVOKE_PENDING" },
+          data: { status: "REVOKED", lastError: "the provider never confirmed the withdrawal" },
+        });
+        if (n.count) {
+          await tx.accessEvent.create({
+            data: {
+              venueId: c.entitlement.venueId, providerId: c.providerId, credentialId: c.id, entitlementId: c.entitlementId,
+              kind: "ESCALATION", occurredAt: now, correlationId: c.correlationId,
+              reason: "stopped asking the provider to withdraw a pass; check the gate system by hand",
+            },
+          });
+        }
+      });
+      continue;
+    }
     await db.$transaction(async (tx) => {
       await tx.accessSyncJob.createMany({
         data: [{ credentialId: c.id, kind: "REVOKE", idempotencyKey: `${c.id}:REVOKE:${c.version}:r${c._count.jobs}`, correlationId: c.correlationId }],

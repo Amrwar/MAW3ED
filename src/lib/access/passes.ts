@@ -43,12 +43,15 @@ const LIVE: AccessCredential["status"][] = ["PENDING_PROVIDER", "ACTIVE", "REVOK
 /** Ineligibility that ends a pass for good; every other reason only holds it. */
 export const FINAL_REASONS = new Set(["booking-cancelled", "booking-no_show", "booking-failed_payment", "guest-removed", "test-booking"]);
 /**
- * How many FAILED issues one pass may go through before a person must
- * look. Passes withdrawn and re-issued because the booking or the venue
+ * How many unhealthy ends one pass may go through before a person must
+ * look: issues that FAILED, and passes withdrawn because the provider
+ * misbehaved (a lost update, an unconfirmed pass — they carry lastError).
+ * Passes withdrawn and re-issued because the booking or the venue
  * changed do not count: those are not failures.
  */
 export const MAX_CREDENTIALS_PER_ENTITLEMENT = 5;
-export const failedCount = (credentials: { status: string }[]) => credentials.filter((c) => c.status === "FAILED").length;
+export const failedCount = (credentials: { status: string; lastError?: string | null }[]) =>
+  credentials.filter((c) => c.status === "FAILED" || !!c.lastError).length;
 
 /**
  * Serialises access work on one booking: every path that may issue or
@@ -58,7 +61,12 @@ export const failedCount = (credentials: { status: string }[]) => credentials.fi
  * credential. Released at commit or rollback.
  */
 async function lockBooking(tx: Tx, bookingId: string): Promise<void> {
+  // Never wait long: a lock timeout is an ordinary error the caller can
+  // handle, where an endless wait would run into the transaction's own
+  // timeout and close it.
+  await tx.$executeRaw`SET LOCAL lock_timeout = '3s'`;
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`access:${bookingId}`}, 0))`;
+  await tx.$executeRaw`SET LOCAL lock_timeout = DEFAULT`;
 }
 
 /** A wall-clock-frame instant (lib/bookings/instants) as the real instant. */

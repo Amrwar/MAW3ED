@@ -69,6 +69,53 @@ export async function enqueueJob(
   });
 }
 
+/**
+ * Withdraws a credential the provider may still honour: REVOKE_PENDING,
+ * a revocation record, and the REVOKE call. `lastError` marks it as an
+ * unhealthy end, which counts toward the per-pass cap (passes.ts), so a
+ * provider that keeps failing cannot cause endless re-issue.
+ */
+export async function withdrawCredential(
+  tx: Tx,
+  credential: Pick<AccessCredential, "id" | "correlationId" | "version">,
+  reason: string,
+  lastError: string,
+  at: Date,
+): Promise<boolean> {
+  const n = await tx.accessCredential.updateMany({
+    where: { id: credential.id, status: { in: ["ACTIVE", "PENDING_PROVIDER"] } },
+    data: { status: "REVOKE_PENDING", revokedAt: at, lastError },
+  });
+  if (!n.count) return false;
+  await tx.accessRevocation.create({ data: { credentialId: credential.id, reason } });
+  await enqueueJob(tx, credential, "REVOKE", credential.version);
+  return true;
+}
+
+/**
+ * Asks the provider for a credential again with its ORIGINAL provision
+ * idempotency key and request, to learn what it holds (the same pass
+ * and token) after an answer was lost. Null when it was never asked.
+ */
+export async function replayProvision(
+  adapter: { provision: (req: PassRequest, ctx: CallContext) => Promise<IssueResult> },
+  credential: CredentialFull,
+  timeoutMs = PROVIDER_TIMEOUT_MS,
+): Promise<IssueResult | null> {
+  const first = await db.accessSyncJob.findFirst({
+    where: { credentialId: credential.id, kind: "PROVISION", attempts: { gt: 0 } },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!first) return null;
+  // The original request: the version the first call asked for, so the
+  // provider sees the same call it may already have answered.
+  const version = Number(first.idempotencyKey.split(":").pop()) || credential.version;
+  return withTimeout(
+    (signal) => adapter.provision({ ...passRequest(credential), version }, { idempotencyKey: first.idempotencyKey, correlationId: credential.correlationId, signal }),
+    timeoutMs,
+  );
+}
+
 /** Runs due jobs once the response is sent (or at once, outside a request). */
 export function kickAccessJobs(): void {
   const run = () => runAccessJobs({ limit: 10, budgetMs: 15_000 }).catch((e) => log.error("[access] job run failed", e));
@@ -207,17 +254,12 @@ async function runOne(job: AccessSyncJob, now: () => Date, timeoutMs: number): P
             where: { credentialId: credential.id, kind: "PROVISION", status: "PENDING", leasedUntil: { gt: now() } },
           });
           if (provisioning) return retryLater(job, "a provision call is still in flight", now());
-          const asked = await db.accessSyncJob.findFirst({ where: { credentialId: credential.id, kind: "PROVISION", attempts: { gt: 0 } } });
-          if (asked) {
-            // The provision may have reached the provider with its answer
-            // lost. Asking again with the same idempotency key returns the
-            // same pass (or a refusal: nothing exists), so it can be revoked.
-            const again = await withTimeout((signal) =>
-              adapter.provision(passRequest(credential), { idempotencyKey: asked.idempotencyKey, correlationId: credential.correlationId, signal }),
-            timeoutMs);
-            ref = again.outcome === "refused" ? null : again.providerRef;
-            if (ref) await db.accessCredential.updateMany({ where: { id: credential.id, providerRef: null }, data: { providerRef: ref } });
-          }
+          // The provision may have reached the provider with its answer
+          // lost. Asking again with the same idempotency key returns the
+          // same pass (or a refusal: nothing exists), so it can be revoked.
+          const again = await replayProvision(adapter, credential, timeoutMs);
+          ref = again && again.outcome !== "refused" ? again.providerRef : null;
+          if (ref) await db.accessCredential.updateMany({ where: { id: credential.id, providerRef: null }, data: { providerRef: ref } });
         }
         if (ref) await withTimeout((signal) => adapter.revoke(ref!, "revoked", ctx(signal)), timeoutMs);
         await confirmRevoked(credential.id, now());
@@ -271,7 +313,8 @@ async function giveUp(job: AccessSyncJob, credential: CredentialFull, error: str
       // but cannot say the provider has. The credential stays
       // REVOKE_PENDING; the cron asks again in later rounds
       // (reconcile.ts, REVOKE_ROUNDS), and a person is told once.
-      if (job.idempotencyKey.includes(":r")) return;
+      const told = await tx.accessEvent.count({ where: { credentialId: credential.id, kind: "ESCALATION" } });
+      if (told) return;
       await tx.accessEvent.create({
         data: {
           venueId: credential.entitlement.venueId, providerId: credential.providerId, credentialId: credential.id,
@@ -291,14 +334,7 @@ async function giveUp(job: AccessSyncJob, credential: CredentialFull, error: str
           correlationId: credential.correlationId,
         },
       });
-      const n = await tx.accessCredential.updateMany({
-        where: { id: credential.id, status: { in: ["ACTIVE", "PENDING_PROVIDER"] } },
-        data: { status: "REVOKE_PENDING", revokedAt: at, lastError: "the provider did not take an update" },
-      });
-      if (n.count) {
-        await tx.accessRevocation.create({ data: { credentialId: credential.id, reason: "update-not-confirmed" } });
-        await enqueueJob(tx, credential, "REVOKE", credential.version);
-      }
+      await withdrawCredential(tx, credential, "update-not-confirmed", "the provider did not take an update", at);
     }
   });
   log.warn("[access] job dead-lettered", { job: job.id, kind: job.kind, correlationId: job.correlationId });

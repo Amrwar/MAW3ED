@@ -14,9 +14,10 @@ const MAX_BODY_BYTES = 16 * 1024;
  * event is applied idempotently and recorded once (lib/access/events.ts).
  *
  *   200 accepted / duplicate (a retried delivery: already have it)
- *   409 an event for a credential Maw3ed does not know (yet): not
- *       recorded, so the provider retries — a confirmation can race the
- *       answer that tells Maw3ed the provider's reference
+ *   503 + Retry-After: an event for a credential Maw3ed does not know
+ *       (yet). Not recorded, and a 5xx so any provider retries it — a
+ *       confirmation can race the answer that tells Maw3ed the provider's
+ *       reference. Logged, so a ref that never becomes known is visible.
  *   401 signature, timestamp or shape refused
  *   404 no such provider; 409 provider not usable here
  */
@@ -38,11 +39,11 @@ export async function POST(req: Request, { params }: Params) {
     }
     const status =
       outcome === "accepted" || outcome === "duplicate" ? 200
-      : outcome === "unknown-credential" ? 409
+      : outcome === "unknown-credential" ? 503
       : outcome === "invalid" ? 401
       : outcome === "unknown-provider" ? 404
       : 409;
-    return Response.json({ ok: status < 300, outcome }, { status });
+    return Response.json({ ok: status < 300, outcome }, { status, headers: status === 503 ? { "Retry-After": "30" } : undefined });
   } catch (e) {
     log.error("[access provider event]", e, { slug });
     // 500 so the provider retries: the event was not recorded.

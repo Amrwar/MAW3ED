@@ -735,4 +735,35 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
     }
     expect((await passes.bookingAccessView(b.id)).holder?.state).toBe("active");
   });
+
+  it("R4b: after the last round the withdrawal is closed with an escalation, and the person can be issued a pass again", async () => {
+    const a = await business("r4b");
+    const { venue: v } = await venue("r4b", a);
+    const guard = await user("r4b-guard");
+    const b = await booking(a, "CONFIRMED", 60);
+    await passes.requestPass(b.id, { displayName: "منى", phoneE164: null, userId: null });
+    await drain(1);
+    const ent = await db.accessEntitlement.findFirstOrThrow({ where: { bookingId: b.id } });
+    await sandbox.setSandboxMode("DOWN");
+    try {
+      await passes.securitySuspend(ent.id, v.id, guard.id, "hold");
+      await drain(sync.MAX_ATTEMPTS + 2);
+    } finally {
+      await sandbox.setSandboxMode("NORMAL");
+    }
+    const cred = (await db.accessCredential.findMany({ where: { entitlementId: ent.id } }))[0];
+    // As if every hourly round had already been tried and died.
+    await db.accessSyncJob.createMany({
+      data: Array.from({ length: reconcile.REVOKE_ROUNDS }, (_, i) => ({
+        credentialId: cred.id, kind: "REVOKE" as const, status: "DEAD" as const, idempotencyKey: `${cred.id}:REVOKE:x:${i}`, correlationId: cred.correlationId,
+      })),
+    });
+    await db.accessCredential.update({ where: { id: cred.id }, data: { updatedAt: new Date(Date.now() - 2 * 60 * 60_000) } });
+    await reconcile.reconcileAccess({ batch: 500 });
+    expect((await db.accessCredential.findUniqueOrThrow({ where: { id: cred.id } })).status).toBe("REVOKED");
+    expect(await db.accessEvent.count({ where: { credentialId: cred.id, kind: "ESCALATION" } })).toBe(2);
+    await passes.securityReinstate(ent.id, v.id, guard.id, "cleared");
+    await drain(1);
+    expect((await passes.bookingAccessView(b.id)).holder?.state).toBe("active");
+  });
 });

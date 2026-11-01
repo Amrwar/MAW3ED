@@ -52,6 +52,9 @@ export async function moveBooking(input: MoveInput, tx?: Tx): Promise<MoveResult
   return db.$transaction((t) => applyMove(t, input));
 }
 
+const ENDING: readonly string[] = ["CANCELLED", "NO_SHOW", "COMPLETED", "FAILED_PAYMENT"];
+const endsBooking = (to: string) => ENDING.includes(to);
+
 async function applyMove(tx: Tx, input: MoveInput): Promise<MoveResult> {
   const { count } = await tx.booking.updateMany({
     where: { id: input.bookingId, status: input.from as BookingStatusValue },
@@ -87,17 +90,25 @@ async function applyMove(tx: Tx, input: MoveInput): Promise<MoveResult> {
   }
 
   // The booking's check-in code and any visitor passes follow it, in this
-  // same transaction (lib/access/hooks.ts) — inside a savepoint, so a
-  // failure there (a lock timeout, a provider-side row in a bad state)
-  // never stops the booking itself moving. The cron reconciles passes
-  // within minutes, and a scan always reads the booking's own status.
-  await tx.$executeRaw`SAVEPOINT access_after_move`;
-  try {
+  // same transaction (lib/access/hooks.ts).
+  //
+  // A move that ENDS the booking (cancelled, no-show, completed) must
+  // withdraw its passes with it: if that fails, the move fails and is
+  // retried, rather than leaving a pass opening a gate for a cancelled
+  // booking. Any other move (a confirmation, an arrival) runs the access
+  // step in a savepoint, so a failure there never stops the booking
+  // moving; the cron issues or updates the pass later.
+  if (endsBooking(input.to)) {
     await accessAfterMove(tx, input.bookingId, input.to);
-    await tx.$executeRaw`RELEASE SAVEPOINT access_after_move`;
-  } catch (e) {
-    await tx.$executeRaw`ROLLBACK TO SAVEPOINT access_after_move`;
-    log.error("[access] could not update passes after a booking move; the cron will", e, { bookingId: input.bookingId, to: input.to });
+  } else {
+    await tx.$executeRaw`SAVEPOINT access_after_move`;
+    try {
+      await accessAfterMove(tx, input.bookingId, input.to);
+      await tx.$executeRaw`RELEASE SAVEPOINT access_after_move`;
+    } catch (e) {
+      await tx.$executeRaw`ROLLBACK TO SAVEPOINT access_after_move`;
+      log.error("[access] could not update passes after a booking move; the cron will", e, { bookingId: input.bookingId, to: input.to });
+    }
   }
   return { moved: true, refundNeededCents };
 }

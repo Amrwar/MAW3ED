@@ -43,13 +43,15 @@ Every test in the Phase 23 brief (1–26), where it is tested, and the result on
 |---|---|---|---|
 | R1 | A security hold was overwritten by any temporary reason and then lifted when that reason cleared | DB "R1" | FIXED, PASS |
 | R2 | A pass the provider issued, whose confirmation was lost, was marked failed after 24 h | DB "R2" | FIXED, PASS |
-| R3 | A callback that beat the provider reference was answered 202 and lost | DB "R2b"; route now answers 409 so the provider retries | FIXED, PASS |
-| R4 | A dead REVOKE left the credential stuck, blocking any new pass for good | DB "R4" (hourly rounds, max 24, then re-issue) | FIXED, PASS |
+| R3 | A callback that beat the provider reference was answered 202 and lost | DB "R2b"; route now answers 503 + Retry-After so any provider retries | FIXED, PASS |
+| R4 | A dead REVOKE left the credential stuck, blocking any new pass for good | DB "R4" (a later round succeeds, then re-issue); DB "R4b" (after the last round: closed, escalated, re-issue possible) | FIXED, PASS |
 | R5 | A dead UPDATE left the old pass valid at the gate on the old window | DB "R5" (withdrawn, then re-issued for the new time) | FIXED, PASS |
-| R6 | An access failure inside a booking move rolled the move back | Savepoint around the access step in `applyMove`; the full booking suites pass | FIXED (code-reviewed; no fault-injection test) |
+| R6 | An access failure inside a booking move rolled the move back | Moves that end a booking still withdraw passes in the same transaction (or fail, which is safe). Other moves run the access step in a savepoint. The access lock waits at most 3 s, so a timeout is an ordinary error and never the transaction's own timeout | FIXED (code-reviewed; no fault-injection test) |
 | R7 | A cancelled booking's code read as "not-found" at the desk | DB "7/8/25" now expects `cancelled` | FIXED, PASS |
 | R8 | Venue on/off cycles used up the customer's retry cap | DB "R8" | FIXED, PASS |
 | R9 | `VENUE_SECURITY` could read the venue console's API and tenant list | Unit "20"; QA "least privilege: security cannot read…" | FIXED, PASS |
 | R10 | A holder with no phone on file could not meet a phone requirement | Holder form offers an optional phone (the booking's own number is used otherwise) | FIXED (UI) |
+
+A second review of the fix commit found 10 more items. All are addressed: retry rounds that could starve or never end (now ordered, and closed after the last round), a cancellation whose withdrawal could be rolled back (ending moves are no longer in a savepoint), a recovery replay that could mark a live remote pass failed (it now replays the original request, and a refusal withdraws), the callback status (503), recovery counting, the lock wait, an explicit escalation check instead of a key pattern, the re-issue bound (unhealthy withdrawals count), and duplicated replay logic (one helper).
 
 "PASS (sandbox)" means the provider side was exercised against the sandbox provider. No real gate system has been tested (status E).
