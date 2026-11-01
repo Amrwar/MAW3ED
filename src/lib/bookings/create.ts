@@ -142,9 +142,9 @@ const BOOKING_SELECT = {
 
 /**
  * Attempts at the insert. A reference collision draws a new one; a
- * serialization failure — two bookings at one business counting the
- * month together — is retried as a whole, since the overlap constraint
- * still holds whatever the retry does.
+ * write conflict or deadlock (Prisma P2034) — now only against the writes
+ * that do not take the queue, such as a manual booking — is retried as a
+ * whole, since the overlap constraint still holds whatever the retry does.
  */
 const INSERT_ATTEMPTS = 6;
 
@@ -371,7 +371,7 @@ export async function createBooking(
         if (existing) return { ok: true, booking: existing, reused: true };
       }
 
-      // Two transactions at one business read together, or the member
+      // A conflict with a write outside the queue, or the member
       // (or table) this booking was given went to somebody else a moment
       // earlier. Ask again: another may still be free. Only a time
       // nobody can take any more is "taken".
