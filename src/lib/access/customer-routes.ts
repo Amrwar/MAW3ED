@@ -49,7 +49,7 @@ export function invalidVisitor(issue: { path: PropertyKey[]; code: string; messa
     field === "displayName"
       ? issue?.code === "too_big" ? "The name is too long (80 characters at most)" : "Enter a name (at least 2 characters)"
       : field === "phone"
-        ? "The mobile number is too long"
+        ? issue?.code === "too_big" ? "The mobile number is too long" : "Enter a valid mobile number"
         : "Those details are not valid";
   return err(message, 422);
 }

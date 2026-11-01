@@ -587,8 +587,7 @@ function toView(
 
 /** The venue's instructions in the chosen language; the Arabic ones when there is no English. */
 function instructionsFor(ctx: VenueContext, en: boolean): string | null {
-  const ar = ctx.policy?.accessInstructionsAr ?? null;
-  return ar === null ? (en && ctx.policy?.accessInstructionsEn?.trim()) || null : localName(en, ar, ctx.policy?.accessInstructionsEn);
+  return localName(en, ctx.policy?.accessInstructionsAr ?? "", ctx.policy?.accessInstructionsEn) || null;
 }
 
 /** Everything the booking holder's screen (web or app) shows about visitor access. */

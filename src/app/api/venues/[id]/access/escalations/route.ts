@@ -10,7 +10,7 @@ import { isEnglish } from "@/lib/lang";
 type Ctx = { params: Promise<{ id: string }> };
 
 const schema = z.object({
-  note: z.string().trim().min(3, "اكتب اللي حصل").max(300),
+  note: z.string().trim().min(3, "اكتب اللي حصل").max(300, "الكلام طويل — 300 حرف بالكتير"),
   entitlementId: z.string().min(1).max(64).optional(),
 });
 

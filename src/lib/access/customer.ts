@@ -87,8 +87,8 @@ async function withPassQr(view: BookingAccessView): Promise<BookingAccessView> {
 }
 
 export const visitorSchema = z.object({
-  displayName: z.string().trim().min(2, "اكتب الاسم").max(80),
-  phone: z.string().trim().max(30).optional().nullable(),
+  displayName: z.string().trim().min(2, "اكتب الاسم").max(80, "الاسم طويل — 80 حرف بالكتير"),
+  phone: z.string().trim().max(30, "رقم الموبايل طويل").optional().nullable(),
 });
 
 /** The phone as stored on a Visitor (+E.164), or null; "invalid" when given but unreadable. */

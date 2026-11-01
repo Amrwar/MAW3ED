@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ id: string; entitlementId: string }> };
 
 const schema = z.object({
   action: z.enum(["suspend", "reinstate"]),
-  note: z.string().trim().min(3, "اكتب السبب").max(300),
+  note: z.string().trim().min(3, "اكتب السبب").max(300, "السبب طويل — 300 حرف بالكتير"),
 });
 
 /**

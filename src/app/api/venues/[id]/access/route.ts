@@ -59,8 +59,8 @@ async function listProviders() {
 const putSchema = z
   .object({
     accessEnabled: z.boolean().optional(),
-    providerSlug: z.string().max(60).nullable().optional(),
-    siteRef: z.string().trim().max(120).nullable().optional(),
+    providerSlug: z.string().max(60, "مزوّد غير صالح").nullable().optional(),
+    siteRef: z.string().trim().max(120, "كود المكان طويل — 120 حرف بالكتير").nullable().optional(),
   })
   .refine((v) => v.accessEnabled !== undefined || v.providerSlug !== undefined || v.siteRef !== undefined, { message: "مفيش تغيير" });
 
@@ -68,7 +68,8 @@ const putSchema = z
 const PUT_ISSUE_EN: Record<string, string> = {
   accessEnabled: "Visitor passes can only be switched on or off",
   providerSlug: "That provider is not valid",
-  siteRef: "The venue code at the provider is too long (120 characters at most)",
+  siteRef: "The venue code at the provider is not valid",
+  "siteRef:too_big": "The venue code at the provider is too long (120 characters at most)",
 };
 
 export async function PUT(req: Request, { params }: Ctx) {
@@ -78,7 +79,7 @@ export async function PUT(req: Request, { params }: Ctx) {
     const parsed = putSchema.safeParse(await readJson(req));
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
-      return err(en ? PUT_ISSUE_EN[String(issue?.path[0])] ?? "Nothing to change" : issue?.message ?? "بيانات غير صالحة", 422);
+      return err(en ? PUT_ISSUE_EN[`${String(issue?.path[0])}:${issue?.code}`] ?? PUT_ISSUE_EN[String(issue?.path[0])] ?? "Nothing to change" : issue?.message ?? "بيانات غير صالحة", 422);
     }
     const body = parsed.data;
     const needsProvider = body.providerSlug !== undefined || body.siteRef !== undefined;
