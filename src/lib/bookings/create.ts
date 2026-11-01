@@ -23,7 +23,8 @@ import { minutesToTime, timeToMinutes } from "./time";
  *   1  the slot is re-derived on the server from the same engine that
  *      produced it, so a client cannot submit a time it was not offered
  *      and a time that has gone stale is rejected;
- *   2  the insert runs inside a transaction at Serializable isolation;
+ *   2  inserts at one business are queued, one transaction at a time,
+ *      so the month's count and the insert see each other;
  *   3  an exclusion constraint in Postgres rejects any overlap that
  *      slips past both, which is what actually holds under a race.
  *
@@ -217,7 +218,7 @@ export async function createBooking(
           // of storm, and customers told "taken" with tables still free.
           // Queued, each insert takes milliseconds and the constraint
           // still decides who wins.
-          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`booking-insert|${input.businessId}`}))`;
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`booking-insert:${input.businessId}`}, 0))`;
 
           // A test booking exists only on a private page. Publishing
           // locks the business row and deletes test bookings in one
@@ -308,9 +309,12 @@ export async function createBooking(
           return created;
         },
         {
-          // Serializable, because the limit count and the insert have to
-          // see a consistent view of the month.
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          // Read Committed, so each statement sees what the bookings
+          // queued ahead of this one committed: the lock above makes the
+          // month's count exact. At Serializable the snapshot is taken
+          // before the lock is granted, and every queued insert at a
+          // business with a monthly limit failed and retried on it.
+          isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
           // A burst of bookings at one business queues for the connection
           // pool. Each insert holds a connection for milliseconds, but
           // Prisma's default gives a transaction two seconds to *start*,
