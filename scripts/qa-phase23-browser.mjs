@@ -10,7 +10,8 @@
  *   the pending-pass check stops polling on its own. Then the same
  *   screens again with English chosen (the maw3ed-lang cookie): English
  *   words, left-to-right, Western digits, the server's reasons and names
- *   in English, and the guest pass page and /c/<code> too.
+ *   in English, the guest pass page and /c/<code> too, and the rest of
+ *   the booking page (status, details, changing the time, cancelling).
  *
  *   CRON_SECRET=p19-local-cron node scripts/qa-phase23-browser.mjs [baseUrl]
  */
@@ -204,6 +205,37 @@ try {
   check("EN customer page: no Arabic left in the panel (names aside)", !arabicLeft(panel, names), arabicLeft(panel, names));
   check("EN customer page: times use Western digits", !ARABIC_DIGITS.test(panel));
   check("EN customer page: no console errors", eerr.length === 0, eerr.slice(0, 3).join(" | "));
+
+  // The rest of the booking page, in English.
+  const { rows: [svc] } = await pg.query(`SELECT s."nameAr", s."nameEn" FROM "Service" s JOIN "Booking" bk ON bk."serviceId" = s.id WHERE bk.id = $1`, [b2.id]);
+  const pageData = [...names, salon.nameAr, svc.nameAr];
+  check("EN booking page: left to right, with the status and details in English",
+    (await ep.locator("main").evaluate((e) => getComputedStyle(e).direction)) === "ltr" &&
+    await ep.getByText("Confirmed", { exact: true }).count() === 1 && await ep.getByText("Booking details").count() === 1);
+  const pageText = await ep.locator("main").innerText();
+  check("EN booking page: no Arabic left anywhere on it (Arabic data aside)", !arabicLeft(pageText, pageData), arabicLeft(pageText, pageData));
+  check("EN booking page: no Arabic-Indic digits", !ARABIC_DIGITS.test(pageText));
+  check("EN booking page: no console errors", eerr.length === 0, eerr.slice(0, 3).join(" | "));
+  // Changing and cancelling: a booking outside the salon's 2-hour cut-off.
+  const b3 = await booking(200);
+  await ep.goto(`${B}/booking/${b3.token}`, { waitUntil: "networkidle" });
+  const manageText = await ep.locator("main").innerText();
+  check("EN booking page: the manage section and its cut-off rule are English", /Manage booking/.test(manageText) && /up to 2 hours before it/.test(manageText), manageText.slice(0, 0));
+  await ep.getByRole("button", { name: "Change the time" }).click();
+  await ep.getByText("Choose a new date").waitFor({ timeout: 10000 });
+  const tomorrow = new Date(cairoWall().getTime() + 86_400_000).toISOString().slice(0, 10);
+  await ep.fill("#reschedule-date", tomorrow);
+  await ep.getByRole("button", { name: /Show free times/ }).click();
+  await ep.locator("text=/^(Change date|No times are free that day\. Choose another date\.)$/").first().waitFor({ timeout: 15000 });
+  const flowText = await ep.locator("main").innerText();
+  check("EN booking page: the change-time flow is English", !arabicLeft(flowText, pageData), arabicLeft(flowText, pageData));
+  await ep.getByRole("button", { name: "Cancel", exact: true }).click();
+  await ep.getByRole("button", { name: "Cancel booking" }).click();
+  await ep.getByText("Cancel this booking? This can't be undone.").waitFor({ timeout: 10000 });
+  await ep.getByRole("button", { name: "Yes, cancel" }).click();
+  await ep.getByText("This booking was cancelled.").waitFor({ timeout: 15000 });
+  const { rows: [st3] } = await pg.query(`SELECT status FROM "Booking" WHERE id = $1`, [b3.id]);
+  check("EN booking page: cancelling works and says so in English", st3.status === "CANCELLED" && await ep.getByText("Cancelled", { exact: true }).count() === 1 && await ep.getByRole("link", { name: "Book again" }).count() === 1);
   const { rows: [guest] } = await pg.query(`SELECT "inviteToken" FROM "BookingGuest" g JOIN "Visitor" v ON v.id = g."visitorId" WHERE g."bookingId" = $1 AND v."displayName" = 'Guest Browser'`, [b2.id]);
   await ep.goto(`${B}/pass/${guest.inviteToken}`, { waitUntil: "networkidle" });
   const passText = await ep.locator("main").innerText();

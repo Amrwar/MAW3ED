@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { CalendarDays, Clock, Loader2, CheckCircle2, ArrowLeft, RefreshCw } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { refusalText } from "@/lib/lang";
+import type { Lang } from "@/lib/i18n";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -17,7 +20,7 @@ interface Props {
   currentEnd:   string;   // "HH:MM"
 }
 
-// ── Arabic helpers ────────────────────────────────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────────────────────
 
 const AR_DAYS = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 const AR_MONTHS = [
@@ -25,11 +28,25 @@ const AR_MONTHS = [
   "يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر",
 ];
 
-function formatDateAr(iso: string): string {
+function formatDate(iso: string, lang: Lang): string {
   const [y, m, d] = iso.split("-").map(Number);
   const date = new Date(y, m - 1, d, 12);
+  if (lang === "en") {
+    return date.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  }
   return `${AR_DAYS[date.getDay()]}، ${d} ${AR_MONTHS[m - 1]} ${y}`;
 }
+
+/* The reschedule route's refusals, worded from their code in English (the route answers in Arabic). */
+const REFUSED_EN: Record<string, string> = {
+  invalid: "Choose a date and a time.",
+  "not-found": "Booking not found.",
+  "not-changeable": "This booking's time can't be changed.",
+  "too-late": "It's too close to the appointment to change it online. Contact the place.",
+  "slot-unavailable": "That time isn't available. Choose another.",
+  changed: "The booking just changed. Refresh the page and try again.",
+  "slot-taken": "Someone just booked that time. Choose another.",
+};
 
 function todayEgypt(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
@@ -43,6 +60,10 @@ export default function RescheduleFlow({
   currentStart,
   currentEnd,
 }: Props) {
+  const { lang } = useLanguage();
+  const en = lang === "en";
+  const t = (ar: string, english: string) => (en ? english : ar);
+  const formatDateAr = (iso: string) => formatDate(iso, lang);
   const [step,       setStep]       = useState<Step>("idle");
   const [newDate,    setNewDate]    = useState("");
   const [slots,      setSlots]      = useState<string[]>([]);
@@ -64,16 +85,16 @@ export default function RescheduleFlow({
       const query = new URLSearchParams({ date: newDate });
       const res  = await fetch(`/api/public/booking/${token}/slots?${query}`);
       const data = await res.json();
-      if (!res.ok) { setSlotsError(data.error ?? "تعذّر تحميل المواعيد"); return; }
+      if (!res.ok) { setSlotsError(refusalText(res.status, data.error, en, "تعذّر تحميل المواعيد")); return; }
       const available: string[] = data.slots ?? [];
       if (available.length === 0) {
-        setSlotsError("لا توجد مواعيد متاحة في هذا اليوم، اختر تاريخًا آخر");
+        setSlotsError(t("لا توجد مواعيد متاحة في هذا اليوم، اختر تاريخًا آخر", "No times are free that day. Choose another date."));
         return;
       }
       setSlots(available);
       setStep("slots");
     } catch {
-      setSlotsError("تعذّر الاتصال بالخادم");
+      setSlotsError(t("تعذّر الاتصال بالخادم", "Couldn't connect. Try again."));
     } finally {
       setSlotsLoading(false);
     }
@@ -96,11 +117,11 @@ export default function RescheduleFlow({
         body:    JSON.stringify({ date: newDate, startTime: newStart }),
       });
       const data = await res.json();
-      if (!res.ok) { setApiError(data.error ?? "حدث خطأ أثناء إعادة الجدولة"); return; }
+      if (!res.ok) { setApiError((en && REFUSED_EN[data.code]) || refusalText(res.status, data.error, en, "حدث خطأ أثناء إعادة الجدولة")); return; }
       setStep("done");
       setTimeout(() => window.location.reload(), 2500);
     } catch {
-      setApiError("تعذّر الاتصال بالخادم، حاول مرة أخرى");
+      setApiError(t("تعذّر الاتصال بالخادم، حاول مرة أخرى", "Couldn't connect. Try again."));
     } finally {
       setSubmitting(false);
     }
@@ -123,7 +144,7 @@ export default function RescheduleFlow({
         className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-[var(--radius-md)] border-2 border-[var(--color-accent)] text-[var(--color-accent)] text-sm font-bold hover:bg-[var(--color-accent-light)] transition-colors"
       >
         <RefreshCw size={15} />
-        إعادة جدولة الموعد
+        {t("إعادة جدولة الموعد", "Change the time")}
       </button>
     );
   }
@@ -133,13 +154,13 @@ export default function RescheduleFlow({
     return (
       <div className="rounded-[var(--radius-lg)] bg-[var(--color-ok-soft)] border border-[var(--color-ok-line)] p-5 text-center space-y-2">
         <CheckCircle2 size={32} className="mx-auto text-[var(--color-ok)]" />
-        <p className="font-bold text-[var(--color-ok)]">اتغيّر ميعادك</p>
+        <p className="font-bold text-[var(--color-ok)]">{t("اتغيّر ميعادك", "Your time is changed")}</p>
         <p className="text-sm text-[var(--color-ok)]">
           {formatDateAr(newDate)} · {newStart}
         </p>
         {/* The reschedule route puts the booking back to PENDING for the
             business to confirm the new time. */}
-        <p className="text-xs text-[var(--color-ok)]">المكان هيأكد الميعاد الجديد وهيوصلك إشعار. جارٍ تحديث الصفحة…</p>
+        <p className="text-xs text-[var(--color-ok)]">{t("المكان هيأكد الميعاد الجديد وهيوصلك إشعار. جارٍ تحديث الصفحة…", "The place will confirm the new time and we'll let you know. Refreshing the page…")}</p>
       </div>
     );
   }
@@ -151,20 +172,20 @@ export default function RescheduleFlow({
       <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--color-border)] bg-[var(--color-surface-2)]">
         <RefreshCw size={16} className="text-[var(--color-accent)]" />
         <p className="text-sm font-bold text-[var(--color-text-primary)] flex-1">
-          إعادة جدولة الموعد
+          {t("إعادة جدولة الموعد", "Change the time")}
         </p>
         <button
           onClick={reset}
           className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
         >
-          إلغاء
+          {t("إلغاء", "Cancel")}
         </button>
       </div>
 
       <div className="p-5 space-y-4">
         {/* Current booking summary */}
         <div className="rounded-[var(--radius-md)] bg-[var(--color-surface-2)] px-4 py-3 text-sm">
-          <p className="text-xs text-[var(--color-text-muted)] mb-1">الموعد الحالي</p>
+          <p className="text-xs text-[var(--color-text-muted)] mb-1">{t("الموعد الحالي", "Current time")}</p>
           <p className="font-semibold text-[var(--color-text-primary)]">
             {formatDateAr(currentDate)}
           </p>
@@ -178,7 +199,7 @@ export default function RescheduleFlow({
           <div className="space-y-3">
             <label htmlFor="reschedule-date" className="block text-sm font-semibold text-[var(--color-text-primary)]">
               <CalendarDays size={14} className="inline ms-1" />
-              اختر تاريخًا جديدًا
+              {t("اختر تاريخًا جديدًا", "Choose a new date")}
             </label>
             <input
               id="reschedule-date"
@@ -200,8 +221,8 @@ export default function RescheduleFlow({
               className="w-full py-2.5 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:bg-[var(--color-primary-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {slotsLoading
-                ? <><Loader2 size={15} className="animate-spin" /> جارٍ التحميل…</>
-                : <>عرض المواعيد المتاحة <ArrowLeft size={14} /></>
+                ? <><Loader2 size={15} className="animate-spin" /> {t("جارٍ التحميل…", "Loading…")}</>
+                : <>{t("عرض المواعيد المتاحة", "Show free times")} <ArrowLeft size={14} className={en ? "rotate-180" : undefined} /></>
               }
             </button>
           </div>
@@ -219,7 +240,7 @@ export default function RescheduleFlow({
                 onClick={() => setStep("date")}
                 className="text-xs text-[var(--color-accent)] hover:underline"
               >
-                تغيير التاريخ
+                {t("تغيير التاريخ", "Change date")}
               </button>
             </div>
 
@@ -244,7 +265,7 @@ export default function RescheduleFlow({
             {/* Old → New comparison */}
             <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] divide-y divide-[var(--color-border)] text-sm overflow-hidden">
               <div className="px-4 py-3 bg-[var(--color-danger-soft)]">
-                <p className="text-xs text-[var(--color-danger)] mb-0.5">الموعد الحالي</p>
+                <p className="text-xs text-[var(--color-danger)] mb-0.5">{t("الموعد الحالي", "Current time")}</p>
                 <p className="font-semibold text-[var(--color-danger)] line-through">
                   {formatDateAr(currentDate)}
                 </p>
@@ -253,7 +274,7 @@ export default function RescheduleFlow({
                 </p>
               </div>
               <div className="px-4 py-3 bg-[var(--color-ok-soft)]">
-                <p className="text-xs text-[var(--color-ok)] mb-0.5">الموعد الجديد</p>
+                <p className="text-xs text-[var(--color-ok)] mb-0.5">{t("الموعد الجديد", "New time")}</p>
                 <p className="font-semibold text-[var(--color-ok)]">
                   {formatDateAr(newDate)}
                 </p>
@@ -262,7 +283,7 @@ export default function RescheduleFlow({
             </div>
 
             <p className="text-xs text-[var(--color-text-muted)] text-center">
-              بعد إعادة الجدولة سيعود الحجز إلى حالة &quot;في الانتظار&quot; للمراجعة
+              {t("بعد إعادة الجدولة سيعود الحجز إلى حالة \"في الانتظار\" للمراجعة", "After the change, the booking goes back to \"Pending\" until the place confirms it.")}
             </p>
 
             {apiError && (
@@ -277,7 +298,7 @@ export default function RescheduleFlow({
                 disabled={submitting}
                 className="flex-1 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] transition-colors disabled:opacity-50"
               >
-                تغيير الوقت
+                {t("تغيير الوقت", "Change time")}
               </button>
               <button
                 onClick={handleConfirm}
@@ -285,8 +306,8 @@ export default function RescheduleFlow({
                 className="flex-1 py-2.5 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white text-sm font-bold hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {submitting
-                  ? <><Loader2 size={15} className="animate-spin" /> جارٍ التأكيد…</>
-                  : "تأكيد إعادة الجدولة"
+                  ? <><Loader2 size={15} className="animate-spin" /> {t("جارٍ التأكيد…", "Confirming…")}</>
+                  : t("تأكيد إعادة الجدولة", "Confirm the new time")
                 }
               </button>
             </div>

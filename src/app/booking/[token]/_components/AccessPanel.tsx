@@ -113,8 +113,8 @@ export default function AccessPanel({ token, customerName }: { token: string; cu
     }
   }
 
-  // The booking page around this is right-to-left Arabic; this panel
-  // follows the visitor's language.
+  // The booking page sets the same direction; set here too so the panel
+  // reads right wherever it is placed.
   const dir = en ? "ltr" : "rtl";
 
   if (failed && !data) {
