@@ -631,7 +631,7 @@ export async function guestPassView(inviteToken: string, en = false) {
   const ctx = await venueContext(db, g.booking);
   const sandbox = ctx?.venue.accessProvider?.kind === "SANDBOX";
   return {
-    venue: ctx ? { name: en ? ctx.venue.nameEn ?? ctx.venue.nameAr : ctx.venue.nameAr, instructions: (en ? ctx.policy?.accessInstructionsEn : ctx.policy?.accessInstructionsAr) ?? null } : null,
+    venue: ctx ? { name: en ? ctx.venue.nameEn ?? ctx.venue.nameAr : ctx.venue.nameAr, instructions: (en ? ctx.policy?.accessInstructionsEn ?? ctx.policy?.accessInstructionsAr : ctx.policy?.accessInstructionsAr) ?? null } : null,
     sandbox,
     pass: toView(g, ctx, en, sandbox, false, null),
   };

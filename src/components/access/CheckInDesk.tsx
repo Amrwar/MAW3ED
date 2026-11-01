@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, CheckCircle, Loader2, ScanLine, XCircle } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 /**
  * The front desk's check-in: scan a customer's booking QR (camera, where
@@ -34,16 +35,16 @@ interface Result {
   canCheckIn?: boolean;
 }
 
-const WORDS: Record<State, { text: string; good: boolean }> = {
-  valid: { text: "الكود سليم — تقدر تسجّل الوصول", good: true },
-  "checked-in": { text: "اتسجّل وصوله قبل كده", good: true },
-  completed: { text: "الحجز ده خلص", good: false },
-  "too-early": { text: "بدري — التسجيل بيفتح", good: false },
-  expired: { text: "وقت الحجز عدّى", good: false },
-  cancelled: { text: "الحجز ده اتلغى", good: false },
-  "not-confirmed": { text: "الحجز لسه مش متأكد", good: false },
-  "no-show": { text: "الحجز اتسجّل إنه محضرش", good: false },
-  "not-found": { text: "الكود مش معروف هنا — ممكن يكون لمكان تاني أو اتغيّر", good: false },
+const WORDS: Record<State, { text: [ar: string, en: string]; good: boolean }> = {
+  valid: { text: ["الكود سليم — تقدر تسجّل الوصول", "Valid code — you can check them in"], good: true },
+  "checked-in": { text: ["اتسجّل وصوله قبل كده", "Already checked in"], good: true },
+  completed: { text: ["الحجز ده خلص", "This booking is completed"], good: false },
+  "too-early": { text: ["بدري — التسجيل بيفتح", "Too early — check-in opens at"], good: false },
+  expired: { text: ["وقت الحجز عدّى", "The booking time has passed"], good: false },
+  cancelled: { text: ["الحجز ده اتلغى", "This booking was cancelled"], good: false },
+  "not-confirmed": { text: ["الحجز لسه مش متأكد", "This booking is not confirmed yet"], good: false },
+  "no-show": { text: ["الحجز اتسجّل إنه محضرش", "This booking was marked as a no-show"], good: false },
+  "not-found": { text: ["الكود مش معروف هنا — ممكن يكون لمكان تاني أو اتغيّر", "Code not recognised here — it may be for another place, or replaced"], good: false },
 };
 
 const SCAN_INTERVAL_MS = 300;
@@ -58,22 +59,34 @@ interface Answer {
   error: string | null;
 }
 
-async function post(value: string, action: "verify" | "check-in"): Promise<Answer> {
+async function post(value: string, action: "verify" | "check-in", en: boolean): Promise<Answer> {
   try {
-    const res = await fetch("/api/business/check-in", {
+    const res = await fetch(`/api/business/check-in${en ? "?lang=en" : ""}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: value, action }),
     });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) return { result: null, error: res.status === 401 ? "سجّل دخولك الأول" : j.error ?? "حصلت مشكلة" };
+    if (!res.ok) {
+      const fallback = en ? "Something went wrong" : "حصلت مشكلة";
+      return { result: null, error: res.status === 401 ? (en ? "Sign in first" : "سجّل دخولك الأول") : j.error ?? fallback };
+    }
     return { result: j as Result, error: null };
   } catch {
-    return { result: null, error: "تعذّر الاتصال، جرّب تاني" };
+    return { result: null, error: en ? "Couldn't connect. Try again." : "تعذّر الاتصال، جرّب تاني" };
   }
 }
 
 export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
+  const { lang } = useLanguage();
+  const en = lang === "en";
+  const t = (ar: string, e: string) => (en ? e : ar);
+  // The language requests ask for. A ref, so switching language does not
+  // re-run the initial verify or replace what is on screen.
+  const enRef = useRef(en);
+  useEffect(() => {
+    enRef.current = en;
+  }, [en]);
   const [code, setCode] = useState(initialCode ?? "");
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
@@ -98,14 +111,14 @@ export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
     const n = ++request.current;
     setBusy(true);
     setError(null);
-    if (show(n, value, await post(value, action))) setBusy(false);
+    if (show(n, value, await post(value, action, enRef.current))) setBusy(false);
   }, [show]);
 
   useEffect(() => {
     if (!initialCode) return;
     let live = true;
     const n = ++request.current;
-    void post(initialCode, "verify").then((r) => {
+    void post(initialCode, "verify", enRef.current).then((r) => {
       if (live) show(n, initialCode, r);
     });
     return () => {
@@ -186,56 +199,60 @@ export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
           if (code.trim()) void call(code.trim(), "verify");
         }}
       >
-        <label className="text-sm font-semibold" htmlFor="checkin-code">الكود أو الرابط اللي في الـQR</label>
+        <label className="text-sm font-semibold" htmlFor="checkin-code">{t("الكود أو الرابط اللي في الـQR", "The code or link in the QR")}</label>
         <input id="checkin-code" className={field} dir="ltr" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" />
         <div className="flex gap-2">
           <button type="submit" className="btn btn-primary btn-sm flex-1" disabled={busy || !code.trim()}>
-            <ScanLine size={14} aria-hidden="true" /> اتحقق
+            <ScanLine size={14} aria-hidden="true" /> {t("اتحقق", "Verify")}
           </button>
           {camera === "starting" ? (
             <button type="button" className="btn btn-outline btn-sm" onClick={stopCamera}>
-              <Loader2 size={14} className="animate-spin" aria-hidden="true" /> بيفتح الكاميرا… إلغاء
+              <Loader2 size={14} className="animate-spin" aria-hidden="true" /> {t("بيفتح الكاميرا… إلغاء", "Opening camera… Cancel")}
             </button>
           ) : camera !== "on" ? (
             <button type="button" className="btn btn-outline btn-sm" onClick={() => void startCamera()} disabled={camera === "unsupported"}>
               <Camera size={14} aria-hidden="true" />{" "}
-              {camera === "unsupported" ? "الكاميرا مش متاحة هنا" : camera === "denied" ? "اسمح بالكاميرا وجرّب تاني" : "امسح بالكاميرا"}
+              {camera === "unsupported"
+                ? t("الكاميرا مش متاحة هنا", "Camera not available here")
+                : camera === "denied"
+                  ? t("اسمح بالكاميرا وجرّب تاني", "Allow the camera and try again")
+                  : t("امسح بالكاميرا", "Scan with camera")}
             </button>
           ) : (
-            <button type="button" className="btn btn-outline btn-sm" onClick={stopCamera}>اقفل الكاميرا</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={stopCamera}>{t("اقفل الكاميرا", "Close camera")}</button>
           )}
         </div>
       </form>
 
-      <video ref={videoRef} className={camera === "on" ? "w-full rounded-[var(--radius-md)] bg-black" : "hidden"} muted playsInline aria-label="الكاميرا" />
+      <video ref={videoRef} className={camera === "on" ? "w-full rounded-[var(--radius-md)] bg-black" : "hidden"} muted playsInline aria-label={t("الكاميرا", "Camera")} />
 
-      {busy && <Loader2 className="animate-spin" size={18} aria-label="بيتحقق" />}
+      {busy && <Loader2 className="animate-spin" size={18} aria-label={t("بيتحقق", "Checking")} />}
       {error && <p className="text-sm text-[var(--color-danger)]" role="alert">{error}</p>}
 
       {result && words && (
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] p-4 space-y-2" role="status">
           <p className={`flex items-center gap-2 font-bold ${words.good ? "text-[var(--color-ok)]" : "text-[var(--color-danger)]"}`}>
             {words.good ? <CheckCircle size={18} aria-hidden="true" /> : <XCircle size={18} aria-hidden="true" />}
-            {words.text}
+            {en ? words.text[1] : words.text[0]}
             {result.state === "too-early" && result.opensAt ? <span dir="ltr"> {result.opensAt}</span> : null}
           </p>
           {result.booking && (
             <dl className="grid grid-cols-2 gap-1 text-sm">
-              <dt className="text-[var(--color-muted)]">العميل</dt><dd>{result.booking.customerName}</dd>
-              <dt className="text-[var(--color-muted)]">الخدمة</dt><dd>{result.booking.serviceName}</dd>
-              <dt className="text-[var(--color-muted)]">الميعاد</dt><dd dir="ltr" className="text-end">{result.booking.date} {result.booking.startTime}</dd>
-              {result.booking.staffName && (<><dt className="text-[var(--color-muted)]">مع</dt><dd>{result.booking.staffName}</dd></>)}
-              {result.booking.partySize ? (<><dt className="text-[var(--color-muted)]">عدد الأفراد</dt><dd>{result.booking.partySize}</dd></>) : null}
-              {result.booking.reference && (<><dt className="text-[var(--color-muted)]">رقم الحجز</dt><dd dir="ltr" className="text-end">{result.booking.reference}</dd></>)}
+              <dt className="text-[var(--color-muted)]">{t("العميل", "Customer")}</dt><dd>{result.booking.customerName}</dd>
+              <dt className="text-[var(--color-muted)]">{t("الخدمة", "Service")}</dt><dd>{result.booking.serviceName}</dd>
+              <dt className="text-[var(--color-muted)]">{t("الميعاد", "Time")}</dt><dd dir="ltr" className="text-end">{result.booking.date} {result.booking.startTime}</dd>
+              {result.booking.staffName && (<><dt className="text-[var(--color-muted)]">{t("مع", "With")}</dt><dd>{result.booking.staffName}</dd></>)}
+              {result.booking.partySize ? (<><dt className="text-[var(--color-muted)]">{t("عدد الأفراد", "Party size")}</dt><dd>{result.booking.partySize}</dd></>) : null}
+              {result.booking.reference && (<><dt className="text-[var(--color-muted)]">{t("رقم الحجز", "Booking number")}</dt><dd dir="ltr" className="text-end">{result.booking.reference}</dd></>)}
             </dl>
           )}
           {result.state === "valid" && result.canCheckIn !== false && shown && (
             <button type="button" className="btn btn-primary w-full" disabled={busy} onClick={() => void call(shown, "check-in")}>
-              سجّل الوصول
+              {t("سجّل الوصول", "Check in")}
             </button>
           )}
           {result.state === "valid" && result.canCheckIn === false && (
-            <p className="text-xs text-[var(--color-muted)]">مش مسموح لحسابك يسجّل الوصول.</p>
+            <p className="text-xs text-[var(--color-muted)]">{t("مش مسموح لحسابك يسجّل الوصول.", "Your account may not check customers in.")}</p>
           )}
         </div>
       )}

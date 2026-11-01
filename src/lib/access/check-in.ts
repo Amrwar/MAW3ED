@@ -201,6 +201,7 @@ export async function lookupScan(
   scanned: string,
   scope: Prisma.BookingWhereInput,
   now: Date = new Date(),
+  en = false,
 ): Promise<ScanResult & { checkInId?: string }> {
   const code = extractCode(scanned);
   if (!code) return { state: "not-found" };
@@ -214,8 +215,8 @@ export async function lookupScan(
         select: {
           id: true, reference: true, status: true, date: true, startTime: true, endTime: true, startsAt: true, endsAt: true,
           customerName: true, partySize: true, businessId: true, branchId: true, staffMemberId: true,
-          service: { select: { nameAr: true } },
-          staffMember: { select: { nameAr: true } },
+          service: { select: { nameAr: true, nameEn: true } },
+          staffMember: { select: { nameAr: true, nameEn: true } },
         },
       },
     },
@@ -238,8 +239,8 @@ export async function lookupScan(
       id: b.id,
       reference: b.reference,
       customerName: b.customerName,
-      serviceName: b.service.nameAr,
-      staffName: b.staffMember?.nameAr ?? null,
+      serviceName: (en && b.service.nameEn) || b.service.nameAr,
+      staffName: b.staffMember ? (en && b.staffMember.nameEn) || b.staffMember.nameAr : null,
       date: b.date.toISOString().slice(0, 10),
       startTime: b.startTime,
       endTime: b.endTime,
@@ -260,8 +261,9 @@ export async function checkIn(
   scope: Prisma.BookingWhereInput,
   actorUserId: string,
   now: Date = new Date(),
+  en = false,
 ): Promise<ScanResult> {
-  const found = await lookupScan(scanned, scope, now);
+  const found = await lookupScan(scanned, scope, now, en);
   if (found.state !== "valid" || !found.booking || !found.checkInId) {
     return withoutId(found);
   }
@@ -286,7 +288,7 @@ export async function checkIn(
   if (!moved) {
     // Somebody else moved it first — a colleague's scan, a cancellation.
     // Say what it is now rather than guessing.
-    return withoutId(await lookupScan(scanned, scope, now));
+    return withoutId(await lookupScan(scanned, scope, now, en));
   }
   log.info("[check-in] checked in", { bookingId });
   return { ...withoutId(found), state: "checked-in", checkedInAt: now.toISOString(), booking: { ...found.booking, status: "ARRIVED" } };

@@ -7,7 +7,10 @@
  *   labelled as a sandbox → the owner's check-in desk verifies a pasted
  *   code and checks the customer in → the venue security desk lists the
  *   visitor and can hold the pass → nothing logs a console error and
- *   the pending-pass check stops polling on its own.
+ *   the pending-pass check stops polling on its own. Then the same
+ *   screens again with English chosen (the maw3ed-lang cookie): English
+ *   words, left-to-right, Western digits, the server's reasons and names
+ *   in English, and the guest pass page and /c/<code> too.
  *
  *   CRON_SECRET=p19-local-cron node scripts/qa-phase23-browser.mjs [baseUrl]
  */
@@ -67,6 +70,19 @@ async function signedIn(email) {
   await p.close();
   return ctx;
 }
+/** Arabic letters in `text` once the names that are Arabic data are taken out. */
+const ARABIC = /[\u0600-\u06FF]/;
+const ARABIC_DIGITS = /[\u0660-\u0669]/;
+function arabicLeft(text, names = []) {
+  let rest = text;
+  for (const n of names) rest = rest.split(n).join("");
+  const m = rest.match(new RegExp(`.{0,20}${ARABIC.source}.{0,20}`));
+  return m ? m[0] : "";
+}
+async function english(ctx) {
+  await ctx.addCookies([{ name: "maw3ed-lang", value: "en", url: B }]);
+  return ctx;
+}
 function watchErrors(page) {
   const errors = [];
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
@@ -79,11 +95,12 @@ try {
   const prov = await (await fetch(`${B}/api/dev/access-sandbox`, { method: "POST", headers: cron, body: JSON.stringify({ action: "ensure-provider" }) })).json();
   await fetch(`${B}/api/dev/access-sandbox`, { method: "POST", headers: cron, body: JSON.stringify({ action: "mode", mode: "NORMAL" }) });
   const { rows: [{ id: cityId }] } = await pg.query(`SELECT id FROM "City" LIMIT 1`);
-  const { rows: [salon] } = await pg.query(`SELECT id, "ownerId" FROM "Business" WHERE slug = 'qa-salon'`);
+  const { rows: [salon] } = await pg.query(`SELECT id, "ownerId", "nameAr" FROM "Business" WHERE slug = 'qa-salon'`);
   const venueId = `${tag}-venue`;
   await pg.query(`INSERT INTO "Venue" (id, slug, "nameAr", "cityId", status, "isPublished", "accessEnabled", "accessProviderId", "accessSiteRef", "updatedAt") VALUES ($1,$1,'مول المتصفح',$2,'ACTIVE',true,true,$3,'SITE-QA23B',NOW())`, [venueId, cityId, prov.provider.id]);
   cleanup.venues.push(venueId);
-  await pg.query(`INSERT INTO "VenuePolicy" (id, "venueId", "visitorEligibility", "accessBeforeMinutes", "maxGuestsPerBooking", "accessInstructionsAr", "updatedAt") VALUES ($1,$2,'BOOKING_REQUIRED',240,2,'ادخل من البوابة الشمالية',NOW())`, [`${tag}-pol`, venueId]);
+  await pg.query(`UPDATE "Venue" SET "nameEn" = 'Browser Mall' WHERE id = $1`, [venueId]);
+  await pg.query(`INSERT INTO "VenuePolicy" (id, "venueId", "visitorEligibility", "accessBeforeMinutes", "maxGuestsPerBooking", "accessInstructionsAr", "accessInstructionsEn", "updatedAt") VALUES ($1,$2,'BOOKING_REQUIRED',240,2,'ادخل من البوابة الشمالية','Use the north gate',NOW())`, [`${tag}-pol`, venueId]);
   await pg.query(`INSERT INTO "VenueMembership" (id, "venueId", "businessId", status, "requestedById", "updatedAt") VALUES ($1,$2,$3,'APPROVED',$4,NOW())`, [`${tag}-mem`, venueId, salon.id, salon.ownerId]);
   const secEmail = `${tag}-sec@qa.test`;
   const { rows: [sec] } = await pg.query(`INSERT INTO "User" (id, email, name, password, "emailVerified", "updatedAt") SELECT $1,$2,'أمن متصفح',password,NOW(),NOW() FROM "User" WHERE email='owner@qa.test' RETURNING id`, [`${tag}-sec`, secEmail]);
@@ -162,6 +179,76 @@ try {
   check("security desk: holding a pass with a reason works from the page", true);
   check("security desk: no console errors", serr.length === 0, serr.slice(0, 3).join(" | "));
   await security.close();
+
+  // ── The same screens in English ──────────────────────────────────────
+  const names = ["سلمى متصفح"];
+  const b2 = await booking(40);
+  const ectx = await english(await browser.newContext({ viewport: { width: 390, height: 844 } }));
+  const ep = await ectx.newPage();
+  const eerr = watchErrors(ep);
+  await ep.goto(`${B}/booking/${b2.token}`, { waitUntil: "networkidle" });
+  await ep.getByText("Check-in code", { exact: true }).waitFor({ timeout: 15000 });
+  check("EN customer page: the check-in section reads left to right", (await ep.locator("#checkin-h").evaluate((e) => getComputedStyle(e).direction)) === "ltr");
+  check("EN customer page: the QR's label is English", await ep.locator('[role="img"][aria-label*="check in for your booking"] svg').count() === 1);
+  await ep.getByText("Browser Mall visitor pass").waitFor({ timeout: 15000 });
+  check("EN customer page: the venue's English name, instructions and the sandbox notice", await ep.getByText("Use the north gate").count() === 1 && await ep.getByText(/^Test environment/).count() >= 1);
+  await ep.getByRole("button", { name: "Request a visitor pass" }).click();
+  await ep.getByText(/^(Waiting for the access system|Active)$/).first().waitFor({ timeout: 15000 });
+  await fetch(`${B}/api/cron/access`, { headers: cron });
+  await ep.getByText("Active", { exact: true }).waitFor({ timeout: 20000 });
+  check("EN customer page: the pass's state and details are English", await ep.getByText("Leave and return").count() === 1 && await ep.getByText("Any gate").count() === 1);
+  await ep.getByPlaceholder("Name as on your ID").fill("Guest Browser");
+  await ep.getByRole("button", { name: "Add a guest" }).click();
+  await ep.getByText("Added. Copy their link and send it to them.").waitFor({ timeout: 15000 });
+  const panel = (await ep.locator("#checkin-h").locator("xpath=ancestor::section").innerText()) + (await ep.locator("#pass-h").locator("xpath=ancestor::section").innerText());
+  check("EN customer page: no Arabic left in the panel (names aside)", !arabicLeft(panel, names), arabicLeft(panel, names));
+  check("EN customer page: times use Western digits", !ARABIC_DIGITS.test(panel));
+  check("EN customer page: no console errors", eerr.length === 0, eerr.slice(0, 3).join(" | "));
+  const { rows: [guest] } = await pg.query(`SELECT "inviteToken" FROM "BookingGuest" g JOIN "Visitor" v ON v.id = g."visitorId" WHERE g."bookingId" = $1 AND v."displayName" = 'Guest Browser'`, [b2.id]);
+  await ep.goto(`${B}/pass/${guest.inviteToken}`, { waitUntil: "networkidle" });
+  const passText = await ep.locator("main").innerText();
+  check("EN guest pass page: English, left to right", /Browser Mall visitor pass/.test(passText) && (await ep.locator("main").evaluate((e) => getComputedStyle(e).direction)) === "ltr");
+  check("EN guest pass page: no Arabic left", !arabicLeft(passText), arabicLeft(passText));
+  const code2 = (await (await fetch(`${B}/api/booking/${b2.token}/access`)).json()).checkIn.url;
+  await ep.goto(code2, { waitUntil: "networkidle" });
+  check("EN /c/<code> signed out: explains the code in English", await ep.getByText("This is a booking check-in code").count() === 1 && await ep.getByText("Work there? Sign in to check the customer in").count() === 1);
+  await ectx.close();
+
+  const eowner = await english(await signedIn("owner@qa.test"));
+  const eop = await eowner.newPage();
+  const eoerr = watchErrors(eop);
+  await eop.goto(`${B}/dashboard/check-in`, { waitUntil: "networkidle" });
+  check("EN desk: heading and title are English", await eop.getByRole("heading", { name: "Check-in", exact: true }).count() === 1 && (await eop.title()).startsWith("Check-in"));
+  await eop.fill("#checkin-code", code2);
+  await eop.getByRole("button", { name: "Verify" }).click();
+  await eop.getByText(/^(Valid code|Too early)/).waitFor({ timeout: 15000 });
+  check("EN desk: the booking's details are labelled in English", await eop.getByText("Customer", { exact: true }).count() === 1 && await eop.getByText("Service", { exact: true }).count() === 1);
+  const deskText = await eop.locator("main").innerText();
+  check("EN desk: no Arabic-Indic digits", !ARABIC_DIGITS.test(deskText));
+  await eop.goto(code2, { waitUntil: "networkidle" });
+  await eop.getByText(/^(Valid code|Too early)/).waitFor({ timeout: 15000 });
+  check("EN /c/<code> signed in: the desk opens in English", (await eop.locator("h1").first().innerText()).startsWith("Check-in"));
+  check("EN desk: no console errors", eoerr.length === 0, eoerr.slice(0, 3).join(" | "));
+  await eowner.close();
+
+  const esec = await english(await signedIn(secEmail));
+  const esp = await esec.newPage();
+  const eserr = watchErrors(esp);
+  await esp.goto(`${B}/venue-admin/${venueId}/access`, { waitUntil: "networkidle" });
+  await esp.getByText("Visitor access — Browser Mall").waitFor({ timeout: 15000 });
+  check("EN security desk: columns and states in English", await esp.getByRole("columnheader", { name: "Visiting" }).count() === 1 && await esp.getByText("Allowed", { exact: true }).count() >= 1);
+  check("EN security desk: the server's reason comes in English", await esp.getByText("Suspended by the venue's security").count() >= 1);
+  const erow = esp.locator("tr", { hasText: "Guest Browser" });
+  await erow.getByPlaceholder("Reason").fill("QA check");
+  await erow.getByRole("button", { name: "Suspend" }).click();
+  await esp.getByText("Suspended.", { exact: true }).waitFor({ timeout: 15000 });
+  check("EN security desk: holding a pass works and confirms in English", true);
+  const secText = await esp.locator("main").innerText();
+    // Data typed in Arabic stays Arabic: visitor names, the salon's name (it has no English one) and the Arabic run's note.
+  const data = [...names, "ضيف المتصفح", salon.nameAr, "فحص QA"];
+  check("EN security desk: no Arabic left (Arabic data aside)", !arabicLeft(secText, data), arabicLeft(secText, data));
+  check("EN security desk: no console errors", eserr.length === 0, eserr.slice(0, 3).join(" | "));
+  await esec.close();
 } catch (e) {
   check("script ran to completion", false, e instanceof Error ? e.stack : String(e));
 } finally {

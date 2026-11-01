@@ -38,7 +38,7 @@ export interface DeskRow {
 const DAY = 24 * 60 * 60_000;
 
 /** Passes whose window touches the given Cairo day (default today). */
-export async function venueDesk(venueId: string, day?: string) {
+export async function venueDesk(venueId: string, day?: string, en = false) {
   const from = day ? wallToInstant(day, 0) : cairoDayStart();
   const until = new Date(from.getTime() + DAY);
   const [venue, ents, events, escalations] = await Promise.all([
@@ -47,7 +47,7 @@ export async function venueDesk(venueId: string, day?: string) {
       select: {
         accessEnabled: true, accessSiteRef: true,
         accessProvider: { select: { slug: true, kind: true, nameAr: true, nameEn: true, isEnabled: true, lastHealthAt: true, lastHealthOk: true, lastHealthDetail: true } },
-        gates: { select: { id: true, nameAr: true, code: true } },
+        gates: { select: { id: true, nameAr: true, nameEn: true, code: true } },
         policy: { select: { escalationContact: true, identityRequirement: true } },
       },
     }),
@@ -58,7 +58,7 @@ export async function venueDesk(venueId: string, day?: string) {
       select: {
         id: true, status: true, reason: true, validFrom: true, validUntil: true, entryUntil: true, allowedGateIds: true, reentryAllowed: true,
         visitor: { select: { displayName: true, phoneE164: true } },
-        bookingGuest: { select: { role: true, booking: { select: { business: { select: { nameAr: true } } } } } },
+        bookingGuest: { select: { role: true, booking: { select: { business: { select: { nameAr: true, nameEn: true } } } } } },
         credentials: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true, confirmedAt: true, lastError: true } },
       },
     }),
@@ -76,7 +76,10 @@ export async function venueDesk(venueId: string, day?: string) {
     }),
   ]);
   if (!venue) return null;
-  const gateName = (id: string | null) => (id ? venue.gates.find((g) => g.id === id)?.nameAr ?? null : null);
+  const gateName = (id: string | null) => {
+    const gate = id ? venue.gates.find((g) => g.id === id) : null;
+    return gate ? (en && gate.nameEn) || gate.nameAr : null;
+  };
   const lastByEnt = new Map<string, (typeof events)[number]>();
   for (const e of events) if (e.entitlementId && !lastByEnt.has(e.entitlementId)) lastByEnt.set(e.entitlementId, e);
 
@@ -87,10 +90,10 @@ export async function venueDesk(venueId: string, day?: string) {
       entitlementId: e.id,
       visitorName: e.visitor.displayName,
       role: e.bookingGuest.role,
-      businessName: e.bookingGuest.booking.business.nameAr,
+      businessName: (en && e.bookingGuest.booking.business.nameEn) || e.bookingGuest.booking.business.nameAr,
       status: e.status,
       reason: e.reason,
-      reasonText: reasonText(e.reason, false),
+      reasonText: reasonText(e.reason, en),
       validFrom: e.validFrom.toISOString(),
       validUntil: e.validUntil.toISOString(),
       entryUntil: e.entryUntil?.toISOString() ?? null,
@@ -110,7 +113,7 @@ export async function venueDesk(venueId: string, day?: string) {
         ? {
             slug: venue.accessProvider.slug,
             kind: venue.accessProvider.kind,
-            name: venue.accessProvider.nameAr,
+            name: (en && venue.accessProvider.nameEn) || venue.accessProvider.nameAr,
             usable: providerUsable(venue.accessProvider),
             health: venue.accessProvider.lastHealthAt
               ? { at: venue.accessProvider.lastHealthAt.toISOString(), ok: venue.accessProvider.lastHealthOk, detail: venue.accessProvider.lastHealthDetail }
@@ -121,8 +124,8 @@ export async function venueDesk(venueId: string, day?: string) {
       identityRequirement: venue.policy?.identityRequirement ?? "NAME",
     },
     rows,
-    events: events.slice(0, 100).map((e) => ({ kind: e.kind, at: e.occurredAt.toISOString(), gate: gateName(e.gateId), reason: reasonText(e.reason, false), byStaff: !!e.actorUserId })),
-    attention: escalations.map((e) => ({ id: e.id, kind: e.kind, at: e.occurredAt.toISOString(), reason: reasonText(e.reason, false) })),
+    events: events.slice(0, 100).map((e) => ({ kind: e.kind, at: e.occurredAt.toISOString(), gate: gateName(e.gateId), reason: reasonText(e.reason, en), byStaff: !!e.actorUserId })),
+    attention: escalations.map((e) => ({ id: e.id, kind: e.kind, at: e.occurredAt.toISOString(), reason: reasonText(e.reason, en) })),
   };
 }
 

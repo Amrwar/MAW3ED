@@ -973,4 +973,29 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
     expect(await db.accessSyncJob.count()).toBe(jobs);
     expect(await db.accessEvent.count()).toBe(events);
   }, 120_000);
+
+  it("EN: the check-in desk, the security desk and a guest's pass speak English when asked, Arabic otherwise", async () => {
+    const { a, v, b } = await activePass("en");
+    await db.business.update({ where: { id: a.business.id }, data: { nameEn: "EN Salon" } });
+    await db.service.update({ where: { id: a.service.id }, data: { nameEn: "Haircut" } });
+    await db.venue.update({ where: { id: v.venue.id }, data: { nameEn: "EN Mall" } });
+    await db.venueGate.update({ where: { id: v.gate.id }, data: { nameEn: "Gate 1" } });
+    const code = (await checkin.currentCheckInCode(b.id))!.code;
+    expect((await checkin.lookupScan(code, scopeOf(a.business.id), new Date(), true)).booking?.serviceName).toBe("Haircut");
+    expect((await checkin.lookupScan(code, scopeOf(a.business.id))).booking?.serviceName).toBe("خدمة");
+
+    const ent = await db.accessEntitlement.findFirstOrThrow({ where: { bookingId: b.id } });
+    const guard = await user("en-guard");
+    expect(await passes.securitySuspend(ent.id, v.venue.id, guard.id, "hold")).toBe(true);
+    const { venueDesk } = await import("./venue-desk");
+    const en = (await venueDesk(v.venue.id, undefined, true))!.rows.find((r) => r.entitlementId === ent.id)!;
+    expect(en).toMatchObject({ businessName: "EN Salon", reasonText: "Suspended by the venue's security", gates: ["Gate 1"] });
+    const ar = (await venueDesk(v.venue.id))!.rows.find((r) => r.entitlementId === ent.id)!;
+    expect(ar).toMatchObject({ businessName: a.business.nameAr, reasonText: "إدارة الأمن وقفت التصريح", gates: ["البوابة 1"] });
+
+    const g = await passes.addGuest(b.id, { displayName: "علي", phoneE164: null });
+    if (!g.ok) throw new Error("guest not added");
+    expect((await passes.guestPassView(g.inviteToken!, true))?.venue?.name).toBe("EN Mall");
+    expect((await passes.guestPassView(g.inviteToken!))?.venue?.name).toBe(v.venue.nameAr);
+  }, 60_000);
 });

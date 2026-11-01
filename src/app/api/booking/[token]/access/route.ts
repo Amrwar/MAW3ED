@@ -15,11 +15,12 @@ type Params = { params: Promise<{ token: string }> };
 export async function GET(req: Request, { params }: Params) {
   try {
     const { token } = await params;
-    const booking = await bookingForToken(token);
-    const payload = await customerAccessPayload(booking.id, isEnglish(req));
-    if (!payload) return err("الحجز غير موجود", 404, { code: "not-found" });
+    const en = isEnglish(req);
+    const booking = await bookingForToken(token, en);
+    const payload = await customerAccessPayload(booking.id, en);
+    if (!payload) return err(en ? "Booking not found" : "الحجز غير موجود", 404, { code: "not-found" });
     return ok(payload);
   } catch (e) {
-    return failure("[booking access GET]", e, log);
+    return failure("[booking access GET]", e, log, isEnglish(req));
   }
 }

@@ -4,6 +4,7 @@ import { requireVenueAccess } from "@/lib/venues/guard";
 import { handle, readJson, venueAudit } from "@/lib/venues/route";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { securityReinstate, securitySuspend } from "@/lib/access/passes";
+import { isEnglish } from "@/lib/access/customer-routes";
 
 type Ctx = { params: Promise<{ id: string; entitlementId: string }> };
 
@@ -29,14 +30,15 @@ export async function POST(req: Request, { params }: Ctx) {
     const { caller, authority } = await requireVenueAccess(id, "venue.access.override");
     const limited = await rateLimit("accessOverride", `user:${caller.userId}`);
     if (!limited.ok) return tooManyRequests(limited);
+    const en = isEnglish(req);
     const parsed = schema.safeParse(await readJson(req));
-    if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "بيانات غير صالحة", 422);
+    if (!parsed.success) return err(en ? "Write the reason (at least 3 characters)" : parsed.error.issues[0]?.message ?? "بيانات غير صالحة", 422);
     const { action, note } = parsed.data;
     const done =
       action === "suspend"
         ? await securitySuspend(entitlementId, id, caller.userId, note)
         : await securityReinstate(entitlementId, id, caller.userId, note);
-    if (!done) return err("التصريح ده مش في حالة تسمح بالإجراء ده", 409, { code: "not-applicable" });
+    if (!done) return err(en ? "This pass is not in a state that allows that" : "التصريح ده مش في حالة تسمح بالإجراء ده", 409, { code: "not-applicable" });
     await venueAudit(caller, authority, `venue.access.${action}`, id, action === "suspend" ? "وقّف تصريح زائر" : "رجّع تصريح زائر", {
       entitlementId,
       note,

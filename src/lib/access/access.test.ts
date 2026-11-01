@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => void fn() }));
+vi.mock("@/lib/api", () => ({
+  err: (message: string, status = 400, extra?: Record<string, unknown>) => Response.json({ error: message, ...extra }, { status }),
+}));
 
 import { CODE_PATTERN, deriveCheckInCode, openToken, purposeKey, sameDigest, sealToken, signMessage, verifyMessage } from "./crypto";
 import { decideAccess, type EligibilityInput } from "./eligibility";
@@ -11,6 +14,7 @@ import { parseEventBody } from "./sandbox";
 import { backoffMs, MAX_ATTEMPTS, withTimeout } from "./sync";
 import { TransientProviderError, sandboxAllowed } from "./provider";
 import { VENUE_PERMISSIONS, authorityOver, venueCan } from "@/lib/venues/access";
+import { failure, refusal } from "./customer-routes";
 
 /**
  * Phase 23 — the parts of booking QR codes and visitor passes that need
@@ -274,5 +278,18 @@ describe("venue security role — least privilege (test 20)", () => {
     for (const [k, actions] of Object.entries(VENUE_PERMISSIONS)) {
       expect(actions.includes("venue.access.provider"), k).toBe(k === "PLATFORM");
     }
+  });
+});
+
+describe("customer pass errors follow the caller's language", () => {
+  it("words a refusal, its reason and a server failure in English only when asked", async () => {
+    const limit = await refusal({ ok: false, code: "limit" }, true).json();
+    expect(limit).toMatchObject({ error: "You have reached the venue's limit on guests", code: "limit" });
+    expect((await refusal({ ok: false, code: "limit" }).json()).error).toBe("وصلت لأقصى عدد مرافقين يسمح بيه المكان");
+    const held = await refusal({ ok: false, code: "ineligible", reason: "security-override" }, true).json();
+    expect(held.error).toBe("Suspended by the venue's security");
+    const log = { error: () => {} };
+    expect((await failure("t", new Error("x"), log, true).json()).error).toMatch(/^Something went wrong/);
+    expect(failure("t", new Error("x"), log).status).toBe(500);
   });
 });

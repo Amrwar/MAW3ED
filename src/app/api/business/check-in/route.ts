@@ -4,6 +4,7 @@ import { log } from "@/lib/logger";
 import { bookingScope, can, requireBusinessAccess } from "@/lib/business-access";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { checkIn, lookupScan, withoutId } from "@/lib/access/check-in";
+import { isEnglish } from "@/lib/access/customer-routes";
 
 const schema = z.object({
   code: z.string().trim().min(1).max(500),
@@ -11,7 +12,7 @@ const schema = z.object({
 });
 
 /**
- * POST /api/business/check-in { code, action: "verify" | "check-in" }
+ * POST /api/business/check-in[?lang=en] { code, action: "verify" | "check-in" }
  *
  * The front desk scans a customer's booking QR (or pastes the code).
  * "verify" says what the code is — the booking, if it is in this
@@ -24,24 +25,25 @@ const schema = z.object({
  * in needs bookings.progress, as marking arrived by hand does.
  */
 export async function POST(req: Request) {
+  const en = isEnglish(req);
   try {
     const { business, actor } = await requireBusinessAccess("bookings.read");
     const limited = await rateLimit("accessScan", `user:${actor.userId}`);
     if (!limited.ok) return tooManyRequests(limited);
 
     const parsed = schema.safeParse(await req.json().catch(() => ({})));
-    if (!parsed.success) return err("الكود غير صالح", 422);
+    if (!parsed.success) return err(en ? "That code is not valid" : "الكود غير صالح", 422);
     const scope = bookingScope(business, actor);
 
     if (parsed.data.action === "check-in") {
-      if (!can(actor, "bookings.progress")) return err("مش مسموح لك بالإجراء ده", 403, { code: "forbidden" });
-      return ok(await checkIn(parsed.data.code, scope, actor.userId));
+      if (!can(actor, "bookings.progress")) return err(en ? "Your account may not do this" : "مش مسموح لك بالإجراء ده", 403, { code: "forbidden" });
+      return ok(await checkIn(parsed.data.code, scope, actor.userId, new Date(), en));
     }
-    const result = withoutId(await lookupScan(parsed.data.code, scope));
+    const result = withoutId(await lookupScan(parsed.data.code, scope, new Date(), en));
     return ok({ ...result, canCheckIn: result.state === "valid" && can(actor, "bookings.progress") });
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[business check-in]", e);
-    return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
+    return err(en ? "Something went wrong on our side. Try again shortly." : "حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
 }

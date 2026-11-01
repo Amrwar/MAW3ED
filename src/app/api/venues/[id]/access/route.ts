@@ -7,13 +7,14 @@ import { handle, readJson, venueAudit } from "@/lib/venues/route";
 import { venueAccessChanged, venueDesk } from "@/lib/access/venue-desk";
 import { providerUsable, sandboxAllowed } from "@/lib/access/provider";
 import { ensureSandboxProvider } from "@/lib/access/sandbox";
+import { isEnglish } from "@/lib/access/customer-routes";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional();
 
 /**
- * GET /api/venues/:id/access[?day=YYYY-MM-DD] — the security desk: the
+ * GET /api/venues/:id/access[?day=YYYY-MM-DD][&lang=en] — the security desk: the
  * day's visitor passes, recent gate events, what needs a person, and the
  * venue's access settings (lib/access/venue-desk.ts — names and windows,
  * never what was booked or paid). Needs venue.access.view.
@@ -29,12 +30,13 @@ export async function GET(req: Request, { params }: Ctx) {
   return handle("venue access GET", async () => {
     const { id } = await params;
     const { authority } = await requireVenueAccess(id, "venue.access.view");
+    const en = isEnglish(req);
     const parsedDay = day.safeParse(new URL(req.url).searchParams.get("day") ?? undefined);
-    if (!parsedDay.success) return err("تاريخ غير صحيح", 422);
-    const desk = await venueDesk(id, parsedDay.data);
-    if (!desk) return err("غير موجود", 404);
+    if (!parsedDay.success) return err(en ? "Invalid date" : "تاريخ غير صحيح", 422);
+    const desk = await venueDesk(id, parsedDay.data, en);
+    if (!desk) return err(en ? "Not found" : "غير موجود", 404);
     const providers = venueCan(authority, "venue.access.provider")
-      ? (await listProviders()).map((p) => ({ slug: p.slug, kind: p.kind, name: p.nameAr, usable: providerUsable(p) }))
+      ? (await listProviders()).map((p) => ({ slug: p.slug, kind: p.kind, name: (en && p.nameEn) || p.nameAr, usable: providerUsable(p) }))
       : [];
     return ok({
       ...desk,
@@ -65,23 +67,24 @@ const putSchema = z
 export async function PUT(req: Request, { params }: Ctx) {
   return handle("venue access PUT", async () => {
     const { id } = await params;
+    const en = isEnglish(req);
     const parsed = putSchema.safeParse(await readJson(req));
-    if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "بيانات غير صالحة", 422);
+    if (!parsed.success) return err(en ? "Nothing to change" : parsed.error.issues[0]?.message ?? "بيانات غير صالحة", 422);
     const body = parsed.data;
     const needsProvider = body.providerSlug !== undefined || body.siteRef !== undefined;
     const { caller, authority } = await requireVenueAccess(id, needsProvider ? "venue.access.provider" : "venue.access.enable");
-    if (body.accessEnabled !== undefined && !venueCan(authority, "venue.access.enable")) return err("غير موجود", 404);
+    if (body.accessEnabled !== undefined && !venueCan(authority, "venue.access.enable")) return err(en ? "Not found" : "غير موجود", 404);
 
     const current = await db.venue.findUniqueOrThrow({ where: { id }, select: { accessEnabled: true, accessProvider: true, accessSiteRef: true } });
     let provider = current.accessProvider;
     if (body.providerSlug !== undefined) {
       provider = body.providerSlug ? await db.accessProvider.findUnique({ where: { slug: body.providerSlug } }) : null;
-      if (body.providerSlug && !provider) return err("مزوّد غير موجود", 422, { code: "unknown-provider" });
-      if (provider && !providerUsable(provider)) return err("المزوّد ده مش متاح هنا", 422, { code: "provider-unusable" });
+      if (body.providerSlug && !provider) return err(en ? "No such provider" : "مزوّد غير موجود", 422, { code: "unknown-provider" });
+      if (provider && !providerUsable(provider)) return err(en ? "That provider is not available here" : "المزوّد ده مش متاح هنا", 422, { code: "provider-unusable" });
     }
     const enabled = body.accessEnabled ?? (provider ? current.accessEnabled : false);
     if (enabled && (!provider || !providerUsable(provider))) {
-      return err("لازم مزوّد دخول متاح قبل تشغيل تصاريح الزوار", 409, { code: "no-provider" });
+      return err(en ? "Visitor passes need an available access provider first" : "لازم مزوّد دخول متاح قبل تشغيل تصاريح الزوار", 409, { code: "no-provider" });
     }
 
     await db.venue.update({
