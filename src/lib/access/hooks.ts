@@ -42,12 +42,18 @@ export const RESYNC_LIMIT = 200;
  */
 export function resyncLiveAccess(where: Prisma.AccessEntitlementWhereInput): void {
   const run = async () => {
-    const live = await db.accessEntitlement.findMany({
-      where: { ...where, status: { in: ["ELIGIBLE", "SUSPENDED"] }, validUntil: { gt: new Date() } },
-      select: { bookingId: true },
-      distinct: ["bookingId"],
-      take: RESYNC_LIMIT,
-    });
+    let live: { bookingId: string }[];
+    try {
+      live = await db.accessEntitlement.findMany({
+        where: { ...where, status: { in: ["ELIGIBLE", "SUSPENDED"] }, validUntil: { gt: new Date() } },
+        select: { bookingId: true },
+        distinct: ["bookingId"],
+        take: RESYNC_LIMIT,
+      });
+    } catch (e) {
+      log.error("[access] could not list passes to decide again; the cron will", e);
+      return;
+    }
     let queued = false;
     for (const { bookingId } of live) {
       try {
@@ -66,13 +72,8 @@ export function resyncLiveAccess(where: Prisma.AccessEntitlementWhereInput): voi
 }
 
 /** A business's status changed (suspended, closed, reopened): its passes follow. */
-export async function accessAfterBusinessChange(businessId: string): Promise<void> {
-  const bookings = await db.booking.findMany({
-    where: { businessId, accessGuests: { some: { entitlement: { status: { in: ["ELIGIBLE", "SUSPENDED"] } } } } },
-    select: { id: true },
-    take: RESYNC_LIMIT,
-  });
-  if (bookings.length) resyncLiveAccess({ bookingId: { in: bookings.map((b) => b.id) } });
+export function accessAfterBusinessChange(businessId: string): void {
+  resyncLiveAccess({ bookingGuest: { booking: { businessId } } });
 }
 
 /** After a booking's time moved (its own transaction; never fails the move). */

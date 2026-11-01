@@ -104,10 +104,15 @@ try {
   await page.getByText("تصريح دخول مول المتصفح").waitFor({ timeout: 15000 });
   check("customer page: the venue's pass section is separate and says it is a sandbox", await page.getByText("بيئة تجريبية").count() >= 1);
   check("customer page: the venue's instructions are shown", await page.getByText("ادخل من البوابة الشمالية").count() === 1);
+  // The sandbox holds the pass unconfirmed, so "pending" is on screen
+  // however fast the job runs; then it confirms, as a provider would.
+  await fetch(`${B}/api/dev/access-sandbox`, { method: "POST", headers: cron, body: JSON.stringify({ action: "mode", mode: "NO_CONFIRM" }) });
   await page.getByRole("button", { name: "اطلب تصريح دخول" }).click();
   await page.getByText("مستني موافقة نظام الدخول").waitFor({ timeout: 15000 });
   check("customer page: asking shows the pass as pending (not active)", true);
   await fetch(`${B}/api/cron/access`, { headers: cron });
+  await fetch(`${B}/api/dev/access-sandbox`, { method: "POST", headers: cron, body: JSON.stringify({ action: "mode", mode: "NORMAL" }) });
+  await fetch(`${B}/api/dev/access-sandbox`, { method: "POST", headers: cron, body: JSON.stringify({ action: "confirm" }) });
   await page.getByText("فعّال", { exact: true }).waitFor({ timeout: 20000 });
   check("customer page: the pending pass becomes active on its own (bounded re-check)", await page.locator('[role="img"][aria-label*="كود تصريح الدخول"] svg').count() === 1);
   const callsAfterActive = accessCalls;
@@ -160,6 +165,7 @@ try {
 } catch (e) {
   check("script ran to completion", false, e instanceof Error ? e.stack : String(e));
 } finally {
+  await fetch(`${B}/api/dev/access-sandbox`, { method: "POST", headers: cron, body: JSON.stringify({ action: "mode", mode: "NORMAL" }) }).catch(() => {});
   await browser.close();
   await pg.query(`DELETE FROM "AuditLog" WHERE "resourceId" = ANY($1) OR "resourceId" = ANY($2)`, [cleanup.bookings, cleanup.venues]).catch(() => {});
   await pg.query(`DELETE FROM "Venue" WHERE id = ANY($1)`, [cleanup.venues]).catch((e) => console.error(e.message));

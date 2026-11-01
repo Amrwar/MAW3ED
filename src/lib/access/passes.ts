@@ -5,7 +5,7 @@ import { wallToInstant } from "@/lib/bookings/instants";
 import { decideAccess, reasonText, type AccessPolicy, type EligibilityDecision } from "./eligibility";
 import { openToken, randomToken } from "./crypto";
 import { providerUsable } from "./provider";
-import { enqueueJob, kickAccessJobs } from "./sync";
+import { enqueueJob, kickAccessJobs, holderLabel } from "./sync";
 
 /**
  * Visitor passes (QR type C): the lifecycle, kept in step with the booking.
@@ -402,8 +402,9 @@ export async function requestPass(
     if (existing) {
       const before = await tx.visitor.findUnique({ where: { id: existing.visitorId }, select: { displayName: true, phoneE164: true } });
       await tx.visitor.update({ where: { id: existing.visitorId }, data: { displayName: holder.displayName, phoneE164: holder.phoneE164 } });
-      // The provider has the old name or phone: a new version sends it.
-      if (before && (before.displayName !== holder.displayName || before.phoneE164 !== holder.phoneE164)) {
+      // The provider has the old first name or phone: a new version sends
+      // it. A change it is never sent (a surname) sends nothing.
+      if (before && (holderLabel(before.displayName) !== holderLabel(holder.displayName) || before.phoneE164 !== holder.phoneE164)) {
         await tx.accessEntitlement.updateMany({ where: { bookingGuestId: existing.id }, data: { version: { increment: 1 } } });
       }
       return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
 import Link from "@/components/shared/LocaleLink";
 
@@ -48,6 +48,11 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
   // arrives, the old rows are marked as not this day's.
   const [deskDay, setDeskDay] = useState("");
   const [confirmOff, setConfirmOff] = useState(false);
+  // The day now chosen, for answers that arrive after it changed.
+  const chosen = useRef(day);
+  useEffect(() => {
+    chosen.current = day;
+  }, [day]);
 
   const fetchDesk = useCallback(async (): Promise<{ desk: Desk | null; failure: string | null; day: string }> => {
     try {
@@ -61,6 +66,7 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
     }
   }, [base, day]);
   const apply = useCallback((r: { desk: Desk | null; failure: string | null; day: string }) => {
+    if (r.day !== chosen.current) return; // an answer for a day no longer on screen
     if (r.desk) {
       setDesk(r.desk);
       setDeskDay(r.day);
@@ -99,7 +105,7 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
   if (failure && !desk) return <main className="max-w-4xl mx-auto p-6 text-sm" dir="rtl">{failure}</main>;
   if (!desk) return <main className="max-w-4xl mx-auto p-6 text-sm" dir="rtl">بيحمّل…</main>;
   const s = desk.settings;
-  const stale = deskDay !== day;
+  const stale = deskDay !== day && !failure;
 
   return (
     <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-5" dir="rtl">

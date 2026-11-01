@@ -151,17 +151,21 @@ export type CredentialFull = AccessCredential & {
   };
 };
 
+/** The only part of a name a provider is sent: the first name, short. */
+export function holderLabel(displayName: string): string {
+  return (displayName.trim().split(/\s+/)[0] ?? "").slice(0, 40);
+}
+
 /** What a credential's entitlement asks the provider for. */
 export function passRequest(c: CredentialFull): PassRequest {
   const e = c.entitlement;
   const codes = e.allowedGateIds
     .map((id) => e.venue.gates.find((g) => g.id === id)?.code)
     .filter((x): x is string => !!x);
-  const firstName = e.visitor.displayName.trim().split(/\s+/)[0] ?? "";
   return {
     externalRef: c.id,
     siteRef: e.venue.accessSiteRef,
-    holderLabel: firstName.slice(0, 40),
+    holderLabel: holderLabel(e.visitor.displayName),
     holderPhone: e.venue.policy?.identityRequirement === "NAME_AND_PHONE" ? e.visitor.phoneE164 : null,
     validFrom: e.validFrom,
     validUntil: e.validUntil,
@@ -225,15 +229,26 @@ export async function runAccessJobs(opts: { limit?: number; budgetMs?: number; n
       // write fails, its lease runs out and the next claim counts again.
       log.error("[access] a job could not be processed", e, { job: job.id, correlationId: job.correlationId });
       const dead = job.attempts >= MAX_ATTEMPTS;
-      await db.accessSyncJob
-        .update({
-          where: { id: job.id },
-          data: dead
-            ? { status: "DEAD", leasedUntil: null, lastError: "could not be processed" }
-            : { leasedUntil: null, lastError: "could not be processed", nextAttemptAt: new Date(at.getTime() + backoffMs(job.attempts)) },
-        })
-        .catch(() => {});
       outcome = dead ? "dead" : "retried";
+      try {
+        if (!dead) {
+          await db.accessSyncJob.update({
+            where: { id: job.id },
+            data: { leasedUntil: null, lastError: "could not be processed", nextAttemptAt: new Date(at.getTime() + backoffMs(job.attempts)) },
+          });
+        } else {
+          // Out of attempts: end it as any failure ends (failed, withdrawn
+          // or escalated), so the credential is never left in between.
+          const credential = (await db.accessCredential.findUnique({ where: { id: job.credentialId }, include: includeFull })) as CredentialFull | null;
+          if (credential) await giveUp(job, credential, "could not be processed", now());
+          else await finish(job, "DEAD", "could not be processed");
+        }
+      } catch (again) {
+        // Even that failed: dead-letter the job alone, loudly. Its
+        // credential is visible to the cron and the venue desk.
+        log.error("[access] a job could not be ended cleanly", again, { job: job.id, correlationId: job.correlationId });
+        await db.accessSyncJob.update({ where: { id: job.id }, data: { status: "DEAD", leasedUntil: null, lastError: "could not be processed" } }).catch(() => {});
+      }
     }
     result[outcome]++;
   }
@@ -261,7 +276,20 @@ async function runOne(job: AccessSyncJob, now: () => Date, timeoutMs: number): P
       }
       case "UPDATE": {
         if (credential.status !== "ACTIVE" && credential.status !== "PENDING_PROVIDER") return finish(job, "DONE", null);
-        if (!credential.providerRef) return waitOrGiveUp(job, credential, "waiting for the provider's reference", now());
+        if (!credential.providerRef) {
+          // The provision is still trying: wait on it (its own attempts
+          // bound the wait) without using this job's, so a slow provision
+          // is not withdrawn by an update that ran out first.
+          const provisioning = await db.accessSyncJob.count({ where: { credentialId: credential.id, kind: "PROVISION", status: "PENDING" } });
+          if (provisioning) {
+            await db.accessSyncJob.update({
+              where: { id: job.id },
+              data: { attempts: { decrement: 1 }, leasedUntil: null, lastError: "waiting for the provision", nextAttemptAt: new Date(now().getTime() + backoffMs(1)) },
+            });
+            return "retried";
+          }
+          return waitOrGiveUp(job, credential, "waiting for the provider's reference", now());
+        }
         // Only the newest version is worth sending.
         if ((credential.confirmedVersion ?? 0) >= credential.version) return finish(job, "DONE", null);
         const r = await withTimeout((signal) => adapter.update(credential.providerRef!, passRequest(credential), ctx(signal)), timeoutMs);
@@ -324,10 +352,19 @@ async function giveUp(job: AccessSyncJob, credential: CredentialFull, error: str
   await db.$transaction(async (tx) => {
     await tx.accessSyncJob.update({ where: { id: job.id }, data: { status: "DEAD", leasedUntil: null, lastError: error.slice(0, 500) } });
     if (job.kind === "PROVISION") {
-      await tx.accessCredential.updateMany({
-        where: { id: credential.id, status: "PENDING_PROVIDER" },
-        data: { status: "FAILED", lastError: error.slice(0, 500) },
-      });
+      // A call that may have reached the provider (it timed out, or the
+      // process stopped mid-call) may have created the pass. Withdraw it:
+      // the REVOKE job asks again with the original key to learn what the
+      // provider holds, and revokes it. Marking it failed would leave a
+      // pass valid at the gate that Maw3ed has no record of.
+      if (/timed out|interrupted/.test(error)) {
+        await withdrawCredential(tx, credential, "provision-uncertain", error.slice(0, 500), at);
+      } else {
+        await tx.accessCredential.updateMany({
+          where: { id: credential.id, status: "PENDING_PROVIDER" },
+          data: { status: "FAILED", lastError: error.slice(0, 500) },
+        });
+      }
       await tx.accessEvent.create({
         data: {
           venueId: credential.entitlement.venueId, providerId: credential.providerId, credentialId: credential.id,

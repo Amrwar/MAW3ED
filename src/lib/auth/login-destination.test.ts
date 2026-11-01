@@ -44,6 +44,9 @@ describe("loginDestination", () => {
       "/admin/users",
       "/c/a/b",
       "/venue-administrator",
+      "/venue-admin/../admin/users",
+      "/venue-admin/%2e%2e/admin",
+      "/c/../admin/users",
     ]) {
       expect(loginDestination(`?next=${encodeURIComponent(bad)}`, O, owner), bad).toBe("/dashboard");
     }

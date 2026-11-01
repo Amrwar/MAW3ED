@@ -133,7 +133,14 @@ export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
     let stream: MediaStream | null = null;
     const release = () => stream?.getTracks().forEach((t) => t.stop());
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      } catch (e) {
+        if (mine !== session.current) return;
+        // Refused by the person or the browser's settings: can be undone there, so the button stays.
+        setCamera(e instanceof DOMException && e.name === "NotAllowedError" ? "denied" : "unsupported");
+        return;
+      }
       // Stopped, restarted or unmounted while the browser was asking.
       if (mine !== session.current || !videoRef.current) return release();
       streamRef.current = stream;
@@ -160,12 +167,11 @@ export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
         setTimeout(tick, SCAN_INTERVAL_MS);
       };
       void tick();
-    } catch (e) {
+    } catch {
       release();
       if (streamRef.current === stream) streamRef.current = null;
       if (mine !== session.current) return;
-      // A refusal can be undone in the browser's settings, so the button stays.
-      setCamera(e instanceof DOMException && e.name === "NotAllowedError" ? "denied" : "unsupported");
+      setCamera("unsupported");
     }
   }
 
@@ -186,10 +192,14 @@ export default function CheckInDesk({ initialCode }: { initialCode?: string }) {
           <button type="submit" className="btn btn-primary btn-sm flex-1" disabled={busy || !code.trim()}>
             <ScanLine size={14} aria-hidden="true" /> اتحقق
           </button>
-          {camera !== "on" ? (
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => void startCamera()} disabled={camera === "unsupported" || camera === "starting"}>
+          {camera === "starting" ? (
+            <button type="button" className="btn btn-outline btn-sm" onClick={stopCamera}>
+              <Loader2 size={14} className="animate-spin" aria-hidden="true" /> بيفتح الكاميرا… إلغاء
+            </button>
+          ) : camera !== "on" ? (
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => void startCamera()} disabled={camera === "unsupported"}>
               <Camera size={14} aria-hidden="true" />{" "}
-              {camera === "unsupported" ? "الكاميرا مش متاحة هنا" : camera === "denied" ? "اسمح بالكاميرا وجرّب تاني" : camera === "starting" ? "بيفتح الكاميرا…" : "امسح بالكاميرا"}
+              {camera === "unsupported" ? "الكاميرا مش متاحة هنا" : camera === "denied" ? "اسمح بالكاميرا وجرّب تاني" : "امسح بالكاميرا"}
             </button>
           ) : (
             <button type="button" className="btn btn-outline btn-sm" onClick={stopCamera}>اقفل الكاميرا</button>

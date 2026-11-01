@@ -871,11 +871,15 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
     const cred = (await live(b.id))[0];
     await db.accessSyncJob.updateMany({ where: { credentialId: cred.id }, data: { attempts: sync.MAX_ATTEMPTS, leasedUntil: new Date(0), nextAttemptAt: new Date(0) } });
     await runJobs();
-    const job = await db.accessSyncJob.findFirstOrThrow({ where: { credentialId: cred.id } });
+    const job = await db.accessSyncJob.findFirstOrThrow({ where: { credentialId: cred.id, kind: "PROVISION" } });
     expect(job.status).toBe("DEAD");
-    const after = await db.accessCredential.findUniqueOrThrow({ where: { id: cred.id } });
-    expect(after.status).toBe("FAILED");
-    expect(after.providerRef).toBeNull(); // the provider was not asked again
+    // It may have reached the provider before the process stopped, so it is
+    // withdrawn: the REVOKE job learns what the provider holds and revokes it.
+    expect((await db.accessCredential.findUniqueOrThrow({ where: { id: cred.id } })).status).toBe("REVOKE_PENDING");
+    await drain(2);
+    expect((await db.accessCredential.findUniqueOrThrow({ where: { id: cred.id } })).status).toBe("REVOKED");
+    const remote = await db.sandboxAccessPass.findMany({ where: { externalRef: cred.id } });
+    expect(remote.every((p) => p.status !== "ACTIVE")).toBe(true);
 
     // A job whose processing throws (not a provider failure): the next job still runs.
     const one = await activePass("a7-one");
@@ -928,15 +932,35 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
     expect(after.version).toBe(ent.version + 1);
   }, 30_000);
 
-  it("A12: a changed name reaches the provider as a new version", async () => {
+  it("A12: a changed first name reaches the provider as a new version; a change it is never sent does not", async () => {
     const { b, c } = await activePass("a12");
-    await passes.requestPass(b.id, { displayName: "منى محمود", phoneE164: null, userId: null });
+    await passes.requestPass(b.id, { displayName: "منة", phoneE164: null, userId: null });
     await drain(1);
     const after = await db.accessCredential.findUniqueOrThrow({ where: { id: c.id } });
     expect(after.confirmedVersion).toBe(c.version + 1);
-    // Asking again with the same details sends nothing.
-    await passes.requestPass(b.id, { displayName: "منى محمود", phoneE164: null, userId: null });
+    expect((await db.sandboxAccessPass.findUniqueOrThrow({ where: { providerRef: c.providerRef! } })).holderLabel).toBe("منة");
+    // A surname only (the provider gets the first name): nothing to send.
+    await passes.requestPass(b.id, { displayName: "منة محمود", phoneE164: null, userId: null });
     expect((await db.accessCredential.findUniqueOrThrow({ where: { id: c.id } })).version).toBe(after.version);
+  }, 30_000);
+
+  it("A13: an update waiting on a provision that is still trying waits for it, without using its own attempts", async () => {
+    const a = await business("a13");
+    await venue("a13", a);
+    const b = await booking(a, "CONFIRMED", 60);
+    await sandbox.setSandboxMode("DOWN");
+    try {
+      await passes.requestPass(b.id, { displayName: "منى", phoneE164: null, userId: null });
+      const cred = (await live(b.id))[0];
+      await db.accessSyncJob.create({ data: { credentialId: cred.id, kind: "UPDATE", idempotencyKey: `${cred.id}:a13`, correlationId: cred.correlationId, attempts: sync.MAX_ATTEMPTS - 1, nextAttemptAt: new Date(0) } });
+      await runJobs();
+      const update = await db.accessSyncJob.findUniqueOrThrow({ where: { idempotencyKey: `${cred.id}:a13` } });
+      expect(update.status).toBe("PENDING");
+      expect(update.attempts).toBe(sync.MAX_ATTEMPTS - 1);
+      expect((await db.accessCredential.findUniqueOrThrow({ where: { id: cred.id } })).status).toBe("PENDING_PROVIDER");
+    } finally {
+      await sandbox.setSandboxMode("NORMAL");
+    }
   }, 30_000);
 
   it("loops: the cron converges — with nothing changing, repeated runs queue and call nothing", async () => {

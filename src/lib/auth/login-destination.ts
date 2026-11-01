@@ -55,5 +55,13 @@ function returnPath(raw: string | null, origin: string): string | null {
     }
   }
   const safe = safeNext(candidate);
-  return safe === "/account" && candidate !== "/account" ? null : safe;
+  if (safe === "/account" && candidate !== "/account") return null;
+  // Resolve "." and ".." the way the browser will, so the path checked is
+  // the path landed on ("/venue-admin/../admin" is "/admin").
+  try {
+    const url = new URL(safe, origin);
+    return url.origin === origin ? url.pathname + url.search : null;
+  } catch {
+    return null;
+  }
 }

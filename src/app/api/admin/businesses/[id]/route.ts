@@ -160,9 +160,7 @@ export async function POST(req: Request, { params }: Params) {
     });
 
     // Visitor passes depend on the business being open (Phase 23).
-    if (updated.status !== business.status) {
-      await accessAfterBusinessChange(id).catch((e) => log.error("[admin business action] access resync", e, { businessId: id }));
-    }
+    if (updated.status !== business.status) accessAfterBusinessChange(id);
 
     return ok(updated);
   } catch (e) {
