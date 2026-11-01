@@ -220,7 +220,10 @@ export async function lookupScan(
       },
     },
   });
-  if (!row || row.status !== "ACTIVE") return { state: "not-found" };
+  // A code withdrawn because its booking is over still says why (cancelled,
+  // no-show, completed); scanState never lets it check in. A replaced code
+  // is simply unknown — its hash is gone.
+  if (!row) return { state: "not-found" };
   const inScope = await db.booking.count({ where: { AND: [{ id: row.booking.id }, scope] } });
   if (!inScope) return { state: "not-found" };
 

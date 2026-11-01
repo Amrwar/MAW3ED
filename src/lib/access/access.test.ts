@@ -265,7 +265,7 @@ describe("venue security role — least privilege (test 20)", () => {
     expect(a).toBe("VENUE_SECURITY");
     expect(venueCan(a, "venue.access.view")).toBe(true);
     expect(venueCan(a, "venue.access.override")).toBe(true);
-    for (const no of ["venue.access.enable", "venue.access.provider", "venue.metrics", "venue.memberships.decide", "venue.policy", "venue.editInfo"] as const) {
+    for (const no of ["venue.view", "venue.access.enable", "venue.access.provider", "venue.metrics", "venue.memberships.decide", "venue.policy", "venue.editInfo"] as const) {
       expect(venueCan(a, no), no).toBe(false);
     }
     expect(authorityOver(caller, { id: "v2", organizationId: "o1", compoundId: null })).toBeNull();

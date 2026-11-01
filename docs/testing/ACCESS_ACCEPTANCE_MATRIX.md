@@ -37,4 +37,19 @@ Every test in the Phase 23 brief (1–26), where it is tested, and the result on
 | 25 | Accurate event and audit logs | DB "2/3/25" (check-in audit row and actor), "7/8/25" (ACTIVE and REVOKED events), "25" (overrides with actor and reason; a cancelled booking cannot be reinstated); QA "25" ×3 | PASS |
 | 26 | Existing booking and notification regression | Full unit suite and all DB suites; all earlier QA scripts on the Phase 23 build; QA "26" (a booking outside any venue moves as before and creates no access rows) | see PHASE_23_REPORT.md |
 
+## Code review findings, each with a test that fails on the old code
+
+| # | Finding | Test | Result |
+|---|---|---|---|
+| R1 | A security hold was overwritten by any temporary reason and then lifted when that reason cleared | DB "R1" | FIXED, PASS |
+| R2 | A pass the provider issued, whose confirmation was lost, was marked failed after 24 h | DB "R2" | FIXED, PASS |
+| R3 | A callback that beat the provider reference was answered 202 and lost | DB "R2b"; route now answers 409 so the provider retries | FIXED, PASS |
+| R4 | A dead REVOKE left the credential stuck, blocking any new pass for good | DB "R4" (hourly rounds, max 24, then re-issue) | FIXED, PASS |
+| R5 | A dead UPDATE left the old pass valid at the gate on the old window | DB "R5" (withdrawn, then re-issued for the new time) | FIXED, PASS |
+| R6 | An access failure inside a booking move rolled the move back | Savepoint around the access step in `applyMove`; the full booking suites pass | FIXED (code-reviewed; no fault-injection test) |
+| R7 | A cancelled booking's code read as "not-found" at the desk | DB "7/8/25" now expects `cancelled` | FIXED, PASS |
+| R8 | Venue on/off cycles used up the customer's retry cap | DB "R8" | FIXED, PASS |
+| R9 | `VENUE_SECURITY` could read the venue console's API and tenant list | Unit "20"; QA "least privilege: security cannot read…" | FIXED, PASS |
+| R10 | A holder with no phone on file could not meet a phone requirement | Holder form offers an optional phone (the booking's own number is used otherwise) | FIXED (UI) |
+
 "PASS (sandbox)" means the provider side was exercised against the sandbox provider. No real gate system has been tested (status E).

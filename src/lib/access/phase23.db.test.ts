@@ -270,9 +270,11 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
 
     const move = await state.moveBooking({ bookingId: b.id, from: "CONFIRMED", to: "CANCELLED", by: "customer" });
     expect(move.moved).toBe(true);
-    // Immediately, before any provider call: the code is withdrawn and does not scan…
+    // Immediately, before any provider call: the code is withdrawn, and the
+    // desk is told the booking was cancelled (it cannot check in)…
     expect((await db.bookingCheckIn.findUniqueOrThrow({ where: { bookingId: b.id } })).status).toBe("REVOKED");
-    expect((await checkin.lookupScan(code, scopeOf(a.business.id))).state).toBe("not-found");
+    expect((await checkin.lookupScan(code, scopeOf(a.business.id))).state).toBe("cancelled");
+    expect((await checkin.checkIn(code, scopeOf(a.business.id), a.owner.id)).state).toBe("cancelled");
     // …and the pass is no longer shown or usable on Maw3ed's side.
     const ent = await db.accessEntitlement.findFirstOrThrow({ where: { bookingId: b.id } });
     expect(ent).toMatchObject({ status: "REVOKED", reason: "booking-cancelled" });
@@ -596,5 +598,141 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
     await db.business.update({ where: { id: a.business.id }, data: { status: "SUSPENDED" } });
     await passes.syncBookingAccess(b.id);
     expect(await db.accessEntitlement.findFirstOrThrow({ where: { bookingId: b.id } })).toMatchObject({ status: "SUSPENDED", reason: "business-unavailable" });
+  });
+
+  // ─── Review findings (Phase 23 code review) ───────────────────────────
+
+  it("R1: a security hold survives other temporary reasons and is lifted only by the desk", async () => {
+    const a = await business("r1");
+    const { venue: v } = await venue("r1", a);
+    const guard = await user("r1-guard");
+    const b = await booking(a, "CONFIRMED", 60);
+    await passes.requestPass(b.id, { displayName: "منى", phoneE164: null, userId: null });
+    await drain(1);
+    const ent = await db.accessEntitlement.findFirstOrThrow({ where: { bookingId: b.id } });
+    await passes.securitySuspend(ent.id, v.id, guard.id, "hold");
+    await drain(1);
+    // The venue switches passes off and on again; the booking goes pending and back.
+    await db.venue.update({ where: { id: v.id }, data: { accessEnabled: false } });
+    await passes.syncBookingAccess(b.id);
+    await db.venue.update({ where: { id: v.id }, data: { accessEnabled: true } });
+    await db.booking.update({ where: { id: b.id }, data: { status: "PENDING" } });
+    await passes.syncBookingAccess(b.id);
+    await state.moveBooking({ bookingId: b.id, from: "PENDING", to: "CONFIRMED", by: "business" });
+    await drain(1);
+    expect(await db.accessEntitlement.findUniqueOrThrow({ where: { id: ent.id } })).toMatchObject({ status: "SUSPENDED", reason: "security-override" });
+    expect(await live(b.id)).toHaveLength(0);
+    expect(await passes.securityReinstate(ent.id, v.id, guard.id, "cleared")).toBe(true);
+    await drain(1);
+    expect((await passes.bookingAccessView(b.id)).holder?.state).toBe("active");
+  });
+
+  it("R2: a pass the provider issued but whose confirmation was lost is recovered, not failed", async () => {
+    const a = await business("r2");
+    await venue("r2", a);
+    const b = await booking(a, "CONFIRMED", 60);
+    await sandbox.setSandboxMode("NO_CONFIRM");
+    try {
+      await passes.requestPass(b.id, { displayName: "منى", phoneE164: null, userId: null });
+      await drain(1);
+    } finally {
+      await sandbox.setSandboxMode("NORMAL");
+    }
+    const cred = (await live(b.id))[0];
+    expect(cred.status).toBe("PENDING_PROVIDER");
+    // The provider confirms on its side, and the callback never arrives.
+    await db.sandboxAccessPass.update({ where: { providerRef: cred.providerRef! }, data: { status: "ACTIVE" } });
+    await db.accessCredential.update({ where: { id: cred.id }, data: { updatedAt: new Date(Date.now() - 20 * 60_000) } });
+    const r = await reconcile.reconcileAccess({ batch: 500 });
+    expect(r.stale.recovered).toBeGreaterThanOrEqual(1);
+    const after = await db.accessCredential.findUniqueOrThrow({ where: { id: cred.id } });
+    expect(after.status).toBe("ACTIVE");
+    expect((await passes.bookingAccessView(b.id)).holder?.pass?.token).toMatch(/^SANDBOX-/);
+    expect(await db.sandboxAccessPass.count({ where: { externalRef: cred.id } })).toBe(1);
+  });
+
+  it("R2b: an event for a credential not known yet is not recorded, so the provider retries it", async () => {
+    const ev = sandbox.signedSandboxEvent({ id: `early-${tag}`, type: "CREDENTIAL_ACTIVE", ref: "sbx_not_yet_known", at: new Date().toISOString() });
+    expect(await events.ingestProviderEvent("sandbox", ev.raw, ev.headers)).toBe("unknown-credential");
+    expect(await db.accessEvent.count({ where: { providerEventId: `early-${tag}` } })).toBe(0);
+  });
+
+  it("R4: a withdrawal the provider never confirmed is asked again later, boundedly, and then a new pass can be issued", async () => {
+    const a = await business("r4");
+    const { venue: v } = await venue("r4", a);
+    const guard = await user("r4-guard");
+    const b = await booking(a, "CONFIRMED", 60);
+    await passes.requestPass(b.id, { displayName: "منى", phoneE164: null, userId: null });
+    await drain(1);
+    const ent = await db.accessEntitlement.findFirstOrThrow({ where: { bookingId: b.id } });
+    await sandbox.setSandboxMode("DOWN");
+    try {
+      await passes.securitySuspend(ent.id, v.id, guard.id, "hold during an outage");
+      await drain(sync.MAX_ATTEMPTS + 2);
+    } finally {
+      await sandbox.setSandboxMode("NORMAL");
+    }
+    const cred = (await db.accessCredential.findMany({ where: { entitlementId: ent.id } }))[0];
+    expect(cred.status).toBe("REVOKE_PENDING");
+    expect(await db.accessEvent.count({ where: { credentialId: cred.id, kind: "ESCALATION" } })).toBe(1);
+    // An hour later the cron asks again; the provider is back, so it completes.
+    await db.accessCredential.update({ where: { id: cred.id }, data: { updatedAt: new Date(Date.now() - 2 * 60 * 60_000) } });
+    const r = await reconcile.reconcileAccess({ batch: 500 });
+    expect(r.revokeRounds).toBeGreaterThanOrEqual(1);
+    await drain(1);
+    expect((await db.accessCredential.findUniqueOrThrow({ where: { id: cred.id } })).status).toBe("REVOKED");
+    await passes.securityReinstate(ent.id, v.id, guard.id, "cleared");
+    await drain(1);
+    expect((await passes.bookingAccessView(b.id)).holder?.state).toBe("active");
+  });
+
+  it("R5: an update the provider never takes withdraws the old pass, and a pass for the new time is issued", async () => {
+    const a = await business("r5");
+    await venue("r5", a);
+    const b = await booking(a, "CONFIRMED", 60);
+    await passes.requestPass(b.id, { displayName: "منى", phoneE164: null, userId: null });
+    await drain(1);
+    const first = (await live(b.id))[0];
+    const newStart = new Date(b.startsAt!.getTime() + 2 * 60 * 60_000);
+    await db.booking.update({ where: { id: b.id }, data: { startsAt: newStart, endsAt: new Date(newStart.getTime() + 60 * 60_000) } });
+    await sandbox.setSandboxMode("DOWN");
+    try {
+      const { accessAfterReschedule } = await import("./hooks");
+      await accessAfterReschedule(b.id);
+      await drain(sync.MAX_ATTEMPTS + 2);
+      expect((await db.accessCredential.findUniqueOrThrow({ where: { id: first.id } })).status).toBe("REVOKE_PENDING");
+    } finally {
+      await sandbox.setSandboxMode("NORMAL");
+    }
+    // The withdrawal (its own job) gets through once the provider is back;
+    // the old pass no longer opens the gate.
+    await db.accessSyncJob.updateMany({ where: { credentialId: first.id, kind: "REVOKE", status: "DEAD" }, data: { status: "PENDING", attempts: 0 } });
+    await drain(2);
+    expect((await db.accessCredential.findUniqueOrThrow({ where: { id: first.id } })).status).toBe("REVOKED");
+    await passes.syncBookingAccess(b.id);
+    await drain(1);
+    const fresh = (await live(b.id))[0];
+    expect(fresh.id).not.toBe(first.id);
+    expect(fresh.status).toBe("ACTIVE");
+    const remote = await db.sandboxAccessPass.findUniqueOrThrow({ where: { providerRef: fresh.providerRef! } });
+    const ent = await db.accessEntitlement.findFirstOrThrow({ where: { bookingId: b.id } });
+    expect(remote.validFrom.getTime()).toBe(ent.validFrom.getTime());
+  });
+
+  it("R8: passes withdrawn and re-issued by venue changes do not use up the customer's retries", async () => {
+    const a = await business("r8");
+    const { venue: v } = await venue("r8", a);
+    const b = await booking(a, "CONFIRMED", 60);
+    await passes.requestPass(b.id, { displayName: "منى", phoneE164: null, userId: null });
+    await drain(1);
+    for (let i = 0; i < passes.MAX_CREDENTIALS_PER_ENTITLEMENT + 1; i++) {
+      await db.venue.update({ where: { id: v.id }, data: { accessEnabled: false } });
+      await passes.syncBookingAccess(b.id);
+      await drain(1);
+      await db.venue.update({ where: { id: v.id }, data: { accessEnabled: true } });
+      await passes.syncBookingAccess(b.id);
+      await drain(1);
+    }
+    expect((await passes.bookingAccessView(b.id)).holder?.state).toBe("active");
   });
 });

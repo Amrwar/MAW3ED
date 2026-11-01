@@ -227,6 +227,9 @@ try {
   check("20: security cannot change the venue's access settings", secPut.status === 404);
   const consoleRedirect = await call(security, `/venue-admin/${venueId}`);
   check("security opening the venue console is sent to the access desk", [302, 303, 307, 308].includes(consoleRedirect.status) || (await consoleRedirect.text()).includes("NEXT_REDIRECT"));
+  const secVenue = await call(security, `/api/venues/${venueId}`);
+  const secTenants = await call(security, `/api/venues/${venueId}/memberships`);
+  check("least privilege: security cannot read the venue console's data or its tenant list", secVenue.status === 404 && secTenants.status === 404);
   const ownerDesk = await call(owner, `/api/venues/${venueId}/access`);
   check("20: a business owner has no venue authority — the desk is not found", ownerDesk.status === 404);
   const ownerOverride = await call(owner, `/api/venues/${venueId}/access/entitlements/${dj.rows?.[0]?.entitlementId}`, { method: "POST", body: JSON.stringify({ action: "suspend", note: "try" }) });

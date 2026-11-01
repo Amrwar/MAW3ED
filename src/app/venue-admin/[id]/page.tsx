@@ -18,8 +18,8 @@ export default async function VenueConsolePage({ params }: { params: Promise<{ i
   if (!caller) redirect(`/login?next=/venue-admin/${id}`);
   const venue = await db.venue.findUnique({ where: { id }, select: { id: true, organizationId: true, compoundId: true } });
   const authority = venue ? authorityOver(caller, venue) : null;
-  if (!venue || !venueCan(authority, "venue.view")) notFound();
   // The security desk's work is visitor access, and nothing else here.
-  if (authority === "VENUE_SECURITY") redirect(`/venue-admin/${id}/access`);
+  if (venue && authority === "VENUE_SECURITY") redirect(`/venue-admin/${id}/access`);
+  if (!venue || !venueCan(authority, "venue.view")) notFound();
   return <VenueConsole venueId={id} />;
 }

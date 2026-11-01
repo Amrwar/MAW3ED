@@ -14,7 +14,9 @@ const MAX_BODY_BYTES = 16 * 1024;
  * event is applied idempotently and recorded once (lib/access/events.ts).
  *
  *   200 accepted / duplicate (a retried delivery: already have it)
- *   202 an event for a credential Maw3ed does not know (logged, ignored)
+ *   409 an event for a credential Maw3ed does not know (yet): not
+ *       recorded, so the provider retries — a confirmation can race the
+ *       answer that tells Maw3ed the provider's reference
  *   401 signature, timestamp or shape refused
  *   404 no such provider; 409 provider not usable here
  */
@@ -36,7 +38,7 @@ export async function POST(req: Request, { params }: Params) {
     }
     const status =
       outcome === "accepted" || outcome === "duplicate" ? 200
-      : outcome === "unknown-credential" ? 202
+      : outcome === "unknown-credential" ? 409
       : outcome === "invalid" ? 401
       : outcome === "unknown-provider" ? 404
       : 409;

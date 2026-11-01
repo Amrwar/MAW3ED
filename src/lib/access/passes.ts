@@ -42,8 +42,13 @@ type Tx = Prisma.TransactionClient;
 const LIVE: AccessCredential["status"][] = ["PENDING_PROVIDER", "ACTIVE", "REVOKE_PENDING"];
 /** Ineligibility that ends a pass for good; every other reason only holds it. */
 export const FINAL_REASONS = new Set(["booking-cancelled", "booking-no_show", "booking-failed_payment", "guest-removed", "test-booking"]);
-/** How many credentials one entitlement may go through before a person must look. */
+/**
+ * How many FAILED issues one pass may go through before a person must
+ * look. Passes withdrawn and re-issued because the booking or the venue
+ * changed do not count: those are not failures.
+ */
 export const MAX_CREDENTIALS_PER_ENTITLEMENT = 5;
+export const failedCount = (credentials: { status: string }[]) => credentials.filter((c) => c.status === "FAILED").length;
 
 /**
  * Serialises access work on one booking: every path that may issue or
@@ -277,8 +282,12 @@ async function reconcile(
       // business paused, the venue switching passes off for a while)
       // holds the pass instead, and it is issued again when it clears.
       const status = decision.status === "EXPIRED" ? "EXPIRED" : FINAL_REASONS.has(reason) ? "REVOKED" : "SUSPENDED";
-      if (status !== ent.status || reason !== ent.reason) {
-        ent = await tx.accessEntitlement.update({ where: { id: ent.id }, data: { status, reason }, include: { credentials: true } });
+      // A security hold outlives any temporary reason: only the desk lifts
+      // it (securityReinstate), so it is not replaced by one that clears.
+      const held = status === "SUSPENDED" && ent.status === "SUSPENDED" && ent.reason === "security-override";
+      const nextReason = held ? "security-override" : reason;
+      if (status !== ent.status || nextReason !== ent.reason) {
+        ent = await tx.accessEntitlement.update({ where: { id: ent.id }, data: { status, reason: nextReason }, include: { credentials: true } });
       }
     } else {
       const d = decision as Extract<EligibilityDecision, { status: "ELIGIBLE" | "SUSPENDED" }>;
@@ -327,7 +336,7 @@ async function reconcileCredential(
       return false; // a withdrawal still in progress finishes before a new pass is asked for
     }
     if (latest?.status === "FAILED") return false; // the customer asks again (retryPass)
-    if (sorted.length >= MAX_CREDENTIALS_PER_ENTITLEMENT) return false;
+    if (failedCount(sorted) >= MAX_CREDENTIALS_PER_ENTITLEMENT) return false;
     const provider = ctx?.venue.accessProvider;
     if (!provider || !providerUsable(provider)) return false;
     return issueCredential(tx, ent, provider.id);
@@ -431,7 +440,7 @@ export async function retryPass(bookingId: string, guestId: string): Promise<Acc
   if (!ent || ent.status !== "ELIGIBLE") return { ok: false, code: "not-retryable" };
   const latest = ent.credentials[0];
   if (!latest || latest.status !== "FAILED") return { ok: false, code: "not-retryable" };
-  if (ent.credentials.length >= MAX_CREDENTIALS_PER_ENTITLEMENT) return { ok: false, code: "limit", reason: "too-many-attempts" };
+  if (failedCount(ent.credentials) >= MAX_CREDENTIALS_PER_ENTITLEMENT) return { ok: false, code: "limit", reason: "too-many-attempts" };
   const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { businessId: true, branchId: true, date: true } });
   const ctx = booking ? await venueContext(db, booking) : null;
   const provider = ctx?.venue.accessProvider;
@@ -548,7 +557,7 @@ function toView(
     gates: (ent?.allowedGateIds ?? []).map(gateName).filter((x): x is string => !!x),
     reentryAllowed: ent?.reentryAllowed ?? false,
     pass: token ? { token, format: credential?.displayFormat ?? "QR", sandbox } : null,
-    canRetry: state === "failed" && (ent?.credentials.length ?? 0) < MAX_CREDENTIALS_PER_ENTITLEMENT,
+    canRetry: state === "failed" && failedCount(ent?.credentials ?? []) < MAX_CREDENTIALS_PER_ENTITLEMENT,
     ...(includeInvite && g.role === "GUEST" ? { inviteToken: g.inviteToken } : {}),
   };
 }

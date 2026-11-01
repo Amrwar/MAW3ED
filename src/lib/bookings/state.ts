@@ -87,8 +87,18 @@ async function applyMove(tx: Tx, input: MoveInput): Promise<MoveResult> {
   }
 
   // The booking's check-in code and any visitor passes follow it, in this
-  // same transaction (lib/access/hooks.ts).
-  await accessAfterMove(tx, input.bookingId, input.to);
+  // same transaction (lib/access/hooks.ts) — inside a savepoint, so a
+  // failure there (a lock timeout, a provider-side row in a bad state)
+  // never stops the booking itself moving. The cron reconciles passes
+  // within minutes, and a scan always reads the booking's own status.
+  await tx.$executeRaw`SAVEPOINT access_after_move`;
+  try {
+    await accessAfterMove(tx, input.bookingId, input.to);
+    await tx.$executeRaw`RELEASE SAVEPOINT access_after_move`;
+  } catch (e) {
+    await tx.$executeRaw`ROLLBACK TO SAVEPOINT access_after_move`;
+    log.error("[access] could not update passes after a booking move; the cron will", e, { bookingId: input.bookingId, to: input.to });
+  }
   return { moved: true, refundNeededCents };
 }
 

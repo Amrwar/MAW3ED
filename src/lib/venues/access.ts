@@ -82,7 +82,7 @@ export const VENUE_PERMISSIONS: Record<VenueAuthority, readonly VenueAction[]> =
   // pass, with a reason. It cannot change the venue, switch passes on,
   // decide tenants or read metrics — and a business owner or a business's
   // staff has no venue authority at all, so can never override it.
-  VENUE_SECURITY: ["venue.view", "venue.access.view", "venue.access.override"],
+  VENUE_SECURITY: ["venue.access.view", "venue.access.override"],
 };
 
 /** A venue role row, as loaded for the caller. */

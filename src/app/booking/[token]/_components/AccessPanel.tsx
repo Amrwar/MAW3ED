@@ -182,8 +182,9 @@ export default function AccessPanel({ token, customerName }: { token: string; cu
           ) : va.eligibility.eligible ? (
             <VisitorForm
               initialName={customerName}
-              // The booking's own number is used when the venue needs one.
-              phoneRequired={false}
+              // The booking's own number is used when the venue needs one
+              // and none is typed here.
+              phone={va.identityRequirement === "NAME_AND_PHONE" ? "optional" : "none"}
               busy={busy}
               cta="اطلب تصريح دخول"
               onSubmit={(v) => act("/pass", "POST", v, "اتطلب التصريح.")}
@@ -226,7 +227,7 @@ export default function AccessPanel({ token, customerName }: { token: string; cu
               {va.guests.length < va.guestLimit && (
                 <VisitorForm
                   initialName=""
-                  phoneRequired={va.identityRequirement === "NAME_AND_PHONE"}
+                  phone={va.identityRequirement === "NAME_AND_PHONE" ? "required" : "none"}
                   busy={busy}
                   cta="ضيف مرافق"
                   icon
@@ -248,10 +249,10 @@ export default function AccessPanel({ token, customerName }: { token: string; cu
 }
 
 function VisitorForm({
-  initialName, phoneRequired, busy, cta, icon, onSubmit,
+  initialName, phone: phoneMode, busy, cta, icon, onSubmit,
 }: {
   initialName: string;
-  phoneRequired: boolean;
+  phone: "none" | "optional" | "required";
   busy: boolean;
   cta: string;
   icon?: boolean;
@@ -272,8 +273,17 @@ function VisitorForm({
       }}
     >
       <input className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="الاسم زي ما في البطاقة" aria-label="الاسم" required minLength={2} maxLength={80} />
-      {phoneRequired && (
-        <input className={field} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="رقم الموبايل" aria-label="رقم الموبايل" dir="ltr" inputMode="tel" required />
+      {phoneMode !== "none" && (
+        <input
+          className={field}
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder={phoneMode === "optional" ? "رقم الموبايل (لو مختلف عن رقم الحجز)" : "رقم الموبايل"}
+          aria-label="رقم الموبايل"
+          dir="ltr"
+          inputMode="tel"
+          required={phoneMode === "required"}
+        />
       )}
       <button type="submit" className="btn btn-primary btn-sm w-full" disabled={busy}>
         {icon && <UserPlus size={14} aria-hidden="true" />} {cta}

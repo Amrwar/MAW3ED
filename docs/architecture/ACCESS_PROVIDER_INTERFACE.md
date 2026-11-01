@@ -78,10 +78,10 @@ Every call is an `AccessSyncJob` row first, written in the same transaction as t
 | Never two workers on one call | Claimed by a conditional update that sets a 60-second lease; a worker that dies releases it when the lease runs out |
 | Bounded call time | `withTimeout`, 8 s by default: aborts the signal and stops waiting even if the adapter ignores it |
 | Retries | Exponential backoff of 30 s, 1, 2, 4, 8 … minutes, capped at an hour |
-| No infinite retry | After 6 attempts the job is `DEAD`. A dead `PROVISION` leaves the credential `FAILED` (visible, customer-retryable, capped at 5 per pass). A dead `REVOKE` raises an `ESCALATION`. A dead `UPDATE` raises `PROVIDER_ERROR` |
+| No infinite retry | After 6 attempts the job is `DEAD`. A dead `PROVISION` leaves the credential `FAILED` (visible, customer-retryable, capped at 5 failures per pass). A dead `REVOKE` raises one `ESCALATION`, and the cron asks again hourly, 24 rounds at most. A dead `UPDATE` raises `PROVIDER_ERROR` and **withdraws** the pass, because the provider's copy still carries the old window and gates; once withdrawn, a pass for the current rules is issued |
 | Bounded runs | A run takes at most `limit` jobs within a time budget |
 | No polling loop | Work runs when something changes (after the response) and on the five-minute cron (`/api/cron/access`); the customer screen re-checks a pending pass at most 10 times, 4 s apart, then offers a button |
-| Lost answers | A `REVOKE` for a credential whose provision answer was lost re-asks `provision` with the *same* idempotency key to learn the reference, then revokes it |
+| Lost answers | A `REVOKE` for a credential whose provision answer was lost re-asks `provision` with the *same* idempotency key to learn the reference, then revokes it. A credential the provider holds as active, but whose confirmation never arrived, is found by the cron's `status` check and recovered the same way (re-asked with the original key, which returns the same pass and token), not marked failed |
 | Out-of-order and late answers | Confirmations are conditional on state and version: a late confirmation never revives a withdrawn credential, and an older version never replaces a newer one |
 
 ## Callbacks (`POST /api/access/providers/:slug/events`, `lib/access/events.ts`)
@@ -89,7 +89,7 @@ Every call is an `AccessSyncJob` row first, written in the same transaction as t
 1. The body is capped at 16 KB.
 2. The adapter checks the signature, the timestamp (5 minutes either way, so a captured callback cannot be replayed later) and the shape. Anything else gets **401**. Unsigned or failed requests are rate-limited per address; signed callbacks never are, because a gate system reports every entry.
 3. Effects are applied idempotently. Then the event is recorded once: `AccessEvent` is unique on `(providerId, providerEventId)`, so a provider's retried delivery answers **200 duplicate** and is not counted twice.
-4. A callback for a credential Maw3ed does not know answers **202** and is logged. An unknown provider gets **404**. A provider not usable here gets **409**.
+4. A callback for a credential Maw3ed does not know (yet) answers **409** and is not recorded, so the provider retries it: a confirmation can race the answer that tells Maw3ed the provider's reference. An unknown provider gets **404**. A provider not usable here gets **409**.
 5. A provider withdrawing a credential on its own marks it `FAILED` ("revoked by the provider"). The holder sees it and may ask again; nothing re-issues it automatically.
 
 Entry, denial and exit events are recorded for the venue's security desk. They change nothing about the booking, and the business does not see them.

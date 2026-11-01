@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { syncBookingAccess } from "./passes";
 import { adapterFor } from "./provider";
-import { runAccessJobs, withTimeout, type RunResult } from "./sync";
+import { applyIssue, includeFull, passRequest, runAccessJobs, withTimeout, type CredentialFull, type RunResult } from "./sync";
 
 /**
  * The access cron's work (/api/cron/access, every five minutes). Each step
@@ -16,17 +16,23 @@ import { runAccessJobs, withTimeout, type RunResult } from "./sync";
  *   2. credentials a provider accepted but never confirmed are asked
  *      about once they are STALE_PENDING_MS old, and failed after
  *      GIVE_UP_PENDING_MS rather than left pending forever;
- *   3. due provider calls run (lib/access/sync.ts);
- *   4. each provider in use is health-checked, its answer recorded for
+ *   3. a withdrawal the provider never confirmed is asked again, hourly,
+ *      REVOKE_ROUNDS times at most;
+ *   4. due provider calls run (lib/access/sync.ts);
+ *   5. each provider in use is health-checked, its answer recorded for
  *      the administrators' screen.
  */
 
 export const STALE_PENDING_MS = 10 * 60_000;
+/** A withdrawal the provider never confirmed is asked again hourly, this many times, then left to a person. */
+export const REVOKE_ROUNDS = 24;
+const ROUND_MS = 60 * 60_000;
 export const GIVE_UP_PENDING_MS = 24 * 60 * 60_000;
 
 export interface ReconcileResult {
   resynced: number;
-  stale: { asked: number; failed: number };
+  stale: { asked: number; failed: number; recovered: number };
+  revokeRounds: number;
   jobs: RunResult;
   health: { slug: string; ok: boolean }[];
 }
@@ -63,7 +69,7 @@ export async function reconcileAccess(opts: { now?: Date; batch?: number; budget
   }
 
   // 2. Accepted but never confirmed.
-  const stale = { asked: 0, failed: 0 };
+  const stale = { asked: 0, failed: 0, recovered: 0 };
   const pending = await db.accessCredential.findMany({
     where: { status: "PENDING_PROVIDER", providerRef: { not: null }, updatedAt: { lte: new Date(now.getTime() - STALE_PENDING_MS) } },
     include: { provider: true },
@@ -90,6 +96,17 @@ export async function reconcileAccess(opts: { now?: Date; batch?: number; budget
           data: { status: "FAILED", lastError: `the provider reports the pass ${remote.found ? remote.status.toLowerCase() : "unknown"}` },
         });
         stale.failed++;
+      } else if (remote.status === "ACTIVE") {
+        // Issued there, but its confirmation never reached us. Asking for
+        // it again with the original idempotency key returns the same pass
+        // (and its token), which is then recorded as any answer is.
+        const job = await db.accessSyncJob.findFirst({ where: { credentialId: c.id, kind: "PROVISION" }, orderBy: { createdAt: "asc" } });
+        const full = (await db.accessCredential.findUnique({ where: { id: c.id }, include: includeFull })) as CredentialFull | null;
+        if (job && full) {
+          const r = await withTimeout((signal) => adapter.provision(passRequest(full), { idempotencyKey: job.idempotencyKey, correlationId: c.correlationId, signal }));
+          await applyIssue(full, r, now);
+          stale.recovered++;
+        }
       } else {
         // Still pending there: ask again next time (touching moves it to the back).
         await db.accessCredential.update({ where: { id: c.id }, data: { updatedAt: now } });
@@ -100,11 +117,36 @@ export async function reconcileAccess(opts: { now?: Date; batch?: number; budget
     }
   }
 
-  // 3. Provider calls.
+  // 3. Withdrawals the provider never confirmed: one more round each hour,
+  //    REVOKE_ROUNDS at most. Until one succeeds the pass stays withdrawn on
+  //    Maw3ed's side and no new one is issued (one live credential each).
+  let revokeRounds = 0;
+  const stuck = await db.accessCredential.findMany({
+    where: {
+      status: "REVOKE_PENDING",
+      jobs: { none: { status: "PENDING" } },
+      updatedAt: { lte: new Date(now.getTime() - ROUND_MS) },
+    },
+    select: { id: true, correlationId: true, version: true, _count: { select: { jobs: { where: { kind: "REVOKE" } } } } },
+    take: Math.min(batch, 20),
+  });
+  for (const c of stuck) {
+    if (c._count.jobs > REVOKE_ROUNDS) continue;
+    await db.$transaction(async (tx) => {
+      await tx.accessSyncJob.createMany({
+        data: [{ credentialId: c.id, kind: "REVOKE", idempotencyKey: `${c.id}:REVOKE:${c.version}:r${c._count.jobs}`, correlationId: c.correlationId }],
+        skipDuplicates: true,
+      });
+      await tx.accessCredential.update({ where: { id: c.id }, data: { updatedAt: now } });
+    });
+    revokeRounds++;
+  }
+
+  // 4. Provider calls.
   const remainingMs = Math.max(0, deadline - Date.now());
   const jobs = remainingMs > 0 ? await runAccessJobs({ limit: batch, budgetMs: remainingMs }) : { claimed: 0, done: 0, retried: 0, dead: 0 };
 
-  // 4. Health of the providers venues use.
+  // 5. Health of the providers venues use.
   const providers = await db.accessProvider.findMany({ where: { isEnabled: true, venues: { some: { accessEnabled: true } } }, take: 10 });
   const health: { slug: string; ok: boolean }[] = [];
   for (const p of providers) {
@@ -123,5 +165,5 @@ export async function reconcileAccess(opts: { now?: Date; batch?: number; budget
     health.push({ slug: p.slug, ok });
   }
 
-  return { resynced, stale, jobs, health };
+  return { resynced, stale, revokeRounds, jobs, health };
 }

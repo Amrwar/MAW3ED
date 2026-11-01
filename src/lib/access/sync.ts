@@ -96,7 +96,7 @@ export async function withTimeout<T>(fn: (signal: AbortSignal) => Promise<T>, ms
   }
 }
 
-type CredentialFull = AccessCredential & {
+export type CredentialFull = AccessCredential & {
   provider: AccessProvider;
   entitlement: AccessEntitlement & {
     visitor: { displayName: string; phoneE164: string | null };
@@ -125,7 +125,7 @@ export function passRequest(c: CredentialFull): PassRequest {
   };
 }
 
-const includeFull = {
+export const includeFull = {
   provider: true,
   entitlement: {
     include: {
@@ -268,7 +268,10 @@ async function giveUp(job: AccessSyncJob, credential: CredentialFull, error: str
       });
     } else if (job.kind === "REVOKE") {
       // Maw3ed has withdrawn it (its own screens and checks refuse it),
-      // but cannot say the provider has. A person must follow up.
+      // but cannot say the provider has. The credential stays
+      // REVOKE_PENDING; the cron asks again in later rounds
+      // (reconcile.ts, REVOKE_ROUNDS), and a person is told once.
+      if (job.idempotencyKey.includes(":r")) return;
       await tx.accessEvent.create({
         data: {
           venueId: credential.entitlement.venueId, providerId: credential.providerId, credentialId: credential.id,
@@ -277,6 +280,10 @@ async function giveUp(job: AccessSyncJob, credential: CredentialFull, error: str
         },
       });
     } else {
+      // An UPDATE the provider never took: its pass still carries the OLD
+      // window, gates and re-entry. Rather than leave that admitting
+      // people, withdraw it; once withdrawn, a new pass is issued for the
+      // current rules (syncBookingAccess).
       await tx.accessEvent.create({
         data: {
           venueId: credential.entitlement.venueId, providerId: credential.providerId, credentialId: credential.id,
@@ -284,6 +291,14 @@ async function giveUp(job: AccessSyncJob, credential: CredentialFull, error: str
           correlationId: credential.correlationId,
         },
       });
+      const n = await tx.accessCredential.updateMany({
+        where: { id: credential.id, status: { in: ["ACTIVE", "PENDING_PROVIDER"] } },
+        data: { status: "REVOKE_PENDING", revokedAt: at, lastError: "the provider did not take an update" },
+      });
+      if (n.count) {
+        await tx.accessRevocation.create({ data: { credentialId: credential.id, reason: "update-not-confirmed" } });
+        await enqueueJob(tx, credential, "REVOKE", credential.version);
+      }
     }
   });
   log.warn("[access] job dead-lettered", { job: job.id, kind: job.kind, correlationId: job.correlationId });

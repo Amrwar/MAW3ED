@@ -40,7 +40,7 @@ A booking check-in code never opens a gate, and a visitor pass never checks anyb
 | `CANCELLED` / `FAILED_PAYMENT` | `cancelled` |
 | `NO_SHOW` | `no-show` |
 | `PENDING` / `PENDING_PAYMENT` | `not-confirmed` |
-| code replaced or withdrawn | `not-found` |
+| code replaced by the customer | `not-found` (its hash no longer exists) |
 
 4. Checking in needs `bookings.progress`, the same permission as marking arrived by hand. It goes through the booking state machine (`CONFIRMED → ARRIVED`), conditional on the status just read, so a scan racing a cancellation cannot revive the booking. It is recorded in the audit log (`booking.check_in`).
 5. **Idempotent.** A second scan, or a colleague's at the same moment, answers `checked-in` with the time and changes nothing. The move succeeds once and is audited once.
@@ -51,7 +51,7 @@ What staff see is enough to recognise the booking: customer name, service, time,
 
 Nothing has to be pushed anywhere when a booking changes, because the scan reads the booking as it is:
 
-* **Cancelled, no-show, completed:** the scan says so. In the same transaction as the status move, the code is also marked `REVOKED` (`lib/access/hooks.ts`), so the record shows it was withdrawn.
+* **Cancelled, no-show, completed:** the scan says so (`cancelled`, `no-show` or `completed`, so the desk knows why) and never checks in. In the same transaction as the status move, the code is also marked `REVOKED` (`lib/access/hooks.ts`), so the record shows it was withdrawn.
 * **Rescheduled:** the window follows the new time.
 * **Replaced by the customer** ("someone else saw my code"): `POST /api/booking/:token/access/check-in` issues a new nonce, and the old code stops scanning at once.
 
@@ -101,7 +101,7 @@ entitlement ELIGIBLE ──► credential PENDING_PROVIDER ──provider confir
 * a guest limit lowered;
 * a security hold.
 
-Expiry is final.
+A security hold outlives any of the other reasons. Only the desk lifts it, so a pass the desk held is never released by, say, the venue switching passes off and on again. Expiry is final.
 
 **Keeping in step.** `syncBookingAccess` is the only place that moves any of this. It re-reads everything, decides again, and queues provider calls in the same transaction. It runs:
 
@@ -114,8 +114,8 @@ A per-booking advisory lock serialises it, so concurrent runs cannot issue two c
 
 **Rescheduling.** A change of window, gates or re-entry bumps the entitlement version, and an `UPDATE` call carries it to the provider. Until the provider confirms the new version, the customer sees "active — being updated". An older confirmation arriving late never replaces a newer one.
 
-**Failure and recovery.** A provision call that fails is retried with backoff. When the retries run out the credential is `FAILED`, the customer sees why, and they may ask again ("اطلب التصريح تاني"). This is capped at 5 credentials per pass, after which the screen tells them to contact the venue. A failed pass is never re-issued behind the customer's back.
+**Failure and recovery.** A provision call that fails is retried with backoff. When the retries run out the credential is `FAILED`, the customer sees why, and they may ask again ("اطلب التصريح تاني"). This is capped at 5 failed issues per pass, after which the screen tells them to contact the venue. Passes withdrawn and re-issued because the booking or the venue changed are not failures and do not count. A failed pass is never re-issued behind the customer's back.
 
-**Withdrawal.** On Maw3ed's side a withdrawal takes effect immediately: the pass stops being shown, and the desk sees it as withdrawn. The provider is then told (`REVOKE`). The credential becomes `REVOKED` only when the provider acknowledges it, and the `AccessRevocation` row records both moments. If the provider never acknowledges, an `ESCALATION` event asks a person to follow up. Maw3ed never claims a withdrawal the provider has not confirmed.
+**Withdrawal.** On Maw3ed's side a withdrawal takes effect immediately: the pass stops being shown, and the desk sees it as withdrawn. The provider is then told (`REVOKE`). The credential becomes `REVOKED` only when the provider acknowledges it, and the `AccessRevocation` row records both moments. If the provider never acknowledges, an `ESCALATION` event asks a person to follow up, and the cron asks the provider again once an hour, 24 times at most. Until a withdrawal is confirmed no new pass is issued for that person: one live credential each. Maw3ed never claims a withdrawal the provider has not confirmed.
 
 **Expiry.** When the window ends, the cron marks entitlement and credential `EXPIRED` without calling the provider, whose own validity ends at the same moment.
