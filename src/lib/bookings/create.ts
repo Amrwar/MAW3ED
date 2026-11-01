@@ -7,7 +7,7 @@ import { log } from "@/lib/logger";
 import { bookingInstants, dateToUTC } from "./instants";
 import { generateReference } from "./reference";
 import { loadAvailability } from "./schedule";
-import { takeBookingQueue } from "./queue";
+import { isTransactionStartTimeout, queuedTransaction } from "./queue";
 import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 import { minutesToTime, timeToMinutes } from "./time";
 
@@ -143,8 +143,9 @@ const BOOKING_SELECT = {
 
 /**
  * Attempts at the insert. A reference collision draws a new one; a
- * write conflict or deadlock (Prisma P2034) — which the queue should
- * leave no room for — is retried as a whole, since the overlap constraint still holds whatever the retry does.
+ * write conflict or deadlock (Prisma P2034) — rare under the queue, but a
+ * status change on a live booking does not take it — is retried as a
+ * whole, since the overlap constraint still holds whatever the retry does.
  */
 const INSERT_ATTEMPTS = 6;
 
@@ -208,11 +209,12 @@ export async function createBooking(
     // Per attempt: a retried transaction counts the month afresh.
     let status = input.status;
     try {
-      const booking = await db.$transaction(
+      // One booking write at a time per business, at Read Committed
+      // (lib/bookings/queue.ts): the month's count sees every booking
+      // queued ahead of this one.
+      const booking = await queuedTransaction(
+        input.businessId,
         async (tx) => {
-          // One booking write at a time per business (lib/bookings/queue).
-          await takeBookingQueue(tx, input.businessId);
-
           // A test booking exists only on a private page. Publishing
           // locks the business row and deletes test bookings in one
           // transaction (lib/business/publish.ts); taking a share lock
@@ -300,23 +302,6 @@ export async function createBooking(
           }
 
           return created;
-        },
-        {
-          // Read Committed, so each statement sees what the bookings
-          // queued ahead of this one committed: the lock above makes the
-          // month's count exact. At Serializable the snapshot is taken
-          // before the lock is granted, and every queued insert at a
-          // business with a monthly limit failed and retried on it.
-          isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
-          // A burst of bookings at one business queues for the connection
-          // pool. Each insert holds a connection for milliseconds, but
-          // Prisma's default gives a transaction two seconds to *start*,
-          // and under fifty simultaneous requests the ones at the back of
-          // the queue were failing with "unable to start a transaction"
-          // — a 500 for a customer who merely had to wait a moment. They
-          // wait now; the overlap constraint still decides who wins.
-          maxWait: 10_000,
-          timeout: 20_000,
         },
       );
 
@@ -439,14 +424,6 @@ class LimitReached extends Error {}
 class DiscountGone extends Error {}
 class PublishedMeanwhile extends Error {}
 
-/** Prisma P2028: the interactive transaction could not be started in time. */
-export function isTransactionStartTimeout(e: unknown): boolean {
-  return (
-    e instanceof Prisma.PrismaClientKnownRequestError &&
-    e.code === "P2028" &&
-    /start a transaction/i.test(e.message)
-  );
-}
 
 function pgCode(e: unknown): string | null {
   if (e instanceof Prisma.PrismaClientKnownRequestError) {
