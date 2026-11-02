@@ -30,6 +30,8 @@ export default function DiscreetSetting({ initial, byDefault }: { initial: boole
    */
   async function save(next: boolean | null) {
     const before = choice;
+    // Asked now: the link is disabled while saving, which takes focus off it.
+    const onLink = next === null && document.activeElement?.closest("[data-default-link]") != null;
     if (next !== null) setChoice(next);
     setState("saving");
     try {
@@ -40,9 +42,8 @@ export default function DiscreetSetting({ initial, byDefault }: { initial: boole
       });
       if (!res.ok) throw new Error();
       if (next === null) {
-        // The link is about to go: if focus is still on it, it moves to
-        // the switch rather than falling to the page.
-        const onLink = document.activeElement?.closest("[data-default-link]") != null;
+        // The link is about to go: if focus was on it, it moves to the
+        // switch rather than falling to the page.
         setChoice(null);
         if (onLink) box.current?.querySelector<HTMLInputElement>("input[type=checkbox]")?.focus();
       }

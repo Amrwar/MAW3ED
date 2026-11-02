@@ -183,9 +183,9 @@ export default function BookingsClient({
   // ── Real-time updates ─────────────────────────────────────
   useRealtimeBookings((event) => {
     if (event.type === "BOOKINGS_RESYNC") {
-      // The stream could not resume: both views reload what they show.
+      // The stream could not resume: reload what is on screen.
       reloadBookings();
-      fetchDay(calendarDate);
+      if (view === "calendar") fetchDay(calendarDate);
     } else if (event.type === "BOOKING_UPDATED") {
       const { id, status } = event;
       const s = status as DashboardBookingStatus;
