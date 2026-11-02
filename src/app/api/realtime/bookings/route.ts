@@ -38,17 +38,21 @@ const OVERLAP_MS = 5_000;
  * deploy or a short outage does not drop what changed meanwhile.
  */
 const MAX_RESUME_MS = 15 * 60_000;
-/** Rows one poll reads at most; a longer backlog is read over several polls. */
-const POLL_LIMIT = 500;
+/**
+ * How far ahead of this server's clock a resume point may be. It was set
+ * by another instance, whose clock may run ahead; such a point is taken
+ * as "now" rather than refused (which would force a reload).
+ */
+const MAX_AHEAD_MS = 60_000;
 
-/** A client's resume point: a recent instant, not one in the future. */
-function resumeFrom(req: Request, now: Date): Date | null {
+/** A client's resume point, if it offered one, and whether it is honoured. */
+function resumeFrom(req: Request, now: Date): { offered: boolean; at: Date | null } {
   const raw = new URL(req.url).searchParams.get("since");
-  if (!raw) return null;
+  if (!raw) return { offered: false, at: null };
   const at = new Date(raw);
-  if (Number.isNaN(at.getTime())) return null;
-  if (at.getTime() > now.getTime() || now.getTime() - at.getTime() > MAX_RESUME_MS) return null;
-  return at;
+  const age = now.getTime() - at.getTime();
+  if (Number.isNaN(at.getTime()) || age > MAX_RESUME_MS || age < -MAX_AHEAD_MS) return { offered: true, at: null };
+  return { offered: true, at: age < 0 ? now : at };
 }
 
 export async function GET(req: Request) {
@@ -81,13 +85,12 @@ export async function GET(req: Request) {
   // Resuming from the client's last checkpoint, or starting now. A resume
   // point that was offered but is too old is refused, and the client is
   // told to reload (`resync`) rather than silently missing what changed.
-  const offered = new URL(req.url).searchParams.has("since");
-  const resumed = resumeFrom(req, openedAt);
+  const { offered, at: resumed } = resumeFrom(req, openedAt);
   // The window looks OVERLAP_MS behind where it starts, as behind every
   // poll: a change made between the page loading its data and this
-  // connection, or stamped by a slower clock, is not missed. On a fresh
-  // connection what it finds there happened before the page was live and
-  // is marked `replayed` — shown, but not announced with a chime.
+  // connection, or stamped by a slower clock, is not missed. Whatever it
+  // finds from before this connection opened is marked `replayed` — shown,
+  // but not announced with a chime.
 
   /**
    * Whether this connection may go on: the account still owns the
@@ -210,8 +213,6 @@ export async function GET(req: Request) {
               ...scope,
               updatedAt: { gt: windowFrom },
             },
-            orderBy: { updatedAt: "asc" },
-            take: POLL_LIMIT,
             select: {
               id:              true,
               customerName:    true,
@@ -230,11 +231,8 @@ export async function GET(req: Request) {
           });
           for (const [id, at] of sent) if (at <= windowFrom.getTime()) sent.delete(id);
           const changed = found.filter((b) => sent.get(b.id) !== b.updatedAt.getTime());
-          // A full page means more is waiting: the next poll carries on from
-          // the last row read rather than from now.
-          const advanceTo = found.length === POLL_LIMIT ? found[found.length - 1].updatedAt : polledAt;
           if (changed.length === 0) {
-            lastCheck = advanceTo;
+            lastCheck = polledAt;
             return;
           }
 
@@ -247,7 +245,7 @@ export async function GET(req: Request) {
               select: { id: true, nameAr: true, duration: true },
             })).map((s) => [s.id, s]),
           );
-          lastCheck = advanceTo;
+          lastCheck = polledAt;
 
           for (const b of changed) {
             // New to this window, and not sent by this stream before.
@@ -272,9 +270,11 @@ export async function GET(req: Request) {
               // The version: lets a client drop a change it already has
               // (a resumed stream overlaps the one before it).
               updatedAt:       b.updatedAt.toISOString(),
-              // Changed before this (fresh) connection: the page may already
-              // show it; listeners update quietly rather than announce it.
-              replayed:        !resumed && b.updatedAt <= openedAt,
+              // Changed before this connection opened — on a fresh one, before
+              // the page was live; on a resumed one, while it was away. The
+              // page may already show it: listeners update quietly rather
+              // than announce it. Only what changes while connected chimes.
+              replayed:        b.updatedAt <= openedAt,
               tableName:       null,
               staffName:       null,
               partySize:       null,

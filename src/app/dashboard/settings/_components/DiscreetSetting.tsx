@@ -40,8 +40,11 @@ export default function DiscreetSetting({ initial, byDefault }: { initial: boole
       });
       if (!res.ok) throw new Error();
       if (next === null) {
+        // The link is about to go: if focus is still on it, it moves to
+        // the switch rather than falling to the page.
+        const onLink = document.activeElement?.closest("[data-default-link]") != null;
         setChoice(null);
-        box.current?.querySelector<HTMLInputElement>("input[type=checkbox]")?.focus();
+        if (onLink) box.current?.querySelector<HTMLInputElement>("input[type=checkbox]")?.focus();
       }
       setState("saved");
     } catch {
@@ -66,6 +69,7 @@ export default function DiscreetSetting({ initial, byDefault }: { initial: boole
       {choice !== null && (
         <button
           type="button"
+          data-default-link
           className="mx-2 mt-1 text-[0.8125rem] font-semibold text-[var(--color-ink)] underline"
           disabled={state === "saving"}
           onClick={() => save(null)}
