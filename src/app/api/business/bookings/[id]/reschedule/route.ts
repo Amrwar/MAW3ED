@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { bookingScope, requireBusinessAccess } from "@/lib/business-access";
 import { loadAvailability } from "@/lib/bookings/schedule";
-import { inBookingQueue, isBookingQueueBusy } from "@/lib/bookings/queue";
+import { inBookingQueue } from "@/lib/bookings/queue";
+import { queueBusyResponse } from "@/lib/bookings/busy";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
 import { notifyLater } from "@/lib/notifications";
@@ -149,7 +150,8 @@ export async function POST(req: Request, { params }: Params) {
     return ok({ id: booking.id, date, startTime, endTime, status: booking.status });
   } catch (e) {
     if (e instanceof Response) return e;
-    if (isBookingQueueBusy(e)) return err("في ضغط دلوقتي، جرّب تاني بعد ثواني", 503, { code: "busy" });
+    const busy = queueBusyResponse(e);
+    if (busy) return busy;
     log.error("[business reschedule]", e);
     return err("حصلت مشكلة وإحنا بنغيّر الميعاد، جرّب تاني بعد شوية", 500);
   }

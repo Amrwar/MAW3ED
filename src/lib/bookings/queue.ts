@@ -41,10 +41,10 @@ export async function takeBookingQueue(tx: Prisma.TransactionClient, businessId:
  * its turn in WAIT_MS gives up before doing anything, and it never runs
  * later, after its caller was told it failed. It fails as
  * BookingQueueBusy — Prisma's P2028, so the public route answers "busy,
- * try again" (503), and the other routes say the same. It is not retried
- * by default: the line is genuinely backed up, and joining its end again
- * would only make the wait longer. A write nobody will send again (a
- * webhook's) asks for a couple of retries.
+ * try again" (503), and the other routes say the same (lib/bookings/busy).
+ * It is not retried: the line is genuinely backed up, and joining its end
+ * again would only make the wait longer. A write nobody will send again
+ * uses inBookingQueueOrDirect instead.
  */
 const lines = new Map<string, Promise<void>>();
 /** How long a request waits for its turn, and then for a connection. */
@@ -162,23 +162,31 @@ const ATTEMPTS = 4;
  * does not take the queue: either way it was rolled back whole, so the
  * write simply runs again and meets the constraint afresh.
  */
-export async function inBookingQueue<T>(
-  businessId: string,
-  write: (tx: Prisma.TransactionClient) => Promise<T>,
-  { busyRetries = 0 }: { busyRetries?: number } = {},
-): Promise<T> {
-  let busy = 0;
+export async function inBookingQueue<T>(businessId: string, write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
   for (let attempt = 1; ; attempt++) {
     try {
       return await queuedTransaction(businessId, write);
     } catch (e) {
-      if (isBookingQueueBusy(e)) {
-        if (busy++ >= busyRetries) throw e;
-        continue;
-      }
       if (!(isTransactionStartTimeout(e) || isWriteConflict(e)) || attempt >= ATTEMPTS) throw e;
       await new Promise((r) => setTimeout(r, 100 + Math.random() * 300));
     }
+  }
+}
+
+/**
+ * For a write nobody will send again — a webhook's, or the step after
+ * money was recorded. If the queue stays busy, the write is made
+ * directly, as it was before the queue existed: the overlap constraint
+ * still refuses a double booking, and the only cost is the rare,
+ * unreproduced deadlock the queue otherwise guards against (P23-A13).
+ * Better that than money recorded against a booking left stuck.
+ */
+export async function inBookingQueueOrDirect<T>(businessId: string, write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  try {
+    return await inBookingQueue(businessId, write);
+  } catch (e) {
+    if (!isBookingQueueBusy(e)) throw e;
+    return db.$transaction(write);
   }
 }
 
