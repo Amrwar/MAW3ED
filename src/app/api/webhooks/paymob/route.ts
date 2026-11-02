@@ -42,7 +42,7 @@ import type { Plan } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notifyLater } from "@/lib/notifications";
 import { releaseBookingHold } from "@/lib/bookings/state";
-import { inBookingQueueOrDirect } from "@/lib/bookings/queue";
+import { inBookingQueueEvenIfBusy } from "@/lib/bookings/queue";
 import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 
 interface PaymobWebhookBody {
@@ -473,8 +473,8 @@ async function handleBookingSuccess(
       // in the business's booking queue like any other write of a time.
       const bookingId = payment.bookingId;
       // Paymob will not send this again, so a busy queue does not stop
-      // it: the write is then made directly (lib/bookings/queue.ts).
-      const { count } = await inBookingQueueOrDirect(payment.businessId, (tx) =>
+      // it: it then waits on the database lock (lib/bookings/queue.ts).
+      const { count } = await inBookingQueueEvenIfBusy(payment.businessId, (tx) =>
         tx.booking.updateMany({
           where: { id: bookingId, status: "FAILED_PAYMENT" },
           data: { status: "CONFIRMED", paymobTransactionId: transactionId },

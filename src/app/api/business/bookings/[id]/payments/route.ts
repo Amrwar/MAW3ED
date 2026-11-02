@@ -10,7 +10,7 @@ import {
   recordManualPayment,
 } from "@/lib/payments/ledger";
 import { balanceCents, formatCents, toCents } from "@/lib/payments/money";
-import { inBookingQueueOrDirect } from "@/lib/bookings/queue";
+import { inBookingQueueEvenIfBusy } from "@/lib/bookings/queue";
 import { canUseFeature, getEffectivePlan } from "@/lib/plans";
 import { notifyLater } from "@/lib/notifications";
 
@@ -194,7 +194,11 @@ export async function POST(req: Request, { params }: Params) {
             );
       }
 
-      await advanceAfterManualPayment(booking.id, session.user.id);
+      // The payment is recorded. If confirming the booking fails, say so
+      // in the log, not with an error that invites recording it twice.
+      await advanceAfterManualPayment(booking.id, session.user.id).catch((e) =>
+        log.error("[booking payments] recorded, but could not advance the booking", e, { bookingId: booking.id }),
+      );
 
       return ok({
         paymentId: recorded.payment.id,
@@ -282,10 +286,11 @@ async function advanceAfterManualPayment(bookingId: string, actorUserId: string)
   const next = booking.business.autoConfirm ? "CONFIRMED" : "PENDING";
   // In the business's booking queue (lib/bookings/queue.ts): the new
   // status is a new row version the overlap constraints check again.
-  // The payment is already recorded and nothing will retry this step,
-  // so a busy queue does not stop it: the write is then made directly
-  // (lib/bookings/queue.ts).
-  const moved = await inBookingQueueOrDirect(booking.businessId, (tx) =>
+  // In the business's booking queue: the new status is a new row version
+  // the overlap constraints check again. The payment is already recorded
+  // and nothing will retry this step, so a busy queue does not stop it;
+  // it then waits on the database lock (lib/bookings/queue.ts).
+  const moved = await inBookingQueueEvenIfBusy(booking.businessId, (tx) =>
     tx.booking.updateMany({
       where: { id: bookingId, status: "PENDING_PAYMENT" },
       data: { status: next },

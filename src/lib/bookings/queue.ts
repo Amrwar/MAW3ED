@@ -44,7 +44,7 @@ export async function takeBookingQueue(tx: Prisma.TransactionClient, businessId:
  * try again" (503), and the other routes say the same (lib/bookings/busy).
  * It is not retried: the line is genuinely backed up, and joining its end
  * again would only make the wait longer. A write nobody will send again
- * uses inBookingQueueOrDirect instead.
+ * uses inBookingQueueEvenIfBusy instead.
  */
 const lines = new Map<string, Promise<void>>();
 /** How long a request waits for its turn, and then for a connection. */
@@ -130,42 +130,45 @@ export function isBookingQueueBusy(e: unknown): e is BookingQueueBusy {
   return e instanceof BookingQueueBusy;
 }
 
+/** The queued transaction itself: the business's lock first, then the write. */
+function lockedTransaction<T>(businessId: string, write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  return db.$transaction(
+    async (tx) => {
+      await takeBookingQueue(tx, businessId);
+      return write(tx);
+    },
+    {
+      // Read Committed, so each statement sees what the writes queued
+      // ahead of it committed. At Serializable the snapshot is taken
+      // before the lock is granted, and every queued insert at a
+      // business with a monthly limit failed and retried on it.
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      // Prisma's default gives a transaction two seconds to *start*;
+      // under a burst across businesses the pool can take longer.
+      maxWait: WAIT_MS,
+      timeout: 20_000,
+    },
+  );
+}
+
 /** One transaction in the business's queue; createBooking retries around it itself. */
 export function queuedTransaction<T>(businessId: string, write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-  return inLine(businessId, () =>
-    db.$transaction(
-      async (tx) => {
-        await takeBookingQueue(tx, businessId);
-        return write(tx);
-      },
-      {
-        // Read Committed, so each statement sees what the writes queued
-        // ahead of it committed. At Serializable the snapshot is taken
-        // before the lock is granted, and every queued insert at a
-        // business with a monthly limit failed and retried on it.
-        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
-        // Prisma's default gives a transaction two seconds to *start*;
-        // under a burst across businesses the pool can take longer.
-        maxWait: WAIT_MS,
-        timeout: 20_000,
-      },
-    ),
-  );
+  return inLine(businessId, () => lockedTransaction(businessId, write));
 }
 
 const ATTEMPTS = 4;
 
 /**
- * A single booking write in the business's queue. Tried again, after a
- * short jittered pause, when the transaction never began (no connection
- * within the wait) or was chosen to break a deadlock with a write that
- * does not take the queue: either way it was rolled back whole, so the
- * write simply runs again and meets the constraint afresh.
+ * Tried again, after a short jittered pause, when the transaction never
+ * began (no connection within the wait) or was chosen to break a
+ * deadlock with a write that does not take the queue: either way it was
+ * rolled back whole, so the write simply runs again and meets the
+ * constraint afresh.
  */
-export async function inBookingQueue<T>(businessId: string, write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+async function withRetries<T>(run: () => Promise<T>): Promise<T> {
   for (let attempt = 1; ; attempt++) {
     try {
-      return await queuedTransaction(businessId, write);
+      return await run();
     } catch (e) {
       if (!(isTransactionStartTimeout(e) || isWriteConflict(e)) || attempt >= ATTEMPTS) throw e;
       await new Promise((r) => setTimeout(r, 100 + Math.random() * 300));
@@ -173,20 +176,33 @@ export async function inBookingQueue<T>(businessId: string, write: (tx: Prisma.T
   }
 }
 
+/** A single booking write in the business's queue. */
+export function inBookingQueue<T>(businessId: string, write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  return withRetries(() => queuedTransaction(businessId, write));
+}
+
 /**
  * For a write nobody will send again — a webhook's, or the step after
- * money was recorded. If the queue stays busy, the write is made
- * directly, as it was before the queue existed: the overlap constraint
- * still refuses a double booking, and the only cost is the rare,
- * unreproduced deadlock the queue otherwise guards against (P23-A13).
- * Better that than money recorded against a booking left stuck.
+ * money was recorded. If the line in this process stays busy, it stops
+ * waiting there and waits on the database lock instead, holding a
+ * connection as every queued write did before the line existed. It is
+ * still queued — the same lock, settings and retries — just not bounded
+ * by the line's wait: better a slower answer than money recorded
+ * against a booking left stuck.
  */
-export async function inBookingQueueOrDirect<T>(businessId: string, write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+export async function inBookingQueueEvenIfBusy<T>(businessId: string, write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
   try {
     return await inBookingQueue(businessId, write);
   } catch (e) {
     if (!isBookingQueueBusy(e)) throw e;
-    return db.$transaction(write);
+    return withRetries(async () => {
+      const mine: Held = { businessIds: new Set([...(heldNow()?.businessIds ?? []), businessId]), active: true };
+      try {
+        return await holding.run(mine, () => lockedTransaction(businessId, write));
+      } finally {
+        mine.active = false;
+      }
+    });
   }
 }
 
