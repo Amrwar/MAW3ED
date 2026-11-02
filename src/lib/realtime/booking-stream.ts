@@ -78,15 +78,21 @@ export function createBookingStream(deps: BookingStreamDeps) {
   let checkpoint: string | null = null;
   const delivered = new Map<string, string>();
 
-  /** True the first time a booking's version is seen; false for a repeat. */
-  function firstDelivery(payload: Record<string, unknown>): boolean {
+  /**
+   * What to deliver this event as: null for a version already delivered,
+   * and "updated" for a booking already announced as new. A resumed stream
+   * does not know what the one before it sent, and would announce a
+   * booking it sees for the first time as new again — a second chime.
+   */
+  function deliverAs(type: BookingStreamEvent["type"], payload: Record<string, unknown>): BookingStreamEvent["type"] | null {
     const { id, updatedAt } = payload;
-    if (typeof id !== "string" || typeof updatedAt !== "string") return true;
-    if (delivered.get(id) === updatedAt) return false;
+    if (typeof id !== "string" || typeof updatedAt !== "string") return type;
+    const seen = delivered.get(id);
+    if (seen === updatedAt) return null;
     delivered.delete(id);
     delivered.set(id, updatedAt);
     if (delivered.size > DELIVERED_LIMIT) delivered.delete(delivered.keys().next().value as string);
-    return true;
+    return seen !== undefined && type === "BOOKING_CREATED" ? "BOOKING_UPDATED" : type;
   }
 
   function emit(type: BookingStreamEvent["type"], raw: { data?: string }) {
@@ -97,10 +103,11 @@ export function createBookingStream(deps: BookingStreamDeps) {
       return; // malformed payload — ignored
     }
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
-    if (!firstDelivery(payload as Record<string, unknown>)) return;
+    const as = deliverAs(type, payload as Record<string, unknown>);
+    if (!as) return;
     for (const l of [...listeners]) {
       try {
-        l({ type, payload: payload as Record<string, unknown> });
+        l({ type: as, payload: payload as Record<string, unknown> });
       } catch (error) {
         deps.report?.(error);
       }
@@ -149,6 +156,10 @@ export function createBookingStream(deps: BookingStreamDeps) {
     source = null;
     failures = 0;
     gaveUp = false;
+    // The next subscriber is a page that has just loaded its data: it
+    // starts afresh rather than replaying from an old checkpoint.
+    checkpoint = null;
+    delivered.clear();
   }
 
   /** One fresh attempt after giving up (online, visible, a new subscriber). */

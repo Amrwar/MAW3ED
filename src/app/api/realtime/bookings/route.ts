@@ -32,8 +32,12 @@ export const maxDuration = 300;
  * the overlap are dropped by id and `updatedAt`.
  */
 const OVERLAP_MS = 5_000;
-/** The oldest `since` a reconnecting client may resume from. */
-const MAX_RESUME_MS = 2 * 60_000;
+/**
+ * The oldest `since` a reconnecting client may resume from. Longer than
+ * the client's own backoff across its retries (about two minutes), so a
+ * deploy or a short outage does not drop what changed meanwhile.
+ */
+const MAX_RESUME_MS = 15 * 60_000;
 
 /** A client's resume point: a recent instant, not one in the future. */
 function resumeFrom(req: Request, now: Date): Date | null {
@@ -74,7 +78,13 @@ export async function GET(req: Request) {
   const openedAt = new Date();
   // Where this stream's window starts: the client's last checkpoint when
   // it is resuming, otherwise now.
-  const startFrom = resumeFrom(req, openedAt) ?? openedAt;
+  const resumed = resumeFrom(req, openedAt);
+  const startFrom = resumed ?? openedAt;
+  // The earliest a poll looks back to. Resuming, the overlap reaches
+  // behind the checkpoint as it does behind any poll. A fresh connection
+  // does not look behind its own start: the page it serves has just
+  // loaded that data, and replaying it would chime for the past.
+  const floor = resumed ? resumed.getTime() - OVERLAP_MS : openedAt.getTime();
 
   /**
    * Whether this connection may go on: the account still owns the
@@ -108,8 +118,13 @@ export async function GET(req: Request) {
 
   // ── Stream setup ──────────────────────────────────────────────────────────
   const encoder = new TextEncoder();
-
+  /** Stops the polling; set once the stream starts. */
+  let stop = () => {};
   const stream = new ReadableStream({
+    // The platform cancelled the body (the client went away): stop.
+    cancel() {
+      stop();
+    },
     start(controller) {
       // Track last check time — only emit events for bookings updated after this point
       let lastCheck = startFrom;
@@ -119,7 +134,13 @@ export async function GET(req: Request) {
       const sent = new Map<string, number>();
 
       function enqueue(chunk: string) {
-        if (!closed) controller.enqueue(encoder.encode(chunk));
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(chunk));
+        } catch {
+          // The body was cancelled under us: nothing more can be sent.
+          stop();
+        }
       }
 
       /** Where a client resumes from if this stream ends: everything before it was sent. */
@@ -145,13 +166,19 @@ export async function GET(req: Request) {
       // One poll at a time: a slow one is not overlapped by the next,
       // which would read the same window and send its bookings twice.
       let polling = false;
-      function end() {
+      /** Stops the polling and the heartbeat; nothing more is sent. */
+      stop = () => {
         if (closed) return;
-        sendCheckpoint();
         closed = true;
         clearInterval(pollInterval);
         clearInterval(heartbeatInterval);
-        try { controller.close(); } catch { /* already closed */ }
+        try { controller.close(); } catch { /* already closed or cancelled */ }
+      };
+      /** Ends cleanly: the checkpoint the client resumes from, then stop. */
+      function end() {
+        if (closed) return;
+        sendCheckpoint();
+        stop();
       }
 
       // Poll DB every 3 seconds for bookings changed since lastCheck
@@ -172,8 +199,8 @@ export async function GET(req: Request) {
           const checkFrom = lastCheck;
           const polledAt = new Date();
           // Looking a little further back than the last poll (OVERLAP_MS),
-          // but never before where this stream started, minus the same.
-          const windowFrom = new Date(Math.max(checkFrom.getTime() - OVERLAP_MS, startFrom.getTime() - OVERLAP_MS));
+          // but not behind the stream's floor.
+          const windowFrom = new Date(Math.max(checkFrom.getTime() - OVERLAP_MS, floor));
 
           const found = await db.booking.findMany({
             where: {
@@ -257,8 +284,9 @@ export async function GET(req: Request) {
       // Heartbeat every 20 s to keep idle connections alive
       const heartbeatInterval = setInterval(sendHeartbeat, 20_000);
 
-      // Clean up when the client disconnects
-      req.signal.addEventListener("abort", end);
+      // Clean up when the client disconnects: nobody is there to read a
+      // checkpoint, and writing one to a cancelled body would throw.
+      req.signal.addEventListener("abort", () => stop());
     },
   });
 

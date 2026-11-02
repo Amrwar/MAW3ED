@@ -16,11 +16,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 export default function DiscreetSetting({ initial, byDefault }: { initial: boolean | null; byDefault: boolean }) {
   const { lang } = useLanguage();
   const en = lang === "en";
-  const [on, setOn] = useState(initial ?? byDefault);
+  const [choice, setChoice] = useState<boolean | null>(initial);
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const on = choice ?? byDefault;
 
-  async function change(next: boolean) {
-    setOn(next);
+  /** An explicit choice, or null to go back to the category's default. */
+  async function save(next: boolean | null) {
+    const before = choice;
+    setChoice(next);
     setState("saving");
     try {
       const res = await fetch("/api/business/settings/booking", {
@@ -31,7 +34,7 @@ export default function DiscreetSetting({ initial, byDefault }: { initial: boole
       if (!res.ok) throw new Error();
       setState("saved");
     } catch {
-      setOn(!next);
+      setChoice(before);
       setState("error");
     }
   }
@@ -47,8 +50,18 @@ export default function DiscreetSetting({ initial, byDefault }: { initial: boole
         }
         checked={on}
         disabled={state === "saving"}
-        onChange={change}
+        onChange={save}
       />
+      {choice !== null && (
+        <button
+          type="button"
+          className="mx-2 mt-1 text-[0.8125rem] font-semibold text-[var(--color-ink)] underline"
+          disabled={state === "saving"}
+          onClick={() => save(null)}
+        >
+          {en ? `Use the default for your category (${byDefault ? "on" : "off"})` : `ارجع للإعداد الافتراضي لنشاطك (${byDefault ? "مفعّل" : "مقفول"})`}
+        </button>
+      )}
       <p role="status" className="m-0 mt-1 min-h-5 px-2 text-[0.75rem]">
         {state === "saved" && <span className="text-[var(--color-ok)]">{en ? "Saved" : "اتحفظ"}</span>}
         {state === "error" && <span className="text-[var(--color-danger)]">{en ? "Couldn't save. Try again." : "متحفظش، جرّب تاني."}</span>}

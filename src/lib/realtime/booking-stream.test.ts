@@ -229,4 +229,29 @@ describe("resuming without repeats (P23-A9, P23-A10)", () => {
     last().fire("BOOKING_UPDATED", JSON.stringify({ id: "b1", status: "CONFIRMED", updatedAt: "2026-11-02T10:00:09.000Z" }));
     expect(heard).toHaveBeenCalledTimes(2);
   });
+
+  it("a booking already announced as new is delivered as an update when a resumed stream calls it new again", { timeout: 5000 }, async () => {
+    const { stream } = setup();
+    const heard: string[] = [];
+    stream.subscribe((e) => heard.push(e.type));
+    last().fire("BOOKING_CREATED", JSON.stringify({ id: "b2", updatedAt: "2026-11-02T10:00:01.000Z" }));
+    last().fire("error");
+    await vi.advanceTimersByTimeAsync(reconnectDelay(1));
+    last().fire("BOOKING_CREATED", JSON.stringify({ id: "b2", updatedAt: "2026-11-02T10:00:05.000Z" }));
+    expect(heard).toEqual(["BOOKING_CREATED", "BOOKING_UPDATED"]);
+  });
+
+  it("starts afresh after the last subscriber leaves: no old checkpoint, nothing remembered", { timeout: 5000 }, async () => {
+    const { stream } = setup();
+    const off = stream.subscribe(() => {});
+    last().fire("checkpoint", JSON.stringify({ at: "2026-11-02T10:00:00.000Z" }));
+    last().fire("BOOKING_CREATED", JSON.stringify({ id: "b3", updatedAt: "2026-11-02T10:00:01.000Z" }));
+    off();
+    await vi.advanceTimersByTimeAsync(1);
+    const heard = vi.fn();
+    stream.subscribe(heard);
+    expect(last().since).toBeNull();
+    last().fire("BOOKING_CREATED", JSON.stringify({ id: "b3", updatedAt: "2026-11-02T10:00:01.000Z" }));
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
 });
