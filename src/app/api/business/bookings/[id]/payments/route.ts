@@ -194,11 +194,24 @@ export async function POST(req: Request, { params }: Params) {
             );
       }
 
-      // The payment is recorded. If confirming the booking fails, say so
-      // in the log, not with an error that invites recording it twice.
-      await advanceAfterManualPayment(booking.id, session.user.id).catch((e) =>
-        log.error("[booking payments] recorded, but could not advance the booking", e, { bookingId: booking.id }),
-      );
+      // The payment is recorded. If confirming the booking fails, a
+      // person is asked to finish it (as the Paymob webhook does) rather
+      // than the owner being invited, by an error, to record it twice.
+      await advanceAfterManualPayment(booking.id, session.user.id).catch(async (e) => {
+        log.error("[booking payments] recorded, but the booking did not advance", e, { bookingId: booking.id });
+        await db.auditLog
+          .create({
+            data: {
+              actorId: session.user.id,
+              action: "payment.recorded_not_advanced",
+              resourceType: "Booking",
+              resourceId: booking.id,
+              summary: "Manual payment recorded, but moving the booking on from awaiting payment failed; confirm it by hand.",
+              metadata: { paymentId: recorded.payment.id, error: e instanceof Error ? e.message.slice(0, 120) : String(e) },
+            },
+          })
+          .catch((err2) => log.error("[booking payments] could not write audit entry", err2));
+      });
 
       return ok({
         paymentId: recorded.payment.id,
@@ -284,12 +297,10 @@ async function advanceAfterManualPayment(bookingId: string, actorUserId: string)
   if (paid < toCents(booking.depositAmount ?? booking.totalPrice)) return;
 
   const next = booking.business.autoConfirm ? "CONFIRMED" : "PENDING";
-  // In the business's booking queue (lib/bookings/queue.ts): the new
-  // status is a new row version the overlap constraints check again.
   // In the business's booking queue: the new status is a new row version
   // the overlap constraints check again. The payment is already recorded
-  // and nothing will retry this step, so a busy queue does not stop it;
-  // it then waits on the database lock (lib/bookings/queue.ts).
+  // and nothing will retry this step, so it waits its turn however long
+  // (lib/bookings/queue.ts).
   const moved = await inBookingQueueEvenIfBusy(booking.businessId, (tx) =>
     tx.booking.updateMany({
       where: { id: bookingId, status: "PENDING_PAYMENT" },

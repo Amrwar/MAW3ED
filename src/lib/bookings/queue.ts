@@ -44,7 +44,7 @@ export async function takeBookingQueue(tx: Prisma.TransactionClient, businessId:
  * try again" (503), and the other routes say the same (lib/bookings/busy).
  * It is not retried: the line is genuinely backed up, and joining its end
  * again would only make the wait longer. A write nobody will send again
- * uses inBookingQueueEvenIfBusy instead.
+ * uses inBookingQueueEvenIfBusy, which waits without the bound.
  */
 const lines = new Map<string, Promise<void>>();
 /** How long a request waits for its turn, and then for a connection. */
@@ -75,7 +75,7 @@ export class BookingQueueReentered extends Error {
   }
 }
 
-async function inLine<T>(businessId: string, run: () => Promise<T>): Promise<T> {
+async function inLine<T>(businessId: string, run: () => Promise<T>, bounded = true): Promise<T> {
   // A write that, inside its own turn, asked for another at the same
   // business would wait on itself for ever. Refuse it at once.
   const held = heldNow();
@@ -90,7 +90,7 @@ async function inLine<T>(businessId: string, run: () => Promise<T>): Promise<T> 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const reached = await Promise.race([
     ahead.then(() => true),
-    new Promise<false>((r) => (timer = setTimeout(() => r(false), WAIT_MS))),
+    ...(bounded ? [new Promise<false>((r) => (timer = setTimeout(() => r(false), WAIT_MS)))] : []),
   ]);
   clearTimeout(timer);
   const forget = () => {
@@ -183,27 +183,14 @@ export function inBookingQueue<T>(businessId: string, write: (tx: Prisma.Transac
 
 /**
  * For a write nobody will send again — a webhook's, or the step after
- * money was recorded. If the line in this process stays busy, it stops
- * waiting there and waits on the database lock instead, holding a
- * connection as every queued write did before the line existed. It is
- * still queued — the same lock, settings and retries — just not bounded
- * by the line's wait: better a slower answer than money recorded
+ * money was recorded. It waits in the same line, but without the line's
+ * bound: it never gives up as busy. The line drains as each write ahead
+ * finishes (each is bounded by its transaction's timeout), and waiting in
+ * it holds no connection; better a slower answer than money recorded
  * against a booking left stuck.
  */
-export async function inBookingQueueEvenIfBusy<T>(businessId: string, write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-  try {
-    return await inBookingQueue(businessId, write);
-  } catch (e) {
-    if (!isBookingQueueBusy(e)) throw e;
-    return withRetries(async () => {
-      const mine: Held = { businessIds: new Set([...(heldNow()?.businessIds ?? []), businessId]), active: true };
-      try {
-        return await holding.run(mine, () => lockedTransaction(businessId, write));
-      } finally {
-        mine.active = false;
-      }
-    });
-  }
+export function inBookingQueueEvenIfBusy<T>(businessId: string, write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  return withRetries(() => inLine(businessId, () => lockedTransaction(businessId, write), false));
 }
 
 /** Prisma P2028: the interactive transaction could not be started in time. */

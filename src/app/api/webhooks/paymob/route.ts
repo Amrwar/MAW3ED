@@ -473,7 +473,7 @@ async function handleBookingSuccess(
       // in the business's booking queue like any other write of a time.
       const bookingId = payment.bookingId;
       // Paymob will not send this again, so a busy queue does not stop
-      // it: it then waits on the database lock (lib/bookings/queue.ts).
+      // it: it waits its turn however long (lib/bookings/queue.ts).
       const { count } = await inBookingQueueEvenIfBusy(payment.businessId, (tx) =>
         tx.booking.updateMany({
           where: { id: bookingId, status: "FAILED_PAYMENT" },
