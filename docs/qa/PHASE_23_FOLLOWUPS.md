@@ -68,8 +68,9 @@ with nothing to resume from (A10). The design now
 
 **Each change is announced once, and only if it is news to the page.**
 
-* The browser sends `loadedAt` — when the page's first listener
-  subscribed. Changes from before it are sent as `replayed`: the
+* The browser sends `loadedAgo` — how long ago the page's first listener
+  subscribed, a duration on its own clock, placed by the server against
+  its own. Changes from before then are sent as `replayed`: the
   bookings list shows them, the header does not chime or toast. A routine
   reconnect keeps the page's load time, so what happened in the gap still
   chimes; a page that has just loaded does not chime for the past.
@@ -154,6 +155,17 @@ calendar view. Not taken: test style (the desk tests' day helper).
 Four review rounds were run on the stream. The later ones mostly found
 edge cases in the previous round's fixes; the design above is where they
 converged.
+
+`ca370b3..04188bb`: 7 findings, 4 fixed — the calendar day is marked
+stale on a resync in list view; `away` counts from when the checkpoint
+value first arrived, not from the last heartbeat repeating it; the page's
+load time is sent as a duration (`loadedAgo`), not a client clock
+instant; a same-tick navigation renews it. Not taken, and why: a tab
+still on the old bundle during a deploy, reconnecting to a slower
+instance, may reload once (`resync`); a stream that ends while draining a
+backlog makes the next one re-read it (load only — repeats are dropped);
+an index on `(businessId, updatedAt)` for the poll (a migration; the
+query's shape predates this work).
 
 ### Seen, and what it was
 

@@ -66,7 +66,7 @@ export interface BookingStreamDeps {
    * there is one (with how long ago it arrived, in ms), and saying when the
    * page loaded, so changes from before it are not announced.
    */
-  makeSource: (since: string | null, resume: { awayMs: number | null; loadedAt: string }) => StreamSource;
+  makeSource: (since: string | null, resume: { awayMs: number | null; loadedAgoMs: number }) => StreamSource;
   setTimer: (fn: () => void, ms: number) => unknown;
   clearTimer: (handle: unknown) => void;
   now: () => number;
@@ -82,10 +82,10 @@ export function createBookingStream(deps: BookingStreamDeps) {
   let failures = 0;
   let gaveUp = false;
   let checkpoint: string | null = null;
-  /** When the checkpoint arrived, on this clock. */
+  /** When the current checkpoint value first arrived, on this clock. */
   let checkpointAt = 0;
-  /** When the current page's first listener subscribed. */
-  let loadedAt = new Date(0).toISOString();
+  /** When the current page's first listener subscribed, on this clock. */
+  let loadedAt = 0;
   const delivered = new Map<string, string>();
 
   /**
@@ -127,7 +127,11 @@ export function createBookingStream(deps: BookingStreamDeps) {
   function connect() {
     timer = null;
     if (!listeners.size || gaveUp || source) return;
-    const s = deps.makeSource(checkpoint, { awayMs: checkpoint ? Math.max(0, deps.now() - checkpointAt) : null, loadedAt });
+    // Durations, not instants: the server compares them with its own clock.
+    const s = deps.makeSource(checkpoint, {
+      awayMs: checkpoint ? Math.max(0, deps.now() - checkpointAt) : null,
+      loadedAgoMs: Math.max(0, deps.now() - loadedAt),
+    });
     source = s;
     let openedAt: number | null = null;
     s.addEventListener("open", () => {
@@ -139,7 +143,9 @@ export function createBookingStream(deps: BookingStreamDeps) {
     s.addEventListener("checkpoint", (e) => {
       try {
         const at = (JSON.parse(e.data ?? "null") as { at?: unknown } | null)?.at;
-        if (typeof at === "string") {
+        // Heartbeats repeat the same checkpoint while the server's window
+        // stands still; `away` counts from when this value first came.
+        if (typeof at === "string" && at !== checkpoint) {
           checkpoint = at;
           checkpointAt = deps.now();
         }
@@ -187,7 +193,7 @@ export function createBookingStream(deps: BookingStreamDeps) {
   return {
     subscribe(listener: (e: BookingStreamEvent) => void): () => void {
       // The first listener of a page: what changed before now, it has loaded.
-      if (!listeners.size && closing === null) loadedAt = new Date(deps.now()).toISOString();
+      if (!listeners.size) loadedAt = deps.now();
       listeners.add(listener);
       if (closing !== null) {
         deps.clearTimer(closing);
@@ -212,8 +218,8 @@ let shared: ReturnType<typeof createBookingStream> | null = null;
 export function bookingStream() {
   if (!shared) {
     const stream = createBookingStream({
-      makeSource: (since, { awayMs, loadedAt }) => {
-        const q = new URLSearchParams({ loadedAt });
+      makeSource: (since, { awayMs, loadedAgoMs }) => {
+        const q = new URLSearchParams({ loadedAgo: String(Math.round(loadedAgoMs)) });
         if (since) q.set("since", since);
         if (since && awayMs !== null) q.set("away", String(Math.round(awayMs)));
         return new EventSource(`/api/realtime/bookings?${q}`) as unknown as StreamSource;

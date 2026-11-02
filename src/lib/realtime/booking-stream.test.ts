@@ -12,7 +12,7 @@ class FakeSource implements StreamSource {
   static made: FakeSource[] = [];
   listeners = new Map<string, ((e: { data?: string }) => void)[]>();
   closed = false;
-  constructor(public since: string | null = null, public resume: { awayMs: number | null; loadedAt: string } | null = null) {
+  constructor(public since: string | null = null, public resume: { awayMs: number | null; loadedAgoMs: number } | null = null) {
     FakeSource.made.push(this);
   }
   addEventListener(type: string, fn: (e: { data?: string }) => void) {
@@ -266,20 +266,22 @@ describe("resuming without repeats (P23-A9, P23-A10)", () => {
   it("says when the page loaded, keeps it across reconnects, and renews it for the next page", { timeout: 5000 }, async () => {
     const { stream } = setup();
     const off = stream.subscribe(() => {});
-    const loaded = last().resume!.loadedAt;
-    expect(Date.parse(loaded)).toBe(Date.now());
+    const loadedAt = Date.now();
+    expect(last().resume!.loadedAgoMs).toBe(0);
     last().fire("checkpoint", JSON.stringify({ at: "2026-11-02T10:00:00.000Z" }));
     await vi.advanceTimersByTimeAsync(3_000);
+    // A heartbeat repeating the same checkpoint does not restart the away time.
+    last().fire("checkpoint", JSON.stringify({ at: "2026-11-02T10:00:00.000Z" }));
     last().fire("error");
     await vi.advanceTimersByTimeAsync(reconnectDelay(1));
     // A routine reconnect: the same page, so the same load time; away = since the checkpoint arrived.
-    expect(last().resume!.loadedAt).toBe(loaded);
+    expect(last().resume!.loadedAgoMs).toBe(Date.now() - loadedAt);
     expect(last().resume!.awayMs).toBe(3_000 + reconnectDelay(1));
     off();
     await vi.advanceTimersByTimeAsync(5_000);
     stream.subscribe(() => {});
     // The next page: a new load time, the checkpoint kept.
-    expect(Date.parse(last().resume!.loadedAt)).toBeGreaterThan(Date.parse(loaded));
+    expect(last().resume!.loadedAgoMs).toBe(0);
     expect(last().since).toBe("2026-11-02T10:00:00.000Z");
   });
 

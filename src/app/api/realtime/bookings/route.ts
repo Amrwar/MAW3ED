@@ -73,15 +73,16 @@ function resumeFrom(params: URLSearchParams, now: Date): { offered: boolean; at:
 
 /**
  * Until when a change is news to the page: changes made before the page
- * loaded its data (the client's `loadedAt`, never later than this
- * connection) are sent as `replayed` — shown, not announced. A routine
- * reconnect keeps the page's own load time, so what happened in the gap
- * still chimes; a page that has just loaded does not chime for the past.
+ * loaded its data are sent as `replayed` — shown, not announced. The
+ * client says how long ago it loaded (`loadedAgo`, a duration on its own
+ * clock), placed here against this server's clock; never later than this
+ * connection. A routine reconnect keeps the page's load time, so what
+ * happened in the gap still chimes; a page that has just loaded does not
+ * chime for the past.
  */
 function quietUntil(params: URLSearchParams, openedAt: Date): Date {
-  const loaded = new Date(params.get("loadedAt") ?? "");
-  if (Number.isNaN(loaded.getTime())) return openedAt;
-  return loaded > openedAt ? openedAt : loaded;
+  const ago = millis(params.get("loadedAgo"));
+  return ago === null ? openedAt : new Date(openedAt.getTime() - ago);
 }
 
 export async function GET(req: Request) {
