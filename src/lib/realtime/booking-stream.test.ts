@@ -241,7 +241,7 @@ describe("resuming without repeats (P23-A9, P23-A10)", () => {
     expect(heard).toEqual(["BOOKING_CREATED", "BOOKING_UPDATED"]);
   });
 
-  it("starts afresh after the last subscriber leaves: no old checkpoint, nothing remembered", { timeout: 5000 }, async () => {
+  it("the next page in the tab resumes where the last one stopped, and nothing is announced twice", { timeout: 5000 }, async () => {
     const { stream } = setup();
     const off = stream.subscribe(() => {});
     last().fire("checkpoint", JSON.stringify({ at: "2026-11-02T10:00:00.000Z" }));
@@ -250,8 +250,16 @@ describe("resuming without repeats (P23-A9, P23-A10)", () => {
     await vi.advanceTimersByTimeAsync(1);
     const heard = vi.fn();
     stream.subscribe(heard);
-    expect(last().since).toBeNull();
+    expect(last().since).toBe("2026-11-02T10:00:00.000Z");
     last().fire("BOOKING_CREATED", JSON.stringify({ id: "b3", updatedAt: "2026-11-02T10:00:01.000Z" }));
-    expect(heard).toHaveBeenCalledTimes(1);
+    expect(heard).not.toHaveBeenCalled();
+  });
+
+  it("passes on the server's resync, so a page can reload what it could not resume", { timeout: 5000 }, async () => {
+    const { stream } = setup();
+    const heard: string[] = [];
+    stream.subscribe((e) => heard.push(e.type));
+    last().fire("resync", JSON.stringify({}));
+    expect(heard).toEqual(["BOOKINGS_RESYNC"]);
   });
 });

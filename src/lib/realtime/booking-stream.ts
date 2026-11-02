@@ -45,7 +45,9 @@ export interface StreamSource {
 
 export type BookingStreamEvent =
   | { type: "BOOKING_CREATED"; payload: Record<string, unknown> }
-  | { type: "BOOKING_UPDATED"; payload: Record<string, unknown> };
+  | { type: "BOOKING_UPDATED"; payload: Record<string, unknown> }
+  /** The server could not resume from the last checkpoint: reload. */
+  | { type: "BOOKINGS_RESYNC"; payload: Record<string, unknown> };
 
 /** Failures in a row, without one stable session, before stopping. */
 export const MAX_CONSECUTIVE_FAILURES = 8;
@@ -125,6 +127,7 @@ export function createBookingStream(deps: BookingStreamDeps) {
     });
     s.addEventListener("BOOKING_CREATED", (e) => emit("BOOKING_CREATED", e));
     s.addEventListener("BOOKING_UPDATED", (e) => emit("BOOKING_UPDATED", e));
+    s.addEventListener("resync", (e) => emit("BOOKINGS_RESYNC", e));
     s.addEventListener("checkpoint", (e) => {
       try {
         const at = (JSON.parse(e.data ?? "null") as { at?: unknown } | null)?.at;
@@ -156,10 +159,10 @@ export function createBookingStream(deps: BookingStreamDeps) {
     source = null;
     failures = 0;
     gaveUp = false;
-    // The next subscriber is a page that has just loaded its data: it
-    // starts afresh rather than replaying from an old checkpoint.
-    checkpoint = null;
-    delivered.clear();
+    // The checkpoint and what was delivered are kept: the next page in
+    // this tab resumes where the last one stopped, so nothing changed
+    // during a navigation is lost, and nothing already announced is
+    // announced again.
   }
 
   /** One fresh attempt after giving up (online, visible, a new subscriber). */

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Toggle from "@/components/ui/Toggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -20,10 +20,17 @@ export default function DiscreetSetting({ initial, byDefault }: { initial: boole
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const on = choice ?? byDefault;
 
-  /** An explicit choice, or null to go back to the category's default. */
+  const box = useRef<HTMLDivElement>(null);
+
+  /**
+   * An explicit choice (shown at once, put back if the save fails), or
+   * null to go back to the category's default — applied once saved, so
+   * the link stays where the keyboard is until then, and focus moves to
+   * the switch when it goes.
+   */
   async function save(next: boolean | null) {
     const before = choice;
-    setChoice(next);
+    if (next !== null) setChoice(next);
     setState("saving");
     try {
       const res = await fetch("/api/business/settings/booking", {
@@ -32,6 +39,10 @@ export default function DiscreetSetting({ initial, byDefault }: { initial: boole
         body: JSON.stringify({ accessDiscreet: next }),
       });
       if (!res.ok) throw new Error();
+      if (next === null) {
+        setChoice(null);
+        box.current?.querySelector<HTMLInputElement>("input[type=checkbox]")?.focus();
+      }
       setState("saved");
     } catch {
       setChoice(before);
@@ -40,7 +51,7 @@ export default function DiscreetSetting({ initial, byDefault }: { initial: boole
   }
 
   return (
-    <div className="card mb-6 p-5">
+    <div ref={box} className="card mb-6 p-5">
       <Toggle
         label={en ? "Keep my business's name off the venue's security desk" : "متظهرش اسم نشاطي لأمن المكان"}
         hint={

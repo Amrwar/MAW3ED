@@ -348,6 +348,9 @@ export default function DashboardHeader({
   }
 
   useRealtimeBookings(useCallback((event: RealtimeBookingEvent) => {
+    // Nothing to announce: a reload of the list, or a change from before
+    // this page connected (it may already be on screen).
+    if (event.type === "BOOKINGS_RESYNC" || event.replayed) return;
     if (event.type === "BOOKING_CREATED") {
       const { customerName, status } = event.booking;
       const isManual  = status === "CONFIRMED";

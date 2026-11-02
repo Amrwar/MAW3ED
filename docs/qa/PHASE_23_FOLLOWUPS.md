@@ -41,17 +41,19 @@ written, and nothing changes until the code ships.
 The live stream compared `updatedAt` against the last poll using each
 server's own clock. Now:
 
-* each poll re-reads the last 5 s (`OVERLAP_MS`). A fresh connection does
-  not look behind its own start (the page has just loaded that data, and
-  replaying it would chime for the past); a resumed one looks 5 s behind
-  its checkpoint;
+* each poll re-reads the last 5 s (`OVERLAP_MS`), including the first: a
+  change made between the page loading its data and the stream
+  connecting is not missed. On a fresh connection what that first look
+  finds happened before the page was live, and is marked `replayed`: the
+  bookings list shows it, the header does not chime or toast for it;
 * a change already sent at the same `updatedAt` is skipped — per stream
   on the server, and across streams in the browser
   (`src/lib/realtime/booking-stream.ts`), since events now carry
   `updatedAt`. A booking the browser was already told is new, and that a
   resumed stream calls new again, is delivered as an update: the header's
-  chime and notification fire once. When the last listener leaves, the
-  browser forgets the checkpoint and what it delivered.
+  chime and notification fire once. The browser keeps its checkpoint and
+  what it delivered across pages in the tab, so a navigation neither loses
+  a change nor announces one twice.
 
 ## P23-A10 — the 5-minute cut
 
@@ -64,9 +66,14 @@ reconnected were lost.
   with each heartbeat and as its last message.
 * The client reconnects with `?since=<checkpoint>`; the server accepts a
   resume point under 15 minutes old — longer than the client's own
-  backoff across its retries — and otherwise starts at the connection.
+  backoff across its retries. An older one is refused with a `resync`
+  event, and the bookings page reloads its list rather than silently
+  missing what changed.
+* One poll reads at most 500 rows, oldest first; a longer backlog (a long
+  resume at a large business) is read over the next polls.
 * A client that goes away stops the stream at once (the body's `cancel`,
-  and the request's abort), without trying to write to it.
+  the request's abort, or an abort that came before the stream started),
+  without trying to write to it.
 
 A push service stays an option if function time shows on the bill.
 
@@ -87,16 +94,16 @@ go-ahead.
 | Test | Result | Status |
 |---|---|---|
 | `npx tsc --noEmit`; `npx eslint .`; `next build` | exit 0; 0 errors (the same 6 old warnings); exit 0 | PASS |
-| Full suite | **1297 passed, 34 skipped, 0 failed** (9 new tests), on the code after review 1 | PASS |
+| Full suite, final code | **1298 passed, 34 skipped, 0 failed** (10 new tests) | PASS |
 | Access tests (unit + DB) | 71/71. New: the discreet rule (category default, subcategory, owner's choice); the desk hides a medical business by default, shows it when the owner says so, hides any business whose owner asks | PASS |
-| Stream client tests | 16/16. New: resumes from the last checkpoint; a malformed checkpoint keeps the last good one; a change is delivered once across streams, a newer version again; a booking already announced as new is delivered as an update; after the last listener leaves it starts afresh | PASS |
-| Live stream end to end (scratchpad `rt-check.mjs`), code after review 1 | checkpoint on open; a change stamped 3 s behind delivered, once; events carry `updatedAt`; a change made while disconnected delivered on resuming; a change made 2 s before a fresh connection with a 20-minute-old resume point not replayed — 6/6 twice. With `LONG=1`: the stream closed itself after 282.7 s, a checkpoint its last message. Server log after every disconnect: 0 poll errors | PASS |
-| Settings switch in a browser (scratchpad `discreet-check.mjs`), code after review 1 | Arabic and English: the switch shows the value in force (a salon: off), flipping it saves, the API answers the choice and the default; the "use the default" link appears, puts the value back to null, shows the default, and goes away — 13/13 | PASS |
+| Stream client tests | 17/17. New: resumes from the last checkpoint; a malformed checkpoint keeps the last good one; a change is delivered once across streams, a newer version again; a booking already announced as new is delivered as an update; the next page in the tab resumes and nothing is announced twice; the server's resync is passed on | PASS |
+| Live stream end to end (scratchpad `rt-check.mjs`), final code | checkpoint on open; a change stamped 3 s behind delivered, once; events carry `updatedAt`; a change made while disconnected delivered on resuming, and announced (not `replayed`); a 20-minute-old resume point refused with `resync`; a change made 2 s before a fresh connection delivered, marked `replayed`; no `resync` on a fresh connection — 9/9 twice. With `LONG=1` (review 1 code, close path unchanged since): the stream closed itself after 282.7 s, a checkpoint its last message. Server log after every disconnect: 0 poll errors | PASS |
+| Settings switch in a browser (scratchpad `discreet-check.mjs`), final code | Arabic and English: the switch shows the value in force (a salon: off), flipping it saves, the API answers the choice and the default; the "use the default" link appears, puts the value back to null, shows the default, and goes away — 13/13 | PASS |
 | QA battery on the first build | `qa-booking-e2e` 22/22, `qa-phase19` 21/21, `qa-phase21` 44/44, `qa-phase22` 68/68, `qa-phase22c` 59/59, `qa-phase23` 48/48, `qa-phase23-loops` 15/15, `qa-loops-browser` 9/9, `qa-security` 32/32, `qa-phase23-browser` 49/49, `qa-venue-console` clean, `qa-redirects` 108/108 | PASS |
 | `qa-phase18` (544 page loads, ar + en, 4 widths, axe) | 544 loads, 0 flagged, 0 axe serious/critical | PASS |
 | Migration on QA | applied, and again (a no-op); the verify step passes | PASS |
 
-| QA scripts on the code after review 1 | `qa-booking-e2e` 22/22, `qa-phase23` 48/48, `qa-phase23-loops` 15/15, `qa-loops-browser` 9/9, `qa-security` 32/32, `qa-phase23-browser` 49/49, `qa-venue-console` clean | PASS |
+| QA scripts on the final code | `qa-booking-e2e` 22/22, `qa-phase23` 48/48, `qa-phase23-loops` 15/15, `qa-loops-browser` 9/9, `qa-security` 32/32, `qa-phase23-browser` 49/49, `qa-venue-console` clean, `qa-phase22c` 59/59; `qa-phase18` 544 loads, 0 flagged, 0 axe serious/critical | PASS |
 
 ### Review
 
@@ -108,6 +115,19 @@ limit was shorter than the client's own backoff; the browser kept an old
 checkpoint for the next page; the owner could not go back to the default;
 a redundant guard. Not taken: the medical-category list as data (recorded
 above as a known limit).
+
+`50e9109..38cdd52`: 8 findings, 7 fixed. The first round had traded
+missed changes for repeated chimes by narrowing the server's window; the
+second showed the cost (a booking made while the page connected was
+never shown, and a navigation lost changes). Now nothing is dropped and
+the announcement is decided by the client: events from before a fresh
+connection are marked `replayed`; the client keeps its checkpoint across
+pages; a refused resume point sends `resync`; a poll reads at most 500
+rows; the "use the default" link keeps focus until it saves; an abort
+before the stream started stops it; one window variable instead of two.
+Not taken: the delivered-version map's 1,000-entry cap (a business with
+more than 1,000 distinct changes in one tab session could hear a
+repeated chime for the oldest).
 
 ### Seen, and what it was
 

@@ -38,6 +38,8 @@ const OVERLAP_MS = 5_000;
  * deploy or a short outage does not drop what changed meanwhile.
  */
 const MAX_RESUME_MS = 15 * 60_000;
+/** Rows one poll reads at most; a longer backlog is read over several polls. */
+const POLL_LIMIT = 500;
 
 /** A client's resume point: a recent instant, not one in the future. */
 function resumeFrom(req: Request, now: Date): Date | null {
@@ -76,15 +78,16 @@ export async function GET(req: Request) {
     throw e;
   }
   const openedAt = new Date();
-  // Where this stream's window starts: the client's last checkpoint when
-  // it is resuming, otherwise now.
+  // Resuming from the client's last checkpoint, or starting now. A resume
+  // point that was offered but is too old is refused, and the client is
+  // told to reload (`resync`) rather than silently missing what changed.
+  const offered = new URL(req.url).searchParams.has("since");
   const resumed = resumeFrom(req, openedAt);
-  const startFrom = resumed ?? openedAt;
-  // The earliest a poll looks back to. Resuming, the overlap reaches
-  // behind the checkpoint as it does behind any poll. A fresh connection
-  // does not look behind its own start: the page it serves has just
-  // loaded that data, and replaying it would chime for the past.
-  const floor = resumed ? resumed.getTime() - OVERLAP_MS : openedAt.getTime();
+  // The window looks OVERLAP_MS behind where it starts, as behind every
+  // poll: a change made between the page loading its data and this
+  // connection, or stamped by a slower clock, is not missed. On a fresh
+  // connection what it finds there happened before the page was live and
+  // is marked `replayed` — shown, but not announced with a chime.
 
   /**
    * Whether this connection may go on: the account still owns the
@@ -127,7 +130,7 @@ export async function GET(req: Request) {
     },
     start(controller) {
       // Track last check time — only emit events for bookings updated after this point
-      let lastCheck = startFrom;
+      let lastCheck = resumed ?? openedAt;
       let closed = false;
       // What this stream has sent, by id → updatedAt, so the overlap does
       // not send a change twice. Entries older than the window are let go.
@@ -161,6 +164,7 @@ export async function GET(req: Request) {
 
       // Send immediate heartbeat so the client knows the connection is ready
       sendHeartbeat();
+      if (offered && !resumed) sendEvent("resync", {});
 
       let ticks = 0;
       // One poll at a time: a slow one is not overlapped by the next,
@@ -198,15 +202,16 @@ export async function GET(req: Request) {
           // sends: a failed query leaves it, and the next poll asks again.
           const checkFrom = lastCheck;
           const polledAt = new Date();
-          // Looking a little further back than the last poll (OVERLAP_MS),
-          // but not behind the stream's floor.
-          const windowFrom = new Date(Math.max(checkFrom.getTime() - OVERLAP_MS, floor));
+          // Looking a little further back than the last poll (OVERLAP_MS).
+          const windowFrom = new Date(checkFrom.getTime() - OVERLAP_MS);
 
           const found = await db.booking.findMany({
             where: {
               ...scope,
               updatedAt: { gt: windowFrom },
             },
+            orderBy: { updatedAt: "asc" },
+            take: POLL_LIMIT,
             select: {
               id:              true,
               customerName:    true,
@@ -225,8 +230,11 @@ export async function GET(req: Request) {
           });
           for (const [id, at] of sent) if (at <= windowFrom.getTime()) sent.delete(id);
           const changed = found.filter((b) => sent.get(b.id) !== b.updatedAt.getTime());
+          // A full page means more is waiting: the next poll carries on from
+          // the last row read rather than from now.
+          const advanceTo = found.length === POLL_LIMIT ? found[found.length - 1].updatedAt : polledAt;
           if (changed.length === 0) {
-            lastCheck = polledAt;
+            lastCheck = advanceTo;
             return;
           }
 
@@ -239,7 +247,7 @@ export async function GET(req: Request) {
               select: { id: true, nameAr: true, duration: true },
             })).map((s) => [s.id, s]),
           );
-          lastCheck = polledAt;
+          lastCheck = advanceTo;
 
           for (const b of changed) {
             // New to this window, and not sent by this stream before.
@@ -264,6 +272,9 @@ export async function GET(req: Request) {
               // The version: lets a client drop a change it already has
               // (a resumed stream overlaps the one before it).
               updatedAt:       b.updatedAt.toISOString(),
+              // Changed before this (fresh) connection: the page may already
+              // show it; listeners update quietly rather than announce it.
+              replayed:        !resumed && b.updatedAt <= openedAt,
               tableName:       null,
               staffName:       null,
               partySize:       null,
@@ -287,6 +298,7 @@ export async function GET(req: Request) {
       // Clean up when the client disconnects: nobody is there to read a
       // checkpoint, and writing one to a cancelled body would throw.
       req.signal.addEventListener("abort", () => stop());
+      if (req.signal.aborted) stop();
     },
   });
 

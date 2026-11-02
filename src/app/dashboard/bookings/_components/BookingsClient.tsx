@@ -182,7 +182,9 @@ export default function BookingsClient({
 
   // ── Real-time updates ─────────────────────────────────────
   useRealtimeBookings((event) => {
-    if (event.type === "BOOKING_UPDATED") {
+    if (event.type === "BOOKINGS_RESYNC") {
+      reloadBookings();
+    } else if (event.type === "BOOKING_UPDATED") {
       const { id, status } = event;
       const s = status as DashboardBookingStatus;
       setBookings((prev)        => prev.map((bk) => bk.id === id ? { ...bk, status: s } : bk));
