@@ -7,6 +7,7 @@ import { log } from "@/lib/logger";
 import { bookingInstants, dateToUTC } from "./instants";
 import { generateReference } from "./reference";
 import { loadAvailability } from "./schedule";
+import { isTransactionStartTimeout, queuedTransaction } from "./queue";
 import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 import { minutesToTime, timeToMinutes } from "./time";
 
@@ -23,7 +24,8 @@ import { minutesToTime, timeToMinutes } from "./time";
  *   1  the slot is re-derived on the server from the same engine that
  *      produced it, so a client cannot submit a time it was not offered
  *      and a time that has gone stale is rejected;
- *   2  the insert runs inside a transaction at Serializable isolation;
+ *   2  inserts at one business are queued, one transaction at a time,
+ *      so the month's count and the insert see each other;
  *   3  an exclusion constraint in Postgres rejects any overlap that
  *      slips past both, which is what actually holds under a race.
  *
@@ -141,9 +143,9 @@ const BOOKING_SELECT = {
 
 /**
  * Attempts at the insert. A reference collision draws a new one; a
- * serialization failure — two bookings at one business counting the
- * month together — is retried as a whole, since the overlap constraint
- * still holds whatever the retry does.
+ * write conflict or deadlock (Prisma P2034) — rare under the queue, but a
+ * status change on a live booking does not take it — is retried as a
+ * whole, since the overlap constraint still holds whatever the retry does.
  */
 const INSERT_ATTEMPTS = 6;
 
@@ -207,7 +209,11 @@ export async function createBooking(
     // Per attempt: a retried transaction counts the month afresh.
     let status = input.status;
     try {
-      const booking = await db.$transaction(
+      // One booking write at a time per business, at Read Committed
+      // (lib/bookings/queue.ts): the month's count sees every booking
+      // queued ahead of this one.
+      const booking = await queuedTransaction(
+        input.businessId,
         async (tx) => {
           // A test booking exists only on a private page. Publishing
           // locks the business row and deletes test bookings in one
@@ -297,20 +303,6 @@ export async function createBooking(
 
           return created;
         },
-        {
-          // Serializable, because the limit count and the insert have to
-          // see a consistent view of the month.
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-          // A burst of bookings at one business queues for the connection
-          // pool. Each insert holds a connection for milliseconds, but
-          // Prisma's default gives a transaction two seconds to *start*,
-          // and under fifty simultaneous requests the ones at the back of
-          // the queue were failing with "unable to start a transaction"
-          // — a 500 for a customer who merely had to wait a moment. They
-          // wait now; the overlap constraint still decides who wins.
-          maxWait: 10_000,
-          timeout: 20_000,
-        },
       );
 
       // The first real booking is an onboarding milestone; a test one is not.
@@ -357,7 +349,7 @@ export async function createBooking(
         if (existing) return { ok: true, booking: existing, reused: true };
       }
 
-      // Two transactions at one business read together, or the member
+      // A write conflict, or the member
       // (or table) this booking was given went to somebody else a moment
       // earlier. Ask again: another may still be free. Only a time
       // nobody can take any more is "taken".
@@ -431,15 +423,6 @@ class LimitReached extends Error {}
 /** The offer ran out between quoting the price and taking the booking. */
 class DiscountGone extends Error {}
 class PublishedMeanwhile extends Error {}
-
-/** Prisma P2028: the interactive transaction could not be started in time. */
-export function isTransactionStartTimeout(e: unknown): boolean {
-  return (
-    e instanceof Prisma.PrismaClientKnownRequestError &&
-    e.code === "P2028" &&
-    /start a transaction/i.test(e.message)
-  );
-}
 
 function pgCode(e: unknown): string | null {
   if (e instanceof Prisma.PrismaClientKnownRequestError) {

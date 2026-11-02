@@ -95,6 +95,9 @@ export async function GET(req: Request) {
       sendHeartbeat();
 
       let ticks = 0;
+      // One poll at a time: a slow one is not overlapped by the next,
+      // which would read the same window and send its bookings twice.
+      let polling = false;
       function end() {
         if (closed) return;
         closed = true;
@@ -105,7 +108,8 @@ export async function GET(req: Request) {
 
       // Poll DB every 3 seconds for bookings changed since lastCheck
       const pollInterval = setInterval(async () => {
-        if (closed) return;
+        if (closed || polling) return;
+        polling = true;
         try {
           ticks++;
           if (Date.now() - openedAt.getTime() > MAX_LIFETIME_MS) return end();
@@ -115,8 +119,10 @@ export async function GET(req: Request) {
           }
           if (closed) return;
 
+          // The window moves forward only once this poll has everything it
+          // sends: a failed query leaves it, and the next poll asks again.
           const checkFrom = lastCheck;
-          lastCheck = new Date();
+          const polledAt = new Date();
 
           const changed = await db.booking.findMany({
             where: {
@@ -136,18 +142,34 @@ export async function GET(req: Request) {
               notes:           true,
               createdAt:       true,
               updatedAt:       true,
-              service: { select: { nameAr: true, duration: true } },
+              serviceId:       true,
             },
           });
+          if (changed.length === 0) {
+            lastCheck = polledAt;
+            return;
+          }
+
+          // Services read separately, and only when something changed: a
+          // nested select ran a second, empty query on every quiet poll
+          // (Sentry MAW3ED-2, "N+1 Query" on this route).
+          const services = new Map(
+            (await db.service.findMany({
+              where:  { id: { in: [...new Set(changed.map((b) => b.serviceId))] } },
+              select: { id: true, nameAr: true, duration: true },
+            })).map((s) => [s.id, s]),
+          );
+          lastCheck = polledAt;
 
           for (const b of changed) {
             const isNew = b.createdAt >= checkFrom;
+            const service = services.get(b.serviceId);
             const payload = {
               id:              b.id,
               customerName:    b.customerName,
               customerPhone:   b.customerPhone,
-              serviceName:     b.service.nameAr,
-              serviceDuration: b.service.duration,
+              serviceName:     service?.nameAr ?? "",
+              serviceDuration: service?.duration ?? 0,
               date:            b.date.toISOString().split("T")[0],
               startTime:       b.startTime,
               endTime:         b.endTime,
@@ -169,6 +191,8 @@ export async function GET(req: Request) {
           // reason still needs recording — a poll that fails every tick
           // looks identical to one that never fails.
           log.error("[realtime/bookings] poll error", e);
+        } finally {
+          polling = false;
         }
       }, 3000);
 

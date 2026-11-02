@@ -42,6 +42,7 @@ import type { Plan } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notifyLater } from "@/lib/notifications";
 import { releaseBookingHold } from "@/lib/bookings/state";
+import { inBookingQueueEvenIfBusy } from "@/lib/bookings/queue";
 import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 
 interface PaymobWebhookBody {
@@ -465,19 +466,36 @@ async function handleBookingSuccess(
   // still free: the exclusion constraint decides, and a time somebody
   // else has taken since is left with them.
   let revived = false;
+  let retaken = false;
   if (payment.bookingId && before === "FAILED_PAYMENT") {
     try {
-      const { count } = await db.booking.updateMany({
-        where: { id: payment.bookingId, status: "FAILED_PAYMENT" },
-        data: { status: "CONFIRMED", paymobTransactionId: transactionId },
-      });
+      // Its time comes back into the overlap constraints, so it waits
+      // in the business's booking queue like any other write of a time.
+      const bookingId = payment.bookingId;
+      // Paymob will not send this again, so a busy queue does not stop
+      // it: it waits its turn however long (lib/bookings/queue.ts).
+      const { count } = await inBookingQueueEvenIfBusy(payment.businessId, (tx) =>
+        tx.booking.updateMany({
+          where: { id: bookingId, status: "FAILED_PAYMENT" },
+          data: { status: "CONFIRMED", paymobTransactionId: transactionId },
+        }),
+      );
       revived = count === 1;
     } catch (e) {
-      log.error("[paymob webhook] paid after the slot was released and retaken — needs a refund or a new time", {
-        paymentId: payment.id,
-        bookingId: payment.bookingId,
-        error: e instanceof Error ? e.message.slice(0, 120) : String(e),
-      });
+      // The overlap constraint refusing it means somebody took the time.
+      // Anything else is not that, and is recorded as what it was; either way
+      // a person sorts it out, since Paymob will not send this again.
+      retaken = String(e instanceof Error ? e.message : e).includes("booking_no_overlap");
+      log.error(
+        retaken
+          ? "[paymob webhook] paid after the slot was released and retaken — needs a refund or a new time"
+          : "[paymob webhook] paid after release; could not revive the booking — needs a person",
+        {
+          paymentId: payment.id,
+          bookingId: payment.bookingId,
+          error: e instanceof Error ? e.message.slice(0, 120) : String(e),
+        },
+      );
     }
     if (!revived) {
       await db.auditLog
@@ -488,8 +506,10 @@ async function handleBookingSuccess(
             action: "payment.paid_after_release",
             resourceType: "Payment",
             resourceId: payment.id,
-            summary: "Deposit paid after the booking's time was released and taken; refund or rebook needed.",
-            metadata: { bookingId: payment.bookingId, transactionId, amountCents: payment.amountCents },
+            summary: retaken
+              ? "Deposit paid after the booking's time was released and taken; refund or rebook needed."
+              : "Deposit paid after the booking's time was released; reviving it failed, so refund or rebook it.",
+            metadata: { bookingId: payment.bookingId, transactionId, amountCents: payment.amountCents, retaken },
           },
         })
         .catch((e) => log.error("[paymob webhook] could not write audit entry", e));

@@ -7,6 +7,8 @@ import { notifyLater } from "@/lib/notifications";
 import { ARRIVE_EARLY_MINUTES, allowedNow, isTooEarly } from "@/lib/bookings/progress-guard";
 import { CUSTOMER_MOVABLE, canTransition, transitionsFrom } from "@/lib/bookings/transitions";
 import { moveBooking } from "@/lib/bookings/state";
+import { queueBusyResponse } from "@/lib/bookings/busy";
+import { businessPassSummary } from "@/lib/access/passes";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -43,6 +45,7 @@ export async function GET(_req: Request, { params }: Params) {
         staffMember: { select: { id: true, nameAr: true, nameEn: true } },
         branch:      { select: { id: true, nameAr: true, nameEn: true } },
         resource:    { select: { name: true } },
+        checkIn:     { select: { checkedInAt: true } },
       },
     });
 
@@ -82,6 +85,10 @@ export async function GET(_req: Request, { params }: Params) {
       actions:       allowedNow(transitionsFrom(booking.status, "business"), booking).filter((s) => can(actor, actionFor(s))),
       canReschedule: can(actor, "bookings.reschedule") && (CUSTOMER_MOVABLE as readonly string[]).includes(booking.status),
       permissions:   permissionsOf(actor),
+      // Phase 23: checked in by scanning the booking QR, and the state of
+      // any visitor passes asked for (counts only — lib/access/passes).
+      checkedInAt:   booking.checkIn?.checkedInAt?.toISOString() ?? null,
+      visitorPasses: await businessPassSummary(booking.id),
     });
   } catch (e) {
     if (e instanceof Response) return e;
@@ -190,6 +197,8 @@ export async function PATCH(req: Request, { params }: Params) {
     });
   } catch (e) {
     if (e instanceof Response) return e;
+    const busy = queueBusyResponse(e);
+    if (busy) return busy;
     log.error("[bookings PATCH]", e);
     return err("حدث خطأ أثناء تحديث الحالة", 500);
   }

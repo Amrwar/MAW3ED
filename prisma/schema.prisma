@@ -827,6 +827,10 @@ model Booking {
   resource    Resource?    @relation(fields: [resourceId], references: [id])
   staffMember StaffMember? @relation(fields: [staffMemberId], references: [id])
   branch      Branch?      @relation(fields: [branchId], references: [id])
+  /// Phase 23: the holder and named guests who may request venue access.
+  accessGuests BookingGuest[]
+  /// Phase 23: the booking's own check-in code (QR type B).
+  checkIn      BookingCheckIn?
   review      Review?
   payments    Payment[]
 
@@ -1771,6 +1775,16 @@ model Venue {
   memberships VenueMembership[]
   roles       VenueRole[]
 
+  /// Phase 23: the access provider this venue's gates use, the venue's own
+  /// reference at that provider, and whether visitor passes are switched
+  /// on. Set by a platform administrator; nothing happens while off.
+  accessProviderId   String?
+  accessProvider     AccessProvider?     @relation(fields: [accessProviderId], references: [id], onDelete: SetNull)
+  accessSiteRef      String?
+  accessEnabled      Boolean             @default(false)
+  accessEntitlements AccessEntitlement[]
+  accessEvents       AccessEvent[]
+
   @@index([isPublished, status, cityId])
   @@index([compoundId])
   @@index([organizationId])
@@ -1866,6 +1880,13 @@ model VenuePolicy {
   allowedGateIds       String[]           @default([])
   accessInstructionsAr String?
   accessInstructionsEn String?
+  /// Phase 23: who must be named for a pass, and the late-arrival and
+  /// no-show rules. Null minutes = no cut-off / never revoke for no-show.
+  identityRequirement    AccessIdentityRequirement @default(NAME)
+  lateEntryCutoffMinutes Int?
+  noShowRevokeMinutes    Int?
+  /// Where the security desk escalates (a phone or a desk name), shown to staff only.
+  escalationContact      String?
   updatedAt            DateTime           @updatedAt
   updatedById          String?
 }
@@ -1940,6 +1961,9 @@ enum VenueRoleKind {
   COMPOUND_ADMIN
   /// One venue.
   VENUE_MANAGER
+  /// One venue's security desk: visitor pass status, access events,
+  /// suspensions and escalations — nothing else (Phase 23).
+  VENUE_SECURITY
 }
 
 /// A person's authority over part of a destination. Exactly one of
@@ -2090,4 +2114,327 @@ model OrganizationBookingAttribution {
   createdAt      DateTime     @default(now())
 
   @@index([organizationId, createdAt])
+}
+
+// ─── Phase 23: booking-based visitor access ─────────────────────────────────
+//
+// Two concepts kept apart on purpose:
+//   AccessEntitlement — Maw3ed's decision that a visitor MAY request entry,
+//                       derived from an eligible booking and the venue policy.
+//   AccessCredential  — a token issued THROUGH AN ACCESS PROVIDER, ACTIVE only
+//                       once the provider confirms it.
+// Maw3ed never opens a gate. The only provider implemented is a SANDBOX that
+// imitates an external system; it is refused in production and its codes are
+// marked "not valid at any gate". docs/architecture/ACCESS_PROVIDER_INTERFACE.md.
+//
+// A third thing, unrelated to any provider: BookingCheckIn — the booking's
+// own QR, scanned by the business's staff to mark the customer arrived.
+// docs/architecture/QR_CREDENTIAL_LIFECYCLE.md.
+
+enum AccessProviderKind {
+  /// Maw3ed's own imitation of an external provider, for development and tests.
+  SANDBOX
+  /// A real operator's system, once an agreement and specification exist.
+  PARTNER
+}
+
+/// An access provider Maw3ed can talk to. Holds no secret: a provider's
+/// credentials live in the environment (ACCESS_PROVIDER_<SLUG>_SECRET),
+/// never in the database.
+model AccessProvider {
+  id        String             @id @default(cuid())
+  slug      String             @unique
+  kind      AccessProviderKind
+  nameAr    String
+  nameEn    String?
+  isEnabled Boolean            @default(true)
+  /// Last health check: when, whether it answered, and what it said.
+  lastHealthAt DateTime?
+  lastHealthOk Boolean?
+  lastHealthDetail String?
+  createdAt DateTime           @default(now())
+
+  venues      Venue[]
+  credentials AccessCredential[]
+  events      AccessEvent[]
+}
+
+enum AccessIdentityRequirement {
+  NAME
+  NAME_AND_PHONE
+}
+
+/// A person who may be admitted: the booking holder or a named guest.
+model Visitor {
+  id          String   @id @default(cuid())
+  userId      String?
+  displayName String
+  phoneE164   String?
+  createdAt   DateTime @default(now())
+
+  guests       BookingGuest[]
+  entitlements AccessEntitlement[]
+
+  @@index([userId])
+}
+
+enum BookingGuestRole {
+  HOLDER
+  GUEST
+}
+
+model BookingGuest {
+  id          String           @id @default(cuid())
+  bookingId   String
+  booking     Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  visitorId   String
+  visitor     Visitor          @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  role        BookingGuestRole
+  /// The guest's own link to their own access status. Random; never an id.
+  inviteToken String           @unique
+  createdAt   DateTime         @default(now())
+  removedAt   DateTime?
+
+  entitlement AccessEntitlement?
+
+  @@index([bookingId])
+}
+
+enum EntitlementStatus {
+  ELIGIBLE
+  /// Temporarily withheld: an access suspension or a security override.
+  SUSPENDED
+  REVOKED
+  EXPIRED
+}
+
+/// Permission to REQUEST entry. Not a credential.
+model AccessEntitlement {
+  id             String            @id @default(cuid())
+  bookingGuestId String            @unique
+  bookingGuest   BookingGuest      @relation(fields: [bookingGuestId], references: [id], onDelete: Cascade)
+  bookingId      String
+  venueId        String
+  venue          Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  visitorId      String
+  visitor        Visitor           @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  status         EntitlementStatus
+  validFrom      DateTime
+  validUntil     DateTime
+  /// Last moment to ENTER (late-arrival cut-off); null = until validUntil.
+  entryUntil     DateTime?
+  allowedGateIds String[]          @default([])
+  reentryAllowed Boolean           @default(false)
+  /// Bumped on every change that the provider has to learn about.
+  version        Int               @default(1)
+  reason         String?
+  /// A security override, recorded with who and why.
+  overriddenById String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  credentials AccessCredential[]
+
+  @@index([venueId, validFrom])
+  @@index([bookingId])
+  @@index([status, validUntil])
+  @@index([status, updatedAt])
+}
+
+enum CredentialStatus {
+  /// Asked of the provider; not usable until the provider confirms.
+  PENDING_PROVIDER
+  ACTIVE
+  REVOKE_PENDING
+  REVOKED
+  EXPIRED
+  /// The provider refused it, or it could not be provisioned.
+  FAILED
+}
+
+model AccessCredential {
+  id               String           @id @default(cuid())
+  entitlementId    String
+  entitlement      AccessEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+  providerId       String
+  provider         AccessProvider   @relation(fields: [providerId], references: [id])
+  status           CredentialStatus @default(PENDING_PROVIDER)
+  /// The provider's own id for it, once it has one.
+  providerRef      String?
+  /// Carried on every call and event about this credential.
+  correlationId    String
+  /// The entitlement version asked for, and the one the provider confirmed.
+  version          Int              @default(1)
+  confirmedVersion Int?
+  /// The presentable token, encrypted at rest (ACCESS_CREDENTIAL_KEY), and its hash.
+  tokenCiphertext  String?
+  tokenHash        String?
+  displayFormat    String?
+  confirmedAt      DateTime?
+  revokedAt        DateTime?
+  expiresAt        DateTime?
+  lastError        String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  jobs        AccessSyncJob[]
+  revocations AccessRevocation[]
+  events      AccessEvent[]
+
+  @@unique([providerId, providerRef])
+  @@index([entitlementId])
+  @@index([status])
+}
+
+/// Why and when a credential was withdrawn, and whether the provider confirmed.
+model AccessRevocation {
+  id            String           @id @default(cuid())
+  credentialId  String
+  credential    AccessCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  reason        String
+  requestedById String?
+  requestedAt   DateTime         @default(now())
+  confirmedAt   DateTime?
+
+  @@index([credentialId])
+}
+
+enum AccessJobKind {
+  PROVISION
+  UPDATE
+  REVOKE
+}
+
+enum AccessJobStatus {
+  PENDING
+  DONE
+  /// Gave up after retries; alerted.
+  DEAD
+}
+
+/// One call to the provider, retried until acknowledged.
+model AccessSyncJob {
+  id             String           @id @default(cuid())
+  credentialId   String
+  credential     AccessCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  kind           AccessJobKind
+  status         AccessJobStatus  @default(PENDING)
+  /// Sent to the provider, so a repeated call is the same call.
+  idempotencyKey String           @unique
+  correlationId  String
+  attempts       Int              @default(0)
+  nextAttemptAt  DateTime         @default(now())
+  /// A claim on the job while a worker calls the provider.
+  leasedUntil    DateTime?
+  lastError      String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([credentialId])
+}
+
+enum AccessEventKind {
+  CREDENTIAL_ACTIVE
+  CREDENTIAL_UPDATED
+  CREDENTIAL_REVOKED
+  CREDENTIAL_FAILED
+  ENTRY_GRANTED
+  ENTRY_DENIED
+  EXIT
+  PROVIDER_ERROR
+  OVERRIDE_SUSPEND
+  OVERRIDE_REINSTATE
+  ESCALATION
+}
+
+/// The audit trail of access: provider events (deduplicated by the
+/// provider's own event id) and venue security actions.
+model AccessEvent {
+  id              String            @id @default(cuid())
+  venueId         String
+  venue           Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  providerId      String?
+  provider        AccessProvider?   @relation(fields: [providerId], references: [id])
+  credentialId    String?
+  credential      AccessCredential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+  entitlementId   String?
+  gateId          String?
+  kind            AccessEventKind
+  providerEventId String?
+  occurredAt      DateTime
+  receivedAt      DateTime          @default(now())
+  reason          String?
+  actorUserId     String?
+  correlationId   String?
+  details         Json?
+
+  @@unique([providerId, providerEventId])
+  @@index([venueId, occurredAt])
+  @@index([credentialId])
+  @@index([entitlementId, kind])
+}
+
+/// THE SANDBOX PROVIDER'S OWN STORE — an imitation of an external gate
+/// system, used only by lib/access/sandbox.ts. Nothing else reads it.
+model SandboxAccessPass {
+  id          String   @id @default(cuid())
+  providerRef String   @unique
+  externalRef String
+  /// The venue (site) the pass is for; a pass is refused at another site's gates.
+  siteRef     String?
+  tokenHash   String   @unique
+  holderLabel String
+  validFrom   DateTime
+  validUntil  DateTime
+  entryUntil  DateTime?
+  gateCodes   String[] @default([])
+  reentry     Boolean  @default(false)
+  status      String   @default("ACTIVE")
+  version     Int      @default(1)
+  inside      Boolean  @default(false)
+  entries     Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Failure injection for the sandbox provider (tests and demos only).
+model SandboxProviderState {
+  id        String   @id @default("default")
+  /// NORMAL, DOWN (every call fails), TIMEOUT (calls hang), NO_CONFIRM (accepts, never confirms).
+  mode      String   @default("NORMAL")
+  updatedAt DateTime @updatedAt
+}
+
+enum CheckInStatus {
+  ACTIVE
+  /// Replaced (the customer asked for a new code) or withdrawn.
+  REVOKED
+}
+
+/// The booking's check-in code (QR type B). Shown to the customer,
+/// scanned by the business's staff, and nothing more: it opens no gate
+/// and carries no personal data. The code is HMAC(key, bookingId.nonce),
+/// so the database holds only the nonce and the code's hash — a copy of
+/// the database alone cannot produce a working code. Whether it is good
+/// right now is decided at the scan from the booking itself (status,
+/// time window, business), so a cancelled booking's code stops working
+/// the moment the booking is cancelled.
+model BookingCheckIn {
+  id            String        @id @default(cuid())
+  bookingId     String        @unique
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  nonce         String
+  tokenHash     String        @unique
+  status        CheckInStatus @default(ACTIVE)
+  issuedAt      DateTime      @default(now())
+  /// Bumped every time the code is replaced.
+  generation    Int           @default(1)
+  revokedAt     DateTime?
+  revokedReason String?
+  checkedInAt   DateTime?
+  checkedInById String?
+  lastScanAt    DateTime?
+  scanCount     Int           @default(0)
+  updatedAt     DateTime      @updatedAt
 }

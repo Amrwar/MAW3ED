@@ -99,6 +99,21 @@ export const RULES = {
   // A copy of one's own data, per account. Nobody needs it more than a
   // few times a day, and each one reads the whole history.
   accountExport: { limit: 5, windowSeconds: 24 * 60 * 60 },
+  // Scanning check-in codes, per staff account: one a second keeps up
+  // with any front desk and stops a script trying codes (which are
+  // 256-bit and unguessable anyway).
+  accessScan: { limit: 60, windowSeconds: 60 },
+  // A customer's pass actions (ask, add or remove a guest, retry, new
+  // code), per booking link.
+  accessCustomer: { limit: 30, windowSeconds: 60 * 60 },
+  // Opening a guest's pass from its link, per address.
+  accessView: { limit: 60, windowSeconds: 60 * 60 },
+  // Provider callbacks that FAIL the signature check, per address. Signed
+  // callbacks are never throttled — a gate system reports every entry —
+  // but somebody posting junk is.
+  accessWebhookInvalid: { limit: 30, windowSeconds: 60 * 60 },
+  // The venue security desk's holds, reinstatements and escalations, per account.
+  accessOverride: { limit: 60, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type Bucket = keyof typeof RULES;

@@ -78,6 +78,12 @@ export const policySchema = z.object({
   allowedGateIds: z.array(z.string().min(1)).max(50),
   accessInstructionsAr: optText(2000),
   accessInstructionsEn: optText(2000),
+  // Phase 23 visitor passes. Optional, so a client that does not send
+  // them leaves them as they are.
+  identityRequirement: z.enum(["NAME", "NAME_AND_PHONE"]).optional(),
+  lateEntryCutoffMinutes: z.number().int().min(0).max(720).nullable().optional(),
+  noShowRevokeMinutes: z.number().int().min(0).max(720).nullable().optional(),
+  escalationContact: z.string().trim().max(200).nullable().optional().transform((v) => (v === undefined ? undefined : v || null)),
 });
 
 /** A calendar date that exists: 2026-02-30 does not. */

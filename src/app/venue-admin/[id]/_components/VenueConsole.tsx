@@ -12,6 +12,7 @@ interface Hours { dayOfWeek: number; openTime: string; closeTime: string; isClos
 interface Policy {
   visitorEligibility: string; accessBeforeMinutes: number; accessAfterMinutes: number; maxGuestsPerBooking: number;
   reentryAllowed: boolean; allowedGateIds: string[]; accessInstructionsAr: string | null; accessInstructionsEn: string | null;
+  identityRequirement?: "NAME" | "NAME_AND_PHONE"; lateEntryCutoffMinutes?: number | null; noShowRevokeMinutes?: number | null; escalationContact?: string | null;
 }
 interface Exception { id: string; kind: string; startsOn: string; endsOn: string; openTime: string | null; closeTime: string | null; noteAr: string | null }
 interface Venue {
@@ -38,7 +39,7 @@ const LABELS: Record<string, [string, string]> = {
   CLOSED: ["مقفول", "Closed"], SPECIAL_HOURS: ["مواعيد خاصة", "Special hours"],
   ACCESS_SUSPENDED: ["دخول الزوار موقوف", "Visitor access suspended"], BOOKINGS_PAUSED: ["الحجوزات موقوفة", "Bookings paused"],
   PLATFORM: ["إدارة موعد", "Maw3ed administrator"], ORGANIZATION_ADMIN: ["مدير الجهة", "Organisation admin"],
-  COMPOUND_ADMIN: ["مدير الكمبوند", "Compound admin"], VENUE_MANAGER: ["مدير المكان", "Venue manager"],
+  COMPOUND_ADMIN: ["مدير الكمبوند", "Compound admin"], VENUE_MANAGER: ["مدير المكان", "Venue manager"], VENUE_SECURITY: ["أمن المكان", "Venue security"],
 };
 
 const DAYS_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
@@ -245,6 +246,11 @@ export default function VenueConsole({ venueId }: { venueId: string }) {
       </section>
 
       <PolicyForm policy={venue.policy} gates={allGates} t={t} nm={nm} onSave={(p) => act(`${base}/policy`, "PUT", p)} />
+      <p className="text-sm">
+        <Link href={`/venue-admin/${venueId}/access`} className="text-[var(--color-brand)] underline">
+          {t("تصاريح دخول الزوار ومكتب الأمن", "Visitor passes and the security desk")}
+        </Link>
+      </p>
 
       <section aria-labelledby="e-h" className="card space-y-3 p-5">
         <h2 id="e-h" className="m-0 text-base font-extrabold">{t("استثناءات وتنبيهات", "Exceptions and notices")}</h2>
@@ -486,6 +492,23 @@ function PolicyForm({ policy, gates, t, nm, onSave }: { policy: Policy | null; g
         <L label={t("أقصى عدد مرافقين", "Max guests per booking")}><input type="number" min={0} max={50} className={field} value={p.maxGuestsPerBooking} onChange={num("maxGuestsPerBooking")} /></L>
       </div>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={p.reentryAllowed} onChange={(e) => setP({ ...p, reentryAllowed: e.target.checked })} />{t("مسموح يخرج ويرجع", "Re-entry allowed")}</label>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <L label={t("بيانات الزائر المطلوبة", "Visitor details required")}>
+          <select className={field} value={p.identityRequirement ?? "NAME"} onChange={(e) => setP({ ...p, identityRequirement: e.target.value as "NAME" | "NAME_AND_PHONE" })}>
+            <option value="NAME">{t("الاسم بس", "Name only")}</option>
+            <option value="NAME_AND_PHONE">{t("الاسم ورقم الموبايل", "Name and mobile number")}</option>
+          </select>
+        </L>
+        <L label={t("آخر دخول بعد بداية الميعاد بـ (دقيقة، فاضي = لحد آخر الوقت)", "Last entry after start (min; empty = until the end)")}>
+          <input type="number" min={0} max={720} className={field} value={p.lateEntryCutoffMinutes ?? ""} onChange={(e) => setP({ ...p, lateEntryCutoffMinutes: e.target.value === "" ? null : Math.max(0, Math.trunc(Number(e.target.value))) })} />
+        </L>
+        <L label={t("يتلغي لو مجاش بعد البداية بـ (دقيقة، فاضي = لا)", "Withdraw if not arrived after (min; empty = never)")}>
+          <input type="number" min={0} max={720} className={field} value={p.noShowRevokeMinutes ?? ""} onChange={(e) => setP({ ...p, noShowRevokeMinutes: e.target.value === "" ? null : Math.max(0, Math.trunc(Number(e.target.value))) })} />
+        </L>
+      </div>
+      <L label={t("التصعيد (رقم أو مكتب الأمن — بيظهر للأمن بس)", "Escalation contact (shown to security only)")}>
+        <input className={field} value={p.escalationContact ?? ""} onChange={(e) => setP({ ...p, escalationContact: e.target.value })} maxLength={200} />
+      </L>
       {gates.length > 0 && (
         <fieldset className="space-y-1 text-sm">
           <legend className="font-bold">{t("بوابات الدخول المسموحة (لو مفيش اختيار: الكل)", "Allowed entry points (none ticked: all)")}</legend>

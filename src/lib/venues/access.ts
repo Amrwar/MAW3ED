@@ -10,6 +10,9 @@ import type { VenueRoleKind } from "@prisma/client";
  *   ORGANIZATION_ADMIN  every compound and venue of one operator
  *   COMPOUND_ADMIN      every venue in one compound, and its gates
  *   VENUE_MANAGER       one venue
+ *   VENUE_SECURITY      one venue's security desk: visitor pass status,
+ *                       access events, suspensions and escalations —
+ *                       nothing else (Phase 23)
  *
  * and from nothing else. Owning a business inside a venue gives no
  * authority over the venue; managing a venue gives none over the
@@ -37,9 +40,16 @@ export const VENUE_ACTIONS = [
   "venue.exceptions",
   "venue.memberships.decide",
   "venue.metrics",
+  // Visitor passes (Phase 23): see who may come in and what happened at
+  // the gates; suspend, reinstate, escalate; switch passes on or off.
+  "venue.access.view",
+  "venue.access.override",
+  "venue.access.enable",
   // Platform only.
   "venue.publish",
   "venue.roles.grant",
+  /** Which access provider a venue uses, and its reference there. */
+  "venue.access.provider",
 ] as const;
 
 export type VenueAction = (typeof VENUE_ACTIONS)[number];
@@ -54,6 +64,9 @@ const OPERATOR: VenueAction[] = [
   "venue.exceptions",
   "venue.memberships.decide",
   "venue.metrics",
+  "venue.access.view",
+  "venue.access.override",
+  "venue.access.enable",
 ];
 
 export const VENUE_PERMISSIONS: Record<VenueAuthority, readonly VenueAction[]> = {
@@ -65,6 +78,11 @@ export const VENUE_PERMISSIONS: Record<VenueAuthority, readonly VenueAction[]> =
   ORGANIZATION_ADMIN: OPERATOR,
   COMPOUND_ADMIN: OPERATOR,
   VENUE_MANAGER: OPERATOR,
+  // The security desk sees who may come in and can hold or restore a
+  // pass, with a reason. It cannot change the venue, switch passes on,
+  // decide tenants or read metrics — and a business owner or a business's
+  // staff has no venue authority at all, so can never override it.
+  VENUE_SECURITY: ["venue.access.view", "venue.access.override"],
 };
 
 /** A venue role row, as loaded for the caller. */
@@ -83,7 +101,7 @@ export interface VenueScope {
 }
 
 /** Widest first, so the strongest applicable authority is reported. */
-const ORDER: VenueRoleKind[] = ["ORGANIZATION_OWNER", "ORGANIZATION_ADMIN", "COMPOUND_ADMIN", "VENUE_MANAGER"];
+const ORDER: VenueRoleKind[] = ["ORGANIZATION_OWNER", "ORGANIZATION_ADMIN", "COMPOUND_ADMIN", "VENUE_MANAGER", "VENUE_SECURITY"];
 
 /**
  * The caller's authority over this venue, or null. `platform` is true
@@ -100,7 +118,7 @@ export function authorityOver(
         r.kind === kind &&
         (((kind === "ORGANIZATION_OWNER" || kind === "ORGANIZATION_ADMIN") && !!venue.organizationId && r.organizationId === venue.organizationId) ||
           (kind === "COMPOUND_ADMIN" && !!venue.compoundId && r.compoundId === venue.compoundId) ||
-          (kind === "VENUE_MANAGER" && r.venueId === venue.id)),
+          ((kind === "VENUE_MANAGER" || kind === "VENUE_SECURITY") && r.venueId === venue.id)),
     );
     if (hit) return kind;
   }

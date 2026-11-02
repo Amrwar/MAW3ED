@@ -4,11 +4,14 @@ import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { bookingScope, requireBusinessAccess } from "@/lib/business-access";
 import { loadAvailability } from "@/lib/bookings/schedule";
+import { inBookingQueue } from "@/lib/bookings/queue";
+import { queueBusyResponse } from "@/lib/bookings/busy";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
 import { notifyLater } from "@/lib/notifications";
 import { log } from "@/lib/logger";
 import { CUSTOMER_MOVABLE } from "@/lib/bookings/transitions";
+import { accessAfterReschedule } from "@/lib/access/hooks";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -109,14 +112,17 @@ export async function POST(req: Request, { params }: Params) {
       // customer's, or a colleague's) landing in the same moment is not
       // turned back into a live booking at a new time. A booking that
       // had nobody, or no table, is given the one free at the new time.
-      const moved = await db.booking.updateMany({
-        where: { id: booking.id, status: booking.status },
-        data: {
-          date: dateToUTC(date), startTime, endTime, startsAt, endsAt, customerReminderSentAt: null,
-          staffMemberId: booking.staffMemberId ?? availability.assignments[startTime] ?? null,
-          resourceId: booking.resourceId ?? availability.resourceAssignments[startTime] ?? null,
-        },
-      });
+      // In the business's booking queue, like every write of a time.
+      const moved = await inBookingQueue(booking.businessId, (tx) =>
+        tx.booking.updateMany({
+          where: { id: booking.id, status: booking.status },
+          data: {
+            date: dateToUTC(date), startTime, endTime, startsAt, endsAt, customerReminderSentAt: null,
+            staffMemberId: booking.staffMemberId ?? availability.assignments[startTime] ?? null,
+            resourceId: booking.resourceId ?? availability.resourceAssignments[startTime] ?? null,
+          },
+        }),
+      );
       if (moved.count === 0) {
         return err("الحجز اتغيّر دلوقتي، حدّث الصفحة وجرّب تاني", 409, { code: "changed" });
       }
@@ -127,6 +133,10 @@ export async function POST(req: Request, { params }: Params) {
       }
       throw e;
     }
+
+    // Visitor passes move with the appointment (the check-in code reads
+    // the booking at the scan and needs nothing).
+    await accessAfterReschedule(booking.id);
 
     notifyLater({
       type: "booking.rescheduled",
@@ -140,6 +150,8 @@ export async function POST(req: Request, { params }: Params) {
     return ok({ id: booking.id, date, startTime, endTime, status: booking.status });
   } catch (e) {
     if (e instanceof Response) return e;
+    const busy = queueBusyResponse(e);
+    if (busy) return busy;
     log.error("[business reschedule]", e);
     return err("حصلت مشكلة وإحنا بنغيّر الميعاد، جرّب تاني بعد شوية", 500);
   }

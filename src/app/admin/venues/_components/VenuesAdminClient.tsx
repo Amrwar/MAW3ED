@@ -25,7 +25,7 @@ interface Props {
 
 const field = "w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm";
 const KIND: Record<string, string> = {
-  ORGANIZATION_ADMIN: "مدير الجهة", COMPOUND_ADMIN: "مدير الكمبوند", VENUE_MANAGER: "مدير المكان",
+  ORGANIZATION_ADMIN: "مدير الجهة", COMPOUND_ADMIN: "مدير الكمبوند", VENUE_MANAGER: "مدير المكان", VENUE_SECURITY: "أمن المكان",
 };
 
 export default function VenuesAdminClient(p: Props) {
@@ -264,7 +264,7 @@ function RoleForm(p: Props & { send: Send }) {
     }}>
       <input className={field} type="email" placeholder="إيميل الحساب" dir="ltr" value={r.email} onChange={(e) => setR({ ...r, email: e.target.value })} required />
       <select className={field} value={r.kind} onChange={(e) => setR({ ...r, kind: e.target.value, target: "" })} aria-label="الدور">
-        <option value="VENUE_MANAGER">مدير مكان</option><option value="COMPOUND_ADMIN">مدير كمبوند</option><option value="ORGANIZATION_ADMIN">مدير جهة</option>
+        <option value="VENUE_MANAGER">مدير مكان</option><option value="VENUE_SECURITY">أمن المكان</option><option value="COMPOUND_ADMIN">مدير كمبوند</option><option value="ORGANIZATION_ADMIN">مدير جهة</option>
       </select>
       <select className={field} value={r.target} onChange={(e) => setR({ ...r, target: e.target.value })} required aria-label="على">
         <option value="">على…</option>{options.map((o) => <option key={o.id} value={o.id}>{o.nameAr}</option>)}

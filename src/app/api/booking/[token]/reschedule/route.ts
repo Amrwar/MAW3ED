@@ -3,12 +3,15 @@ import { db } from "@/lib/db";
 import { ok, err } from "@/lib/api";
 import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { loadAvailability } from "@/lib/bookings/schedule";
+import { inBookingQueue } from "@/lib/bookings/queue";
+import { queueBusyResponse } from "@/lib/bookings/busy";
 import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
 import { Prisma } from "@prisma/client";
 import { notifyLater } from "@/lib/notifications";
 import { log } from "@/lib/logger";
 import { minutesUntilStart } from "@/lib/bookings/self-service";
 import { CUSTOMER_MOVABLE } from "@/lib/bookings/transitions";
+import { accessAfterReschedule } from "@/lib/access/hooks";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -128,24 +131,27 @@ export async function POST(req: Request, { params }: Params) {
     // must not be overwritten with a moved, live booking.
     const nextStatus = booking.business.autoConfirm ? booking.status : "PENDING";
     try {
-      const moved = await db.booking.updateMany({
-        where: { id: booking.id, status: booking.status },
-        data: {
-          date:                  newDateUTC,
-          startTime:             newStartTime,
-          endTime:               newEndTime,
-          startsAt,
-          endsAt,
-          status:                nextStatus,
-          customerReminderSentAt: null,           // reset so reminder fires for new date
-          // A booking that had nobody, or no table, is given the one the
-          // engine found free at the new time — as a new booking would
-          // be — so the moved appointment holds a lane the constraints
-          // can see.
-          staffMemberId: booking.staffMemberId ?? availability.assignments[newStartTime] ?? null,
-          resourceId:    booking.resourceId ?? availability.resourceAssignments[newStartTime] ?? null,
-        },
-      });
+      // In the business's booking queue, like every write of a time.
+      const moved = await inBookingQueue(booking.businessId, (tx) =>
+        tx.booking.updateMany({
+          where: { id: booking.id, status: booking.status },
+          data: {
+            date:                  newDateUTC,
+            startTime:             newStartTime,
+            endTime:               newEndTime,
+            startsAt,
+            endsAt,
+            status:                nextStatus,
+            customerReminderSentAt: null,           // reset so reminder fires for new date
+            // A booking that had nobody, or no table, is given the one the
+            // engine found free at the new time — as a new booking would
+            // be — so the moved appointment holds a lane the constraints
+            // can see.
+            staffMemberId: booking.staffMemberId ?? availability.assignments[newStartTime] ?? null,
+            resourceId:    booking.resourceId ?? availability.resourceAssignments[newStartTime] ?? null,
+          },
+        }),
+      );
       if (moved.count === 0) {
         return err("الحجز اتغيّر دلوقتي، حدّث الصفحة وجرّب تاني", 409, { code: "changed" });
       }
@@ -157,6 +163,10 @@ export async function POST(req: Request, { params }: Params) {
       }
       throw e;
     }
+
+    // Visitor passes move with the appointment — or are held while the
+    // new time waits for the business (lib/access/passes.ts).
+    await accessAfterReschedule(booking.id);
 
     // One call for both sides. Note this now respects the WhatsApp
     // plan gate, which this route never checked while the booking route
@@ -175,6 +185,8 @@ export async function POST(req: Request, { params }: Params) {
       status:    nextStatus,
     });
   } catch (e) {
+    const busy = queueBusyResponse(e);
+    if (busy) return busy;
     log.error("[booking reschedule]", e);
     return err("حصلت مشكلة وإحنا بنغيّر الميعاد، جرّب تاني بعد شوية", 500);
   }

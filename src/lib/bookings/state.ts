@@ -2,6 +2,8 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { canTransition, releasesTime, type BookingStatusValue, type Mover } from "./transitions";
+import { accessAfterMove } from "@/lib/access/hooks";
+import { holdsBookingQueue, inBookingQueue } from "./queue";
 
 /**
  * Moving a booking from one status to another, safely.
@@ -47,9 +49,30 @@ type Tx = Prisma.TransactionClient;
 
 export async function moveBooking(input: MoveInput, tx?: Tx): Promise<MoveResult> {
   if (!canTransition(input.from, input.to, input.by)) return { moved: false, why: "not-allowed" };
-  if (tx) return applyMove(tx, input);
-  return db.$transaction((t) => applyMove(t, input));
+  // A move into a live status writes a new row version that the overlap
+  // constraints check again, so it waits in the business's booking queue
+  // (lib/bookings/queue.ts) like any write of a time. A move that ends
+  // the booking leaves the constraints and needs no turn.
+  // A caller passing its own transaction must run it in the queue when
+  // the move is live (check-in does, through inBookingQueue).
+  const live = !endsBooking(input.to);
+  if (tx) {
+    if (live) {
+      const row = await tx.booking.findUnique({ where: { id: input.bookingId }, select: { businessId: true } });
+      if (row && !holdsBookingQueue(row.businessId)) {
+        throw new Error(`moveBooking to ${input.to} in a transaction outside the booking queue (lib/bookings/queue.ts)`);
+      }
+    }
+    return applyMove(tx, input);
+  }
+  if (!live) return db.$transaction((t) => applyMove(t, input));
+  const row = await db.booking.findUnique({ where: { id: input.bookingId }, select: { businessId: true } });
+  if (!row) return { moved: false, why: "changed" };
+  return inBookingQueue(row.businessId, (t) => applyMove(t, input));
 }
+
+const ENDING: readonly string[] = ["CANCELLED", "NO_SHOW", "COMPLETED", "FAILED_PAYMENT"];
+const endsBooking = (to: string) => ENDING.includes(to);
 
 async function applyMove(tx: Tx, input: MoveInput): Promise<MoveResult> {
   const { count } = await tx.booking.updateMany({
@@ -83,6 +106,28 @@ async function applyMove(tx: Tx, input: MoveInput): Promise<MoveResult> {
       reason: input.reason,
       actorUserId: input.actorUserId ?? null,
     });
+  }
+
+  // The booking's check-in code and any visitor passes follow it, in this
+  // same transaction (lib/access/hooks.ts).
+  //
+  // A move that ENDS the booking (cancelled, no-show, completed) must
+  // withdraw its passes with it: if that fails, the move fails and is
+  // retried, rather than leaving a pass opening a gate for a cancelled
+  // booking. Any other move (a confirmation, an arrival) runs the access
+  // step in a savepoint, so a failure there never stops the booking
+  // moving; the cron issues or updates the pass later.
+  if (endsBooking(input.to)) {
+    await accessAfterMove(tx, input.bookingId, input.to);
+  } else {
+    await tx.$executeRaw`SAVEPOINT access_after_move`;
+    try {
+      await accessAfterMove(tx, input.bookingId, input.to);
+      await tx.$executeRaw`RELEASE SAVEPOINT access_after_move`;
+    } catch (e) {
+      await tx.$executeRaw`ROLLBACK TO SAVEPOINT access_after_move`;
+      log.error("[access] could not update passes after a booking move; the cron will", e, { bookingId: input.bookingId, to: input.to });
+    }
   }
   return { moved: true, refundNeededCents };
 }

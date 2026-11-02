@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { bookingRefusalEn, refusalText } from "@/lib/lang";
 
 interface Props {
   token: string;
@@ -29,6 +31,9 @@ interface Props {
  */
 export default function CancelButton({ token }: Props) {
   const router = useRouter();
+  const { lang } = useLanguage();
+  const en = lang === "en";
+  const t = (ar: string, english: string) => (en ? english : ar);
   const [confirming, setConfirming] = useState(false);
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState<string | null>(null);
@@ -38,15 +43,15 @@ export default function CancelButton({ token }: Props) {
     setError(null);
     try {
       const res = await fetch(`/api/booking/${token}/cancel`, { method: "POST" });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "حدث خطأ أثناء الإلغاء");
+        setError((en && bookingRefusalEn(data, "cancel")) || refusalText(res.status, data.error, en, "حدث خطأ أثناء الإلغاء"));
         setConfirming(false);
         return;
       }
       router.refresh();
     } catch {
-      setError("تعذّر الاتصال بالخادم، حاول مرة أخرى");
+      setError(t("تعذّر الاتصال بالخادم، حاول مرة أخرى", "Couldn't connect. Try again."));
       setConfirming(false);
     } finally {
       setLoading(false);
@@ -58,7 +63,7 @@ export default function CancelButton({ token }: Props) {
       <Button variant="outline" fullWidth onClick={() => setConfirming(true)}
         className="border-[var(--color-danger-line)] text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]"
       >
-        إلغاء الحجز
+        {t("إلغاء الحجز", "Cancel booking")}
       </Button>
     );
   }
@@ -66,7 +71,7 @@ export default function CancelButton({ token }: Props) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-center text-[var(--color-text-secondary)]">
-        هل أنت متأكد من إلغاء الحجز؟ لا يمكن التراجع عن هذا الإجراء.
+        {t("هل أنت متأكد من إلغاء الحجز؟ لا يمكن التراجع عن هذا الإجراء.", "Cancel this booking? This can't be undone.")}
       </p>
       {error && (
         <p className="text-sm text-[var(--color-danger)] text-center bg-[var(--color-danger-soft)] rounded-[var(--radius-md)] px-4 py-2">
@@ -80,7 +85,7 @@ export default function CancelButton({ token }: Props) {
           onClick={() => { setConfirming(false); setError(null); }}
           disabled={loading}
         >
-          تراجع
+          {t("تراجع", "Keep it")}
         </Button>
         <button
           onClick={handleCancel}
@@ -88,7 +93,7 @@ export default function CancelButton({ token }: Props) {
           className="flex-1 py-2.5 rounded-[var(--radius-md)] bg-[var(--color-danger)] hover:bg-[var(--color-danger)] text-white text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {loading ? <Loader2 size={15} className="animate-spin" /> : null}
-          تأكيد الإلغاء
+          {t("تأكيد الإلغاء", "Yes, cancel")}
         </button>
       </div>
     </div>

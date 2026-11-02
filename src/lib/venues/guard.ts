@@ -80,7 +80,9 @@ export async function venuesFor(caller: VenueCaller) {
     .filter((r) => (r.kind === "ORGANIZATION_ADMIN" || r.kind === "ORGANIZATION_OWNER") && r.organizationId)
     .map((r) => r.organizationId!);
   const compoundIds = caller.roles.filter((r) => r.kind === "COMPOUND_ADMIN" && r.compoundId).map((r) => r.compoundId!);
-  const venueIds = caller.roles.filter((r) => r.kind === "VENUE_MANAGER" && r.venueId).map((r) => r.venueId!);
+  const venueIds = caller.roles
+    .filter((r) => (r.kind === "VENUE_MANAGER" || r.kind === "VENUE_SECURITY") && r.venueId)
+    .map((r) => r.venueId!);
   if (!orgIds.length && !compoundIds.length && !venueIds.length) return [];
   return db.venue.findMany({
     where: {

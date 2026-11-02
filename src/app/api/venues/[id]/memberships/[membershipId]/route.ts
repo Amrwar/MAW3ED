@@ -3,6 +3,7 @@ import { ok, err } from "@/lib/api";
 import { requireVenueAccess } from "@/lib/venues/guard";
 import { decideMembership } from "@/lib/venues/memberships";
 import { handle, readJson, venueAudit } from "@/lib/venues/route";
+import { venueAccessChanged } from "@/lib/access/venue-desk";
 
 const schema = z.object({
   decision: z.enum(["approve", "reject", "remove", "place"]),
@@ -29,6 +30,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       membershipId,
       note: parsed.data.note ?? null,
     });
+    // A tenant no longer listed holds its visitors' passes; one listed again releases them.
+    venueAccessChanged(id);
     return ok({ saved: true });
   });
 }

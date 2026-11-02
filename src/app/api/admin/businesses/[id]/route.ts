@@ -4,6 +4,7 @@ import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { adminNotFound, requireAdminApi } from "@/lib/admin/guard";
 import { recordAudit, describeChange } from "@/lib/admin/audit";
+import { accessAfterBusinessChange } from "@/lib/access/hooks";
 import {
   ACTION_LABELS,
   REQUIRES_REASON,
@@ -157,6 +158,9 @@ export async function POST(req: Request, { params }: Params) {
         ...(reason?.trim() ? { reason: reason.trim() } : {}),
       },
     });
+
+    // Visitor passes depend on the business being open (Phase 23).
+    if (updated.status !== business.status) accessAfterBusinessChange(id);
 
     return ok(updated);
   } catch (e) {
