@@ -15,7 +15,36 @@ import { log } from "@/lib/logger";
  * for bookings updated since the connection was established.
  *
  * Security: only events for the authenticated business are emitted.
+ *
+ * Each connection lives just under the platform's limit and then closes
+ * cleanly; the client reconnects with `?since=` set to the last
+ * checkpoint this stream sent, so nothing changed in between is lost.
  */
+
+/** The platform's ceiling for this function (Vercel, Fluid Compute). */
+export const maxDuration = 300;
+
+/**
+ * How far back each poll looks again. The window is compared against
+ * `updatedAt`, which the app server stamps with its own clock; two
+ * instances whose clocks differ could otherwise put a change just behind
+ * the window and the live view would miss it (P23-A9). Repeats inside
+ * the overlap are dropped by id and `updatedAt`.
+ */
+const OVERLAP_MS = 5_000;
+/** The oldest `since` a reconnecting client may resume from. */
+const MAX_RESUME_MS = 2 * 60_000;
+
+/** A client's resume point: a recent instant, not one in the future. */
+function resumeFrom(req: Request, now: Date): Date | null {
+  const raw = new URL(req.url).searchParams.get("since");
+  if (!raw) return null;
+  const at = new Date(raw);
+  if (Number.isNaN(at.getTime())) return null;
+  if (at.getTime() > now.getTime() || now.getTime() - at.getTime() > MAX_RESUME_MS) return null;
+  return at;
+}
+
 export async function GET(req: Request) {
   // ── Auth ─────────────────────────────────────────────────────────────────
   // The business is re-read and its ownership checked, not taken from
@@ -43,6 +72,9 @@ export async function GET(req: Request) {
     throw e;
   }
   const openedAt = new Date();
+  // Where this stream's window starts: the client's last checkpoint when
+  // it is resuming, otherwise now.
+  const startFrom = resumeFrom(req, openedAt) ?? openedAt;
 
   /**
    * Whether this connection may go on: the account still owns the
@@ -66,8 +98,13 @@ export async function GET(req: Request) {
   }
   /** Every 10 polls (30 s). */
   const RECHECK_TICKS = 10;
-  /** And a hard ceiling: the client reconnects, and the check at connect runs again. */
-  const MAX_LIFETIME_MS = 30 * 60_000;
+  /**
+   * And a ceiling just under maxDuration: the stream closes cleanly, the
+   * client resumes from the last checkpoint, and the check at connect
+   * runs again. It used to be 30 minutes, but the platform cut every
+   * stream at 5 (P23-A10) — mid-poll, with nothing to resume from.
+   */
+  const MAX_LIFETIME_MS = 280_000;
 
   // ── Stream setup ──────────────────────────────────────────────────────────
   const encoder = new TextEncoder();
@@ -75,16 +112,26 @@ export async function GET(req: Request) {
   const stream = new ReadableStream({
     start(controller) {
       // Track last check time — only emit events for bookings updated after this point
-      let lastCheck = new Date();
+      let lastCheck = startFrom;
       let closed = false;
+      // What this stream has sent, by id → updatedAt, so the overlap does
+      // not send a change twice. Entries older than the window are let go.
+      const sent = new Map<string, number>();
 
       function enqueue(chunk: string) {
         if (!closed) controller.enqueue(encoder.encode(chunk));
       }
 
-      // SSE heartbeat comment keeps the connection alive through proxies / load balancers
+      /** Where a client resumes from if this stream ends: everything before it was sent. */
+      function sendCheckpoint() {
+        sendEvent("checkpoint", { at: lastCheck.toISOString() });
+      }
+
+      // SSE heartbeat comment keeps the connection alive through proxies /
+      // load balancers, and carries the checkpoint.
       function sendHeartbeat() {
         enqueue(": heartbeat\n\n");
+        sendCheckpoint();
       }
 
       function sendEvent(event: string, data: Record<string, unknown>) {
@@ -100,6 +147,7 @@ export async function GET(req: Request) {
       let polling = false;
       function end() {
         if (closed) return;
+        sendCheckpoint();
         closed = true;
         clearInterval(pollInterval);
         clearInterval(heartbeatInterval);
@@ -123,11 +171,14 @@ export async function GET(req: Request) {
           // sends: a failed query leaves it, and the next poll asks again.
           const checkFrom = lastCheck;
           const polledAt = new Date();
+          // Looking a little further back than the last poll (OVERLAP_MS),
+          // but never before where this stream started, minus the same.
+          const windowFrom = new Date(Math.max(checkFrom.getTime() - OVERLAP_MS, startFrom.getTime() - OVERLAP_MS));
 
-          const changed = await db.booking.findMany({
+          const found = await db.booking.findMany({
             where: {
               ...scope,
-              updatedAt: { gt: checkFrom },
+              updatedAt: { gt: windowFrom },
             },
             select: {
               id:              true,
@@ -145,6 +196,8 @@ export async function GET(req: Request) {
               serviceId:       true,
             },
           });
+          for (const [id, at] of sent) if (at <= windowFrom.getTime()) sent.delete(id);
+          const changed = found.filter((b) => sent.get(b.id) !== b.updatedAt.getTime());
           if (changed.length === 0) {
             lastCheck = polledAt;
             return;
@@ -162,7 +215,9 @@ export async function GET(req: Request) {
           lastCheck = polledAt;
 
           for (const b of changed) {
-            const isNew = b.createdAt >= checkFrom;
+            // New to this window, and not sent by this stream before.
+            const isNew = b.createdAt > windowFrom && !sent.has(b.id);
+            sent.set(b.id, b.updatedAt.getTime());
             const service = services.get(b.serviceId);
             const payload = {
               id:              b.id,
@@ -179,6 +234,9 @@ export async function GET(req: Request) {
               notes:           b.notes,
               customerNotes:   null,
               createdAt:       b.createdAt.toISOString(),
+              // The version: lets a client drop a change it already has
+              // (a resumed stream overlaps the one before it).
+              updatedAt:       b.updatedAt.toISOString(),
               tableName:       null,
               staffName:       null,
               partySize:       null,

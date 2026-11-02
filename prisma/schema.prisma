@@ -289,6 +289,10 @@ model Business {
   /// Off by default, so no existing business changes behaviour until its
   /// owner opts in. Surfaced in discovery as the "instant booking" filter.
   autoConfirm                Boolean            @default(false)
+  /// Whether a venue's security desk is kept from seeing that a visitor
+  /// is going to this business (P23-A5). Null: the category's default,
+  /// discreet for medical categories (lib/access/discreet.ts).
+  accessDiscreet             Boolean?
   /// Denormalised from Review so the listing can sort and filter on a
   /// plain indexed column instead of aggregating a join per row.
   /// Kept in sync by recomputeBusinessRating(); null means never rated.
