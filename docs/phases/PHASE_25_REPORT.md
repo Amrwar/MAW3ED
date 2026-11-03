@@ -81,9 +81,9 @@ Legend:
 |---|---|
 | `cd mobile && npx tsc --noEmit` | 0 errors |
 | `cd mobile && npx eslint .` | 0 problems |
-| `cd mobile && npx vitest run` | **231 passed**, 10 skipped (new: restore 6, local data 2, access 6, places 5, links +4, booking flow +1) |
+| `cd mobile && npx vitest run` | **240 passed**, 10 skipped (new: restore 13, local data 2, access 5, places 5, links +4, booking flow +1, export 3) |
 | `npx expo-doctor` | 21/21 |
-| `node scripts/qa-phase25-app.mjs` | **34/34**. The app's own web build against the QA server: discovery → organization → section → business → booking through the app's flow, credited to the mall; check-in QR; a pass from pending to active; a guest with a link; the guest's pass; QR visit counted; venue; not-found; offline (codes stay, no requests); cold start with no answer keeps the sign-in; an ended session signs out and clears the tokens; the polling bound and "check again"; support; data export; English; no sideways scrolling |
+| `node scripts/qa-phase25-app.mjs` | **35/35**. The app's own web build against the QA server: discovery → organization → section → business → booking through the app's flow, credited to the mall; check-in QR; a pass from pending to active; a guest with a link; the guest's pass; QR visit counted; venue; not-found; offline (codes stay, no requests); cold start with no answer keeps the sign-in; back online it re-checks once and settles; an ended session signs out and clears the tokens; the polling bound and "check again"; support; data export; English; no sideways scrolling |
 | Web `src/lib/app-links.test.ts` | 5/5, including the iOS/Android path equality guard |
 
 ## Platforms (reported separately)
@@ -101,9 +101,17 @@ Exact steps: `docs/mobile-release.md`, "What the owner has to do".
 ## Verdict
 
 **PARTIAL.** The customer app is complete in code, and verified in the
-app's own build in a browser (34/34) and by unit tests (231). Android and
+app's own build in a browser (35/35) and by unit tests (240). Android and
 iOS release builds and device tests are **BLOCKED** on the owner's
 accounts (Expo, Apple, Google) and a non-production test backend.
 Nothing is submitted or approved.
+
+## Post-phase audit
+
+Two independent review rounds (10 + 9 findings: 17 fixed, 2 not fixed by
+decision) and the full regression battery on the branch with offline QR
+merged in: `docs/qa/PHASE_25_POST_AUDIT.md`, `PHASE_25_REGRESSION_RESULTS.md`,
+`PHASE_25_LOOP_AUDIT.md`, `PHASE_25_OPEN_ISSUES.md`. Verdict unchanged:
+**PARTIAL**, with native builds BLOCKED on the owner's accounts.
 
 Phase 26 is not started.
