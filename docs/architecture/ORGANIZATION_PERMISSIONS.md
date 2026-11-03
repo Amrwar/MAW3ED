@@ -28,10 +28,23 @@ from it, expiry reached).
 | CUSTOMERS | The customer book and a customer's history; notes | — |
 | SERVICES | Services (create, edit, remove) | — |
 | STAFF | Staff records, each person's hours and time off | **Who may sign in** (`staff.manageAccess` — owner only, always) |
+| RESOURCES (Phase 24) | Tables, rooms, chairs and equipment: list, add, edit, remove (`/dashboard/resources`) | — |
 | SCHEDULES | Business opening hours and business-wide closures | — |
 | PROFILE | Public profile: names, contact, about, images, category, city | Slug, publishing, plan |
-| REPORTS | Booking, performance and customer-count reports — counts only | Revenue columns |
-| FINANCE (OWNED only) | Revenue report, revenue per staff, customer spend | Recording payments, billing, subscription |
+| REPORTS | Booking, performance and customer-count reports — counts only. Also the business's row in the organization's portfolio (Phase 24): counts | Revenue columns |
+| FINANCE (OWNED only) | Revenue report, revenue per staff, customer spend; revenue in the organization's portfolio | Recording payments, billing, subscription |
+
+RESOURCES was added in Phase 24 (migration
+`phase24_resources_scope.sql`) as a scope of its own, so that no grant an
+owner had already given came to mean more. Like every scope except
+RESERVATIONS it is business-wide, so a branch relationship cannot carry
+it. Before Phase 24, tables and rooms were the owner's alone.
+
+The organization's portfolio (`GET /api/organizations/:id/portfolio`,
+the "Businesses" section of the console) lists every OWNED or MANAGED
+business. It shows figures only for those that grant REPORTS, and money
+only with FINANCE. The others are listed as "not shared". It never
+includes HOSTED tenants or any customer.
 
 What no delegate ever gets, whatever is granted: billing and
 subscription, publishing or unpublishing, booking-policy and payment
