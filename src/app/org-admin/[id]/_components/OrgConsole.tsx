@@ -29,7 +29,13 @@ interface Association {
   branch: { id: string; nameAr: string; nameEn: string | null } | null;
   business: { id: string; slug: string; nameAr: string; nameEn: string | null; isPublished: boolean; category: { nameAr: string; nameEn: string } | null; city: { nameAr: string; nameEn: string } | null };
 }
-interface Metrics { windowDays: number; viewsTotal: number; views: Record<string, number>; attributedBookings: number; perBusiness: { nameAr: string; count: number }[] }
+interface Metrics { windowDays: number; viewsTotal: number; views: Record<string, number>; attributedBookings: number; perBusiness: { nameAr: string; nameEn: string | null; count: number }[] }
+interface Figures { bookings: number; upcoming: number; completed: number; noShows: number; cancelled: number; revenue: number | null }
+interface Portfolio {
+  windowDays: number;
+  rows: { associationId: string; relation: string; business: { slug: string; nameAr: string; nameEn: string | null }; branch: { nameAr: string; nameEn: string | null } | null; figures: Figures | null }[];
+  totals: Figures & { sharing: number; withFinance: number };
+}
 
 const field = "w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm";
 
@@ -61,13 +67,14 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
   const [assocMeta, setAssocMeta] = useState({ total: 0, approved: 0, pages: 1 });
   const [parentOptions, setParentOptions] = useState<{ id: string; nameAr: string; nameEn: string | null }[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [audit, setAudit] = useState<{ id: string; summary: string; at: string }[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [failure, setFailure] = useState<"signin" | "gone" | "error" | null>(null);
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
-    const [o, a, m, au] = await Promise.all([api(base), api(`${base}/businesses?page=${assocPage}`), api(`${base}/metrics`), api(`${base}/audit`)]);
+    const [o, a, m, au, p] = await Promise.all([api(base), api(`${base}/businesses?page=${assocPage}`), api(`${base}/metrics`), api(`${base}/audit`), api(`${base}/portfolio`)]);
     if (!o.ok) {
       setFailure(o.status === 401 ? "signin" : o.status === 404 ? "gone" : "error");
       return;
@@ -82,6 +89,7 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
     setParentOptions((o.json.parentOptions as typeof parentOptions) ?? []);
     if (m.ok) setMetrics(m.json as unknown as Metrics);
     if (au.ok) setAudit((au.json.entries as typeof audit) ?? []);
+    if (p.ok) setPortfolio(p.json as unknown as Portfolio);
   }, [base, assocPage]);
 
   useEffect(() => {
@@ -211,9 +219,9 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
           </div>
           {metrics.perBusiness.length > 0 && (
             <ul className="m-0 list-none space-y-1 p-0 text-sm">
-              {metrics.perBusiness.slice(0, 8).map((b) => (
-                <li key={b.nameAr} className="flex justify-between gap-3">
-                  <span>{b.nameAr}</span>
+              {metrics.perBusiness.slice(0, 8).map((b, i) => (
+                <li key={`${b.nameAr}-${i}`} className="flex justify-between gap-3">
+                  <span>{nm(b)}</span>
                   <span className="num text-[var(--color-subtle)]">{b.count}</span>
                 </li>
               ))}
@@ -224,6 +232,8 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
           </p>
         </section>
       )}
+
+      {portfolio && portfolio.rows.length > 0 && <PortfolioSection t={t} nm={nm} report={portfolio} />}
 
       <Businesses
         t={t}
@@ -296,6 +306,73 @@ function Tile({ label, value }: { label: string; value: number }) {
 }
 
 type T = (ar: string, en: string) => string;
+
+/** The group's businesses side by side — only what each one shares. */
+function PortfolioSection({ t, nm, report }: { t: T; nm: (x: { nameAr: string; nameEn?: string | null }) => string; report: Portfolio }) {
+  const money = (n: number | null) => (n === null ? "—" : `${Math.round(n).toLocaleString("en-US")} ${t("ج.م", "EGP")}`);
+  const { totals } = report;
+  return (
+    <section aria-labelledby="pf-h" className="card space-y-3 p-5">
+      <h2 id="pf-h" className="m-0 text-base font-extrabold">{t(`أداء الأنشطة — آخر ${report.windowDays} يوم`, `Businesses — last ${report.windowDays} days`)}</h2>
+      {totals.sharing > 0 ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Tile label={t("حجوزات", "Bookings")} value={totals.bookings} />
+          <Tile label={t("خلصت", "Completed")} value={totals.completed} />
+          <Tile label={t("محضروش", "No-shows")} value={totals.noShows} />
+          <Tile label={t("اتلغت", "Cancelled")} value={totals.cancelled} />
+        </div>
+      ) : (
+        <p className="m-0 text-sm text-[var(--color-subtle)]">{t("لسه مفيش نشاط شارك تقاريره مع الجهة.", "No business has shared its reports with this organization yet.")}</p>
+      )}
+      {totals.revenue !== null && (
+        <p className="m-0 text-sm">
+          <span className="font-bold">{t("إيراد الحجوزات اللي خلصت: ", "Revenue from completed bookings: ")}</span>
+          <span className="num" dir="ltr">{money(totals.revenue)}</span>
+          {totals.withFinance < totals.sharing && (
+            <span className="text-xs text-[var(--color-subtle)]">{t(` (من ${totals.withFinance} نشاط شارك الماليات)`, ` (from the ${totals.withFinance} that share finance)`)}</span>
+          )}
+        </p>
+      )}
+      <div className="overflow-x-auto" role="region" aria-labelledby="pf-h" tabIndex={0}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-[var(--color-subtle)]">
+              <th scope="col" className="py-1 text-start font-semibold">{t("النشاط", "Business")}</th>
+              <th scope="col" className="py-1 text-end font-semibold">{t("حجوزات", "Bookings")}</th>
+              <th scope="col" className="py-1 text-end font-semibold">{t("جاية", "Upcoming")}</th>
+              <th scope="col" className="py-1 text-end font-semibold">{t("محضروش", "No-shows")}</th>
+              <th scope="col" className="py-1 text-end font-semibold">{t("الإيراد", "Revenue")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.rows.map((r) => (
+              <tr key={r.associationId} className="border-t border-[var(--color-line)]">
+                <th scope="row" className="py-1.5 text-start font-normal">
+                  {nm(r.business)}
+                  {r.branch && <span className="text-xs text-[var(--color-subtle)]"> — {nm(r.branch)}</span>}
+                </th>
+                {r.figures ? (
+                  <>
+                    <td className="num py-1.5 text-end">{r.figures.bookings}</td>
+                    <td className="num py-1.5 text-end">{r.figures.upcoming}</td>
+                    <td className="num py-1.5 text-end">{r.figures.noShows}</td>
+                    <td className="num py-1.5 text-end" dir="ltr">{money(r.figures.revenue)}</td>
+                  </>
+                ) : (
+                  <td colSpan={4} className="py-1.5 text-end text-xs text-[var(--color-subtle)]">{t("مش متشارك — صاحب النشاط ما اداش صلاحية التقارير", "Not shared — the owner has not granted reports")}</td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="m-0 text-xs text-[var(--color-subtle)]">
+        {t("كل نشاط بيقرر يشارك إيه: التقارير بتظهر الأعداد، والماليات بتظهر الإيراد. مفيش بيانات عملاء هنا.", "Each business decides what it shares: reports show counts, finance shows revenue. No customer data appears here.")}
+      </p>
+    </section>
+  );
+}
+
 type Act = (path: string, method: string, body?: unknown, done?: string) => Promise<boolean>;
 
 function Businesses({ t, en, nm, associations, canManage, onAct, base, orgStatus, invites, page, pages, total, onPage }: {

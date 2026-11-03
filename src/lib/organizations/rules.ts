@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DELEGATION_SCOPES } from "./scopes";
 import { IMAGE_HOSTS } from "@/lib/security/csp";
 
 /** Input rules for organizations. */
@@ -68,7 +69,8 @@ const relationship = z.preprocess(
   (v) => (typeof v === "string" && v in LEGACY_RELATION ? LEGACY_RELATION[v] : v),
   z.enum(["OWNED", "HOSTED", "MANAGED"]),
 );
-const scopeList = z.array(z.enum(["RESERVATIONS", "CUSTOMERS", "SERVICES", "STAFF", "SCHEDULES", "PROFILE", "REPORTS", "FINANCE"])).max(8);
+// The one list of scopes (./scopes), so a scope added there is accepted here.
+const scopeList = z.array(z.enum(DELEGATION_SCOPES)).max(DELEGATION_SCOPES.length);
 /** A grant's end: a future instant, or null for "until revoked". */
 const grantExpiry = z
   .string()

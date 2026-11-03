@@ -172,7 +172,7 @@ async function DelegateShell({
     pendingCount,
     plan: "FREE" as Plan,
     resourceWord,
-    hasResources: false,
+    hasResources: capabilities.resources,
     hasBranches: false,
     isAdmin,
     needsSetup: false,

@@ -49,6 +49,9 @@ export const SCOPE_ACTIONS: Record<DelegationScope, readonly BusinessAction[]> =
   // Staff records, each person's own hours and time off — never who may
   // sign in (staff.manageAccess stays the owner's).
   STAFF: ["staff.read", "staff.manage"],
+  // Tables, rooms and chairs: what a restaurant group runs across its
+  // brands. Its own scope, so no earlier grant widened when it was added.
+  RESOURCES: ["resources.read", "resources.manage"],
   // The business's opening hours and business-wide closures.
   SCHEDULES: ["schedule.read", "schedule.manage"],
   PROFILE: ["profile.read", "profile.manage"],

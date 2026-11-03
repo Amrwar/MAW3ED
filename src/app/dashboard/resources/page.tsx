@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { requireBusiness } from "@/lib/api";
+import { requireDashboardAccess } from "@/lib/dashboard/guard";
 import ResourcesClient, { type ResourceRow } from "./_components/ResourcesClient";
 
 export const metadata: Metadata = { title: "الموارد" };
 
 export default async function ResourcesPage() {
-  const ctx = await requireBusiness().catch(() => null);
-  if (!ctx) redirect("/login");
+  // The owner, or an organization the owner granted RESOURCES.
+  const ctx = await requireDashboardAccess("resources.manage");
 
   const [resources, branches] = await Promise.all([
     db.resource.findMany({
