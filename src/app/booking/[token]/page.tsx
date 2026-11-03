@@ -12,6 +12,9 @@ import RescheduleFlow from "./_components/RescheduleFlow";
 import LeaveReview from "./_components/LeaveReview";
 import AccessPanel from "./_components/AccessPanel";
 import { canReviewBooking } from "@/lib/reviews";
+import { customerAccessPayload } from "@/lib/access/customer";
+import { offlineCopyUntil } from "@/lib/access/offline-copy";
+import { log } from "@/lib/logger";
 import { customerMayCancel, customerMayChange } from "@/lib/bookings/self-service";
 import { bookingMoney, toCents } from "@/lib/payments/money";
 import { countIn, duration, money, clockRange } from "@/lib/fmt";
@@ -94,6 +97,22 @@ export default async function BookingPage({ params }: Params) {
   const say          = (ar: string, english: string) => (en ? english : ar);
   const businessName = localName(en, booking.business.nameAr, booking.business.nameEn);
   const cutoff       = countIn(lang, cutoffHours, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" }, { one: "hour" });
+
+  // The check-in QR and passes, rendered into the page itself, so a copy
+  // of the page kept on the phone (public/sw.js) still shows them with no
+  // connection. If this fails the panel fetches them itself, as before.
+  const live = ["PENDING", "CONFIRMED", "ARRIVED", "IN_PROGRESS"].includes(booking.status);
+  const access = live
+    ? await customerAccessPayload(booking.id, en).catch((e) => {
+        log.error("[booking page] access payload", e);
+        return null;
+      })
+    : null;
+  const savedAt = new Date();
+  // How long the phone may keep this page for offline use: while there is
+  // a code to show, until its check-in window closes. Absent, the service
+  // worker forgets any copy it holds (cancelled, finished, nothing to show).
+  const offlineUntil = offlineCopyUntil(booking, access, savedAt);
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-2)]" dir={en ? "ltr" : "rtl"}>
@@ -209,8 +228,15 @@ export default async function BookingPage({ params }: Params) {
 
         {/* Getting in: the booking's check-in QR, and a venue's visitor
             passes where it offers them (Phase 23). */}
-        {["PENDING", "CONFIRMED", "ARRIVED", "IN_PROGRESS"].includes(booking.status) && (
-          <AccessPanel token={token} customerName={booking.customerName} />
+        {offlineUntil && <meta name="maw3ed-offline-until" content={offlineUntil.toISOString()} />}
+        {live && (
+          <AccessPanel
+            token={token}
+            customerName={booking.customerName}
+            initial={access}
+            savedAt={savedAt.toISOString()}
+            reference={booking.reference ?? booking.id.slice(-8).toUpperCase()}
+          />
         )}
 
         {/* Add to calendar — a plain .ics, which every calendar opens
