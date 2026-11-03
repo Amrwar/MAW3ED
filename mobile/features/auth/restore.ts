@@ -83,21 +83,28 @@ export function recheckSession(d: RecheckDeps): () => void {
     if (timer !== undefined) clearTimer(timer);
     timer = undefined;
     d.fetchMe()
-      .then(async (me) => {
-        if (stale()) return;
-        d.confirmed(me);
-        await d.rememberUser(me).catch(() => undefined);
-      })
-      .catch(async (e) => {
-        if (stale()) return;
-        if (e instanceof UnauthorizedError) {
-          await d.clearTokens();
-          if (!stale()) d.signedOut();
-          return;
-        }
-        const wait = RECHECK_MS[tries++];
-        if (wait !== undefined) timer = setTimer(check, wait);
-      })
+      .then(
+        async (me) => {
+          if (stale()) return;
+          d.confirmed(me);
+          // Asked before any sign-out that follows, so the store's order
+          // (token-store.ts) lets that sign-out remove it.
+          await d.rememberUser(me).catch(() => undefined);
+        },
+        async (e) => {
+          if (stale()) return;
+          if (e instanceof UnauthorizedError) {
+            // Ordered before any sign-in that follows (token-store.ts), so
+            // it never removes the next account's tokens.
+            await d.clearTokens().catch(() => undefined);
+            if (!stale()) d.signedOut();
+            return;
+          }
+          const wait = RECHECK_MS[tries++];
+          if (wait !== undefined) timer = setTimer(check, wait);
+        },
+      )
+      .catch(() => undefined)
       .finally(() => {
         busy = false;
       });

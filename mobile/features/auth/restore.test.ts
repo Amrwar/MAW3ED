@@ -143,6 +143,15 @@ describe("asking again after a launch shown from memory", () => {
     expect(d.signedOut).not.toHaveBeenCalled();
   });
 
+  it("a store that cannot clear does not escape as an unhandled failure", async () => {
+    const { d } = rig(async () => Promise.reject(new UnauthorizedError()), {
+      clearTokens: vi.fn(async () => Promise.reject(new Error("keychain locked"))),
+    });
+    recheckSession(d);
+    await flush();
+    expect(d.signedOut).toHaveBeenCalledOnce();
+  });
+
   it("waits for the connection when offline, and stops cleanly", async () => {
     let online = false;
     const { d, online: reconnect, hasListener } = rig(async () => me, { isOnline: () => online });

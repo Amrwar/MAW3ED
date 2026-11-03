@@ -25,9 +25,10 @@ export function isExportFile(name: string): boolean {
 }
 
 /**
- * Removes exports left in the phone's cache (after the share sheet
- * closes, and on sign-out), so a copy of somebody's data is not left
- * behind for whoever uses the phone next. Best effort.
+ * Removes exports left in the phone's cache (before a new one is written,
+ * and on sign-out), so a copy of somebody's data is not left behind for
+ * whoever uses the phone next. Not right after the share sheet: the app
+ * it went to (mail, Drive, a chat) may read the file later. Best effort.
  */
 export async function forgetExports(): Promise<void> {
   if (Platform.OS === "web") return;
@@ -54,18 +55,10 @@ export async function exportMyData(): Promise<ExportResult> {
     return "downloaded";
   }
   if (!(await Sharing.isAvailableAsync())) return "unavailable";
+  await forgetExports();
   const file = new File(Paths.cache, name);
   file.create({ overwrite: true });
   file.write(text);
-  try {
-    await Sharing.shareAsync(file.uri, { mimeType: "application/json", dialogTitle: name, UTI: "public.json" });
-  } finally {
-    // The share sheet has handed it on (or was closed): the cache copy goes.
-    try {
-      file.delete();
-    } catch {
-      // Already gone.
-    }
-  }
+  await Sharing.shareAsync(file.uri, { mimeType: "application/json", dialogTitle: name, UTI: "public.json" });
   return "shared";
 }

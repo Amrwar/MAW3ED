@@ -236,15 +236,21 @@ try {
     // Home greets a signed-in person by name; a signed-out one is offered "Sign in".
     const shown = (await text(p0)).includes("أهلًا، سارة");
     check("a cold start with no answer keeps the sign-in (and the tokens)", kept && shown, `tokens ${kept}, name shown ${shown}; ${(await text(p0)).slice(0, 160)}`);
+    // Back online: the app gets the server's answer once, and settles.
+    // Counted from before the block lifts, so a retry timer firing early
+    // is counted too; then nothing more is asked.
+    let answered = 0;
+    let asked = 0;
+    p0.on("request", (r) => { if (r.url().includes("/api/auth/mobile/me")) asked += 1; });
+    p0.on("response", (r) => { if (r.url().includes("/api/auth/mobile/me") && r.status() === 200) answered += 1; });
     await c2.unroute("**/api/auth/mobile/me");
-    // Back online: the app asks the server once, and settles.
-    let meCalls = 0;
-    p0.on("request", (r) => { if (r.url().includes("/api/auth/mobile/me")) meCalls += 1; });
     await c2.setOffline(true);
     await p0.waitForTimeout(500);
     await c2.setOffline(false);
     await p0.waitForTimeout(6000);
-    check("back online, the app re-checks the session once (no loop)", meCalls === 1, `${meCalls} calls`);
+    const settledAt = asked;
+    await p0.waitForTimeout(6000);
+    check("back online, the app re-checks the session once and settles (no loop)", answered === 1 && asked === settledAt && asked <= 2, `${answered} answers, ${asked} asks (${settledAt} before the quiet window)`);
     // The session ended on the server: signed out on the next check.
     await c2.route("**/api/auth/mobile/**", (r) => r.fulfill({ status: 401, contentType: "application/json", body: '{"error":"x"}' }));
     await p0.reload({ waitUntil: "networkidle" });

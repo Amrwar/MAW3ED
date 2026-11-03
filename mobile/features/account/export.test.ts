@@ -42,16 +42,15 @@ describe("a data export is not left on the phone", () => {
     expect(isExportFile("maw3ed-my-data-2026-11-03.png")).toBe(false);
     expect(isExportFile("photo.json")).toBe(false);
   });
-  it("goes from the cache once the share sheet is done", async () => {
+  it("stays for the app it was shared to, and replaces any earlier export", async () => {
+    cache.add("maw3ed-my-data-2026-10-01.json");
     share.mockResolvedValue(undefined);
     expect(await exportMyData()).toBe("shared");
     expect(share).toHaveBeenCalledOnce();
-    expect([...cache]).toEqual([]);
-  });
-  it("goes even when the share sheet fails", async () => {
-    share.mockRejectedValue(new Error("closed"));
-    await expect(exportMyData()).rejects.toThrow("closed");
-    expect([...cache]).toEqual([]);
+    // The receiving app may read it after the sheet closes.
+    expect([...cache]).toHaveLength(1);
+    expect(isExportFile([...cache][0]!)).toBe(true);
+    expect([...cache][0]).not.toBe("maw3ed-my-data-2026-10-01.json");
   });
   it("and on sign-out every leftover export goes, nothing else", async () => {
     cache.add("maw3ed-my-data-2026-10-01.json");

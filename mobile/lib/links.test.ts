@@ -118,7 +118,8 @@ describe("routeFor", () => {
     expect(routeFor("/company/grill?org=palm-group&service=s1")).toBe("/book/grill?service=s1&org=palm-group");
     expect(routeFor("/company/grill?org=../evil")).toBe("/business/grill");
     expect(routeFor(`/company/grill?org=${"a".repeat(61)}`)).toBe("/business/grill");
-    expect(routeFor("/groups/a_b")).toBe("/places");
+    expect(routeFor("/groups/qa_mall")).toBe("/org/qa_mall");
+    expect(routeFor(`/groups/${"a".repeat(61)}`)).toBe("/places");
   });
 
   it("opens a guest's pass from its link; a check-in desk link stays on the website", () => {

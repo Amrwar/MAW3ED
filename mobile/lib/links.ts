@@ -84,13 +84,12 @@ const TABLE: [prefix: string, route: AppRoute][] = [
 /** What each kind of value may look like before it is put in a route. */
 export const SLUG = /^[a-z0-9_-]{1,100}$/;
 /**
- * An organization's slug, as the server's orgSlugSchema allows it
- * (src/lib/organizations/rules.ts): 3–60 characters, lowercase words
- * joined by single hyphens. Anything else is not sent: the booking
- * schema refuses an `org` over 60 characters, and must never fail a
- * booking over attribution.
+ * An organization's slug: the characters any slug may have, at most 60
+ * long, as the booking schema takes `org` — a longer one would fail the
+ * booking over attribution. Not the stricter rule new organizations get
+ * (orgSlugSchema), so an older organization's link still opens.
  */
-export const ORG_SLUG = /^(?=.{3,60}$)[a-z0-9]+(-[a-z0-9]+)*$/;
+export const ORG_SLUG = /^[a-z0-9_-]{1,60}$/;
 const TOKEN = /^[A-Za-z0-9]{16,128}$/;
 /** cuid()s, and the seed's readable ids ("qa-dr-1"). */
 const ID = /^[A-Za-z0-9_-]{1,64}$/;

@@ -41,11 +41,10 @@ describe("booking from a directory is credited to the organization", () => {
     expect(orgParam(["mall", "x"])).toBe("mall");
     expect(orgParam("Bad Slug")).toBeUndefined();
     expect(orgParam(undefined)).toBeUndefined();
-    // Only what the server would accept as an organization's slug (3–60, single hyphens).
-    expect(orgParam("ab")).toBeUndefined();
+    // Never longer than the booking schema takes; older slugs still work.
     expect(orgParam("a".repeat(61))).toBeUndefined();
-    expect(orgParam("palm--group")).toBeUndefined();
-    expect(orgParam("palm_group")).toBeUndefined();
+    expect(orgParam("a".repeat(60))).toBe("a".repeat(60));
+    expect(orgParam("qa_mall")).toBe("qa_mall");
     expect(businessRoute("grill", "a".repeat(61))).toEqual({ pathname: "/business/[slug]", params: { slug: "grill" } });
   });
 });

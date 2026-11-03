@@ -14,7 +14,6 @@ import { PASS_TOKEN } from "@/lib/links";
  * instructions — nothing about the booking, the business or anyone else.
  * The code shows only once the venue's access system confirmed the pass.
  */
-
 export default function GuestPassScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
   const valid = typeof token === "string" && PASS_TOKEN.test(token);
