@@ -13,10 +13,9 @@ import LeaveReview from "./_components/LeaveReview";
 import AccessPanel from "./_components/AccessPanel";
 import { canReviewBooking } from "@/lib/reviews";
 import { customerAccessPayload } from "@/lib/access/customer";
-import { offlineCopyUntil } from "@/lib/access/offline-copy";
+import { isLinkPreviewBot, offlineCopyUntil } from "@/lib/access/offline-copy";
 import { log } from "@/lib/logger";
 import { headers } from "next/headers";
-import { isLinkPreviewBot } from "@/lib/access/offline-copy";
 import { customerMayCancel, customerMayChange } from "@/lib/bookings/self-service";
 import { bookingMoney, toCents } from "@/lib/payments/money";
 import { countIn, duration, money, clockRange } from "@/lib/fmt";
@@ -177,7 +176,7 @@ export default async function BookingPage({ params }: Params) {
           <div className="divide-y divide-[var(--color-line)]">
             <Row icon={<Store size={15} />}      label={say("المكان", "Place")}    value={businessName} />
             <Row icon={<Clock size={15} />}       label={say("الخدمة", "Service")}   value={localName(en, booking.service.nameAr, booking.service.nameEn)} />
-            <Row icon={<CalendarDays size={15} />} label={say("التاريخ", "Date")} value={formatDate(booking.date, lang)} />
+            <Row icon={<CalendarDays size={15} />} label={say("التاريخ", "Date")} value={when} />
             <Row
               icon={<Clock size={15} />}
               label={say("الوقت", "Time")}

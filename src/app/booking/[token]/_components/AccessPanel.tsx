@@ -7,7 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { localeFor } from "@/lib/fmt";
 import { refusalText } from "@/lib/lang";
 import { buildQrPng, deliverQrImage, saveQrImage } from "@/lib/access/save-qr";
-import { refreshKeptBookingPage } from "@/lib/access/offline-refresh";
+import { keepPageAssets, refreshKeptBookingPage, servedFromKeptCopy } from "@/lib/access/offline-refresh";
 
 /**
  * The booking page's "getting in" section: the booking's own check-in QR
@@ -33,11 +33,15 @@ import { refreshKeptBookingPage } from "@/lib/access/offline-refresh";
 /** Rendered this recently, the page is not a kept copy: no refresh on mount. */
 const FRESH_MS = 15_000;
 
-/** What, if it changes, makes the phone's kept copy out of date. */
+/**
+ * What, if it changes, makes the phone's kept copy out of date: the codes
+ * themselves, not every state a pending pass passes through (each refresh
+ * re-renders the whole page on the server).
+ */
 function shown(p: Payload | null): string {
   if (!p) return "";
-  const passes = [p.visitorAccess.holder, ...p.visitorAccess.guests].map((x) => (x ? `${x.state}:${x.pass?.token ?? ""}` : ""));
-  return [p.checkIn.display, p.checkIn.url ?? "", ...passes].join("|");
+  const passes = [p.visitorAccess.holder, ...p.visitorAccess.guests].map((x) => x?.pass?.token ?? "");
+  return JSON.stringify([p.checkIn.display === "checked-in", p.checkIn.url ?? "", ...passes]);
 }
 
 interface Payload {
@@ -107,14 +111,30 @@ export default function AccessPanel({
     data?.checkIn.opensAt && data?.checkIn.closesAt ? `${data.checkIn.opensAt} – ${data.checkIn.closesAt}` : "",
     reference ?? "",
   ].filter(Boolean);
-  const captionKey = qrCaption.join("|");
+  const captionKey = JSON.stringify(qrCaption);
   const pictureKey = `${qrSvg ?? ""}#${captionKey}`;
   // Only the picture of the code on screen now (a new code makes a new one).
   const qrPng = qrPicture?.key === pictureKey ? qrPicture.blob : null;
+  // Drawn once the save button is on screen, not on every page view.
+  const saveRef = useRef<HTMLDivElement | null>(null);
+  const [saveVisible, setSaveVisible] = useState(false);
+  useEffect(() => {
+    const el = saveRef.current;
+    if (!el || saveVisible) return;
+    if (typeof IntersectionObserver === "undefined") {
+      const t = setTimeout(() => setSaveVisible(true), 0);
+      return () => clearTimeout(t);
+    }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) setSaveVisible(true);
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [saveVisible, qrSvg]);
   useEffect(() => {
     let live = true;
-    if (!qrSvg) return;
-    buildQrPng(qrSvg, captionKey.split("|"))
+    if (!qrSvg || !saveVisible) return;
+    buildQrPng(qrSvg, JSON.parse(captionKey) as string[])
       .then((blob) => {
         if (live) setQrPicture({ key: `${qrSvg}#${captionKey}`, blob });
       })
@@ -122,7 +142,7 @@ export default function AccessPanel({
     return () => {
       live = false;
     };
-  }, [qrSvg, captionKey]);
+  }, [qrSvg, captionKey, saveVisible]);
 
   const fetchPayload = useCallback(async (): Promise<{ payload: Payload | null; network: boolean }> => {
     try {
@@ -141,8 +161,12 @@ export default function AccessPanel({
       setAsOf(new Date().toISOString());
       const now = shown(payload);
       if (now !== keptShows.current) {
+        const before = keptShows.current;
         keptShows.current = now;
-        refreshKeptBookingPage();
+        // If the worker could not refresh it, the next payload tries again.
+        void refreshKeptBookingPage().then((ok) => {
+          if (!ok && keptShows.current === now) keptShows.current = before;
+        });
       }
     }
     setFailed(!payload);
@@ -154,14 +178,30 @@ export default function AccessPanel({
     let live = true;
     // Rendered just now with a payload: nothing to refresh. Otherwise this
     // may be a copy the phone kept, or the server could not build it.
-    // The browser saying it is offline also asks: the attempt fails at once
-    // and the note says this is a saved copy.
-    const fresh = !!initial && !!savedAt && Math.abs(Date.now() - Date.parse(savedAt)) < FRESH_MS;
-    if (!fresh || !navigator.onLine) {
+    const refresh = () => {
       void fetchPayload().then((p) => {
         if (live) apply(p);
       });
-    }
+    };
+    // A page shown from the copy the phone kept: the worker says so (the
+    // page cannot see how it was served), with when it was saved; refresh,
+    // which also tells us whether we are offline. Otherwise: rendered just
+    // now with a payload needs nothing, unless the browser says offline.
+    const fresh = !!initial && !!savedAt && Math.abs(Date.now() - Date.parse(savedAt)) < FRESH_MS;
+    void servedFromKeptCopy().then((r) => {
+      if (!live) return;
+      if (r?.copy) {
+        // Said at once: the network may take a while to answer, or never.
+        if (r.savedAt) setAsOf(r.savedAt);
+        setOffline(true);
+        refresh();
+        return;
+      }
+      if (!fresh || !navigator.onLine) refresh();
+      // Online and current: tell the worker what this page loaded, so a
+      // kept copy has its code-split files and fonts too.
+      else if (r) setTimeout(keepPageAssets, 3_000);
+    });
     // Back online: one refresh per "online" event the browser fires.
     const back = () => {
       void fetchPayload().then((p) => {
@@ -280,7 +320,7 @@ export default function AccessPanel({
                 <span dir="ltr">{c.opensAt} – {c.closesAt}</span>
               </p>
               {c.qrSvg && (
-                <div className="flex flex-col items-center gap-1">
+                <div ref={saveRef} className="flex flex-col items-center gap-1">
                   <button
                     type="button"
                     className="btn btn-outline btn-sm gap-1.5"

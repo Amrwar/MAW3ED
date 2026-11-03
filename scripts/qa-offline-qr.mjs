@@ -18,7 +18,7 @@
  */
 import { createRequire } from "module";
 import {
-  B, pg, check, part, json, business, slotNear, book, teardown, summary,
+  B, pg, check, part, send, json, business, slotNear, book, teardown, summary,
 } from "./qa-phase24-lib.mjs";
 const require = createRequire(import.meta.url);
 const pw = require("playwright");
@@ -117,6 +117,24 @@ try {
     check("a network that hangs: the kept copy within about 4 s, not a blank page", (await qrCount(page)) === 1 && waited < 9000, `${waited} ms`);
     await ctx.unroute(`${B}${path}`);
 
+    // Everything hangs — the page, its scripts, its styles: the kept copy
+    // still comes up styled, with a working save button, from the kept files.
+    await ctx.route(`${B}/**`, async (route) => { await new Promise((r) => setTimeout(r, 25000)); await route.continue().catch(() => {}); });
+    const t1 = Date.now();
+    // Measured to the QR on screen (images elsewhere on the page still hang).
+    await page.reload({ waitUntil: "commit", timeout: 20000 }).catch(() => {});
+    await page.locator('section[aria-labelledby="checkin-h"] [role="img"] svg').waitFor({ timeout: 15000 }).catch(() => {});
+    const qrAfter = Date.now() - t1;
+    await page.getByRole("status").filter({ hasText: "مفيش اتصال" }).waitFor({ timeout: 5000 }).catch(() => {});
+    const styled = await page.evaluate(() => getComputedStyle(document.querySelector('section[aria-labelledby="checkin-h"]')).borderTopStyle !== "none").catch(() => false);
+    const noteNow = await page.getByRole("status").filter({ hasText: "مفيش اتصال" }).count();
+    const [hungDl] = await Promise.all([
+      page.waitForEvent("download", { timeout: 10000 }).catch(() => null),
+      page.getByRole("button", { name: "احفظ الكود كصورة" }).click({ timeout: 5000 }).catch(() => {}),
+    ]);
+    check("everything hanging: the kept copy comes up styled, says it is a copy, and Save QR works", (await qrCount(page)) === 1 && styled && noteNow === 1 && !!hungDl && qrAfter < 8000, `styled ${styled}, note ${noteNow}, download ${!!hungDl}, QR after ${qrAfter} ms`);
+    await ctx.unroute(`${B}/**`);
+
     // A query string or a trailing slash reaches the same copy.
     await ctx.setOffline(true);
     await page.goto(`${B}${path}?src=whatsapp`, { waitUntil: "domcontentloaded" }).catch(() => {});
@@ -155,7 +173,7 @@ try {
     }
     check("cancelling on the page deletes the kept copy at once", !stillKept && (await pg.query(`SELECT status::text FROM "Booking" WHERE id = $1`, [later.id])).rows[0]?.status === "CANCELLED");
     // The first booking, cancelled by the business: its copy goes on the next visit.
-    await (await import("./qa-phase24-lib.mjs")).send(biz.owner, `/api/business/bookings/${b1.id}`, "PATCH", { status: "CANCELLED" });
+    await send(biz.owner, `/api/business/bookings/${b1.id}`, "PATCH", { status: "CANCELLED" });
     await page.goto(`${B}${path}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(500);
     check("a booking the business cancelled loses its kept copy the next time the page is opened", !(await keptKeys(page)).includes(path));
@@ -186,6 +204,9 @@ try {
     const res = await fetch(`${B}/booking/${b3.accessToken}`, { headers: { "user-agent": "WhatsApp/2.23.20.0 A" } });
     const html = await res.text();
     const issued = (await pg.query(`SELECT count(*)::int AS n FROM "BookingCheckIn" WHERE "bookingId" = $1`, [b3.id])).rows[0].n;
+    const b4 = (await book(biz, { slot: await slotNear(biz, biz.services[0].id, 100), name: "عميل فايبر" })).booking;
+    const viber = await (await fetch(`${B}/booking/${b4.accessToken}`, { headers: { "user-agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36 Viber/22.4.0.0" } })).text();
+    check("a customer opening it in Viber's own browser does get the QR", /aria-labelledby="checkin-h"[\s\S]*<svg/.test(viber) && /maw3ed-offline-until/.test(viber));
     check("a chat app unfurling the link gets the page, but no code is issued or embedded", res.status === 200 && !/aria-labelledby="checkin-h"[\s\S]*<svg/.test(html) && !/maw3ed-offline-until/.test(html) && issued === 0, `issued ${issued}`);
   }
 

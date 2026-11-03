@@ -35,7 +35,9 @@ interface AccessShape {
  * without running it. They need its title, not a check-in code: the page
  * neither issues nor embeds one for them.
  */
-const PREVIEW_BOTS = /facebookexternalhit|facebookcatalog|WhatsApp|TelegramBot|Twitterbot|Slackbot|LinkedInBot|Discordbot|SkypeUriPreview|Applebot|Googlebot|bingbot|redditbot|Pinterest|Embedly|Iframely|vkShare|Viber/i;
+// Fetchers only. Not in-app browsers, which carry their app's name too
+// (Viber, Pinterest, Instagram…) but are a customer opening their booking.
+const PREVIEW_BOTS = /facebookexternalhit|facebookcatalog|WhatsApp\/|TelegramBot|Twitterbot|Slackbot|LinkedInBot|Discordbot|SkypeUriPreview|Applebot|Googlebot|bingbot|redditbot|Embedly|Iframely|vkShare/i;
 export function isLinkPreviewBot(userAgent: string | null | undefined): boolean {
   return !!userAgent && PREVIEW_BOTS.test(userAgent);
 }
