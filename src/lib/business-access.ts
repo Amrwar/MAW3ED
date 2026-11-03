@@ -63,6 +63,9 @@ export type BusinessAction =
   | "services.manage"
   /** Staff records — not who may sign in, which is staff.manageAccess. */
   | "staff.manage"
+  /** Tables, rooms, chairs and equipment that bookings hold. */
+  | "resources.read"
+  | "resources.manage"
   /** Opening hours, staff hours, time blocks. */
   | "schedule.read"
   | "schedule.manage"
@@ -93,6 +96,8 @@ const RULES: Record<BusinessAction, readonly BusinessRole[]> = {
   "customers.manage": ["OWNER"],
   "services.manage": ["OWNER"],
   "staff.manage": ["OWNER"],
+  "resources.read": ["OWNER"],
+  "resources.manage": ["OWNER"],
   "schedule.read": ["OWNER"],
   "schedule.manage": ["OWNER"],
   "profile.manage": ["OWNER"],

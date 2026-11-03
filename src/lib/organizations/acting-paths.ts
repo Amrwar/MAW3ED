@@ -21,6 +21,7 @@ const DELEGATE_PAGES: RegExp[] = [
   /^\/dashboard\/customers(\/[^/]+)?$/,
   /^\/dashboard\/services$/,
   /^\/dashboard\/staff$/,
+  /^\/dashboard\/resources$/,
   /^\/dashboard\/settings$/,
   /^\/dashboard\/reports(\/(bookings|revenue|customers|performance))?$/,
 ];

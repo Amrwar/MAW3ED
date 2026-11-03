@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
+import { requireBusinessAccess } from "@/lib/business-access";
 import { log } from "@/lib/logger";
 
 /**
@@ -24,8 +25,8 @@ const resourceSchema = z.object({
 
 export async function GET() {
   try {
-    const ctx = await requireBusiness().catch(() => null);
-    if (!ctx) return err("غير مصرح", 401);
+    // The owner, or an organization the owner granted RESOURCES.
+    const ctx = await requireBusinessAccess("resources.read");
 
     const resources = await db.resource.findMany({
       where: { businessId: ctx.business.id },
@@ -38,6 +39,7 @@ export async function GET() {
 
     return ok({ resources });
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[resources GET]", e);
     return err("حصلت مشكلة عندنا، جرّب تاني بعد شوية", 500);
   }
@@ -45,8 +47,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const ctx = await requireBusiness().catch(() => null);
-    if (!ctx) return err("غير مصرح", 401);
+    // The owner, or an organization the owner granted RESOURCES.
+    const ctx = await requireBusinessAccess("resources.manage");
 
     const parsed = resourceSchema.safeParse(await req.json());
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
@@ -81,6 +83,7 @@ export async function POST(req: Request) {
 
     return ok({ resource }, 201);
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[resources POST]", e);
     return err("حدث خطأ أثناء الحفظ", 500);
   }

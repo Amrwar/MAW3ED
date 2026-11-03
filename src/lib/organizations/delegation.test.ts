@@ -83,6 +83,19 @@ describe("a delegate's navigation", () => {
     expect(reports).not.toContain("/dashboard/reports/revenue");
     expect(hrefs(actionsFor(["REPORTS", "FINANCE"]))).toContain("/dashboard/reports/revenue");
   });
+
+  it("tables and rooms are their own scope: opened only by RESOURCES, never through a branch", () => {
+    expect(hrefs(actionsFor(["RESOURCES"]))).toContain("/dashboard/resources");
+    for (const other of ["RESERVATIONS", "STAFF", "SERVICES", "SCHEDULES"] as const) {
+      expect(actionsFor([other])).not.toContain("resources.manage");
+      expect(hrefs(actionsFor([other]))).not.toContain("/dashboard/resources");
+    }
+    expect(checkScopes("OWNED", "branch-1", ["RESOURCES"])).toEqual({ ok: false, refused: ["RESOURCES"] });
+    expect(allowedScopes("MANAGED", null)).toContain("RESOURCES");
+    expect(actingRedirect("/dashboard/resources", true)).toBeNull();
+    // Staff never had it and still do not.
+    expect(can({ role: "MANAGER" }, "resources.manage")).toBe(false);
+  });
 });
 
 describe("relationship input", () => {

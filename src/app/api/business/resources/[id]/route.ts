@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { ok, err, requireBusiness } from "@/lib/api";
+import { ok, err } from "@/lib/api";
+import { requireBusinessAccess } from "@/lib/business-access";
 import { log } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
@@ -24,8 +25,8 @@ async function owned(id: string, businessId: string) {
 
 export async function PATCH(req: Request, { params }: Params) {
   try {
-    const ctx = await requireBusiness().catch(() => null);
-    if (!ctx) return err("غير مصرح", 401);
+    // The owner, or an organization the owner granted RESOURCES.
+    const ctx = await requireBusinessAccess("resources.manage");
 
     const { id } = await params;
     if (!(await owned(id, ctx.business.id))) return err("غير موجود", 404);
@@ -49,6 +50,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
     return ok({ resource });
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[resource PATCH]", e);
     return err("حدث خطأ أثناء الحفظ", 500);
   }
@@ -56,8 +58,8 @@ export async function PATCH(req: Request, { params }: Params) {
 
 export async function DELETE(_req: Request, { params }: Params) {
   try {
-    const ctx = await requireBusiness().catch(() => null);
-    if (!ctx) return err("غير مصرح", 401);
+    // The owner, or an organization the owner granted RESOURCES.
+    const ctx = await requireBusinessAccess("resources.manage");
 
     const { id } = await params;
     if (!(await owned(id, ctx.business.id))) return err("غير موجود", 404);
@@ -75,6 +77,7 @@ export async function DELETE(_req: Request, { params }: Params) {
     await db.resource.delete({ where: { id } });
     return ok({ deleted: true });
   } catch (e) {
+    if (e instanceof Response) return e;
     log.error("[resource DELETE]", e);
     return err("حدث خطأ أثناء الحذف", 500);
   }

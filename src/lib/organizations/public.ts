@@ -211,13 +211,13 @@ export async function organizationMetrics(organizationId: string, windowDays = 3
       JOIN "Booking" bk ON bk.id = a."bookingId"
       WHERE a."organizationId" = ${organizationId} AND a."createdAt" >= ${since}`.then((r) => r[0]?.n ?? 0),
     // One bounded join: names and counts only, never a customer field.
-    db.$queryRaw<{ nameAr: string; count: number }[]>`
-      SELECT b."nameAr", COUNT(*)::int AS count
+    db.$queryRaw<{ nameAr: string; nameEn: string | null; count: number }[]>`
+      SELECT b."nameAr", b."nameEn", COUNT(*)::int AS count
       FROM "OrganizationBookingAttribution" a
       JOIN "Booking" bk ON bk.id = a."bookingId"
       JOIN "Business" b ON b.id = bk."businessId"
       WHERE a."organizationId" = ${organizationId} AND a."createdAt" >= ${since}
-      GROUP BY b."nameAr"
+      GROUP BY b.id, b."nameAr", b."nameEn"
       ORDER BY count DESC`,
   ]);
   return {

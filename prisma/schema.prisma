@@ -2017,6 +2017,8 @@ enum DelegationScope {
   CUSTOMERS
   SERVICES
   STAFF
+  /// Tables, rooms, chairs, equipment (Phase 24: prisma/migrations/phase24_resources_scope.sql).
+  RESOURCES
   SCHEDULES
   PROFILE
   REPORTS

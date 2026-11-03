@@ -29,7 +29,20 @@ interface Association {
   branch: { id: string; nameAr: string; nameEn: string | null } | null;
   business: { id: string; slug: string; nameAr: string; nameEn: string | null; isPublished: boolean; category: { nameAr: string; nameEn: string } | null; city: { nameAr: string; nameEn: string } | null };
 }
-interface Metrics { windowDays: number; viewsTotal: number; views: Record<string, number>; attributedBookings: number; perBusiness: { nameAr: string; count: number }[] }
+interface Metrics { windowDays: number; viewsTotal: number; views: Record<string, number>; attributedBookings: number; perBusiness: { nameAr: string; nameEn: string | null; count: number }[] }
+interface Figures { bookings: number; upcoming: number; completed: number; noShows: number; cancelled: number; revenue: number | null }
+interface Portfolio {
+  windowDays: number;
+  active: boolean;
+  truncated: boolean;
+  rows: {
+    business: { id: string; slug: string; nameAr: string; nameEn: string | null };
+    relations: { associationId: string; relation: string; branch: { nameAr: string; nameEn: string | null } | null }[];
+    figures: Figures | null;
+    notShared: "not-granted" | "branch-only" | null;
+  }[];
+  totals: Figures & { sharing: number; withFinance: number };
+}
 
 const field = "w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm";
 
@@ -61,6 +74,8 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
   const [assocMeta, setAssocMeta] = useState({ total: 0, approved: 0, pages: 1 });
   const [parentOptions, setParentOptions] = useState<{ id: string; nameAr: string; nameEn: string | null }[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [portfolioFailed, setPortfolioFailed] = useState(false);
   const [audit, setAudit] = useState<{ id: string; summary: string; at: string }[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [failure, setFailure] = useState<"signin" | "gone" | "error" | null>(null);
@@ -94,11 +109,32 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
     };
   }, [load]);
 
+  // The portfolio aggregates every shared business's bookings: read when
+  // the console opens and after an action that succeeded, not on each page
+  // of the business list. A failure is said, with one way to try again.
+  const loadPortfolio = useCallback(async () => {
+    const p = await api(`${base}/portfolio`);
+    setPortfolioFailed(!p.ok);
+    if (p.ok) setPortfolio(p.json as unknown as Portfolio);
+  }, [base]);
+  useEffect(() => {
+    let live = true;
+    void api(`${base}/portfolio`).then((p) => {
+      if (!live) return;
+      setPortfolioFailed(!p.ok);
+      if (p.ok) setPortfolio(p.json as unknown as Portfolio);
+    });
+    return () => {
+      live = false;
+    };
+  }, [base]);
+
   async function act(path: string, method: string, body?: unknown, done?: string) {
     setMsg(null);
     const r = await api(path, method, body);
     setMsg({ ok: r.ok, text: r.ok ? done ?? t("اتحفظ.", "Saved.") : String(r.json.error ?? t("حصلت مشكلة.", "Something went wrong.")) });
     if (r.ok || r.status === 401 || r.status === 404) await load();
+    if (r.ok) await loadPortfolio();
     return r.ok;
   }
 
@@ -211,9 +247,9 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
           </div>
           {metrics.perBusiness.length > 0 && (
             <ul className="m-0 list-none space-y-1 p-0 text-sm">
-              {metrics.perBusiness.slice(0, 8).map((b) => (
-                <li key={b.nameAr} className="flex justify-between gap-3">
-                  <span>{b.nameAr}</span>
+              {metrics.perBusiness.slice(0, 8).map((b, i) => (
+                <li key={`${b.nameAr}-${i}`} className="flex justify-between gap-3">
+                  <span>{nm(b)}</span>
                   <span className="num text-[var(--color-subtle)]">{b.count}</span>
                 </li>
               ))}
@@ -223,6 +259,21 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
             {t("أرقام بس. بيانات العملاء وحجوزاتهم وفلوس الأنشطة بتفضل عند كل نشاط.", "Counts only. Customers, their bookings and each business's money stay with that business.")}
           </p>
         </section>
+      )}
+
+      {portfolioFailed ? (
+        <section aria-labelledby="pf-h" className="card space-y-2 p-5">
+          <h2 id="pf-h" className="m-0 text-base font-extrabold">{t("أداء الأنشطة", "Businesses")}</h2>
+          <p className="m-0 text-sm" role="status">{t("مقدرناش نحمّل الأرقام.", "Could not load the figures.")}</p>
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => void loadPortfolio()}>{t("جرّب تاني", "Try again")}</button>
+        </section>
+      ) : portfolio && !portfolio.active ? (
+        <section aria-labelledby="pf-h" className="card space-y-2 p-5">
+          <h2 id="pf-h" className="m-0 text-base font-extrabold">{t("أداء الأنشطة", "Businesses")}</h2>
+          <p className="m-0 text-sm text-[var(--color-subtle)]">{t("الأرقام بتظهر لما موعد تعتمد الجهة.", "Figures appear once Maw3ed approves the organization.")}</p>
+        </section>
+      ) : (
+        portfolio && portfolio.rows.length > 0 && <PortfolioSection t={t} nm={nm} report={portfolio} />
       )}
 
       <Businesses
@@ -296,6 +347,82 @@ function Tile({ label, value }: { label: string; value: number }) {
 }
 
 type T = (ar: string, en: string) => string;
+
+/** The group's businesses side by side — only what each one shares. */
+function PortfolioSection({ t, nm, report }: { t: T; nm: (x: { nameAr: string; nameEn?: string | null }) => string; report: Portfolio }) {
+  const money = (n: number | null) => (n === null ? "—" : `${Math.round(n).toLocaleString("en-US")} ${t("ج.م", "EGP")}`);
+  const { totals } = report;
+  return (
+    <section aria-labelledby="pf-h" className="card space-y-3 p-5">
+      <h2 id="pf-h" className="m-0 text-base font-extrabold">{t(`أداء الأنشطة — آخر ${report.windowDays} يوم`, `Businesses — last ${report.windowDays} days`)}</h2>
+      {totals.sharing > 0 ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Tile label={t("حجوزات", "Bookings")} value={totals.bookings} />
+          <Tile label={t("خلصت", "Completed")} value={totals.completed} />
+          <Tile label={t("محضروش", "No-shows")} value={totals.noShows} />
+          <Tile label={t("اتلغت", "Cancelled")} value={totals.cancelled} />
+        </div>
+      ) : (
+        <p className="m-0 text-sm text-[var(--color-subtle)]">{t("لسه مفيش نشاط شارك تقاريره مع الجهة.", "No business has shared its reports with this organization yet.")}</p>
+      )}
+      {totals.revenue !== null && (
+        <p className="m-0 text-sm">
+          <span className="font-bold">{t("إيراد الحجوزات اللي خلصت: ", "Revenue from completed bookings: ")}</span>
+          <span className="num" dir="ltr">{money(totals.revenue)}</span>
+          {totals.withFinance < totals.sharing && (
+            <span className="text-xs text-[var(--color-subtle)]">{t(` (من ${totals.withFinance} نشاط شارك الماليات)`, ` (from the ${totals.withFinance} that share finance)`)}</span>
+          )}
+        </p>
+      )}
+      <div className="overflow-x-auto" role="region" aria-labelledby="pf-h" tabIndex={0}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-[var(--color-subtle)]">
+              <th scope="col" className="py-1 text-start font-semibold">{t("النشاط", "Business")}</th>
+              <th scope="col" className="py-1 text-end font-semibold">{t("حجوزات", "Bookings")}</th>
+              <th scope="col" className="py-1 text-end font-semibold">{t("جاية (أي تاريخ)", "Upcoming (any date)")}</th>
+              <th scope="col" className="py-1 text-end font-semibold">{t("محضروش", "No-shows")}</th>
+              <th scope="col" className="py-1 text-end font-semibold">{t("الإيراد", "Revenue")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.rows.map((r) => (
+              <tr key={r.business.id} className="border-t border-[var(--color-line)]">
+                <th scope="row" className="py-1.5 text-start font-normal">
+                  {nm(r.business)}
+                  {r.relations.some((x) => x.branch) && (
+                    <span className="text-xs text-[var(--color-subtle)]"> — {r.relations.flatMap((x) => (x.branch ? [nm(x.branch)] : [])).join(", ")}</span>
+                  )}
+                </th>
+                {r.figures ? (
+                  <>
+                    <td className="num py-1.5 text-end">{r.figures.bookings}</td>
+                    <td className="num py-1.5 text-end">{r.figures.upcoming}</td>
+                    <td className="num py-1.5 text-end">{r.figures.noShows}</td>
+                    <td className="num py-1.5 text-end" dir="ltr">{money(r.figures.revenue)}</td>
+                  </>
+                ) : (
+                  <td colSpan={4} className="py-1.5 text-end text-xs text-[var(--color-subtle)]">
+                    {r.notShared === "branch-only"
+                      ? t("مش متاح — العلاقة على فرع واحد، والتقارير بتغطي النشاط كله", "Not available — the relationship covers one branch; reports cover the whole business")
+                      : t("مش متشارك — صاحب النشاط ما اداش صلاحية التقارير", "Not shared — the owner has not granted reports")}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {report.truncated && (
+        <p className="m-0 text-xs" role="status">{t(`بيظهر أول ${report.rows.length} نشاط بس، والإجماليات عليهم.`, `Only the first ${report.rows.length} businesses are shown, and the totals cover them only.`)}</p>
+      )}
+      <p className="m-0 text-xs text-[var(--color-subtle)]">
+        {t("كل نشاط بيقرر يشارك إيه: التقارير بتظهر الأعداد، والماليات بتظهر الإيراد. الحجوزات اللي ما اتدفعتش ما بتتحسبش. مفيش بيانات عملاء هنا.", "Each business decides what it shares: reports show counts, finance shows revenue. Unpaid checkouts are not counted. No customer data appears here.")}
+      </p>
+    </section>
+  );
+}
+
 type Act = (path: string, method: string, body?: unknown, done?: string) => Promise<boolean>;
 
 function Businesses({ t, en, nm, associations, canManage, onAct, base, orgStatus, invites, page, pages, total, onPage }: {

@@ -196,6 +196,7 @@ function buildDelegateNav(ctx: NavContext, perms: readonly string[]): NavSection
   const setUp: NavItem[] = [];
   if (has("services.manage")) setUp.push({ href: "/dashboard/services", label: s.services, icon: Store });
   if (has("staff.manage")) setUp.push({ href: "/dashboard/staff", label: s.staff, icon: Users2 });
+  if (has("resources.manage") && ctx.hasResources) setUp.push({ href: "/dashboard/resources", label: ctx.resourceWord, icon: Armchair });
   if (has("profile.manage") || has("schedule.manage")) {
     setUp.push({
       href: has("profile.manage") ? "/dashboard/settings" : "/dashboard/settings?tab=availability",

@@ -15,6 +15,12 @@ compounds, floors, gate metadata, visitor policies, venue tenancy and
 roles, venue pages and console) is kept and becomes the "locations"
 layer of the organization platform.
 
+**Phase 24 as run (2026-11-03):** the owner decided Eterna is a concept
+only — no operator data is configured. Phase 24 validated the platform
+with a clearly fictional Eterna-style mall on QA; configuring a real
+operator, on production, waits for that operator's agreement
+(`docs/eterna/PILOT_PLAN.md`).
+
 The earlier Phase 23 draft (gate discovery first) is superseded: its
 domain model and cryptography are kept on branch `phase-23-access` and
 resume in Phase 23 as the optional module.
