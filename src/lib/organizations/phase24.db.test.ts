@@ -230,4 +230,34 @@ describe.skipIf(!local)("organization portfolio report on a real database", () =
     expect(r.rows).toHaveLength(2);
     expect((await portfolio.organizationPortfolio(group.org.id, 30, new Date(), 3)).truncated).toBe(false);
   });
+
+  it("audit (review 2): the row limit counts businesses, so a listed business keeps the relationship that shares", async () => {
+    const group = await organization("cap2");
+    const a = await business("cap2-a");
+    const b = await business("cap2-b");
+    await link(group, a, "OWNED", ["RESERVATIONS"]);
+    await link(group, b, "MANAGED", ["REPORTS"]);
+    // a's second relationship is created last: past the limit if the cut were by relationship.
+    await link(group, a, "MANAGED", ["REPORTS"]);
+    const r = await portfolio.organizationPortfolio(group.org.id, 30, new Date(), 2);
+    expect(r.truncated).toBe(false);
+    const rowA = r.rows.find((x) => x.business.id === a.business.id);
+    expect(rowA?.relations).toHaveLength(2);
+    expect(rowA?.notShared).toBeNull();
+  });
+
+  it("audit (review 2): a live booking without startsAt counts as upcoming by its date, as the business report reads it", async () => {
+    const group = await organization("nost");
+    const b = await business("nost-b");
+    await link(group, b, "MANAGED", ["REPORTS"]);
+    const day = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
+    await db.booking.create({
+      data: {
+        businessId: b.business.id, serviceId: b.service.id, customerName: "قديم", customerPhone: "01099990001",
+        date: new Date(`${day}T00:00:00Z`), startTime: "10:00", status: "CONFIRMED", totalPrice: 100,
+        accessToken: randomBytes(24).toString("base64url"),
+      },
+    });
+    expect((await portfolio.organizationPortfolio(group.org.id)).rows[0].figures?.upcoming).toBe(1);
+  });
 });

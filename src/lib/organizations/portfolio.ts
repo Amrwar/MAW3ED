@@ -32,7 +32,7 @@ export const PORTFOLIO_LIMIT = 500;
 export interface PortfolioFigures {
   /** Every booking in the window except abandoned checkouts. */
   bookings: number;
-  /** Live bookings that have not started yet. */
+  /** Live bookings that have not started yet — on any date, not only in the window. */
   upcoming: number;
   completed: number;
   noShows: number;
@@ -104,27 +104,42 @@ export async function organizationPortfolio(organizationId: string, windowDays =
   // does); a suspended one is not even told who granted what.
   if (organization?.status !== "APPROVED") return { ...base, active: false, truncated: false, rows: [], totals: empty };
 
-  const associations = await db.organizationBusiness.findMany({
-    where: {
-      organizationId,
-      status: "APPROVED",
-      relation: { in: [...REPORTED] },
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-    },
+  const live = {
+    organizationId,
+    status: "APPROVED" as const,
+    relation: { in: [...REPORTED] },
+    OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+  };
+  // The limit is on businesses, so a listed business always carries every
+  // one of its relationships (one of them may be the one that shares).
+  const firstBusinesses = await db.organizationBusiness.findMany({
+    where: live,
+    distinct: ["businessId"],
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     take: limit + 1,
-    select: {
-      id: true, relation: true, scopes: true, branchId: true,
-      branch: { select: { nameAr: true, nameEn: true } },
-      business: { select: { id: true, slug: true, nameAr: true, nameEn: true } },
-    },
+    select: { businessId: true },
   });
-  const truncated = associations.length > limit;
-  const list = associations.slice(0, limit);
+  const truncated = firstBusinesses.length > limit;
+  const listed = firstBusinesses.slice(0, limit).map((r) => r.businessId);
+  const list = listed.length
+    ? await db.organizationBusiness.findMany({
+        where: { ...live, businessId: { in: listed } },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true, relation: true, scopes: true, branchId: true,
+          branch: { select: { nameAr: true, nameEn: true } },
+          business: { select: { id: true, slug: true, nameAr: true, nameEn: true } },
+        },
+      })
+    : [];
 
   // One row per business, however many relationships it has with us.
   const byBusiness = new Map<string, typeof list>();
-  for (const a of list) byBusiness.set(a.business.id, [...(byBusiness.get(a.business.id) ?? []), a]);
+  for (const a of list) {
+    const rows = byBusiness.get(a.business.id);
+    if (rows) rows.push(a);
+    else byBusiness.set(a.business.id, [a]);
+  }
   const sharing = [...byBusiness].filter(([, as]) => as.some(sharesReports)).map(([id]) => id);
 
   const [inWindow, ahead] = sharing.length
@@ -137,8 +152,12 @@ export async function organizationPortfolio(organizationId: string, windowDays =
         }),
         db.booking.groupBy({
           by: ["businessId"],
-          // startsAt is Cairo wall-clock written as UTC (lib/bookings/instants).
-          where: { businessId: { in: sharing }, isTest: false, status: { in: [...LIVE_STATUSES] }, startsAt: { gt: cairoWallClock(now) } },
+          // startsAt is Cairo wall-clock written as UTC (lib/bookings/instants);
+          // a row without it starts at its date (stats.ts startInstant).
+          where: {
+            businessId: { in: sharing }, isTest: false, status: { in: [...LIVE_STATUSES] },
+            OR: [{ startsAt: { gt: cairoWallClock(now) } }, { startsAt: null, date: { gt: cairoWallClock(now) } }],
+          },
           _count: { _all: true },
         }),
       ])

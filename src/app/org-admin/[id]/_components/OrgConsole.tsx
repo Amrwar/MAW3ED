@@ -75,6 +75,7 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
   const [parentOptions, setParentOptions] = useState<{ id: string; nameAr: string; nameEn: string | null }[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [portfolioFailed, setPortfolioFailed] = useState(false);
   const [audit, setAudit] = useState<{ id: string; summary: string; at: string }[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [failure, setFailure] = useState<"signin" | "gone" | "error" | null>(null);
@@ -108,12 +109,20 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
     };
   }, [load]);
 
-  // The portfolio aggregates every shared business's bookings: read once
-  // per console, not again on each page of the business list or action.
+  // The portfolio aggregates every shared business's bookings: read when
+  // the console opens and after an action that succeeded, not on each page
+  // of the business list. A failure is said, with one way to try again.
+  const loadPortfolio = useCallback(async () => {
+    const p = await api(`${base}/portfolio`);
+    setPortfolioFailed(!p.ok);
+    if (p.ok) setPortfolio(p.json as unknown as Portfolio);
+  }, [base]);
   useEffect(() => {
     let live = true;
     void api(`${base}/portfolio`).then((p) => {
-      if (live && p.ok) setPortfolio(p.json as unknown as Portfolio);
+      if (!live) return;
+      setPortfolioFailed(!p.ok);
+      if (p.ok) setPortfolio(p.json as unknown as Portfolio);
     });
     return () => {
       live = false;
@@ -125,6 +134,7 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
     const r = await api(path, method, body);
     setMsg({ ok: r.ok, text: r.ok ? done ?? t("اتحفظ.", "Saved.") : String(r.json.error ?? t("حصلت مشكلة.", "Something went wrong.")) });
     if (r.ok || r.status === 401 || r.status === 404) await load();
+    if (r.ok) await loadPortfolio();
     return r.ok;
   }
 
@@ -251,7 +261,20 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
         </section>
       )}
 
-      {portfolio && portfolio.active && portfolio.rows.length > 0 && <PortfolioSection t={t} nm={nm} report={portfolio} />}
+      {portfolioFailed ? (
+        <section aria-labelledby="pf-h" className="card space-y-2 p-5">
+          <h2 id="pf-h" className="m-0 text-base font-extrabold">{t("أداء الأنشطة", "Businesses")}</h2>
+          <p className="m-0 text-sm" role="status">{t("مقدرناش نحمّل الأرقام.", "Could not load the figures.")}</p>
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => void loadPortfolio()}>{t("جرّب تاني", "Try again")}</button>
+        </section>
+      ) : portfolio && !portfolio.active ? (
+        <section aria-labelledby="pf-h" className="card space-y-2 p-5">
+          <h2 id="pf-h" className="m-0 text-base font-extrabold">{t("أداء الأنشطة", "Businesses")}</h2>
+          <p className="m-0 text-sm text-[var(--color-subtle)]">{t("الأرقام بتظهر لما موعد تعتمد الجهة.", "Figures appear once Maw3ed approves the organization.")}</p>
+        </section>
+      ) : (
+        portfolio && portfolio.rows.length > 0 && <PortfolioSection t={t} nm={nm} report={portfolio} />
+      )}
 
       <Businesses
         t={t}
@@ -357,7 +380,7 @@ function PortfolioSection({ t, nm, report }: { t: T; nm: (x: { nameAr: string; n
             <tr className="text-xs text-[var(--color-subtle)]">
               <th scope="col" className="py-1 text-start font-semibold">{t("النشاط", "Business")}</th>
               <th scope="col" className="py-1 text-end font-semibold">{t("حجوزات", "Bookings")}</th>
-              <th scope="col" className="py-1 text-end font-semibold">{t("جاية", "Upcoming")}</th>
+              <th scope="col" className="py-1 text-end font-semibold">{t("جاية (أي تاريخ)", "Upcoming (any date)")}</th>
               <th scope="col" className="py-1 text-end font-semibold">{t("محضروش", "No-shows")}</th>
               <th scope="col" className="py-1 text-end font-semibold">{t("الإيراد", "Revenue")}</th>
             </tr>

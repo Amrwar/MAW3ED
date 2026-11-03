@@ -252,7 +252,9 @@ try {
       await page.getByRole("button", { name: /^(Hide page|Publish page)$/ }).click();
       await page.waitForLoadState("networkidle");
     }
-    check("console: two actions later, the portfolio has not been asked for again", pfReads === 0, `${pfReads} reads`);
+    // Each succeeded, so each reads the portfolio once more — never in a loop.
+    const published = (await pg.query(`SELECT "isPublished" FROM "VenueOrganization" WHERE id = $1`, [palm.id])).rows[0]?.isPublished;
+    check("console: two actions later, the portfolio was read once per action and the page is back as it was", pfReads === 2 && published === true, `${pfReads} reads, published ${published}`);
     await ctx.close();
     const c2 = await context("ar", 375, ops);
     const p2 = await c2.newPage();
@@ -270,7 +272,12 @@ try {
     await page.route("**/api/organizations/*/portfolio", (r) => { n += 1; return r.fulfill({ status: 500, body: "{}" }); });
     await page.goto(`${B}/en/org-admin/${palm.id}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(15000);
-    check("console: a failing portfolio is asked for once, and the rest of the console works", n <= 2 && (await page.locator("h1").count()) === 1, `${n} requests`);
+    await page.waitForTimeout(0);
+    const pfAlert = await page.getByText("Could not load the figures.").count();
+    check("console: a failing portfolio is asked for once, says so, and the rest of the console works", n <= 2 && pfAlert === 1 && (await page.locator("h1").count()) === 1, `${n} requests, notice ${pfAlert}`);
+    await page.getByRole("button", { name: "Try again" }).first().click();
+    await page.waitForTimeout(3000);
+    check("console: its Try again asks exactly once more", n <= 3, `${n} requests`);
     await page.unroute("**/api/organizations/*/portfolio");
     let all = 0;
     await page.route(`**/api/organizations/${palm.id}**`, (r) => { all += 1; return r.fulfill({ status: 500, body: "{}" }); });
