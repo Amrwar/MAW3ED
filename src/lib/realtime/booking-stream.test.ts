@@ -12,7 +12,7 @@ class FakeSource implements StreamSource {
   static made: FakeSource[] = [];
   listeners = new Map<string, ((e: { data?: string }) => void)[]>();
   closed = false;
-  constructor() {
+  constructor(public since: string | null = null, public resume: { awayMs: number | null; loadedAgoMs: number } | null = null) {
     FakeSource.made.push(this);
   }
   addEventListener(type: string, fn: (e: { data?: string }) => void) {
@@ -32,7 +32,7 @@ function setup() {
   vi.useFakeTimers();
   const report = vi.fn();
   const stream = createBookingStream({
-    makeSource: () => new FakeSource(),
+    makeSource: (since, resume) => new FakeSource(since, resume),
     setTimer: (fn, ms) => setTimeout(fn, ms),
     clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
     now: () => Date.now(),
@@ -187,5 +187,107 @@ describe("delivery", () => {
     expect(l).not.toHaveBeenCalled();
     last().fire("BOOKING_UPDATED", JSON.stringify({ id: "1", status: "CONFIRMED", customerName: "x" }));
     expect(l).toHaveBeenCalledWith({ type: "BOOKING_UPDATED", payload: { id: "1", status: "CONFIRMED", customerName: "x" } });
+  });
+});
+
+describe("resuming without repeats (P23-A9, P23-A10)", () => {
+  it("reconnects from the last checkpoint the server sent", { timeout: 5000 }, async () => {
+    const { stream } = setup();
+    stream.subscribe(() => {});
+    expect(last().since).toBeNull();
+    last().fire("open");
+    last().fire("checkpoint", JSON.stringify({ at: "2026-11-02T10:00:00.000Z" }));
+    await vi.advanceTimersByTimeAsync(STABLE_MS);
+    last().fire("checkpoint", JSON.stringify({ at: "2026-11-02T10:04:40.000Z" }));
+    last().fire("error");
+    await vi.advanceTimersByTimeAsync(reconnectDelay(1));
+    expect(FakeSource.made).toHaveLength(2);
+    expect(last().since).toBe("2026-11-02T10:04:40.000Z");
+  });
+
+  it("a malformed checkpoint leaves the last good one", { timeout: 5000 }, async () => {
+    const { stream } = setup();
+    stream.subscribe(() => {});
+    last().fire("checkpoint", JSON.stringify({ at: "2026-11-02T10:00:00.000Z" }));
+    last().fire("checkpoint", "{not json");
+    last().fire("error");
+    await vi.advanceTimersByTimeAsync(reconnectDelay(1));
+    expect(last().since).toBe("2026-11-02T10:00:00.000Z");
+  });
+
+  it("delivers a change once, however many streams send it, and a newer version again", { timeout: 5000 }, async () => {
+    const { stream } = setup();
+    const heard = vi.fn();
+    stream.subscribe(heard);
+    const v1 = JSON.stringify({ id: "b1", status: "PENDING", updatedAt: "2026-11-02T10:00:01.000Z" });
+    last().fire("BOOKING_CREATED", v1);
+    last().fire("BOOKING_CREATED", v1);
+    last().fire("error");
+    await vi.advanceTimersByTimeAsync(reconnectDelay(1));
+    last().fire("BOOKING_CREATED", v1); // the resumed stream's overlap
+    expect(heard).toHaveBeenCalledTimes(1);
+    last().fire("BOOKING_UPDATED", JSON.stringify({ id: "b1", status: "CONFIRMED", updatedAt: "2026-11-02T10:00:09.000Z" }));
+    expect(heard).toHaveBeenCalledTimes(2);
+  });
+
+  it("a booking already announced as new is delivered as an update when a resumed stream calls it new again", { timeout: 5000 }, async () => {
+    const { stream } = setup();
+    const heard: string[] = [];
+    stream.subscribe((e) => heard.push(e.type));
+    last().fire("BOOKING_CREATED", JSON.stringify({ id: "b2", updatedAt: "2026-11-02T10:00:01.000Z" }));
+    last().fire("error");
+    await vi.advanceTimersByTimeAsync(reconnectDelay(1));
+    last().fire("BOOKING_CREATED", JSON.stringify({ id: "b2", updatedAt: "2026-11-02T10:00:05.000Z" }));
+    expect(heard).toEqual(["BOOKING_CREATED", "BOOKING_UPDATED"]);
+  });
+
+  it("the next page in the tab resumes where the last one stopped, and nothing is announced twice", { timeout: 5000 }, async () => {
+    const { stream } = setup();
+    const off = stream.subscribe(() => {});
+    last().fire("checkpoint", JSON.stringify({ at: "2026-11-02T10:00:00.000Z" }));
+    last().fire("BOOKING_CREATED", JSON.stringify({ id: "b3", updatedAt: "2026-11-02T10:00:01.000Z" }));
+    off();
+    await vi.advanceTimersByTimeAsync(1);
+    const heard = vi.fn();
+    stream.subscribe(heard);
+    expect(last().since).toBe("2026-11-02T10:00:00.000Z");
+    last().fire("BOOKING_CREATED", JSON.stringify({ id: "b3", updatedAt: "2026-11-02T10:00:01.000Z" }));
+    expect(heard).not.toHaveBeenCalled();
+  });
+
+  it("passes on the server's resync, so a page can reload what it could not resume", { timeout: 5000 }, async () => {
+    const { stream } = setup();
+    const heard: string[] = [];
+    stream.subscribe((e) => heard.push(e.type));
+    last().fire("resync", JSON.stringify({}));
+    expect(heard).toEqual(["BOOKINGS_RESYNC"]);
+  });
+
+  it("says when the page loaded, keeps it across reconnects, and renews it for the next page", { timeout: 5000 }, async () => {
+    const { stream } = setup();
+    const off = stream.subscribe(() => {});
+    const loadedAt = Date.now();
+    expect(last().resume!.loadedAgoMs).toBe(0);
+    last().fire("checkpoint", JSON.stringify({ at: "2026-11-02T10:00:00.000Z" }));
+    await vi.advanceTimersByTimeAsync(3_000);
+    // A heartbeat repeating the same checkpoint does not restart the away time.
+    last().fire("checkpoint", JSON.stringify({ at: "2026-11-02T10:00:00.000Z" }));
+    last().fire("error");
+    await vi.advanceTimersByTimeAsync(reconnectDelay(1));
+    // A routine reconnect: the same page, so the same load time; away = since the checkpoint arrived.
+    expect(last().resume!.loadedAgoMs).toBe(Date.now() - loadedAt);
+    expect(last().resume!.awayMs).toBe(3_000 + reconnectDelay(1));
+    off();
+    await vi.advanceTimersByTimeAsync(5_000);
+    stream.subscribe(() => {});
+    // The next page: a new load time, the checkpoint kept.
+    expect(last().resume!.loadedAgoMs).toBe(0);
+    expect(last().since).toBe("2026-11-02T10:00:00.000Z");
+  });
+
+  it("sends no away time without a checkpoint", { timeout: 5000 }, async () => {
+    const { stream } = setup();
+    stream.subscribe(() => {});
+    expect(last().resume!.awayMs).toBeNull();
   });
 });

@@ -30,6 +30,14 @@
  * Framework-free so it is tested in Node with fake timers.
  */
 
+/**
+ * Changes already delivered, by booking id → version (`updatedAt`). A
+ * resumed stream starts from the last checkpoint and overlaps the one
+ * before it, and the server re-reads a few seconds each poll; the same
+ * change must not chime twice. Bounded: the oldest entries go first.
+ */
+const DELIVERED_LIMIT = 1_000;
+
 export interface StreamSource {
   addEventListener(type: string, listener: (e: { data?: string }) => void): void;
   close(): void;
@@ -37,7 +45,9 @@ export interface StreamSource {
 
 export type BookingStreamEvent =
   | { type: "BOOKING_CREATED"; payload: Record<string, unknown> }
-  | { type: "BOOKING_UPDATED"; payload: Record<string, unknown> };
+  | { type: "BOOKING_UPDATED"; payload: Record<string, unknown> }
+  /** The server could not resume from the last checkpoint: reload. */
+  | { type: "BOOKINGS_RESYNC"; payload: Record<string, unknown> };
 
 /** Failures in a row, without one stable session, before stopping. */
 export const MAX_CONSECUTIVE_FAILURES = 8;
@@ -51,7 +61,12 @@ export function reconnectDelay(failures: number): number {
 }
 
 export interface BookingStreamDeps {
-  makeSource: () => StreamSource;
+  /**
+   * Opens the stream: resuming from the server's last checkpoint when
+   * there is one (with how long ago it arrived, in ms), and saying when the
+   * page loaded, so changes from before it are not announced.
+   */
+  makeSource: (since: string | null, resume: { awayMs: number | null; loadedAgoMs: number }) => StreamSource;
   setTimer: (fn: () => void, ms: number) => unknown;
   clearTimer: (handle: unknown) => void;
   now: () => number;
@@ -66,6 +81,29 @@ export function createBookingStream(deps: BookingStreamDeps) {
   let closing: unknown = null;
   let failures = 0;
   let gaveUp = false;
+  let checkpoint: string | null = null;
+  /** When the current checkpoint value first arrived, on this clock. */
+  let checkpointAt = 0;
+  /** When the current page's first listener subscribed, on this clock. */
+  let loadedAt = 0;
+  const delivered = new Map<string, string>();
+
+  /**
+   * What to deliver this event as: null for a version already delivered,
+   * and "updated" for a booking already announced as new. A resumed stream
+   * does not know what the one before it sent, and would announce a
+   * booking it sees for the first time as new again — a second chime.
+   */
+  function deliverAs(type: BookingStreamEvent["type"], payload: Record<string, unknown>): BookingStreamEvent["type"] | null {
+    const { id, updatedAt } = payload;
+    if (typeof id !== "string" || typeof updatedAt !== "string") return type;
+    const seen = delivered.get(id);
+    if (seen === updatedAt) return null;
+    delivered.delete(id);
+    delivered.set(id, updatedAt);
+    if (delivered.size > DELIVERED_LIMIT) delivered.delete(delivered.keys().next().value as string);
+    return seen !== undefined && type === "BOOKING_CREATED" ? "BOOKING_UPDATED" : type;
+  }
 
   function emit(type: BookingStreamEvent["type"], raw: { data?: string }) {
     let payload: unknown;
@@ -75,9 +113,11 @@ export function createBookingStream(deps: BookingStreamDeps) {
       return; // malformed payload — ignored
     }
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
+    const as = deliverAs(type, payload as Record<string, unknown>);
+    if (!as) return;
     for (const l of [...listeners]) {
       try {
-        l({ type, payload: payload as Record<string, unknown> });
+        l({ type: as, payload: payload as Record<string, unknown> });
       } catch (error) {
         deps.report?.(error);
       }
@@ -87,7 +127,11 @@ export function createBookingStream(deps: BookingStreamDeps) {
   function connect() {
     timer = null;
     if (!listeners.size || gaveUp || source) return;
-    const s = deps.makeSource();
+    // Durations, not instants: the server compares them with its own clock.
+    const s = deps.makeSource(checkpoint, {
+      awayMs: checkpoint ? Math.max(0, deps.now() - checkpointAt) : null,
+      loadedAgoMs: Math.max(0, deps.now() - loadedAt),
+    });
     source = s;
     let openedAt: number | null = null;
     s.addEventListener("open", () => {
@@ -95,6 +139,20 @@ export function createBookingStream(deps: BookingStreamDeps) {
     });
     s.addEventListener("BOOKING_CREATED", (e) => emit("BOOKING_CREATED", e));
     s.addEventListener("BOOKING_UPDATED", (e) => emit("BOOKING_UPDATED", e));
+    s.addEventListener("resync", (e) => emit("BOOKINGS_RESYNC", e));
+    s.addEventListener("checkpoint", (e) => {
+      try {
+        const at = (JSON.parse(e.data ?? "null") as { at?: unknown } | null)?.at;
+        // Heartbeats repeat the same checkpoint while the server's window
+        // stands still; `away` counts from when this value first came.
+        if (typeof at === "string" && at !== checkpoint) {
+          checkpoint = at;
+          checkpointAt = deps.now();
+        }
+      } catch {
+        // a malformed checkpoint is ignored; the last good one stands
+      }
+    });
     s.addEventListener("error", () => {
       if (source !== s) return; // a closed source's late error
       s.close();
@@ -118,6 +176,10 @@ export function createBookingStream(deps: BookingStreamDeps) {
     source = null;
     failures = 0;
     gaveUp = false;
+    // The checkpoint and what was delivered are kept: the next page in
+    // this tab resumes where the last one stopped, so nothing changed
+    // during a navigation is lost, and nothing already announced is
+    // announced again.
   }
 
   /** One fresh attempt after giving up (online, visible, a new subscriber). */
@@ -130,6 +192,8 @@ export function createBookingStream(deps: BookingStreamDeps) {
 
   return {
     subscribe(listener: (e: BookingStreamEvent) => void): () => void {
+      // The first listener of a page: what changed before now, it has loaded.
+      if (!listeners.size) loadedAt = deps.now();
       listeners.add(listener);
       if (closing !== null) {
         deps.clearTimer(closing);
@@ -154,7 +218,12 @@ let shared: ReturnType<typeof createBookingStream> | null = null;
 export function bookingStream() {
   if (!shared) {
     const stream = createBookingStream({
-      makeSource: () => new EventSource("/api/realtime/bookings") as unknown as StreamSource,
+      makeSource: (since, { awayMs, loadedAgoMs }) => {
+        const q = new URLSearchParams({ loadedAgo: String(Math.round(loadedAgoMs)) });
+        if (since) q.set("since", since);
+        if (since && awayMs !== null) q.set("away", String(Math.round(awayMs)));
+        return new EventSource(`/api/realtime/bookings?${q}`) as unknown as StreamSource;
+      },
       setTimer: (fn, ms) => setTimeout(fn, ms),
       clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
       now: () => Date.now(),

@@ -11,6 +11,9 @@
  *   sameDayCutoff             "HH:MM" after which today closes, or null
  *   cancellationCutoffHours   how close to the start a customer may still
  *                             cancel or move it themselves
+ *   accessDiscreet            keep the business's name off a venue's
+ *                             security desk; null = the category's default
+ *                             (GET also answers the default in force)
  *
  * Every field is optional on PATCH; only what is sent changes. A save
  * with `reviewed: true` — sent by the setup page's policies form, which
@@ -26,6 +29,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { DISCREET_SELECT, discreetByCategory } from "@/lib/access/discreet";
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -37,6 +41,7 @@ export const bookingPolicySchema = z
     bufferMinutes: z.number().int().min(0).max(240),
     sameDayCutoff: z.string().regex(HHMM, "وقت غير صحيح").nullable(),
     cancellationCutoffHours: z.number().int().min(0).max(168),
+    accessDiscreet: z.boolean().nullable(),
     reviewed: z.literal(true),
   })
   .partial();
@@ -49,13 +54,25 @@ const SELECT = {
   sameDayCutoff: true,
   cancellationCutoffHours: true,
   policiesReviewedAt: true,
+  ...DISCREET_SELECT,
 } as const;
+
+/** The row as answered: the category is used only for the default in force. */
+function shape({ category, policiesReviewedAt, ...row }: Awaited<ReturnType<typeof read>>) {
+  return {
+    ...row,
+    policiesReviewedAt: policiesReviewedAt?.toISOString() ?? null,
+    accessDiscreetDefault: discreetByCategory(category),
+  };
+}
+function read(id: string) {
+  return db.business.findUniqueOrThrow({ where: { id }, select: SELECT });
+}
 
 export async function GET() {
   try {
     const { business } = await requireBusiness();
-    const row = await db.business.findUniqueOrThrow({ where: { id: business.id }, select: SELECT });
-    return ok({ ...row, policiesReviewedAt: row.policiesReviewedAt?.toISOString() ?? null });
+    return ok(shape(await read(business.id)));
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[booking settings GET]", e);
@@ -75,7 +92,7 @@ export async function PATCH(req: Request) {
       data: { ...policies, ...(reviewed ? { policiesReviewedAt: new Date() } : {}) },
       select: SELECT,
     });
-    return ok({ ...updated, policiesReviewedAt: updated.policiesReviewedAt?.toISOString() ?? null });
+    return ok(shape(updated));
   } catch (e) {
     if (e instanceof Response) return e;
     log.error("[booking settings PATCH]", e);

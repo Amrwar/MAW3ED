@@ -64,7 +64,7 @@ try {
     const page = await ctx.newPage();
     await page.clock.install();
     let attempts = 0;
-    await page.route("**/api/realtime/bookings", (route) => {
+    await page.route("**/api/realtime/bookings*", (route) => {
       attempts++;
       return route.fulfill({ status: 401, body: "Unauthorized" });
     });

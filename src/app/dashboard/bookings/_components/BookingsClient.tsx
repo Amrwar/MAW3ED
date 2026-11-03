@@ -182,7 +182,14 @@ export default function BookingsClient({
 
   // ── Real-time updates ─────────────────────────────────────
   useRealtimeBookings((event) => {
-    if (event.type === "BOOKING_UPDATED") {
+    if (event.type === "BOOKINGS_RESYNC") {
+      // The stream could not resume: reload what is on screen.
+      reloadBookings();
+      // The calendar's day is stale too: fetched now if it is showing,
+      // otherwise the next time it is.
+      if (view === "calendar") fetchDay(calendarDate);
+      else loadedDay.current = "";
+    } else if (event.type === "BOOKING_UPDATED") {
       const { id, status } = event;
       const s = status as DashboardBookingStatus;
       setBookings((prev)        => prev.map((bk) => bk.id === id ? { ...bk, status: s } : bk));

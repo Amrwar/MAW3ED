@@ -15,6 +15,7 @@ const NO_PRIVATE_PREFS: NotificationPrefs = {
 };
 import { getEffectivePlan, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { daysUntil } from "@/lib/fmt";
+import { discreetByCategory } from "@/lib/access/discreet";
 
 export const metadata: Metadata = { title: "الإعدادات" };
 
@@ -43,7 +44,7 @@ export default async function SettingsPage({
       where:   { id: acting.id },
       include: {
         city:         true,
-        category:     true,
+        category:     { include: { parent: { select: { slug: true } } } },
         availability: { orderBy: { dayOfWeek: "asc" } },
         services:     { where: { isAvailable: true }, orderBy: { sortOrder: "asc" }, take: 5 },
       },
@@ -137,6 +138,7 @@ export default async function SettingsPage({
       } : NO_PRIVATE_PREFS}
       depositEnabled={isOwner && business.depositEnabled}
       autoConfirm={isOwner && business.autoConfirm}
+      accessDiscreet={isOwner ? { value: business.accessDiscreet, byDefault: discreetByCategory(business.category) } : null}
       depositPercent={isOwner ? business.depositPercent : 0}
       plan={(isOwner ? business.plan : "FREE") as Plan}
       subscriptionStatus={(isOwner ? business.subscriptionStatus : "ACTIVE") as SubscriptionStatus}

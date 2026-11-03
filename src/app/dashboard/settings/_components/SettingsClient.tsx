@@ -8,6 +8,7 @@ import AvailabilityForm from "./AvailabilityForm";
 import PublicPagePreview from "./PublicPagePreview";
 import DepositSettingsForm from "./DepositSettingsForm";
 import AutoConfirmSetting from "./AutoConfirmSetting";
+import DiscreetSetting from "./DiscreetSetting";
 import NotificationSettingsForm, {
   type NotificationPrefs,
 } from "./NotificationSettingsForm";
@@ -57,6 +58,8 @@ type Props = {
   depositEnabled:     boolean;
   depositPercent:     number;
   autoConfirm:        boolean;
+  /** The venue-desk privacy switch (owner only): the owner's choice, and the category's default. */
+  accessDiscreet?:    { value: boolean | null; byDefault: boolean } | null;
   notificationPrefs:  NotificationPrefs;
   plan:               Plan;
   subscriptionStatus: SubscriptionStatus;
@@ -84,6 +87,7 @@ export default function SettingsClient({
   depositEnabled,
   depositPercent,
   autoConfirm,
+  accessDiscreet = null,
   notificationPrefs,
   plan,
   subscriptionStatus,
@@ -189,6 +193,7 @@ export default function SettingsClient({
               monthlyLimit={Number.isFinite(monthlyLimit) ? monthlyLimit : null}
             />
           )}
+          {accessDiscreet && <DiscreetSetting initial={accessDiscreet.value} byDefault={accessDiscreet.byDefault} />}
           <AvailabilityForm initialAvailability={availability} />
         </>
       )}

@@ -4,6 +4,7 @@ import { resyncLiveAccess } from "./hooks";
 import { providerUsable } from "./provider";
 import { reasonText } from "./eligibility";
 import { localName } from "@/lib/lang";
+import { DISCREET_SELECT, isDiscreet } from "./discreet";
 
 /**
  * What a venue's operators and security desk see of visitor passes.
@@ -11,7 +12,9 @@ import { localName } from "@/lib/lang";
  * Data minimisation is the rule here. The desk needs to know who may
  * come in, when, through which gates, the pass's state and what happened
  * at the gates — so it sees the visitor's name, the business they are
- * visiting (a tenant the venue already lists), the window and the state.
+ * visiting (a tenant the venue already lists) unless that business is
+ * discreet (lib/access/discreet.ts — a clinic, by default), the window
+ * and the state.
  * It never sees what was booked, the price, a payment, the booking's
  * reference or link, or a phone number (only whether one is on file
  * when the venue requires it).
@@ -59,7 +62,7 @@ export async function venueDesk(venueId: string, day?: string, en = false) {
       select: {
         id: true, status: true, reason: true, validFrom: true, validUntil: true, entryUntil: true, allowedGateIds: true, reentryAllowed: true,
         visitor: { select: { displayName: true, phoneE164: true } },
-        bookingGuest: { select: { role: true, booking: { select: { business: { select: { nameAr: true, nameEn: true } } } } } },
+        bookingGuest: { select: { role: true, booking: { select: { business: { select: { nameAr: true, nameEn: true, ...DISCREET_SELECT } } } } } },
         credentials: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true, confirmedAt: true, lastError: true } },
       },
     }),
@@ -91,7 +94,9 @@ export async function venueDesk(venueId: string, day?: string, en = false) {
       entitlementId: e.id,
       visitorName: e.visitor.displayName,
       role: e.bookingGuest.role,
-      businessName: localName(en, e.bookingGuest.booking.business.nameAr, e.bookingGuest.booking.business.nameEn),
+      businessName: isDiscreet(e.bookingGuest.booking.business)
+        ? (en ? "Not shown (private)" : "مش ظاهر (خصوصية)")
+        : localName(en, e.bookingGuest.booking.business.nameAr, e.bookingGuest.booking.business.nameEn),
       status: e.status,
       reason: e.reason,
       reasonText: reasonText(e.reason, en),

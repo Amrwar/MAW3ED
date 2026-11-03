@@ -43,6 +43,8 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
   const ids = { users: [] as string[], businesses: [] as string[], venues: [] as string[], providers: [] as string[] };
   let providerId = "";
   let cityId = "";
+  /** The calendar day in Cairo an instant falls on, as the desk takes it. */
+  const cairoDay = (at: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo" }).format(at);
 
   async function user(n: string) {
     const u = await db.user.create({ data: { email: `${tag}-${n}@example.test`, name: `${tag} ${n}`, emailVerified: new Date() } });
@@ -976,7 +978,8 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
 
   it("EN: the check-in desk, the security desk and a guest's pass speak English when asked, Arabic otherwise", async () => {
     const { a, v, b } = await activePass("en");
-    await db.business.update({ where: { id: a.business.id }, data: { nameEn: "EN Salon" } });
+    // Named on the desk: the owner chose to show it, whatever the category's default (P23-A5).
+    await db.business.update({ where: { id: a.business.id }, data: { nameEn: "EN Salon", accessDiscreet: false } });
     await db.service.update({ where: { id: a.service.id }, data: { nameEn: "Haircut" } });
     await db.venue.update({ where: { id: v.venue.id }, data: { nameEn: "EN Mall" } });
     await db.venueGate.update({ where: { id: v.gate.id }, data: { nameEn: "Gate 1" } });
@@ -988,14 +991,44 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
     const guard = await user("en-guard");
     expect(await passes.securitySuspend(ent.id, v.venue.id, guard.id, "hold")).toBe(true);
     const { venueDesk } = await import("./venue-desk");
-    const en = (await venueDesk(v.venue.id, undefined, true))!.rows.find((r) => r.entitlementId === ent.id)!;
+    // The pass's own day, not "today": a run that crosses midnight in Cairo
+    // would otherwise look at the wrong day's desk.
+    const day = cairoDay(ent.validFrom);
+    const en = (await venueDesk(v.venue.id, day, true))!.rows.find((r) => r.entitlementId === ent.id)!;
     expect(en).toMatchObject({ businessName: "EN Salon", reasonText: "Suspended by the venue's security", gates: ["Gate 1"] });
-    const ar = (await venueDesk(v.venue.id))!.rows.find((r) => r.entitlementId === ent.id)!;
+    const ar = (await venueDesk(v.venue.id, day))!.rows.find((r) => r.entitlementId === ent.id)!;
     expect(ar).toMatchObject({ businessName: a.business.nameAr, reasonText: "إدارة الأمن وقفت التصريح", gates: ["البوابة 1"] });
 
     const g = await passes.addGuest(b.id, { displayName: "علي", phoneE164: null });
     if (!g.ok) throw new Error("guest not added");
     expect((await passes.guestPassView(g.inviteToken!, true))?.venue?.name).toBe("EN Mall");
     expect((await passes.guestPassView(g.inviteToken!))?.venue?.name).toBe(v.venue.nameAr);
+  }, 60_000);
+
+  it("A5: the security desk does not name a discreet business; a medical one is discreet unless its owner says otherwise", async () => {
+    const { a, v, b } = await activePass("discreet");
+    const ent = await db.accessEntitlement.findFirstOrThrow({ where: { bookingId: b.id } });
+    const { venueDesk } = await import("./venue-desk");
+    const day = cairoDay(ent.validFrom);
+    const named = async (en = false) => (await venueDesk(v.venue.id, day, en))!.rows.find((r) => r.entitlementId === ent.id)!.businessName;
+    const medical = await db.category.findFirstOrThrow({ where: { slug: { in: ["clinics", "dentists", "labs"] } } });
+    const other = await db.category.findFirstOrThrow({ where: { slug: { notIn: ["clinics", "dentists", "labs"] }, parentId: null } });
+
+    await db.business.update({ where: { id: a.business.id }, data: { categoryId: medical.id, accessDiscreet: null } });
+    expect(await named()).toBe("مش ظاهر (خصوصية)");
+    expect(await named(true)).toBe("Not shown (private)");
+
+    await db.business.update({ where: { id: a.business.id }, data: { accessDiscreet: false } });
+    expect(await named()).toBe(a.business.nameAr);
+
+    await db.business.update({ where: { id: a.business.id }, data: { categoryId: other.id, accessDiscreet: null } });
+    expect(await named()).toBe(a.business.nameAr);
+
+    await db.business.update({ where: { id: a.business.id }, data: { accessDiscreet: true } });
+    expect(await named()).toBe("مش ظاهر (خصوصية)");
+    // Everything else on the row is unchanged: the desk still knows who, when and where.
+    const row = (await venueDesk(v.venue.id, day))!.rows.find((r) => r.entitlementId === ent.id)!;
+    expect(row.visitorName).toBeTruthy();
+    expect(row.validFrom).toBeTruthy();
   }, 60_000);
 });
