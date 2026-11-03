@@ -18,7 +18,7 @@
  */
 import { createRequire } from "module";
 import {
-  B, pg, check, part, send, json, business, slotNear, book, teardown, summary,
+  B, pg, check, part, json, business, slotNear, book, teardown, summary,
 } from "./qa-phase24-lib.mjs";
 const require = createRequire(import.meta.url);
 const pw = require("playwright");
@@ -59,6 +59,10 @@ try {
 
     let accessCalls = 0;
     page.on("request", (r) => { if (r.url().includes("/access")) accessCalls += 1; });
+    await page.reload({ waitUntil: "networkidle" });
+    check("a page rendered just now does not fetch its QR a second time", accessCalls === 0, `${accessCalls} requests`);
+    const assets = await page.evaluate(async () => (await (await caches.open("maw3ed-booking-assets-v1")).keys()).map((r) => new URL(r.url).pathname));
+    check("the kept page's own scripts and styles are kept with it", assets.some((a) => a.endsWith(".js")) && assets.some((a) => a.endsWith(".css")), `${assets.length} files`);
     await ctx.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1500);
@@ -79,6 +83,39 @@ try {
     await ctx.setOffline(false);
     await page.waitForTimeout(2500);
     check("back online, one refresh and the note goes", (await page.getByRole("status").filter({ hasText: "مفيش اتصال" }).count()) === 0 && accessCalls - before === 1, `${accessCalls - before} requests`);
+
+    // A new code replaces the kept copy, without a page load.
+    const oldUrl = (await json(await fetch(`${B}/api/booking/${b1.accessToken}/access`))).checkIn?.url;
+    await page.getByRole("button", { name: /اعمل كود جديد/ }).first().click();
+    await page.getByRole("button", { name: "أيوه، اعمل كود جديد" }).click();
+    let newUrl = oldUrl;
+    for (let i = 0; i < 20 && newUrl === oldUrl; i++) {
+      await page.waitForTimeout(250);
+      newUrl = (await json(await fetch(`${B}/api/booking/${b1.accessToken}/access`))).checkIn?.url;
+    }
+    let keptHtml = "";
+    for (let i = 0; i < 20; i++) {
+      keptHtml = await page.evaluate(async (p) => (await (await caches.open("maw3ed-bookings-v1")).match(new URL(p, location.origin).href))?.text() ?? "", path);
+      if (newUrl && keptHtml.includes(newUrl.split("/c/")[1])) break;
+      await page.waitForTimeout(300);
+    }
+    const newCode = newUrl?.split("/c/")[1] ?? "";
+    const oldCode = oldUrl?.split("/c/")[1] ?? "";
+    check("a new code made on the page replaces the kept copy (the old code is gone from it)", !!newCode && newCode !== oldCode && keptHtml.includes(newCode) && !keptHtml.includes(oldCode));
+
+    // A server error, or a network that hangs, shows the copy instead.
+    await ctx.route(`${B}${path}`, (route) => route.fulfill({ status: 500, body: "server down" }));
+    await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
+    await page.waitForTimeout(800);
+    check("a server error shows the kept copy, not the error", (await qrCount(page)) === 1);
+    await ctx.unroute(`${B}${path}`);
+    check("…and does not wipe it", (await keptKeys(page)).includes(path));
+    await ctx.route(`${B}${path}`, async (route) => { await new Promise((r) => setTimeout(r, 20000)); await route.continue().catch(() => {}); });
+    const t0 = Date.now();
+    await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
+    const waited = Date.now() - t0;
+    check("a network that hangs: the kept copy within about 4 s, not a blank page", (await qrCount(page)) === 1 && waited < 9000, `${waited} ms`);
+    await ctx.unroute(`${B}${path}`);
 
     // A query string or a trailing slash reaches the same copy.
     await ctx.setOffline(true);
@@ -104,11 +141,24 @@ try {
     await page.goto(`${B}${path}`, { waitUntil: "networkidle" });
     check("…and was deleted; opening online keeps a fresh copy", (await keptKeys(page)).includes(path));
 
-    // Cancelled: the copy goes on the next online visit.
-    await send(biz.owner, `/api/business/bookings/${b1.id}`, "PATCH", { status: "CANCELLED" });
-    await page.reload({ waitUntil: "networkidle" });
+    // Cancelled by the customer on the page (no page load): the copy goes.
+    // Three days ahead, outside the business's cancellation cut-off.
+    const later = (await book(biz, { slot: await slotNear(biz, biz.services[0].id, 3 * 1440), name: "عميل يلغي" })).booking;
+    const laterPath = `/booking/${later.accessToken}`;
+    check("a booking three days ahead is kept too", await openControlled(page, `${B}${laterPath}`, laterPath));
+    await page.getByRole("button", { name: /إلغاء الحجز/ }).first().click();
+    await page.getByRole("button", { name: /تأكيد الإلغاء/ }).click();
+    let stillKept = true;
+    for (let i = 0; i < 20 && stillKept; i++) {
+      await page.waitForTimeout(300);
+      stillKept = (await keptKeys(page)).includes(laterPath);
+    }
+    check("cancelling on the page deletes the kept copy at once", !stillKept && (await pg.query(`SELECT status::text FROM "Booking" WHERE id = $1`, [later.id])).rows[0]?.status === "CANCELLED");
+    // The first booking, cancelled by the business: its copy goes on the next visit.
+    await (await import("./qa-phase24-lib.mjs")).send(biz.owner, `/api/business/bookings/${b1.id}`, "PATCH", { status: "CANCELLED" });
+    await page.goto(`${B}${path}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(500);
-    check("a cancelled booking's copy is deleted the next time the page is opened", !(await keptKeys(page)).includes(path));
+    check("a booking the business cancelled loses its kept copy the next time the page is opened", !(await keptKeys(page)).includes(path));
     await ctx.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
     check("…so offline it shows the offline notice, no QR", (await qrCount(page)) === 0);
@@ -127,6 +177,16 @@ try {
     const dashOffline = (await op.textContent("body").catch(() => "")) ?? "";
     check("an owner's dashboard is never kept: offline it is the offline notice", keys.every((k) => /^\/(en\/)?booking\//.test(k)) && /مفيش اتصال|offline/i.test(dashOffline) && !/Bookings today|حجوزات النهارده/.test(dashOffline));
     await browser.close();
+  }
+
+  /* ── Link previews get no code ── */
+  part("Link previews");
+  {
+    const b3 = (await book(biz, { slot: await slotNear(biz, biz.services[0].id, 70), name: "عميل معاينة" })).booking;
+    const res = await fetch(`${B}/booking/${b3.accessToken}`, { headers: { "user-agent": "WhatsApp/2.23.20.0 A" } });
+    const html = await res.text();
+    const issued = (await pg.query(`SELECT count(*)::int AS n FROM "BookingCheckIn" WHERE "bookingId" = $1`, [b3.id])).rows[0].n;
+    check("a chat app unfurling the link gets the page, but no code is issued or embedded", res.status === 200 && !/aria-labelledby="checkin-h"[\s\S]*<svg/.test(html) && !/maw3ed-offline-until/.test(html) && issued === 0, `issued ${issued}`);
   }
 
   /* ── Save QR in WebKit (Safari's engine) and Firefox ── */

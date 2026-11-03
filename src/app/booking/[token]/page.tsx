@@ -15,6 +15,8 @@ import { canReviewBooking } from "@/lib/reviews";
 import { customerAccessPayload } from "@/lib/access/customer";
 import { offlineCopyUntil } from "@/lib/access/offline-copy";
 import { log } from "@/lib/logger";
+import { headers } from "next/headers";
+import { isLinkPreviewBot } from "@/lib/access/offline-copy";
 import { customerMayCancel, customerMayChange } from "@/lib/bookings/self-service";
 import { bookingMoney, toCents } from "@/lib/payments/money";
 import { countIn, duration, money, clockRange } from "@/lib/fmt";
@@ -100,19 +102,27 @@ export default async function BookingPage({ params }: Params) {
 
   // The check-in QR and passes, rendered into the page itself, so a copy
   // of the page kept on the phone (public/sw.js) still shows them with no
-  // connection. If this fails the panel fetches them itself, as before.
+  // connection. Not for link-preview bots (a chat app unfurling the link):
+  // they get no code issued and none in the page. If building it fails, the
+  // panel fetches it itself, as before.
   const live = ["PENDING", "CONFIRMED", "ARRIVED", "IN_PROGRESS"].includes(booking.status);
-  const access = live
+  const bot = isLinkPreviewBot((await headers()).get("user-agent"));
+  let accessFailed = false;
+  const access = live && !bot
     ? await customerAccessPayload(booking.id, en).catch((e) => {
         log.error("[booking page] access payload", e);
+        accessFailed = true;
         return null;
       })
     : null;
   const savedAt = new Date();
-  // How long the phone may keep this page for offline use: while there is
-  // a code to show, until its check-in window closes. Absent, the service
-  // worker forgets any copy it holds (cancelled, finished, nothing to show).
+  // What the phone may do with a copy of this page (public/sw.js): keep it
+  // until the check-in window closes while there is a code to show; forget
+  // it ("none") once there is nothing; say nothing when we could not tell
+  // (an error, a bot), so an existing copy is not wiped by a bad moment.
   const offlineUntil = offlineCopyUntil(booking, access, savedAt);
+  const offlineTag = bot || accessFailed ? null : offlineUntil ? offlineUntil.toISOString() : "none";
+  const when = formatDate(booking.date, lang);
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-2)]" dir={en ? "ltr" : "rtl"}>
@@ -228,7 +238,7 @@ export default async function BookingPage({ params }: Params) {
 
         {/* Getting in: the booking's check-in QR, and a venue's visitor
             passes where it offers them (Phase 23). */}
-        {offlineUntil && <meta name="maw3ed-offline-until" content={offlineUntil.toISOString()} />}
+        {offlineTag && <meta name="maw3ed-offline-until" content={offlineTag} />}
         {live && (
           <AccessPanel
             token={token}
@@ -236,6 +246,7 @@ export default async function BookingPage({ params }: Params) {
             initial={access}
             savedAt={savedAt.toISOString()}
             reference={booking.reference ?? booking.id.slice(-8).toUpperCase()}
+            caption={[businessName, when]}
           />
         )}
 

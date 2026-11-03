@@ -30,6 +30,16 @@ interface AccessShape {
   visitorAccess: { holder: { pass: unknown } | null; guests: { pass: unknown }[] };
 }
 
+/**
+ * Link previews (a chat app unfurling the booking link) fetch the page
+ * without running it. They need its title, not a check-in code: the page
+ * neither issues nor embeds one for them.
+ */
+const PREVIEW_BOTS = /facebookexternalhit|facebookcatalog|WhatsApp|TelegramBot|Twitterbot|Slackbot|LinkedInBot|Discordbot|SkypeUriPreview|Applebot|Googlebot|bingbot|redditbot|Pinterest|Embedly|Iframely|vkShare|Viber/i;
+export function isLinkPreviewBot(userAgent: string | null | undefined): boolean {
+  return !!userAgent && PREVIEW_BOTS.test(userAgent);
+}
+
 export function offlineCopyUntil(booking: Clock, access: AccessShape | null, now: Date = new Date()): Date | null {
   if (!access) return null;
   const hasCode = access.checkIn.display === "ready" || access.checkIn.display === "not-yet";

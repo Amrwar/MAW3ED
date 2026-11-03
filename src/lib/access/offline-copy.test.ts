@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { offlineCopyUntil } from "./offline-copy";
+import { isLinkPreviewBot, offlineCopyUntil } from "./offline-copy";
 
 // A 10:00–11:00 booking on 3 Nov 2026 (Cairo, UTC+2 in November), in the
 // bookings' wall-clock frame: Cairo time written as UTC.
@@ -33,6 +33,15 @@ describe("how long a phone may keep the booking page offline", () => {
     expect(offlineCopyUntil(booking, access("checked-in"), morning)).toBeNull();
     expect(offlineCopyUntil(booking, access("unavailable"), morning)).toBeNull();
     expect(offlineCopyUntil(booking, null, morning)).toBeNull();
+  });
+
+  it("link previews are recognised; browsers and the app are not", () => {
+    expect(isLinkPreviewBot("WhatsApp/2.23.20.0 A")).toBe(true);
+    expect(isLinkPreviewBot("facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)")).toBe(true);
+    expect(isLinkPreviewBot("TelegramBot (like TwitterBot)")).toBe(true);
+    expect(isLinkPreviewBot("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1")).toBe(false);
+    expect(isLinkPreviewBot("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36")).toBe(false);
+    expect(isLinkPreviewBot(null)).toBe(false);
   });
 
   it("never past the window: a closed window keeps nothing", () => {

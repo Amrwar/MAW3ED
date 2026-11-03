@@ -5,7 +5,9 @@
  *
  * Drawn in the browser from the SVG already on the page, so it works
  * offline too. Phones get the share sheet (where "Save image" puts it in
- * the photos); elsewhere the file downloads. Browser only.
+ * the photos); elsewhere the file downloads. The picture is made ahead of
+ * the tap (buildQrPng), because a share sheet must open straight from the
+ * tap: Safari refuses one that follows slow work. Browser only.
  */
 
 export type SaveResult = "shared" | "downloaded" | "cancelled" | "failed";
@@ -22,7 +24,8 @@ export function sizedSvg(svg: string, px = QR_PX): string {
   });
 }
 
-async function toPng(svg: string, caption: string[]): Promise<Blob> {
+/** The QR on white, with caption lines under it (business, day, times, number). */
+export async function buildQrPng(svg: string, caption: string[] = []): Promise<Blob> {
   const url = URL.createObjectURL(new Blob([sizedSvg(svg)], { type: "image/svg+xml" }));
   try {
     const img = new Image();
@@ -44,21 +47,20 @@ async function toPng(svg: string, caption: string[]): Promise<Blob> {
     ctx.fillStyle = "#000000";
     ctx.font = "bold 28px system-ui, sans-serif";
     ctx.textAlign = "center";
-    caption.forEach((line, i) => ctx.fillText(line, canvas.width / 2, QR_PX + PAD + 8 + (i + 1) * LINE_PX - 12));
+    caption.forEach((line, i) => {
+      // Arabic lines read right to left; the rest (numbers, times) left to right.
+      ctx.direction = /\p{Script=Arabic}/u.test(line) ? "rtl" : "ltr";
+      ctx.fillText(line, canvas.width / 2, QR_PX + PAD + 8 + (i + 1) * LINE_PX - 12, canvas.width - 2 * PAD);
+    });
     return await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("no blob"))), "image/png"));
   } finally {
     URL.revokeObjectURL(url);
   }
 }
 
-export async function saveQrImage(svg: string, opts: { fileName: string; caption?: string[] }): Promise<SaveResult> {
-  let blob: Blob;
-  try {
-    blob = await toPng(svg, opts.caption ?? []);
-  } catch {
-    return "failed";
-  }
-  const file = new File([blob], opts.fileName, { type: "image/png" });
+/** Hands a ready picture to the share sheet, or downloads it. Call straight from the tap. */
+export async function deliverQrImage(blob: Blob, fileName: string): Promise<SaveResult> {
+  const file = new File([blob], fileName, { type: "image/png" });
   // Phones: the share sheet saves to photos. A refusal to share (desktop
   // browsers, older phones) falls through to a download.
   if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
@@ -73,13 +75,22 @@ export async function saveQrImage(svg: string, opts: { fileName: string; caption
     const href = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = href;
-    a.download = opts.fileName;
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     a.remove();
     // Long enough for the browser to start the download.
     setTimeout(() => URL.revokeObjectURL(href), 10_000);
     return "downloaded";
+  } catch {
+    return "failed";
+  }
+}
+
+/** Builds and delivers in one go, for when no picture was made ahead. */
+export async function saveQrImage(svg: string, opts: { fileName: string; caption?: string[] }): Promise<SaveResult> {
+  try {
+    return await deliverQrImage(await buildQrPng(svg, opts.caption ?? []), opts.fileName);
   } catch {
     return "failed";
   }

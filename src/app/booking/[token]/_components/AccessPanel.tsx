@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, QrCode, RefreshCw, ShieldCheck, Trash2, UserPlus, WifiOff } from "lucide-react";
 import PassCard, { type PassViewJson } from "@/components/access/PassCard";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { localeFor } from "@/lib/fmt";
 import { refusalText } from "@/lib/lang";
-import { saveQrImage } from "@/lib/access/save-qr";
+import { buildQrPng, deliverQrImage, saveQrImage } from "@/lib/access/save-qr";
+import { refreshKeptBookingPage } from "@/lib/access/offline-refresh";
 
 /**
  * The booking page's "getting in" section: the booking's own check-in QR
@@ -21,10 +22,23 @@ import { saveQrImage } from "@/lib/access/save-qr";
  * The page renders the first payload on the server (`initial`), so the QR
  * is in the page itself and a copy of the page the phone kept (public/
  * sw.js) shows it with no connection. Then: one refresh when the panel
- * mounts, and one each time the browser says it is back online — never a
- * loop. Without a connection the last payload stays on screen with a note
- * saying how old it is; the code itself is checked online when scanned.
+ * mounts, only if the page may be such a copy (or came without a
+ * payload), and one each time the browser says it is back online — never
+ * a loop. Without a connection the last payload stays on screen with a
+ * note saying how old it is; the code itself is checked online when
+ * scanned. When what the panel shows changes without a page load (a new
+ * code, a pass), the kept copy is fetched again so it matches.
  */
+
+/** Rendered this recently, the page is not a kept copy: no refresh on mount. */
+const FRESH_MS = 15_000;
+
+/** What, if it changes, makes the phone's kept copy out of date. */
+function shown(p: Payload | null): string {
+  if (!p) return "";
+  const passes = [p.visitorAccess.holder, ...p.visitorAccess.guests].map((x) => (x ? `${x.state}:${x.pass?.token ?? ""}` : ""));
+  return [p.checkIn.display, p.checkIn.url ?? "", ...passes].join("|");
+}
 
 interface Payload {
   checkIn: {
@@ -57,6 +71,7 @@ export default function AccessPanel({
   initial = null,
   savedAt = null,
   reference = null,
+  caption = [],
 }: {
   token: string;
   customerName: string;
@@ -66,6 +81,8 @@ export default function AccessPanel({
   savedAt?: string | null;
   /** The booking number, for the saved QR's file name and caption. */
   reference?: string | null;
+  /** Lines under the saved QR besides the number and times: the business, the day. */
+  caption?: string[];
 }) {
   const { lang } = useLanguage();
   const en = lang === "en";
@@ -82,6 +99,30 @@ export default function AccessPanel({
   const [msg, setMsg] = useState<string | null>(null);
   const [polls, setPolls] = useState(0);
   const [confirmNewCode, setConfirmNewCode] = useState(false);
+  // The check-in QR as a picture, made ahead of the "save" tap.
+  const [qrPicture, setQrPicture] = useState<{ key: string; blob: Blob } | null>(null);
+  const qrSvg = data?.checkIn.qrSvg ?? null;
+  const qrCaption = [
+    ...caption,
+    data?.checkIn.opensAt && data?.checkIn.closesAt ? `${data.checkIn.opensAt} – ${data.checkIn.closesAt}` : "",
+    reference ?? "",
+  ].filter(Boolean);
+  const captionKey = qrCaption.join("|");
+  const pictureKey = `${qrSvg ?? ""}#${captionKey}`;
+  // Only the picture of the code on screen now (a new code makes a new one).
+  const qrPng = qrPicture?.key === pictureKey ? qrPicture.blob : null;
+  useEffect(() => {
+    let live = true;
+    if (!qrSvg) return;
+    buildQrPng(qrSvg, captionKey.split("|"))
+      .then((blob) => {
+        if (live) setQrPicture({ key: `${qrSvg}#${captionKey}`, blob });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [qrSvg, captionKey]);
 
   const fetchPayload = useCallback(async (): Promise<{ payload: Payload | null; network: boolean }> => {
     try {
@@ -92,10 +133,17 @@ export default function AccessPanel({
       return { payload: null, network: true };
     }
   }, [base, q]);
+  // What the kept copy of the page shows (the server's payload, at first).
+  const keptShows = useRef(shown(initial));
   const apply = useCallback(({ payload, network }: { payload: Payload | null; network: boolean }) => {
     if (payload) {
       setData(payload);
       setAsOf(new Date().toISOString());
+      const now = shown(payload);
+      if (now !== keptShows.current) {
+        keptShows.current = now;
+        refreshKeptBookingPage();
+      }
     }
     setFailed(!payload);
     setOffline(network);
@@ -104,9 +152,16 @@ export default function AccessPanel({
 
   useEffect(() => {
     let live = true;
-    void fetchPayload().then((p) => {
-      if (live) apply(p);
-    });
+    // Rendered just now with a payload: nothing to refresh. Otherwise this
+    // may be a copy the phone kept, or the server could not build it.
+    // The browser saying it is offline also asks: the attempt fails at once
+    // and the note says this is a saved copy.
+    const fresh = !!initial && !!savedAt && Math.abs(Date.now() - Date.parse(savedAt)) < FRESH_MS;
+    if (!fresh || !navigator.onLine) {
+      void fetchPayload().then((p) => {
+        if (live) apply(p);
+      });
+    }
     // Back online: one refresh per "online" event the browser fires.
     const back = () => {
       void fetchPayload().then((p) => {
@@ -118,6 +173,8 @@ export default function AccessPanel({
       live = false;
       window.removeEventListener("online", back);
     };
+    // The props are the page's first render; they do not change after.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchPayload, apply]);
 
   const pending = !!data && [data.visitorAccess.holder, ...data.visitorAccess.guests].some((p) => p && (p.state === "pending" || p.state === "withdrawing"));
@@ -167,6 +224,7 @@ export default function AccessPanel({
   }
   if (!data) return null;
   const { checkIn: c, visitorAccess: va } = data;
+  const qrFileName = `maw3ed-check-in-${(reference ?? "booking").replace(/[^A-Za-z0-9-]/g, "")}.png`;
   const savedTime = asOf
     ? new Intl.DateTimeFormat(localeFor(lang), { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" }).format(new Date(asOf))
     : null;
@@ -179,7 +237,10 @@ export default function AccessPanel({
           <span>
             {t("مفيش اتصال دلوقتي. ده آخر نسخة اتحفظت", "You're offline. This is the copy saved")}
             {savedTime ? <> {t("", "at ")}<bdi>{savedTime}</bdi></> : null}
-            {t(" — الكود لسه شغّال، والاستقبال بيتأكد منه لما يقروه.", " — your code still works; reception checks it when they scan it.")}
+            {t(
+              " — اعرض الكود على الاستقبال، وهم بيتأكدوا منه لما يقروه.",
+              " — show the code at reception; they check it when they scan it.",
+            )}
           </span>
         </p>
       )}
@@ -224,10 +285,11 @@ export default function AccessPanel({
                     type="button"
                     className="btn btn-outline btn-sm gap-1.5"
                     onClick={async () => {
-                      const r = await saveQrImage(c.qrSvg!, {
-                        fileName: `maw3ed-check-in-${(reference ?? "booking").replace(/[^A-Za-z0-9-]/g, "")}.png`,
-                        caption: [reference ?? "", c.opensAt && c.closesAt ? `${c.opensAt} – ${c.closesAt}` : ""].filter(Boolean),
-                      });
+                      // Straight from the tap when the picture is ready (a
+                      // share sheet must open from the tap), built now if not.
+                      const r = qrPng
+                        ? await deliverQrImage(qrPng, qrFileName)
+                        : await saveQrImage(c.qrSvg!, { fileName: qrFileName, caption: qrCaption });
                       setMsg(
                         r === "failed"
                           ? t("مقدرناش نحفظ الصورة. خد سكرين شوت للكود.", "Couldn't save the image. Take a screenshot of the code instead.")
