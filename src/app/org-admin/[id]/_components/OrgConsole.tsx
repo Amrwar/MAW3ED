@@ -33,7 +33,14 @@ interface Metrics { windowDays: number; viewsTotal: number; views: Record<string
 interface Figures { bookings: number; upcoming: number; completed: number; noShows: number; cancelled: number; revenue: number | null }
 interface Portfolio {
   windowDays: number;
-  rows: { associationId: string; relation: string; business: { slug: string; nameAr: string; nameEn: string | null }; branch: { nameAr: string; nameEn: string | null } | null; figures: Figures | null }[];
+  active: boolean;
+  truncated: boolean;
+  rows: {
+    business: { id: string; slug: string; nameAr: string; nameEn: string | null };
+    relations: { associationId: string; relation: string; branch: { nameAr: string; nameEn: string | null } | null }[];
+    figures: Figures | null;
+    notShared: "not-granted" | "branch-only" | null;
+  }[];
   totals: Figures & { sharing: number; withFinance: number };
 }
 
@@ -74,7 +81,7 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
-    const [o, a, m, au, p] = await Promise.all([api(base), api(`${base}/businesses?page=${assocPage}`), api(`${base}/metrics`), api(`${base}/audit`), api(`${base}/portfolio`)]);
+    const [o, a, m, au] = await Promise.all([api(base), api(`${base}/businesses?page=${assocPage}`), api(`${base}/metrics`), api(`${base}/audit`)]);
     if (!o.ok) {
       setFailure(o.status === 401 ? "signin" : o.status === 404 ? "gone" : "error");
       return;
@@ -89,7 +96,6 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
     setParentOptions((o.json.parentOptions as typeof parentOptions) ?? []);
     if (m.ok) setMetrics(m.json as unknown as Metrics);
     if (au.ok) setAudit((au.json.entries as typeof audit) ?? []);
-    if (p.ok) setPortfolio(p.json as unknown as Portfolio);
   }, [base, assocPage]);
 
   useEffect(() => {
@@ -101,6 +107,18 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
       live = false;
     };
   }, [load]);
+
+  // The portfolio aggregates every shared business's bookings: read once
+  // per console, not again on each page of the business list or action.
+  useEffect(() => {
+    let live = true;
+    void api(`${base}/portfolio`).then((p) => {
+      if (live && p.ok) setPortfolio(p.json as unknown as Portfolio);
+    });
+    return () => {
+      live = false;
+    };
+  }, [base]);
 
   async function act(path: string, method: string, body?: unknown, done?: string) {
     setMsg(null);
@@ -233,7 +251,7 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
         </section>
       )}
 
-      {portfolio && portfolio.rows.length > 0 && <PortfolioSection t={t} nm={nm} report={portfolio} />}
+      {portfolio && portfolio.active && portfolio.rows.length > 0 && <PortfolioSection t={t} nm={nm} report={portfolio} />}
 
       <Businesses
         t={t}
@@ -346,10 +364,12 @@ function PortfolioSection({ t, nm, report }: { t: T; nm: (x: { nameAr: string; n
           </thead>
           <tbody>
             {report.rows.map((r) => (
-              <tr key={r.associationId} className="border-t border-[var(--color-line)]">
+              <tr key={r.business.id} className="border-t border-[var(--color-line)]">
                 <th scope="row" className="py-1.5 text-start font-normal">
                   {nm(r.business)}
-                  {r.branch && <span className="text-xs text-[var(--color-subtle)]"> — {nm(r.branch)}</span>}
+                  {r.relations.some((x) => x.branch) && (
+                    <span className="text-xs text-[var(--color-subtle)]"> — {r.relations.flatMap((x) => (x.branch ? [nm(x.branch)] : [])).join(", ")}</span>
+                  )}
                 </th>
                 {r.figures ? (
                   <>
@@ -359,15 +379,22 @@ function PortfolioSection({ t, nm, report }: { t: T; nm: (x: { nameAr: string; n
                     <td className="num py-1.5 text-end" dir="ltr">{money(r.figures.revenue)}</td>
                   </>
                 ) : (
-                  <td colSpan={4} className="py-1.5 text-end text-xs text-[var(--color-subtle)]">{t("مش متشارك — صاحب النشاط ما اداش صلاحية التقارير", "Not shared — the owner has not granted reports")}</td>
+                  <td colSpan={4} className="py-1.5 text-end text-xs text-[var(--color-subtle)]">
+                    {r.notShared === "branch-only"
+                      ? t("مش متاح — العلاقة على فرع واحد، والتقارير بتغطي النشاط كله", "Not available — the relationship covers one branch; reports cover the whole business")
+                      : t("مش متشارك — صاحب النشاط ما اداش صلاحية التقارير", "Not shared — the owner has not granted reports")}
+                  </td>
                 )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {report.truncated && (
+        <p className="m-0 text-xs" role="status">{t(`بيظهر أول ${report.rows.length} نشاط بس، والإجماليات عليهم.`, `Only the first ${report.rows.length} businesses are shown, and the totals cover them only.`)}</p>
+      )}
       <p className="m-0 text-xs text-[var(--color-subtle)]">
-        {t("كل نشاط بيقرر يشارك إيه: التقارير بتظهر الأعداد، والماليات بتظهر الإيراد. مفيش بيانات عملاء هنا.", "Each business decides what it shares: reports show counts, finance shows revenue. No customer data appears here.")}
+        {t("كل نشاط بيقرر يشارك إيه: التقارير بتظهر الأعداد، والماليات بتظهر الإيراد. الحجوزات اللي ما اتدفعتش ما بتتحسبش. مفيش بيانات عملاء هنا.", "Each business decides what it shares: reports show counts, finance shows revenue. Unpaid checkouts are not counted. No customer data appears here.")}
       </p>
     </section>
   );

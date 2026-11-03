@@ -232,7 +232,10 @@ try {
   const om = await run("mall page metrics", { workers: 5 }, () => call(mallFounder, `/api/organizations/${mall.id}/metrics`).then(async (r) => { await r.arrayBuffer(); return r.status; }));
   const vm = await run("venue metrics", { workers: 5 }, () => call(mallFounder, `/api/venues/${venue.id}/metrics`).then(async (r) => { await r.arrayBuffer(); return r.status; }));
   const pfBody = await json(await call(groupFounder, `/api/organizations/${group.id}/portfolio?days=30`));
-  check("5.7: the group's portfolio at 5 concurrent — p95 under 1,000 ms, and it counts every seeded booking", pf.p95 < 1000 && pf.errors5xx === 0 && pfBody.totals?.bookings + pfBody.totals?.cancelled >= 20000, `p95 ${pf.p95}, counted ${pfBody.totals?.bookings}+${pfBody.totals?.cancelled}`);
+  const { rows: [{ n: expected }] } = await pg.query(
+    `SELECT count(*)::int AS n FROM "Booking" WHERE "businessId" = ANY($1) AND NOT "isTest" AND date BETWEEN $2::date AND $3::date AND status::text NOT IN ('PENDING_PAYMENT','FAILED_PAYMENT')`,
+    [ids, pfBody.from, pfBody.to]);
+  check("5.7: the group's portfolio at 5 concurrent — p95 under 1,000 ms, and its total matches the database exactly", pf.p95 < 1000 && pf.errors5xx === 0 && pfBody.totals?.bookings === expected && expected > 15000, `p95 ${pf.p95}, counted ${pfBody.totals?.bookings} of ${expected}`);
   check("5.7: mall and venue metrics — p95 under 1,000 ms, no server error", om.p95 < 1000 && vm.p95 < 1000 && om.errors5xx + vm.errors5xx === 0, `p95 ${om.p95}/${vm.p95}`);
 
   console.log("\nREPORT " + JSON.stringify(report));

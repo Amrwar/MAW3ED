@@ -70,14 +70,17 @@ describe.skipIf(!local)("organization portfolio report on a real database", () =
     return inv.id;
   }
   let n = 0;
-  async function bookings(b: Awaited<ReturnType<typeof business>>, list: [BookingStatus, number, (string | null)?, boolean?][]) {
-    for (const [status, price, branchId = null, isTest = false] of list) {
+  /** [status, price, branchId?, isTest?, daysFromToday?] — days default to 2 days ago (inside the window, already past). */
+  async function bookings(b: Awaited<ReturnType<typeof business>>, list: [BookingStatus, number, (string | null)?, boolean?, number?][]) {
+    for (const [status, price, branchId = null, isTest = false, days = -2] of list) {
       n += 1;
       const hh = String(8 + (n % 12)).padStart(2, "0");
+      const day = new Date(Date.parse(`${today}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
       await db.booking.create({
         data: {
           businessId: b.business.id, serviceId: b.service.id, branchId, customerName: "عميل سري", customerPhone: "01099990000",
-          date: new Date(`${today}T00:00:00Z`), startTime: `${hh}:00`, endTime: `${hh}:30`,
+          date: new Date(`${day}T00:00:00Z`), startTime: `${hh}:00`, endTime: `${hh}:30`,
+          startsAt: new Date(`${day}T${hh}:00:00Z`), endsAt: new Date(`${day}T${hh}:30:00Z`),
           status, totalPrice: price, isTest, accessToken: randomBytes(24).toString("base64url"),
         },
       });
@@ -110,19 +113,23 @@ describe.skipIf(!local)("organization portfolio report on a real database", () =
     await link(group, cafe, "OWNED", ["RESERVATIONS", "REPORTS"]);
     await link(group, sushi, "OWNED", ["RESERVATIONS"]);
     await link(group, tenant, "HOSTED", []);
-    await bookings(grill, [["COMPLETED", 300], ["COMPLETED", 200], ["NO_SHOW", 150], ["CANCELLED", 999], ["CONFIRMED", 100], ["COMPLETED", 5000, null, true]]);
-    await bookings(cafe, [["COMPLETED", 80], ["PENDING", 60]]);
+    // Grill: a test booking and an abandoned checkout count nowhere; a
+    // confirmed booking tomorrow is upcoming and outside the window's totals.
+    await bookings(grill, [["COMPLETED", 300], ["COMPLETED", 200], ["NO_SHOW", 150], ["CANCELLED", 999], ["COMPLETED", 5000, null, true], ["PENDING_PAYMENT", 400], ["FAILED_PAYMENT", 400], ["CONFIRMED", 100, null, false, 1]]);
+    await bookings(cafe, [["COMPLETED", 80], ["PENDING", 60, null, false, 3]]);
     await bookings(sushi, [["COMPLETED", 700]]);
     await bookings(tenant, [["COMPLETED", 900]]);
 
     const r = await portfolio.organizationPortfolio(group.org.id, 30);
     const row = (slug: string) => r.rows.find((x) => x.business.slug === slug);
+    // As the business's own report counts (lib/dashboard/stats tally).
     expect(row(grill.business.slug)?.figures).toEqual({ bookings: 4, upcoming: 1, completed: 2, noShows: 1, cancelled: 1, revenue: 500 });
-    expect(row(cafe.business.slug)?.figures).toEqual({ bookings: 2, upcoming: 1, completed: 1, noShows: 0, cancelled: 0, revenue: null });
-    expect(row(sushi.business.slug)?.figures).toBeNull();
+    expect(row(cafe.business.slug)?.figures).toEqual({ bookings: 1, upcoming: 1, completed: 1, noShows: 0, cancelled: 0, revenue: null });
+    expect(row(sushi.business.slug)).toMatchObject({ figures: null, notShared: "not-granted" });
     // Hosting is a listing, never a reporting line.
     expect(row(tenant.business.slug)).toBeUndefined();
-    expect(r.totals).toMatchObject({ bookings: 6, completed: 3, noShows: 1, cancelled: 1, revenue: 500, sharing: 2, withFinance: 1 });
+    expect(r.totals).toMatchObject({ bookings: 5, upcoming: 2, completed: 3, noShows: 1, cancelled: 1, revenue: 500, sharing: 2, withFinance: 1 });
+    expect(r).toMatchObject({ active: true, truncated: false });
     // Nothing that identifies a customer or a single booking.
     expect(JSON.stringify(r)).not.toMatch(/عميل سري|0109999|customer|accessToken/);
   });
@@ -137,9 +144,9 @@ describe.skipIf(!local)("organization portfolio report on a real database", () =
     expect((await portfolio.organizationPortfolio(group.org.id)).rows[0].figures).toBeNull();
     await db.organizationBusiness.update({ where: { id }, data: { scopes: ["REPORTS"] } });
     await db.organization.update({ where: { id: group.org.id }, data: { status: "SUSPENDED" } });
+    // Suspended: not even who granted what.
     const s = await portfolio.organizationPortfolio(group.org.id);
-    expect(s.rows[0].figures).toBeNull();
-    expect(s.totals.sharing).toBe(0);
+    expect(s).toMatchObject({ active: false, rows: [], totals: { sharing: 0 } });
   });
 
   it("a paused or expired relationship is not reported", async () => {
@@ -153,14 +160,14 @@ describe.skipIf(!local)("organization portfolio report on a real database", () =
     expect((await portfolio.organizationPortfolio(group.org.id)).rows).toEqual([]);
   });
 
-  it("a branch-limited relationship is listed as not shared; a business under two relationships is counted once", async () => {
+  it("a branch-limited relationship says why it shows nothing; a business under two relationships is one row, counted once", async () => {
     const group = await organization("br");
     const clinic = await business("clinic", ["فرع أ", "فرع ب"]);
     const [a, bb] = clinic.business.branches;
     await link(group, clinic, "OWNED", ["RESERVATIONS"], a.id);
     await bookings(clinic, [["COMPLETED", 100, a.id], ["COMPLETED", 100, bb.id], ["NO_SHOW", 100, bb.id]]);
     let r = await portfolio.organizationPortfolio(group.org.id);
-    expect(r.rows[0].figures).toBeNull();
+    expect(r.rows[0]).toMatchObject({ figures: null, notShared: "branch-only" });
     // Reports are business-wide, so a branch relationship cannot even ask for them.
     await expect(link(group, clinic, "OWNED", ["REPORTS"], bb.id)).rejects.toThrow("scopes-not-allowed");
     await link(group, clinic, "MANAGED", ["REPORTS"]);
@@ -168,6 +175,10 @@ describe.skipIf(!local)("organization portfolio report on a real database", () =
     const other = await organization("br2");
     await expect(link(other, clinic, "OWNED", ["REPORTS"])).rejects.toThrow("already-owned");
     r = await portfolio.organizationPortfolio(group.org.id);
+    // One row for the business, both relationships named; counted once.
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0].relations).toHaveLength(2);
+    expect(r.rows[0].figures).toMatchObject({ bookings: 3, completed: 2, noShows: 1 });
     expect(r.totals).toMatchObject({ bookings: 3, completed: 2, noShows: 1, sharing: 1 });
   });
 });

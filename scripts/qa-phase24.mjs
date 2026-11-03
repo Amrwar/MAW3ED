@@ -122,10 +122,11 @@ try {
 
   const pf = await json(await call(palmOps, `/api/organizations/${palm.id}/portfolio`));
   const row = (id) => pf.rows?.find((r) => r.business?.id === id);
-  check("A10: aggregated reporting — Palm Grill shares counts and revenue", row(grill.id)?.figures?.bookings === 2 && typeof row(grill.id)?.figures?.revenue === "number", JSON.stringify(row(grill.id)));
-  check("A10: …Palm Cafe shares counts without revenue (no FINANCE)", row(cafe.id)?.figures?.bookings === 1 && row(cafe.id)?.figures?.revenue === null);
-  check("A10: …Palm Sushi shared nothing and is listed as not shared", row(sushi.id) && row(sushi.id).figures === null);
-  check("A10: …totals add up over the sharing brands; no customer appears", pf.totals?.bookings === 3 && pf.totals?.sharing === 2 && !/ضيف|0102|customer|phone/i.test(JSON.stringify(pf)));
+  // The customers' bookings are still ahead: they show as upcoming.
+  check("A10: aggregated reporting — Palm Grill shares counts and revenue", row(grill.id)?.figures?.upcoming === 2 && typeof row(grill.id)?.figures?.revenue === "number", JSON.stringify(row(grill.id)));
+  check("A10: …Palm Cafe shares counts without revenue (no FINANCE)", row(cafe.id)?.figures?.upcoming === 1 && row(cafe.id)?.figures?.revenue === null);
+  check("A10: …Palm Sushi shared nothing and is listed as not shared", row(sushi.id)?.figures === null && row(sushi.id)?.notShared === "not-granted");
+  check("A10: …totals add up over the sharing brands; no customer appears", pf.totals?.upcoming === 3 && pf.totals?.sharing === 2 && !/ضيف|0102|customer|phone/i.test(JSON.stringify(pf)));
   const consolePage = await call(palmOps, `/org-admin/${palm.id}`);
   check("A10: the organization console opens for the manager", consolePage.status === 200);
   check("A10: the portfolio is not readable by a brand's owner or anonymously", [404].includes((await call(grill.owner, `/api/organizations/${palm.id}/portfolio`)).status) && (await call(null, `/api/organizations/${palm.id}/portfolio`)).status === 401);
@@ -369,7 +370,7 @@ try {
   check("C3: the owner's policy is enforced — 3 h notice: nothing within 3 h is offered or accepted", (!near || near.date !== cairoNow().date || near.startTime >= cairoNow(170).time) && tooSoon.status >= 400, `${JSON.stringify(near)} ${tooSoon.status}`);
   await send(dental.owner, "/api/business/settings/booking", "PATCH", { minNoticeMinutes: 0 });
   const pfShifa = await json(await call(shifaFounder, `/api/organizations/${shifa.id}/portfolio`));
-  check("C5: sensitive data — the group's report has counts only, and the branch relationship shares none", !/مريض|0102|customer/i.test(JSON.stringify(pfShifa)) && pfShifa.rows?.find((r) => r.associationId === aBranch)?.figures === null);
+  check("C5: sensitive data — the group's report has counts only, and the branch relationship shares none", !/مريض|0102|customer/i.test(JSON.stringify(pfShifa)) && pfShifa.rows?.find((r) => r.relations?.some((x) => x.associationId === aBranch))?.notShared === "branch-only");
   check("C5: the clinic is discreet by default at a venue's security desk", (await json(await call(clinic.owner, "/api/business/settings/booking"))).accessDiscreetDefault === true);
 
   /* ════════════════════════════════════════════════════════════════
