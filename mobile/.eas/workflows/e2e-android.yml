@@ -1,7 +1,11 @@
-# End-to-end tests on an Android emulator in EAS: build the e2e APK
-# (staging API, see the "e2e" profile in eas.json), then run the Maestro
-# flows in .maestro/ against it. The flows only read and navigate — they
-# never book, review, save or change anything on staging.
+# End-to-end tests on an Android emulator in EAS: build the e2e APK, then
+# run the Maestro flows in .maestro/ against it. The flows only read and
+# navigate — they never book, review, save or change anything.
+#
+# The API the build talks to is EXPO_PUBLIC_API_URL from the EAS
+# "preview" environment, and must be a test backend — never production
+# (a production URL here once counted every flow's visits as real ones).
+# Unset, the build stops (mobile/app.config.ts). See docs/mobile-release.md.
 #
 # Run:   npx eas-cli workflow:run .eas/workflows/e2e-android.yml
 #
