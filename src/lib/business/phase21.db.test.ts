@@ -145,9 +145,16 @@ describe.skipIf(!local)("phase 21 on a real database", () => {
     const { loadBooking } = await import("@/lib/notifications/dispatch");
     expect(test.ok && (await loadBooking(test.booking.id))).toBeNull();
     const { ownedWhere } = await import("@/lib/account/queries");
-    expect(await db.booking.count({ where: ownedWhere("201012345678") })).toBe(
-      await db.booking.count({ where: { customerPhoneE164: "201012345678", isTest: false } }),
+    // Both counts from one snapshot: other test files book with the same
+    // number in parallel, and two separate counts could straddle one of them.
+    const [owned, real] = await db.$transaction(
+      [
+        db.booking.count({ where: ownedWhere("201012345678") }),
+        db.booking.count({ where: { customerPhoneE164: "201012345678", isTest: false } }),
+      ],
+      { isolationLevel: "RepeatableRead" },
     );
+    expect(owned).toBe(real);
     expect(await db.booking.count({ where: { ...ownedWhere("201012345678"), businessId: f.business.id } })).toBe(0);
 
     const r = await publish.requestPublish(f.business.id);

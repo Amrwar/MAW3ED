@@ -12,6 +12,10 @@ import RescheduleFlow from "./_components/RescheduleFlow";
 import LeaveReview from "./_components/LeaveReview";
 import AccessPanel from "./_components/AccessPanel";
 import { canReviewBooking } from "@/lib/reviews";
+import { customerAccessPayload } from "@/lib/access/customer";
+import { isLinkPreviewBot, offlineCopyUntil } from "@/lib/access/offline-copy";
+import { log } from "@/lib/logger";
+import { headers } from "next/headers";
 import { customerMayCancel, customerMayChange } from "@/lib/bookings/self-service";
 import { bookingMoney, toCents } from "@/lib/payments/money";
 import { countIn, duration, money, clockRange } from "@/lib/fmt";
@@ -95,6 +99,30 @@ export default async function BookingPage({ params }: Params) {
   const businessName = localName(en, booking.business.nameAr, booking.business.nameEn);
   const cutoff       = countIn(lang, cutoffHours, { one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة" }, { one: "hour" });
 
+  // The check-in QR and passes, rendered into the page itself, so a copy
+  // of the page kept on the phone (public/sw.js) still shows them with no
+  // connection. Not for link-preview bots (a chat app unfurling the link):
+  // they get no code issued and none in the page. If building it fails, the
+  // panel fetches it itself, as before.
+  const live = ["PENDING", "CONFIRMED", "ARRIVED", "IN_PROGRESS"].includes(booking.status);
+  const bot = isLinkPreviewBot((await headers()).get("user-agent"));
+  let accessFailed = false;
+  const access = live && !bot
+    ? await customerAccessPayload(booking.id, en).catch((e) => {
+        log.error("[booking page] access payload", e);
+        accessFailed = true;
+        return null;
+      })
+    : null;
+  const savedAt = new Date();
+  // What the phone may do with a copy of this page (public/sw.js): keep it
+  // until the check-in window closes while there is a code to show; forget
+  // it ("none") once there is nothing; say nothing when we could not tell
+  // (an error, a bot), so an existing copy is not wiped by a bad moment.
+  const offlineUntil = offlineCopyUntil(booking, access, savedAt);
+  const offlineTag = bot || accessFailed ? null : offlineUntil ? offlineUntil.toISOString() : "none";
+  const when = formatDate(booking.date, lang);
+
   return (
     <div className="min-h-screen bg-[var(--color-surface-2)]" dir={en ? "ltr" : "rtl"}>
       {/* Navbar */}
@@ -148,7 +176,7 @@ export default async function BookingPage({ params }: Params) {
           <div className="divide-y divide-[var(--color-line)]">
             <Row icon={<Store size={15} />}      label={say("المكان", "Place")}    value={businessName} />
             <Row icon={<Clock size={15} />}       label={say("الخدمة", "Service")}   value={localName(en, booking.service.nameAr, booking.service.nameEn)} />
-            <Row icon={<CalendarDays size={15} />} label={say("التاريخ", "Date")} value={formatDate(booking.date, lang)} />
+            <Row icon={<CalendarDays size={15} />} label={say("التاريخ", "Date")} value={when} />
             <Row
               icon={<Clock size={15} />}
               label={say("الوقت", "Time")}
@@ -209,8 +237,16 @@ export default async function BookingPage({ params }: Params) {
 
         {/* Getting in: the booking's check-in QR, and a venue's visitor
             passes where it offers them (Phase 23). */}
-        {["PENDING", "CONFIRMED", "ARRIVED", "IN_PROGRESS"].includes(booking.status) && (
-          <AccessPanel token={token} customerName={booking.customerName} />
+        {offlineTag && <meta name="maw3ed-offline-until" content={offlineTag} />}
+        {live && (
+          <AccessPanel
+            token={token}
+            customerName={booking.customerName}
+            initial={access}
+            savedAt={savedAt.toISOString()}
+            reference={booking.reference ?? booking.id.slice(-8).toUpperCase()}
+            caption={[businessName, when]}
+          />
         )}
 
         {/* Add to calendar — a plain .ics, which every calendar opens

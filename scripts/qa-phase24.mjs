@@ -265,6 +265,10 @@ try {
   const jb = j.booking;
   check("3.5: completes the booking", (j.status === 201 || j.status === 200) && !!jb?.accessToken, `${j.status} ${JSON.stringify(j.body).slice(0, 200)}`);
   check("3.5: …credited to the mall's page, still owned by the restaurant", (await pg.query(`SELECT count(*)::int AS n FROM "OrganizationBookingAttribution" a JOIN "Booking" b ON b.id = a."bookingId" WHERE a."bookingId" = $1 AND a."organizationId" = $2 AND b."businessId" = $3`, [jb.id, mall.id, rest.id])).rows[0].n === 1);
+  // Late in the evening the first free table can be tomorrow; the gate
+  // admits only inside the pass window, so the booking moves to start in
+  // 10 minutes, as if made for then (nothing else is booked here yet).
+  if ((await minutesUntil(jb.id)) > 25) await shiftBooking(jb.id, -((await minutesUntil(jb.id)) - 10));
   const page = await call(null, `/booking/${jb.accessToken}`);
   check("3.6: receives confirmation — the booking page shows it confirmed", page.status === 200 && jb.status === "CONFIRMED");
   // What reached Sara herself: her in-app notifications (WhatsApp, SMS
@@ -288,7 +292,7 @@ try {
   const enter = await json(await sandbox({ action: "gate", token: passToken, gate: `${tag}-N`, site, deliver: false }));
   check("3.9: the (sandbox) north gate admits the pass", enter.granted === true, enter.reason);
   const side = await json(await sandbox({ action: "gate", token: passToken, gate: `${tag}-P`, site }));
-  check("3.9: …the car-park gate does not (not an allowed gate)", side.granted === false, side.reason);
+  check("3.9: …the car-park gate does not (not an allowed gate)", side.granted === false && side.reason === "wrong-gate", side.reason);
   const code = await codeOf(jb.accessToken);
   if ((await checkIn(rest.owner, code)).state === "too-early") {
     check("3.10: arriving more than 30 minutes early, the code says so and does not check in", (await checkIn(rest.owner, code, "check-in")).state === "too-early");
@@ -317,7 +321,7 @@ try {
   check("3.12: …and can leave a review of the completed visit", [200, 201].includes(review.status), `status ${review.status} ${JSON.stringify(await json(review)).slice(0, 120)}`);
   await runAccessCron();
   const gateAfter = await json(await sandbox({ action: "gate", token: passToken, gate: `${tag}-N`, site }));
-  check("3.12: after completion the visitor pass no longer opens the gate", gateAfter.granted === false, gateAfter.reason);
+  check("3.12: after completion the visitor pass no longer opens the gate", gateAfter.granted === false && ["revoked", "not-active", "unknown-code"].includes(gateAfter.reason), gateAfter.reason);
 
   // The other two journeys: a clinic (needs confirming) and a barbershop.
   const cs = await slotNear(clinic, clinic.services[0].id, 5);
@@ -434,7 +438,7 @@ try {
   await send(rest.owner, `/api/business/bookings/${x1.id}`, "PATCH", { status: "CANCELLED" });
   await runAccessCron();
   const x1gate = await json(await sandbox({ action: "gate", token: x1tok, gate: `${tag}-N`, site }));
-  check("4.1: booking cancelled after the pass request — the pass is revoked and the gate refuses it", !!x1tok && x1gate.granted === false, x1gate.reason);
+  check("4.1: booking cancelled after the pass request — the pass is revoked and the gate refuses it", !!x1tok && x1gate.granted === false && ["revoked", "not-active", "unknown-code"].includes(x1gate.reason), x1gate.reason);
   check("4.1: …and its check-in code is dead", (await checkIn(rest.owner, await codeOf(x1.accessToken).catch(() => "")))?.state !== "valid");
   // Rescheduled.
   const x2 = await fresh(rest, 25, "تغيير موعد");
@@ -522,7 +526,7 @@ try {
   await runAccessCron();
   const x9gate = await json(await sandbox({ action: "gate", token: x9tok, gate: `${tag}-N`, site }));
   const dirAfter = await (await call(null, `/groups/${mallSlug}`)).text();
-  check("4.12: business removed from the mall — its visitors' passes stop working", rmMem.status === 200 && !!x9tok && x9gate.granted === false, `${rmMem.status} ${x9gate.reason}`);
+  check("4.12: business removed from the mall — its visitors' passes stop working", rmMem.status === 200 && !!x9tok && x9gate.granted === false && ["revoked", "not-active", "unknown-code"].includes(x9gate.reason), `${rmMem.status} ${x9gate.reason}`);
   check("4.12: …it leaves the directory, and its own bookings stand", rmDir.status === 200 && !dirAfter.includes(`/company/${barber.slug}?org=`) && (await status(x9.id)) === "CONFIRMED");
   // Ownership changes: the cafe moves from the Palm group to another group.
   const newGroupFounder = await account("new-group", "Second group founder (test)");
@@ -562,7 +566,14 @@ try {
   await shiftBooking(x10b.id, -1440);
   check("4.16: …a day late it says expired", (await checkIn(rest.owner, code10b, "check-in")).state === "expired");
   // Duplicate provider callbacks.
-  const x11 = await fresh(rest, 20, "رد مكرر");
+  // Its own tenant, with nothing else booked, and a booking moved to start
+  // in 20 minutes: the gate admits only inside the pass window, so this
+  // must not depend on the hour the suite runs at.
+  const gateBiz = await business("m-gate", { nameAr: "محل البوابة (تجريبي)", nameEn: "Gate Shop (test)", category: "salons", services: [svc("خدمة", "Service", 30, 100)] });
+  const gm = (await json(await send(gateBiz.owner, "/api/business/venues/memberships", "POST", { venueId: venue.id }))).membership;
+  await send(mallFounder, `/api/venues/${venue.id}/memberships/${gm.id}`, "PATCH", { decision: "approve" });
+  const x11 = (await book(gateBiz, { slot: await slotNear(gateBiz, gateBiz.services[0].id, 20), name: "رد مكرر" })).booking;
+  await shiftBooking(x11.id, -((await minutesUntil(x11.id)) - 20));
   await send(null, `/api/booking/${x11.accessToken}/access/pass`, "POST", { displayName: "مكرر" });
   await runAccessCron();
   const t11 = (await access(x11.accessToken)).visitorAccess?.holder?.pass?.token;
@@ -576,7 +587,10 @@ try {
      WHERE e.kind::text = 'ENTRY_GRANTED' AND (
        e."entitlementId" IN (SELECT id FROM "AccessEntitlement" WHERE "bookingId" = $1) OR
        e."credentialId" IN (SELECT c.id FROM "AccessCredential" c JOIN "AccessEntitlement" t ON t.id = c."entitlementId" WHERE t."bookingId" = $1))`, [x11.id])).rows[0].n;
-  check("4.17: duplicate provider callbacks — accepted once, the repeats are duplicates, one entry recorded", h1.outcome === "accepted" && h2.outcome === "duplicate" && h3.outcome === "duplicate" && entries === 1, `${h1.outcome}/${h2.outcome}/${h3.outcome} entries ${entries}`);
+  const kinds = entries === 1 ? [] : (await pg.query(
+    `SELECT e.kind::text, e."entitlementId" IS NOT NULL AS ent, e."credentialId" IS NOT NULL AS cred FROM "AccessEvent" e WHERE e."venueId" = $1 AND e."occurredAt" > now() - interval '2 minutes' ORDER BY e."occurredAt" DESC LIMIT 5`, [venue.id])).rows;
+  check("4.17: duplicate provider callbacks — accepted once, the repeats are duplicates, one entry recorded", h1.outcome === "accepted" && h2.outcome === "duplicate" && h3.outcome === "duplicate" && entries === 1,
+    `${h1.outcome}/${h2.outcome}/${h3.outcome} entries ${entries}; gate ${g11.granted} ${g11.reason ?? ""}; pass ${t11 ? "yes" : "none"}; recent ${JSON.stringify(kinds)}`);
 
   /* ════════════════════════════════════════════════════════════════
    * PART 6. END-TO-END SECURITY
