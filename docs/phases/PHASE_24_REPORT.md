@@ -104,9 +104,11 @@ and open issues beside it in `docs/qa/`.
 
 * Two independent code reviews: 18 findings, 16 fixed, 2 kept by decision.
 * Six DB tests and four HTTP or browser checks added.
-* **Verdict: PARTIAL.** The final build's browser checks, the site-wide
-  sweep and part of the battery could not run, because the QA machine ran
-  out of memory. One load run missed latency targets. The offline-reload
-  finding stays open. No P0 or P1 is open.
+* Final build served after the owner said to continue. `qa-phase24`
+  147/147, browser 23/23, 14 earlier QA scripts, and the sweep (544 loads,
+  0 flagged) all pass.
+* **Verdict: PARTIAL.** Local load latency missed targets in 2 of 4 runs,
+  each time with every route slowed together. The offline-reload finding
+  (P2) stays open. No P0 or P1 is open.
 
 Phase 25 is not started.

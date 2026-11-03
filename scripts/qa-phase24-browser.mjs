@@ -248,9 +248,15 @@ try {
     // Audit (review finding 8): actions in the console reload its lists, not the portfolio.
     let pfReads = 0;
     page.on("request", (r) => { if (r.url().includes("/portfolio")) pfReads += 1; });
-    for (let i = 0; i < 2; i++) {
-      await page.getByRole("button", { name: /^(Hide page|Publish page)$/ }).click();
-      await page.waitForLoadState("networkidle");
+    for (const label of ["Hide page", "Publish page"]) {
+      // Wait for the action's own request and the portfolio read it should cause.
+      const portfolioRead = page.waitForResponse((r) => r.url().includes("/portfolio"), { timeout: 15000 }).catch(() => null);
+      await Promise.all([
+        page.waitForResponse((r) => r.request().method() === "PATCH" && r.url().endsWith(`/api/organizations/${palm.id}`), { timeout: 15000 }),
+        page.getByRole("button", { name: label, exact: true }).click(),
+      ]);
+      await portfolioRead;
+      await page.getByRole("button", { name: label === "Hide page" ? "Publish page" : "Hide page", exact: true }).waitFor({ timeout: 15000 });
     }
     // Each succeeded, so each reads the portfolio once more — never in a loop.
     const published = (await pg.query(`SELECT "isPublished" FROM "VenueOrganization" WHERE id = $1`, [palm.id])).rows[0]?.isPublished;

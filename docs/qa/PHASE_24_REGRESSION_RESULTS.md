@@ -10,9 +10,10 @@ Three builds are referred to:
 * **B1:** `ec7b9ef`, the Phase 24 code before review.
 * **B2:** `1bf09bc` and `8f83482`, after review round 1, plus the audit
   tests. Built and served during the audit.
-* **B3:** `6ea7a05`, after review round 2. Typechecked, linted and
-  unit/DB-tested. **Not served:** the QA server was stopped for low
-  memory before B3 could be built (see "Not run").
+* **B3:** `6ea7a05`, after review round 2. First typechecked, linted
+  and unit/DB-tested only, because low memory stopped the QA server.
+  **Built and served on the same day once the owner said to continue**
+  (see "Final build", below).
 
 ## Static checks and suites (on B3, the final code)
 
@@ -53,12 +54,31 @@ Three builds are referred to:
 Phase 24 changed only the portfolio, the console and tests, and nothing
 these scripts exercise. They still have to be rerun on B3 before merge.
 
+## Final build (B3), after the owner said to continue
+
+| Test | Result | Status |
+|---|---|---|
+| `npx next build` | Compiled | PASS |
+| `qa-phase24.mjs` | **147/147** | PASS |
+| `qa-phase24-browser.mjs` | **23/23**. The first attempt failed one new check (0 portfolio reads per action, page left hidden): the test clicked again before the first action's requests started. The test now waits for the action's PATCH and the portfolio response. With that it reads exactly once per action, and the page is restored | PASS |
+| `qa-booking-e2e` | 22/22 | PASS |
+| `qa-phase23` / `qa-phase23-loops` / `qa-loops-browser` | 48/48, 15/15, 9/9 | PASS |
+| `qa-venue-console` / `qa-venue-page` | clean, clean | PASS |
+| `qa-security` | 32/32 | PASS |
+| `qa-phase23-browser` | 49/49 | PASS |
+| `qa-phase22c` / `qa-phase22b` / `qa-phase22` | 59/59, 83/83, 68/68 | PASS |
+| `qa-phase21` / `qa-phase19` / `qa-phase17` | 44/44, 21/21, 13/13 | PASS |
+| `qa-phase18` (run per role) | anon 224, owner 144, delegate 104, admin 72 = **544 page loads, 0 flagged** (overflow, axe serious/critical, console, focus) | PASS |
+| `qa-phase24-load.mjs` | **12/13**: QR scans p95 327 ms against the 300 ms target. Every scenario was about 2.5× its first-run latency, including routes Phase 24 did not touch (availability 318 ms vs 121 ms); correctness all PASS | PARTIAL (P24-P1) |
+
+Load across all four runs: 13/13 (B1), 10/13 and 13/13 (B2), 12/13 (B3).
+Every run had 0 double bookings, 0 server errors and every event recorded
+once. Only latency moved, and it moved on every route together.
+
 ## Not run, and why
 
 | Test | Blocker | Next action |
 |---|---|---|
-| Build and serve B3; rerun `qa-phase24`, `qa-phase24-browser` (the round-2 checks) and the "not reached" scripts | The QA server was stopped by Claude Code's low-memory reaper (about 2.7 GB free; Chrome holds about 19 GB) | The owner approves restarting the server, ideally with Chrome windows closed. Then: `bash qa24-server.sh` and `bash qa24-regress.sh`, both in the scratchpad |
-| `qa-phase18` site-wide accessibility sweep | Stopped twice for low memory | Same |
 | Production verification | Nothing may be created on production without the owner's go-ahead; this phase used fictional data on QA only | Owner decision (`PHASE_24_REPORT.md`, "Release") |
 | A real gate provider | External: no partner (`docs/eterna/PARTNER_INTEGRATION_STATUS.md`) | Partner milestone |
 

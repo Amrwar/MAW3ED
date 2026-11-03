@@ -39,18 +39,18 @@ Method:
 | 2 | Eterna configuration (fictional, labelled) | **PASS** | B and P2; no real data (owner's decision) |
 | 3.1–3.12 | Customer journey | **PASS** | HTTP 27/27; browser ar/en |
 | 4 | 17 exceptions | **PASS** for 16, **PARTIAL** for "customer without internet" (P24-F1) | Part 4, 29/29; browser offline |
-| 5 | Load, documented targets, no endless retries | **PARTIAL** | 13/13 in two of three runs. One audit run missed 3 latency targets with correctness intact (P24-P1). Retry termination PASS |
+| 5 | Load, documented targets, no endless retries | **PARTIAL** | 13/13 in 2 of 4 runs; misses only in runs where every route slowed together, with correctness intact every time (P24-P1). Retry termination PASS |
 | 6 | End-to-end security | **PASS** | 6, 14/14, plus the audit's direct tests on the tables API |
 | 7 | Real Emaar integration | **BLOCKED (external)** | `PARTNER_INTEGRATION_STATUS.md` |
 | 8 | Operations: onboarding, training, escalation, incidents, monitoring, rollback, metrics | **PASS** (written; not yet used by anyone) | `LAUNCH_READINESS.md`, `PILOT_PLAN.md` |
-| 9 | Final tests | **PARTIAL** | Suites pass on the final code. The final build is not served, so its browser checks, sweep and part of the battery did not run (P24-G1) |
+| 9 | Final tests | **PASS**, load latency aside | Final build B3 served: every suite, the 14 earlier QA scripts and the 544-load sweep pass (`PHASE_24_REGRESSION_RESULTS.md`, "Final build") |
 | Docs | The five required documents | **PASS** | Present |
 
 ## 2. Implementation verification (changed features)
 
 | Feature | Front ↔ back | Persistence | Permissions | ar/en | Mobile width | Empty, loading, error | Status |
 |---|---|---|---|---|---|---|---|
-| Group portfolio | Console section → `GET /portfolio` | Read-only (counts) | `org.metrics`; owners of brands 404; anonymous 401; suspended organization: no rows | Both (browser) | 375 and 1440 swept on B2 | Empty: no section. Not approved: an explanation. Failed: notice and Try again. Loading: the section appears when ready | PASS on B2; round-2 UI pending (P24-G1) |
+| Group portfolio | Console section → `GET /portfolio` | Read-only (counts) | `org.metrics`; owners of brands 404; anonymous 401; suspended organization: no rows | Both (browser) | 375 and 1440 swept on B3 | Empty: no section. Not approved: an explanation. Failed: notice and Try again. Loading: the section appears when ready | PASS (B3) |
 | RESOURCES scope | Grant UI (shared scope list) → association rows → resources API and page, delegate nav | Enum value; CHECK constraints | Owner, or an organization with RESOURCES; staff 403; another business's table 404 | Labels in both | Swept | Pre-existing page states | PASS |
 | Scope validator | Uses the shared list | — | — | — | — | — | PASS |
 | Metrics names | English names, grouped by business | — | — | — | — | — | PASS |
@@ -74,12 +74,12 @@ everything was on QA, fictional, and removed after each run.
 | R1-6 | P3 | Silent truncation at 500 | No flag | `truncated` shown | DB test |
 | R1-8 | P2 (loop-class) | The portfolio was re-aggregated on every page change and action | Fetched inside `load()` | Its own effect | Browser request count |
 | R1-9 | P3 | O(n·m) rescans | Filtering per row | Map by business | Load 5.7 |
-| R2-1 | P2 | After R1-8, the portfolio was never refreshed, and a failure was silent | Over-correction of R1-8 | Re-read after successful actions; failure notice with one Try again | Browser checks, **pending** on B3 |
+| R2-1 | P2 | After R1-8, the portfolio was never refreshed, and a failure was silent | Over-correction of R1-8 | Re-read after successful actions; failure notice with one Try again | Browser on B3: one read per action; notice and Try again (one more request) |
 | R2-2 | P3 | Live rows without `startsAt` were missing from upcoming | Filter on `startsAt` only | OR on `date` (as `startInstant`) | DB test |
 | R2-3 | P2 | The limit cut relationships, not businesses, which could hide the sharing one | `take` on relationships | `distinct` businesses first | DB test (would have failed on the old code) |
-| R2-5 | P3 | A non-approved organization's section vanished without a word | — | Explanation shown | Browser **pending** |
+| R2-5 | P3 | A non-approved organization's section vanished without a word | — | Explanation shown | Code and DB (`active: false`); not shown in a browser |
 | R2-6 | P3 | Upcoming sat under the window heading | Labelling | "Upcoming (any date)" | — |
-| R2-7 | P3 | The browser test toggled publish without checking it was restored | Test gap | Asserts the final state | Browser **pending** |
+| R2-7 | P3 | The browser test toggled publish without checking it was restored | Test gap | Asserts the final state and waits for each action's responses | Browser on B3: PASS |
 | R2-8 | P3 | Array copying per relationship | — | `push` | — |
 | QA | — | A placeholder check that always passed; three weak checks (pass after completion, pass after reschedule, desk privacy had no clinic visitor) | Test quality | Real assertions (gate attempts; a clinic visitor with a pass) | Themselves |
 
@@ -135,31 +135,32 @@ spreads customers across addresses. No secrets are logged.
 | PHASE NUMBER | 24 |
 | PHASE REQUIREMENTS STATUS | 1A–1D, 2, 3, 6, 8 PASS. 4 PASS except offline reload (PARTIAL, P2). 5 PARTIAL (latency variance). 7 BLOCKED (external). 9 PARTIAL |
 | CODE REVIEW STATUS | Two independent rounds (10 + 8 findings) and a self-review. 16 fixed, 2 not fixed by documented decision, 0 open defects |
-| BUILD STATUS | `next build` PASS on B1 and B2. B3 not rebuilt (memory); tsc and lint clean on B3 |
+| BUILD STATUS | `next build` PASS on B1, B2 and B3 (final) |
 | UNIT TESTS | 1311 passed, 0 failed; mobile 206 passed |
 | INTEGRATION TESTS | DB suites pass, including Phase 24 10/10 |
-| E2E TESTS | `qa-phase24` 147/147 and browser 22/22 on B2. The browser checks of round 2 are NOT RUN on B3 |
+| E2E TESTS | On B3: `qa-phase24` 147/147, browser 23/23, booking e2e 22/22, Phase 23 browser 49/49, loops 15/15 and 9/9; sweep 544 loads, 0 flagged |
 | SECURITY TESTS | PASS (`qa-security` 32/32, Phase 24 part 6 and audit checks) |
 | DATABASE INTEGRITY | PASS |
 | INFINITE-LOOP AUDIT | No known or reproducible unbounded loop. One request-repetition defect (R1-8) found and fixed. `PHASE_24_LOOP_AUDIT.md` |
 | MEMORY LEAK REVIEW | No leak found in the changed code. The QA machine's memory pressure comes from other processes |
-| PERFORMANCE REVIEW | PARTIAL: local targets met in 2 of 3 runs; the directory page varied (P24-P1). Not a production claim |
-| REGRESSION TESTS | 15 earlier QA scripts pass on B1. On B2, 5 were rerun before memory stopped the battery, all passing. 9 were not reached, and the site-wide sweep was not run |
-| TESTS NOT RUN | B3 browser checks; `qa-phase18` sweep; 9 regression scripts on B2/B3; production verification; real gate |
-| BUGS FOUND | 23: 4 phase gaps, 18 review findings, 1 placeholder test |
-| BUGS FIXED | 21: 4 gaps, 16 review findings, the test |
+| PERFORMANCE REVIEW | PARTIAL: local targets met in 2 of 4 runs; misses only when the whole PC was slow (every route about 2.5×), correctness always intact (P24-P1). Not a production claim |
+| REGRESSION TESTS | All 14 earlier QA scripts and the site-wide sweep pass on B3 (final) |
+| TESTS NOT RUN | Production verification (owner's decision: nothing created on production); real gate (external) |
+| BUGS FOUND | 23 product and test defects (4 phase gaps, 18 review findings, 1 placeholder test), and 1 timing fault in a new browser check |
+| BUGS FIXED | 22: 4 gaps, 16 review findings, the placeholder test and the timing fault |
 | UNRESOLVED BUGS | None open as defects. Two not fixed by decision (P24-R3, P24-R4) |
 | EXTERNAL BLOCKERS | Real gate partner (P24-E); real operator for a pilot (P24-L) |
-| PRODUCTION READINESS | Not merged. Needs P24-G1 (serve B3 and finish the runs), then P24-G2 (migration), then merge |
+| PRODUCTION READINESS | Ready to merge once P24-G2 (the production migration) is done. The pilot is not live (P24-L, P24-E) |
 
 **FINAL VERDICT: PARTIAL.**
 
-Every mandatory requirement is implemented and passes on B2, and no P0 or
-P1 defect is open. The verdict is not PASS for three reasons:
+Every mandatory requirement is implemented and passes on the final
+build, and every functional and regression suite passes. No P0 or P1
+defect is open. The verdict is not PASS for two reasons:
 
-* the final code's browser checks, the site-wide sweep and part of the
-  regression battery could not run (the QA machine ran out of memory);
-* one load run missed latency targets;
+* local load latency missed targets in 2 of 4 runs. This was the machine
+  (every route slowed together), but it is a mandatory test that did not
+  pass cleanly every time;
 * offline reload remains a P2 pilot finding.
 
 The real gate integration is BLOCKED and reported separately. The pilot
@@ -167,15 +168,12 @@ is not live.
 
 ### Exact next actions
 
-1. **Owner:** free memory by closing spare Chrome windows, and approve
-   restarting the QA server.
-2. **Engineering:** run the scratchpad helpers, which rebuild and rerun:
-   * `qa24-server.sh`;
-   * `qa24-regress.sh`, which covers the battery and `qa-phase18`;
-   * `qa-phase24.mjs` and `qa-phase24-browser.mjs` on B3.
-
-   Then update this file and `PHASE_24_REGRESSION_RESULTS.md`.
-3. **Owner:** run `migrate-phase24.sh` (expect `VERIFIED`), then merge.
-4. **Optional:** measure the directory page on a Vercel preview (P24-P1).
+1. **Owner:** run `migrate-phase24.sh` (expect `VERIFIED`), then merge
+   the Phase 24 PR.
+2. **Engineering, after merge:** run `qa-phase24-load.mjs` against a
+   Vercel preview, or measure the same flows in production with Vercel
+   analytics, to replace the local latency figures (P24-P1).
+3. **Owner:** decide on F1 (offline QR) and on a real operator for the
+   pilot.
 
 Phase 25 is not started.
