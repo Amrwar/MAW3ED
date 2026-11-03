@@ -15,11 +15,13 @@ export function useBookingAccess(token: string | undefined, lang: "ar" | "en", e
   const qc = useQueryClient();
   const key = keys.access.booking(token ?? "", lang);
   // Polls while a pass waits on the access system, a bounded number of
-  // times (logic.ts). Counted from TanStack's own count of answers since
-  // the last change the customer made (`since`), so nothing outside React
-  // keeps the count.
+  // times (logic.ts). Counted from TanStack's own counts of attempts —
+  // answers and failures alike, so a failing server is not asked forever —
+  // since the last change the customer made (`since`); nothing outside
+  // React keeps the count.
   const [since, setSince] = useState(0);
   const answered = (n: number) => Math.max(0, n - since - 1);
+  const attempts = (st: { dataUpdateCount: number; errorUpdateCount: number } | undefined) => (st ? st.dataUpdateCount + st.errorUpdateCount : 0);
   const query = useQuery({
     enabled: Boolean(token) && enabled,
     queryKey: key,
@@ -29,15 +31,15 @@ export function useBookingAccess(token: string | undefined, lang: "ar" | "en", e
         signal,
       }),
     staleTime: 15_000,
-    refetchInterval: (q) => nextPoll(q.state.data, answered(q.state.dataUpdateCount)),
+    refetchInterval: (q) => nextPoll(q.state.data, answered(attempts(q.state))),
   });
-  const count = qc.getQueryState(key)?.dataUpdateCount ?? 0;
+  const count = attempts(qc.getQueryState(key));
   return {
     ...query,
     /** Done asking on its own: the screen offers "check again". */
     pollsExhausted: answered(count) >= POLL_MAX,
     /** After a change the customer made: a new pass waits again, so the count starts over. */
-    resetPolls: () => setSince(qc.getQueryState(key)?.dataUpdateCount ?? 0),
+    resetPolls: () => setSince(attempts(qc.getQueryState(key))),
   };
 }
 

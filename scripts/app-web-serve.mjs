@@ -44,7 +44,9 @@ http
     }
     // A file of the build, or the app's single page for any route.
     let file = path.join(dir, decodeURIComponent(url.pathname));
-    if (!file.startsWith(dir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(dir, "index.html");
+    // Inside the build folder only (a sibling named like it is outside).
+    const rel = path.relative(dir, file);
+    if (rel.startsWith("..") || path.isAbsolute(rel) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(dir, "index.html");
     res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] ?? "application/octet-stream" });
     fs.createReadStream(file).pipe(res);
   })

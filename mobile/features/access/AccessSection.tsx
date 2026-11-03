@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Share, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { SvgXml } from "react-native-svg";
-import { Badge, Button, Card, ConfirmDialog, Icon, Text, TextField, colors, radius, spacing, useLocale } from "@/design";
+import { Badge, Button, Card, ConfirmDialog, Icon, Text, TextField, colors, radius, spacing, useLocale, useToast } from "@/design";
+import { shareLink } from "@/lib/share";
 import { config } from "@/lib/config";
 import { messageFor } from "@/lib/api/errors";
 import type { AccessPayload, PassView } from "@/types/access";
-import { canAskForPass, guestLink, guestsLeft, isWaiting, PASS_STATE, showsCode } from "./logic";
+import { canAskForPass, guestLink, isWaiting, PASS_STATE, showsCode } from "./logic";
 import {
   useAddGuest,
   useBookingAccess,
@@ -138,6 +139,7 @@ function PassesCard({
   const { lang } = useLocale();
   const T = (ar: string, en: string) => (lang === "ar" ? ar : en);
   const va = data.visitorAccess;
+  const toast = useToast();
   const request = useRequestPass(token, lang);
   const addGuest = useAddGuest(token, lang);
   const removeGuest = useRemoveGuest(token, lang);
@@ -187,7 +189,14 @@ function PassesCard({
                     icon="share-outline"
                     variant="outline"
                     size="sm"
-                    onPress={() => void Share.share({ message: guestLink(config.apiUrl, g.inviteToken!) }).catch(() => undefined)}
+                    onPress={() => {
+                      const url = guestLink(config.apiUrl, g.inviteToken!);
+                      void shareLink(
+                        { url, title: T(`تصريح ${g.displayName}`, `${g.displayName}'s pass`), message: T(`تصريح زيارتك: ${url}`, `Your visitor pass: ${url}`) },
+                        (message, tone) => toast({ message, tone }),
+                        T("اتنسخ الرابط", "Link copied"),
+                      );
+                    }}
                   />
                 ) : null}
                 <Button
@@ -201,7 +210,8 @@ function PassesCard({
               </View>
             </View>
           ))}
-          {guestsLeft(data) > 0 && va.guests.length < va.guestLimit ? (
+          {/* As the server counts: every guest not removed (the list shows exactly those). */}
+          {va.guests.length < va.guestLimit ? (
             <VisitorForm
               initialName=""
               phone={phoneNeeded ? "required" : "none"}

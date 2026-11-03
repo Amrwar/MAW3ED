@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canAskForPass, guestLink, guestsLeft, nextPoll, POLL_MAX, POLL_MS, showsCode } from "./logic";
+import { canAskForPass, guestLink, nextPoll, POLL_MAX, POLL_MS, showsCode } from "./logic";
 import type { AccessPayload, PassView } from "@/types/access";
 
 const pass = (over: Partial<PassView> = {}): PassView => ({
@@ -45,11 +45,6 @@ describe("what the screen shows", () => {
     expect(canAskForPass(payload({ offered: false }))).toBe(false);
     expect(canAskForPass(payload({ eligibility: { eligible: false, reason: "booking-pending" } }))).toBe(false);
     expect(canAskForPass(payload({ holder: pass() }))).toBe(false);
-  });
-  it("guests left under the venue's limit, counting live guests only", () => {
-    expect(guestsLeft(payload())).toBe(2);
-    expect(guestsLeft(payload({ guests: [pass({ role: "GUEST" }), pass({ role: "GUEST", state: "revoked" })] }))).toBe(1);
-    expect(guestsLeft(payload({ guestLimit: 1, guests: [pass({ role: "GUEST" }), pass({ role: "GUEST" })] }))).toBe(0);
   });
   it("a guest's link is the website's pass page", () => {
     expect(guestLink("https://www.maw3ed.net/", "abc")).toBe("https://www.maw3ed.net/pass/abc");

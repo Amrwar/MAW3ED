@@ -82,13 +82,21 @@ const TABLE: [prefix: string, route: AppRoute][] = [
 ];
 
 /** What each kind of value may look like before it is put in a route. */
-const SLUG = /^[a-z0-9_-]{1,100}$/;
+export const SLUG = /^[a-z0-9_-]{1,100}$/;
+/**
+ * An organization's slug, as the server's orgSlugSchema allows it
+ * (src/lib/organizations/rules.ts): 3–60 characters, lowercase words
+ * joined by single hyphens. Anything else is not sent: the booking
+ * schema refuses an `org` over 60 characters, and must never fail a
+ * booking over attribution.
+ */
+export const ORG_SLUG = /^(?=.{3,60}$)[a-z0-9]+(-[a-z0-9]+)*$/;
 const TOKEN = /^[A-Za-z0-9]{16,128}$/;
 /** cuid()s, and the seed's readable ids ("qa-dr-1"). */
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 const SOURCE = /^[a-z0-9_-]{1,32}$/;
 /** A guest's pass link (src/app/api/pass/[inviteToken]). */
-const PASS_TOKEN = /^[A-Za-z0-9_-]{20,64}$/;
+export const PASS_TOKEN = /^[A-Za-z0-9_-]{20,64}$/;
 
 export interface Link {
   path: string;
@@ -162,10 +170,10 @@ export function routeFor(input: string): AppRoute {
         ["service", service, ID],
         ["staff", q.get("staff"), ID],
         ["src", source, SOURCE],
-        ["org", q.get("org"), SLUG],
+        ["org", q.get("org"), ORG_SLUG],
       ])}`;
     }
-    return `/business/${slug}${queryOf([["src", source, SOURCE], ["org", q.get("org"), SLUG]])}`;
+    return `/business/${slug}${queryOf([["src", source, SOURCE], ["org", q.get("org"), ORG_SLUG]])}`;
   }
   if (path === "/company" || path.startsWith("/company/")) return "/(customer)/search";
 
@@ -187,7 +195,7 @@ export function routeFor(input: string): AppRoute {
   const group = /^\/groups\/([^/]+)$/.exec(path);
   if (group) {
     const slug = group[1]!;
-    if (!SLUG.test(slug)) return "/places";
+    if (!ORG_SLUG.test(slug)) return "/places";
     return `/org/${slug}${queryOf([["src", source, SOURCE]])}`;
   }
   if (path === "/groups") return "/places";

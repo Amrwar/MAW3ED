@@ -237,6 +237,14 @@ try {
     const shown = (await text(p0)).includes("أهلًا، سارة");
     check("a cold start with no answer keeps the sign-in (and the tokens)", kept && shown, `tokens ${kept}, name shown ${shown}; ${(await text(p0)).slice(0, 160)}`);
     await c2.unroute("**/api/auth/mobile/me");
+    // Back online: the app asks the server once, and settles.
+    let meCalls = 0;
+    p0.on("request", (r) => { if (r.url().includes("/api/auth/mobile/me")) meCalls += 1; });
+    await c2.setOffline(true);
+    await p0.waitForTimeout(500);
+    await c2.setOffline(false);
+    await p0.waitForTimeout(6000);
+    check("back online, the app re-checks the session once (no loop)", meCalls === 1, `${meCalls} calls`);
     // The session ended on the server: signed out on the next check.
     await c2.route("**/api/auth/mobile/**", (r) => r.fulfill({ status: 401, contentType: "application/json", body: '{"error":"x"}' }));
     await p0.reload({ waitUntil: "networkidle" });

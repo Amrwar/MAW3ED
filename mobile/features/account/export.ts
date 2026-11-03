@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import { File, Paths } from "expo-file-system";
+import { Directory, File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { api } from "@/lib/api/client";
 
@@ -13,8 +13,31 @@ import { api } from "@/lib/api/client";
  */
 export type ExportResult = "shared" | "downloaded" | "unavailable";
 
+const PREFIX = "maw3ed-my-data-";
+
 export function exportFileName(now = new Date()): string {
-  return `maw3ed-my-data-${now.toISOString().slice(0, 10)}.json`;
+  return `${PREFIX}${now.toISOString().slice(0, 10)}.json`;
+}
+
+/** An export written to the cache for the share sheet; nothing else there is. */
+export function isExportFile(name: string): boolean {
+  return name.startsWith(PREFIX) && name.endsWith(".json");
+}
+
+/**
+ * Removes exports left in the phone's cache (after the share sheet
+ * closes, and on sign-out), so a copy of somebody's data is not left
+ * behind for whoever uses the phone next. Best effort.
+ */
+export async function forgetExports(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    for (const item of new Directory(Paths.cache).list()) {
+      if (item instanceof File && isExportFile(item.name)) item.delete();
+    }
+  } catch {
+    // Never fails a sign-out.
+  }
 }
 
 export async function exportMyData(): Promise<ExportResult> {
@@ -34,6 +57,15 @@ export async function exportMyData(): Promise<ExportResult> {
   const file = new File(Paths.cache, name);
   file.create({ overwrite: true });
   file.write(text);
-  await Sharing.shareAsync(file.uri, { mimeType: "application/json", dialogTitle: name, UTI: "public.json" });
+  try {
+    await Sharing.shareAsync(file.uri, { mimeType: "application/json", dialogTitle: name, UTI: "public.json" });
+  } finally {
+    // The share sheet has handed it on (or was closed): the cache copy goes.
+    try {
+      file.delete();
+    } catch {
+      // Already gone.
+    }
+  }
   return "shared";
 }

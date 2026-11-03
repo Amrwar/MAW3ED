@@ -6,6 +6,7 @@ import { Badge, Button, Card, EmptyState, ErrorState, SkeletonCard, Text, TopBar
 import { useGuestPass } from "@/features/access/queries";
 import { PASS_STATE, showsCode } from "@/features/access/logic";
 import { ApiError } from "@/lib/api/errors";
+import { PASS_TOKEN } from "@/lib/links";
 
 /**
  * A guest's own visitor pass, from the link the booking's holder sent them
@@ -13,11 +14,10 @@ import { ApiError } from "@/lib/api/errors";
  * instructions — nothing about the booking, the business or anyone else.
  * The code shows only once the venue's access system confirmed the pass.
  */
-const TOKEN = /^[A-Za-z0-9_-]{20,64}$/;
 
 export default function GuestPassScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
-  const valid = typeof token === "string" && TOKEN.test(token);
+  const valid = typeof token === "string" && PASS_TOKEN.test(token);
   const { lang } = useLocale();
   const T = (ar: string, en: string) => (lang === "ar" ? ar : en);
   const q = useGuestPass(valid ? token : undefined, lang);

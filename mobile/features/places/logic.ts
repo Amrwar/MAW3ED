@@ -1,4 +1,5 @@
 import type { OrgDirectoryEntry, VenueDirectoryEntry } from "@/types/places";
+import { ORG_SLUG, SLUG } from "@/lib/links";
 
 /**
  * Directories of organizations and venues: narrowing them, and the way
@@ -10,8 +11,7 @@ import type { OrgDirectoryEntry, VenueDirectoryEntry } from "@/types/places";
 
 type Entry = OrgDirectoryEntry | VenueDirectoryEntry;
 
-/** What a slug may look like before it goes into a route or a booking. */
-export const SLUG = /^[a-z0-9_-]{1,100}$/;
+export { ORG_SLUG, SLUG };
 
 export function matches(e: Entry, q: string): boolean {
   const s = q.trim().toLowerCase();
@@ -63,12 +63,12 @@ export function sectionsOf(entries: OrgDirectoryEntry[]): string[] {
  */
 export function businessRoute(businessSlug: string, orgSlug?: string | null): { pathname: "/business/[slug]"; params: { slug: string; org?: string } } {
   const params: { slug: string; org?: string } = { slug: businessSlug };
-  if (orgSlug && SLUG.test(orgSlug)) params.org = orgSlug;
+  if (orgSlug && ORG_SLUG.test(orgSlug)) params.org = orgSlug;
   return { pathname: "/business/[slug]", params };
 }
 
 /** An org param from a route or link, or undefined when it is not a slug. */
 export function orgParam(value: string | string[] | undefined): string | undefined {
   const v = Array.isArray(value) ? value[0] : value;
-  return v && SLUG.test(v) ? v : undefined;
+  return v && ORG_SLUG.test(v) ? v : undefined;
 }

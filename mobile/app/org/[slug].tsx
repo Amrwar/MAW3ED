@@ -8,7 +8,7 @@ import {
 } from "@/design";
 import { BusinessCard } from "@/features/discovery/BusinessCard";
 import { useOrganization, countOrganizationVisit } from "@/features/places/queries";
-import { businessRoute, categoriesOf, filterEntries, sectionsOf, SLUG } from "@/features/places/logic";
+import { businessRoute, categoriesOf, filterEntries, ORG_SLUG, sectionsOf } from "@/features/places/logic";
 import { PlaceRow, entryCard, kindLabel } from "@/features/places/PlaceRow";
 import { ApiError } from "@/lib/api/errors";
 import { config } from "@/lib/config";
@@ -26,7 +26,7 @@ import type { OrgDetail } from "@/types/places";
  */
 export default function OrgScreen() {
   const { slug, src } = useLocalSearchParams<{ slug: string; src?: string }>();
-  const valid = typeof slug === "string" && SLUG.test(slug);
+  const valid = typeof slug === "string" && ORG_SLUG.test(slug);
   const q = useOrganization(valid ? slug : undefined);
   const { lang } = useLocale();
   const T = (ar: string, en: string) => (lang === "ar" ? ar : en);

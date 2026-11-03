@@ -1,13 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { onlineManager, useQueryClient } from "@tanstack/react-query";
-import { UnauthorizedError } from "@/lib/api/errors";
 import { onSessionExpired } from "@/lib/api/client";
 import { track } from "@/lib/analytics";
 import { registerForPush, unregisterPush } from "@/features/notifications/push";
 import { clearTokens, getTokens, lastUser, rememberUser, setTokens } from "./token-store";
-import { restoreSession } from "./restore";
+import { recheckSession, restoreSession } from "./restore";
 import { forgetLocalData } from "./local-data";
+import { forgetExports } from "@/features/account/export";
 import { fetchMe, loginWithPassword, loginWithPhoneCode, logout, requestPhoneCode } from "./api";
 import type { AppRole, AuthUser, LoginResponse } from "./roles";
 import { primaryRole, rolesFor } from "./roles";
@@ -50,6 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Shown from the phone's memory because the server could not be asked
   // at launch; asked again as soon as the app is back online.
   const [unverified, setUnverified] = useState(false);
+  // Bumped whenever who is signed in changes (sign-in, sign-out, a session
+  // ending): an answer to a question asked before that is about somebody
+  // else's session and is dropped.
+  const epoch = useRef(0);
 
   // Cold start: if there are tokens, ask the server who they belong to.
   // Only an answer "this session is over" signs out; no signal keeps the
@@ -78,34 +82,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Back online after a launch without a connection: the server's answer,
-  // once. A refused session signs out; another failure waits for the next
-  // time the connection comes back.
+  // Back online after a launch without a connection: the server's answer
+  // (restore.ts). A refused session signs out; an answer that arrives
+  // after somebody signed in or out is about another session and dropped.
   useEffect(() => {
     if (!unverified) return;
-    let busy = false;
-    const check = () => {
-      if (busy || !onlineManager.isOnline()) return;
-      busy = true;
-      fetchMe()
-        .then(async (me) => {
-          setUser(me);
-          setUnverified(false);
-          await rememberUser(me).catch(() => undefined);
-        })
-        .catch(async (e) => {
-          if (e instanceof UnauthorizedError) {
-            await clearTokens();
-            setUser(null);
-            setUnverified(false);
-          }
-        })
-        .finally(() => {
-          busy = false;
-        });
-    };
-    check();
-    return onlineManager.subscribe(check);
+    const asked = epoch.current;
+    return recheckSession({
+      fetchMe,
+      clearTokens,
+      rememberUser,
+      isOnline: () => onlineManager.isOnline(),
+      onConnectionChange: (fn) => onlineManager.subscribe(fn),
+      isStale: () => epoch.current !== asked,
+      confirmed: (me) => {
+        setUser(me);
+        setUnverified(false);
+      },
+      signedOut: () => {
+        setUser(null);
+        setUnverified(false);
+      },
+    });
   }, [unverified]);
 
   // The session can end underneath the app — a refresh token revoked on
@@ -114,7 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(
     () =>
       onSessionExpired(() => {
+        epoch.current++;
         setUser(null);
+        setUnverified(false);
         queryClient.clear();
         track("session_expired");
       }),
@@ -129,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const accept = useCallback(
     async (result: LoginResponse, method: "password" | "phone") => {
+      epoch.current++;
       await setTokens(result);
       await rememberUser(result.user).catch(() => undefined);
       // Whatever the last account cached is not this account's.
@@ -166,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    epoch.current++;
     // Before the tokens go: forgetting the device needs them.
     await unregisterPush();
     const tokens = await getTokens();
@@ -182,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // What this person typed or started on the phone goes with them:
       // booking drafts (name, phone), unfinished payments, searches.
       await forgetLocalData();
+      await forgetExports();
       queryClient.clear();
       setUser(null);
       setUnverified(false);

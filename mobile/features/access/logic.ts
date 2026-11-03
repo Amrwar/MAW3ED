@@ -43,12 +43,6 @@ export function canAskForPass(p: AccessPayload): boolean {
   return p.visitorAccess.offered && p.visitorAccess.eligibility.eligible && !p.visitorAccess.holder;
 }
 
-/** Room for another named guest under the venue's limit. */
-export function guestsLeft(p: AccessPayload): number {
-  const live = p.visitorAccess.guests.filter((g) => g.state !== "revoked" && g.state !== "expired").length;
-  return Math.max(0, p.visitorAccess.guestLimit - live);
-}
-
 /** A guest's own link, to send them (the website's pass page; the app opens it too). */
 export function guestLink(base: string, inviteToken: string): string {
   return `${base.replace(/\/$/, "")}/pass/${inviteToken}`;

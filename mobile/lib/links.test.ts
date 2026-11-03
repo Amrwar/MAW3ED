@@ -117,6 +117,8 @@ describe("routeFor", () => {
     expect(routeFor("https://www.maw3ed.net/company/grill?org=palm-group")).toBe("/business/grill?org=palm-group");
     expect(routeFor("/company/grill?org=palm-group&service=s1")).toBe("/book/grill?service=s1&org=palm-group");
     expect(routeFor("/company/grill?org=../evil")).toBe("/business/grill");
+    expect(routeFor(`/company/grill?org=${"a".repeat(61)}`)).toBe("/business/grill");
+    expect(routeFor("/groups/a_b")).toBe("/places");
   });
 
   it("opens a guest's pass from its link; a check-in desk link stays on the website", () => {

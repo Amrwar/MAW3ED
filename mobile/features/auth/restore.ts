@@ -42,3 +42,71 @@ export async function restoreSession(d: RestoreDeps): Promise<Restored> {
     return { user: await d.lastUser().catch(() => null), verified: false };
   }
 }
+
+/** After a failed re-check that was not a refusal: ask again after these waits, then only when the connection returns. */
+export const RECHECK_MS = [5_000, 30_000, 120_000] as const;
+
+export interface RecheckDeps {
+  fetchMe: () => Promise<AuthUser>;
+  clearTokens: () => Promise<void>;
+  rememberUser: (u: AuthUser) => Promise<void>;
+  isOnline: () => boolean;
+  /** Calls back whenever the connection changes; answers how to stop. */
+  onConnectionChange: (fn: () => void) => () => void;
+  /** True once who is signed in has changed since the check began: its answer is dropped. */
+  isStale: () => boolean;
+  /** The server confirmed the account. */
+  confirmed: (u: AuthUser) => void;
+  /** The server refused the session: tokens cleared. */
+  signedOut: () => void;
+  setTimer?: (fn: () => void, ms: number) => unknown;
+  clearTimer?: (t: unknown) => void;
+}
+
+/**
+ * After a launch shown from the phone's memory (`verified: false`): asks
+ * the server again — now if online, whenever the connection comes back,
+ * and after each failure that was not a refusal, RECHECK_MS apart, a
+ * bounded number of times. Answers how to stop.
+ */
+export function recheckSession(d: RecheckDeps): () => void {
+  const setTimer = d.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
+  const clearTimer = d.clearTimer ?? ((t) => clearTimeout(t as ReturnType<typeof setTimeout>));
+  let busy = false;
+  let stopped = false;
+  let tries = 0;
+  let timer: unknown;
+  const stale = () => stopped || d.isStale();
+  const check = () => {
+    if (busy || stale() || !d.isOnline()) return;
+    busy = true;
+    if (timer !== undefined) clearTimer(timer);
+    timer = undefined;
+    d.fetchMe()
+      .then(async (me) => {
+        if (stale()) return;
+        d.confirmed(me);
+        await d.rememberUser(me).catch(() => undefined);
+      })
+      .catch(async (e) => {
+        if (stale()) return;
+        if (e instanceof UnauthorizedError) {
+          await d.clearTokens();
+          if (!stale()) d.signedOut();
+          return;
+        }
+        const wait = RECHECK_MS[tries++];
+        if (wait !== undefined) timer = setTimer(check, wait);
+      })
+      .finally(() => {
+        busy = false;
+      });
+  };
+  check();
+  const unsubscribe = d.onConnectionChange(check);
+  return () => {
+    stopped = true;
+    if (timer !== undefined) clearTimer(timer);
+    unsubscribe();
+  };
+}
