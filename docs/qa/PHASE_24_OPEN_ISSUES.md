@@ -6,7 +6,7 @@ an exact next action.
 | # | Severity | Issue | Why not fixed now | Owner | Next action |
 |---|---|---|---|---|---|
 | ~~P24-G1~~ | Closed 2026-11-03 | The final build was served and every run completed: `qa-phase24` 147/147, browser 23/23, 14 earlier QA scripts, and the sweep (544 loads, 0 flagged) | — | — | — |
-| P24-G2 | Release gate | Production migration `phase24_resources_scope.sql` not applied | Production access is the owner's | Owner | `! bash …/scratchpad/migrate-phase24.sh` → `applied`, `VERIFIED`; then merge |
+| ~~P24-G2~~ | Closed 2026-11-03 | Production migration applied and VERIFIED by the owner | — | Owner | Merge the PR |
 | P24-E | External (BLOCKED) | No real gate partner (agreement, documentation, credentials, test gate) | External | Owner / partner | `docs/eterna/PARTNER_INTEGRATION_STATUS.md` |
 | P24-L | Release gate (pilot) | No real operator; the pilot is not LIVE | Owner decision (Eterna is a concept) | Owner | `docs/eterna/PILOT_PLAN.md`, stage 0 |
 | P24-F1 | P2 (pilot) | Reloading the booking page offline shows the offline notice, not the QR | Product and privacy decision (keeping a copy of a secret page on the device) | Product | Options in `LAUNCH_READINESS.md` F1; staff fallback documented |
