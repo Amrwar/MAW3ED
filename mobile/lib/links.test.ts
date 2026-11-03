@@ -100,4 +100,35 @@ describe("routeFor", () => {
     expect(routeFor("/dashboard/bookings?booking=cmv70wd2z0006z0nthl5e4222")).toBe("/manage/booking/cmv70wd2z0006z0nthl5e4222");
     expect(routeFor("/dashboard/bookings?booking=../x")).toBe("/(business)/calendar");
   });
+
+  it("opens an organization's page from its link or QR code, keeping the channel", () => {
+    expect(routeFor("https://www.maw3ed.net/groups/nile-gate-mall?src=qr")).toBe("/org/nile-gate-mall?src=qr");
+    expect(routeFor("https://www.maw3ed.net/en/groups/palm-group")).toBe("/org/palm-group");
+    expect(routeFor("/groups")).toBe("/places");
+    expect(routeFor("/groups/Bad%20Slug")).toBe("/places");
+    // A path that is no page of ours lands home, never somewhere it names.
+    expect(routeFor("/groups/x/../../admin")).toBe("/");
+  });
+
+  it("opens venues, and a business reached from an organization keeps it for attribution", () => {
+    expect(routeFor("/venues/nile-gate")).toBe("/venue/nile-gate");
+    expect(routeFor("/venues")).toBe("/places?tab=venues");
+    expect(routeFor("/venues/<script>")).toBe("/places?tab=venues");
+    expect(routeFor("https://www.maw3ed.net/company/grill?org=palm-group")).toBe("/business/grill?org=palm-group");
+    expect(routeFor("/company/grill?org=palm-group&service=s1")).toBe("/book/grill?service=s1&org=palm-group");
+    expect(routeFor("/company/grill?org=../evil")).toBe("/business/grill");
+  });
+
+  it("opens a guest's pass from its link; a check-in desk link stays on the website", () => {
+    expect(routeFor("https://www.maw3ed.net/pass/AbCdEfGhIjKlMnOpQrStUv12")).toBe("/pass/AbCdEfGhIjKlMnOpQrStUv12");
+    expect(routeFor("/pass/short")).toBe("/");
+    expect(routeFor("/pass/x?y=<b>")).toBe("/");
+    // /c/<code> is the business's front-desk page, not a customer screen.
+    expect(routeFor("/c/" + "A".repeat(43))).toBe("/");
+  });
+
+  it("opens support from the website's contact and help links", () => {
+    expect(routeFor("/contact")).toBe("/support");
+    expect(routeFor("/en/help")).toBe("/support");
+  });
 });

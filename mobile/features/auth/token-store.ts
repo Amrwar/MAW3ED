@@ -1,6 +1,7 @@
 import * as SecureStoreNative from "expo-secure-store";
 import { Platform } from "react-native";
 import { config } from "@/lib/config";
+import type { AuthUser } from "./roles";
 
 /**
  * Where the tokens live.
@@ -19,6 +20,12 @@ import { config } from "@/lib/config";
 const ACCESS_KEY = "maw3ed.access";
 const REFRESH_KEY = "maw3ed.refresh";
 const EXPIRY_KEY = "maw3ed.expiresAt";
+/**
+ * The account last confirmed by the server, so a cold start without a
+ * connection still shows who is signed in (features/auth/restore.ts).
+ * Never trusted for anything: the server checks every request.
+ */
+const LAST_USER_KEY = "maw3ed.lastUser";
 
 /**
  * The browser preview only. A browser has no Keychain or Keystore, so
@@ -84,5 +91,20 @@ export async function clearTokens(): Promise<void> {
     SecureStore.deleteItemAsync(ACCESS_KEY, OPTIONS),
     SecureStore.deleteItemAsync(REFRESH_KEY, OPTIONS),
     SecureStore.deleteItemAsync(EXPIRY_KEY, OPTIONS),
+    SecureStore.deleteItemAsync(LAST_USER_KEY, OPTIONS),
   ]);
+}
+
+export async function rememberUser(user: AuthUser): Promise<void> {
+  await SecureStore.setItemAsync(LAST_USER_KEY, JSON.stringify(user), OPTIONS);
+}
+
+export async function lastUser(): Promise<AuthUser | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(LAST_USER_KEY, OPTIONS);
+    const u = raw ? (JSON.parse(raw) as AuthUser) : null;
+    return u && typeof u.id === "string" ? u : null;
+  } catch {
+    return null;
+  }
 }

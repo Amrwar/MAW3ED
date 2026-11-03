@@ -254,6 +254,8 @@ export interface BookingRequest {
   branchId?: string;
   partySize?: number;
   discountCode?: string;
+  /** The organization (mall, group) whose directory the booking started from: a statistic for it, never ownership. */
+  org?: string;
   idempotencyKey: string;
   source: "MAW3ED";
 }
@@ -263,7 +265,7 @@ export interface BookingRequest {
  * the same booking, which is what the idempotency key is for; a changed
  * body is a different booking and gets a new key.
  */
-export function requestBody(p: Profile, d: Draft, phone: string, discountCode: string | null): Omit<BookingRequest, "idempotencyKey"> | null {
+export function requestBody(p: Profile, d: Draft, phone: string, discountCode: string | null, org?: string): Omit<BookingRequest, "idempotencyKey"> | null {
   if (!d.serviceId || !d.date || !d.time) return null;
   const resource = d.resourceId ? p.resources.find((r) => r.id === d.resourceId) : undefined;
   return {
@@ -279,6 +281,7 @@ export function requestBody(p: Profile, d: Draft, phone: string, discountCode: s
     branchId: d.branchId ?? undefined,
     partySize: resource && resource.capacity !== null ? d.partySize : undefined,
     discountCode: discountCode ?? undefined,
+    org: org || undefined,
     source: "MAW3ED",
   };
 }

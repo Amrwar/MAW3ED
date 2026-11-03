@@ -22,7 +22,19 @@ export const APP_ID = "net.maw3ed.app";
  * app with nothing to show for it. Matches the Android intent filters
  * in mobile/app.config.ts.
  */
-export const APP_LINK_PATHS = ["/company/*", "/booking/*"] as const;
+export const APP_LINK_PATHS = [
+  "/company/*",
+  "/en/company/*",
+  "/booking/*",
+  // Organizations (malls, groups) and their QR codes, venues, and a guest's
+  // visitor pass (Phase 25). /c/<code> is the business's front-desk page
+  // and stays in the browser.
+  "/groups/*",
+  "/en/groups/*",
+  "/venues/*",
+  "/en/venues/*",
+  "/pass/*",
+] as const;
 
 export function appleAppSiteAssociation(teamId: string | undefined) {
   const team = teamId?.trim();

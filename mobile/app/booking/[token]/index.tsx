@@ -30,6 +30,7 @@ import { trackBooking } from "@/features/booking/events";
 import { OUTCOME_TONE, notificationLines, outcomeCopy, outcomeOf, shouldPoll, type Outcome } from "@/features/booking/outcome";
 import { POLL_FOR_MS, useBooking } from "@/features/booking/queries";
 import { useCancelBooking } from "@/features/booking/manage";
+import { AccessSection } from "@/features/access/AccessSection";
 import { forgetPayment, paymentPage, rememberPayment } from "@/features/booking/storage";
 import { api } from "@/lib/api/client";
 import { directionsUrl, pinDirectionsUrl, telUrl, whatsappUrl } from "@/features/profile/profile";
@@ -503,6 +504,9 @@ function Details({
             onPress={() => router.push({ pathname: "/booking/[token]/review", params: { token } })}
           />
         ) : null}
+
+        {/* ── Getting in: the check-in QR, and the venue's passes where offered ── */}
+        {live ? <AccessSection token={token} customerName={b.customerName} /> : null}
 
         {/* ── What next ── */}
         <View style={styles.list}>

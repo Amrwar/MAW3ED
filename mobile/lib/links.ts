@@ -45,6 +45,12 @@ export type AppRoute =
   | "/(business)/account"
   | "/(admin)"
   | "/nearby"
+  | "/places"
+  | "/support"
+  | `/places?${string}`
+  | `/org/${string}`
+  | `/venue/${string}`
+  | `/pass/${string}`
   | `/business/${string}`
   | `/book/${string}`
   | `/booking/${string}`
@@ -81,6 +87,8 @@ const TOKEN = /^[A-Za-z0-9]{16,128}$/;
 /** cuid()s, and the seed's readable ids ("qa-dr-1"). */
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 const SOURCE = /^[a-z0-9_-]{1,32}$/;
+/** A guest's pass link (src/app/api/pass/[inviteToken]). */
+const PASS_TOKEN = /^[A-Za-z0-9_-]{20,64}$/;
 
 export interface Link {
   path: string;
@@ -147,14 +155,17 @@ export function routeFor(input: string): AppRoute {
     const slug = company[1]!;
     if (!SLUG.test(slug)) return "/(customer)/search";
     const service = q.get("service");
+    // ?org=: reached from an organization's directory; a booking from
+    // there is credited to it (the server checks the business is listed).
     if (service && ID.test(service)) {
       return `/book/${slug}${queryOf([
         ["service", service, ID],
         ["staff", q.get("staff"), ID],
         ["src", source, SOURCE],
+        ["org", q.get("org"), SLUG],
       ])}`;
     }
-    return `/business/${slug}${queryOf([["src", source, SOURCE]])}`;
+    return `/business/${slug}${queryOf([["src", source, SOURCE], ["org", q.get("org"), SLUG]])}`;
   }
   if (path === "/company" || path.startsWith("/company/")) return "/(customer)/search";
 
@@ -170,6 +181,30 @@ export function routeFor(input: string): AppRoute {
     return `/booking/${token}${step ? `/${step}` : ""}`;
   }
   if (path === "/booking" || path.startsWith("/booking/")) return "/(customer)/bookings";
+
+  // An organization (a mall, a group) and its directory; its QR code
+  // carries ?src=qr, counted as the website counts it.
+  const group = /^\/groups\/([^/]+)$/.exec(path);
+  if (group) {
+    const slug = group[1]!;
+    if (!SLUG.test(slug)) return "/places";
+    return `/org/${slug}${queryOf([["src", source, SOURCE]])}`;
+  }
+  if (path === "/groups") return "/places";
+  // A venue (a mall, an office park) and the businesses in it.
+  const venue = /^\/venues\/([^/]+)$/.exec(path);
+  if (venue) {
+    const slug = venue[1]!;
+    return SLUG.test(slug) ? `/venue/${slug}` : "/places?tab=venues";
+  }
+  if (path === "/venues") return "/places?tab=venues";
+  // A guest's visitor pass, from the link the booking's holder sent them.
+  const guestPass = /^\/pass\/([^/]+)$/.exec(path);
+  if (guestPass) {
+    const token = guestPass[1]!;
+    return PASS_TOKEN.test(token) ? `/pass/${token}` : "/";
+  }
+  if (path === "/contact" || path === "/help" || path === "/support") return "/support";
 
   // A business notification about one booking: the server adds the id
   // (src/lib/notifications/recipients.ts); the business side opens it,
