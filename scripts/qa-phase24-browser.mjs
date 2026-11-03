@@ -245,6 +245,14 @@ try {
     await page.goto(`${B}/en/org-admin/${palm.id}`, { waitUntil: "networkidle" });
     const pf = (await page.locator('section[aria-labelledby="pf-h"]').textContent()) ?? "";
     check("console: the group's portfolio shows Palm Grill with its bookings and revenue", pf.includes("Palm Grill (test)") && /EGP/.test(pf), pf.replace(/\s+/g, " ").slice(0, 200));
+    // Audit (review finding 8): actions in the console reload its lists, not the portfolio.
+    let pfReads = 0;
+    page.on("request", (r) => { if (r.url().includes("/portfolio")) pfReads += 1; });
+    for (let i = 0; i < 2; i++) {
+      await page.getByRole("button", { name: /^(Hide page|Publish page)$/ }).click();
+      await page.waitForLoadState("networkidle");
+    }
+    check("console: two actions later, the portfolio has not been asked for again", pfReads === 0, `${pfReads} reads`);
     await ctx.close();
     const c2 = await context("ar", 375, ops);
     const p2 = await c2.newPage();

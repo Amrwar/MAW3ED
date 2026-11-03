@@ -93,7 +93,7 @@ export function figuresFrom(
   };
 }
 
-export async function organizationPortfolio(organizationId: string, windowDays = 30, now = new Date()): Promise<PortfolioReport> {
+export async function organizationPortfolio(organizationId: string, windowDays = 30, now = new Date(), limit = PORTFOLIO_LIMIT): Promise<PortfolioReport> {
   const from = cairoDayBefore(windowDays - 1, now);
   const to = cairoDay(now);
   const empty = { bookings: 0, upcoming: 0, completed: 0, noShows: 0, cancelled: 0, revenue: null, sharing: 0, withFinance: 0 };
@@ -112,15 +112,15 @@ export async function organizationPortfolio(organizationId: string, windowDays =
       OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
     },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    take: PORTFOLIO_LIMIT + 1,
+    take: limit + 1,
     select: {
       id: true, relation: true, scopes: true, branchId: true,
       branch: { select: { nameAr: true, nameEn: true } },
       business: { select: { id: true, slug: true, nameAr: true, nameEn: true } },
     },
   });
-  const truncated = associations.length > PORTFOLIO_LIMIT;
-  const list = associations.slice(0, PORTFOLIO_LIMIT);
+  const truncated = associations.length > limit;
+  const list = associations.slice(0, limit);
 
   // One row per business, however many relationships it has with us.
   const byBusiness = new Map<string, typeof list>();

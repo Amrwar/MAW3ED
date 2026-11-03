@@ -108,6 +108,20 @@ try {
   check("A7: resource management — with RESOURCES the manager sees Palm Grill's tables, resizes one and adds another",
     (resGrill.resources ?? resGrill.data ?? resGrill).length >= 2 && tableEdit.status === 200 && [200, 201].includes(tableAdd.status), `${tableEdit.status}/${tableAdd.status}`);
   check("A7: the tables page opens for the manager", (await call(palmOps, "/dashboard/resources")).status === 200);
+  // Audit: the tables API, attacked directly.
+  const cafeTable = (await json(await send(cafe.owner, "/api/business/resources", "POST", { name: "ترابيزة الكافيه", kind: "TABLE", capacity: 2 }))).resource?.id;
+  const crossEdit = await send(palmOps, `/api/business/resources/${cafeTable}`, "PATCH", { capacity: 99 });
+  const crossDelete = await send(palmOps, `/api/business/resources/${cafeTable}`, "DELETE");
+  check("A7 (audit): operating Palm Grill, another brand's table cannot be edited or deleted by its id (404), and is unchanged",
+    crossEdit.status === 404 && crossDelete.status === 404 && (await pg.query(`SELECT capacity FROM "Resource" WHERE id = $1`, [cafeTable])).rows[0]?.capacity === 2, `${crossEdit.status}/${crossDelete.status}`);
+  check("A7 (audit): signed out, the tables API refuses", [401, 404].includes((await call(null, "/api/business/resources")).status));
+  if (SECRET) {
+    const waiter = await account("grill-waiter", "Grill manager on the app (test)");
+    await pg.query(`INSERT INTO "StaffMember" (id, "businessId", "nameAr", access, "userId", "isActive", "workingDays", specialties, "updatedAt") VALUES ($1, $2, 'مدير صالة', 'MANAGER', $3, true, '{}', '{}', now())`, [`${tag}-mgr`, grill.id, waiter.userId]);
+    const tk = await bearer(waiter.userId, grill.id);
+    const staffRes = await fetch(`${B}/api/business/resources`, { headers: { Authorization: `Bearer ${tk}` } });
+    check("A7 (audit): a staff manager's app token cannot reach the tables (owner or granted organization only, as before)", staffRes.status === 403, `status ${staffRes.status}`);
+  } else notRun("A7 (audit): staff token on the tables API", "AUTH_SECRET not available");
   const grillBooking = (await json(await call(palmOps, "/api/business/bookings?limit=100"))).bookings?.find((b) => b.id === bks.g1.id);
   check("A8: with FINANCE, the manager sees Palm Grill's prices", grillBooking && Number(grillBooking.totalPrice) > 0, JSON.stringify(grillBooking ?? null).slice(0, 160));
   await act(palmOps, cafe.id);
