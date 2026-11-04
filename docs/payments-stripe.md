@@ -96,16 +96,36 @@ session); webhook API version documented; a second click reuses the open
 checkout; admin list labels Stripe; unused imports; one definition of
 "configured".
 
+## End to end in Stripe test mode (staging) — 2026-11-05
+
+Staging (`maw3ed-staging.vercel.app`, fictional data) with a restricted
+test key and a test webhook destination (`maw3ed-staging-plans`, API
+2026-10-28.endive, the 5 events):
+
+| Step | Result |
+|---|---|
+| Owner (Pro, fictional) picks "International card" → Upgrade to Premium | Stripe Checkout opened: **"Maw3ed Premium — 1 month, EGP 499.00"** — EGP is accepted on the Canadian account |
+| Paid with Stripe's test card | Returned to `/payment/subscription/return`: "Subscription activated — Premium", renewing 2026-12-04 |
+| Webhook `checkout.session.completed` | 200, `outcome: subscription-settled` |
+| Same event resent from Stripe | 200, `outcome: duplicate` (nothing changed) |
+| Full refund made in Stripe | `charge.refunded` → 200, `outcome: refund-recorded` |
+| Unsigned request to the webhook | 400 |
+
+Not exercised: a refund started from `/admin/payments` (staging has no
+admin account; the route is covered by the database tests and its Stripe
+call by the refund request above, made from Stripe's own shell).
+
+Noticed: the Stripe account's public business name is **"Booking"** — it
+shows on the checkout page ("Pay securely at Booking"). Rename it to
+Maw3ed in Stripe → Settings → Public details. The account also shows
+"Payouts paused — a required task is past due".
+
 ## Not verified
 
-- **A call to Stripe.** No key was available: the Checkout Session request
-  and the refund request have never reached Stripe. Do one sandbox
-  payment and one sandbox refund before going live (the runbook in
-  `docs/payments-verification.md` applies).
-- **EGP on a Canadian account.** EGP is accepted as a presentment currency
-  for most accounts; if Stripe refuses it, session creation fails with
-  Stripe's message and the owner sees "could not start the payment". The
-  sandbox test settles this.
+- **Live mode.** Everything above is test mode. One real payment and
+  refund in live mode is still the owner's (runbook in
+  `docs/payments-verification.md`).
+- **EGP on a Canadian account:** settled — accepted in test mode (above).
 - **Egyptian cards paying a Canadian merchant** may be declined or charged
   a foreign-transaction fee by the issuing bank; that is why Paymob stays
   the default.
