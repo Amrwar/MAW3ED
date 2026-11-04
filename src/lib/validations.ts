@@ -145,6 +145,9 @@ export const serviceSchema = z.object({
   price:        z.number().min(0),
   isAvailable:  z.boolean().optional(),
   sortOrder:    z.number().optional(),
+  /// Phase 27: a category the business groups services under (a clinic's
+  /// "Dental", "Dermatology"), used by its reports and the booking page.
+  groupName:    clearable(z.string().trim().max(60)),
 });
 
 // ─── Availability ─────────────────────────────────────────
@@ -227,6 +230,15 @@ export const bookingSchema = z.object({
   /// A coupon the customer typed. Looked up server-side; the price is
   /// never taken from the request.
   discountCode: z.string().trim().max(40).optional(),
+  /// Phase 27: points to spend (the server caps them by the program's
+  /// rules and the balance), or a package / membership to use. Either
+  /// needs the number proved — signed in with it, or a phone proof.
+  redeemPoints:  z.number().int().min(1).max(1_000_000).optional(),
+  usePackageId:    z.string().max(40).optional(),
+  useMembershipId: z.string().max(40).optional(),
+  /// Someone coming with the customer (a clinic visit, say); capped by
+  /// the business's maxCompanions.
+  companions:    z.number().int().min(0).max(10).optional(),
 });
 
 /**
@@ -235,12 +247,19 @@ export const bookingSchema = z.object({
  * still a number to call, so dialable() rather than normalisePhone().
  * Such a booking simply links to no customer account.
  */
-export const ownerBookingSchema = bookingSchema.extend({
-  customerPhone: z
-    .string()
-    .min(1, "أدخل رقم الهاتف")
-    .refine((v) => dialable(v) !== null, "رقم الهاتف غير صحيح"),
-});
+export const ownerBookingSchema = bookingSchema
+  .extend({
+    customerPhone: z
+      .string()
+      .min(1, "أدخل رقم الهاتف")
+      .refine((v) => dialable(v) !== null, "رقم الهاتف غير صحيح"),
+    /// Phase 27: somebody who walked in. Booked from now (Cairo), and
+    /// marked ARRIVED; the date and time sent are ignored.
+    walkIn:    z.boolean().optional(),
+    date:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاريخ غير صحيح").optional(),
+    startTime: z.string().regex(/^\d{2}:\d{2}$/, "وقت غير صحيح").optional(),
+  })
+  .refine((v) => v.walkIn || (!!v.date && !!v.startTime), { message: "اختار التاريخ والوقت", path: ["date"] });
 
 export type SignUpInput     = z.infer<typeof signUpSchema>;
 export type OnboardingInput = z.infer<typeof onboardingSchema>;

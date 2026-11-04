@@ -64,6 +64,19 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: "تفعيل وإيقاف حساب دخول الموظف لصاحب النشاط بس", code: "forbidden" }, { status: 403 });
   }
 
+  // Commission is money: the owner's to set (Phase 27, daily operations report).
+  let commissionPercent = existing.commissionPercent;
+  if ("commissionPercent" in rest) {
+    if (!guard.canManageAccess) {
+      return NextResponse.json({ error: "العمولة يحددها صاحب النشاط بس", code: "forbidden" }, { status: 403 });
+    }
+    const c = rest.commissionPercent;
+    if (c !== null && !(Number.isInteger(c) && c >= 0 && c <= 100)) {
+      return NextResponse.json({ error: "العمولة نسبة من 0 لـ 100" }, { status: 422 });
+    }
+    commissionPercent = c;
+  }
+
   const member = await db.staffMember.update({
     where: { id },
     data: {
@@ -74,6 +87,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       isActive:    rest.isActive  != null  ? rest.isActive                : existing.isActive,
       workingDays: rest.workingDays != null ? rest.workingDays            : existing.workingDays,
       specialties: rest.specialties != null ? rest.specialties            : existing.specialties,
+      commissionPercent,
       ...(ownServiceIds !== undefined && {
         services: {
           deleteMany: {},

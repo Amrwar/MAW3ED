@@ -31,6 +31,7 @@ const SINGLE_ADDRESS = [
   "/notifications",
   "/payment",
   "/booking",
+  "/booking-waitlist",
   "/verify-email",
   "/ref",
 ];

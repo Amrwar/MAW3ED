@@ -21,6 +21,7 @@ import { bookingMoney, toCents } from "@/lib/payments/money";
 import { countIn, duration, money, clockRange } from "@/lib/fmt";
 import { getLang } from "@/lib/lang-server";
 import { localName } from "@/lib/lang";
+import { rebookHref } from "@/lib/bookings/rebook";
 import type { Lang } from "@/lib/i18n";
 
 type Params = { params: Promise<{ token: string }> };
@@ -266,7 +267,7 @@ export default async function BookingPage({ params }: Params) {
             service they had rather than starting from a blank page. */}
         {["COMPLETED", "CANCELLED", "NO_SHOW", "FAILED_PAYMENT"].includes(booking.status) && (
           <Link
-            href={`/company/${booking.business.slug}?service=${booking.serviceId}#booking`}
+            href={rebookHref(booking.business.slug, booking.serviceId, booking.staffMemberId)}
             className="btn btn-primary w-full"
           >
             {say("احجز مرة تانية", "Book again")}

@@ -12,6 +12,7 @@ import {
   releaseRefundReservation,
   markRefundOutcome,
 } from "@/lib/payments/ledger";
+import { reverseEarnForRefund } from "@/lib/loyalty/ledger";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -187,6 +188,9 @@ export async function POST(req: Request, { params }: Params) {
       },
     });
     await markRefundOutcome(payment.id);
+    // Points the booking earned come back off in proportion (lib/loyalty);
+    // keyed by the refund, so a retried request takes them once.
+    if (payment.bookingId) await reverseEarnForRefund(payment.bookingId, amount, refund.id);
 
     await recordAudit({
       actor: admin,

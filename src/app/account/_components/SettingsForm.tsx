@@ -14,14 +14,16 @@ import { useLanguage } from "@/contexts/LanguageContext";
  * needs confirming is a switch people leave in the wrong position.
  */
 export default function SettingsForm({ user }: { user: AccountUser }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const en = lang === "en";
   const s = t.account.settings;
 
   const [whatsapp, setWhatsapp] = useState(user.notifyByWhatsApp);
   const [email, setEmail] = useState(user.notifyByEmail);
+  const [marketing, setMarketing] = useState(user.marketingConsent);
   const [error, setError] = useState<string | null>(null);
 
-  async function update(patch: { notifyByWhatsApp?: boolean; notifyByEmail?: boolean }) {
+  async function update(patch: { notifyByWhatsApp?: boolean; notifyByEmail?: boolean; marketingConsent?: boolean }) {
     setError(null);
     try {
       const res = await fetch("/api/account/profile", {
@@ -35,6 +37,7 @@ export default function SettingsForm({ user }: { user: AccountUser }) {
       // stored.
       if (patch.notifyByWhatsApp !== undefined) setWhatsapp(!patch.notifyByWhatsApp);
       if (patch.notifyByEmail !== undefined) setEmail(!patch.notifyByEmail);
+      if (patch.marketingConsent !== undefined) setMarketing(!patch.marketingConsent);
       setError(t.account.profile.saveError);
     }
   }
@@ -61,6 +64,32 @@ export default function SettingsForm({ user }: { user: AccountUser }) {
             onChange={(v) => {
               setEmail(v);
               void update({ notifyByEmail: v });
+            }}
+          />
+        </div>
+
+        {/* Consent to hear from places, separate from the channels
+            above: it is off until the customer turns it on, and what is
+            sent about their own bookings never depends on it. */}
+        <div className="mt-4 border-t border-[var(--color-line)] pt-4">
+          <h3 className="m-0 mb-2 text-[0.875rem] font-bold text-[var(--color-ink)]">
+            {en ? "Offers and reminders" : "العروض والتذكيرات"}
+          </h3>
+          <Toggle
+            label={
+              en
+                ? "Offers and reminders from places I've visited"
+                : "عروض وتذكيرات من الأماكن اللي زرتها"
+            }
+            hint={
+              en
+                ? "Follow-ups after a visit and \"time to book again\" reminders. Off unless you turn it on. Messages about your bookings, waitlist offers and renewals still reach you either way."
+                : "متابعة بعد الزيارة وتذكير إن \"جه وقت تحجز تاني\". مقفولة إلا لو فتحتها إنت. الرسايل الخاصة بحجوزاتك وعروض قائمة الانتظار والتجديدات هتوصلك في كل الأحوال."
+            }
+            checked={marketing}
+            onChange={(v) => {
+              setMarketing(v);
+              void update({ marketingConsent: v });
             }}
           />
         </div>

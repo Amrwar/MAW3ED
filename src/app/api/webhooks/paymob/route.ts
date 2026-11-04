@@ -40,6 +40,7 @@ import { classifyCallback, planReversal, shouldReleaseHold } from "@/lib/payment
 import { log } from "@/lib/logger";
 import { notifyLater } from "@/lib/notifications";
 import { releaseBookingHold } from "@/lib/bookings/state";
+import { reverseEarnForRefund, retakeRedemption } from "@/lib/loyalty/ledger";
 import { inBookingQueueEvenIfBusy } from "@/lib/bookings/queue";
 import { activateSubscription, releasePendingPlan } from "@/lib/payments/subscription-settle";
 
@@ -298,6 +299,8 @@ async function reconcileReversal(
   // Decided and written under a lock on the payment row, so this cannot
   // interleave with an admin refund's reservation (which updates the
   // same row) or with a second delivery of the same reversal.
+  // The refund this callback settled, if any, for the loyalty reversal below.
+  let settled: { refundId: string; cents: number } | null = null;
   const plan = await db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Payment" WHERE "id" = ${payment.id} FOR UPDATE`;
     const current = await tx.payment.findUniqueOrThrow({
@@ -323,16 +326,19 @@ async function reconcileReversal(
       // missing. A row still PENDING — the provider never answered the
       // admin's request — is settled by this: Paymob has just said the
       // money went back.
-      await tx.refund.update({
+      const r = await tx.refund.update({
         where: { id: decided.refundId },
         data: { providerRefundId: transactionId, status: "SUCCEEDED", failureReason: null },
+        select: { id: true, amountCents: true },
       });
+      settled = { refundId: r.id, cents: r.amountCents };
       await tx.payment.update({
         where: { id: payment.id },
         data: { status: current.refundedCents >= current.amountCents ? "REFUNDED" : "PARTIALLY_REFUNDED" },
       });
     } else if (decided.kind === "record") {
-      await tx.refund.create({
+      const r = await tx.refund.create({
+        select: { id: true },
         data: {
           paymentId: payment.id,
           amountCents: decided.addCents,
@@ -347,9 +353,15 @@ async function reconcileReversal(
         where: { id: payment.id },
         data: { refundedCents: decided.refundedCents, status: decided.status },
       });
+      settled = { refundId: r.id, cents: decided.addCents };
     }
     return decided;
   });
+
+  // Points the booking earned come back off in proportion, keyed by the
+  // refund — the admin route's own call for the same refund is then a no-op.
+  const done = settled as { refundId: string; cents: number } | null;
+  if (done && payment.bookingId) await reverseEarnForRefund(payment.bookingId, done.cents, done.refundId);
 
   switch (plan.kind) {
     case "already-recorded":
@@ -472,12 +484,16 @@ async function handleBookingSuccess(
       const bookingId = payment.bookingId;
       // Paymob will not send this again, so a busy queue does not stop
       // it: it waits its turn however long (lib/bookings/queue.ts).
-      const { count } = await inBookingQueueEvenIfBusy(payment.businessId, (tx) =>
-        tx.booking.updateMany({
+      const { count } = await inBookingQueueEvenIfBusy(payment.businessId, async (tx) => {
+        const r = await tx.booking.updateMany({
           where: { id: bookingId, status: "FAILED_PAYMENT" },
           data: { status: "CONFIRMED", paymobTransactionId: transactionId },
-        }),
-      );
+        });
+        // Its price was reduced by points the release gave back: they are
+        // taken again with the revival (lib/loyalty/ledger).
+        if (r.count === 1) await retakeRedemption(tx, bookingId);
+        return r;
+      });
       revived = count === 1;
     } catch (e) {
       // The overlap constraint refusing it means somebody took the time.

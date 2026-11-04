@@ -56,6 +56,8 @@ const OPEN: Record<string, string> = {
   "business/check-slug": "public read of slug availability; no data returned beyond taken/free",
   "dev/paymob/checkout": "fakePaymobEnabled(): local only",
   "public/[slug]/bookings": "public booking; rate-limited per address and per number; phone proof when enabled",
+  "public/[slug]/waitlist": "public waitlist join; rate-limited per address; one live entry per number per day",
+  "public/booking-waitlist/[token]": "the entry's unguessable manage token in the path is the credential; rate-limited",
   "public/[slug]/quote": "public read",
   "public/[slug]/reviews": "public read",
   "public/[slug]/route": "public read",

@@ -14,6 +14,7 @@ import {
   Settings,
   Star,
   User2,
+  Wallet,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { num } from "@/lib/fmt";
@@ -44,6 +45,7 @@ export default function AccountNav({ unread }: Props) {
     { href: "/account/reviews", label: n.reviews, icon: Star, badge: 0 },
     { href: "/account/notifications", label: n.notifications, icon: Bell, badge: unread },
     { href: "/account/profile", label: n.profile, icon: User2, badge: 0 },
+    { href: "/account/wallet", label: lang === "en" ? "Wallet" : "محفظتي", icon: Wallet, badge: 0 },
     { href: "/account/payments", label: n.payments, icon: CreditCard, badge: 0 },
     { href: "/account/settings", label: n.settings, icon: Settings, badge: 0 },
   ];

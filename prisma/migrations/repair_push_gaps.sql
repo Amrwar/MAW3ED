@@ -29,10 +29,13 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Payment_target_chk') THEN
+    -- Phase 27's rule (phase27_operations.sql): packages and memberships
+    -- name what they paid for; bookings name their booking.
     ALTER TABLE "Payment" ADD CONSTRAINT "Payment_target_chk" CHECK (
-      ("kind" = 'SUBSCRIPTION' AND "plan" IS NOT NULL AND "bookingId" IS NULL)
-      OR
-      ("kind" <> 'SUBSCRIPTION' AND "bookingId" IS NOT NULL)
+      ("kind" = 'SUBSCRIPTION' AND "plan" IS NOT NULL AND "bookingId" IS NULL AND "customerPackageId" IS NULL AND "customerMembershipId" IS NULL)
+      OR ("kind" = 'PACKAGE' AND "customerPackageId" IS NOT NULL AND "bookingId" IS NULL AND "customerMembershipId" IS NULL)
+      OR ("kind" = 'MEMBERSHIP' AND "customerMembershipId" IS NOT NULL AND "bookingId" IS NULL AND "customerPackageId" IS NULL)
+      OR ("kind" IN ('BOOKING_DEPOSIT', 'BOOKING_BALANCE', 'BOOKING_FULL') AND "bookingId" IS NOT NULL)
     );
   END IF;
 

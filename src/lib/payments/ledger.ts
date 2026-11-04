@@ -164,7 +164,7 @@ export async function releaseWebhookEvent(
  * the same instant would otherwise be handed the same number, and a
  * receipt number that is not unique is worse than none.
  */
-async function nextReceiptNumber(tx: Prisma.TransactionClient): Promise<string> {
+export async function nextReceiptNumber(tx: Prisma.TransactionClient): Promise<string> {
   const [row] = await tx.$queryRaw<{ nextval: bigint }[]>`
     SELECT nextval('payment_receipt_seq') AS nextval`;
   return `MW-${String(row.nextval).padStart(6, "0")}`;

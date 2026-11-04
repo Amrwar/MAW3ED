@@ -18,6 +18,9 @@ const patchSchema = z.object({
   email: z.string().trim().toLowerCase().email().nullable().optional().or(z.literal("")),
   notifyByWhatsApp: z.boolean().optional(),
   notifyByEmail: z.boolean().optional(),
+  /// Phase 27: offers and reminders from businesses the customer visited
+  /// (lib/automations). Off unless switched on here; the moment is kept.
+  marketingConsent: z.boolean().optional(),
 });
 
 /**
@@ -45,7 +48,7 @@ export async function PATCH(req: Request) {
     const parsed = patchSchema.safeParse(await req.json());
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
-    const { name, email, notifyByWhatsApp, notifyByEmail } = parsed.data;
+    const { name, email, notifyByWhatsApp, notifyByEmail, marketingConsent } = parsed.data;
     const current = await db.user.findUnique({
       where: { id: session.user.id },
       select: { id: true, name: true, email: true },
@@ -55,7 +58,8 @@ export async function PATCH(req: Request) {
     const next = email === undefined ? undefined : email ? email : null;
     const unchanged = next === undefined || next === (current.email?.toLowerCase() ?? null);
 
-    const data: { name?: string | null; email?: null; emailVerified?: null; notifyByWhatsApp?: boolean; notifyByEmail?: boolean } = {};
+    const data: { name?: string | null; email?: null; emailVerified?: null; notifyByWhatsApp?: boolean; notifyByEmail?: boolean; marketingConsentAt?: Date | null } = {};
+    if (marketingConsent !== undefined) data.marketingConsentAt = marketingConsent ? new Date() : null;
     if (name !== undefined) data.name = name;
     if (notifyByWhatsApp !== undefined) data.notifyByWhatsApp = notifyByWhatsApp;
     if (notifyByEmail !== undefined) data.notifyByEmail = notifyByEmail;
@@ -161,6 +165,7 @@ export async function GET() {
         phoneVerifiedAt: true,
         notifyByWhatsApp: true,
         notifyByEmail: true,
+        marketingConsentAt: true,
       },
     });
     if (!user) return err("غير مصرح", 401);
@@ -177,6 +182,7 @@ export async function GET() {
       phoneVerified: Boolean(user.phone && user.phoneVerifiedAt),
       notifyByWhatsApp: user.notifyByWhatsApp,
       notifyByEmail: user.notifyByEmail,
+      marketingConsent: !!user.marketingConsentAt,
     });
   } catch (e) {
     if (e instanceof Response) return e;

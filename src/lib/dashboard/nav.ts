@@ -7,6 +7,10 @@ import {
   CalendarDays,
   CreditCard,
   Gift,
+  Hourglass,
+  Package,
+  Activity,
+  Award,
   Globe,
   Landmark,
   Network,
@@ -104,6 +108,8 @@ export function buildNav(ctx: NavContext): NavSection[] {
       ],
     },
     { href: "/dashboard/customers", label: s.customers, icon: Users },
+    { href: "/dashboard/waitlist", label: s.waitlist, icon: Hourglass },
+    { href: "/dashboard/operations", label: s.operations, icon: Activity },
   ];
 
   const setUp: NavItem[] = [
@@ -134,6 +140,8 @@ export function buildNav(ctx: NavContext): NavSection[] {
     { href: "/dashboard/links", label: s.bookingLinks, icon: Link2 },
     { href: "/dashboard/offers", label: s.offers, icon: Ticket },
     { href: "/dashboard/referrals", label: s.referrals, icon: Gift },
+    { href: "/dashboard/loyalty", label: s.loyalty, icon: Award },
+    { href: "/dashboard/packages", label: s.packages, icon: Package },
     {
       href: "/dashboard/reports",
       label: s.reports,

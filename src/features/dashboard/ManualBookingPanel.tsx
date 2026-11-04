@@ -1,12 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Loader2, CalendarDays, Clock, User, Phone } from "lucide-react";
 import type { DashboardBooking } from "@/features/dashboard/bookings/types";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
+import Tabs from "@/components/ui/Tabs";
 import { clock } from "@/lib/fmt";
+import { useSay } from "@/components/dashboard/kit";
+import DeskWallet, { walletFields, type WalletChoice } from "./DeskWallet";
+import { SeriesList, SeriesResultView, type SeriesResult } from "./SeriesParts";
+
+/** A booking at a time, somebody who walked in now, or a repeating one. */
+type Mode = "appointment" | "walkin" | "repeat";
 
 export type ServiceOption = {
   id:       string;
@@ -30,6 +38,16 @@ const TODAY = new Date().toISOString().split("T")[0];
 const MAX_DATE = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
 export default function ManualBookingPanel({ open, onClose, slug, services, onCreated }: Props) {
+  const router = useRouter();
+  const { say } = useSay();
+  const [mode,          setMode]          = useState<Mode>("appointment");
+  const [intervalWeeks, setIntervalWeeks] = useState(1);
+  const [occurrences,   setOccurrences]   = useState(4);
+  const [wallet,        setWallet]        = useState<WalletChoice>({ kind: "none" });
+  const [seriesResult,  setSeriesResult]  = useState<SeriesResult | null>(null);
+  // One key per opening of the form: a double-click or a retry makes the
+  // same series once (POST /api/business/series, requestKey).
+  const [seriesKey,     setSeriesKey]     = useState(() => crypto.randomUUID());
   const [serviceId,     setServiceId]     = useState(services[0]?.id ?? "");
   const [date,          setDate]          = useState(TODAY);
   const [startTime,     setStartTime]     = useState("");
@@ -63,11 +81,26 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
       setSlots([]);
       setError("");
       setCreated(null);
+      setMode("appointment");
+      setIntervalWeeks(1);
+      setOccurrences(4);
+      setWallet({ kind: "none" });
+      setSeriesResult(null);
+      setSeriesKey(crypto.randomUUID());
     }
   }
 
+  // A balance read for one number, service and time is not offered for
+  // another: a change drops the choice and the answer (DeskWallet's key).
+  const walletKey = `${customerPhone.trim()}|${serviceId}|${mode === "walkin" ? "now" : `${date}|${startTime}`}`;
+  const [walletFor, setWalletFor] = useState(walletKey);
+  if (walletFor !== walletKey) {
+    setWalletFor(walletKey);
+    setWallet({ kind: "none" });
+  }
+
   // A new service or day asks for the times again, with no time chosen.
-  const slotsKey = open && serviceId && date ? `${serviceId}|${date}|${slug}` : null;
+  const slotsKey = open && serviceId && date && mode !== "walkin" ? `${serviceId}|${date}|${slug}` : null;
   const [slotsFor, setSlotsFor] = useState<string | null>(null);
   if (slotsKey !== slotsFor) {
     setSlotsFor(slotsKey);
@@ -110,24 +143,53 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
     setError("");
 
     if (!serviceId)       { setError("اختر الخدمة");              return; }
-    if (!date)            { setError("اختر التاريخ");             return; }
-    if (!startTime)       { setError("اختر الوقت المناسب");       return; }
+    const walkIn = mode === "walkin";
+    if (!walkIn && !date)      { setError("اختر التاريخ");             return; }
+    if (!walkIn && !startTime) { setError("اختر الوقت المناسب");       return; }
     if (!customerName.trim()) { setError("أدخل اسم العميل");     return; }
     if (!customerPhone.trim()) { setError("أدخل رقم هاتف العميل"); return; }
 
     setSaving(true);
     try {
+      if (mode === "repeat") {
+        const res = await fetch("/api/business/series", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            serviceId,
+            customerName:  customerName.trim(),
+            customerPhone: customerPhone.trim(),
+            customerEmail: customerEmail.trim() || undefined,
+            startDate:     date,
+            startTime,
+            intervalWeeks,
+            occurrences,
+            notes:         notes.trim() || undefined,
+            requestKey:    seriesKey,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(data.error || say("تعذّر إنشاء الحجوزات المتكررة", "Could not create the series"));
+          return;
+        }
+        setSeriesResult(data as SeriesResult);
+        router.refresh();
+        return;
+      }
+
       const res = await fetch("/api/business/bookings", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serviceId,
-          date,
-          startTime,
+          // A walk-in starts now on the server's (Cairo) clock.
+          ...(walkIn ? { walkIn: true } : { date, startTime }),
           customerName:  customerName.trim(),
           customerPhone: customerPhone.trim(),
           customerEmail: customerEmail.trim() || undefined,
           notes:         notes.trim() || undefined,
+          ...walletFields(wallet),
         }),
       });
       const data = await res.json();
@@ -153,7 +215,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
       variant="sheet"
       title="حجز جديد"
       footer={
-        created ? (
+        created || seriesResult ? (
           <Button type="button" variant="primary" fullWidth onClick={onClose}>
             تم، إغلاق
           </Button>
@@ -169,14 +231,20 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
               isLoading={saving}
               className="flex-1"
             >
-              تأكيد الموعد
+              {mode === "walkin"
+                ? say("سجّل الوصول دلوقتي", "Check in now")
+                : mode === "repeat"
+                  ? say("اعمل الحجوزات", "Create the bookings")
+                  : "تأكيد الموعد"}
             </Button>
           </div>
         )
       }
     >
       {/* Success state */}
-      {created ? (
+      {seriesResult ? (
+        <SeriesResultView result={seriesResult} />
+      ) : created ? (
         <div className="flex flex-col items-center gap-5 py-8 text-center">
             <div className="w-16 h-16 rounded-full bg-[var(--color-ok-soft)] flex items-center justify-center">
               <Check size={32} className="text-[var(--color-ok)]" />
@@ -201,6 +269,21 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
         </div>
       ) : (
         <form id="manual-booking-form" onSubmit={handleSubmit} className="space-y-5">
+              <Tabs
+                label={say("نوع الحجز", "Booking kind")}
+                value={mode}
+                onChange={(m) => { setMode(m); setError(""); }}
+                items={[
+                  { value: "appointment", label: say("ميعاد", "Appointment") },
+                  { value: "walkin",      label: say("جه من غير حجز", "Walk-in") },
+                  { value: "repeat",      label: say("متكرر", "Repeat") },
+                ]}
+              />
+              {mode === "walkin" && (
+                <p className="m-0 text-xs text-[var(--color-subtle)]">
+                  {say("الحجز بيبدأ دلوقتي وبيتسجّل إن العميل وصل.", "The booking starts now and is marked as arrived.")}
+                </p>
+              )}
               {/* Service */}
               <div>
                 <label className="form-label mb-1.5 block">
@@ -219,7 +302,8 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                 </select>
               </div>
 
-              {/* Date */}
+              {/* Date and time: a walk-in has neither, it is now. */}
+              {mode !== "walkin" && (<>
               <div>
                 <label className="form-label mb-1.5 block">
                   التاريخ <span className="text-[var(--color-danger)]">*</span>
@@ -279,6 +363,34 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                   </p>
                 )}
               </div>
+              </>)}
+
+              {mode === "repeat" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="mb-interval" className="form-label mb-1.5 block">{say("كل", "Every")}</label>
+                    <select id="mb-interval" value={intervalWeeks} onChange={(e) => setIntervalWeeks(Number(e.target.value))} className="input w-full">
+                      {[1, 2, 3, 4].map((w) => (
+                        <option key={w} value={w}>
+                          {w === 1 ? say("أسبوع", "week") : say(`${w} أسابيع`, `${w} weeks`)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="mb-occurrences" className="form-label mb-1.5 block">{say("عدد المرات", "Times")}</label>
+                    <input id="mb-occurrences" type="number" min={2} max={12} dir="ltr" value={occurrences}
+                      onChange={(e) => setOccurrences(Math.min(12, Math.max(2, Math.floor(Number(e.target.value) || 2))))}
+                      className="input w-full" />
+                  </div>
+                  <p className="col-span-2 m-0 text-xs text-[var(--color-subtle)]">
+                    {say(
+                      "كل ميعاد بيتحجز لوحده بنفس القواعد؛ الأيام اللي مش متاحة بتتساب وهنقولك ليه.",
+                      "Each date is booked on its own under the usual rules; unavailable dates are skipped and you are told why.",
+                    )}
+                  </p>
+                </div>
+              )}
 
               {/* Customer name + phone */}
               <div className="grid grid-cols-2 gap-4">
@@ -340,7 +452,31 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                 />
               </div>
 
+              {mode !== "repeat" && customerPhone.trim() && serviceId && (mode === "walkin" || startTime) && (
+                <DeskWallet
+                  key={walletKey}
+                  phone={customerPhone}
+                  serviceId={serviceId}
+                  date={mode === "walkin" ? undefined : date}
+                  time={mode === "walkin" ? undefined : startTime}
+                  priceCents={Math.round((selectedService?.price ?? 0) * 100)}
+                  value={wallet}
+                  onChange={setWallet}
+                />
+              )}
+
           {error && <Alert tone="danger">{error}</Alert>}
+
+              {mode === "repeat" && (
+                <details className="rounded-[var(--radius-md)] border border-[var(--color-line)] p-3">
+                  <summary className="cursor-pointer text-sm font-semibold text-[var(--color-ink)]">
+                    {say("الحجوزات المتكررة الحالية", "Existing recurring series")}
+                  </summary>
+                  <div className="mt-3">
+                    <SeriesList serviceName={(id) => services.find((s) => s.id === id)?.nameAr ?? "—"} />
+                  </div>
+                </details>
+              )}
         </form>
       )}
     </Modal>

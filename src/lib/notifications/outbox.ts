@@ -122,6 +122,8 @@ export async function redriveNotifications(
   const stale = new Date(now.getTime() - STALE_PENDING_MS);
   const rows = await db.notificationDelivery.findMany({
     where: {
+      // Phase 27 automation messages are re-driven by lib/automations/send.ts.
+      NOT: { dedupeKey: { startsWith: "auto:" } },
       OR: [
         { status: "FAILED", nextAttemptAt: { lte: now } },
         { status: "PENDING", updatedAt: { lt: stale } },

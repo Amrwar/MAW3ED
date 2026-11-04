@@ -34,6 +34,8 @@ export interface AccountUser {
   historySince: Date | null;
   notifyByWhatsApp: boolean;
   notifyByEmail: boolean;
+  /** Opted in to offers and "time to book again" reminders. Off by default. */
+  marketingConsent: boolean;
 }
 
 /** Null when nobody is signed in, or when the account has no phone. */
@@ -52,6 +54,7 @@ export async function getAccountUser(): Promise<AccountUser | null> {
       historySince: true,
       notifyByWhatsApp: true,
       notifyByEmail: true,
+      marketingConsentAt: true,
     },
   });
 
@@ -69,6 +72,7 @@ export async function getAccountUser(): Promise<AccountUser | null> {
     historySince: user.historySince,
     notifyByWhatsApp: user.notifyByWhatsApp,
     notifyByEmail: user.notifyByEmail,
+    marketingConsent: !!user.marketingConsentAt,
   };
 }
 
@@ -83,6 +87,9 @@ export interface AccountBooking {
   durationMinutes: number;
   /** Minutes from now until it starts. Negative once it has passed. */
   minutesUntil: number;
+  /** For "book again": the same service, and the same person when there was one. */
+  serviceId: string;
+  staffMemberId: string | null;
   serviceName: string;
   /** English names, where the business gave one; the app falls back to Arabic. */
   serviceNameEn: string | null;
@@ -136,6 +143,8 @@ const BOOKING_SELECT = {
   depositAmount: true,
   currency: true,
   endsAt: true,
+  serviceId: true,
+  staffMemberId: true,
   service: { select: { nameAr: true, nameEn: true, duration: true } },
   staffMember: { select: { nameAr: true, nameEn: true } },
   resource: { select: { name: true } },
@@ -182,6 +191,8 @@ function shape(b: Row, todayDate: string, nowMin: number): AccountBooking {
     endTime: b.endTime ?? minutesToTime(endMin),
     durationMinutes: endMin - startMin,
     minutesUntil: dayDiff * 24 * 60 + (startMin - nowMin),
+    serviceId: b.serviceId,
+    staffMemberId: b.staffMemberId,
     serviceName: b.service.nameAr,
     serviceNameEn: b.service.nameEn,
     staffName: b.staffMember?.nameAr ?? null,

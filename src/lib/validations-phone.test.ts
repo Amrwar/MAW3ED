@@ -9,7 +9,7 @@ const base = {
   customerName: "Sara QA",
 };
 
-const phoneOk = (schema: typeof bookingSchema, customerPhone: string) =>
+const phoneOk = (schema: { safeParse: (v: unknown) => { success: boolean } }, customerPhone: string) =>
   schema.safeParse({ ...base, customerPhone }).success;
 
 describe("booking phone numbers", () => {
@@ -29,5 +29,13 @@ describe("booking phone numbers", () => {
     expect(phoneOk(bookingSchema, "0223456789")).toBe(false);
     expect(phoneOk(ownerBookingSchema, "0223456789")).toBe(true);
     expect(phoneOk(ownerBookingSchema, "10800348")).toBe(false);
+  });
+});
+
+describe("walk-ins at the desk", () => {
+  it("needs no date or time for a walk-in, and both otherwise", () => {
+    const noTime = { serviceId: base.serviceId, customerName: base.customerName };
+    expect(ownerBookingSchema.safeParse({ ...noTime, customerPhone: "01012345678", walkIn: true }).success).toBe(true);
+    expect(ownerBookingSchema.safeParse({ ...noTime, customerPhone: "01012345678" }).success).toBe(false);
   });
 });

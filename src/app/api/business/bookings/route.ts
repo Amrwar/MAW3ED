@@ -13,6 +13,12 @@ import { log } from "@/lib/logger";
 import { recordBusinessMilestone } from "@/lib/business/lifecycle";
 import { notifyLater } from "@/lib/notifications";
 import { isoDate, pageParam, parseQuery } from "@/lib/query-params";
+import { cairoDateString, cairoMinutes } from "@/lib/bookings/instants";
+import { normalisePhone } from "@/lib/phone";
+import { consumeEntitlement, EntitlementGone } from "@/lib/entitlements/ledger";
+import { LoyaltyInsufficient, quoteRedemption, redeemForBooking } from "@/lib/loyalty/ledger";
+import { wallToInstant } from "@/lib/bookings/instants";
+import { toCents } from "@/lib/payments/money";
 
 /** Query of GET: a bad page, status or date is a 400, not a 500. */
 const listQuery = z.object({
@@ -185,7 +191,18 @@ export async function POST(req: Request) {
     const parsed = ownerBookingSchema.safeParse(body);
     if (!parsed.success) return err(parsed.error.issues[0].message, 422);
 
-    const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes } = parsed.data;
+    const { serviceId, customerName, customerPhone, customerEmail, notes, walkIn,
+            staffMemberId, resourceId, partySize, companions, usePackageId, useMembershipId, redeemPoints } = parsed.data;
+
+    // A walk-in starts now, on the Cairo clock, to the minute.
+    const date = walkIn ? cairoDateString() : parsed.data.date!;
+    const startTime = walkIn
+      ? minutesToTime(cairoMinutes())
+      : parsed.data.startTime!;
+    if ((companions ?? 0) > business.maxCompanions) {
+      return err(`أقصى عدد مرافقين ${business.maxCompanions}`, 422, { code: "too-many-companions" });
+    }
+    if (usePackageId && useMembershipId) return err("اختار باقة أو عضوية، مش الاتنين", 422);
 
     // No monthly limit here. The free plan's allowance decides whether
     // a customer's online booking is confirmed on the spot or waits for
@@ -198,6 +215,31 @@ export async function POST(req: Request) {
       where: { id: serviceId, businessId: business.id },
     });
     if (!service) return err("الخدمة غير موجودة", 404);
+
+    // Whoever is named must be this business's.
+    if (staffMemberId && !(await db.staffMember.count({ where: { id: staffMemberId, businessId: business.id } }))) {
+      return err("الموظف غير موجود", 404);
+    }
+    if (resourceId && !(await db.resource.count({ where: { id: resourceId, businessId: business.id } }))) {
+      return err("المكان غير موجود", 404);
+    }
+
+    // A package session, a membership visit or points, used at the desk:
+    // the person is in front of the business, which checks who they are.
+    // The balance must still belong to this number (lib/entitlements).
+    const phoneE164 = normalisePhone(customerPhone);
+    if ((usePackageId || useMembershipId || redeemPoints) && !phoneE164) {
+      return err("الرصيد مرتبط برقم موبايل — اكتب رقم الموبايل", 422);
+    }
+    const entitlement = usePackageId ? { packageId: usePackageId } : useMembershipId ? { membershipId: useMembershipId } : null;
+    let priceCents = entitlement ? 0 : toCents(service.price);
+    let loyalty: { programId: string; points: number; amountCents: number } | null = null;
+    if (redeemPoints && !entitlement && phoneE164 && priceCents > 0) {
+      const q = await quoteRedemption(business.id, phoneE164, redeemPoints, priceCents);
+      if (!q.ok) return err(q.why === "loyalty-unavailable" ? "مفيش برنامج نقاط مفعّل" : "النقاط مش كفاية للخصم", 422, { code: q.why });
+      loyalty = { programId: q.programId, points: q.points, amountCents: q.amountCents };
+      priceCents -= q.amountCents;
+    }
 
     const dateUTC = dateToUTC(date);
     const endTime = minutesToTime(timeToMinutes(startTime) + service.duration);
@@ -220,8 +262,8 @@ export async function POST(req: Request) {
     let booking;
     try {
       // In the business's booking queue, like every write of a time.
-      booking = await inBookingQueue(business.id, (tx) =>
-        tx.booking.create({
+      booking = await inBookingQueue(business.id, async (tx) => {
+        const made = await tx.booking.create({
           data: {
             businessId:    business.id,
             serviceId,
@@ -237,18 +279,37 @@ export async function POST(req: Request) {
             startsAt,
             endsAt,
             reference:     generateReference(),
-            status:        "CONFIRMED",
-            totalPrice:    service.price,
+            status:        walkIn ? "ARRIVED" : "CONFIRMED",
+            walkIn:        !!walkIn,
+            totalPrice:    priceCents / 100,
+            loyaltyCents:  loyalty?.amountCents ?? 0,
             currency:      service.currency,
             notes:         notes || null,
+            staffMemberId: staffMemberId ?? null,
+            resourceId:    resourceId ?? null,
+            partySize:     partySize ?? null,
+            companions:    companions ?? 0,
           },
           include: {
             service:  { select: { nameAr: true, duration: true } },
             business: { include: { owner: { select: { email: true } } } },
           },
-        }),
-      );
+        });
+        // Taken in the same transaction as the booking: both or neither.
+        if (entitlement && phoneE164) {
+          await consumeEntitlement(tx, entitlement, {
+            bookingId: made.id, businessId: business.id, phoneE164, serviceId,
+            startsAt: wallToInstant(date, timeToMinutes(startTime)),
+          });
+        }
+        if (loyalty && phoneE164) {
+          await redeemForBooking(tx, { programId: loyalty.programId, phoneE164, bookingId: made.id, businessId: business.id, points: loyalty.points });
+        }
+        return made;
+      });
     } catch (e) {
+      if (e instanceof EntitlementGone) return err("الباقة أو العضوية مبقاش فيها جلسات للموعد ده", 409, { code: "entitlement-gone" });
+      if (e instanceof LoyaltyInsufficient) return err("النقاط مش كفاية", 409, { code: "loyalty-insufficient" });
       const message = e instanceof Error ? e.message : String(e);
       if (message.includes("booking_no_overlap")) {
         return err("هذا الموعد يتعارض مع حجز موجود، اختر وقتًا آخر", 409);

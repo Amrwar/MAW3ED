@@ -13,6 +13,10 @@
       "schedule": "0 5 * * *"
     },
     {
+      "path": "/api/cron/operations",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/cron/access",
       "schedule": "*/5 * * * *"
     }

@@ -457,6 +457,10 @@ export default async function CompanyPage({ params, searchParams }: Params) {
           depositEnabled={dbBusiness.depositEnabled}
           depositPercent={dbBusiness.depositPercent}
           changeCutoffHours={dbBusiness.cancellationCutoffHours}
+          // A test booking on an unpublished preview cannot join a
+          // waitlist (the route serves published pages only).
+          waitlistEnabled={dbBusiness.waitlistEnabled && dbBusiness.isPublished}
+          maxCompanions={dbBusiness.maxCompanions}
           initialServiceId={typeof sp.service === "string" ? sp.service : null}
           initialStaffId={typeof sp.staff === "string" ? sp.staff : null}
           initialBranchId={typeof sp.branch === "string" ? sp.branch : null}

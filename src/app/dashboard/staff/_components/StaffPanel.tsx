@@ -27,6 +27,8 @@ interface Props {
   staffHours?:       StaffHoursRow[];
   /** Breaks and time off already recorded for them. */
   timeBlocks?:       TimeBlockRow[];
+  /** The owner sets commission; a delegate does not see the field. */
+  canSetCommission?: boolean;
 }
 
 type FormState = {
@@ -38,6 +40,8 @@ type FormState = {
   workingDays: number[];
   specialties: string[];
   serviceIds:  string[];
+  /** Typed; empty means no commission. */
+  commission:  string;
 };
 
 const EMPTY: FormState = {
@@ -49,6 +53,7 @@ const EMPTY: FormState = {
   workingDays: [0, 1, 2, 3, 4],
   specialties: [],
   serviceIds:  [],
+  commission:  "",
 };
 
 export default function StaffPanel({
@@ -60,6 +65,7 @@ export default function StaffPanel({
   businessHours = [],
   staffHours = [],
   timeBlocks = [],
+  canSetCommission = false,
 }: Props) {
   const { lang } = useLanguage();
   const isAr     = lang === "ar";
@@ -88,6 +94,7 @@ export default function StaffPanel({
               workingDays: editing.workingDays,
               specialties: editing.specialties,
               serviceIds:  editing.serviceIds,
+              commission:  editing.commissionPercent == null ? "" : String(editing.commissionPercent),
             }
           : { ...EMPTY },
       );
@@ -124,6 +131,17 @@ export default function StaffPanel({
       return;
     }
 
+    // Commission only from the owner, and only on an existing member:
+    // the API refuses it from anyone else.
+    const withCommission = canSetCommission && !!editing;
+    const commissionPercent = form.commission.trim() === "" ? null : Number(form.commission);
+    if (withCommission && commissionPercent !== null && !(Number.isInteger(commissionPercent) && commissionPercent >= 0 && commissionPercent <= 100)) {
+      setError(isAr ? "العمولة نسبة صحيحة من 0 لـ 100" : "Commission is a whole percent from 0 to 100");
+      return;
+    }
+    const { commission: _commission, ...fields } = form;
+    void _commission;
+
     setSaving(true);
     setError("");
     try {
@@ -132,7 +150,7 @@ export default function StaffPanel({
       const res    = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(form),
+        body:    JSON.stringify(withCommission ? { ...fields, commissionPercent } : fields),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -152,6 +170,7 @@ export default function StaffPanel({
         specialties:  raw.specialties ?? [],
         serviceIds:   (raw.services ?? []).map((ss: { serviceId: string }) => ss.serviceId),
         serviceNames: (raw.services ?? []).map((ss: { service: { nameAr: string } }) => ss.service.nameAr),
+        commissionPercent: raw.commissionPercent ?? null,
       };
       onSaved(saved, !editing);
     } finally {
@@ -245,6 +264,30 @@ export default function StaffPanel({
                 placeholder={isAr ? "مثال: حلاق أول" : "e.g. Senior Barber"}
               />
             </div>
+
+            {/* Commission — the owner's, for the operations report */}
+            {canSetCommission && editing && (
+              <div>
+                <label htmlFor="staff-commission" style={labelStyle}>{isAr ? "العمولة %" : "Commission %"}</label>
+                <input
+                  id="staff-commission"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  dir="ltr"
+                  style={inputStyle}
+                  value={form.commission}
+                  onChange={(e) => set("commission", e.target.value)}
+                  placeholder={isAr ? "فاضي = مفيش عمولة" : "Empty = no commission"}
+                />
+                <p className="m-0 mt-1 text-[0.6875rem] text-[var(--color-subtle)]">
+                  {isAr
+                    ? "نسبة من إيراد حجوزاته المكتملة، بتظهر في تقرير التشغيل اليومي."
+                    : "A share of the revenue of their completed bookings, shown in the operations report."}
+                </p>
+              </div>
+            )}
 
             {/* Photo */}
             <div>

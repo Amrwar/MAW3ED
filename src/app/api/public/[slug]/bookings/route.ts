@@ -7,6 +7,7 @@ import { toCents } from "@/lib/payments/money";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import { createBooking } from "@/lib/bookings/create";
+import { moveBooking } from "@/lib/bookings/state";
 import { createPaymentSession } from "@/lib/services/paymob";
 import { depositCents as calcDepositCents } from "@/lib/payments/money";
 import { attachProviderOrder, openPayment } from "@/lib/payments/ledger";
@@ -18,6 +19,8 @@ import { normalisePhone } from "@/lib/phone";
 import { phoneProofRequired, readPhoneProof } from "@/lib/bookings/phone-proof";
 import { currentCaller } from "@/lib/api";
 import { isOwnerPreview } from "@/lib/business/preview";
+import { quoteRedemption } from "@/lib/loyalty/ledger";
+import { noShowStanding } from "@/lib/bookings/no-show";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -48,7 +51,8 @@ export async function POST(req: Request, { params }: Params) {
 
     const { serviceId, date, startTime, customerName, customerPhone, customerEmail, notes,
             tableId, resourceId, staffMemberId, branchId, partySize, idempotencyKey,
-            source, discountCode, phoneProof, org } = parsed.data;
+            source, discountCode, phoneProof, org, redeemPoints, usePackageId, useMembershipId,
+            companions } = parsed.data;
 
     const phoneE164 = normalisePhone(customerPhone);
 
@@ -128,6 +132,34 @@ export async function POST(req: Request, { params }: Params) {
     });
     if (!service) return err("الخدمة غير موجودة", 404, { code: "service-not-found" });
 
+    if ((companions ?? 0) > business.maxCompanions) {
+      return err(
+        business.maxCompanions === 0 ? "المكان ده مش بيستقبل مرافقين" : `أقصى عدد مرافقين ${business.maxCompanions}`,
+        422,
+        { code: "too-many-companions", field: "companions" },
+      );
+    }
+
+    // ── No-show policy (lib/bookings/no-show) ────────────────────────────────
+    // A number that missed too many appointments here recently pays a
+    // deposit to book online, or is asked to call. Never a test booking.
+    const standing = isTest ? { applies: false as const } : await noShowStanding(business.id, phoneE164, business);
+    if (standing.applies && standing.action === "BLOCK_ONLINE") {
+      return err("الحجز أونلاين مش متاح للرقم ده بسبب مواعيد فاتت من غير حضور. كلّم المكان عشان تحجز.", 403, { code: "no-show-blocked" });
+    }
+
+    // ── Spending what the customer holds: points, a package, a membership ──
+    // Each is a balance tied to the phone number, so whoever spends it
+    // must have proved the number is theirs — typing somebody's number
+    // must not spend their points.
+    const wantsBalance = !!redeemPoints || !!usePackageId || !!useMembershipId;
+    if (wantsBalance) {
+      if (isTest) return err("الحجز التجريبي مبيستخدمش نقاط أو باقات", 422, { code: "balance-not-for-test" });
+      if (usePackageId && useMembershipId) return err("اختار باقة أو عضوية، مش الاتنين", 422, { code: "invalid" });
+      const proven = !!phoneE164 && ((await readPhoneProof(phoneProof)) === phoneE164 || (await callerOwnsPhone(phoneE164)));
+      if (!proven) return err("سجّل دخولك بالرقم ده أو أكّده بالكود عشان تستخدم رصيدك", 403, { code: "phone-unverified" });
+    }
+
     // ── Find or create the customer ───────────────────────────────────────────
     //
     // The record belongs to the business: it is the name the owner has on
@@ -193,8 +225,29 @@ export async function POST(req: Request, { params }: Params) {
       );
     }
 
-    const applied = resolved?.ok === true ? resolved.discount : null;
-    const totalCents = applied ? applied.totalCents : subtotalCents;
+    // A package session or membership visit pays for the service in full:
+    // no offer, no points, no deposit on top of it.
+    const entitlement = usePackageId && phoneE164
+      ? { packageId: usePackageId, phoneE164 }
+      : useMembershipId && phoneE164
+      ? { membershipId: useMembershipId, phoneE164 }
+      : null;
+
+    const applied = !entitlement && resolved?.ok === true ? resolved.discount : null;
+    let totalCents = entitlement ? 0 : applied ? applied.totalCents : subtotalCents;
+
+    // Points, after any offer: capped by the program's share of the price
+    // and by what is spendable now. The spend itself is taken inside the
+    // booking's transaction (lib/bookings/create.ts), which fails the
+    // booking if another spend got there first.
+    let loyalty: { programId: string; phoneE164: string; points: number; amountCents: number } | null = null;
+    if (redeemPoints && !entitlement && phoneE164 && totalCents > 0) {
+      const q = await quoteRedemption(business.id, phoneE164, redeemPoints, totalCents);
+      if (!q.ok && q.why === "loyalty-unavailable") return err("المكان ده مفيهوش برنامج نقاط", 422, { code: "loyalty-unavailable" });
+      if (!q.ok) return err("النقاط مش كفاية للخصم", 422, { code: "loyalty-insufficient" });
+      loyalty = { programId: q.programId, phoneE164, points: q.points, amountCents: q.amountCents };
+      totalCents -= q.amountCents;
+    }
 
     // ── Determine initial status and deposit ──────────────────────────────────
     // Deposits require a plan that includes them, and are a share of
@@ -206,8 +259,16 @@ export async function POST(req: Request, { params }: Params) {
     // took no deposits. It used to be created PENDING_PAYMENT, fail to
     // open a 0-piastre payment, and hold its slot forever.
     // A test booking never takes money.
-    const depositCents = !isTest && business.depositEnabled && canUseFeature(effectivePlan, "deposits") && totalCents > 0
-      ? calcDepositCents(totalCents / 100, business.depositPercent)
+    // A number past the no-show limit (REQUIRE_DEPOSIT) pays one even
+    // where the business takes none otherwise — the business's own
+    // percentage. If its plan cannot take deposits online, the number is
+    // asked to call instead.
+    const noShowDeposit = standing.applies && standing.action === "REQUIRE_DEPOSIT";
+    if (noShowDeposit && totalCents > 0 && !canUseFeature(effectivePlan, "deposits")) {
+      return err("الحجز أونلاين مش متاح للرقم ده بسبب مواعيد فاتت من غير حضور. كلّم المكان عشان تحجز.", 403, { code: "no-show-blocked" });
+    }
+    const depositCents = !isTest && (business.depositEnabled || noShowDeposit) && canUseFeature(effectivePlan, "deposits") && totalCents > 0
+      ? calcDepositCents(totalCents / 100, business.depositPercent > 0 ? business.depositPercent : 50)
       : 0;
     const requiresDeposit = depositCents > 0;
     const depositAmount   = requiresDeposit ? depositCents / 100 : null;
@@ -247,6 +308,9 @@ export async function POST(req: Request, { params }: Params) {
       depositAmount,
       source:         source ?? null,
       discount:       applied ? { id: applied.id, amountCents: applied.amountCents } : null,
+      loyalty,
+      entitlement,
+      companions:     companions ?? 0,
       idempotencyKey: idempotencyKey ?? null,
       // A test booking is not counted against the plan.
       monthlyLimit:   isTest ? undefined : getMonthlyBookingLimit(effectivePlan),
@@ -279,6 +343,10 @@ export async function POST(req: Request, { params }: Params) {
         case "business-published":
           // The owner's own test booking, as the page went live.
           return err("الصفحة اتنشرت دلوقتي — الحجز التجريبي مبقاش متاح. احجز عادي لو عايز.", 409, { code: "business-published" });
+        case "loyalty-insufficient":
+          return err("النقاط اتصرفت في حجز تاني. جرّب من غير نقاط.", 409, { code: "loyalty-insufficient" });
+        case "entitlement-gone":
+          return err("الباقة أو العضوية مبقاش فيها جلسات للموعد ده", 409, { code: "entitlement-gone" });
       }
     }
 
@@ -385,15 +453,11 @@ export async function POST(req: Request, { params }: Params) {
           201,
         );
       } catch (paymobError) {
-        // The payment could not be started — release the PENDING_PAYMENT
-        // booking so the slot is freed, then return an error. Each step
-        // is best-effort on its own: one failing must not stop the other.
-        await db.booking
-          .updateMany({
-            where: { id: booking.id, status: "PENDING_PAYMENT" },
-            data:  { status: "FAILED_PAYMENT" },
-          })
-          .catch((e) => log.error("[booking POST] could not release the hold", e));
+        // The payment could not be started — fail it, then release the
+        // PENDING_PAYMENT booking through the state machine so the slot is
+        // freed and whatever it took comes back (an offer's use, points,
+        // a package session). Each step is best-effort on its own: one
+        // failing must not stop the other; the reaper finishes either.
         if (paymentId) {
           await db.payment
             .updateMany({
@@ -402,6 +466,13 @@ export async function POST(req: Request, { params }: Params) {
             })
             .catch((e) => log.error("[booking POST] could not fail the payment", e));
         }
+        await moveBooking({
+          bookingId: booking.id,
+          from: "PENDING_PAYMENT",
+          to: "FAILED_PAYMENT",
+          by: "system",
+          reason: "could not open a Paymob session",
+        }).catch((e) => log.error("[booking POST] could not release the hold", e));
         log.error("[booking POST] payment could not be started:", paymobError);
         return err("تعذّر بدء عملية الدفع، حاول مرة أخرى", 502, { code: "payment-unavailable" });
       }

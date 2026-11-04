@@ -67,6 +67,10 @@ interface Props {
   depositPercent:    number;
   /** Hours before the appointment until which a customer can cancel or move it themselves. */
   changeCutoffHours: number;
+  /** A full day offers the waitlist instead of a dead end. */
+  waitlistEnabled?:  boolean;
+  /** How many people may come along on one booking; 0 asks nothing. */
+  maxCompanions?:    number;
   /**
    * A service chosen before arriving — the app's "Book this" opens
    * /company/<slug>?service=<id> — so the widget starts on the next step
@@ -105,6 +109,8 @@ export default function CompanyContent({
   depositEnabled,
   depositPercent,
   changeCutoffHours,
+  waitlistEnabled = false,
+  maxCompanions = 0,
   initialServiceId = null,
   initialStaffId = null,
   initialBranchId = null,
@@ -269,6 +275,9 @@ export default function CompanyContent({
                 depositEnabled={depositEnabled}
                 depositPercent={depositPercent}
                 changeCutoffHours={changeCutoffHours}
+                waitlistEnabled={waitlistEnabled}
+                maxCompanions={maxCompanions}
+                hours={hours}
               />
             </div>
 
