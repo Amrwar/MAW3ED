@@ -96,8 +96,10 @@ already removed in earlier phases.
 
 ## Production steps (owner)
 
-1. Run `prisma/migrations/phase26_search_funnel.sql` on production **before**
-   merging (the new code reads `searchKey` and writes the funnel tables).
+1. **Done 2026-11-04:** `prisma/migrations/phase26_search_funnel.sql` applied
+   on production by the owner and verified (8 generated search columns
+   filled, 2 trigram indexes, funnel tables, 11 steps, folding identical
+   to the application). Originally: run it **before** merging (the new code reads `searchKey` and writes the funnel tables).
    Additive and idempotent; it rewrites eight small tables once to add the
    generated columns. Rollback: `prisma/migrations/rollback/phase26_search_funnel_rollback.sql`
    after reverting the code.
