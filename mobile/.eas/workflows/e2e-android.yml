@@ -2,14 +2,16 @@
 # run the Maestro flows in .maestro/ against it. The flows only read and
 # navigate — they never book, review, save or change anything.
 #
-# The API the build talks to is EXPO_PUBLIC_API_URL from the EAS
-# "preview" environment, and must be a test backend — never production
+# The API the build talks to is the staging server
+# (https://maw3ed-staging.vercel.app, set in eas.json's e2e profile): its
+# own Vercel project and database, fictional data only — never production
 # (a production URL here once counted every flow's visits as real ones).
-# Unset, the build stops (mobile/app.config.ts). See docs/mobile-release.md.
+# See docs/staging.md.
 #
 # Run:   npx eas-cli workflow:run .eas/workflows/e2e-android.yml
 #
-# The business flows (05, 19) need a review account. Set it as EAS
+# The business flows (05, 19) need the staging review account (the only
+# account on staging that can sign in; docs/staging.md). Set it as EAS
 # environment variables in the "preview" environment, secret visibility:
 #   MAESTRO_REVIEW_EMAIL, MAESTRO_REVIEW_PASSWORD
 # Maestro reads MAESTRO_-prefixed variables on its own.

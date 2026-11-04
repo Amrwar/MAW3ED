@@ -37,7 +37,17 @@ if (!SECRET) {
   process.exit(2);
 }
 
-const connectionString = (process.env.DATABASE_URL ?? "").replace(/[&?]channel_binding=require/g, "");
+// Parsed, not cut with a pattern: cutting a leading "?channel_binding=…" breaks the URL (see src/lib/db-url.ts).
+const connectionString = (() => {
+  const raw = process.env.DATABASE_URL ?? "";
+  try {
+    const u = new URL(raw);
+    u.searchParams.delete("channel_binding");
+    return u.toString();
+  } catch {
+    return raw;
+  }
+})();
 // Same rule as src/lib/db.ts: Neon's adapter speaks to Neon's proxy,
 // so a local Postgres needs the plain one. This harness is usually
 // pointed at a throwaway database, which is the whole point of it.
