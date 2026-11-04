@@ -120,6 +120,20 @@ shows on the checkout page ("Pay securely at Booking"). Rename it to
 Maw3ed in Stripe → Settings → Public details. The account also shows
 "Payouts paused — a required task is past due".
 
+## Live — 2026-11-05
+
+- Restricted live key `maw3ed-plans-production` (Checkout Sessions Write,
+  Charges and Refunds Write, Payment Intents Read), stored only in Vercel
+  `maw-3-ed` → Production → `STRIPE_SECRET_KEY`.
+- Live webhook destination `maw3ed-production-plans` →
+  `https://www.maw3ed.net/api/webhooks/stripe`, API 2026-10-28.endive, the
+  5 events; its secret in `STRIPE_WEBHOOK_SECRET`.
+- PR #55 merged (`e5b9e88`), production deployed; signed-out check: the
+  webhook refuses unsigned and wrongly signed calls (400), the upgrade
+  route requires sign-in (401).
+- Not yet: a real live payment and refund (the owner's, runbook in
+  `docs/payments-verification.md`).
+
 ## Not verified
 
 - **Live mode.** Everything above is test mode. One real payment and
