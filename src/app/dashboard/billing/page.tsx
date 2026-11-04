@@ -15,6 +15,8 @@ const KIND_AR: Record<PaymentKind, string> = {
   BOOKING_BALANCE: "باقي حساب",
   BOOKING_FULL: "دفع كامل من عميل",
   SUBSCRIPTION: "اشتراك موعد",
+  PACKAGE: "باقة جلسات",
+  MEMBERSHIP: "عضوية",
 };
 
 const STATUS_AR: Record<PaymentStatus, string> = {

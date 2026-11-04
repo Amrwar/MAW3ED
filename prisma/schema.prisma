@@ -42,6 +42,10 @@ model User {
   notifyByEmail    Boolean  @default(true)
   /// Off until an SMS gateway is configured; see lib/notifications.
   notifyBySms      Boolean  @default(false)
+  /// Phase 27 - consent to promotional messages (follow-ups, rebooking
+  /// reminders, offers). Null: no consent. Transactional messages do not
+  /// depend on it.
+  marketingConsentAt DateTime?
   /// Deprecated in favour of adminRole; kept so a token minted before
   /// roles existed still resolves. Nothing reads it to decide access.
   isAdmin          Boolean  @default(false)
@@ -380,6 +384,27 @@ model Business {
   policiesReviewedAt         DateTime?
   /// How close to an appointment a customer may still cancel or move it.
   cancellationCutoffHours    Int                @default(2)
+  /// Phase 27 - no-show policy: after noShowLimit no-shows within
+  /// noShowWindowDays, online booking either needs a deposit or is refused
+  /// (the customer is asked to call). Null: no policy.
+  noShowLimit                Int?
+  noShowWindowDays           Int                @default(180)
+  noShowAction               NoShowAction       @default(REQUIRE_DEPOSIT)
+  /// Phase 27 - a waitlist for a full day; a freed time is offered to the
+  /// first in line, held for waitlistOfferMinutes.
+  waitlistEnabled            Boolean            @default(false)
+  waitlistOfferMinutes       Int                @default(30)
+  /// Phase 27 - people who may come with the customer (a clinic visit).
+  /// 0 = not asked.
+  maxCompanions              Int                @default(0)
+  /// Phase 27 - automations (lib/automations). Marketing ones (follow-up,
+  /// rebook reminder) reach only customers who consented.
+  followUpEnabled            Boolean            @default(false)
+  followUpDelayHours         Int                @default(24)
+  rebookReminderEnabled      Boolean            @default(false)
+  rebookAfterDays            Int                @default(30)
+  membershipRenewalNoticeDays Int               @default(3)
+  loyaltyNoticesEnabled      Boolean            @default(true)
   /// Ownership or identity checked by a Maw3ed administrator, from
   /// evidence, and nothing else. The public "موثّق" badge (isVerified)
   /// follows this. A confirmed email or phone is contact verification,
@@ -427,6 +452,14 @@ model Business {
   importBatches      ImportBatch[]
   venueMemberships   VenueMembership[]
   organizationLinks  OrganizationBusiness[]
+  bookingSeries      BookingSeries[]
+  slotWaitlist       SlotWaitlistEntry[]
+  loyaltyProgram     LoyaltyProgram?          @relation("BusinessLoyaltyProgram")
+  loyaltyParticipations LoyaltyParticipation[]
+  packagePlans       PackagePlan[]
+  customerPackages   CustomerPackage[]
+  membershipPlans    MembershipPlan[]
+  customerMemberships CustomerMembership[]
 
   /// The discovery listing always filters on isPublished first, then on
   /// one of city / neighbourhood / category, and sorts on rating,
@@ -583,6 +616,9 @@ model Service {
   price         Decimal  @db.Decimal(10, 2)
   currency      String   @default("EGP")
   isAvailable   Boolean  @default(true)
+  /// Phase 27 - appointment category ("Consultation", "Follow-up"),
+  /// grouping services on the booking page. Free text, optional.
+  groupName     String?
   sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -831,6 +867,15 @@ model Booking {
   staffMemberId          String? // Barbershop: which staff member handles the booking
   branchId               String? // which location, when the business has more than one
   partySize              Int? // Restaurant: number of guests
+  /// Phase 27 - a booking made as part of a recurring series.
+  seriesId               String?
+  seriesIndex            Int?
+  /// Phase 27 - what loyalty points took off, in piastres (like discountCents).
+  loyaltyCents           Int           @default(0)
+  /// Phase 27 - taken at the desk for someone who walked in.
+  walkIn                 Boolean       @default(false)
+  /// Phase 27 - people accompanying the customer (Business.maxCompanions).
+  companions             Int           @default(0)
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 
@@ -847,6 +892,9 @@ model Booking {
   checkIn      BookingCheckIn?
   review      Review?
   payments    Payment[]
+  series         BookingSeries?   @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  entitlementUse EntitlementUse?
+  waitlistEntry  SlotWaitlistEntry? @relation("WaitlistBooking")
 
   /// Where the visitor came from before they booked. Null for bookings
   /// made before attribution existed, and for anything that arrived
@@ -872,6 +920,7 @@ model Booking {
   @@index([resourceId])
   @@index([serviceId])
   @@index([customerId])
+  @@unique([seriesId, seriesIndex])
   @@index([customerPhoneE164])
   @@index([customerPhoneE164, startsAt])
   @@index([staffMemberId])
@@ -1003,6 +1052,9 @@ model StaffMember {
   isActive    Boolean  @default(true)
   workingDays Int[] // dayOfWeek 0-6
   specialties String[] // free-text tags
+  /// Phase 27 - share of a completed booking's value owed to this member,
+  /// 0-100. Owner/finance only. Null: no commission.
+  commissionPercent Int?
   /// What this person may do in the business's app, when they sign in
   /// (prisma/migrations/add_staff_access.sql). Null: no app access.
   access      StaffAccess?
@@ -1173,6 +1225,8 @@ enum PaymentKind {
   BOOKING_BALANCE /// the rest of it, after a deposit
   BOOKING_FULL /// the whole price in one go
   SUBSCRIPTION /// a business buying a plan
+  PACKAGE /// a customer buying a package of sessions (Phase 27)
+  MEMBERSHIP /// a customer paying a membership period (Phase 27)
 }
 
 /// Where the money came through.
@@ -1231,6 +1285,9 @@ model Payment {
   providerTransactionId String? @unique
 
   bookingId  String?
+  /// Phase 27 - a package or a membership period bought.
+  customerPackageId    String?
+  customerMembershipId String?
   booking    Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -1260,6 +1317,8 @@ model Payment {
   @@index([status, createdAt])
   @@index([kind, createdAt])
   @@index([recordedById])
+  @@index([customerPackageId])
+  @@index([customerMembershipId])
 
 }
 
@@ -1410,6 +1469,8 @@ model Discount {
   startsAt DateTime?
   endsAt   DateTime?
   isActive Boolean   @default(true)
+  /// Phase 27 - created by an organization promotion across its owned brands.
+  organizationPromotionId String?
 
   /// Empty means every service. Service ids rather than a relation,
   /// because a service being removed should not delete the offer.
@@ -1698,6 +1759,8 @@ model Organization {
   invites      OrganizationInvite[]
   views        OrganizationView[]
   attributions OrganizationBookingAttribution[]
+  loyaltyProgram LoyaltyProgram? @relation("OrganizationLoyaltyProgram")
+  promotions     OrganizationPromotion[]
 
   @@index([status, isPublished])
   @@index([parentId])
@@ -2510,4 +2573,334 @@ model FunnelSeen {
   day DateTime @db.Date
 
   @@index([day])
+}
+
+// ─── Phase 27: advanced bookings, loyalty, packages and memberships ─────────
+// docs/architecture/ADVANCED_BOOKING_RULES.md, LOYALTY_LEDGER.md,
+// MEMBERSHIPS_AND_PACKAGES.md. Every booking goes through the core engine
+// (lib/bookings/create.ts); balances move only by conditional updates guarded
+// by CHECK constraints (prisma/migrations/phase27_operations.sql).
+
+enum NoShowAction {
+  REQUIRE_DEPOSIT /// online booking needs a deposit
+  BLOCK_ONLINE /// online booking refused; the customer calls
+}
+
+enum SeriesStatus {
+  ACTIVE
+  CANCELLED
+}
+
+/// A recurring appointment: the same service, weekly or every few weeks, a
+/// bounded number of times (at most 12, within 26 weeks). Each occurrence is
+/// an ordinary Booking made through the engine.
+model BookingSeries {
+  id            String       @id @default(cuid())
+  businessId    String
+  business      Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId    String?
+  customerName  String
+  customerPhone String
+  serviceId     String
+  staffMemberId String?
+  resourceId    String?
+  intervalWeeks Int
+  occurrences   Int
+  startDate     DateTime     @db.Date
+  startTime     String
+  status        SeriesStatus @default(ACTIVE)
+  createdById   String?
+  createdAt     DateTime     @default(now())
+  bookings      Booking[]
+
+  @@index([businessId, createdAt])
+}
+
+enum SlotWaitStatus {
+  WAITING
+  OFFERED
+  BOOKED
+  EXPIRED
+  CANCELLED
+}
+
+/// Waiting for a time on a full day. A freed time is offered to the first
+/// WAITING entry that fits; the offer is held for the business's
+/// waitlistOfferMinutes, then passes on. At most 3 offers per entry.
+model SlotWaitlistEntry {
+  id             String         @id @default(cuid())
+  businessId     String
+  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceId      String
+  staffMemberId  String?
+  date           DateTime       @db.Date
+  /// The window the customer can make, "HH:MM".
+  fromTime       String
+  toTime         String
+  partySize      Int?
+  customerName   String
+  customerPhone  String
+  /// E.164 digits: one live entry per number per business per day.
+  phoneE164      String
+  customerEmail  String?
+  status         SlotWaitStatus @default(WAITING)
+  offeredTime    String?
+  offerToken     String?        @unique
+  offerExpiresAt DateTime?
+  offers         Int            @default(0)
+  /// The customer's link to see or leave the waitlist.
+  manageToken    String         @unique
+  bookingId      String?        @unique
+  booking        Booking?       @relation("WaitlistBooking", fields: [bookingId], references: [id], onDelete: SetNull)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([businessId, date, status, createdAt])
+  @@index([status, offerExpiresAt])
+}
+
+enum LoyaltyEntryKind {
+  EARN /// a completed visit
+  EARN_REVERSAL /// its payment refunded
+  REDEEM /// points spent on a booking
+  REDEEM_REVERSAL /// that booking cancelled: points back
+  EXPIRE /// an earned lot ran out
+  ADJUST /// the owner, with a reason
+}
+
+/// A business's (or an organization's, across its owned brands) loyalty
+/// rules. Exactly one owner: businessId or organizationId (CHECK).
+model LoyaltyProgram {
+  id               String        @id @default(cuid())
+  businessId       String?       @unique
+  business         Business?     @relation("BusinessLoyaltyProgram", fields: [businessId], references: [id], onDelete: Cascade)
+  organizationId   String?       @unique
+  organization     Organization? @relation("OrganizationLoyaltyProgram", fields: [organizationId], references: [id], onDelete: Cascade)
+  nameAr           String
+  nameEn           String?
+  isActive         Boolean       @default(true)
+  /// Points for each completed visit.
+  pointsPerVisit   Int           @default(10)
+  /// Spend-based: points per 100 EGP of completed value (0 = off).
+  pointsPer100Egp  Int           @default(0)
+  /// Redemption: redeemPoints points take redeemValueCents off.
+  redeemPoints     Int           @default(100)
+  redeemValueCents Int           @default(5000)
+  /// At most this share of a booking's price can be paid in points.
+  maxRedeemPercent Int           @default(50)
+  /// Earned points expire after this many days (null: never).
+  expiryDays       Int?          @default(365)
+  /// At most this many earning visits per customer per day (abuse cap).
+  dailyEarnCap     Int           @default(2)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  participations LoyaltyParticipation[]
+  accounts       LoyaltyAccount[]
+  entries        LoyaltyEntry[]
+}
+
+/// A business in an organization's program: only a brand the organization
+/// OWNS, and only once the business's owner accepted.
+model LoyaltyParticipation {
+  id         String         @id @default(cuid())
+  programId  String
+  program    LoyaltyProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  businessId String
+  business   Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  acceptedAt DateTime?
+  leftAt     DateTime?
+  createdAt  DateTime       @default(now())
+
+  @@unique([programId, businessId])
+  @@index([businessId])
+}
+
+/// A customer's balance in one program, keyed by phone (E.164 digits).
+model LoyaltyAccount {
+  id             String         @id @default(cuid())
+  programId      String
+  program        LoyaltyProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  phoneE164      String
+  /// The sum of the account's entries; CHECK >= 0; moved only with an entry.
+  balance        Int            @default(0)
+  lifetimeEarned Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  entries        LoyaltyEntry[]
+
+  @@unique([programId, phoneE164])
+}
+
+/// The ledger. Append-only; sourceKey makes every event happen once.
+model LoyaltyEntry {
+  id          String           @id @default(cuid())
+  programId   String
+  program     LoyaltyProgram   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  accountId   String
+  account     LoyaltyAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  kind        LoyaltyEntryKind
+  /// Signed: positive adds, negative takes.
+  points      Int
+  /// For a lot (EARN, REDEEM_REVERSAL, positive ADJUST): what is left of it.
+  remaining   Int?
+  expiresAt   DateTime?
+  bookingId   String?
+  businessId  String?
+  sourceKey   String           @unique
+  note        String?
+  actorUserId String?
+  createdAt   DateTime         @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([expiresAt])
+  @@index([bookingId])
+}
+
+enum PackageStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  EXHAUSTED
+  EXPIRED
+  CANCELLED
+  REFUNDED
+}
+
+/// A bundle of sessions sold ahead (e.g. 5 haircuts) for some services.
+model PackagePlan {
+  id           String            @id @default(cuid())
+  businessId   String
+  business     Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  nameAr       String
+  nameEn       String?
+  /// Which services a session covers (empty: any).
+  serviceIds   String[]          @default([])
+  sessions     Int
+  priceCents   Int
+  validityDays Int
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  purchases    CustomerPackage[]
+
+  @@index([businessId, isActive])
+}
+
+model CustomerPackage {
+  id            String           @id @default(cuid())
+  planId        String
+  plan          PackagePlan      @relation(fields: [planId], references: [id], onDelete: Restrict)
+  businessId    String
+  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  phoneE164     String
+  customerName  String
+  /// Copied from the plan at sale: changing the plan never changes a sale.
+  serviceIds    String[]         @default([])
+  sessionsTotal Int
+  sessionsUsed  Int              @default(0)
+  priceCents    Int
+  status        PackageStatus    @default(PENDING_PAYMENT)
+  activatedAt   DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  uses          EntitlementUse[]
+
+  @@index([businessId, phoneE164, status])
+  @@index([status, expiresAt])
+}
+
+enum CustomerMembershipStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+/// A recurring plan: a fee per period with included visits.
+model MembershipPlan {
+  id             String               @id @default(cuid())
+  businessId     String
+  business       Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  nameAr         String
+  nameEn         String?
+  serviceIds     String[]             @default([])
+  priceCents     Int
+  periodDays     Int                  @default(30)
+  includedVisits Int
+  isActive       Boolean              @default(true)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  memberships    CustomerMembership[]
+
+  @@index([businessId, isActive])
+}
+
+model CustomerMembership {
+  id                String                   @id @default(cuid())
+  planId            String
+  plan              MembershipPlan           @relation(fields: [planId], references: [id], onDelete: Restrict)
+  businessId        String
+  business          Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  phoneE164         String
+  customerName      String
+  serviceIds        String[]                 @default([])
+  includedVisits    Int
+  periodDays        Int
+  priceCents        Int
+  status            CustomerMembershipStatus @default(PENDING_PAYMENT)
+  periodStart       DateTime?
+  periodEnd         DateTime?
+  usedInPeriod      Int                      @default(0)
+  /// Paused: the period stops running from pausedAt.
+  pausedAt          DateTime?
+  /// Days of pause already used this period (bounded: lib/memberships).
+  pausedDays        Int                      @default(0)
+  cancelAtPeriodEnd Boolean                  @default(false)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  uses              EntitlementUse[]
+
+  @@index([businessId, phoneE164, status])
+  @@index([status, periodEnd])
+}
+
+/// One booking covered by a package session or a membership visit. Unique per
+/// booking: a booking consumes at most once. reversedAt: the booking was
+/// cancelled and the session given back.
+model EntitlementUse {
+  id           String              @id @default(cuid())
+  bookingId    String              @unique
+  booking      Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  packageId    String?
+  package      CustomerPackage?    @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  membershipId String?
+  membership   CustomerMembership? @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  reversedAt   DateTime?
+  createdAt    DateTime            @default(now())
+
+  @@index([packageId])
+  @@index([membershipId])
+}
+
+/// A promotion an organization runs across the brands it OWNS. It becomes a
+/// Discount on each participating business (Discount.organizationPromotionId),
+/// so the booking engine applies it like any business's own offer.
+model OrganizationPromotion {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  nameAr         String
+  nameEn         String?
+  kind           DiscountKind
+  value          Int
+  startsAt       DateTime?
+  endsAt         DateTime?
+  isActive       Boolean      @default(true)
+  createdById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
 }
