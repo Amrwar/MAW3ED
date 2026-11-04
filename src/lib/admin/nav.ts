@@ -153,6 +153,12 @@ const SECTIONS: AdminNavSection[] = [
         permissions: ["reports.read"],
       },
       {
+        href: "/admin/operations",
+        labelAr: "صحة التشغيل",
+        labelEn: "Operations health",
+        permissions: ["reports.read"],
+      },
+      {
         href: "/admin/onboarding",
         labelAr: "مسار التسجيل",
         labelEn: "Onboarding funnel",

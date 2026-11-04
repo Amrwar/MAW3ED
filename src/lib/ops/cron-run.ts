@@ -11,16 +11,22 @@ import { log } from "@/lib/logger";
  * recorded. Runs older than 30 days are pruned, a bounded batch at a time.
  */
 export async function withCronRun(job: string, run: () => Promise<Response>): Promise<Response> {
-  const started = await db.cronRun.create({ data: { job }, select: { id: true } }).catch((e) => {
+  // Recording a run must never stop the job itself: any failure here
+  // (the table missing, the database slow) is logged and the job runs.
+  let started: { id: string } | null = null;
+  try {
+    started = await db.cronRun.create({ data: { job }, select: { id: true } });
+  } catch (e) {
     log.error("[cron-run] could not record a start", e, { job });
-    return null;
-  });
+  }
   let res: Response;
   try {
     res = await run();
   } catch (e) {
     if (started) {
-      await db.cronRun.update({ where: { id: started.id }, data: { finishedAt: new Date(), ok: false, error: String(e instanceof Error ? e.message : e).slice(0, 500) } }).catch(() => {});
+      await Promise.resolve()
+        .then(() => db.cronRun.update({ where: { id: started!.id }, data: { finishedAt: new Date(), ok: false, error: String(e instanceof Error ? e.message : e).slice(0, 500) } }))
+        .catch(() => {});
     }
     throw e;
   }

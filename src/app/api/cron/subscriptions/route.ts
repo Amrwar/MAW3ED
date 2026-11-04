@@ -47,6 +47,10 @@ async function handle(req: Request): Promise<Response> {
       currentPeriodEnd:   { lt: now },
     },
     include: { owner: { select: { email: true } } },
+    // Bounded per run (Phase 28); an expired one leaves this set, so the
+    // next run takes the rest.
+    orderBy: { currentPeriodEnd: "asc" },
+    take: 500,
   });
 
   log.info(`[subscriptions cron] ${overdueBusinesses.length} subscription(s) to expire`);
@@ -92,6 +96,7 @@ async function handle(req: Request): Promise<Response> {
       subscriptionReminderSentAt: null,
     },
     include: { owner: { select: { email: true } } },
+    take: 500,
   });
 
   log.info(`[subscriptions cron] ${upcomingExpiryBusinesses.length} renewal reminder(s) to send`);

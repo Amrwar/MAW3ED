@@ -52,7 +52,7 @@ export async function loadPublicOrganization(slug: string) {
     where: { slug, ...PUBLIC_ORG },
     select: {
       id: true, slug: true, kind: true, nameAr: true, nameEn: true, descriptionAr: true, descriptionEn: true,
-      logoImage: true, coverImage: true, phone: true, email: true, instagram: true, facebook: true,
+      logoImage: true, coverImage: true, brandColor: true, phone: true, email: true, instagram: true, facebook: true,
       address: true, website: true, updatedAt: true,
       city: { select: { slug: true, nameAr: true, nameEn: true } },
       // One level each way, never traversed further: the page shows where

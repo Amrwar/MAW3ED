@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { localeFor } from "@/lib/fmt";
 import { refusalText } from "@/lib/lang";
 import type { Lang } from "@/lib/i18n";
+import VenueCredentialPanel from "./VenueCredentialPanel";
 
 /* The shapes GET /api/venues/:id/access returns (lib/access/venue-desk.ts). */
 interface Row {
@@ -203,6 +204,7 @@ export default function AccessDesk({ venueId, venueName }: { venueId: string; ve
           </button>
         ))}
         {desk.can.provider && <ProviderForm desk={desk} busy={busy} send={send} t={t} />}
+        {desk.can.provider && <VenueCredentialPanel venueId={venueId} />}
       </section>
 
       {desk.attention.length > 0 && (

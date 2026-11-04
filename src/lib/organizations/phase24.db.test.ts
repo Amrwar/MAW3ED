@@ -29,7 +29,9 @@ describe.skipIf(!local)("organization portfolio report on a real database", () =
   let portfolio: typeof import("./portfolio");
   const tag = `p24-${Date.now()}`;
   const ids = { users: [] as string[], businesses: [] as string[], orgs: [] as string[] };
-  const today = new Date().toISOString().slice(0, 10);
+  // Cairo's calendar day, as the report reads it — the UTC date is
+  // already tomorrow's (or still yesterday's) for part of every day.
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo" }).format(new Date());
 
   async function user(n: string) {
     const u = await db.user.create({ data: { email: `${tag}-${n}@example.test`, name: `${tag} ${n}`, emailVerified: new Date() } });

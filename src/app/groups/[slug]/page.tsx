@@ -23,6 +23,8 @@ import { todaysHours } from "@/lib/organizations/hours";
 import SharePage from "@/components/shared/SharePage";
 import { kindLabel } from "@/lib/venues/seo";
 
+const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
+
 type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ q?: string; category?: string; section?: string; page?: string; src?: string }>;
@@ -54,6 +56,11 @@ export default async function GroupPage({ params, searchParams }: Props) {
   const en = lang === "en";
   const t = (ar: string, e: string) => (en ? e : ar);
   const nm = (x: { nameAr: string; nameEn?: string | null }) => (en ? x.nameEn || x.nameAr : x.nameAr);
+  // The organization's own accent (Phase 28): a decorative bar under the
+  // name, never the colour of any text, so a pale or dark choice cannot
+  // cost the page its contrast. Checked again here before it reaches a
+  // style attribute.
+  const accent = org.brandColor && HEX_COLOR.test(org.brandColor) ? org.brandColor : null;
 
   const paged = pageDirectory(org.directory, {
     q: sp.q,
@@ -104,6 +111,7 @@ export default async function GroupPage({ params, searchParams }: Props) {
                   {org.city ? <span>· {nm(org.city)}</span> : null}
                 </p>
                 <h1 className="m-0 text-3xl font-extrabold text-[var(--color-ink)] md:text-4xl">{nm(org)}</h1>
+                {accent && <span aria-hidden="true" className="mt-2 block h-1 w-16 rounded-full" style={{ backgroundColor: accent }} />}
               </div>
             </div>
             {(en ? org.descriptionEn || org.descriptionAr : org.descriptionAr) && (

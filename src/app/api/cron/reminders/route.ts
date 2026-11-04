@@ -65,6 +65,10 @@ async function handle(req: Request): Promise<Response> {
       isTest: false,
       startsAt: { gte: wall, lte: horizon },
     },
+    // Bounded per run (Phase 28): the nearest first. A booking reminded is
+    // marked (customerReminderSentAt), so the next run continues with the rest.
+    orderBy: { startsAt: "asc" },
+    take: 1000,
     select: {
       id: true,
       startsAt: true,
@@ -152,6 +156,10 @@ async function handle(req: Request): Promise<Response> {
       review: null,
       business: { reviewRequestEnabled: true },
     },
+    // Bounded per run; a review request is keyed once per booking, so the
+    // next run continues where this one stopped.
+    orderBy: { endsAt: "asc" },
+    take: 1000,
     select: { id: true },
   });
 

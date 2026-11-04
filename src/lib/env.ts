@@ -94,6 +94,12 @@ const optional = z.object({
   // Local QA only: "1" lets the SANDBOX access provider run in a
   // production build on this machine. Never honoured on Vercel.
   ACCESS_SANDBOX: z.string().optional(),
+  // Phase 28. Local QA only: "1" lets a webhook endpoint be a test
+  // receiver on this machine (http://localhost). Ignored on Vercel.
+  WEBHOOK_ALLOW_PRIVATE: z.string().optional(),
+  // Phase 28 kill switches (lib/flags.ts): comma-separated features to
+  // switch off — enterpriseApi, webhooks, automations, waitlist.
+  FEATURE_FLAGS_OFF: z.string().optional(),
 
   // Push (Expo). Optional: with "enhanced push security" on in the Expo
   // dashboard, Expo refuses pushes that do not carry this token.

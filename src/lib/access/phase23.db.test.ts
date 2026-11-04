@@ -140,6 +140,39 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
     await db.user.deleteMany({ where: { id: { in: ids.users } } });
   });
 
+  // ─── Phase 28: provider isolation per venue ──────────────────────────
+  it("P28: a venue's own credential is its own — revoking venue A's stops A's provider calls and nothing at venue B", async () => {
+    const vc = await import("./venue-credentials");
+    const a = await business("p28a");
+    const va = await venue("p28a", a);
+    const b = await business("p28b");
+    const vb = await venue("p28b", b);
+    const admin = (await user("p28-admin")).id;
+    expect(await vc.setVenueCredential(va.venue.id, admin)).toEqual({ ok: true, keyVersion: 1 });
+    expect(await vc.setVenueCredential(vb.venue.id, admin)).toEqual({ ok: true, keyVersion: 1 });
+    // Rotation bumps only that venue.
+    expect(await vc.setVenueCredential(vb.venue.id, admin)).toEqual({ ok: true, keyVersion: 2 });
+    const ka = await vc.venueCredentialFor(va.venue.id, providerId);
+    const kb = await vc.venueCredentialFor(vb.venue.id, providerId);
+    expect(ka && ka !== "revoked" && kb && kb !== "revoked" && ka.secret !== kb.secret).toBe(true);
+
+    expect(await vc.revokeVenueCredential(va.venue.id)).toBe(true);
+    const ba = await booking(a, "CONFIRMED", 60);
+    const bb = await booking(b, "CONFIRMED", 60);
+    await passes.requestPass(ba.id, { displayName: "منى", phoneE164: null, userId: null });
+    await passes.requestPass(bb.id, { displayName: "منى", phoneE164: null, userId: null });
+    await drain(2);
+    const ca = await db.accessCredential.findFirstOrThrow({ where: { entitlement: { bookingId: ba.id } } });
+    const cb = await db.accessCredential.findFirstOrThrow({ where: { entitlement: { bookingId: bb.id } } });
+    expect(cb.status).toBe("ACTIVE");
+    expect(ca.status).not.toBe("ACTIVE");
+    const jobA = await db.accessSyncJob.findFirstOrThrow({ where: { credentialId: ca.id, kind: "PROVISION" } });
+    expect(jobA.status).toBe("DEAD");
+    expect(jobA.lastError).toContain("credential-revoked");
+    // B's credential is untouched.
+    expect(await vc.venueCredentialFor(vb.venue.id, providerId)).toMatchObject({ keyVersion: 2 });
+  });
+
   // ─── Booking QR and check-in ──────────────────────────────────────────
 
   it("2/3/25: a confirmed booking has a QR code; the business checks the customer in through the state machine, audited", async () => {

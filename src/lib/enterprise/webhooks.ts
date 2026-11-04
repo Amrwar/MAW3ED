@@ -146,9 +146,17 @@ export async function pingEndpoint(organizationId: string, endpointId: string) {
 
 // ─── The change feed ─────────────────────────────────────────────────────────
 
-/** Pure: the booking event a change is, and its id. */
-export function bookingEvent(b: { id: string; createdAt: Date; updatedAt: Date }): { eventId: string; type: "booking.created" | "booking.updated" } {
-  const created = b.updatedAt.getTime() - b.createdAt.getTime() < 2_000;
+/**
+ * Pure: the booking event a change is, and its id. "created" when the
+ * booking did not exist at the endpoint's previous read (it was made
+ * after the cursor), however many times it changed since; "updated" for
+ * a booking the endpoint has already been told about.
+ */
+export function bookingEvent(
+  b: { id: string; createdAt: Date; updatedAt: Date },
+  previousCursorAt: Date,
+): { eventId: string; type: "booking.created" | "booking.updated" } {
+  const created = b.createdAt > previousCursorAt;
   return { eventId: `booking:${b.id}:${b.updatedAt.getTime()}`, type: created ? "booking.created" : "booking.updated" };
 }
 
@@ -206,7 +214,7 @@ async function collectFor(
     });
     const data: Prisma.WebhookDeliveryCreateManyInput[] = [];
     for (const b of rows) {
-      const ev = bookingEvent(b);
+      const ev = bookingEvent(b, cursorAt);
       if (!ep.events.includes(ev.type)) continue;
       data.push({
         endpointId: ep.id,
