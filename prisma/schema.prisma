@@ -272,6 +272,8 @@ model Business {
   nameAr                     String
   nameEn                     String?
   taglineAr                  String?
+  /// Folded name text for search: a GENERATED column (maw3ed_search_norm, prisma/migrations/phase26_search_funnel.sql). Never written by the application.
+  searchKey String?
   phone                      String?
   whatsapp                   String?
   address                    String?
@@ -510,6 +512,8 @@ model Category {
   slug    String @unique
   nameAr  String
   nameEn  String
+  /// Folded name text for search: a GENERATED column (maw3ed_search_norm, prisma/migrations/phase26_search_funnel.sql). Never written by the application.
+  searchKey String?
   icon    String @default("🏢")
   color   String @default("#6B7280")
   bgColor String @default("#F3F4F6")
@@ -530,6 +534,8 @@ model City {
   slug   String @unique
   nameAr String
   nameEn String
+  /// Folded name text for search: a GENERATED column (maw3ed_search_norm, prisma/migrations/phase26_search_funnel.sql). Never written by the application.
+  searchKey String?
   /// ISO 3166-1 alpha-2. The top of the location hierarchy
   /// (country, city, district, compound, venue, zone, branch); every
   /// existing city is Egyptian (phase22_venues.sql).
@@ -549,6 +555,8 @@ model Neighborhood {
   slug   String
   nameAr String
   nameEn String
+  /// Folded name text for search: a GENERATED column (maw3ed_search_norm, prisma/migrations/phase26_search_funnel.sql). Never written by the application.
+  searchKey String?
 
   cityId String
   city   City   @relation(fields: [cityId], references: [id], onDelete: Cascade)
@@ -568,6 +576,8 @@ model Service {
   businessId    String
   nameAr        String
   nameEn        String?
+  /// Folded name text for search: a GENERATED column (maw3ed_search_norm, prisma/migrations/phase26_search_funnel.sql). Never written by the application.
+  searchKey String?
   descriptionAr String?
   duration      Int // minutes
   price         Decimal  @db.Decimal(10, 2)
@@ -986,6 +996,8 @@ model StaffMember {
   businessId  String
   nameAr      String
   nameEn      String?
+  /// Folded name text for search: a GENERATED column (maw3ed_search_norm, prisma/migrations/phase26_search_funnel.sql). Never written by the application.
+  searchKey String?
   role        String? // barber, stylist, colorist…
   photo       String?
   isActive    Boolean  @default(true)
@@ -1655,6 +1667,8 @@ model Organization {
   isPublished Boolean        @default(false)
   nameAr    String
   nameEn    String?
+  /// Folded name text for search: a GENERATED column (maw3ed_search_norm, prisma/migrations/phase26_search_funnel.sql). Never written by the application.
+  searchKey String?
   descriptionAr String?
   descriptionEn String?
   logoImage  String?
@@ -1751,6 +1765,8 @@ model Venue {
   isPublished    Boolean            @default(false)
   nameAr         String
   nameEn         String?
+  /// Folded name text for search: a GENERATED column (phase26_search_funnel.sql). Never written by the application.
+  searchKey String?
   descriptionAr  String?
   descriptionEn  String?
   organizationId String?
@@ -2443,4 +2459,54 @@ model BookingCheckIn {
   lastScanAt    DateTime?
   scanCount     Int           @default(0)
   updatedAt     DateTime      @updatedAt
+}
+
+// ─── Phase 26: the booking funnel ───────────────────────────────────────────
+//
+// The steps a visitor's browser reports. Later steps — booking confirmed,
+// payment result, cancelled, repeat booking — are not reported by anybody:
+// they are read from Booking and Payment rows, the authoritative records.
+// docs/analytics/EVENT_TAXONOMY.md.
+enum FunnelStep {
+  MARKETPLACE_VIEW /// the business listing (/businesses)
+  SEARCH /// a search or filter applied on the listing
+  ORGANIZATION_VIEW /// an organization's public directory
+  BUSINESS_VIEW /// a business page
+  SERVICE_SELECTED /// a service picked in the booking panel
+  BOOKING_STARTED /// moved on from the service to scheduling
+  TIME_SELECTED /// a time picked
+  // Business acquisition: the pages a business owner reads before signing
+  // up. Registering itself is LifecycleEvent BUSINESS_REGISTERED.
+  FOR_BUSINESS_VIEW /// /for-business
+  PRICING_VIEW /// /pricing
+  DEMO_VIEW /// /demo
+  SIGNUP_VIEW /// the business sign-up form
+}
+
+/// Sessions reaching a funnel step: a counter like ProfileView. One row per
+/// day, step, channel, business and organization ("" = none). No address,
+/// cookie, account or device id. A tab reaching a step twice counts once
+/// (FunnelSeen).
+model FunnelCount {
+  id             String        @id @default(cuid())
+  day            DateTime      @db.Date
+  step           FunnelStep
+  source         TrafficSource
+  businessId     String        @default("")
+  organizationId String        @default("")
+  count          Int           @default(0)
+
+  @@unique([day, step, source, businessId, organizationId])
+  @@index([businessId, day])
+  @@index([organizationId, day])
+}
+
+/// Which (tab, step, business, organization, day) was already counted: a
+/// keyed hash of a random per-tab id the browser forgets when the tab
+/// closes. Pruned after two days by the daily cron.
+model FunnelSeen {
+  key String   @id
+  day DateTime @db.Date
+
+  @@index([day])
 }

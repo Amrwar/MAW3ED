@@ -4,7 +4,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Link from "@/components/shared/LocaleLink";
 import { getLang } from "@/lib/lang-server";
-import { buildMetadata } from "@/lib/seo/meta";
+import { buildMetadata, notFoundMetadata } from "@/lib/seo/meta";
 import { HELP_ARTICLES, findArticle } from "@/lib/help/articles";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/support";
 
@@ -15,8 +15,9 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const a = findArticle(slug);
-  if (!a) return {};
   const lang = await getLang();
+  // A missing article 404s; its metadata says so too (noindex, its own title).
+  if (!a) return notFoundMetadata(lang);
   const t = lang === "en" ? a.en : a.ar;
   return buildMetadata({ title: t.title, description: t.summary, path: `/help/${slug}`, lang });
 }

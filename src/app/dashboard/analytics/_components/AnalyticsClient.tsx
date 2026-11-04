@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import KPICards        from "./KPICards";
@@ -38,9 +38,11 @@ function presetRange(p: Preset): { from: string; to: string } {
 
 interface Props {
   initial: AnalyticsPayload;
+  /** The range `initial` was computed for (this month in Cairo). */
+  initialRange: { from: string; to: string };
 }
 
-export default function AnalyticsClient({ initial }: Props) {
+export default function AnalyticsClient({ initial, initialRange }: Props) {
   const { t }  = useLanguage();
   const an     = t.dashboard.analytics;
 
@@ -52,15 +54,18 @@ export default function AnalyticsClient({ initial }: Props) {
   ];
 
   const [preset,  setPreset]  = useState<Preset>("thisMonth");
-  const [from,    setFrom]    = useState(() => presetRange("thisMonth").from);
-  const [to,      setTo]      = useState(() => presetRange("thisMonth").to);
+  const [from,    setFrom]    = useState(initialRange.from);
+  const [to,      setTo]      = useState(initialRange.to);
   const [data,    setData]    = useState<AnalyticsPayload>(initial);
   // The range whose figures are on screen; loading until it matches.
-  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  // The server already computed the first range: no second fetch for it.
+  const [loadedKey, setLoadedKey] = useState<string | null>(`${initialRange.from}|${initialRange.to}`);
+  const loadedKeyRef = useRef(loadedKey);
   const rangeKey = `${from}|${to}`;
   const loading  = loadedKey !== rangeKey;
 
   useEffect(() => {
+    if (loadedKeyRef.current === `${from}|${to}`) return;
     let stale = false;
     fetch(`/api/business/analytics?from=${from}&to=${to}`)
       .then(async (res) => {
@@ -71,7 +76,10 @@ export default function AnalyticsClient({ initial }: Props) {
         // keep previous data
       })
       .finally(() => {
-        if (!stale) setLoadedKey(`${from}|${to}`);
+        if (!stale) {
+          loadedKeyRef.current = `${from}|${to}`;
+          setLoadedKey(`${from}|${to}`);
+        }
       });
     return () => {
       stale = true;

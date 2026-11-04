@@ -28,6 +28,9 @@ import { localizePath } from "@/lib/locale-path";
 import { cn } from "@/lib/utils";
 import FilterPanel from "./FilterPanel";
 import PaginationBar from "./PaginationBar";
+import PlacesBlock from "./PlacesBlock";
+import { useFunnelStep } from "@/lib/analytics/funnel-client";
+import type { PlaceHit } from "@/lib/discovery/places";
 
 interface Props {
   query: DiscoveryQuery;
@@ -36,6 +39,8 @@ interface Props {
   pageCount: number;
   facets: Facets;
   priceBounds: { min: number; max: number } | null;
+  /** Malls, groups and venues matching the search (first page only). */
+  places?: PlaceHit[];
 }
 
 /**
@@ -57,7 +62,13 @@ export default function BusinessesClient({
   pageCount,
   facets,
   priceBounds,
+  places = [],
 }: Props) {
+  // The booking funnel's first two steps, once per tab and day each
+  // (lib/analytics/funnel-client.ts): the listing was seen, and a search
+  // or filter was applied to it.
+  useFunnelStep("MARKETPLACE_VIEW");
+  useFunnelStep("SEARCH", {}, hasActiveFilters(query));
   const { t, lang } = useLanguage();
   const b = t.businesses;
   const f = t.filters;
@@ -320,6 +331,8 @@ export default function BusinessesClient({
               )}
             </div>
           )}
+
+          <PlacesBlock places={places} />
 
           {/* The grid, dimmed rather than replaced while a new page
               loads — the old results stay readable and nothing jumps. */}

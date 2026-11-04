@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
-import { ABANDONED, startInstant, tally } from "./stats";
+import { ABANDONED, tally } from "./stats";
+import { cairoDateString } from "@/lib/bookings/instants";
+import { cairoDay } from "@/lib/attribution/day";
 
 /**
  * The reports, counted from booking rows.
@@ -20,6 +22,20 @@ export interface Period {
   to: Date;
 }
 
+/** The periods the reports offer (ReportShell). */
+export const REPORT_PERIODS = [7, 30, 90, 365] as const;
+
+/**
+ * ?days= as a report period: whole days, 1 to 365, 30 when absent or
+ * unreadable. Unbounded, "?days=100000" read every booking a business
+ * ever had, and "?days=-5" built a window that ended before it began.
+ */
+export function reportDays(raw: string | string[] | undefined): number {
+  const v = Number(Array.isArray(raw) ? raw[0] : raw);
+  if (!Number.isFinite(v) || v < 1) return 30;
+  return Math.min(365, Math.floor(v));
+}
+
 export function lastDays(days: number, now: Date = new Date()): Period {
   return { days, from: new Date(now.getTime() - days * 86_400_000), to: now };
 }
@@ -36,13 +52,36 @@ const SELECT = {
   staffMember: { select: { id: true, nameAr: true, nameEn: true } },
 } as const;
 
-async function load(businessId: string, period: Period) {
+/**
+ * Which bookings a period holds.
+ *
+ *   - "received": made during the period (demand: the bookings report,
+ *     which includes appointments still to come);
+ *   - "held": whose appointment day falls in the period (revenue and
+ *     performance — work is judged when it happens, so a visit completed
+ *     today that was booked six weeks ago counts today).
+ *
+ * Booking.date is the Cairo calendar day at UTC midnight, so "held" is
+ * compared against Cairo days.
+ */
+async function load(businessId: string, period: Period, by: "received" | "held") {
   return db.booking.findMany({
     // Test bookings made from the owner's preview are not business.
-    where: { businessId, isTest: false, createdAt: { gte: period.from, lte: period.to } },
+    where: {
+      businessId,
+      isTest: false,
+      ...(by === "received"
+        ? { createdAt: { gte: period.from, lte: period.to } }
+        : { date: { gte: cairoDay(period.from), lte: cairoDay(period.to) } }),
+    },
     select: SELECT,
+    orderBy: { id: "asc" },
   });
 }
+
+/** The Cairo calendar day of an appointment, "YYYY-MM-DD". */
+const cairoDayOf = (b: { startsAt: Date | null; date: Date }) =>
+  b.startsAt ? cairoDateString(b.startsAt) : b.date.toISOString().slice(0, 10);
 
 function countable(rows: Awaited<ReturnType<typeof load>>) {
   return rows.map((b) => ({
@@ -73,7 +112,7 @@ export async function getRevenueReport(
   businessId: string,
   period: Period,
 ): Promise<RevenueReport> {
-  const rows = await load(businessId, period);
+  const rows = await load(businessId, period, "held");
   const completed = rows.filter((b) => b.status === "COMPLETED");
 
   const byDay = new Map<string, number>();
@@ -84,7 +123,7 @@ export async function getRevenueReport(
     const amount = Number(b.totalPrice);
     total += amount;
 
-    const day = startInstant(b).toISOString().slice(0, 10);
+    const day = cairoDayOf(b);
     byDay.set(day, (byDay.get(day) ?? 0) + amount);
 
     const prev = byService.get(b.service.id);
@@ -129,7 +168,7 @@ export async function getBookingsReport(
   period: Period,
   now: Date = new Date(),
 ): Promise<BookingsReport> {
-  const rows = await load(businessId, period);
+  const rows = await load(businessId, period, "received");
   const t = tally(countable(rows), now);
 
   const byDay = new Map<string, number>();
@@ -139,8 +178,7 @@ export async function getBookingsReport(
   for (const b of rows) {
     if (ABANDONED.includes(b.status)) continue;
 
-    const at = startInstant(b);
-    const day = at.toISOString().slice(0, 10);
+    const day = cairoDayOf(b);
     byDay.set(day, (byDay.get(day) ?? 0) + 1);
 
     const prev = byService.get(b.service.id);
@@ -203,7 +241,10 @@ export async function getCustomersReport(
       id: true,
       name: true,
       createdAt: true,
-      bookings: { select: { status: true, totalPrice: true, createdAt: true } },
+      bookings: {
+        where: { isTest: false, status: { notIn: [...ABANDONED] } },
+        select: { status: true, totalPrice: true, createdAt: true },
+      },
     },
   });
 
@@ -227,11 +268,15 @@ export async function getCustomersReport(
       ranked.push({ id: c.id, name: c.name, visits, spend });
     }
 
+    // New or returning by the customer's first real booking with this
+    // business, not by when their record was created: an imported list
+    // or a record typed in by the desk is not a new customer.
     const bookedInPeriod = c.bookings.some(
       (b) => b.createdAt >= period.from && b.createdAt <= period.to,
     );
     if (bookedInPeriod) {
-      if (c.createdAt >= period.from) newInPeriod++;
+      const first = c.bookings.reduce<Date | null>((m, b) => (!m || b.createdAt < m ? b.createdAt : m), null);
+      if (first && first >= period.from) newInPeriod++;
       else returningInPeriod++;
     }
   }
@@ -272,7 +317,7 @@ export async function getPerformanceReport(
   businessId: string,
   period: Period,
 ): Promise<PerformanceReport> {
-  const rows = await load(businessId, period);
+  const rows = await load(businessId, period, "held");
 
   // Only appointments that have reached their moment can be judged: a
   // booking next Tuesday is neither completed nor missed yet, and
@@ -322,7 +367,10 @@ export async function getPerformanceReport(
   return {
     completionRate: n > 0 ? completed / n : null,
     cancellationRate: n > 0 ? cancelled / n : null,
-    noShowRate: n > 0 ? noShows / n : null,
+    // Of the appointments the customer was expected at (attended or
+    // missed). A cancellation is not a missed appointment — the customer
+    // said so — the same rule as a customer's own rate (stats.ts).
+    noShowRate: completed + noShows > 0 ? noShows / (completed + noShows) : null,
     sampleSize: n,
     byStaff: [...byStaff.values()].sort((a, b) => b.completed - a.completed),
     byService: [...byService.values()].sort((a, b) => b.completed - a.completed),

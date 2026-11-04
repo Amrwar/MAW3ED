@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cdnImage } from "@/lib/cdn-image";
+import { num } from "@/lib/fmt";
 
 /** A business that is actually on Maw3ed. Nothing here is written by us. */
 export interface RealBusiness {
@@ -242,20 +243,25 @@ export default function ForBusinessContent({
                       of the dashboard; the badge was what made them
                       read as somebody's actual figures.
                     */}
+                    {/* Phase 26: the label has to be read, not found — it
+                        was 10px in the muted grey. */}
                     <span
-                      style={{ color: "var(--color-muted)", fontSize: 10 }}
-                      className="rounded-full px-2 py-0.5"
+                      style={{ color: "var(--color-night)", background: "var(--color-warn)", fontSize: 11 }}
+                      className="rounded-full px-2 py-0.5 font-bold"
                     >
-                      {isAr ? "مثال توضيحي" : "Example"}
+                      {isAr ? "مثال توضيحي — مش أرقام حقيقية" : "Example — not real figures"}
                     </span>
                   </div>
 
                   {/* Stats row */}
                   <div className="grid grid-cols-3 gap-3 p-4">
                     {[
-                      { label: isAr ? "الحجوزات"  : "Bookings", value: isAr ? "124" : "124", delta: "+12%", color: "var(--color-jade)" },
-                      { label: isAr ? "التقييم"   : "Rating",   value: "4.9 ★",               delta: "+0.2",  color: "var(--color-star)" },
-                      { label: isAr ? "العملاء"   : "Customers", value: isAr ? "89"  : "89",   delta: "+8",    color: "var(--color-ok)" },
+                      // No rating and no growth figures: a star rating and a
+                      // "+12%" read as claims about somebody's business, even
+                      // in a mock-up. Counts are enough to show the layout.
+                      { label: isAr ? "الحجوزات"  : "Bookings",  value: num(24, lang), color: "var(--color-jade)" },
+                      { label: isAr ? "النهارده"  : "Today",     value: num(6, lang),  color: "var(--color-star)" },
+                      { label: isAr ? "العملاء"   : "Customers", value: num(18, lang), color: "var(--color-ok)" },
                     ].map((s) => (
                       <div
                         key={s.label}
@@ -264,7 +270,6 @@ export default function ForBusinessContent({
                       >
                         <p style={{ color: "var(--color-muted)" }} className="mb-1 text-[0.625rem]">{s.label}</p>
                         <p className="font-extrabold text-base" style={{ color: s.color }}>{s.value}</p>
-                        <p style={{ color: "var(--color-ok)" }} className="mt-0.5 text-[0.625rem]">{s.delta}</p>
                       </div>
                     ))}
                   </div>

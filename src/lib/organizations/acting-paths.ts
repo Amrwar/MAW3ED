@@ -23,7 +23,7 @@ const DELEGATE_PAGES: RegExp[] = [
   /^\/dashboard\/staff$/,
   /^\/dashboard\/resources$/,
   /^\/dashboard\/settings$/,
-  /^\/dashboard\/reports(\/(bookings|revenue|customers|performance))?$/,
+  /^\/dashboard\/reports(\/(bookings|revenue|customers|performance|funnel))?$/,
 ];
 
 /** Where to send a dashboard request made while acting, or null to let it through. */

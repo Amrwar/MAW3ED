@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { can } from "@/lib/business-access";
 import { requireDashboardAccess } from "@/lib/dashboard/guard";
-import { getPerformanceReport, lastDays } from "@/lib/dashboard/reports";
+import { getPerformanceReport, lastDays, reportDays } from "@/lib/dashboard/reports";
 import ReportShell from "../_components/ReportShell";
 import PerformanceView from "./PerformanceView";
 
@@ -16,7 +16,7 @@ export default async function PerformanceReportPage({
   // Revenue per staff member is money: FINANCE only, stripped server-side.
   const showMoney = can(actor, "finance.read");
   const sp = await searchParams;
-  const days = Number(Array.isArray(sp.days) ? sp.days[0] : (sp.days ?? 30)) || 30;
+  const days = reportDays(sp.days);
 
   const r = await getPerformanceReport(business.id, lastDays(days));
 

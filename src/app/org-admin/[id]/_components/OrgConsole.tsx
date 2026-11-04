@@ -29,7 +29,17 @@ interface Association {
   branch: { id: string; nameAr: string; nameEn: string | null } | null;
   business: { id: string; slug: string; nameAr: string; nameEn: string | null; isPublished: boolean; category: { nameAr: string; nameEn: string } | null; city: { nameAr: string; nameEn: string } | null };
 }
-interface Metrics { windowDays: number; viewsTotal: number; views: Record<string, number>; attributedBookings: number; perBusiness: { nameAr: string; nameEn: string | null; count: number }[] }
+interface Metrics {
+  windowDays: number;
+  viewsTotal: number;
+  views: Record<string, number>;
+  attributedBookings: number;
+  conversion: number | null;
+  perBusiness: { nameAr: string; nameEn: string | null; count: number }[];
+  referred: { businessViews: number; serviceSelected: number; bookingStarted: number; timeSelected: number };
+  categories: { nameAr: string; nameEn: string; views: number }[];
+  venues: { slug: string; nameAr: string; nameEn: string | null; tenants: number; bookings: number }[];
+}
 interface Figures { bookings: number; upcoming: number; completed: number; noShows: number; cancelled: number; revenue: number | null }
 interface Portfolio {
   windowDays: number;
@@ -244,7 +254,40 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
             <Tile label={t("منها QR", "From QR")} value={metrics.views.QR ?? 0} />
             <Tile label={t("حجوزات جت من الصفحة", "Bookings from the page")} value={metrics.attributedBookings} />
             <Tile label={t("أنشطة مرتبطة", "Linked businesses")} value={assocMeta.approved} />
+            <Tile label={t("صفحات أنشطة اتفتحت من الدليل", "Business pages opened from the directory")} value={metrics.referred.businessViews} />
+            <Tile label={t("بدأوا حجز من الدليل", "Started booking from the directory")} value={metrics.referred.bookingStarted} />
+            <Tile label={t("اختاروا ميعاد", "Picked a time")} value={metrics.referred.timeSelected} />
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] p-3">
+              <p className="m-0 text-xs text-[var(--color-subtle)]">{t("الحجوزات لكل زيارة", "Bookings per visit")}</p>
+              <p className="num m-0 text-xl font-bold">{metrics.conversion === null ? "—" : `${Math.round(metrics.conversion * 100)}%`}</p>
+            </div>
           </div>
+          {metrics.categories.length > 0 && (
+            <div className="space-y-1">
+              <h3 className="m-0 text-sm font-bold">{t("الأقسام اللي زوّارك فتحوها", "Categories your visitors opened")}</h3>
+              <ul className="m-0 list-none space-y-1 p-0 text-sm">
+                {metrics.categories.slice(0, 8).map((c) => (
+                  <li key={c.nameAr} className="flex justify-between gap-3">
+                    <span>{en ? c.nameEn : c.nameAr}</span>
+                    <span className="num text-[var(--color-subtle)]">{c.views}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {metrics.venues.length > 0 && (
+            <div className="space-y-1">
+              <h3 className="m-0 text-sm font-bold">{t("الحجوزات في أماكنك", "Bookings at your venues")}</h3>
+              <ul className="m-0 list-none space-y-1 p-0 text-sm">
+                {metrics.venues.map((v) => (
+                  <li key={v.slug} className="flex justify-between gap-3">
+                    <span>{nm(v)} <span className="text-[var(--color-subtle)]">· {t(`${v.tenants} نشاط`, `${v.tenants} tenants`)}</span></span>
+                    <span className="num text-[var(--color-subtle)]">{v.bookings}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {metrics.perBusiness.length > 0 && (
             <ul className="m-0 list-none space-y-1 p-0 text-sm">
               {metrics.perBusiness.slice(0, 8).map((b, i) => (

@@ -3,6 +3,7 @@ import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { resolveSource } from "@/lib/attribution/source";
 import { OWN_HOSTS } from "@/lib/attribution/hosts";
 import RecordView from "@/features/company/RecordView";
+import FunnelView from "@/components/shared/FunnelView";
 import { notFound } from "next/navigation";
 import { isOwnerPreview } from "@/lib/business/preview";
 import PreviewBanner from "@/features/company/PreviewBanner";
@@ -280,15 +281,24 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     })),
   };
 
+  // The crumbs (and the BreadcrumbList built from them) point at the
+  // landing pages, which crawlers may fetch — not at /businesses?…,
+  // which robots.txt keeps them out of. A published business makes its
+  // own category, and its category in its city, exist (landing.ts,
+  // MIN_BUSINESSES = 1). An owner's unpublished preview may be the only
+  // one of its kind, so it keeps the search links.
+  const landing = dbBusiness.isPublished;
   const crumbs: Crumb[] = [
     { label: lang === "ar" ? "الرئيسية" : "Home", href: "/" },
     {
       label: lang === "ar" ? dbBusiness.category.nameAr : dbBusiness.category.nameEn,
-      href: `/businesses?category=${dbBusiness.category.slug}`,
+      href: landing ? `/categories/${dbBusiness.category.slug}` : `/businesses?category=${dbBusiness.category.slug}`,
     },
     {
       label: lang === "ar" ? dbBusiness.city.nameAr : dbBusiness.city.nameEn,
-      href: `/businesses?city=${dbBusiness.city.slug}`,
+      href: landing
+        ? `/${dbBusiness.city.slug}/${dbBusiness.category.slug}`
+        : `/businesses?city=${dbBusiness.city.slug}`,
     },
     { label: lang === "en" && dbBusiness.nameEn ? dbBusiness.nameEn : dbBusiness.nameAr },
   ];
@@ -413,6 +423,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
             this page does not look like a customer. Anonymous: the
             channel and the day, nothing about who. */}
         <RecordView slug={slug} source={source} />
+        <FunnelView step="BUSINESS_VIEW" business={slug} org={fromOrganization} />
 
         <CompanyContent
           business={business}
@@ -453,6 +464,17 @@ export default async function CompanyPage({ params, searchParams }: Params) {
           organizations={orgLinks}
           fromOrganization={fromOrganization}
         />
+
+        {/* For a business owner reading somebody else's page: where to
+            list their own. Not on an owner's unpublished preview. */}
+        {dbBusiness.isPublished && (
+          <p className="container-app pb-28 pt-2 text-center text-[0.8125rem] text-[var(--color-subtle)]">
+            {lang === "en" ? "Own a business? " : "عندك نشاط؟ "}
+            <Link href="/for-business" className="font-bold text-[var(--color-jade)] underline-offset-4 hover:underline">
+              {lang === "en" ? "List it on Maw3ed for free" : "اعرضه على موعد مجانًا"}
+            </Link>
+          </p>
+        )}
       </main>
 
       <StickyBookingBar

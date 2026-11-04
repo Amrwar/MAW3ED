@@ -71,7 +71,7 @@ export default auth((req) => {
     cookieLang: req.cookies.get(LANG_COOKIE)?.value,
   });
   if (locale.type === "redirect") {
-    return remember(NextResponse.redirect(new URL(locale.to, req.nextUrl), 307), locale.remember);
+    return remember(NextResponse.redirect(new URL(locale.to, req.nextUrl), locale.permanent ? 308 : 307), locale.remember);
   }
 
   const nonce = generateNonce();

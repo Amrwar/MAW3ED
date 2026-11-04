@@ -61,6 +61,7 @@ const OPEN: Record<string, string> = {
   "public/[slug]/route": "public read",
   "public/[slug]/slots": "public read",
   "public/[slug]/view": "public write of an aggregate counter; rate-limited",
+  "public/funnel": "public write of an aggregate funnel counter; deduplicated per tab, rate-limited per address",
   "public/booking/[token]/calendar": "the booking's access token in the path",
   "public/booking/[token]/pay": "the booking's access token in the path",
   "public/booking/[token]/review": "the booking's access token in the path",

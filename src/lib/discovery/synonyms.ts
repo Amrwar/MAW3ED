@@ -1,3 +1,5 @@
+import { normalizeSearch } from "./normalize";
+
 /**
  * What a search box query should also match.
  *
@@ -40,7 +42,13 @@ const GROUPS: readonly (readonly string[])[] = [
   ["consultant", "consulting", "consultation", "استشارة", "استشارات", "مستشار"],
 ];
 
+/** The groups in the folded spelling the query and the stored text share. */
+const FOLDED_GROUPS = GROUPS.map((g) => [...new Set(g.map(normalizeSearch))]);
+
 const ARABIC = /[؀-ۿ]/;
+
+/** Words beyond this are dropped: each one is another block of scans. */
+export const MAX_WORDS = 5;
 
 /** At most this many alternatives per word: each one is several ILIKE scans. */
 const PER_WORD = 10;
@@ -52,9 +60,10 @@ function withoutArticle(word: string): string {
 /** "العيادات" → "عياد". Null when nothing is left worth searching for. */
 export function arabicStem(word: string): string | null {
   if (!ARABIC.test(word)) return null;
-  const w0 = word.trim();
+  const w0 = normalizeSearch(word);
   let w = withoutArticle(w0);
-  for (const end of ["ات", "ين", "ون", "ة", "ه"]) {
+  // ة is already folded to ه (normalize.ts), so one ending covers both.
+  for (const end of ["ات", "ين", "ون", "ه"]) {
     if (w.endsWith(end) && w.length - end.length >= 3) {
       w = w.slice(0, -end.length);
       break;
@@ -64,20 +73,35 @@ export function arabicStem(word: string): string | null {
 }
 
 /**
+ * "clinics" → "clinic", "therapies" → "therapy". Contains-matching already
+ * finds a plural from its singular, not the other way round, so a plural
+ * typed is widened to its singular. Short words are left alone ("gas").
+ */
+export function englishSingular(word: string): string | null {
+  if (!/^[a-z]+$/.test(word) || word.length < 5) return null;
+  if (word.endsWith("ies")) return `${word.slice(0, -3)}y`;
+  if (word.endsWith("ss") || word.endsWith("us")) return null;
+  if (word.endsWith("s")) return word.slice(0, -1);
+  return null;
+}
+
+/**
  * The query, one entry per word, each the word itself first and then
  * what else may stand in for it. Empty for an empty query.
  */
 export function searchTerms(raw: string): string[][] {
-  const q = raw.trim().toLowerCase().replace(/\s+/g, " ");
+  const q = normalizeSearch(raw);
   if (!q) return [];
 
-  return q.split(" ").map((word) => {
+  return q.split(" ").slice(0, MAX_WORDS).map((word) => {
     const alts = new Set<string>([word]);
     const stem = arabicStem(word);
     if (stem) alts.add(stem);
+    const singular = englishSingular(word);
+    if (singular) alts.add(singular);
 
     const bare = withoutArticle(word);
-    const group = GROUPS.find((g) => g.includes(word) || g.includes(bare));
+    const group = FOLDED_GROUPS.find((g) => g.includes(word) || g.includes(bare) || (!!singular && g.includes(singular)));
     // A short Latin word is inside too many others to add unasked:
     // "spa" is in "space", "lab" in "label".
     if (group) for (const g of group) if (ARABIC.test(g) || g.length >= 4) alts.add(g);

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireDashboardAccess } from "@/lib/dashboard/guard";
-import { getBookingsReport, lastDays } from "@/lib/dashboard/reports";
+import { getBookingsReport, lastDays, reportDays } from "@/lib/dashboard/reports";
 import ReportShell from "../_components/ReportShell";
 import BookingsView from "./BookingsView";
 
@@ -13,7 +13,7 @@ export default async function BookingsReportPage({
 }) {
   const { business } = await requireDashboardAccess("reports.read");
   const sp = await searchParams;
-  const days = Number(Array.isArray(sp.days) ? sp.days[0] : (sp.days ?? 30)) || 30;
+  const days = reportDays(sp.days);
 
   const r = await getBookingsReport(business.id, lastDays(days));
 

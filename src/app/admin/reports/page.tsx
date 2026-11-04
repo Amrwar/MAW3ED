@@ -3,6 +3,9 @@ import { requireAdminPage } from "@/lib/admin/guard";
 import { AdminHeading, AdminTable, Tiles } from "../_components/AdminBits";
 import { money } from "@/lib/fmt";
 import { adminMetadata } from "@/lib/admin/meta";
+import { getFunnelReport } from "@/lib/analytics/funnel-report";
+import { ACQUISITION_FUNNEL, CUSTOMER_FUNNEL } from "@/lib/analytics/funnel-steps";
+import FunnelReportView from "@/components/analytics/FunnelReportView";
 
 export const generateMetadata = adminMetadata("reports.read", "التقارير");
 
@@ -19,7 +22,7 @@ export default async function AdminReportsPage() {
   // eslint-disable-next-line react-hooks/purity
   const since = new Date(Date.now() - 30 * 86_400_000);
 
-  const [statuses, completed, newBusinesses, newCustomers, topBusinesses] = await Promise.all([
+  const [statuses, completed, newBusinesses, newCustomers, topBusinesses, funnel, registered] = await Promise.all([
     // Owners' test bookings from their unpublished previews are not business.
     db.booking.groupBy({ by: ["status"], where: { isTest: false }, _count: { _all: true } }),
     db.booking.aggregate({
@@ -35,9 +38,12 @@ export default async function AdminReportsPage() {
       select: {
         nameAr: true,
         _count: { select: { bookings: true } },
-        bookings: { where: { status: "COMPLETED" }, select: { totalPrice: true } },
+        bookings: { where: { status: "COMPLETED", isTest: false }, select: { totalPrice: true } },
       },
     }),
+    // Phase 26: the marketplace funnel and business sign-ups, 30 days.
+    getFunnelReport({ kind: "platform" }, 30),
+    db.lifecycleEvent.count({ where: { kind: "BUSINESS_REGISTERED", at: { gte: since } } }),
   ]);
 
   const tally = Object.fromEntries(statuses.map((s) => [s.status, s._count._all]));
@@ -77,6 +83,21 @@ export default async function AdminReportsPage() {
           </span>,
         ])}
         empty="لسه مفيش حجوزات."
+      />
+
+      <h2 className="m-0 mb-3 mt-8 text-[0.9375rem] font-bold text-[var(--color-ink)]">
+        رحلة الحجز في الموقع — آخر 30 يوم
+      </h2>
+      <FunnelReportView data={funnel} steps={CUSTOMER_FUNNEL} />
+
+      <h2 className="m-0 mb-3 mt-8 text-[0.9375rem] font-bold text-[var(--color-ink)]">
+        رحلة أصحاب الأعمال — آخر 30 يوم
+      </h2>
+      <FunnelReportView
+        data={funnel}
+        steps={ACQUISITION_FUNNEL}
+        recorded={false}
+        note={`حسابات أعمال اتسجلت فعلًا في نفس المدة: ${registered}.`}
       />
     </div>
   );

@@ -23,6 +23,7 @@
 
 import { db } from "@/lib/db";
 import { pruneRateLimits } from "@/lib/rate-limit";
+import { pruneFunnelSeen } from "@/lib/analytics/funnel";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
 import { authorizeCron } from "@/lib/security/cron-auth";
@@ -124,10 +125,17 @@ export async function GET(req: Request) {
   } catch (e) {
     log.error("[subscriptions cron] rate-limit prune failed", e);
   }
+  // The funnel's dedup markers live two days (lib/analytics/funnel.ts).
+  let funnelPruned = 0;
+  try {
+    funnelPruned = await pruneFunnelSeen();
+  } catch (e) {
+    log.error("[subscriptions cron] funnel prune failed", e);
+  }
 
   log.info(
-    `[subscriptions cron] Complete — expired: ${expired}, reminded: ${reminded}, failed: ${failed}, rate-limit rows pruned: ${pruned}`,
+    `[subscriptions cron] Complete — expired: ${expired}, reminded: ${reminded}, failed: ${failed}, rate-limit rows pruned: ${pruned}, funnel markers pruned: ${funnelPruned}`,
   );
 
-  return Response.json({ ok: true, expired, reminded, failed, pruned });
+  return Response.json({ ok: true, expired, reminded, failed, pruned, funnelPruned });
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { can } from "@/lib/business-access";
 import { requireDashboardAccess } from "@/lib/dashboard/guard";
-import { getCustomersReport, lastDays } from "@/lib/dashboard/reports";
+import { getCustomersReport, lastDays, reportDays } from "@/lib/dashboard/reports";
 import ReportShell from "../_components/ReportShell";
 import CustomersView from "./CustomersView";
 
@@ -19,7 +19,7 @@ export default async function CustomersReportPage({
   if (!can(actor, "customers.read")) redirect("/dashboard/reports/bookings");
   const showMoney = can(actor, "finance.read");
   const sp = await searchParams;
-  const days = Number(Array.isArray(sp.days) ? sp.days[0] : (sp.days ?? 30)) || 30;
+  const days = reportDays(sp.days);
 
   const r = await getCustomersReport(business.id, lastDays(days));
 

@@ -10,11 +10,13 @@ import {
   openState,
   type DayHours,
   type OpenState,
+  startOfCairoDay,
 } from "./hours";
 import { firstFree, loadSchedules, type NextSlot } from "./next-free";
 import { timeToMinutes } from "@/lib/bookings/time";
 import { searchTerms } from "./synonyms";
 import { settleInstantBadges } from "@/lib/bookings/allowance";
+import { PLAN_PRICES_EGP, canUseFeature, getEffectivePlan, type Plan } from "@/lib/plans";
 
 /**
  * The discovery query.
@@ -94,21 +96,23 @@ function buildWhere(q: DiscoveryQuery, now: Date): Prisma.BusinessWhereInput {
   // synonym describes — the name, the services and the category — so
   // a widened query costs a few scans more rather than eight times.
   if (q.q) {
+    // Every term is already folded (normalize.ts), and so is every
+    // searchKey column (the database folds it the same way), so "احمد"
+    // meets "أحمد" and "مستشفي" meets "مستشفى". The trigram index on the
+    // business and service keys serves these contains-scans.
     for (const [typed, ...alts] of searchTerms(q.q)) {
-      const where = (term: string) => ({ contains: term, mode: "insensitive" as const });
+      const has = (term: string) => ({ searchKey: { contains: term } });
       const loose = (term: string): Prisma.BusinessWhereInput[] => [
-        { nameAr: where(term) },
-        { nameEn: where(term) },
-        { services: { some: { isAvailable: true, OR: [{ nameAr: where(term) }, { nameEn: where(term) }] } } },
-        { category: { OR: [{ nameAr: where(term) }, { nameEn: where(term) }] } },
+        has(term),
+        { services: { some: { isAvailable: true, ...has(term) } } },
+        { category: has(term) },
       ];
       and.push({
         OR: [
           ...loose(typed),
-          { taglineAr: where(typed) },
-          { staffMembers: { some: { isActive: true, OR: [{ nameAr: where(typed) }, { nameEn: where(typed) }] } } },
-          { city: { OR: [{ nameAr: where(typed) }, { nameEn: where(typed) }] } },
-          { neighborhood: { OR: [{ nameAr: where(typed) }, { nameEn: where(typed) }] } },
+          { staffMembers: { some: { isActive: true, ...has(typed) } } },
+          { city: has(typed) },
+          { neighborhood: has(typed) },
           ...alts.flatMap(loose),
         ],
       });
@@ -151,21 +155,31 @@ function buildWhere(q: DiscoveryQuery, now: Date): Prisma.BusinessWhereInput {
 
   if (q.verified) and.push({ isVerified: true });
   if (q.instant) and.push({ autoConfirm: true });
-  // "Online payment" is deposits switched on. The plan gate is checked
-  // when the booking is taken; here it is what the owner has enabled.
-  if (q.online) and.push({ depositEnabled: true });
+  // "Online payment" is deposits switched on AND a plan that allows
+  // them — the same test the business page and the booking route apply
+  // (plans.ts: getEffectivePlan + "deposits"). Switched on under a plan
+  // that lapsed, the booking takes no payment, so the filter must not
+  // promise one.
+  if (q.online) and.push({ depositEnabled: true, ...DEPOSITS_ALLOWED(now) });
 
   const { dayOfWeek, time } = cairoNow(now);
+  const today = startOfCairoDay(now);
 
   if (q.availability === "today" || q.availability === "tomorrow") {
-    const day = q.availability === "today" ? dayOfWeek : dayOffsetToWeekday(dayOfWeek, 1);
+    const offset = q.availability === "today" ? 0 : 1;
+    const day = dayOffsetToWeekday(dayOfWeek, offset);
+    const date = new Date(today.getTime() + offset * 86_400_000);
     and.push({ availability: { some: { dayOfWeek: day, isClosed: false } } });
+    and.push({ NOT: { timeBlocks: { some: closedAllDay(date) } } });
   }
 
   if (q.availability === "open-now") {
     // "HH:MM" is zero-padded, so Postgres string comparison is clock
-    // comparison. The second branch is a business trading past midnight,
-    // where closeTime has wrapped below openTime.
+    // comparison. The same rule as the card's badge (hours.ts isOpenAt),
+    // so the filter and the badge never disagree: a normal day is open
+    // from openTime to closeTime; a day trading past midnight (closeTime
+    // wrapped at or below openTime) is open from openTime on and before
+    // closeTime.
     and.push({
       availability: {
         some: {
@@ -173,8 +187,25 @@ function buildWhere(q: DiscoveryQuery, now: Date): Prisma.BusinessWhereInput {
           isClosed: false,
           OR: [
             { openTime: { lte: time }, closeTime: { gt: time } },
-            { AND: [{ closeTime: { lte: db.availabilityRule.fields.openTime } }, { openTime: { lte: time } }] },
+            {
+              closeTime: { lte: db.availabilityRule.fields.openTime },
+              OR: [{ openTime: { lte: time } }, { closeTime: { gt: time } }],
+            },
           ],
+        },
+      },
+    });
+    // Closed today (a holiday, a closure) or blocked right now.
+    and.push({
+      NOT: {
+        timeBlocks: {
+          some: {
+            OR: [
+              closedAllDay(today),
+              { ...WHOLE_BUSINESS, ...covering(today), startTime: { lte: time }, endTime: { gt: time } },
+              { ...WHOLE_BUSINESS, dayOfWeek, startsOn: null, startTime: { lte: time }, endTime: { gt: time } },
+            ],
+          },
         },
       },
     });
@@ -183,20 +214,43 @@ function buildWhere(q: DiscoveryQuery, now: Date): Prisma.BusinessWhereInput {
   return { AND: and };
 }
 
+/** A time block that takes the whole business, not one person or branch. */
+const WHOLE_BUSINESS = { staffMemberId: null, branchId: null } as const;
+
+/** A dated block whose inclusive range holds `day` (a UTC-midnight date). */
+const covering = (day: Date) => ({ startsOn: { lte: day }, endsOn: { gte: day } });
+
+/** The whole business closed all of `day`: a dated, all-day block. */
+const closedAllDay = (day: Date): Prisma.TimeBlockWhereInput => ({
+  ...WHOLE_BUSINESS,
+  ...covering(day),
+  startTime: null,
+});
+
+/** The plans that may take deposits, as a WHERE (mirrors getEffectivePlan). */
+const DEPOSIT_PLANS = (Object.keys(PLAN_PRICES_EGP) as Plan[]).filter((p) => canUseFeature(p, "deposits"));
+const DEPOSITS_ALLOWED = (now: Date): Prisma.BusinessWhereInput => ({
+  OR: [
+    // A live trial runs as PRO.
+    ...(canUseFeature("PRO", "deposits") ? [{ subscriptionStatus: "TRIAL" as const, trialEndsAt: { gt: now } }] : []),
+    { subscriptionStatus: { not: "INACTIVE" as const }, plan: { in: DEPOSIT_PLANS } },
+  ],
+});
+
 /* ─── ORDER BY ───────────────────────────────────────────── */
 
 function buildOrderBy(sort: DiscoveryQuery["sort"]): Prisma.BusinessOrderByWithRelationInput[] {
   switch (sort) {
     case "rating":
       // nulls last, so an unrated business never outranks a rated one.
-      return [{ ratingAvg: { sort: "desc", nulls: "last" } }, { ratingCount: "desc" }, { createdAt: "desc" }];
+      return [{ ratingAvg: { sort: "desc", nulls: "last" } }, { ratingCount: "desc" }, { createdAt: "desc" }, { id: "asc" }];
     case "most-booked":
-      return [{ bookings: { _count: "desc" } }, { createdAt: "desc" }];
+      return [{ bookings: { _count: "desc" } }, { createdAt: "desc" }, { id: "asc" }];
     case "price-asc":
     case "price-desc":
     case "soonest":
       // Settled after the fetch — see sortInMemory.
-      return [{ createdAt: "desc" }];
+      return [{ createdAt: "desc" }, { id: "asc" }];
     case "recommended":
     default:
       // Verified first, then rated, then busy, then new. A deliberate
@@ -207,6 +261,10 @@ function buildOrderBy(sort: DiscoveryQuery["sort"]): Prisma.BusinessOrderByWithR
         { ratingAvg: { sort: "desc", nulls: "last" } },
         { bookings: { _count: "desc" } },
         { createdAt: "desc" },
+        // The last tie-breaker must be unique, or two rows created in the
+        // same instant (an import, a seed) can swap places between two
+        // OFFSET pages: one shown twice, the other never.
+        { id: "asc" },
       ];
   }
 }
@@ -234,6 +292,9 @@ const SELECT = {
   isVerified: true,
   autoConfirm: true,
   depositEnabled: true,
+  plan: true,
+  subscriptionStatus: true,
+  trialEndsAt: true,
   ratingAvg: true,
   ratingCount: true,
   category: { select: { slug: true, nameAr: true, nameEn: true } },
@@ -272,7 +333,9 @@ function toBusiness(row: Row, nowDay: number, nowTime: string): DiscoveryBusines
     logoImage: row.logoImage,
     isVerified: row.isVerified,
     autoConfirm: row.autoConfirm,
-    acceptsOnlinePayment: row.depositEnabled,
+    // What the booking will actually do: deposits on AND allowed by the plan.
+    acceptsOnlinePayment:
+      row.depositEnabled && canUseFeature(getEffectivePlan(row.plan, row.subscriptionStatus, row.trialEndsAt), "deposits"),
     ratingAvg: row.ratingAvg,
     ratingCount: row.ratingCount,
     category: row.category,

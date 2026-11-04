@@ -1,6 +1,9 @@
 import { db } from "@/lib/db";
 import { cairoDayBefore } from "@/lib/attribution/day";
+import type { FunnelStep, OrganizationKind } from "@prisma/client";
+import { venueMetrics } from "@/lib/venues/metrics";
 import { DIRECTORY_PAGE_SIZE } from "./rules";
+import { searchTerms } from "@/lib/discovery/synonyms";
 
 /**
  * An organization as the public sees it.
@@ -147,11 +150,27 @@ export function orgDirectoryCategories(entries: OrgDirectoryEntry[]) {
   return [...map.values()].sort((a, b) => b.count - a.count);
 }
 
-/** Published organizations for the index and the sitemap. */
-export async function listPublicOrganizations() {
+/** The two families the /groups index can be narrowed to. */
+export const ORG_FAMILIES = {
+  destinations: ["MALL", "COMPOUND", "COMMERCIAL_BUILDING"],
+  groups: ["BUSINESS_GROUP", "RESTAURANT_GROUP", "CLINIC_GROUP", "FRANCHISE"],
+} as const satisfies Record<string, readonly OrganizationKind[]>;
+export type OrgFamily = keyof typeof ORG_FAMILIES;
+
+/**
+ * Published organizations for the index and the sitemap. `q` matches the
+ * folded name word by word (lib/discovery/normalize.ts); `family` narrows
+ * to malls and destinations or to business groups.
+ */
+export async function listPublicOrganizations(filter: { q?: string; family?: OrgFamily } = {}) {
+  const words = filter.q ? searchTerms(filter.q) : [];
   const rows = await db.organization.findMany({
-    where: PUBLIC_ORG,
-    orderBy: { nameAr: "asc" },
+    where: {
+      ...PUBLIC_ORG,
+      ...(words.length ? { AND: words.map((alts) => ({ OR: alts.map((a) => ({ searchKey: { contains: a } })) })) } : {}),
+      ...(filter.family ? { kind: { in: [...ORG_FAMILIES[filter.family]] } } : {}),
+    },
+    orderBy: [{ nameAr: "asc" }, { id: "asc" }],
     select: {
       slug: true, kind: true, nameAr: true, nameEn: true, logoImage: true, coverImage: true, updatedAt: true,
       city: { select: { nameAr: true, nameEn: true } },
@@ -189,14 +208,32 @@ export async function attributeBooking(bookingId: string, orgSlug: string, busin
   }
 }
 
-/** Counts for the organization dashboard: visits and attributed bookings only. */
+/**
+ * Counts for the organization dashboard (Phase 26). Only what the
+ * organization's own directory produced, and only as counts:
+ *
+ *   - visits to its page, by channel (OrganizationView);
+ *   - business pages opened from its directory, and the steps after,
+ *     credited to it only when the business is listed in it (FunnelCount);
+ *   - bookings its directory sent (OrganizationBookingAttribution): real
+ *     bookings only — never a test booking or an abandoned checkout —
+ *     per business, for the businesses it lists now;
+ *   - conversion: those bookings over its page visits;
+ *   - which categories its visitors opened, by business category;
+ *   - booking activity at the venues it runs, by the venue rules
+ *     (lib/venues/metrics.ts: approved tenants, since they joined).
+ *
+ * Never a customer, a price, a payment or a booking's contents — whether
+ * the organization owns, manages or merely hosts the business
+ * (docs/architecture/ORGANIZATION_PERMISSIONS.md).
+ */
 export async function organizationMetrics(organizationId: string, windowDays = 30, now = new Date()) {
   const since = new Date(now.getTime() - windowDays * 86_400_000);
   // Views are bucketed on the Cairo day, so the cutoff is the Cairo day
   // windowDays-1 back: the last windowDays days including today — the
-  // same span the booking cutoff above covers in time.
+  // same span the booking cutoff covers in time.
   const sinceDay = cairoDayBefore(windowDays - 1, now);
-  const [views, attributed, perBusiness] = await Promise.all([
+  const [views, attributed, perBusiness, referred, categories, venues] = await Promise.all([
     db.organizationView.groupBy({
       by: ["source"],
       where: { organizationId, day: { gte: sinceDay } },
@@ -209,22 +246,68 @@ export async function organizationMetrics(organizationId: string, windowDays = 3
       SELECT COUNT(*)::int AS n
       FROM "OrganizationBookingAttribution" a
       JOIN "Booking" bk ON bk.id = a."bookingId"
-      WHERE a."organizationId" = ${organizationId} AND a."createdAt" >= ${since}`.then((r) => r[0]?.n ?? 0),
+      WHERE a."organizationId" = ${organizationId} AND a."createdAt" >= ${since}
+        AND bk."isTest" = false AND bk.status NOT IN ('PENDING_PAYMENT', 'FAILED_PAYMENT')`.then((r) => r[0]?.n ?? 0),
     // One bounded join: names and counts only, never a customer field.
+    // Businesses it no longer lists keep counting in the headline (the
+    // directory did send those bookings) but are not named.
     db.$queryRaw<{ nameAr: string; nameEn: string | null; count: number }[]>`
       SELECT b."nameAr", b."nameEn", COUNT(*)::int AS count
       FROM "OrganizationBookingAttribution" a
       JOIN "Booking" bk ON bk.id = a."bookingId"
       JOIN "Business" b ON b.id = bk."businessId"
       WHERE a."organizationId" = ${organizationId} AND a."createdAt" >= ${since}
+        AND bk."isTest" = false AND bk.status NOT IN ('PENDING_PAYMENT', 'FAILED_PAYMENT')
+        AND EXISTS (SELECT 1 FROM "OrganizationBusiness" ob
+                    WHERE ob."organizationId" = a."organizationId" AND ob."businessId" = b.id AND ob.status = 'APPROVED')
       GROUP BY b.id, b."nameAr", b."nameEn"
-      ORDER BY count DESC`,
+      ORDER BY count DESC, b."nameAr" ASC
+      LIMIT 50`,
+    db.funnelCount.groupBy({
+      by: ["step"],
+      where: { organizationId, day: { gte: sinceDay } },
+      _sum: { count: true },
+    }),
+    db.$queryRaw<{ nameAr: string; nameEn: string; views: number }[]>`
+      SELECT c."nameAr", c."nameEn", SUM(f.count)::int AS views
+      FROM "FunnelCount" f
+      JOIN "Business" b ON b.id = f."businessId"
+      JOIN "Category" c ON c.id = b."categoryId"
+      WHERE f."organizationId" = ${organizationId} AND f.step = 'BUSINESS_VIEW' AND f.day >= ${sinceDay}::date
+      GROUP BY c.id, c."nameAr", c."nameEn"
+      ORDER BY views DESC, c."nameAr" ASC
+      LIMIT 20`,
+    db.venue.findMany({
+      where: { organizationId },
+      orderBy: [{ nameAr: "asc" }, { id: "asc" }],
+      take: 10,
+      select: { id: true, slug: true, nameAr: true, nameEn: true },
+    }),
   ]);
+  const venueActivity = await Promise.all(
+    venues.map(async (v) => {
+      const m = await venueMetrics(v.id, windowDays, now);
+      return { slug: v.slug, nameAr: v.nameAr, nameEn: v.nameEn, tenants: m.tenants.approved, bookings: m.bookings.total };
+    }),
+  );
+  const viewsTotal = views.reduce((n, v) => n + (v._sum.count ?? 0), 0);
+  const steps = Object.fromEntries(referred.map((r) => [r.step, r._sum.count ?? 0])) as Partial<Record<FunnelStep, number>>;
   return {
     windowDays,
     views: Object.fromEntries(views.map((v) => [v.source, v._sum.count ?? 0])),
-    viewsTotal: views.reduce((n, v) => n + (v._sum.count ?? 0), 0),
+    viewsTotal,
     attributedBookings: attributed,
+    /** Bookings sent over page visits; null with no visits. Can exceed 1 (app bookings carry the organization too). */
+    conversion: viewsTotal > 0 ? attributed / viewsTotal : null,
     perBusiness,
+    /** Tabs that went from the directory to a business page, and on. */
+    referred: {
+      businessViews: steps.BUSINESS_VIEW ?? 0,
+      serviceSelected: steps.SERVICE_SELECTED ?? 0,
+      bookingStarted: steps.BOOKING_STARTED ?? 0,
+      timeSelected: steps.TIME_SELECTED ?? 0,
+    },
+    categories,
+    venues: venueActivity,
   };
 }
