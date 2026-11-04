@@ -81,11 +81,15 @@ export default function BookingList({
     );
   }
 
+  // `iso` is a calendar day ("2026-11-07"), which Date reads as UTC
+  // midnight: formatted in the browser's own zone it showed the day
+  // before anywhere west of UTC. Read and written in UTC, it is the day.
   const dayLabel = (iso: string) =>
     new Intl.DateTimeFormat(ar ? "ar-EG-u-nu-latn" : "en-GB", {
       weekday: "long",
       day: "numeric",
       month: "long",
+      timeZone: "UTC",
     }).format(new Date(iso));
 
   // Upcoming is read day by day; today needs no headings.

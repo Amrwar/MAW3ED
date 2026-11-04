@@ -5,7 +5,7 @@ import { Loader2, Search, SlidersHorizontal } from "lucide-react";
 import Alert from "@/components/ui/Alert";
 import LoyaltyRulesForm, { type LoyaltyRules } from "@/components/dashboard/LoyaltyRulesForm";
 import { Field, INPUT, PageHeader, Stat, StatusChip, api, useLoad, useSay } from "@/components/dashboard/kit";
-import { dateShort, num } from "@/lib/fmt";
+import { dateFull, dateShort, num } from "@/lib/fmt";
 
 interface Overview {
   program: (LoyaltyRules & { id: string; updatedAt: string }) | null;
@@ -177,7 +177,7 @@ function CustomerLookup() {
                       <td className={`num p-2 font-bold ${e.points < 0 ? "text-[var(--color-danger)]" : "text-[var(--color-jade)]"}`} dir="ltr">
                         {e.points > 0 ? "+" : ""}{num(e.points, lang)}
                       </td>
-                      <td className="num p-2">{e.expiresAt ? dateShort(e.expiresAt, lang) : "—"}</td>
+                      <td className="num p-2">{e.expiresAt ? dateFull(e.expiresAt, lang) : "—"}</td>
                       <td className="p-2 text-[var(--color-subtle)]">{e.note ?? ""}</td>
                     </tr>
                   ))}
