@@ -14,6 +14,9 @@ import { siteUrl } from "@/lib/url";
  * private, useless to a search engine, or a trap.
  */
 export default function robots(): MetadataRoute.Robots {
+  // A test server (docs/staging.md): nothing on it is real, so nothing
+  // is for a crawler.
+  if (process.env.SITE_NOINDEX === "1") return { rules: [{ userAgent: "*", disallow: "/" }] };
   return {
     rules: [
       {

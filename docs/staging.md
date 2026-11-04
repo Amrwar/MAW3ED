@@ -10,9 +10,10 @@ Set up 2026-11-03.
 |---|---|
 | Vercel project | `maw3ed-staging`, separate from `maw-3-ed` (production). Not connected to Git: it changes only when someone deploys to it (below) |
 | Database | Neon `maw3ed-staging` (Vercel Marketplace, free plan), connected to this project only. Production's database is not reachable from it |
-| Data | Fictional only: the reference data (`prisma/seed.ts`) and the QA fixtures (`scripts/qa-fixtures.mjs`, `scripts/qa-layout-fixtures.mjs`): 12 published businesses named "QA …", 20 services. Nothing copied from production |
+| Data | Fictional only: the reference data (`prisma/seed.ts`) and the QA fixtures (`scripts/qa-fixtures.mjs`, `scripts/qa-layout-fixtures.mjs`): 12 published businesses (some with realistic-sounding made-up names, from the layout fixtures), 20 services, every business bookable. Nothing copied from production |
+| Search engines | Kept out: `SITE_NOINDEX=1` makes robots.txt disallow everything and adds `X-Robots-Tag: noindex` to every response |
 | Accounts | **One** account can sign in: the review account, a business owner (`review@staging.maw3ed.test`), with a long random password. Every other account has no password, and **no account has an admin role** — the server is public |
-| Secrets | Its own `AUTH_SECRET`/`NEXTAUTH_SECRET`, `PSEUDONYM_SECRET`, `CRON_SECRET`. None of production's |
+| Variables | Its own `AUTH_SECRET`/`NEXTAUTH_SECRET`, `PSEUDONYM_SECRET`, `CRON_SECRET`; its own address in `AUTH_URL`, `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SITE_HOST`; `SITE_NOINDEX=1`; the Neon variables. None of production's |
 | Not configured, on purpose | WhatsApp, SMS, Resend (email), Paymob, Cloudinary, Sentry. Nothing it does can message a person, take a payment or store an upload |
 
 ### What it cannot do
