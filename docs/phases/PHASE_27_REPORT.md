@@ -116,7 +116,7 @@ not by Phase 27: after removing that data, all six passed unchanged.)
 
 ## Not verified / owner items
 
-- Production migrations not yet applied (owner runs `migrate-phase27.sh` before the deploy).
+- Production migrations APPLIED and VERIFIED 2026-11-04 (owner ran `migrate-phase27.sh`) before the merge.
 - No new screen was exercised by clicking in a browser in this phase: the new pages are
   proved to render (HTTP QA, both languages) and the APIs behind them are proved over HTTP;
   interactive flows (forms, the widget's balance step, the waitlist countdown) are checked
