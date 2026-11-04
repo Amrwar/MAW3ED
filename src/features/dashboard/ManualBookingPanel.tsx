@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { cairoToday } from "@/components/dashboard/kit";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, CalendarDays, Clock, User, Phone } from "lucide-react";
 import type { DashboardBooking } from "@/features/dashboard/bookings/types";
@@ -34,7 +35,6 @@ type Props = {
 
 type Slot = string; // "HH:MM"
 
-const TODAY = new Date().toISOString().split("T")[0];
 const MAX_DATE = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
 export default function ManualBookingPanel({ open, onClose, slug, services, onCreated }: Props) {
@@ -49,7 +49,10 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
   // same series once (POST /api/business/series, requestKey).
   const [seriesKey,     setSeriesKey]     = useState(() => crypto.randomUUID());
   const [serviceId,     setServiceId]     = useState(services[0]?.id ?? "");
-  const [date,          setDate]          = useState(TODAY);
+  // Today on the business's (Cairo) clock, read when the form opens. The
+  // UTC date it used before is still yesterday for the first hours of a
+  // Cairo day.
+  const [date,          setDate]          = useState(cairoToday);
   const [startTime,     setStartTime]     = useState("");
   const [customerName,  setCustomerName]  = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -72,7 +75,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
     setShownFor({ open, services });
     if (open) {
       setServiceId(services[0]?.id ?? "");
-      setDate(TODAY);
+      setDate(cairoToday());
       setStartTime("");
       setCustomerName("");
       setCustomerPhone("");
@@ -311,7 +314,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
                 <input
                   type="date"
                   value={date}
-                  min={TODAY}
+                  min={cairoToday()}
                   max={MAX_DATE}
                   onChange={(e) => setDate(e.target.value)}
                   className="input w-full"
