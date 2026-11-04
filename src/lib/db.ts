@@ -21,7 +21,8 @@ const globalForPrisma = globalThis as unknown as {
 function isLocalDatabase(url: string): boolean {
   try {
     const { hostname } = new URL(url);
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+    // An IPv6 host keeps its brackets in a parsed URL.
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
   } catch {
     return false;
   }

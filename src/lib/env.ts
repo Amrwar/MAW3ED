@@ -149,9 +149,11 @@ const optional = z.object({
   // is not a secret.
   NEXT_PUBLIC_SITE_HOST: z.string().optional(),
 
-  // "1" on a test server (docs/staging.md): robots.txt disallows
-  // everything and every response says noindex. Never in production.
-  SITE_NOINDEX: z.string().optional(),
+  // "1" on a test server (docs/staging.md): every response says noindex
+  // and the sitemap is empty (src/lib/seo/noindex.ts). Never in
+  // production. Only "1" turns it on, so anything else is refused here
+  // rather than silently doing nothing.
+  SITE_NOINDEX: z.enum(["1", ""]).optional(),
 
   // The number the contact page offers. Unset hides the card rather
   // than showing one with nothing behind it.

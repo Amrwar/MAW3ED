@@ -42,6 +42,7 @@ const connectionString = (() => {
   const raw = process.env.DATABASE_URL ?? "";
   try {
     const u = new URL(raw);
+    if (!u.searchParams.has("channel_binding")) return raw;
     u.searchParams.delete("channel_binding");
     return u.toString();
   } catch {

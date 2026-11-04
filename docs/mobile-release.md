@@ -44,6 +44,8 @@ Both are blocked on the owner's accounts (below), not on code.
      Vercel project and database, fictional data, no messaging or payment
      keys. Before Phase 25 it used the production site, so every automated
      flow counted as real visits.
+   - If `EXPO_PUBLIC_API_URL` was ever set in the EAS **preview**
+     environment, delete it there: `eas.json` is now the one place.
    - Still to do: add the staging review account to the EAS **preview**
      environment as `MAESTRO_REVIEW_EMAIL` and `MAESTRO_REVIEW_PASSWORD`
      (secret visibility). The values are not in the repository.
