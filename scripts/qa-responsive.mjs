@@ -101,7 +101,13 @@ for (const { key, engine, ...opts } of DEVICES) {
     await ctx.addCookies([{ name: "maw3ed-lang", value: lang, url: BASE }]);
     for (const p of PAGES) {
       const page = await ctx.newPage();
-      await page.goto(BASE + p, { waitUntil: "networkidle" });
+      // English pages are opened at their /en address, as English links
+      // point. Through the saved-language redirect instead, the browser
+      // follows it internally, the final page keeps upgrade-insecure-
+      // requests (this route never sees it), and WebKit fetches the CSS
+      // over https from a plain-http server: the page renders unstyled and
+      // "overflows". Playwright cannot fulfil a redirect to route it again.
+      await page.goto(BASE + (lang === "en" ? (p === "/" ? "/en" : `/en${p}`) : p), { waitUntil: "networkidle" });
       const m = await page.evaluate(measure);
       checked++;
       const want = opts.viewport.width;

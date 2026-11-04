@@ -87,12 +87,20 @@ already removed in earlier phases.
 
 | Command | Result |
 |---|---|
-| `npx vitest run` | (filled below) |
+| `npx vitest run` | 1204 passed, 171 skipped (database suites) |
 | `npx eslint src --quiet` | clean |
 | `npx tsc --noEmit` | clean |
-| `node scripts/qa-phase26.mjs` | 112/112 |
-| `node scripts/qa-phase26-browser.mjs` | 35/35 (20 screens × axe + 390 px, both languages) |
-| Regression battery | (filled below) |
+| `node scripts/qa-phase26.mjs` | 114/114 (final build, after the review fixes) |
+| `node scripts/qa-phase26-browser.mjs` | 35/35 (20 screens × axe + 390 px, both languages; funnel once per tab) |
+| `node scripts/qa-responsive.mjs` | 380 page loads, 10 devices × 2 languages, none wider than its screen |
+| `node scripts/qa-phase26-perf.mjs` | `docs/performance/PERFORMANCE_BASELINE.md` |
+| Regression battery (first build) | qa-phase24 147/147, qa-phase24-browser 23/23, qa-redirects 108/108, qa-offline-qr 31/31, qa-booking-e2e 22/22, qa-phase23 48/48, qa-phase23-loops 15/15, qa-security 32/0, qa-phase23-browser 49/49, qa-loops-browser 9/9, qa-venue-console clean, qa-venue-page clean, qa-phase22c 59/59, qa-phase22 68/68, qa-phase21 44/44, qa-phase19 21/21, qa-phase17 13/13, qa-phase18 462 loads 0 flagged |
+| qa-phase22b (final build) | 84/84 — its metrics check updated: an attributed booking still waiting for payment counts once paid (the Phase 26 rule) |
+
+Two test-harness fixes: `qa-responsive` opens English pages at `/en/…`
+(through the saved-language redirect, WebKit on plain-http localhost kept
+`upgrade-insecure-requests` and rendered pages unstyled — 25 false
+overflow reports); the regression runner passes it the server address.
 
 ## Production steps (owner)
 
