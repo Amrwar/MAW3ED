@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { QrCode, RefreshCw, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Download, QrCode, RefreshCw, ShieldCheck, Trash2, UserPlus, WifiOff } from "lucide-react";
 import PassCard, { type PassViewJson } from "@/components/access/PassCard";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { localeFor } from "@/lib/fmt";
 import { refusalText } from "@/lib/lang";
+import { buildQrPng, deliverQrImage, saveQrImage } from "@/lib/access/save-qr";
+import { keepPageAssets, refreshKeptBookingPage, servedFromKeptCopy } from "@/lib/access/offline-refresh";
 
 /**
  * The booking page's "getting in" section: the booking's own check-in QR
@@ -16,7 +18,31 @@ import { refusalText } from "@/lib/lang";
  *
  * A pending pass is re-checked a bounded number of times (POLL_MAX), then
  * left to a "check again" button: never an endless poll.
+ *
+ * The page renders the first payload on the server (`initial`), so the QR
+ * is in the page itself and a copy of the page the phone kept (public/
+ * sw.js) shows it with no connection. Then: one refresh when the panel
+ * mounts, only if the page may be such a copy (or came without a
+ * payload), and one each time the browser says it is back online — never
+ * a loop. Without a connection the last payload stays on screen with a
+ * note saying how old it is; the code itself is checked online when
+ * scanned. When what the panel shows changes without a page load (a new
+ * code, a pass), the kept copy is fetched again so it matches.
  */
+
+/** Rendered this recently, the page is not a kept copy: no refresh on mount. */
+const FRESH_MS = 15_000;
+
+/**
+ * What, if it changes, makes the phone's kept copy out of date: the codes
+ * themselves, not every state a pending pass passes through (each refresh
+ * re-renders the whole page on the server).
+ */
+function shown(p: Payload | null): string {
+  if (!p) return "";
+  const passes = [p.visitorAccess.holder, ...p.visitorAccess.guests].map((x) => x?.pass?.token ?? "");
+  return JSON.stringify([p.checkIn.display === "checked-in", p.checkIn.url ?? "", ...passes]);
+}
 
 interface Payload {
   checkIn: {
@@ -43,53 +69,164 @@ const POLL_MS = 4000;
 const POLL_MAX = 10;
 const field = "w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm";
 
-export default function AccessPanel({ token, customerName }: { token: string; customerName: string }) {
+export default function AccessPanel({
+  token,
+  customerName,
+  initial = null,
+  savedAt = null,
+  reference = null,
+  caption = [],
+}: {
+  token: string;
+  customerName: string;
+  /** The payload the server rendered the page with. */
+  initial?: Payload | null;
+  /** When that payload was made (ISO), shown when offline. */
+  savedAt?: string | null;
+  /** The booking number, for the saved QR's file name and caption. */
+  reference?: string | null;
+  /** Lines under the saved QR besides the number and times: the business, the day. */
+  caption?: string[];
+}) {
   const { lang } = useLanguage();
   const en = lang === "en";
   const t = (ar: string, e: string) => (en ? e : ar);
   const base = `/api/booking/${token}/access`;
   // The server words reasons, gates and errors in this language.
   const q = en ? "?lang=en" : "";
-  const [data, setData] = useState<Payload | null>(null);
+  const [data, setData] = useState<Payload | null>(initial);
   const [failed, setFailed] = useState(false);
+  // No connection on the last attempt (not a refusal from the server).
+  const [offline, setOffline] = useState(false);
+  const [asOf, setAsOf] = useState<string | null>(savedAt);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [polls, setPolls] = useState(0);
   const [confirmNewCode, setConfirmNewCode] = useState(false);
+  // The check-in QR as a picture, made ahead of the "save" tap.
+  const [qrPicture, setQrPicture] = useState<{ key: string; blob: Blob } | null>(null);
+  const qrSvg = data?.checkIn.qrSvg ?? null;
+  const qrCaption = [
+    ...caption,
+    data?.checkIn.opensAt && data?.checkIn.closesAt ? `${data.checkIn.opensAt} – ${data.checkIn.closesAt}` : "",
+    reference ?? "",
+  ].filter(Boolean);
+  const captionKey = JSON.stringify(qrCaption);
+  const pictureKey = `${qrSvg ?? ""}#${captionKey}`;
+  // Only the picture of the code on screen now (a new code makes a new one).
+  const qrPng = qrPicture?.key === pictureKey ? qrPicture.blob : null;
+  // Drawn once the save button is on screen, not on every page view.
+  const saveRef = useRef<HTMLDivElement | null>(null);
+  const [saveVisible, setSaveVisible] = useState(false);
+  useEffect(() => {
+    const el = saveRef.current;
+    if (!el || saveVisible) return;
+    if (typeof IntersectionObserver === "undefined") {
+      const t = setTimeout(() => setSaveVisible(true), 0);
+      return () => clearTimeout(t);
+    }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) setSaveVisible(true);
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [saveVisible, qrSvg]);
+  useEffect(() => {
+    let live = true;
+    if (!qrSvg || !saveVisible) return;
+    buildQrPng(qrSvg, JSON.parse(captionKey) as string[])
+      .then((blob) => {
+        if (live) setQrPicture({ key: `${qrSvg}#${captionKey}`, blob });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [qrSvg, captionKey, saveVisible]);
 
-  const fetchPayload = useCallback(async (): Promise<Payload | null> => {
+  const fetchPayload = useCallback(async (): Promise<{ payload: Payload | null; network: boolean }> => {
     try {
       const res = await fetch(`${base}${q}`, { cache: "no-store" });
-      return res.ok ? ((await res.json()) as Payload) : null;
+      return { payload: res.ok ? ((await res.json()) as Payload) : null, network: false };
     } catch {
-      return null;
+      // fetch rejects only when nothing came back: no connection.
+      return { payload: null, network: true };
     }
   }, [base, q]);
-  const apply = useCallback((p: Payload | null) => {
-    if (p) setData(p);
-    setFailed(!p);
+  // What the kept copy of the page shows (the server's payload, at first).
+  const keptShows = useRef(shown(initial));
+  const apply = useCallback(({ payload, network }: { payload: Payload | null; network: boolean }) => {
+    if (payload) {
+      setData(payload);
+      setAsOf(new Date().toISOString());
+      const now = shown(payload);
+      if (now !== keptShows.current) {
+        const before = keptShows.current;
+        keptShows.current = now;
+        // If the worker could not refresh it, the next payload tries again.
+        void refreshKeptBookingPage().then((ok) => {
+          if (!ok && keptShows.current === now) keptShows.current = before;
+        });
+      }
+    }
+    setFailed(!payload);
+    setOffline(network);
   }, []);
   const load = useCallback(async () => apply(await fetchPayload()), [apply, fetchPayload]);
 
   useEffect(() => {
     let live = true;
-    void fetchPayload().then((p) => {
-      if (live) apply(p);
+    // Rendered just now with a payload: nothing to refresh. Otherwise this
+    // may be a copy the phone kept, or the server could not build it.
+    const refresh = () => {
+      void fetchPayload().then((p) => {
+        if (live) apply(p);
+      });
+    };
+    // A page shown from the copy the phone kept: the worker says so (the
+    // page cannot see how it was served), with when it was saved; refresh,
+    // which also tells us whether we are offline. Otherwise: rendered just
+    // now with a payload needs nothing, unless the browser says offline.
+    const fresh = !!initial && !!savedAt && Math.abs(Date.now() - Date.parse(savedAt)) < FRESH_MS;
+    void servedFromKeptCopy().then((r) => {
+      if (!live) return;
+      if (r?.copy) {
+        // Said at once: the network may take a while to answer, or never.
+        if (r.savedAt) setAsOf(r.savedAt);
+        setOffline(true);
+        refresh();
+        return;
+      }
+      if (!fresh || !navigator.onLine) refresh();
+      // Online and current: tell the worker what this page loaded, so a
+      // kept copy has its code-split files and fonts too.
+      else if (r) setTimeout(keepPageAssets, 3_000);
     });
+    // Back online: one refresh per "online" event the browser fires.
+    const back = () => {
+      void fetchPayload().then((p) => {
+        if (live) apply(p);
+      });
+    };
+    window.addEventListener("online", back);
     return () => {
       live = false;
+      window.removeEventListener("online", back);
     };
+    // The props are the page's first render; they do not change after.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchPayload, apply]);
 
   const pending = !!data && [data.visitorAccess.holder, ...data.visitorAccess.guests].some((p) => p && (p.state === "pending" || p.state === "withdrawing"));
   useEffect(() => {
-    if (!pending || polls >= POLL_MAX) return;
+    // Offline, polling would only fail; the "online" refresh takes over.
+    if (!pending || offline || polls >= POLL_MAX) return;
     const t = setTimeout(() => {
       setPolls((n) => n + 1);
       void load();
     }, POLL_MS);
     return () => clearTimeout(t);
-  }, [pending, data, polls, load]);
+  }, [pending, offline, data, polls, load]);
 
   async function act(path: string, method: string, body?: unknown, done?: string) {
     setBusy(true);
@@ -127,9 +264,26 @@ export default function AccessPanel({ token, customerName }: { token: string; cu
   }
   if (!data) return null;
   const { checkIn: c, visitorAccess: va } = data;
+  const qrFileName = `maw3ed-check-in-${(reference ?? "booking").replace(/[^A-Za-z0-9-]/g, "")}.png`;
+  const savedTime = asOf
+    ? new Intl.DateTimeFormat(localeFor(lang), { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" }).format(new Date(asOf))
+    : null;
 
   return (
     <div className="contents" dir={dir}>
+      {offline && (
+        <p role="status" className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--color-warn-line)] bg-[var(--color-warn-soft)] p-3 text-xs">
+          <WifiOff size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+          <span>
+            {t("مفيش اتصال دلوقتي. ده آخر نسخة اتحفظت", "You're offline. This is the copy saved")}
+            {savedTime ? <> {t("", "at ")}<bdi>{savedTime}</bdi></> : null}
+            {t(
+              " — اعرض الكود على الاستقبال، وهم بيتأكدوا منه لما يقروه.",
+              " — show the code at reception; they check it when they scan it.",
+            )}
+          </span>
+        </p>
+      )}
       {c.display !== "unavailable" && (
         <section className="bg-white rounded-[var(--radius-lg)] border border-[var(--color-line)] p-5 space-y-3" aria-labelledby="checkin-h">
           <div className="flex items-center gap-2">
@@ -165,6 +319,34 @@ export default function AccessPanel({ token, customerName }: { token: string; cu
                 {c.display === "not-yet" ? t("الكود بيشتغل ", "The code works ") : t("شغّال ", "Works ")}
                 <span dir="ltr">{c.opensAt} – {c.closesAt}</span>
               </p>
+              {c.qrSvg && (
+                <div ref={saveRef} className="flex flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm gap-1.5"
+                    onClick={async () => {
+                      // Straight from the tap when the picture is ready (a
+                      // share sheet must open from the tap), built now if not.
+                      const r = qrPng
+                        ? await deliverQrImage(qrPng, qrFileName)
+                        : await saveQrImage(c.qrSvg!, { fileName: qrFileName, caption: qrCaption });
+                      setMsg(
+                        r === "failed"
+                          ? t("مقدرناش نحفظ الصورة. خد سكرين شوت للكود.", "Couldn't save the image. Take a screenshot of the code instead.")
+                          : r === "cancelled"
+                            ? null
+                            : t("اتحفظ الكود كصورة — تقدر تفتحه من غير نت.", "Code saved as an image — you can open it without a connection."),
+                      );
+                    }}
+                  >
+                    <Download size={14} aria-hidden="true" />
+                    {t("احفظ الكود كصورة", "Save QR as image")}
+                  </button>
+                  <p className="m-0 text-[0.7rem] text-[var(--color-muted)]">
+                    {t("عشان يفضل معاك لو النت فصل.", "So you have it even without a connection.")}
+                  </p>
+                </div>
+              )}
               <p className="text-[0.7rem] text-[var(--color-muted)]">
                 {t(
                   `لو الكود مش بيتقري، قول اسمك (${customerName}) ورقم الحجز للاستقبال.`,

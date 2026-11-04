@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { bookingRefusalEn, refusalText } from "@/lib/lang";
+import { refreshKeptBookingPage } from "@/lib/access/offline-refresh";
 
 interface Props {
   token: string;
@@ -49,6 +50,8 @@ export default function CancelButton({ token }: Props) {
         setConfirming(false);
         return;
       }
+      // The phone's offline copy of this page goes too (public/sw.js).
+      refreshKeptBookingPage();
       router.refresh();
     } catch {
       setError(t("تعذّر الاتصال بالخادم، حاول مرة أخرى", "Couldn't connect. Try again."));

@@ -166,13 +166,14 @@ try {
     const busy = await page.locator('[aria-busy="true"]').count();
     check("offline: no spinner takes its place", busy === 0, `aria-busy ${busy}`);
     check("offline: the page does not hammer the network while offline (≤ 6 attempts in 20 s)", requests.length <= 6, `${requests.length} requests`);
-    // The service worker keeps no copy of pages (public/sw.js): reloading
-    // offline shows its offline notice, and the QR is gone until the
-    // connection returns. Recorded as a pilot finding (LAUNCH_READINESS.md).
-    try { await page.reload({ timeout: 10000 }); } catch {}
-    const offlineText = (await page.textContent("body").catch(() => "")) ?? "";
-    const qrAfterReload = await page.locator("svg").filter({ has: page.locator("path") }).count();
-    check("offline: reloading without a connection shows the offline notice, not a broken page (the QR is not kept: finding)", /مفيش اتصال/.test(offlineText) && qrAfterReload === 0, offlineText.replace(/\s+/g, " ").slice(0, 120));
+    // The phone keeps the customer's own booking page (public/sw.js), so a
+    // reload with no connection shows that copy with its QR and a note
+    // (finding F1, fixed 2026-11-03; details in scripts/qa-offline-qr.mjs).
+    try { await page.reload({ timeout: 10000, waitUntil: "domcontentloaded" }); } catch {}
+    await page.waitForTimeout(1500);
+    const qrAfterReload = await page.locator('section[aria-labelledby="checkin-h"] [role="img"] svg').count();
+    const copyNote = await page.getByRole("status").filter({ hasText: "مفيش اتصال" }).count();
+    check("offline: reloading without a connection shows the kept copy with the QR and a note saying so", qrAfterReload === 1 && copyNote === 1, `qr ${qrAfterReload}, note ${copyNote}`);
     await ctx.setOffline(false);
     await page.goto(`${B}/booking/${token}`, { waitUntil: "networkidle" });
     check("offline: back online, the page loads again", (await page.locator("svg").filter({ has: page.locator("path") }).count()) > 0);

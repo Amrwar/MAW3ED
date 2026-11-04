@@ -10,7 +10,7 @@ Phase 24, Part 8. Date: 2026-11-03.
 | Venue configuration (floors, gates, policy, directory, QR, security desk) | **Yes, locally verified** | A real operator's data and agreement (`PILOT_PLAN.md`) |
 | Bookings, check-in QR and reports through organizations | **Yes, locally verified**; check-in also partly verified on production (Phase 23 check, 2026-11-03) | — |
 | Visitor passes at real gates | **No.** The module works against the sandbox only | Partner milestone (`PARTNER_INTEGRATION_STATUS.md`) |
-| Offline customers | **Partly** | The QR stays on screen when the connection drops. Reloading with no connection shows the offline notice and the QR is gone (finding F1 below) |
+| Offline customers | **Yes** | The phone keeps the customer's booking page, which is shown offline with its QR, and "Save QR as image" keeps the code outside the browser (F1, fixed) |
 | Operations documentation | **Yes** (this document) | Staff training has not been delivered to anyone yet |
 | Monitoring | **Partly** | Sentry and the Vercel logs are in place. No uptime check and no log drain yet (S-03 in `SECURITY_OPERATIONS.md`) |
 | Legal | **No** | Processor terms between a business and an organization: `[DECISION]` in `docs/legal/PRIVACY_POLICY_DRAFT.md` (Phase 22, O6) |
@@ -26,7 +26,7 @@ these hold:
 
 | # | Severity | Finding | Recommendation |
 |---|---|---|---|
-| F1 | P2 (pilot) | A customer who reloads their booking page with no signal, as in a mall basement, sees the offline notice, not their QR. The service worker deliberately keeps no copy of pages (`public/sw.js`) | Short term: tell customers in the confirmation to open the booking page before arriving, and train desks to find the booking by name in today's list and mark it arrived. Product option: let the booking page offer "save the code" (an image), or allow the service worker to keep **only** the customer's own booking page. That needs a privacy review, because it would store the page on a possibly shared device |
+| F1 | **Fixed 2026-11-03** (was P2) | A customer who reloads their booking page with no signal, as in a mall basement, sees the offline notice, not their QR. The service worker deliberately keeps no copy of pages (`public/sw.js`) | Short term: tell customers in the confirmation to open the booking page before arriving, and train desks to find the booking by name in today's list and mark it arrived. Product option: let the booking page offer "save the code" (an image), or allow the service worker to keep **only** the customer's own booking page. That needs a privacy review, because it would store the page on a possibly shared device |
 | F2 | Info | The free plan's monthly allowance makes extra online bookings wait for the owner's confirmation, by design. A busy tenant on the free plan will see bookings held as pending | Tell pilot tenants which plan fits their volume before launch |
 
 Gaps fixed in this phase, rather than recorded: tables and rooms could
