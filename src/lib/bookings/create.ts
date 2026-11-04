@@ -1,5 +1,7 @@
 import { randomBytes } from "crypto";
 import { claimRedemption } from "@/lib/discounts/resolve";
+import { LoyaltyInsufficient, redeemForBooking } from "@/lib/loyalty/ledger";
+import { consumeEntitlement, EntitlementGone, type EntitlementRef } from "@/lib/entitlements/ledger";
 import type { TrafficSource } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -50,7 +52,11 @@ export type CreateFailure =
   /** More people than the table — or any table — seats. */
   | { kind: "party-too-large" }
   /** A test booking, but the page was published while it was being made. */
-  | { kind: "business-published" };
+  | { kind: "business-published" }
+  /** The points quoted are no longer there (spent from another booking). */
+  | { kind: "loyalty-insufficient" }
+  /** The package session or membership visit is no longer there. */
+  | { kind: "entitlement-gone" };
 
 export interface CreateBookingInput {
   businessId: string;
@@ -90,6 +96,22 @@ export interface CreateBookingInput {
    * recording it.
    */
   discount?: { id: string; amountCents: number } | null;
+  /**
+   * Points spent on this booking (lib/loyalty). Like the discount,
+   * totalPrice is already reduced by amountCents; the spend itself is
+   * taken inside the transaction, with the account locked.
+   */
+  loyalty?: { programId: string; phoneE164: string; points: number; amountCents: number } | null;
+  /**
+   * A package session or membership visit covering this booking
+   * (lib/entitlements). totalPrice is 0 for it; the session is taken
+   * inside the transaction, conditionally.
+   */
+  entitlement?: (EntitlementRef & { phoneE164: string }) | null;
+  /** A recurring series this booking is one occurrence of. */
+  series?: { id: string; index: number } | null;
+  /** Guests coming with the customer (clinics: someone accompanying). */
+  companions?: number;
   /** Client-supplied; a retry with the same value is not a second booking. */
   idempotencyKey?: string | null;
   /**
@@ -139,6 +161,8 @@ const BOOKING_SELECT = {
   branchId: true,
   partySize: true,
   notes: true,
+  seriesId: true,
+  seriesIndex: true,
 } satisfies Prisma.BookingSelect;
 
 /**
@@ -261,6 +285,10 @@ export async function createBooking(
               depositAmount: input.depositAmount,
               source: input.source ?? null,
               discountCents: input.discount?.amountCents ?? 0,
+              loyaltyCents: input.loyalty?.amountCents ?? 0,
+              seriesId: input.series?.id ?? null,
+              seriesIndex: input.series?.index ?? null,
+              companions: input.companions ?? 0,
               isTest: input.isTest ?? false,
               staffMemberId,
               resourceId,
@@ -301,6 +329,27 @@ export async function createBooking(
             });
           }
 
+          if (input.loyalty && input.loyalty.points > 0) {
+            await redeemForBooking(tx, {
+              programId: input.loyalty.programId,
+              phoneE164: input.loyalty.phoneE164,
+              bookingId: created.id,
+              businessId: input.businessId,
+              points: input.loyalty.points,
+            }, now);
+          }
+
+          if (input.entitlement) {
+            const { phoneE164, ...ref } = input.entitlement;
+            await consumeEntitlement(tx, ref as EntitlementRef, {
+              bookingId: created.id,
+              businessId: input.businessId,
+              phoneE164,
+              serviceId: input.serviceId,
+              startsAt,
+            });
+          }
+
           return created;
         },
       );
@@ -312,6 +361,8 @@ export async function createBooking(
       if (e instanceof LimitReached) return { ok: false, failure: { kind: "limit-reached" } };
       if (e instanceof DiscountGone) return { ok: false, failure: { kind: "discount-gone" } };
       if (e instanceof PublishedMeanwhile) return { ok: false, failure: { kind: "business-published" } };
+      if (e instanceof LoyaltyInsufficient) return { ok: false, failure: { kind: "loyalty-insufficient" } };
+      if (e instanceof EntitlementGone) return { ok: false, failure: { kind: "entitlement-gone" } };
 
       // The transaction never began: the pool had no connection to give
       // within Prisma's wait. Nothing was written, so trying again after

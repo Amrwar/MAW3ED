@@ -249,31 +249,46 @@ CREATE TABLE IF NOT EXISTS "CustomerMembership" (
   "periodDays" INTEGER NOT NULL,
   "priceCents" INTEGER NOT NULL,
   "status" "CustomerMembershipStatus" NOT NULL DEFAULT 'PENDING_PAYMENT',
-  "periodStart" TIMESTAMP(3),
-  "periodEnd" TIMESTAMP(3),
-  "usedInPeriod" INTEGER NOT NULL DEFAULT 0,
+  "paidThrough" TIMESTAMP(3),
   "pausedAt" TIMESTAMP(3),
   "pausedDays" INTEGER NOT NULL DEFAULT 0,
   "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
-  CONSTRAINT "CustomerMembership_use_chk" CHECK ("usedInPeriod" >= 0 AND "usedInPeriod" <= "includedVisits" AND "includedVisits" > 0),
+  CONSTRAINT "CustomerMembership_rules_chk" CHECK ("includedVisits" > 0 AND "periodDays" > 0 AND "priceCents" > 0),
   CONSTRAINT "CustomerMembership_pause_chk" CHECK ("pausedDays" BETWEEN 0 AND 60),
-  CONSTRAINT "CustomerMembership_period_chk" CHECK ("status" IN ('PENDING_PAYMENT') OR ("periodStart" IS NOT NULL AND "periodEnd" IS NOT NULL AND "periodEnd" > "periodStart")),
+  CONSTRAINT "CustomerMembership_paid_chk" CHECK ("status" = 'PENDING_PAYMENT' OR "paidThrough" IS NOT NULL),
   CONSTRAINT "CustomerMembership_paused_chk" CHECK (("status" = 'PAUSED') = ("pausedAt" IS NOT NULL))
 );
 CREATE INDEX IF NOT EXISTS "CustomerMembership_businessId_phoneE164_status_idx" ON "CustomerMembership"("businessId", "phoneE164", "status");
-CREATE INDEX IF NOT EXISTS "CustomerMembership_status_periodEnd_idx" ON "CustomerMembership"("status", "periodEnd");
+CREATE INDEX IF NOT EXISTS "CustomerMembership_status_paidThrough_idx" ON "CustomerMembership"("status", "paidThrough");
+
+CREATE TABLE IF NOT EXISTS "MembershipPeriod" (
+  "id" TEXT PRIMARY KEY,
+  "membershipId" TEXT NOT NULL REFERENCES "CustomerMembership"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  "startsAt" TIMESTAMP(3) NOT NULL,
+  "endsAt" TIMESTAMP(3) NOT NULL,
+  "includedVisits" INTEGER NOT NULL,
+  "used" INTEGER NOT NULL DEFAULT 0,
+  "paymentId" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- Never more visits taken than the period includes.
+  CONSTRAINT "MembershipPeriod_use_chk" CHECK ("used" >= 0 AND "used" <= "includedVisits" AND "includedVisits" > 0 AND "endsAt" > "startsAt")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "MembershipPeriod_paymentId_key" ON "MembershipPeriod"("paymentId");
+CREATE INDEX IF NOT EXISTS "MembershipPeriod_membershipId_endsAt_idx" ON "MembershipPeriod"("membershipId", "endsAt");
 
 CREATE TABLE IF NOT EXISTS "EntitlementUse" (
   "id" TEXT PRIMARY KEY,
   "bookingId" TEXT NOT NULL REFERENCES "Booking"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   "packageId" TEXT REFERENCES "CustomerPackage"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   "membershipId" TEXT REFERENCES "CustomerMembership"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  "periodId" TEXT REFERENCES "MembershipPeriod"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   "reversedAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- Exactly one source.
-  CONSTRAINT "EntitlementUse_source_chk" CHECK (("packageId" IS NULL) <> ("membershipId" IS NULL))
+  CONSTRAINT "EntitlementUse_source_chk" CHECK (("packageId" IS NULL) <> ("membershipId" IS NULL)),
+  CONSTRAINT "EntitlementUse_period_chk" CHECK (("membershipId" IS NULL) = ("periodId" IS NULL))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "EntitlementUse_bookingId_key" ON "EntitlementUse"("bookingId");
 CREATE INDEX IF NOT EXISTS "EntitlementUse_packageId_idx" ON "EntitlementUse"("packageId");

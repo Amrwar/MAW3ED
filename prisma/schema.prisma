@@ -2850,20 +2850,38 @@ model CustomerMembership {
   periodDays        Int
   priceCents        Int
   status            CustomerMembershipStatus @default(PENDING_PAYMENT)
-  periodStart       DateTime?
-  periodEnd         DateTime?
-  usedInPeriod      Int                      @default(0)
-  /// Paused: the period stops running from pausedAt.
+  /// The end of the last paid period (a summary of `periods`).
+  paidThrough       DateTime?
+  /// Paused: no visits are taken; on resume the periods move by the pause.
   pausedAt          DateTime?
-  /// Days of pause already used this period (bounded: lib/memberships).
+  /// Days of pause used over the membership's life (bounded: 60).
   pausedDays        Int                      @default(0)
   cancelAtPeriodEnd Boolean                  @default(false)
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
   uses              EntitlementUse[]
+  periods           MembershipPeriod[]
 
   @@index([businessId, phoneE164, status])
-  @@index([status, periodEnd])
+  @@index([status, paidThrough])
+}
+
+/// One paid period of a membership, with its own included visits. A visit
+/// counts against the period that contains its appointment; a renewal adds
+/// the next period, so paying early never resets the current one.
+model MembershipPeriod {
+  id             String             @id @default(cuid())
+  membershipId   String
+  membership     CustomerMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  startsAt       DateTime
+  endsAt         DateTime
+  includedVisits Int
+  used           Int                @default(0)
+  paymentId      String?            @unique
+  createdAt      DateTime           @default(now())
+  uses           EntitlementUse[]
+
+  @@index([membershipId, endsAt])
 }
 
 /// One booking covered by a package session or a membership visit. Unique per
@@ -2877,6 +2895,9 @@ model EntitlementUse {
   package      CustomerPackage?    @relation(fields: [packageId], references: [id], onDelete: Cascade)
   membershipId String?
   membership   CustomerMembership? @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  /// For a membership visit: the period it was counted against.
+  periodId     String?
+  period       MembershipPeriod?   @relation(fields: [periodId], references: [id], onDelete: Cascade)
   reversedAt   DateTime?
   createdAt    DateTime            @default(now())
 

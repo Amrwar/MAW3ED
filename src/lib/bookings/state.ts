@@ -4,6 +4,8 @@ import { log } from "@/lib/logger";
 import { canTransition, releasesTime, type BookingStatusValue, type Mover } from "./transitions";
 import { accessAfterMove } from "@/lib/access/hooks";
 import { holdsBookingQueue, inBookingQueue } from "./queue";
+import { earnForBooking, reverseRedemption } from "@/lib/loyalty/ledger";
+import { releaseEntitlement } from "@/lib/entitlements/ledger";
 
 /**
  * Moving a booking from one status to another, safely.
@@ -95,6 +97,18 @@ async function applyMove(tx: Tx, input: MoveInput): Promise<MoveResult> {
         skipDuplicates: true,
       });
     }
+    // Loyalty points for the visit, in this transaction: they exist only
+    // if the completion does. Once per booking (sourceKey), whatever
+    // retries. A failure in the loyalty step never blocks completing the
+    // visit — it runs in a savepoint and is logged.
+    await tx.$executeRaw`SAVEPOINT loyalty_earn`;
+    try {
+      await earnForBooking(tx, input.bookingId);
+      await tx.$executeRaw`RELEASE SAVEPOINT loyalty_earn`;
+    } catch (e) {
+      await tx.$executeRaw`ROLLBACK TO SAVEPOINT loyalty_earn`;
+      log.error("[loyalty] could not award points for a completed booking", e, { bookingId: input.bookingId });
+    }
   }
 
   let refundNeededCents = 0;
@@ -175,6 +189,11 @@ export async function releaseBookingHold(
          SET "redemptionCount" = GREATEST(0, "redemptionCount" - 1), "updatedAt" = NOW()
        WHERE "id" = ${redemption.discountId}`;
   }
+
+  // Points spent on it come back, and a package session or membership
+  // visit it used is returned — each once, whichever path released it.
+  await reverseRedemption(tx, p.bookingId);
+  await releaseEntitlement(tx, p.bookingId);
 
   // Money that arrived for a booking that is now off. Cancelling does
   // not refund by itself — whether it should is the business's policy

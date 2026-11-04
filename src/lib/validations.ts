@@ -227,6 +227,15 @@ export const bookingSchema = z.object({
   /// A coupon the customer typed. Looked up server-side; the price is
   /// never taken from the request.
   discountCode: z.string().trim().max(40).optional(),
+  /// Phase 27: points to spend (the server caps them by the program's
+  /// rules and the balance), or a package / membership to use. Either
+  /// needs the number proved — signed in with it, or a phone proof.
+  redeemPoints:  z.number().int().min(1).max(1_000_000).optional(),
+  usePackageId:    z.string().max(40).optional(),
+  useMembershipId: z.string().max(40).optional(),
+  /// Someone coming with the customer (a clinic visit, say); capped by
+  /// the business's maxCompanions.
+  companions:    z.number().int().min(0).max(10).optional(),
 });
 
 /**
