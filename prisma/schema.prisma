@@ -923,6 +923,8 @@ model Booking {
   @@unique([seriesId, seriesIndex])
   @@index([customerPhoneE164])
   @@index([customerPhoneE164, startsAt])
+  /// Phase 28: the webhook change feed reads bookings in (updatedAt, id) order.
+  @@index([businessId, updatedAt, id])
   @@index([staffMemberId])
   @@index([tableId])
 }
@@ -1761,6 +1763,11 @@ model Organization {
   attributions OrganizationBookingAttribution[]
   loyaltyProgram LoyaltyProgram? @relation("OrganizationLoyaltyProgram")
   promotions     OrganizationPromotion[]
+  /// Phase 28: the organization's accent colour on its pages, "#RRGGBB".
+  brandColor       String?
+  apiClients       ApiClient[]
+  webhookEndpoints WebhookEndpoint[]
+  contract         OrganizationContract?
 
   @@index([status, isPublished])
   @@index([parentId])
@@ -1868,6 +1875,8 @@ model Venue {
   accessEnabled      Boolean             @default(false)
   accessEntitlements AccessEntitlement[]
   accessEvents       AccessEvent[]
+  /// Phase 28: this venue's own credential at its provider.
+  accessCredential   VenueAccessCredential?
 
   @@index([isPublished, status, cityId])
   @@index([compoundId])
@@ -2243,6 +2252,7 @@ model AccessProvider {
   venues      Venue[]
   credentials AccessCredential[]
   events      AccessEvent[]
+  venueCredentials VenueAccessCredential[]
 }
 
 enum AccessIdentityRequirement {
@@ -2930,4 +2940,167 @@ model OrganizationPromotion {
   updatedAt      DateTime     @updatedAt
 
   @@index([organizationId])
+}
+
+// ─── Phase 28: enterprise integrations, contracts, operations ───────────────
+// docs/enterprise/ARCHITECTURE.md, INTEGRATION_GUIDE.md. Migration:
+// prisma/migrations/phase28_enterprise.sql.
+
+enum ApiClientStatus {
+  ACTIVE
+  REVOKED
+}
+
+/// An organization's API key for /api/v1. Only a hash of the key is kept;
+/// the key itself is shown once. Rotation makes a new client and gives the
+/// old one a short grace (expiresAt) so integrations can switch over.
+model ApiClient {
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  /// The public part of the key ("mw_<prefix>"), how a request finds its client.
+  keyPrefix      String          @unique
+  /// SHA-256 of the whole key, hex.
+  keyHash        String
+  /// What it may read: organization:read, businesses:read, venues:read,
+  /// bookings:read, reports:read (lib/enterprise/scopes.ts).
+  scopes         String[]        @default([])
+  status         ApiClientStatus @default(ACTIVE)
+  /// Set when rotated (grace) or by choice; past it the key is refused.
+  expiresAt      DateTime?
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  replacedById   String?
+  createdById    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  usage          ApiUsageDay[]
+
+  @@index([organizationId, status])
+}
+
+/// Requests per client per day (UTC): usage accounting and the console's chart.
+model ApiUsageDay {
+  clientId String
+  client   ApiClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  day      DateTime  @db.Date
+  requests Int       @default(0)
+
+  @@id([clientId, day])
+}
+
+enum WebhookEndpointStatus {
+  ACTIVE
+  DISABLED
+}
+
+/// Where an organization wants events sent. The signing secret is sealed at
+/// rest (lib/access/crypto); a rotation keeps the previous one valid for a
+/// day. Disabled by itself after too many failures in a row.
+model WebhookEndpoint {
+  id                   String                @id @default(cuid())
+  organizationId       String
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  url                  String
+  events               String[]              @default([])
+  status               WebhookEndpointStatus @default(ACTIVE)
+  secretSealed         String
+  previousSecretSealed String?
+  previousSecretUntil  DateTime?
+  consecutiveFailures  Int                   @default(0)
+  disabledReason       String?
+  lastSuccessAt        DateTime?
+  lastFailureAt        DateTime?
+  /// Change-feed position: events after (cursorAt, cursorId) are still to come.
+  cursorAt             DateTime?
+  cursorId             String?
+  createdById          String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  deliveries           WebhookDelivery[]
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  DEAD
+}
+
+/// One event to one endpoint. (endpointId, eventId) is unique: an event is
+/// queued once, whatever produces it twice.
+model WebhookDelivery {
+  id             String                @id @default(cuid())
+  endpointId     String
+  endpoint       WebhookEndpoint       @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  eventId        String
+  eventType      String
+  payload        Json
+  status         WebhookDeliveryStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  nextAttemptAt  DateTime?
+  lastStatusCode Int?
+  lastError      String?
+  deliveredAt    DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@unique([endpointId, eventId])
+  @@index([status, nextAttemptAt])
+}
+
+/// What the platform agreed with an organization: limits on its enterprise
+/// tools, set by a platform administrator. No prices live here — the
+/// commercial terms are the signed contract (reference).
+model OrganizationContract {
+  id                   String       @id @default(cuid())
+  organizationId       String       @unique
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reference            String
+  startsAt             DateTime
+  endsAt               DateTime?
+  maxApiClients        Int          @default(2)
+  maxWebhooks          Int          @default(2)
+  apiRequestsPerMinute Int          @default(120)
+  notes                String?
+  setById              String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+}
+
+/// Each scheduled job's runs: when, how long, what it did, whether it failed.
+model CronRun {
+  id         String    @id @default(cuid())
+  job        String
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean?
+  summary    Json?
+  error      String?
+
+  @@index([job, startedAt])
+}
+
+/// A venue's own credential at its access provider: sealed at rest, one per
+/// venue, rotated and revoked on its own. Venue A's key never signs or
+/// opens anything for venue B.
+model VenueAccessCredential {
+  id           String         @id @default(cuid())
+  venueId      String         @unique
+  venue        Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  providerId   String
+  provider     AccessProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  secretSealed String
+  keyVersion   Int            @default(1)
+  rotatedAt    DateTime       @default(now())
+  revokedAt    DateTime?
+  createdById  String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([providerId])
 }

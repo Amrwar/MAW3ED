@@ -1,4 +1,5 @@
 import { authorizeCron } from "@/lib/security/cron-auth";
+import { withCronRun } from "@/lib/ops/cron-run";
 import { runOperations } from "@/lib/automations/run";
 import { log } from "@/lib/logger";
 
@@ -13,7 +14,7 @@ import { log } from "@/lib/logger";
  * Security: Vercel attaches Authorization: Bearer <CRON_SECRET>; with no
  * secret set the job refuses to run (lib/security/cron-auth).
  */
-export async function GET(req: Request) {
+async function handle(req: Request): Promise<Response> {
   const allowed = authorizeCron(req, "operations");
   if (!allowed.ok) return allowed.response;
   const now = new Date();
@@ -24,4 +25,9 @@ export async function GET(req: Request) {
     log.error("[operations cron] failed", e);
     return Response.json({ ok: false, at: now.toISOString() }, { status: 500 });
   }
+}
+
+/** Recorded in CronRun (lib/ops/cron-run) — when it ran, whether it worked. */
+export async function GET(req: Request) {
+  return withCronRun("operations", () => handle(req));
 }

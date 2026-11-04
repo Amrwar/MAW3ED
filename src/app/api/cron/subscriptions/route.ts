@@ -22,13 +22,14 @@
  */
 
 import { db } from "@/lib/db";
+import { withCronRun } from "@/lib/ops/cron-run";
 import { pruneRateLimits } from "@/lib/rate-limit";
 import { pruneFunnelSeen } from "@/lib/analytics/funnel";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
 import { authorizeCron } from "@/lib/security/cron-auth";
 
-export async function GET(req: Request) {
+async function handle(req: Request): Promise<Response> {
   const allowed = authorizeCron(req, "subscriptions");
   if (!allowed.ok) return allowed.response;
 
@@ -138,4 +139,9 @@ export async function GET(req: Request) {
   );
 
   return Response.json({ ok: true, expired, reminded, failed, pruned, funnelPruned });
+}
+
+/** Recorded in CronRun (lib/ops/cron-run) — when it ran, whether it worked. */
+export async function GET(req: Request) {
+  return withCronRun("subscriptions", () => handle(req));
 }

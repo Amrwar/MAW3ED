@@ -22,7 +22,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, hkdfSync, ran
  * key. docs/security/VISITOR_ACCESS_THREAT_MODEL.md.
  */
 
-export type KeyPurpose = "check-in" | "pass-at-rest" | "sandbox-webhook";
+export type KeyPurpose = "check-in" | "pass-at-rest" | "sandbox-webhook" | "webhook-secret" | "venue-credential";
 
 function rootKey(): Buffer | null {
   const dedicated = process.env.ACCESS_CREDENTIAL_KEY?.trim();
@@ -61,7 +61,16 @@ export const CODE_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 /** "v1.<iv>.<tag>.<ciphertext>" in base64url, or null without a key. */
 export function sealToken(token: string): string | null {
-  const key = purposeKey("pass-at-rest");
+  return sealWith("pass-at-rest", token);
+}
+
+/**
+ * A secret sealed under its own purpose's key (Phase 28: a webhook signing
+ * secret, a venue's provider credential), so one purpose's ciphertext can
+ * never be opened with another's key.
+ */
+export function sealWith(purpose: KeyPurpose, token: string): string | null {
+  const key = purposeKey(purpose);
   if (!key) return null;
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
@@ -71,8 +80,12 @@ export function sealToken(token: string): string | null {
 }
 
 export function openToken(sealed: string | null): string | null {
+  return openWith("pass-at-rest", sealed);
+}
+
+export function openWith(purpose: KeyPurpose, sealed: string | null): string | null {
   if (!sealed) return null;
-  const key = purposeKey("pass-at-rest");
+  const key = purposeKey(purpose);
   if (!key) return null;
   const [v, iv, tag, ct] = sealed.split(".");
   if (v !== "v1" || !iv || !tag || !ct) return null;

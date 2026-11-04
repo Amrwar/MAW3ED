@@ -57,6 +57,13 @@ export interface CallContext {
   idempotencyKey: string;
   correlationId: string;
   signal: AbortSignal;
+  /**
+   * Phase 28: the venue's own credential at the provider
+   * (lib/access/venue-credentials), when the venue keeps one. A partner
+   * adapter authenticates each call with it, so one venue's key never
+   * serves another venue. Absent: the provider's platform configuration.
+   */
+  venueCredential?: { secret: string; keyVersion: number } | null;
 }
 
 /** The provider's answer to provision or update. */
@@ -113,7 +120,7 @@ export class TransientProviderError extends Error {
 
 /** The provider cannot be used at all here (not configured, not allowed). */
 export class ProviderUnavailableError extends Error {
-  constructor(public readonly code: "not-configured" | "sandbox-not-allowed" | "disabled") {
+  constructor(public readonly code: "not-configured" | "sandbox-not-allowed" | "disabled" | "credential-revoked") {
     super(code);
     this.name = "ProviderUnavailableError";
   }

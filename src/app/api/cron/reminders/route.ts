@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { withCronRun } from "@/lib/ops/cron-run";
 import { cairoWallClock } from "@/lib/bookings/instants";
 import { businessAllows } from "@/lib/plans";
 import { notify } from "@/lib/notifications";
@@ -41,7 +42,7 @@ const REVIEW_DELAY_HOURS = 3;
 /** And how long before we stop asking. */
 const REVIEW_WINDOW_HOURS = 72;
 
-export async function GET(req: Request) {
+async function handle(req: Request): Promise<Response> {
   const allowed = authorizeCron(req, "reminders");
   if (!allowed.ok) return allowed.response;
 
@@ -185,4 +186,9 @@ export async function GET(req: Request) {
   log.info(`[Reminders] Complete — ${JSON.stringify({ ...counts, ...reaped })}`);
 
   return Response.json({ ok: true, at: now.toISOString(), ...counts, ...reaped });
+}
+
+/** Recorded in CronRun (lib/ops/cron-run) — when it ran, whether it worked. */
+export async function GET(req: Request) {
+  return withCronRun("reminders", () => handle(req));
 }

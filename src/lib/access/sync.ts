@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { venueCredentialFor } from "./venue-credentials";
 import type { AccessCredential, AccessEntitlement, AccessProvider, AccessSyncJob, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
@@ -262,8 +263,12 @@ async function runOne(job: AccessSyncJob, now: () => Date, timeoutMs: number): P
   // stopped mid-call): give it up now rather than call once more.
   if (job.attempts > MAX_ATTEMPTS) return giveUp(job, credential, "interrupted on its last attempt", now());
 
-  const ctx = (signal: AbortSignal): CallContext => ({ idempotencyKey: job.idempotencyKey, correlationId: job.correlationId, signal });
   try {
+    // The venue's own credential (Phase 28): a revoked one stops this
+    // venue's calls — and only this venue's.
+    const vc = await venueCredentialFor(credential.entitlement.venueId, credential.providerId);
+    if (vc === "revoked") throw new ProviderUnavailableError("credential-revoked");
+    const ctx = (signal: AbortSignal): CallContext => ({ idempotencyKey: job.idempotencyKey, correlationId: job.correlationId, signal, venueCredential: vc });
     const adapter = await adapterFor(credential.provider);
     switch (job.kind) {
       case "PROVISION": {
