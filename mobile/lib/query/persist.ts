@@ -22,7 +22,7 @@ import { VERSION_LABEL } from "@/constants/version";
  */
 
 /** The first key segment of everything that may be kept. */
-const PUBLIC = new Set(["businesses", "facets"]);
+const PUBLIC = new Set(["businesses", "facets", "places"]);
 
 export function isPersistable(query: Pick<Query, "queryKey" | "state">): boolean {
   const [root, kind] = query.queryKey as unknown[];

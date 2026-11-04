@@ -23,6 +23,7 @@ import {
   joinLabel,
   type IconName,
 } from "@/design";
+import { useOrganizations, useVenues } from "@/features/places/queries";
 import { BusinessCard } from "@/features/discovery/BusinessCard";
 import { MapArt } from "@/features/location/MapArt";
 import { startSearch, type Arrival } from "@/features/discovery/searchState";
@@ -233,6 +234,7 @@ export default function CustomerHome() {
       <Column>
         {/* ── Map-first: the way in to places around you ── */}
         <MapEntry />
+        <PlacesEntry />
 
         {/* ── A deposit left unfinished when the app was closed ── */}
         <UnfinishedPayment />
@@ -735,6 +737,38 @@ function UnfinishedPayment() {
 const homeStyles = StyleSheet.create({
   payRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   flex: { flex: 1 },
+});
+
+/**
+ * Malls and groups: shown once there is at least one to open, so the
+ * home screen never leads to an empty page.
+ */
+function PlacesEntry() {
+  const { lang } = useLocale();
+  const ar = lang === "ar";
+  const orgs = useOrganizations();
+  const venues = useVenues();
+  const n = (orgs.data?.organizations.length ?? 0) + (venues.data?.venues.length ?? 0);
+  if (!n) return null;
+  return (
+    <Card onPress={() => router.push("/places")} accessibilityLabel={ar ? "المولات والمجموعات" : "Malls and groups"} testID="home-places">
+      <View style={placesStyles.row}>
+        <View style={placesStyles.icon}>
+          <Icon name="business-outline" size="sm" color={colors.jade} />
+        </View>
+        <View style={homeStyles.flex}>
+          <Text variant="bodyBold">{ar ? "المولات والمجموعات" : "Malls and groups"}</Text>
+          <Text variant="caption" tone="muted">{ar ? "اتصفح الأماكن اللي جوّا مول أو مجموعة واحجز" : "Browse the places inside a mall or group, and book"}</Text>
+        </View>
+        <Icon name="chevron-forward" color={colors.faint} />
+      </View>
+    </Card>
+  );
+}
+
+const placesStyles = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  icon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.jadeSoft, alignItems: "center", justifyContent: "center" },
 });
 
 /**

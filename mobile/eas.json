@@ -25,11 +25,10 @@
       }
     },
     "e2e": {
-      "extends": "preview",
       "distribution": "internal",
+      "environment": "preview",
       "env": {
-        "APP_ENV": "staging",
-        "EXPO_PUBLIC_API_URL": "https://maw-3-ed.vercel.app"
+        "APP_ENV": "staging"
       },
       "android": {
         "buildType": "apk",

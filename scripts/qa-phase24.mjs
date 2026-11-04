@@ -294,11 +294,12 @@ try {
   const side = await json(await sandbox({ action: "gate", token: passToken, gate: `${tag}-P`, site }));
   check("3.9: …the car-park gate does not (not an allowed gate)", side.granted === false && side.reason === "wrong-gate", side.reason);
   const code = await codeOf(jb.accessToken);
-  if ((await checkIn(rest.owner, code)).state === "too-early") {
-    check("3.10: arriving more than 30 minutes early, the code says so and does not check in", (await checkIn(rest.owner, code, "check-in")).state === "too-early");
-    // The wait: the booking moves to start in 10 minutes.
-    await shiftBooking(jb.id, -((await minutesUntil(jb.id)) - 10));
-  }
+  // Arriving early: the booking moves to start in an hour, whatever slot
+  // the clock gave it, so this is checked on every run.
+  await shiftBooking(jb.id, 60 - (await minutesUntil(jb.id)));
+  check("3.10: arriving more than 30 minutes early, the code says so and does not check in", (await checkIn(rest.owner, code, "check-in")).state === "too-early" && (await status(jb.id)) !== "ARRIVED");
+  // The wait: the booking moves to start in 10 minutes.
+  await shiftBooking(jb.id, -((await minutesUntil(jb.id)) - 10));
   const ci = await checkIn(rest.owner, code, "check-in");
   check("3.10: checks in at the restaurant — the booking is ARRIVED", ci.state === "checked-in" && (await status(jb.id)) === "ARRIVED", JSON.stringify(ci).slice(0, 160));
   check("3.11: completing before the appointment has started is refused", (await send(rest.owner, `/api/business/bookings/${jb.id}`, "PATCH", { status: "COMPLETED" })).status === 409);

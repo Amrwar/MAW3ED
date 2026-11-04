@@ -192,7 +192,7 @@ Tracking: **No** (no ad SDKs, no analytics vendor; `mobile/lib/analytics.ts` is 
 
 | Data type | Collected | Linked to user | Purpose | Notes |
 |---|---|---|---|---|
-| Name | Yes | Yes | App Functionality | Profile, bookings |
+| Name | Yes | Yes | App Functionality | Profile, bookings; the names of guests a booking holder adds for a venue's visitor pass (Phase 25), and their phone where the venue requires it |
 | Email address | Yes (optional) | Yes | App Functionality | Optional at sign-up; owners sign in with it |
 | Phone number | Yes | Yes | App Functionality | Sign-in, bookings, WhatsApp codes/updates |
 | Precise location | Yes [VERIFY] | No [VERIFY] | App Functionality | Sent per "near me" request, not stored; declare conservatively because request URLs may appear in hosting logs |
@@ -208,11 +208,12 @@ Tracking: **No** (no ad SDKs, no analytics vendor; `mobile/lib/analytics.ts` is 
 
 - Encrypted in transit: **Yes** (HTTPS only).
 - Users can request deletion: **Yes** — in app, on the web, and via https://www.maw3ed.net/account-deletion.
+- Users can get a copy of their data: **Yes** — "Download a copy of your data" in the app's account screen (Phase 25) and on the web.
 - Shared with third parties: **No** — Paymob, Meta (WhatsApp), Expo push, Resend email and hosting act as service providers; giving your name/phone to the business you book is a user-initiated transfer.
 
 | Category → type | Collected | Optional? | Ephemeral? | Purposes |
 |---|---|---|---|---|
-| Personal info → Name | Yes | Required for customers | No | App functionality, Account management |
+| Personal info → Name | Yes | Required for customers | No | App functionality, Account management (also guests' names for visitor passes, entered by the booking holder) |
 | Personal info → Email address | Yes | Optional | No | App functionality, Account management |
 | Personal info → Phone number | Yes | Required for customers | No | App functionality, Account management, Fraud prevention (OTP) |
 | Location → Approximate + Precise | Yes | Optional | Yes | App functionality |

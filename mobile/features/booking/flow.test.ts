@@ -189,6 +189,15 @@ describe("submitting", () => {
     expect(fingerprint(a)).not.toBe(fingerprint(requestBody(p, { ...d, time: "10:30" }, "201000000000", null)!));
   });
 
+  it("carries the organization a booking started from, as the website's ?org= does", () => {
+    const p = biz();
+    const d = draft({ serviceId: "s1", date: "2026-10-20", time: "10:00", name: "Mona" });
+    expect(requestBody(p, d, "201000000000", null, "palm-group")?.org).toBe("palm-group");
+    expect(requestBody(p, d, "201000000000", null)?.org).toBeUndefined();
+    // A booking from an organization's page is not the same submission as a direct one.
+    expect(fingerprint(requestBody(p, d, "201000000000", null, "palm-group")!)).not.toBe(fingerprint(requestBody(p, d, "201000000000", null)!));
+  });
+
   it("keeps the key only for a failure that may have succeeded", () => {
     const network = describeFailure(new NetworkError(), "en");
     expect(keepsKey(network.recovery, network.code)).toBe(true);

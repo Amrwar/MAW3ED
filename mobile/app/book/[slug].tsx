@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, BackHandler, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { orgParam } from "@/features/places/logic";
 import { countVisit } from "@/features/profile/visit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
@@ -90,7 +91,7 @@ import { count, hoursSpan } from "@/lib/plural";
  */
 
 export default function BookScreen() {
-  const { slug, service, staff, src } = useLocalSearchParams<{ slug: string; service?: string; staff?: string; src?: string }>();
+  const { slug, service, staff, src, org } = useLocalSearchParams<{ slug: string; service?: string; staff?: string; src?: string; org?: string }>();
   // A link that went straight to booking a service (a QR code, a bio
   // link) is still a visit from its source, as on the web's profile.
   const counted = useRef(false);
@@ -187,7 +188,7 @@ export default function BookScreen() {
     );
   }
 
-  return <Flow p={profile.data} initial={restored.draft} initialAttempt={restored.attempt} resumed={restored.resumed} onLeave={leave} />;
+  return <Flow p={profile.data} initial={restored.draft} initialAttempt={restored.attempt} resumed={restored.resumed} onLeave={leave} org={orgParam(org)} />;
 }
 
 /* ─── The flow ───────────────────────────────────────────── */
@@ -198,12 +199,15 @@ function Flow({
   initialAttempt,
   resumed,
   onLeave,
+  org,
 }: {
   p: PublicProfile;
   initial: Draft;
   initialAttempt: Attempt | null;
   resumed: boolean;
   onLeave: () => void;
+  /** The organization whose directory this booking started from; the server credits it if the business is listed there. */
+  org?: string;
 }) {
   // A link that named a service the business no longer offers (deleted,
   // or taken off the menu): say so, rather than silently starting over.
@@ -369,7 +373,7 @@ function Flow({
   const submit = async () => {
     if (inFlight.current) return; // a second tap, while the first is still out
     if (!phone) return;
-    const body = requestBody(p, d, phone, appliedCode);
+    const body = requestBody(p, d, phone, appliedCode, org);
     if (!body) return;
     inFlight.current = true;
     setSubmitting(true);

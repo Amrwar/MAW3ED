@@ -35,6 +35,22 @@ export const keys = {
     moveSlots: (token: string, date: string) => ["booking", "move", token, date] as const,
   },
 
+  /** A booking's check-in code and visitor passes; a guest's own pass. */
+  access: {
+    all: ["access"] as const,
+    booking: (token: string, lang: string) => ["access", "booking", token, lang] as const,
+    guest: (inviteToken: string, lang: string) => ["access", "guest", inviteToken, lang] as const,
+  },
+
+  /** Organizations (malls, groups) and venues, and their directories. */
+  places: {
+    all: ["places"] as const,
+    organizations: ["places", "organizations"] as const,
+    organization: (slug: string) => ["places", "organization", slug] as const,
+    venues: ["places", "venues"] as const,
+    venue: (slug: string) => ["places", "venue", slug] as const,
+  },
+
   myBookings: {
     all: ["my-bookings"] as const,
     scope: (scope: "upcoming" | "history") => ["my-bookings", scope] as const,

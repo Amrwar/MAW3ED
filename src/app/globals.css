@@ -18,6 +18,8 @@
   /* Ground & surfaces ---------------------------------- */
   --color-ground:          #FAFAF7;   /* page background        */
   --color-surface:         #FFFFFF;   /* cards, sheets          */
+  /* Behind a QR code: always pure white, whatever the theme (scanners need the contrast). */
+  --color-qr-paper: #FFFFFF;
   --color-surface-2:       #F4F5F1;   /* dashboard canvas       */
   --color-surface-3:       #EFF1EC;   /* inset wells, tracks    */
 

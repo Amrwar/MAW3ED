@@ -1,6 +1,7 @@
 import * as SecureStoreNative from "expo-secure-store";
 import { Platform } from "react-native";
 import { config } from "@/lib/config";
+import type { AuthUser } from "./roles";
 
 /**
  * Where the tokens live.
@@ -19,6 +20,12 @@ import { config } from "@/lib/config";
 const ACCESS_KEY = "maw3ed.access";
 const REFRESH_KEY = "maw3ed.refresh";
 const EXPIRY_KEY = "maw3ed.expiresAt";
+/**
+ * The account last confirmed by the server, so a cold start without a
+ * connection still shows who is signed in (features/auth/restore.ts).
+ * Never trusted for anything: the server checks every request.
+ */
+const LAST_USER_KEY = "maw3ed.lastUser";
 
 /**
  * The browser preview only. A browser has no Keychain or Keystore, so
@@ -42,6 +49,18 @@ const SecureStore =
 const OPTIONS: SecureStoreNative.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
+
+/**
+ * Writes and deletes run one at a time, in the order they were asked for.
+ * Otherwise a sign-out's deletes and a new sign-in's writes, a moment
+ * apart, could interleave and leave half of each.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+function serial<T>(op: () => Promise<T>): Promise<T> {
+  const run = queue.then(op, op);
+  queue = run.catch(() => undefined);
+  return run;
+}
 
 export interface Tokens {
   accessToken: string;
@@ -72,17 +91,36 @@ export async function setTokens(input: {
   expiresIn: number;
 }): Promise<void> {
   const expiresAt = Date.now() + input.expiresIn * 1000;
-  await Promise.all([
-    SecureStore.setItemAsync(ACCESS_KEY, input.accessToken, OPTIONS),
-    SecureStore.setItemAsync(REFRESH_KEY, input.refreshToken, OPTIONS),
-    SecureStore.setItemAsync(EXPIRY_KEY, String(expiresAt), OPTIONS),
-  ]);
+  await serial(() =>
+    Promise.all([
+      SecureStore.setItemAsync(ACCESS_KEY, input.accessToken, OPTIONS),
+      SecureStore.setItemAsync(REFRESH_KEY, input.refreshToken, OPTIONS),
+      SecureStore.setItemAsync(EXPIRY_KEY, String(expiresAt), OPTIONS),
+    ]),
+  );
 }
 
 export async function clearTokens(): Promise<void> {
-  await Promise.all([
-    SecureStore.deleteItemAsync(ACCESS_KEY, OPTIONS),
-    SecureStore.deleteItemAsync(REFRESH_KEY, OPTIONS),
-    SecureStore.deleteItemAsync(EXPIRY_KEY, OPTIONS),
-  ]);
+  await serial(() =>
+    Promise.all([
+      SecureStore.deleteItemAsync(ACCESS_KEY, OPTIONS),
+      SecureStore.deleteItemAsync(REFRESH_KEY, OPTIONS),
+      SecureStore.deleteItemAsync(EXPIRY_KEY, OPTIONS),
+      SecureStore.deleteItemAsync(LAST_USER_KEY, OPTIONS),
+    ]),
+  );
+}
+
+export async function rememberUser(user: AuthUser): Promise<void> {
+  await serial(() => SecureStore.setItemAsync(LAST_USER_KEY, JSON.stringify(user), OPTIONS));
+}
+
+export async function lastUser(): Promise<AuthUser | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(LAST_USER_KEY, OPTIONS);
+    const u = raw ? (JSON.parse(raw) as AuthUser) : null;
+    return u && typeof u.id === "string" ? u : null;
+  } catch {
+    return null;
+  }
 }

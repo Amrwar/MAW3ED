@@ -25,6 +25,8 @@ export const colors = {
   // Surfaces. Ground is warm sand — the app's own (Bold Cairo), not the web's.
   ground: "#F8F5EC",
   surface: "#FFFFFF",
+  /** Behind a QR code: always pure white, whatever the theme — scanners need the contrast. */
+  qrPaper: "#FFFFFF",
   surface2: "#F4F5F1",
   surface3: "#EFF1EC",
 

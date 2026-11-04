@@ -94,6 +94,11 @@ function RootLayout() {
                     swipe must not drop somebody out of a half-made booking. */}
                 <Stack.Screen name="book/[slug]" options={{ gestureEnabled: false }} />
                 <Stack.Screen name="nearby" />
+                <Stack.Screen name="places" />
+                <Stack.Screen name="org/[slug]" />
+                <Stack.Screen name="venue/[slug]" />
+                <Stack.Screen name="pass/[token]" />
+                <Stack.Screen name="support" />
                 <Stack.Screen name="booking/[token]/index" />
                 <Stack.Screen name="booking/[token]/reschedule" />
                 <Stack.Screen name="booking/[token]/review" />

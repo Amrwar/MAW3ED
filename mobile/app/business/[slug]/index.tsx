@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { sized } from "@/lib/image";
-import { Image, Platform, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Image, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { shareLink } from "@/lib/share";
+import { orgParam } from "@/features/places/logic";
 import { router, useLocalSearchParams } from "expo-router";
 import { countVisit } from "@/features/profile/visit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -79,7 +81,7 @@ type Service = PublicProfile["services"][number];
 const SHOWN_REVIEWS = 3;
 
 export default function BusinessScreen() {
-  const { slug, src } = useLocalSearchParams<{ slug: string; src?: string }>();
+  const { slug, src, org } = useLocalSearchParams<{ slug: string; src?: string; org?: string }>();
   const profile = useBusinessProfile(slug);
   // One visit per opening, credited to the link that brought them here.
   const counted = useRef(false);
@@ -130,10 +132,14 @@ export default function BusinessScreen() {
     );
   }
 
-  return <Profile p={profile.data} onBack={back} />;
+  return <Profile p={profile.data} onBack={back} org={orgParam(org)} />;
 }
 
-function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
+/**
+ * `org`: reached from an organization's directory (a mall, a group). A
+ * booking started here is credited to it, as on the website (?org=).
+ */
+function Profile({ p, onBack, org }: { p: PublicProfile; onBack: () => void; org?: string }) {
   const insets = useSafeAreaInsets();
   const { lang } = useLocale();
   const toast = useToast();
@@ -169,9 +175,10 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
   /** Into the app's own booking flow, on whatever was chosen here. */
   const book = (choice: BookingChoice | null) => {
     setService(null);
-    const params: { slug: string; service?: string; staff?: string } = { slug: p.slug };
+    const params: { slug: string; service?: string; staff?: string; org?: string } = { slug: p.slug };
     if (choice?.serviceId) params.service = choice.serviceId;
     if (choice?.serviceId && choice.staffId) params.staff = choice.staffId;
+    if (org) params.org = org;
     router.push({ pathname: "/book/[slug]", params });
   };
 
@@ -187,35 +194,11 @@ function Profile({ p, onBack }: { p: PublicProfile; onBack: () => void }) {
 
   const share = async () => {
     const url = profileUrl(p.slug);
-    const message = T(`${name} على موعد: ${url}`, `${name} on Maw3ed: ${url}`);
-    if (Platform.OS === "web") {
-      const nav = globalThis.navigator as Navigator | undefined;
-      // The browser's share sheet where there is one. It is missing on
-      // most desktops and refuses outside a user gesture or a secure
-      // page; anything but the person closing it falls through to a copy.
-      if (nav?.share) {
-        try {
-          await nav.share({ title: name, url });
-          return;
-        } catch (e) {
-          if (e instanceof Error && e.name === "AbortError") return;
-        }
-      }
-      try {
-        await nav?.clipboard?.writeText(url);
-        if (!nav?.clipboard) throw new Error("no clipboard");
-        toast({ message: T("اتنسخ اللينك", "Link copied"), tone: "ok" });
-      } catch {
-        // No clipboard either (an http page): show the link to copy by hand.
-        toast({ message: url, tone: "info" });
-      }
-      return;
-    }
-    try {
-      await Share.share(Platform.OS === "ios" ? { message: name, url } : { message, title: name });
-    } catch {
-      // Dismissing the share sheet is not an error worth a message.
-    }
+    await shareLink(
+      { url, title: name, message: T(`${name} على موعد: ${url}`, `${name} on Maw3ed: ${url}`) },
+      (message, tone) => toast({ message, tone }),
+      T("اتنسخ اللينك", "Link copied"),
+    );
   };
 
   /* ── Sections, each only with real data ── */

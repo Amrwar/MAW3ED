@@ -14,8 +14,11 @@ import {
   ltr,
   spacing,
   useLocale,
+  useToast,
   type IconName,
 } from "@/design";
+import { exportMyData } from "@/features/account/export";
+import { messageFor } from "@/lib/api/errors";
 import { useProfile, useUpdateProfile } from "@/features/customer/queries";
 import { useNotifications } from "@/features/notifications/queries";
 import { PushToggle } from "@/features/notifications/PushToggle";
@@ -57,6 +60,8 @@ function Account() {
   const update = useUpdateProfile();
   const notifications = useNotifications();
   const [signingOut, setSigningOut] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const toast = useToast();
 
   const data = profile.data;
   const unread = notifications.data?.unread ?? 0;
@@ -208,6 +213,21 @@ function Account() {
               label={T("الأمان والأجهزة", "Security & devices")}
               href="/me/security"
             />
+            <LinkRow
+              icon="download-outline"
+              label={exporting ? T("بنجهّز بياناتك…", "Preparing your data…") : T("نزّل نسخة من بياناتك", "Download a copy of your data")}
+              onPress={() => {
+                if (exporting) return;
+                setExporting(true);
+                exportMyData()
+                  .then((r) => {
+                    if (r === "unavailable") toast({ message: T("الجهاز ده مش بيدعم المشاركة.", "Sharing isn't available on this device."), tone: "info" });
+                  })
+                  .catch((e) => toast({ message: messageFor(e, lang), tone: "danger" }))
+                  .finally(() => setExporting(false));
+              }}
+            />
+            <LinkRow icon="help-buoy-outline" label={T("المساعدة والدعم", "Help and support")} href="/support" />
             <LinkRow
               icon="document-lock-outline"
               label={T("سياسة الخصوصية", "Privacy policy")}

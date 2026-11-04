@@ -89,16 +89,15 @@ export function useBooking(token: string | undefined) {
     },
   });
 
-  const { refetch } = query;
+  // Back from the payment page: a fresh polling window. The re-read itself
+  // is the app-wide focus refetch (lib/query/connectivity.ts) — asking
+  // here as well fetched twice.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (s) => {
-      if (s === "active") {
-        since.current = Date.now();
-        void refetch();
-      }
+      if (s === "active") since.current = Date.now();
     });
     return () => sub.remove();
-  }, [refetch]);
+  }, []);
 
   return {
     ...query,

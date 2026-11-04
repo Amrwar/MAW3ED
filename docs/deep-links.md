@@ -16,23 +16,38 @@ the app being installed, so no link is ever broken.
 | `/booking/<token>` | confirmation email and WhatsApp, account pages | the booking | the booking |
 | `/booking/<token>#review`, `#reschedule` | review request, account pages | the booking, scrolled to that part | the review / reschedule step |
 | `/dashboard/bookings?booking=<id>` | business notifications (push and in-app) | dashboard (sign-in required) | that booking on the business side |
+| `/groups/<slug>` (`?src=qr`) | an organization's link and QR code (Phase 22b) | the organization's directory, visit counted by source | the organization screen, visit counted by the same source (Phase 25) |
+| `/company/<slug>?org=<slug>` | an organization's directory | the business, a booking credited to the organization | the business screen; the app's booking sends `org` (Phase 25) |
+| `/venues/<slug>` | venue pages | the venue and its businesses | the venue screen (Phase 25) |
+| `/pass/<token>` | a booking holder sharing a guest's visitor pass | the guest's pass | the guest pass screen (Phase 25) |
+| `/contact`, `/help` | support links | the page | the support screen |
+| `/c/<code>` | a booking's check-in QR, scanned at the front desk | the business's check-in desk | **not claimed**: it is the business's desk, not a customer screen, and stays in the browser |
 
 The app's translation is `mobile/lib/links.ts` (`routeFor`), used by
 `app/+native-intent.tsx` (links from outside), push taps
 (`app/_layout.tsx`) and the in-app feed. Only the paths in its table
 reach a screen; anything else opens the home screen, never "not found".
 
-Only `/company/` and `/booking/` are claimed by the app (iOS
-`associatedDomains`, Android `intentFilters`, and the site's
-`/.well-known/` files). The rest of the site stays in the browser.
+The app claims `/company/`, `/en/company/`, `/booking/`, `/groups/`,
+`/en/groups/`, `/venues/`, `/en/venues/` and `/pass/`. They are listed in
+`APP_LINK_PATHS` (`src/lib/app-links.ts`), which writes the iOS association
+file, and in the Android `intentFilters`. `src/lib/app-links.test.ts`
+fails if the two lists differ. The rest of the site stays in the browser.
 
-English business pages live at `/en/company/<slug>`. The app reads
-`/en/…` and `/ar/…` as the bare path (it is one app in either language),
-and Android builds from now on claim `/en/company/` too. The iOS claim is
-the website's apple-app-site-association, which takes effect without an
-app update, so `/en/company/*` is deliberately **not** in
-`APP_LINK_PATHS` yet: an installed build from before this change would
-open such a link on its home screen. Add it once those builds are gone.
+English pages live at `/en/…`. The app reads `/en/…` and `/ar/…` as the
+bare path, because it is one app in either language.
+
+The iOS claim is the website's apple-app-site-association, and it takes
+effect **without an app update**. That is why `/en/company/*` was held
+back before Phase 25: an older installed build would open such a link on
+its home screen. Phase 25 adds it, together with `/groups`, `/venues` and
+`/pass`. This is safe only because **no store build has shipped**, only
+internal builds. An internal build from before Phase 25 opens these new
+links on its home screen until it is updated.
+
+After the first store release, add a path to `APP_LINK_PATHS` only in an
+app version that already handles it, and only once older versions are
+rare.
 
 ### Validation
 
