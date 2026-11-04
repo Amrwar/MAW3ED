@@ -63,7 +63,7 @@ it can no longer be paid.
      `checkout.session.async_payment_succeeded`,
      `checkout.session.async_payment_failed`,
      `checkout.session.expired`, `charge.refunded`
-   - API version: **2026-09-30.endive** (the version the code pins; the
+   - API version: **2026-10-28.endive** (the version the code pins; the
      webhook payload is rendered in the endpoint's version)
    - copy its **signing secret** (`whsec_…`)
 4. **Vercel → maw-3-ed → Settings → Environment Variables (Production)**:

@@ -27,7 +27,7 @@ const API = "https://api.stripe.com/v1";
  * that are stable across recent versions (id, payment_status, amount_total,
  * currency, payment_intent, metadata; charge amount_refunded).
  */
-export const STRIPE_API_VERSION = "2026-09-30.endive";
+export const STRIPE_API_VERSION = "2026-10-28.endive";
 /**
  * Sessions expire after an hour: well inside the two hours after which
  * an unanswered payment is reaped (lib/payments/reap.ts), so a session
