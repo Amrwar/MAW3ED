@@ -192,8 +192,12 @@ try {
   part("billing");
   const from = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
   const to = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-  const rec = await call(admin, `/api/admin/payments/reconciliation?from=${from}&to=${to}`);
-  check("payment reconciliation runs for the platform", rec.status === 200 && Array.isArray(data(await json(rec)).discrepancies), rec.status);
+  // Money is the super-admin's: a plain admin is refused.
+  const superAdmin = await login("superadmin@qa.test");
+  const rec = await call(superAdmin, `/api/admin/payments/reconciliation?from=${from}&to=${to}`);
+  check("payment reconciliation runs for a super-admin", rec.status === 200 && Array.isArray(data(await json(rec)).discrepancies), rec.status);
+  const recAdmin = await call(admin, `/api/admin/payments/reconciliation?from=${from}&to=${to}`);
+  check("…not for an admin without payments.read", recAdmin.status === 404, recAdmin.status);
   const recOrg = await call(founderA, `/api/admin/payments/reconciliation?from=${from}&to=${to}`);
   check("…and is not open to an organization", recOrg.status !== 200, recOrg.status);
   const end = await call(admin, `/api/admin/organizations/${orgA.id}/contract`, { method: "DELETE" });

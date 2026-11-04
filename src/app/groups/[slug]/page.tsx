@@ -346,11 +346,14 @@ export default async function GroupPage({ params, searchParams }: Props) {
           ),
         }}
       />
-      {org.directory.length > 0 && (
+      {paged.entries.length > 0 && (
+        // The members on this page, not the whole directory: a mall with
+        // hundreds of tenants made every page carry all of them (Phase 28
+        // scale profile: 237 KB at 600 members).
         <script
           type="application/ld+json"
           nonce={nonce}
-          dangerouslySetInnerHTML={{ __html: jsonLdScript(buildItemListJsonLd(org.directory.map((d) => ({ slug: d.slug, name: nm(d) })))) }}
+          dangerouslySetInnerHTML={{ __html: jsonLdScript(buildItemListJsonLd(paged.entries.map((d) => ({ slug: d.slug, name: nm(d) })))) }}
         />
       )}
     </>
