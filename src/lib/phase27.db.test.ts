@@ -184,6 +184,32 @@ describe.skipIf(!local)("Phase 27 ledgers on a real database", () => {
     expect((await db.loyaltyAccount.findUniqueOrThrow({ where: { id: account.id } })).balance).toBe(100);
   });
 
+  it("takes points back when a released booking is revived by a late payment, and gives them back again on a second release", async () => {
+    const f = await makeBusiness();
+    const program = await db.loyaltyProgram.create({ data: { businessId: f.business.id, nameAr: "نقاط" } });
+    const { local } = newPhone();
+    const probe = await book(f, local, day(7), "08:00");
+    if (!probe.ok) throw new Error("probe");
+    const phone = await e164Of(probe.booking.id);
+    await L.adjustPoints({ programId: program.id, phoneE164: phone, points: 100, note: "seed", actorUserId: f.owner.id, key: `${tag}-rv` });
+    const r = await book(f, local, day(7), "09:00", { status: "PENDING_PAYMENT", depositAmount: 50, loyalty: { programId: program.id, phoneE164: phone, points: 100, amountCents: 5000 }, totalPrice: 150 });
+    if (!r.ok) throw new Error("book");
+    const bal = async () => (await db.loyaltyAccount.findFirstOrThrow({ where: { programId: program.id, phoneE164: phone } })).balance;
+    expect(await bal()).toBe(0);
+    await moveBooking({ bookingId: r.booking.id, from: "PENDING_PAYMENT", to: "FAILED_PAYMENT", by: "system" });
+    expect(await bal()).toBe(100);
+    // The webhook revives it and retakes, once.
+    await db.$transaction(async (tx) => {
+      await tx.booking.update({ where: { id: r.booking.id }, data: { status: "CONFIRMED" } });
+      await L.retakeRedemption(tx, r.booking.id);
+    });
+    await db.$transaction((tx) => L.retakeRedemption(tx, r.booking.id));
+    expect(await bal()).toBe(0);
+    await moveBooking({ bookingId: r.booking.id, from: "CONFIRMED", to: "CANCELLED", by: "customer" });
+    await db.$transaction((tx) => L.reverseRedemption(tx, r.booking.id));
+    expect(await bal()).toBe(100);
+  });
+
   it("reverses earned points on refund, once per refund, and never below zero", async () => {
     const f = await makeBusiness();
     const program = await db.loyaltyProgram.create({ data: { businessId: f.business.id, nameAr: "نقاط", pointsPerVisit: 100, redeemPoints: 50, redeemValueCents: 1000, maxRedeemPercent: 100 } });

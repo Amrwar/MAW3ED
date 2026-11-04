@@ -19,8 +19,7 @@ import { normalisePhone } from "@/lib/phone";
 import { phoneProofRequired, readPhoneProof } from "@/lib/bookings/phone-proof";
 import { currentCaller } from "@/lib/api";
 import { isOwnerPreview } from "@/lib/business/preview";
-import { spendableAt } from "@/lib/loyalty/ledger";
-import { redemptionFor } from "@/lib/loyalty/rules";
+import { quoteRedemption } from "@/lib/loyalty/ledger";
 import { noShowStanding } from "@/lib/bookings/no-show";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -243,12 +242,12 @@ export async function POST(req: Request, { params }: Params) {
     // booking if another spend got there first.
     let loyalty: { programId: string; phoneE164: string; points: number; amountCents: number } | null = null;
     if (redeemPoints && !entitlement && phoneE164 && totalCents > 0) {
-      const held = await spendableAt(business.id, phoneE164);
-      if (!held) return err("المكان ده مفيهوش برنامج نقاط", 422, { code: "loyalty-unavailable" });
-      const r = redemptionFor(held.program, redeemPoints, held.available, totalCents);
-      if (r.points === 0) return err("النقاط مش كفاية للخصم", 422, { code: "loyalty-insufficient" });
-      loyalty = { programId: held.program.id, phoneE164, points: r.points, amountCents: r.amountCents };
-      totalCents -= r.amountCents;
+      const q = await quoteRedemption(business.id, phoneE164, redeemPoints, totalCents);
+      if (!q.ok) {
+        return err(q.why === "loyalty-unavailable" ? "المكان ده مفيهوش برنامج نقاط" : "النقاط مش كفاية للخصم", 422, { code: q.why });
+      }
+      loyalty = { programId: q.programId, phoneE164, points: q.points, amountCents: q.amountCents };
+      totalCents -= q.amountCents;
     }
 
     // ── Determine initial status and deposit ──────────────────────────────────

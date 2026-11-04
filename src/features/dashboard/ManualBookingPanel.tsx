@@ -45,6 +45,9 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
   const [occurrences,   setOccurrences]   = useState(4);
   const [wallet,        setWallet]        = useState<WalletChoice>({ kind: "none" });
   const [seriesResult,  setSeriesResult]  = useState<SeriesResult | null>(null);
+  // One key per opening of the form: a double-click or a retry makes the
+  // same series once (POST /api/business/series, requestKey).
+  const [seriesKey,     setSeriesKey]     = useState(() => crypto.randomUUID());
   const [serviceId,     setServiceId]     = useState(services[0]?.id ?? "");
   const [date,          setDate]          = useState(TODAY);
   const [startTime,     setStartTime]     = useState("");
@@ -83,6 +86,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
       setOccurrences(4);
       setWallet({ kind: "none" });
       setSeriesResult(null);
+      setSeriesKey(crypto.randomUUID());
     }
   }
 
@@ -161,6 +165,7 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
             intervalWeeks,
             occurrences,
             notes:         notes.trim() || undefined,
+            requestKey:    seriesKey,
           }),
         });
         const data = await res.json().catch(() => ({}));

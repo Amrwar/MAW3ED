@@ -2610,6 +2610,9 @@ model BookingSeries {
   startTime     String
   status        SeriesStatus @default(ACTIVE)
   createdById   String?
+  /// The desk form's key: a retried or double-submitted request finds
+  /// this series instead of making a second one.
+  requestKey    String?      @unique
   createdAt     DateTime     @default(now())
   bookings      Booking[]
 
@@ -2645,6 +2648,9 @@ model SlotWaitlistEntry {
   customerEmail  String?
   status         SlotWaitStatus @default(WAITING)
   offeredTime    String?
+  /// Who the offered time is with (the entry's staff member, or the one the
+  /// engine found free for "anyone"); accepting books with them.
+  offeredStaffId String?
   offerToken     String?        @unique
   offerExpiresAt DateTime?
   offers         Int            @default(0)

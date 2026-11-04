@@ -84,7 +84,8 @@ describe("packages and memberships", () => {
 
   it("bounds a pause by the allowance", () => {
     expect(pauseShift(now, new Date(now.getTime() + 5 * D), 0)).toEqual({ days: 5, ms: 5 * D });
-    expect(pauseShift(now, new Date(now.getTime() + 5 * D + 1), 0).days).toBe(6); // a started day counts
+    expect(pauseShift(now, new Date(now.getTime() + 5 * D + 1), 0).days).toBe(5);
+    expect(pauseShift(now, new Date(now.getTime() + 60_000), 0).days).toBe(0); // minutes: nothing
     expect(pauseShift(now, new Date(now.getTime() + 90 * D), 0).days).toBe(MAX_PAUSE_DAYS);
     expect(pauseShift(now, new Date(now.getTime() + 90 * D), 50).days).toBe(10);
     expect(pauseShift(now, now, 0).days).toBe(0);

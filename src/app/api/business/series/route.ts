@@ -24,6 +24,8 @@ const body = z.object({
   intervalWeeks: z.number().int().min(1).max(4),
   occurrences: z.number().int().min(2).max(12),
   notes: z.string().max(500).optional(),
+  /// The form's key: the same request twice makes one series.
+  requestKey: z.string().min(8).max(100).optional(),
 });
 
 export async function GET() {
@@ -79,6 +81,7 @@ export async function POST(req: Request) {
       occurrences: d.occurrences,
       createdById: session.user.id,
       notes: d.notes ?? null,
+      requestKey: d.requestKey ? `${business.id}:${d.requestKey}` : null,
     });
     if ("error" in r) return err(r.error === "bounds" ? "التكرار من أسبوع لـ 4، ومن مرتين لـ 12 مرة" : "الخدمة غير موجودة", 422, { code: r.error });
     // One confirmation for the first occurrence; the rest are listed on it

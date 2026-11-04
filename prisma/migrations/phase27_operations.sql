@@ -71,6 +71,8 @@ CREATE TABLE IF NOT EXISTS "BookingSeries" (
   CONSTRAINT "BookingSeries_bounds_chk" CHECK ("intervalWeeks" BETWEEN 1 AND 4 AND "occurrences" BETWEEN 2 AND 12)
 );
 CREATE INDEX IF NOT EXISTS "BookingSeries_businessId_createdAt_idx" ON "BookingSeries"("businessId", "createdAt");
+ALTER TABLE "BookingSeries" ADD COLUMN IF NOT EXISTS "requestKey" TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS "BookingSeries_requestKey_key" ON "BookingSeries"("requestKey");
 
 CREATE TABLE IF NOT EXISTS "SlotWaitlistEntry" (
   "id" TEXT PRIMARY KEY,
@@ -106,9 +108,12 @@ CREATE INDEX IF NOT EXISTS "SlotWaitlistEntry_businessId_date_status_createdAt_i
 CREATE INDEX IF NOT EXISTS "SlotWaitlistEntry_status_offerExpiresAt_idx" ON "SlotWaitlistEntry"("status", "offerExpiresAt");
 -- One live entry per number, business and day.
 CREATE UNIQUE INDEX IF NOT EXISTS "SlotWaitlistEntry_live_key" ON "SlotWaitlistEntry"("businessId", "date", "phoneE164") WHERE "status" IN ('WAITING', 'OFFERED');
--- One live offer per time per business-day: two offering passes racing
--- cannot offer the same freed time to two people.
-CREATE UNIQUE INDEX IF NOT EXISTS "SlotWaitlistEntry_offer_time_key" ON "SlotWaitlistEntry"("businessId", "date", "offeredTime") WHERE "status" = 'OFFERED';
+-- One live offer per start time per member of staff per business-day: two
+-- offering passes racing cannot offer the same freed time to two people.
+-- (Overlapping starts are kept apart by the offering pass itself.)
+ALTER TABLE "SlotWaitlistEntry" ADD COLUMN IF NOT EXISTS "offeredStaffId" TEXT;
+DROP INDEX IF EXISTS "SlotWaitlistEntry_offer_time_key";
+CREATE UNIQUE INDEX IF NOT EXISTS "SlotWaitlistEntry_offer_slot_key" ON "SlotWaitlistEntry"("businessId", "date", "offeredTime", COALESCE("offeredStaffId", '')) WHERE "status" = 'OFFERED';
 
 CREATE TABLE IF NOT EXISTS "LoyaltyProgram" (
   "id" TEXT PRIMARY KEY,

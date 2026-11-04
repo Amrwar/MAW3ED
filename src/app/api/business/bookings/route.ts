@@ -16,8 +16,7 @@ import { isoDate, pageParam, parseQuery } from "@/lib/query-params";
 import { cairoDateString, cairoMinutes } from "@/lib/bookings/instants";
 import { normalisePhone } from "@/lib/phone";
 import { consumeEntitlement, EntitlementGone } from "@/lib/entitlements/ledger";
-import { LoyaltyInsufficient, redeemForBooking, spendableAt } from "@/lib/loyalty/ledger";
-import { redemptionFor } from "@/lib/loyalty/rules";
+import { LoyaltyInsufficient, quoteRedemption, redeemForBooking } from "@/lib/loyalty/ledger";
 import { wallToInstant } from "@/lib/bookings/instants";
 import { toCents } from "@/lib/payments/money";
 
@@ -198,7 +197,7 @@ export async function POST(req: Request) {
     // A walk-in starts now, on the Cairo clock, to the minute.
     const date = walkIn ? cairoDateString() : parsed.data.date!;
     const startTime = walkIn
-      ? (() => { const m = cairoMinutes(); return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; })()
+      ? minutesToTime(cairoMinutes())
       : parsed.data.startTime!;
     if ((companions ?? 0) > business.maxCompanions) {
       return err(`أقصى عدد مرافقين ${business.maxCompanions}`, 422, { code: "too-many-companions" });
@@ -236,12 +235,10 @@ export async function POST(req: Request) {
     let priceCents = entitlement ? 0 : toCents(service.price);
     let loyalty: { programId: string; points: number; amountCents: number } | null = null;
     if (redeemPoints && !entitlement && phoneE164 && priceCents > 0) {
-      const held = await spendableAt(business.id, phoneE164);
-      if (!held) return err("مفيش برنامج نقاط مفعّل", 422);
-      const r = redemptionFor(held.program, redeemPoints, held.available, priceCents);
-      if (r.points === 0) return err("النقاط مش كفاية للخصم", 422, { code: "loyalty-insufficient" });
-      loyalty = { programId: held.program.id, points: r.points, amountCents: r.amountCents };
-      priceCents -= r.amountCents;
+      const q = await quoteRedemption(business.id, phoneE164, redeemPoints, priceCents);
+      if (!q.ok) return err(q.why === "loyalty-unavailable" ? "مفيش برنامج نقاط مفعّل" : "النقاط مش كفاية للخصم", 422, { code: q.why });
+      loyalty = { programId: q.programId, points: q.points, amountCents: q.amountCents };
+      priceCents -= q.amountCents;
     }
 
     const dateUTC = dateToUTC(date);

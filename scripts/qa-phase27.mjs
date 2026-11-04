@@ -13,7 +13,7 @@
  */
 import {
   pg, part, check, login, call, send, json, account, customer, business, organization, associate,
-  slotNear, shiftBooking, book, teardown, summary, made, cronHeaders,
+  slotNear, shiftBooking, minutesUntil, book, teardown, summary, made, cronHeaders,
 } from "./qa-phase24-lib.mjs";
 
 const svc = (nameAr, nameEn, duration, price) => ({ nameAr, nameEn, duration, price });
@@ -21,16 +21,16 @@ const data = (b) => b.data ?? b;
 let failedHard = 0;
 
 try {
-  await pg.connect();
+
   const admin = await login("admin@qa.test");
 
   // ── Set up ───────────────────────────────────────────────────────────
   part("setup");
   const salon = await business("p27-salon", {
-    nameAr: "صالون تجريبي ٢٧", nameEn: "Test Salon 27", category: "barbershop",
+    nameAr: "صالون تجريبي ٢٧", nameEn: "Test Salon 27", category: "salons",
     services: [svc("قص شعر", "Haircut", 30, 200), svc("صبغة", "Colour", 60, 400)],
   });
-  const other = await business("p27-other", { nameAr: "نشاط آخر ٢٧", nameEn: "Other 27", category: "barbershop", services: [svc("قص", "Cut", 30, 150)] });
+  const other = await business("p27-other", { nameAr: "نشاط آخر ٢٧", nameEn: "Other 27", category: "salons", services: [svc("قص", "Cut", 30, 150)] });
   const cust = await customer("p27-a", "Customer A (test)");
   await pg.query(`UPDATE "User" SET "phoneVerifiedAt" = now() WHERE id = $1`, [cust.userId]);
   check("businesses and a verified customer exist", !!salon.id && !!other.id && !!cust.phone);
@@ -107,12 +107,12 @@ try {
     serviceId: colour.id, date: slot.date, startTime: (await slotNear(salon, colour.id, 420)).startTime, customerName: "Customer A", customerPhone: cust.phone, usePackageId: sold.id,
   });
   check("the package does not cover another service", wrongSvc.status === 409 && (await json(wrongSvc)).code === "entitlement-gone", wrongSvc.status);
-  const refuse = await send(salon.owner, `/api/business/packages/sold/${sold.id}`, "POST", { kind: "package", action: "refund", amountCents: 30000, reason: "QA" });
+  const refuse = await send(salon.owner, `/api/business/packages/sold/${sold.id}`, "POST", { kind: "package", action: "refund", amountCents: 30000, reason: "QA test" });
   check("a refund is refused while a booking holds a session", refuse.status === 409 && (await json(refuse)).code === "live-bookings", refuse.status);
   await send(salon.owner, `/api/business/bookings/${pb.booking.id}`, "PATCH", { status: "CANCELLED" });
   const after = (await pg.query(`SELECT "sessionsUsed" FROM "CustomerPackage" WHERE id = $1`, [sold.id])).rows[0];
   check("cancelling gives the session back", after?.sessionsUsed === 0);
-  const refund = await send(salon.owner, `/api/business/packages/sold/${sold.id}`, "POST", { kind: "package", action: "refund", amountCents: 45000, reason: "QA" });
+  const refund = await send(salon.owner, `/api/business/packages/sold/${sold.id}`, "POST", { kind: "package", action: "refund", amountCents: 45000, reason: "QA test" });
   check("now the refund goes through and the package is REFUNDED", refund.status === 200 && (await pg.query(`SELECT status FROM "CustomerPackage" WHERE id = $1`, [sold.id])).rows[0]?.status === "REFUNDED", refund.status);
   const otherSees = await send(other.owner, `/api/business/packages/sold/${sold.id}`, "POST", { kind: "package", action: "cancel" });
   check("another business cannot touch it", otherSees.status === 409 || otherSees.status === 404, otherSees.status);
@@ -150,7 +150,7 @@ try {
   await send(salon.owner, "/api/business/operations", "PATCH", { noShowLimit: 1, noShowAction: "BLOCK_ONLINE" });
   slot = await slotNear(salon, haircut.id, 600);
   const ns = await book(salon, { serviceId: haircut.id, slot, name: "No Show (test)" });
-  await shiftBooking(ns.booking.id, -60);
+  await shiftBooking(ns.booking.id, -((await minutesUntil(ns.booking.id)) + 60));
   const marked = await send(salon.owner, `/api/business/bookings/${ns.booking.id}`, "PATCH", { status: "NO_SHOW" });
   check("the owner marks a no-show", marked.status === 200, marked.status);
   const blocked = await send(null, `/api/public/${salon.slug}/bookings`, "POST", {

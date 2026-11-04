@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { createBooking, type CreateFailure } from "./create";
@@ -15,7 +16,9 @@ import { LIVE_STATUSES } from "./schedule";
  * engine, with its own slot check and constraints; one that cannot be
  * had (the barber is off that week, the time is taken) is reported and
  * skipped, never squeezed in. Occurrence n carries the idempotency key
- * `series:<id>:<n>`, so retrying a series makes only what is missing.
+ * `series:<id>:<n>`, and a request carries the form's key (requestKey),
+ * so retrying the same request continues the same series and makes only
+ * what is missing.
  */
 
 export const MAX_OCCURRENCES = 12;
@@ -42,6 +45,8 @@ export interface SeriesInput {
   occurrences: number;
   createdById: string;
   notes?: string | null;
+  /** A retry with the same key continues that series rather than making another. */
+  requestKey?: string | null;
 }
 
 export interface SeriesResult {
@@ -60,8 +65,12 @@ export async function createSeries(input: SeriesInput, now: Date = new Date()): 
   });
   if (!service) return { error: "service-not-found" };
 
-  const series = await db.bookingSeries.create({
+  const existing = input.requestKey
+    ? await db.bookingSeries.findUnique({ where: { requestKey: input.requestKey }, select: { id: true } })
+    : null;
+  const series = existing ?? await db.bookingSeries.create({
     data: {
+      requestKey: input.requestKey ?? null,
       businessId: input.businessId,
       customerId: input.customerId,
       customerName: input.customerName.slice(0, 120),
@@ -76,6 +85,12 @@ export async function createSeries(input: SeriesInput, now: Date = new Date()): 
       createdById: input.createdById,
     },
     select: { id: true },
+  }).catch(async (e) => {
+    // The same request, racing itself: the other made it.
+    if (input.requestKey && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return db.bookingSeries.findUniqueOrThrow({ where: { requestKey: input.requestKey }, select: { id: true } });
+    }
+    throw e;
   });
 
   const result: SeriesResult = { seriesId: series.id, made: [], skipped: [] };

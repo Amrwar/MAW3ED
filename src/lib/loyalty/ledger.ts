@@ -3,7 +3,7 @@ import type { LoyaltyEntryKind, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { cairoDayStart } from "@/lib/bookings/instants";
-import { availablePoints, drawFromLots, lotExpiry, pointsForVisit, type Lot, type ProgramRules } from "./rules";
+import { availablePoints, drawFromLots, lotExpiry, pointsForVisit, redemptionFor, type Lot, type ProgramRules } from "./rules";
 
 /**
  * The loyalty ledger (docs/architecture/LOYALTY_LEDGER.md).
@@ -223,27 +223,76 @@ export async function redeemForBooking(
   await moveBalance(tx, account.id, -r.points);
 }
 
+/** What a booking holds now: points spent on it (REDEEM, incl. retakes) less points given back. */
+async function heldByBooking(tx: Tx, accountId: string, bookingId: string): Promise<{ spent: number; back: number; reversals: number; retakes: number }> {
+  const rows = await tx.loyaltyEntry.findMany({
+    where: { accountId, bookingId, kind: { in: ["REDEEM", "REDEEM_REVERSAL"] } },
+    select: { kind: true, points: true, sourceKey: true },
+  });
+  let spent = 0, back = 0, reversals = 0, retakes = 0;
+  for (const r of rows) {
+    if (r.kind === "REDEEM") { spent += -r.points; if (r.sourceKey.startsWith("redeem-retake:")) retakes++; }
+    else { back += r.points; reversals++; }
+  }
+  return { spent, back, reversals, retakes };
+}
+
 /**
- * A booking that spent points was cancelled (or its payment failed): the
- * points come back, once, as a fresh lot. Called from releaseBookingHold,
- * which every path that gives a time back goes through.
+ * A booking that spent points was cancelled (or its payment failed): what
+ * it still holds comes back, as a fresh lot. Called from releaseBookingHold,
+ * which every path that gives a time back goes through. Under the account
+ * lock and keyed by how many times it has been given back, so a second
+ * release of the same booking returns nothing — and a booking revived by
+ * a late payment (retakeRedemption) and released again returns once more.
  */
 export async function reverseRedemption(tx: Tx, bookingId: string, now: Date = new Date()): Promise<number> {
   const spent = await tx.loyaltyEntry.findUnique({
     where: { sourceKey: `redeem:${bookingId}` },
-    select: { programId: true, accountId: true, points: true, businessId: true, program: { select: { expiryDays: true } } },
+    select: { programId: true, accountId: true, businessId: true, program: { select: { expiryDays: true } } },
   });
   if (!spent) return 0;
-  const back = -spent.points;
   await tx.$queryRaw`SELECT "id" FROM "LoyaltyAccount" WHERE "id" = ${spent.accountId} FOR UPDATE`;
+  const h = await heldByBooking(tx, spent.accountId, bookingId);
+  const back = h.spent - h.back;
+  if (back <= 0) return 0;
   const inserted = await insertEntry(tx, {
     programId: spent.programId, accountId: spent.accountId, kind: "REDEEM_REVERSAL", points: back,
     remaining: back, expiresAt: lotExpiry(spent.program, now), bookingId, businessId: spent.businessId,
-    sourceKey: `redeem-reversal:${bookingId}`,
+    sourceKey: h.reversals === 0 ? `redeem-reversal:${bookingId}` : `redeem-reversal:${bookingId}:${h.reversals}`,
   });
   if (!inserted) return 0;
   await moveBalance(tx, spent.accountId, back);
   return back;
+}
+
+/**
+ * A released booking was revived (a late payment the webhook accepted):
+ * the points it gave back are taken again, as far as they are still
+ * there — the booking's price was already reduced by them. What cannot be
+ * taken (spent meanwhile) is noted; a balance never goes negative.
+ */
+export async function retakeRedemption(tx: Tx, bookingId: string, now: Date = new Date()): Promise<{ taken: number; shortfall: number }> {
+  const original = await tx.loyaltyEntry.findUnique({
+    where: { sourceKey: `redeem:${bookingId}` },
+    select: { programId: true, accountId: true, businessId: true, points: true },
+  });
+  if (!original) return { taken: 0, shortfall: 0 };
+  await tx.$queryRaw`SELECT "id" FROM "LoyaltyAccount" WHERE "id" = ${original.accountId} FOR UPDATE`;
+  const h = await heldByBooking(tx, original.accountId, bookingId);
+  const want = -original.points - (h.spent - h.back);
+  if (want <= 0) return { taken: 0, shortfall: 0 };
+  const taken = await draw(tx, original.accountId, want, now);
+  if (taken > 0) {
+    const inserted = await insertEntry(tx, {
+      programId: original.programId, accountId: original.accountId, kind: "REDEEM", points: -taken,
+      bookingId, businessId: original.businessId, sourceKey: `redeem-retake:${bookingId}:${h.retakes}`,
+      note: taken < want ? `revived booking: ${want - taken} points already spent` : "revived booking",
+    });
+    if (!inserted) throw new ReplayAfterDraw();
+    await moveBalance(tx, original.accountId, -taken);
+  }
+  if (taken < want) log.warn("[loyalty] revived booking could not retake all its points", { bookingId, want, taken });
+  return { taken, shortfall: want - taken };
 }
 
 /**
@@ -380,6 +429,25 @@ export async function expireDueLots(now: Date = new Date(), limit = 500): Promis
     }
   }
   return { expired, points };
+}
+
+/**
+ * What spending up to `requested` points on a booking of `priceCents`
+ * here would do, for the routes that take bookings (public and desk): one
+ * rule for both. The spend itself happens later, inside the booking's
+ * transaction (redeemForBooking), which re-checks the balance.
+ */
+export async function quoteRedemption(
+  businessId: string,
+  phoneE164: string,
+  requested: number,
+  priceCents: number,
+): Promise<{ ok: true; programId: string; points: number; amountCents: number } | { ok: false; why: "loyalty-unavailable" | "loyalty-insufficient" }> {
+  const held = await spendableAt(businessId, phoneE164);
+  if (!held) return { ok: false, why: "loyalty-unavailable" };
+  const r = redemptionFor(held.program, requested, held.available, priceCents);
+  if (r.points === 0) return { ok: false, why: "loyalty-insufficient" };
+  return { ok: true, programId: held.program.id, points: r.points, amountCents: r.amountCents };
 }
 
 // ─── Reading ─────────────────────────────────────────────────────────────────

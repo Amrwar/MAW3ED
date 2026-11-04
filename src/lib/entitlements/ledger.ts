@@ -60,6 +60,12 @@ export async function consumeEntitlement(
     await tx.entitlementUse.create({ data: { bookingId: b.bookingId, packageId: ref.packageId } });
     return;
   }
+  // The membership row is share-locked first: a refund or cancellation
+  // holding it (FOR UPDATE) finishes before this visit is counted, and
+  // the status check below then sees what it left.
+  const held = await tx.$queryRaw<{ id: string }[]>`
+    SELECT "id" FROM "CustomerMembership" WHERE "id" = ${ref.membershipId} AND "status" = 'ACTIVE' FOR SHARE`;
+  if (held.length !== 1) throw new EntitlementGone();
   // The visit counts against the paid period its appointment falls in.
   const rows = await tx.$queryRaw<{ id: string }[]>`
     UPDATE "MembershipPeriod" p
@@ -354,10 +360,14 @@ export async function refundAtDesk(
   return db.$transaction(async (tx) => {
     const isPackage = "packageId" in r.target;
     const id = "packageId" in r.target ? r.target.packageId : r.target.membershipId;
+    // Locked first: a booking taking a session at this moment waits for
+    // the refund (the package's own UPDATE, the membership's FOR SHARE in
+    // consumeEntitlement), then finds it REFUNDED or CANCELLED and fails.
+    // Without it, a session could be taken after the check below passed.
     const owner = isPackage
-      ? await tx.customerPackage.findFirst({ where: { id, businessId: r.businessId }, select: { id: true } })
-      : await tx.customerMembership.findFirst({ where: { id, businessId: r.businessId }, select: { id: true } });
-    if (!owner) return { ok: false, why: "not-found" };
+      ? await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "CustomerPackage" WHERE "id" = ${id} AND "businessId" = ${r.businessId} FOR UPDATE`
+      : await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "CustomerMembership" WHERE "id" = ${id} AND "businessId" = ${r.businessId} FOR UPDATE`;
+    if (owner.length === 0) return { ok: false, why: "not-found" };
 
     const live = await tx.entitlementUse.count({
       where: {

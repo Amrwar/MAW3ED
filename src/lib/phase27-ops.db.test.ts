@@ -169,6 +169,31 @@ describe.skipIf(!local)("Phase 27 operations on a real database", () => {
     };
   }
 
+  it("a retried series request makes one series", async () => {
+    const f = await makeBusiness();
+    const input = {
+      businessId: f.business.id, serviceId: f.service.id, customerId: null, customerName: "متكرر", customerPhone: phone(),
+      startDate: day(10), startTime: "11:00", intervalWeeks: 2, occurrences: 2, createdById: f.owner.id, requestKey: `${tag}-req`,
+    };
+    const [a, b] = await Promise.all([S.createSeries(input), S.createSeries(input)]);
+    if ("error" in a || "error" in b) throw new Error("series");
+    expect(a.seriesId).toBe(b.seriesId);
+    expect(await db.booking.count({ where: { seriesId: a.seriesId } })).toBe(2);
+  });
+
+  it("never offers overlapping times of one freed hour to two people", async () => {
+    const f = await makeBusiness();
+    const date = day(6);
+    // The day is free 10:00–12:00; two people wait for the 60-minute service.
+    for (const n of ["أ", "ب"]) {
+      await W.joinWaitlist({ businessId: f.business.id, serviceId: f.service.id, date, fromTime: "10:00", toTime: "11:30", customerName: n, customerPhone: phone() });
+    }
+    await W.offerFreedTimes(f.business.id, date);
+    const offers = await db.slotWaitlistEntry.findMany({ where: { businessId: f.business.id, status: "OFFERED" }, select: { offeredTime: true } });
+    const starts = offers.map((o) => Number(o.offeredTime!.slice(0, 2)) * 60 + Number(o.offeredTime!.slice(3)));
+    for (let i = 0; i < starts.length; i++) for (let j = i + 1; j < starts.length; j++) expect(Math.abs(starts[i] - starts[j])).toBeGreaterThanOrEqual(60);
+  });
+
   // ─── Memberships over time ─────────────────────────────────────────────────
 
   it("expires a lapsed membership, and ends one set to cancel at period end", async () => {

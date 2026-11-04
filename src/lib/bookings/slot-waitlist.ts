@@ -107,10 +107,11 @@ export async function leaveWaitlist(manageToken: string): Promise<boolean> {
 /**
  * Offers freed times on one business-day to whoever waits for them,
  * oldest entry first. Safe to call from anywhere, any number of times:
- * an entry moves WAITING → OFFERED by a conditional update, and a time
- * is on offer to at most one entry per business-day — the database
- * holds that (SlotWaitlistEntry_offer_time_key), so two passes racing
- * cannot both offer it; the loser moves on to the next time.
+ * an entry moves WAITING → OFFERED by a conditional update; a new offer
+ * never overlaps a live one with the same member of staff; and the
+ * database holds one live offer per start time per staff member
+ * (SlotWaitlistEntry_offer_slot_key), so two passes racing cannot both
+ * offer it — the loser moves on to the next time.
  */
 export async function offerFreedTimes(businessId: string, date: string, now: Date = new Date()): Promise<number> {
   const business = await db.business.findUnique({
@@ -121,7 +122,7 @@ export async function offerFreedTimes(businessId: string, date: string, now: Dat
   if (date < cairoDateString(now)) return 0;
 
   const day = dateToUTC(date);
-  const [waiting, onOffer] = await Promise.all([
+  const [waiting, onOffer, durations] = await Promise.all([
     db.slotWaitlistEntry.findMany({
       where: { businessId, date: day, status: "WAITING", offers: { lt: MAX_OFFERS } },
       orderBy: { createdAt: "asc" },
@@ -129,24 +130,47 @@ export async function offerFreedTimes(businessId: string, date: string, now: Dat
     }),
     db.slotWaitlistEntry.findMany({
       where: { businessId, date: day, status: "OFFERED", offerExpiresAt: { gt: now } },
-      select: { offeredTime: true, serviceId: true, staffMemberId: true },
+      select: { offeredTime: true, offeredStaffId: true, serviceId: true },
     }),
+    db.service.findMany({ where: { businessId }, select: { id: true, duration: true } }),
   ]);
-  // A time already offered is not offered again while that offer runs.
-  const taken = new Set(onOffer.map((o) => o.offeredTime));
+  const minutesOf = new Map(durations.map((s) => [s.id, s.duration]));
+  // What is on offer now, as intervals with whom: a new offer must not
+  // overlap one with the same member of staff (or with nobody named,
+  // which could be anyone). An offer holds nothing, but offering one
+  // freed hour as 10:00 to one person and 10:30 to another promises it
+  // twice.
+  const live: { start: number; end: number; staff: string | null }[] = onOffer
+    .filter((o) => o.offeredTime)
+    .map((o) => {
+      const start = timeToMinutes(o.offeredTime!);
+      return { start, end: start + (minutesOf.get(o.serviceId) ?? 30), staff: o.offeredStaffId };
+    });
+  const clashes = (start: number, end: number, staff: string | null) =>
+    live.some((o) => o.start < end && start < o.end && (o.staff === null || staff === null || o.staff === staff));
+  // One schedule load per (service, staff, party) in a pass.
+  const cache = new Map<string, Awaited<ReturnType<typeof loadAvailability>>>();
   let offered = 0;
   for (const entry of waiting) {
-    const availability = await loadAvailability(
-      { businessId, serviceId: entry.serviceId, date, staffMemberId: entry.staffMemberId, partySize: entry.partySize },
-      now,
-    );
+    const key = `${entry.serviceId}|${entry.staffMemberId ?? ""}|${entry.partySize ?? ""}`;
+    let availability = cache.get(key);
+    if (!availability) {
+      availability = await loadAvailability(
+        { businessId, serviceId: entry.serviceId, date, staffMemberId: entry.staffMemberId, partySize: entry.partySize },
+        now,
+      );
+      cache.set(key, availability);
+    }
     const from = timeToMinutes(entry.fromTime);
     const to = timeToMinutes(entry.toTime);
+    const length = availability.serviceDuration || (minutesOf.get(entry.serviceId) ?? 30);
+    const staffFor = (s: string) => entry.staffMemberId ?? availability!.assignments[s] ?? null;
     const time = availability.slots.find((s) => {
       const m = timeToMinutes(s);
-      return m >= from && m < to && !taken.has(s);
+      return m >= from && m < to && !clashes(m, m + length, staffFor(s));
     });
     if (!time) continue;
+    const offeredStaffId = staffFor(time);
     const offerToken = randomBytes(24).toString("hex");
     let count = 0;
     try {
@@ -155,6 +179,7 @@ export async function offerFreedTimes(businessId: string, date: string, now: Dat
         data: {
           status: "OFFERED",
           offeredTime: time,
+          offeredStaffId,
           offerToken,
           offerExpiresAt: new Date(now.getTime() + business.waitlistOfferMinutes * 60_000),
           offers: { increment: 1 },
@@ -163,13 +188,13 @@ export async function offerFreedTimes(businessId: string, date: string, now: Dat
     } catch (e) {
       // Another pass offered this time a moment ago.
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-        taken.add(time);
+        live.push({ start: timeToMinutes(time), end: timeToMinutes(time) + length, staff: offeredStaffId });
         continue;
       }
       throw e;
     }
     if (count !== 1) continue;
-    taken.add(time);
+    live.push({ start: timeToMinutes(time), end: timeToMinutes(time) + length, staff: offeredStaffId });
     offered++;
     await sendAutoMessage({
       key: `waitlist-offer:${entry.id}:${entry.offers + 1}`,
@@ -229,7 +254,8 @@ export async function acceptOffer(manageToken: string, offerToken: string, now: 
     customerEmail: entry.customerEmail,
     date,
     startTime: entry.offeredTime,
-    staffMemberId: entry.staffMemberId,
+    // The member of staff the time was offered with.
+    staffMemberId: entry.staffMemberId ?? entry.offeredStaffId,
     partySize: entry.partySize,
     // No payment is taken through a waitlist link: where the business
     // takes deposits the booking waits for the owner instead.
@@ -253,8 +279,11 @@ export async function acceptOffer(manageToken: string, offerToken: string, now: 
     });
     return { ok: false, why: "taken" };
   }
+  // The booking exists: the entry is BOOKED whatever happened to the
+  // offer meanwhile (the sweep may have lapsed it a moment ago, or even
+  // offered it again) — never left waiting with a booking in hand.
   const { count } = await db.slotWaitlistEntry.updateMany({
-    where: { id: entry.id, status: "OFFERED", offerToken },
+    where: { id: entry.id, bookingId: null, status: { in: ["OFFERED", "WAITING"] } },
     data: { status: "BOOKED", bookingId: result.booking.id, offerToken: null },
   });
   if (count === 1 && !result.reused) notifyLater({ type: "booking.created", bookingId: result.booking.id });

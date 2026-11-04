@@ -37,12 +37,13 @@ export function nextPeriod(
 }
 
 /**
- * How long a pause that ends now counts for, in whole days, and how far
+ * How long a pause that ends now counts for, in whole days (nearest — a
+ * pause of minutes costs and gives nothing), and how far
  * the paid periods move: never past what is left of the allowance.
  */
 export function pauseShift(pausedAt: Date, now: Date, pausedDaysSoFar: number): { days: number; ms: number } {
   const left = Math.max(0, MAX_PAUSE_DAYS - pausedDaysSoFar);
-  const days = Math.min(left, Math.max(0, Math.ceil((now.getTime() - pausedAt.getTime()) / DAY)));
+  const days = Math.min(left, Math.max(0, Math.round((now.getTime() - pausedAt.getTime()) / DAY)));
   return { days, ms: days * DAY };
 }
 

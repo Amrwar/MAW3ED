@@ -17,7 +17,27 @@ import { redriveAutomations, sendAutoMessage } from "./send";
  */
 
 const BATCH = 200;
+/** The most rows one job walks through in one run, across pages. */
+const MAX_ROWS = 2_000;
 const DAY = 86_400_000;
+
+/**
+ * Every row a query matches, a page at a time in id order (so a run
+ * reaches the 201st business, not the same first 200 again), up to
+ * MAX_ROWS — the rest wait for the next run.
+ */
+async function allRows<T extends { id: string }>(page: (after: string | undefined, take: number) => Promise<T[]>): Promise<T[]> {
+  const out: T[] = [];
+  let after: string | undefined;
+  while (out.length < MAX_ROWS) {
+    const rows = await page(after, BATCH);
+    out.push(...rows);
+    if (rows.length < BATCH) break;
+    after = rows[rows.length - 1].id;
+  }
+  return out;
+}
+const afterId = (after: string | undefined) => (after ? { id: { gt: after } } : {});
 
 export interface OperationsRun {
   waitlist?: Awaited<ReturnType<typeof sweepWaitlist>>;
@@ -60,25 +80,27 @@ export async function runOperations(now: Date = new Date()): Promise<OperationsR
  */
 async function followUps(now: Date): Promise<number> {
   const wall = cairoWallClock(now);
-  const businesses = await db.business.findMany({
-    where: { followUpEnabled: true, isPublished: true },
+  const businesses = await allRows((after, take) => db.business.findMany({
+    where: { followUpEnabled: true, isPublished: true, ...afterId(after) },
     select: { id: true, slug: true, nameAr: true, followUpDelayHours: true },
-    take: BATCH,
-  });
+    orderBy: { id: "asc" },
+    take,
+  }));
   let n = 0;
   for (const biz of businesses) {
     // Exactly this business's window: visits that ended between
     // (delay + 24h) and delay ago. A day wide, so an hourly or ten-minute
     // run sees each visit many times and the key sends it once.
     const latest = new Date(wall.getTime() - biz.followUpDelayHours * 3_600_000);
-    const visits = await db.booking.findMany({
+    const visits = await allRows((after, take) => db.booking.findMany({
       where: {
         businessId: biz.id, status: "COMPLETED", isTest: false, customerPhoneE164: { not: null },
-        endsAt: { gte: new Date(latest.getTime() - DAY), lte: latest },
+        endsAt: { gte: new Date(latest.getTime() - DAY), lte: latest }, ...afterId(after),
       },
       select: { id: true, customerPhoneE164: true, serviceId: true, staffMemberId: true },
-      take: 100,
-    });
+      orderBy: { id: "asc" },
+      take,
+    }));
     for (const b of visits) {
       const r = await sendAutoMessage({
         key: `follow-up:${b.id}`,
@@ -102,25 +124,34 @@ async function followUps(now: Date): Promise<number> {
  */
 async function rebookNudges(now: Date): Promise<number> {
   const wall = cairoWallClock(now);
-  const businesses = await db.business.findMany({
-    where: { rebookReminderEnabled: true, isPublished: true },
+  const businesses = await allRows((after, take) => db.business.findMany({
+    where: { rebookReminderEnabled: true, isPublished: true, ...afterId(after) },
     select: { id: true, slug: true, nameAr: true, rebookAfterDays: true },
-    take: BATCH,
-  });
+    orderBy: { id: "asc" },
+    take,
+  }));
   let n = 0;
   for (const biz of businesses) {
     const dayStart = new Date(wall.getTime() - biz.rebookAfterDays * DAY - DAY);
     const dayEnd = new Date(wall.getTime() - biz.rebookAfterDays * DAY);
-    const visits = await db.booking.findMany({
-      where: { businessId: biz.id, status: "COMPLETED", isTest: false, customerPhoneE164: { not: null }, endsAt: { gte: dayStart, lt: dayEnd } },
+    const visits = await allRows((after, take) => db.booking.findMany({
+      where: { businessId: biz.id, status: "COMPLETED", isTest: false, customerPhoneE164: { not: null }, endsAt: { gte: dayStart, lt: dayEnd }, ...afterId(after) },
       select: { id: true, customerPhoneE164: true, serviceId: true, staffMemberId: true },
-      take: 50,
-    });
+      orderBy: { id: "asc" },
+      take,
+    }));
     for (const v of visits) {
       const phone = v.customerPhoneE164!;
-      // Booked since, or coming: no nudge.
+      // Booked since, or one still to come (however long ago it was
+      // made — a next visit booked at the end of this one): no nudge.
       const since = await db.booking.count({
-        where: { businessId: biz.id, customerPhoneE164: phone, id: { not: v.id }, createdAt: { gt: dayStart }, status: { notIn: ["CANCELLED", "FAILED_PAYMENT"] } },
+        where: {
+          businessId: biz.id, customerPhoneE164: phone, id: { not: v.id }, isTest: false,
+          OR: [
+            { createdAt: { gt: dayStart }, status: { notIn: ["CANCELLED", "FAILED_PAYMENT"] } },
+            { startsAt: { gt: wall }, status: { in: ["PENDING_PAYMENT", "PENDING", "CONFIRMED", "ARRIVED", "IN_PROGRESS"] } },
+          ],
+        },
       });
       if (since > 0) continue;
       const r = await sendAutoMessage({
@@ -141,15 +172,16 @@ async function rebookNudges(now: Date): Promise<number> {
 
 /** A membership the customer holds runs out soon and is not renewed: transactional. */
 async function renewalNotices(now: Date): Promise<number> {
-  const rows = await db.customerMembership.findMany({
-    where: { status: "ACTIVE", cancelAtPeriodEnd: false, paidThrough: { gt: now, lte: new Date(now.getTime() + 14 * DAY) } },
+  const rows = await allRows((after, take) => db.customerMembership.findMany({
+    where: { status: "ACTIVE", cancelAtPeriodEnd: false, paidThrough: { gt: now, lte: new Date(now.getTime() + 14 * DAY) }, ...afterId(after) },
+    orderBy: { id: "asc" },
+    take,
     select: {
       id: true, phoneE164: true, paidThrough: true, businessId: true,
       plan: { select: { nameAr: true } },
       business: { select: { nameAr: true, membershipRenewalNoticeDays: true } },
     },
-    take: BATCH,
-  });
+  }));
   let n = 0;
   for (const m of rows) {
     if (!m.paidThrough) continue;
@@ -170,26 +202,38 @@ async function renewalNotices(now: Date): Promise<number> {
 
 /** Points the customer holds expire within a week: one notice per account per week. */
 async function pointsExpiringNotices(now: Date): Promise<number> {
-  const lots = await db.loyaltyEntry.findMany({
-    where: { remaining: { gt: 0 }, expiresAt: { gt: now, lte: new Date(now.getTime() + 7 * DAY) } },
-    select: {
-      accountId: true, remaining: true, businessId: true,
-      account: { select: { phoneE164: true } },
-      program: { select: { nameAr: true, businessId: true, business: { select: { loyaltyNoticesEnabled: true } } } },
-    },
-    take: BATCH,
+  // Summed per account in the database, so every account with points
+  // expiring is seen, not the accounts of the first page of lots.
+  const due = { remaining: { gt: 0 }, expiresAt: { gt: now, lte: new Date(now.getTime() + 7 * DAY) } };
+  const sums = await db.loyaltyEntry.groupBy({
+    by: ["accountId"],
+    where: due,
+    _sum: { remaining: true },
+    orderBy: { accountId: "asc" },
+    take: MAX_ROWS,
   });
+  const accounts = await db.loyaltyAccount.findMany({
+    where: { id: { in: sums.map((x) => x.accountId) } },
+    select: {
+      id: true, phoneE164: true,
+      program: { select: { nameAr: true, businessId: true, business: { select: { loyaltyNoticesEnabled: true } } } },
+      // An organization program's message is filed under the brand the
+      // customer last earned at.
+      entries: { where: { kind: "EARN" }, select: { businessId: true }, orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  });
+  const accountOf = new Map(accounts.map((a) => [a.id, a]));
   const byAccount = new Map<string, { phone: string; points: number; businessId: string | null; name: string; enabled: boolean }>();
-  for (const l of lots) {
-    const a = byAccount.get(l.accountId) ?? {
-      phone: l.account.phoneE164,
-      points: 0,
-      businessId: l.program.businessId ?? l.businessId,
-      name: l.program.nameAr,
-      enabled: l.program.business ? l.program.business.loyaltyNoticesEnabled : true,
-    };
-    a.points += l.remaining ?? 0;
-    byAccount.set(l.accountId, a);
+  for (const x of sums) {
+    const a = accountOf.get(x.accountId);
+    if (!a) continue;
+    byAccount.set(x.accountId, {
+      phone: a.phoneE164,
+      points: x._sum.remaining ?? 0,
+      businessId: a.program.businessId ?? a.entries[0]?.businessId ?? null,
+      name: a.program.nameAr,
+      enabled: a.program.business ? a.program.business.loyaltyNoticesEnabled : true,
+    });
   }
   const week = Math.floor(now.getTime() / (7 * DAY));
   let n = 0;
@@ -211,11 +255,12 @@ async function pointsExpiringNotices(now: Date): Promise<number> {
 
 /** A package with sessions left expires within a week: transactional. */
 async function packageExpiringNotices(now: Date): Promise<number> {
-  const rows = await db.customerPackage.findMany({
-    where: { status: "ACTIVE", expiresAt: { gt: now, lte: new Date(now.getTime() + 7 * DAY) } },
+  const rows = await allRows((after, take) => db.customerPackage.findMany({
+    where: { status: "ACTIVE", expiresAt: { gt: now, lte: new Date(now.getTime() + 7 * DAY) }, ...afterId(after) },
+    orderBy: { id: "asc" },
     select: { id: true, phoneE164: true, businessId: true, sessionsTotal: true, sessionsUsed: true, expiresAt: true, plan: { select: { nameAr: true } }, business: { select: { nameAr: true } } },
-    take: BATCH,
-  });
+    take,
+  }));
   let n = 0;
   for (const p of rows) {
     const left = p.sessionsTotal - p.sessionsUsed;
