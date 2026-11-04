@@ -3,25 +3,54 @@ import { db } from "@/lib/db";
 
 /**
  * What an organization may see through its integrations — the same rule
- * the organization console follows (docs/enterprise/PERMISSION_MATRIX.md):
+ * the organization console follows (docs/enterprise/PERMISSION_MATRIX.md,
+ * lib/organizations/delegation.ts):
  *
  *   - a business it is APPROVED with, the association not suspended or
  *     expired;
- *   - its bookings only where the organization OWNS or MANAGES the
- *     business AND the business granted RESERVATIONS — never for a
- *     business the organization merely HOSTS (a mall sees its tenants,
- *     not their customers' appointments);
- *   - limited to the branch, where the association is for one branch;
+ *   - its bookings only through an association row that is itself OWNED or
+ *     MANAGED **and** grants RESERVATIONS — never through a HOSTED row (a
+ *     mall sees its tenants, not their customers' appointments) and never
+ *     by combining one row's relation with another row's scopes;
+ *   - limited to the branches those granting rows name (a whole-business
+ *     granting row means every branch);
  *   - never a customer's name, phone or email: payloads carry ids, times
  *     and statuses.
  */
 
-export interface VisibleBusiness {
-  businessId: string;
+export interface AssociationRow {
   relation: OrganizationBusinessRelation;
   scopes: DelegationScope[];
-  /** Null: the whole business. Otherwise only these branches. */
-  branchIds: string[] | null;
+  branchId: string | null;
+}
+
+export interface VisibleBusiness {
+  businessId: string;
+  /** The strongest relationship, for listing. */
+  relation: OrganizationBusinessRelation;
+  /** Every scope any row grants, for listing only — never for access. */
+  scopes: DelegationScope[];
+  /** Bookings: null = none; otherwise the branches (null = all branches). */
+  bookings: { branchIds: string[] | null } | null;
+}
+
+/** Pure: does this one association row grant bookings? */
+export function rowGrantsBookings(r: Pick<AssociationRow, "relation" | "scopes">): boolean {
+  return (r.relation === "OWNED" || r.relation === "MANAGED") && r.scopes.includes("RESERVATIONS");
+}
+
+/** Pure: what a business's rows add up to — each row's grants stay its own. */
+export function combineRows(businessId: string, rows: AssociationRow[]): VisibleBusiness {
+  const rank = (r: OrganizationBusinessRelation) => (r === "OWNED" ? 3 : r === "MANAGED" ? 2 : r === "HOSTED" ? 1 : 0);
+  let relation = rows[0].relation;
+  for (const r of rows) if (rank(r.relation) > rank(relation)) relation = r.relation;
+  const granting = rows.filter(rowGrantsBookings);
+  const bookings = granting.length === 0
+    ? null
+    : granting.some((r) => r.branchId === null)
+    ? { branchIds: null }
+    : { branchIds: [...new Set(granting.map((r) => r.branchId!))] };
+  return { businessId, relation, scopes: [...new Set(rows.flatMap((r) => r.scopes))], bookings };
 }
 
 export async function visibleBusinesses(organizationId: string, now: Date = new Date()): Promise<VisibleBusiness[]> {
@@ -35,24 +64,14 @@ export async function visibleBusinesses(organizationId: string, now: Date = new 
     },
     select: { businessId: true, relation: true, scopes: true, branchId: true },
   });
-  const byBusiness = new Map<string, VisibleBusiness>();
-  for (const r of rows) {
-    const v = byBusiness.get(r.businessId) ?? { businessId: r.businessId, relation: r.relation, scopes: [], branchIds: [] as string[] | null };
-    // The strongest relation wins for listing; scopes add up.
-    if (rank(r.relation) > rank(v.relation)) v.relation = r.relation;
-    v.scopes = [...new Set([...v.scopes, ...r.scopes])];
-    if (r.branchId === null) v.branchIds = null;
-    else if (v.branchIds) v.branchIds.push(r.branchId);
-    byBusiness.set(r.businessId, v);
-  }
-  return [...byBusiness.values()];
+  const byBusiness = new Map<string, AssociationRow[]>();
+  for (const r of rows) byBusiness.set(r.businessId, [...(byBusiness.get(r.businessId) ?? []), r]);
+  return [...byBusiness.entries()].map(([id, list]) => combineRows(id, list));
 }
 
-const rank = (r: OrganizationBusinessRelation) => (r === "OWNED" ? 3 : r === "MANAGED" ? 2 : r === "HOSTED" ? 1 : 0);
-
-/** Pure: may the organization see this business's bookings? */
-export function seesBookings(v: Pick<VisibleBusiness, "relation" | "scopes">): boolean {
-  return (v.relation === "OWNED" || v.relation === "MANAGED") && v.scopes.includes("RESERVATIONS");
+/** May the organization see this business's bookings (at some branch)? */
+export function seesBookings(v: Pick<VisibleBusiness, "bookings">): boolean {
+  return v.bookings !== null;
 }
 
 /** Pure: may it see this business's figures (counts; money needs FINANCE)? */

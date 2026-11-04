@@ -22,7 +22,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return done ? ok({ ok: true }) : err("المفتاح غير موجود أو اتلغى قبل كده", 404, { code: "not-found" });
     }
     const r = await rotateApiClient(id, clientId, actor, parsed.data.graceHours ?? 24);
-    if (!r.ok) return err(r.why === "no-contract" ? "مفيش اتفاق ساري" : "المفتاح غير موجود أو مش شغّال", r.why === "not-found" ? 404 : 409, { code: r.why });
+    if (!r.ok) {
+      const m: Record<string, string> = {
+        "no-contract": "مفيش اتفاق ساري",
+        limit: "عدد المفاتيح الشغّالة وصل للحد — استنى المفتاح القديم يخلص أو الغيه",
+        revoked: "المفتاح ده اتغيّر أو اتلغى قبل كده — غيّر المفتاح الجديد",
+        "not-found": "المفتاح غير موجود",
+      };
+      return err(m[r.why] ?? "مينفعش", r.why === "not-found" ? 404 : 409, { code: r.why });
+    }
     return ok({ id: r.id, prefix: r.prefix, key: r.key }, 201);
   });
 }

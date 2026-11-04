@@ -147,33 +147,46 @@ export async function pingEndpoint(organizationId: string, endpointId: string) {
 // ─── The change feed ─────────────────────────────────────────────────────────
 
 /**
- * Pure: the booking event a change is, and its id. "created" when the
- * booking did not exist at the endpoint's previous read (it was made
- * after the cursor), however many times it changed since; "updated" for
- * a booking the endpoint has already been told about.
+ * How long a change is left to settle before the feed reads it. updatedAt
+ * is stamped when a write starts, not when its transaction commits; a
+ * booking written in a slow transaction could otherwise commit behind a
+ * cursor that has already moved past its time, and be missed for good.
+ * Every booking write finishes well inside this window.
+ */
+export const SETTLE_MS = 2 * 60_000;
+
+/**
+ * Pure: the booking event a change is, and its id. "created" the first
+ * time this endpoint is told about the booking — when it subscribes to
+ * creations; an endpoint that only wants updates is sent "updated".
  */
 export function bookingEvent(
-  b: { id: string; createdAt: Date; updatedAt: Date },
-  previousCursorAt: Date,
+  b: { id: string; updatedAt: Date },
+  firstForEndpoint: boolean,
+  subscribesToCreated: boolean,
 ): { eventId: string; type: "booking.created" | "booking.updated" } {
-  const created = b.createdAt > previousCursorAt;
+  const created = firstForEndpoint && subscribesToCreated;
   return { eventId: `booking:${b.id}:${b.updatedAt.getTime()}`, type: created ? "booking.created" : "booking.updated" };
 }
 
 /**
  * Reads what changed for every active endpoint and queues deliveries.
- * Bounded: FEED_BATCH bookings per endpoint per run; the cursor moves past
- * what was read, so the next run continues where this one stopped.
+ * Bounded: FEED_BATCH bookings per endpoint per run, at most 500
+ * endpoints, and `budgetMs` overall; the cursor moves past what was read,
+ * so the next run continues where this one stopped.
  */
-export async function collectEvents(now: Date = new Date()): Promise<{ endpoints: number; queued: number }> {
+export async function collectEvents(now: Date = new Date(), budgetMs = 20_000): Promise<{ endpoints: number; queued: number }> {
   if (!flagOn("webhooks")) return { endpoints: 0, queued: 0 };
   const endpoints = await db.webhookEndpoint.findMany({
     where: { status: "ACTIVE" },
-    select: { id: true, organizationId: true, events: true, cursorAt: true, cursorId: true, organization: { select: { status: true, contract: true } } },
+    orderBy: { cursorAt: { sort: "asc", nulls: "first" } },
+    select: { id: true, organizationId: true, events: true, cursorAt: true, cursorId: true, createdAt: true, organization: { select: { status: true, contract: true } } },
     take: 500,
   });
   let queued = 0;
+  const started = Date.now();
   for (const ep of endpoints) {
+    if (Date.now() - started > budgetMs) break;
     if (ep.organization.status !== "APPROVED" || !contractInForce(ep.organization.contract, now)) continue;
     try {
       queued += await collectFor(ep, now);
@@ -185,23 +198,26 @@ export async function collectEvents(now: Date = new Date()): Promise<{ endpoints
 }
 
 async function collectFor(
-  ep: { id: string; organizationId: string; events: string[]; cursorAt: Date | null; cursorId: string | null },
+  ep: { id: string; organizationId: string; events: string[]; cursorAt: Date | null; cursorId: string | null; createdAt: Date },
   now: Date,
 ): Promise<number> {
   const visible = await visibleBusinesses(ep.organizationId, now);
   let queued = 0;
+  const settled = new Date(now.getTime() - SETTLE_MS);
 
-  // Bookings: only where the organization owns or manages the business and
-  // was granted RESERVATIONS; a branch-limited association sees its branch.
-  const wantsBookings = ep.events.includes("booking.created") || ep.events.includes("booking.updated");
+  // Bookings: only through a row that is OWNED or MANAGED and grants
+  // RESERVATIONS, at the branches those rows name (lib/enterprise/visibility).
+  const wantsCreated = ep.events.includes("booking.created");
+  const wantsBookings = wantsCreated || ep.events.includes("booking.updated");
   const bookingScope = visible.filter(seesBookings);
   if (wantsBookings && bookingScope.length > 0) {
-    const cursorAt = ep.cursorAt ?? now;
+    const cursorAt = ep.cursorAt ?? ep.createdAt;
     const cursorId = ep.cursorId ?? "";
     const rows = await db.booking.findMany({
       where: {
         isTest: false,
-        OR: bookingScope.map((v) => ({ businessId: v.businessId, ...(v.branchIds ? { branchId: { in: v.branchIds } } : {}) })),
+        updatedAt: { lte: settled },
+        OR: bookingScope.map((v) => ({ businessId: v.businessId, ...(v.bookings!.branchIds ? { branchId: { in: v.bookings!.branchIds } } : {}) })),
         AND: [{ OR: [{ updatedAt: { gt: cursorAt } }, { updatedAt: cursorAt, id: { gt: cursorId } }] }],
       },
       orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
@@ -212,9 +228,22 @@ async function collectFor(
         business: { select: { slug: true } },
       },
     });
+    // Which of these bookings this endpoint has already been told about.
+    const known = rows.length
+      ? new Set(
+          (await db.$queryRaw<{ bookingId: string }[]>`
+            SELECT DISTINCT split_part("eventId", ':', 2) AS "bookingId" FROM "WebhookDelivery"
+             WHERE "endpointId" = ${ep.id} AND "eventId" LIKE 'booking:%'
+               AND split_part("eventId", ':', 2) = ANY(${rows.map((r) => r.id)})`).map((r) => r.bookingId),
+        )
+      : new Set<string>();
     const data: Prisma.WebhookDeliveryCreateManyInput[] = [];
+    const seenNow = new Set<string>();
     for (const b of rows) {
-      const ev = bookingEvent(b, cursorAt);
+      // A booking that existed before the endpoint did was never "new" to it.
+      const first = !known.has(b.id) && !seenNow.has(b.id) && b.createdAt >= ep.createdAt;
+      seenNow.add(b.id);
+      const ev = bookingEvent(b, first, wantsCreated);
       if (!ep.events.includes(ev.type)) continue;
       data.push({
         endpointId: ep.id,
@@ -232,7 +261,7 @@ async function collectFor(
     if (data.length) queued += (await db.webhookDelivery.createMany({ data, skipDuplicates: true })).count;
     const last = rows[rows.length - 1];
     if (last) await db.webhookEndpoint.update({ where: { id: ep.id }, data: { cursorAt: last.updatedAt, cursorId: last.id } });
-    else if (!ep.cursorAt) await db.webhookEndpoint.update({ where: { id: ep.id }, data: { cursorAt: now, cursorId: "" } });
+    else if (!ep.cursorAt) await db.webhookEndpoint.update({ where: { id: ep.id }, data: { cursorAt, cursorId: "" } });
   }
 
   // Association changes: a short look-back each run; the unique event id
@@ -260,22 +289,28 @@ async function collectFor(
 /**
  * Sends what is due, oldest first, within `budgetMs`. Each delivery is
  * claimed by a conditional update (the lease), so two runs never send the
- * same one at once.
+ * same one at once. A delivery whose last allowed attempt was cut off
+ * (the function stopped mid-send) is closed as DEAD first, so it can
+ * never sit at the head of the queue.
  */
-export async function processDeliveries(now: Date = new Date(), limit = 50, budgetMs = 20_000): Promise<{ due: number; sent: number; failed: number; dead: number }> {
-  const out = { due: 0, sent: 0, failed: 0, dead: 0 };
+export async function processDeliveries(now: Date = new Date(), limit = 50, budgetMs = 20_000): Promise<{ due: number; sent: number; failed: number; dead: number; closed: number }> {
+  const out = { due: 0, sent: 0, failed: 0, dead: 0, closed: 0 };
   if (!flagOn("webhooks")) return out;
+  out.closed = await db.$executeRaw`
+    UPDATE "WebhookDelivery" SET "status" = 'DEAD', "lastError" = COALESCE("lastError", 'interrupted on its last attempt'), "nextAttemptAt" = NULL, "updatedAt" = now()
+     WHERE "id" IN (SELECT "id" FROM "WebhookDelivery" WHERE "status" IN ('PENDING', 'FAILED') AND "attempts" >= ${MAX_ATTEMPTS} AND "nextAttemptAt" <= ${now} LIMIT 500)`;
   const due = await db.webhookDelivery.findMany({
-    where: { status: { in: ["PENDING", "FAILED"] }, nextAttemptAt: { lte: now }, endpoint: { status: "ACTIVE" } },
+    where: { status: { in: ["PENDING", "FAILED"] }, attempts: { lt: MAX_ATTEMPTS }, nextAttemptAt: { lte: now }, endpoint: { status: "ACTIVE" } },
     orderBy: { nextAttemptAt: "asc" },
     take: limit,
     select: { id: true },
   });
   out.due = due.length;
   const started = Date.now();
+  const allowed = new Map<string, Awaited<ReturnType<typeof orgAllows>>>();
   for (const d of due) {
     if (Date.now() - started > budgetMs) break;
-    const r = await sendDelivery(d.id, now);
+    const r = await sendDelivery(d.id, now, allowed);
     if (r?.status === "SENT") out.sent++;
     else if (r?.status === "DEAD") out.dead++;
     else if (r) out.failed++;
@@ -283,7 +318,24 @@ export async function processDeliveries(now: Date = new Date(), limit = 50, budg
   return out;
 }
 
-export async function sendDelivery(deliveryId: string, now: Date = new Date()): Promise<{ status: string; code?: number; error?: string } | null> {
+/**
+ * Whether the organization may still be sent anything, and for which
+ * businesses' bookings — asked again at send time: a contract that ended,
+ * a suspension or a RESERVATIONS grant withdrawn after an event was queued
+ * stops it going out.
+ */
+async function orgAllows(organizationId: string, now: Date): Promise<{ ok: boolean; bookingsFor: Set<string> }> {
+  const org = await db.organization.findUnique({ where: { id: organizationId }, select: { status: true, contract: true } });
+  if (!org || org.status !== "APPROVED" || !contractInForce(org.contract, now)) return { ok: false, bookingsFor: new Set() };
+  const visible = await visibleBusinesses(organizationId, now);
+  return { ok: true, bookingsFor: new Set(visible.filter(seesBookings).map((v) => v.businessId)) };
+}
+
+export async function sendDelivery(
+  deliveryId: string,
+  now: Date = new Date(),
+  cache: Map<string, Awaited<ReturnType<typeof orgAllows>>> = new Map(),
+): Promise<{ status: string; code?: number; error?: string } | null> {
   // Claim: due, not yet out of attempts; the lease pushes nextAttemptAt
   // forward so a crash mid-send is retried later, not twice at once.
   const claimed = await db.$queryRaw<{ id: string; attempts: number }[]>`
@@ -301,6 +353,22 @@ export async function sendDelivery(deliveryId: string, now: Date = new Date()): 
     },
   });
   const ep = d.endpoint;
+  // Asked again now: may this organization still receive this?
+  let allows = cache.get(ep.organizationId);
+  if (!allows) {
+    allows = await orgAllows(ep.organizationId, now);
+    cache.set(ep.organizationId, allows);
+  }
+  const businessId = (d.payload as { businessId?: string } | null)?.businessId;
+  const notAllowed = !allows.ok
+    ? "organization no longer allowed (status or contract)"
+    : d.eventType.startsWith("booking.") && businessId && !allows.bookingsFor.has(businessId)
+    ? "booking access withdrawn"
+    : null;
+  if (notAllowed) {
+    await db.webhookDelivery.update({ where: { id: deliveryId }, data: { status: "DEAD", lastError: notAllowed, nextAttemptAt: null } });
+    return { status: "DEAD", error: notAllowed };
+  }
   const secrets = [openWith("webhook-secret", ep.secretSealed)];
   if (ep.previousSecretSealed && ep.previousSecretUntil && ep.previousSecretUntil > now) secrets.push(openWith("webhook-secret", ep.previousSecretSealed));
   const usable = secrets.filter((s): s is string => !!s);

@@ -23,6 +23,16 @@ export interface HealthReport {
   };
 }
 
+/** The anonymous answer: whether the database answers — "ok" or "down". */
+export async function liveness(): Promise<"ok" | "down"> {
+  try {
+    await db.$queryRaw`SELECT 1`;
+    return "ok";
+  } catch {
+    return "down";
+  }
+}
+
 export async function healthReport(now: Date = new Date()): Promise<HealthReport> {
   const t0 = Date.now();
   try {

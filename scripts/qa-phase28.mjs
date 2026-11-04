@@ -144,6 +144,8 @@ try {
   // ── Webhooks: separate, signed ───────────────────────────────────────
   part("webhooks");
   await pg.query(`UPDATE "WebhookEndpoint" SET "cursorAt" = now() - interval '10 minutes' WHERE "organizationId" = ANY($1)`, [[orgA.id, orgB.id]]);
+  // Changes settle for two minutes before the feed reads them; stand in for that wait.
+  await pg.query(`UPDATE "Booking" SET "updatedAt" = "updatedAt" - interval '5 minutes' WHERE "businessId" = ANY($1)`, [[tenant1.id, brand1.id]]);
   const runCron = await call(null, "/api/cron/integrations", { headers: cronHeaders });
   check("the integrations cron runs", runCron.status === 200, runCron.status);
   await new Promise((r) => setTimeout(r, 500));

@@ -29,5 +29,5 @@ async function handle(req: Request): Promise<Response> {
 
 /** Recorded in CronRun (lib/ops/cron-run) — when it ran, whether it worked. */
 export async function GET(req: Request) {
-  return withCronRun("operations", () => handle(req));
+  return withCronRun("operations", req, () => handle(req));
 }

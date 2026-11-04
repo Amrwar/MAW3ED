@@ -26,5 +26,5 @@ async function handle(req: Request): Promise<Response> {
 }
 
 export async function GET(req: Request) {
-  return withCronRun("integrations", () => handle(req));
+  return withCronRun("integrations", req, () => handle(req));
 }

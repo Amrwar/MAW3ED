@@ -130,6 +130,8 @@ describe.skipIf(!local)("Phase 28 enterprise on a real database", () => {
     await db.apiClient.update({ where: { id: made.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
     expect(await status(made.key)).toBe(401);
 
+    // A key already rotated cannot be rotated again (it would outlive its grace).
+    expect(await clients.rotateApiClient(o.id, made.id, actor, 72)).toEqual({ ok: false, why: "revoked" });
     expect(await clients.revokeApiClient(o.id, rotated.id, actor)).toBe(true);
     expect(await status(rotated.key)).toBe(401);
 
@@ -246,28 +248,43 @@ describe.skipIf(!local)("Phase 28 enterprise on a real database", () => {
     const b = await bookingFor(brand, 30);
     await bookingFor(stranger, 30); // another organization's: never ours
 
-    await hooks.collectEvents();
-    await hooks.collectEvents(); // a second read queues nothing more
+    // Read as of three minutes on: changes settle for two before the feed reads them.
+    const later = () => new Date(Date.now() + 3 * 60_000);
+    expect(await db.webhookDelivery.count({ where: { endpointId: ep.id } })).toBe(0);
+    await hooks.collectEvents(new Date()); // still settling: nothing yet
+    expect(await db.webhookDelivery.count({ where: { endpointId: ep.id } })).toBe(0);
+    await hooks.collectEvents(later());
+    await hooks.collectEvents(later()); // a second read queues nothing more
     let rows = await db.webhookDelivery.findMany({ where: { endpointId: ep.id } });
     expect(rows.map((r) => r.eventType)).toEqual(["booking.created"]);
     expect((rows[0].payload as { id: string }).id).toBe(b.id);
 
     // A status change is a new event.
     await db.booking.update({ where: { id: b.id }, data: { status: "CANCELLED" } });
-    await hooks.collectEvents();
+    await hooks.collectEvents(later());
     rows = await db.webhookDelivery.findMany({ where: { endpointId: ep.id }, orderBy: { createdAt: "asc" } });
     expect(rows.map((r) => r.eventType)).toEqual(["booking.created", "booking.updated"]);
 
     received.length = 0;
     answer = 200;
-    const out = await hooks.processDeliveries();
+    const out = await hooks.processDeliveries(later());
     expect(out.sent).toBe(2);
     expect(received).toHaveLength(2);
     const r0 = received[0];
     expect(hooks.verifySignature(r0.body, String(r0.headers["maw3ed-signature"]), ep.secret)).toBe(true);
     expect(JSON.stringify(received.map((r) => r.body))).not.toMatch(/سارة|01012345678/);
     // Sent once: a second run sends nothing.
-    expect((await hooks.processDeliveries()).sent).toBe(0);
+    expect((await hooks.processDeliveries(later())).sent).toBe(0);
+
+    // The contract ends: what is still queued is not sent.
+    await db.booking.update({ where: { id: b.id }, data: { status: "CONFIRMED" } });
+    await hooks.collectEvents(later());
+    await db.organizationContract.update({ where: { organizationId: g.o.id }, data: { endsAt: new Date(Date.now() - 1) } });
+    const before = received.length;
+    await hooks.processDeliveries(later());
+    expect(received.length).toBe(before);
+    const closed = await db.webhookDelivery.findFirstOrThrow({ where: { endpointId: ep.id }, orderBy: { createdAt: "desc" } });
+    expect(closed).toMatchObject({ status: "DEAD", lastError: expect.stringMatching(/no longer allowed/) });
   });
 
   it("stops retrying after the last attempt, and switches off an endpoint that keeps failing", async () => {
@@ -286,6 +303,13 @@ describe.skipIf(!local)("Phase 28 enterprise on a real database", () => {
     expect(final.status).toBe("DEAD");
     expect(final.attempts).toBe(hooks.MAX_ATTEMPTS);
     expect(statuses.slice(hooks.MAX_ATTEMPTS)).toEqual(["none", "none", "none"]);
+
+    // A delivery cut off on its last attempt (attempts used up, still FAILED)
+    // is closed, never left at the head of the queue.
+    const cut = await db.webhookDelivery.create({ data: { endpointId: ep.id, eventId: `${tag}-cut`, eventType: "booking.created", payload: {}, status: "FAILED", attempts: hooks.MAX_ATTEMPTS, nextAttemptAt: new Date(0) } });
+    const swept = await hooks.processDeliveries();
+    expect(swept.closed).toBeGreaterThanOrEqual(1);
+    expect((await db.webhookDelivery.findUniqueOrThrow({ where: { id: cut.id } })).status).toBe("DEAD");
 
     // Twenty failures in a row switch the endpoint off, once, with a reason.
     for (let i = 0; i < hooks.MAX_CONSECUTIVE_FAILURES; i++) {

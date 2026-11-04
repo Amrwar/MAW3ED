@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
+import { authorizeCron } from "@/lib/security/cron-auth";
 
 /**
  * Every scheduled job's runs, in CronRun: when it started and finished,
@@ -10,7 +11,19 @@ import { log } from "@/lib/logger";
  * A request that was refused (no or wrong secret) is not a run and is not
  * recorded. Runs older than 30 days are pruned, a bounded batch at a time.
  */
-export async function withCronRun(job: string, run: () => Promise<Response>): Promise<Response> {
+export async function withCronRun(job: string, req: Request, run: () => Promise<Response>): Promise<Response> {
+  // Authorized first: an anonymous or wrongly-keyed request costs no write
+  // and is not a run. A missing CRON_SECRET (503) IS recorded, as a failed
+  // run — every job silently stopping is exactly what health must show.
+  const auth = authorizeCron(req, job);
+  if (!auth.ok) {
+    if (auth.response.status === 503) {
+      await db.cronRun
+        .create({ data: { job, finishedAt: new Date(), ok: false, error: "CRON_SECRET is not set: the job cannot run" } })
+        .catch(() => {});
+    }
+    return auth.response;
+  }
   // Recording a run must never stop the job itself: any failure here
   // (the table missing, the database slow) is logged and the job runs.
   let started: { id: string } | null = null;
@@ -31,10 +44,6 @@ export async function withCronRun(job: string, run: () => Promise<Response>): Pr
     throw e;
   }
   if (started) {
-    if (res.status === 401 || res.status === 503) {
-      await db.cronRun.delete({ where: { id: started.id } }).catch(() => {});
-      return res;
-    }
     let summary: unknown = null;
     try {
       summary = await res.clone().json();
@@ -42,15 +51,17 @@ export async function withCronRun(job: string, run: () => Promise<Response>): Pr
       summary = null;
     }
     const text = JSON.stringify(summary ?? null);
-    await db.cronRun
-      .update({
-        where: { id: started.id },
-        data: {
-          finishedAt: new Date(),
-          ok: res.ok && (summary as { ok?: boolean } | null)?.ok !== false,
-          summary: text.length <= 4000 ? (summary as object) ?? undefined : { truncated: true },
-        },
-      })
+    await Promise.resolve()
+      .then(() =>
+        db.cronRun.update({
+          where: { id: started!.id },
+          data: {
+            finishedAt: new Date(),
+            ok: res.ok && (summary as { ok?: boolean } | null)?.ok !== false,
+            summary: text.length <= 4000 ? ((summary as object) ?? undefined) : { truncated: true },
+          },
+        }),
+      )
       .catch((e) => log.error("[cron-run] could not record a finish", e, { job }));
   }
   return res;
@@ -65,15 +76,16 @@ export async function pruneCronRuns(now: Date = new Date()): Promise<number> {
 
 /** The latest finished run of each job, for health and the operations page. */
 export async function lastRuns(jobs: readonly string[]) {
-  const out: Record<string, { lastStartedAt: string | null; lastOkAt: string | null; lastOk: boolean | null }> = {};
-  for (const job of jobs) {
-    const [last, lastOk] = await Promise.all([
-      db.cronRun.findFirst({ where: { job }, orderBy: { startedAt: "desc" }, select: { startedAt: true, ok: true } }),
-      db.cronRun.findFirst({ where: { job, ok: true }, orderBy: { startedAt: "desc" }, select: { startedAt: true } }),
-    ]);
-    out[job] = { lastStartedAt: last?.startedAt.toISOString() ?? null, lastOkAt: lastOk?.startedAt.toISOString() ?? null, lastOk: last?.ok ?? null };
-  }
-  return out;
+  const pairs = await Promise.all(
+    jobs.map(async (job) => {
+      const [last, lastOk] = await Promise.all([
+        db.cronRun.findFirst({ where: { job }, orderBy: { startedAt: "desc" }, select: { startedAt: true, ok: true } }),
+        db.cronRun.findFirst({ where: { job, ok: true }, orderBy: { startedAt: "desc" }, select: { startedAt: true } }),
+      ]);
+      return [job, { lastStartedAt: last?.startedAt.toISOString() ?? null, lastOkAt: lastOk?.startedAt.toISOString() ?? null, lastOk: last?.ok ?? null }] as const;
+    }),
+  );
+  return Object.fromEntries(pairs) as Record<string, { lastStartedAt: string | null; lastOkAt: string | null; lastOk: boolean | null }>;
 }
 
 /** Each job and how long it may go without a successful run before it is late. */

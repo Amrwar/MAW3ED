@@ -86,14 +86,24 @@ export async function rotateApiClient(
   now: Date = new Date(),
 ): Promise<ClientResult> {
   return db.$transaction(async (tx) => {
-    const rows = await tx.$queryRaw<{ id: string; name: string; scopes: string[]; status: string; keyPrefix: string; expiresAt: Date | null }[]>`
-      SELECT "id", "name", "scopes", "status"::text AS status, "keyPrefix", "expiresAt" FROM "ApiClient"
+    await tx.$queryRaw`SELECT "id" FROM "VenueOrganization" WHERE "id" = ${organizationId} FOR UPDATE`;
+    const rows = await tx.$queryRaw<{ id: string; name: string; scopes: string[]; status: string; keyPrefix: string; expiresAt: Date | null; replacedById: string | null }[]>`
+      SELECT "id", "name", "scopes", "status"::text AS status, "keyPrefix", "expiresAt", "replacedById" FROM "ApiClient"
        WHERE "id" = ${clientId} AND "organizationId" = ${organizationId} FOR UPDATE`;
     const old = rows[0];
     if (!old) return { ok: false as const, why: "not-found" as const };
-    if (old.status !== "ACTIVE" || (old.expiresAt && old.expiresAt <= now)) return { ok: false as const, why: "revoked" as const };
+    // A key already rotated is in its grace: it cannot be rotated again
+    // (that would extend its life and multiply live keys).
+    if (old.status !== "ACTIVE" || old.replacedById || (old.expiresAt && old.expiresAt <= now)) return { ok: false as const, why: "revoked" as const };
     const contract = await tx.organizationContract.findUnique({ where: { organizationId } });
     if (!contractInForce(contract, now)) return { ok: false as const, why: "no-contract" as const };
+    // The new key and every other live key (the one being rotated aside)
+    // must fit the contract: a rotation adds one key only while others are
+    // below the limit — so rotating in a chain cannot outgrow it.
+    const others = await tx.apiClient.count({
+      where: { organizationId, id: { not: old.id }, status: "ACTIVE", OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+    });
+    if (others + 1 > contract!.maxApiClients) return { ok: false as const, why: "limit" as const };
     const k = newApiKey();
     const fresh = await tx.apiClient.create({
       data: { organizationId, name: old.name, keyPrefix: k.prefix, keyHash: k.hash, scopes: old.scopes, createdById: actor.id },

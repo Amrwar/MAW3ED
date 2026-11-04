@@ -25,22 +25,31 @@ export async function GET(req: Request) {
     const v = (await visibleBusinesses(c.organizationId)).find((x) => x.businessId === businessId);
     if (!v || !seesBookings(v)) throw new ApiError(404, "not-found");
     const { limit, cursor } = pageParams(req);
+    // Paged by (date, startTime, id) — none of them can be null, so no row
+    // can fall outside the cursor (Booking.startsAt is nullable on old rows).
     const after = decodeCursor(cursor);
-    const afterAt = after && after.length === 2 ? new Date(after[0]) : null;
+    const afterOk = after && after.length === 3 && /^\d{4}-\d{2}-\d{2}$/.test(after[0]) && /^\d{2}:\d{2}$/.test(after[1]);
+    const branches = v.bookings!.branchIds;
     const rows = await db.booking.findMany({
       where: {
         businessId,
         isTest: false,
         date: { gte: dateToUTC(from), lte: dateToUTC(to) },
-        ...(v.branchIds ? { branchId: { in: v.branchIds } } : {}),
-        ...(afterAt && !Number.isNaN(afterAt.getTime())
-          ? { OR: [{ startsAt: { gt: afterAt } }, { startsAt: afterAt, id: { gt: after![1] } }] }
+        ...(branches ? { branchId: { in: branches } } : {}),
+        ...(afterOk
+          ? {
+              OR: [
+                { date: { gt: dateToUTC(after![0]) } },
+                { date: dateToUTC(after![0]), startTime: { gt: after![1] } },
+                { date: dateToUTC(after![0]), startTime: after![1], id: { gt: after![2] } },
+              ],
+            }
           : {}),
       },
-      orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+      orderBy: [{ date: "asc" }, { startTime: "asc" }, { id: "asc" }],
       take: limit + 1,
       select: {
-        id: true, reference: true, status: true, date: true, startTime: true, endTime: true, startsAt: true,
+        id: true, reference: true, status: true, date: true, startTime: true, endTime: true,
         serviceId: true, staffMemberId: true, resourceId: true, branchId: true, partySize: true, source: true,
         createdAt: true, updatedAt: true,
       },
@@ -54,7 +63,7 @@ export async function GET(req: Request) {
         resourceId: b.resourceId, branchId: b.branchId, partySize: b.partySize, source: b.source,
         createdAt: b.createdAt, updatedAt: b.updatedAt,
       })),
-      nextCursor: rows.length > limit && last?.startsAt ? encodeCursor([last.startsAt.toISOString(), last.id]) : null,
+      nextCursor: rows.length > limit && last ? encodeCursor([last.date.toISOString().slice(0, 10), last.startTime, last.id]) : null,
     });
   });
 }

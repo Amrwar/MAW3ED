@@ -171,6 +171,8 @@ describe.skipIf(!local)("Phase 23 access on a real database", () => {
     expect(jobA.lastError).toContain("credential-revoked");
     // B's credential is untouched.
     expect(await vc.venueCredentialFor(vb.venue.id, providerId)).toMatchObject({ keyVersion: 2 });
+    // A credential kept for another provider is not this one's: platform configuration, not a refusal.
+    expect(await vc.venueCredentialFor(vb.venue.id, "some-other-provider")).toBeNull();
   });
 
   // ─── Booking QR and check-in ──────────────────────────────────────────

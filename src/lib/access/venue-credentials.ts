@@ -26,8 +26,10 @@ export async function venueCredentialFor(venueId: string, providerId: string): P
     select: { providerId: true, secretSealed: true, keyVersion: true, revokedAt: true },
   });
   if (!row) return null;
-  // A credential for another provider (the venue switched) is not this one's.
-  if (row.providerId !== providerId) return "revoked";
+  // A credential kept for another provider (the venue switched, or passes
+  // issued before the switch are being revoked at the old one) is not this
+  // provider's: the call uses the provider's platform configuration.
+  if (row.providerId !== providerId) return null;
   if (row.revokedAt) return "revoked";
   const secret = openWith("venue-credential", row.secretSealed);
   return secret ? { secret, keyVersion: row.keyVersion } : "revoked";

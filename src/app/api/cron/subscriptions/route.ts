@@ -148,5 +148,5 @@ async function handle(req: Request): Promise<Response> {
 
 /** Recorded in CronRun (lib/ops/cron-run) — when it ran, whether it worked. */
 export async function GET(req: Request) {
-  return withCronRun("subscriptions", () => handle(req));
+  return withCronRun("subscriptions", req, () => handle(req));
 }

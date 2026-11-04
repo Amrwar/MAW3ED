@@ -265,9 +265,12 @@ async function runOne(job: AccessSyncJob, now: () => Date, timeoutMs: number): P
 
   try {
     // The venue's own credential (Phase 28): a revoked one stops this
-    // venue's calls — and only this venue's.
-    const vc = await venueCredentialFor(credential.entitlement.venueId, credential.providerId);
-    if (vc === "revoked") throw new ProviderUnavailableError("credential-revoked");
+    // venue's new passes and updates — and only this venue's. Revoking a
+    // pass is never blocked by it: withdrawing access must always be
+    // tried (with the provider's platform configuration).
+    const found = await venueCredentialFor(credential.entitlement.venueId, credential.providerId);
+    if (found === "revoked" && job.kind !== "REVOKE") throw new ProviderUnavailableError("credential-revoked");
+    const vc = found === "revoked" ? null : found;
     const ctx = (signal: AbortSignal): CallContext => ({ idempotencyKey: job.idempotencyKey, correlationId: job.correlationId, signal, venueCredential: vc });
     const adapter = await adapterFor(credential.provider);
     switch (job.kind) {

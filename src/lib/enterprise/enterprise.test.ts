@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { hashKey, keyMatches, newApiKey, prefixOf } from "./keys";
 import { checkUrlShape, isPrivateAddress } from "./ssrf";
 import { bookingEvent, MAX_ATTEMPTS, retryAt, signatureHeader, verifySignature } from "./webhooks";
-import { seesBookings, seesReports } from "./visibility";
+import { combineRows, rowGrantsBookings, seesBookings, seesReports } from "./visibility";
 import { contractInForce } from "./auth";
 import { isApiScope, isWebhookEvent } from "./scopes";
 import { flagOn } from "@/lib/flags";
@@ -75,23 +75,39 @@ describe("webhook signing and retries", () => {
     expect(retryAt(99, t)).toBeNull();
   });
 
-  it("names a booking change once: created if new since the last read, updated otherwise", () => {
-    const created = new Date("2026-11-05T10:00:00Z");
-    const before = new Date(created.getTime() - 1);
-    expect(bookingEvent({ id: "b1", createdAt: created, updatedAt: created }, before)).toEqual({ eventId: `booking:b1:${created.getTime()}`, type: "booking.created" });
-    // Changed again before anyone read it: still news of a new booking.
-    expect(bookingEvent({ id: "b1", createdAt: created, updatedAt: new Date(created.getTime() + 500) }, before).type).toBe("booking.created");
-    // Already read once (the cursor passed its creation): an update.
-    expect(bookingEvent({ id: "b1", createdAt: created, updatedAt: new Date(created.getTime() + 500) }, created).type).toBe("booking.updated");
+  it("names a booking change once: created the first time an endpoint hears of it, if it wants creations", () => {
+    const at = new Date("2026-11-05T10:00:00Z");
+    expect(bookingEvent({ id: "b1", updatedAt: at }, true, true)).toEqual({ eventId: `booking:b1:${at.getTime()}`, type: "booking.created" });
+    expect(bookingEvent({ id: "b1", updatedAt: at }, false, true).type).toBe("booking.updated");
+    // An endpoint that only takes updates is told about the first change as an update.
+    expect(bookingEvent({ id: "b1", updatedAt: at }, true, false).type).toBe("booking.updated");
   });
 });
 
 describe("what an organization may see", () => {
-  it("bookings only for owned or managed brands that granted RESERVATIONS", () => {
-    expect(seesBookings({ relation: "OWNED", scopes: ["RESERVATIONS"] })).toBe(true);
-    expect(seesBookings({ relation: "MANAGED", scopes: ["RESERVATIONS"] })).toBe(true);
-    expect(seesBookings({ relation: "HOSTED", scopes: ["RESERVATIONS"] })).toBe(false);
-    expect(seesBookings({ relation: "OWNED", scopes: ["REPORTS"] })).toBe(false);
+  it("bookings only through a row that is owned or managed and grants RESERVATIONS", () => {
+    expect(rowGrantsBookings({ relation: "OWNED", scopes: ["RESERVATIONS"] })).toBe(true);
+    expect(rowGrantsBookings({ relation: "MANAGED", scopes: ["RESERVATIONS"] })).toBe(true);
+    expect(rowGrantsBookings({ relation: "HOSTED", scopes: ["RESERVATIONS"] })).toBe(false);
+    expect(rowGrantsBookings({ relation: "OWNED", scopes: ["REPORTS"] })).toBe(false);
+  });
+
+  it("never combines one row's relation with another row's scopes or branch", () => {
+    // A whole-business HOSTED row and a MANAGED row for one branch with
+    // RESERVATIONS: bookings of that branch only (code review, Phase 28).
+    const v = combineRows("b", [
+      { relation: "HOSTED", scopes: [], branchId: null },
+      { relation: "MANAGED", scopes: ["RESERVATIONS"], branchId: "br1" },
+    ]);
+    expect(v.bookings).toEqual({ branchIds: ["br1"] });
+    expect(v.relation).toBe("MANAGED");
+    // An OWNED row without RESERVATIONS plus a HOSTED row: nothing.
+    expect(seesBookings(combineRows("b", [{ relation: "OWNED", scopes: ["REPORTS"], branchId: null }, { relation: "HOSTED", scopes: [], branchId: null }]))).toBe(false);
+    // Two granting branch rows and one whole-business granting row: all branches.
+    expect(combineRows("b", [
+      { relation: "OWNED", scopes: ["RESERVATIONS"], branchId: "br1" },
+      { relation: "MANAGED", scopes: ["RESERVATIONS"], branchId: null },
+    ]).bookings).toEqual({ branchIds: null });
     expect(seesReports({ scopes: ["REPORTS"] })).toEqual({ counts: true, money: false });
   });
 

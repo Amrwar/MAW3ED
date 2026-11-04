@@ -13,7 +13,11 @@ const findMany = vi.fn();
 const notify = vi.fn();
 
 vi.mock("@/lib/db", () => ({
-  db: { booking: { findMany: (...a: unknown[]) => findMany(...a), update: vi.fn() } },
+  db: {
+    booking: { findMany: (...a: unknown[]) => findMany(...a), update: vi.fn() },
+    // The review-request query (raw SQL since Phase 28): nothing to ask about here.
+    $queryRaw: async () => [],
+  },
 }));
 vi.mock("@/lib/notifications", () => ({ notify: (...a: unknown[]) => notify(...a) }));
 vi.mock("@/lib/security/cron-auth", () => ({ authorizeCron: () => ({ ok: true }) }));

@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "crypto";
-import { healthReport } from "@/lib/ops/health";
+import { healthReport, liveness } from "@/lib/ops/health";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +21,13 @@ function authorized(req: Request): boolean {
 }
 
 export async function GET(req: Request) {
-  const report = await healthReport();
-  const code = report.status === "down" ? 503 : 200;
   const headers = { "Cache-Control": "no-store" };
-  if (!authorized(req)) return Response.json({ status: report.status }, { status: code, headers });
-  return Response.json({ ...report, at: new Date().toISOString() }, { status: code, headers });
+  if (!authorized(req)) {
+    // Anonymous: one cheap query. Anyone can poll this; the full report
+    // (twenty-odd counts) is only for the holder of the cron secret.
+    const live = await liveness();
+    return Response.json({ status: live }, { status: live === "down" ? 503 : 200, headers });
+  }
+  const report = await healthReport();
+  return Response.json({ ...report, at: new Date().toISOString() }, { status: report.status === "down" ? 503 : 200, headers });
 }
