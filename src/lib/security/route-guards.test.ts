@@ -84,6 +84,7 @@ const OPEN: Record<string, string> = {
   "realtime/bookings": "requireBusiness-style check inline (see route)",
   "version": "public read of the build id",
   "webhooks/paymob": "HMAC signature, verifyWebhookHmac()",
+  "webhooks/stripe": "Stripe-Signature HMAC over the raw body, verifyStripeSignature(), five-minute window",
 };
 
 function routes(dir: string): string[] {

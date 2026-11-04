@@ -15,6 +15,7 @@ const NO_PRIVATE_PREFS: NotificationPrefs = {
 };
 import { getEffectivePlan, type Plan, type SubscriptionStatus } from "@/lib/plans";
 import { daysUntil } from "@/lib/fmt";
+import { stripeEnabled } from "@/lib/services/stripe";
 import { discreetByCategory } from "@/lib/access/discreet";
 
 export const metadata: Metadata = { title: "الإعدادات" };
@@ -145,6 +146,7 @@ export default async function SettingsPage({
       currentPeriodEnd={isOwner ? (business.currentPeriodEnd?.toISOString().split("T")[0] ?? null) : null}
       effectivePlan={isOwner ? effectivePlan : ("FREE" as Plan)}
       daysUntilExpiry={isOwner ? daysUntilExpiry : null}
+      stripeAvailable={stripeEnabled()}
     />
   );
 }

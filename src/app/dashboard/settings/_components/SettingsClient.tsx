@@ -66,6 +66,8 @@ type Props = {
   currentPeriodEnd:   string | null;
   effectivePlan:      Plan;
   daysUntilExpiry:    number | null;
+  /** Plan payments by international card (Stripe) are configured. */
+  stripeAvailable?:   boolean;
   /** The tabs this person may open (a delegate's granted ones); all when absent. */
   tabs?:              readonly Tab[];
   /** Auto-confirm is a booking policy, the owner's alone. */
@@ -94,6 +96,7 @@ export default function SettingsClient({
   currentPeriodEnd,
   effectivePlan,
   daysUntilExpiry,
+  stripeAvailable = false,
   tabs: allowedTabs,
   showAutoConfirm = true,
 }: Props) {
@@ -217,6 +220,7 @@ export default function SettingsClient({
           currentPeriodEnd={currentPeriodEnd}
           effectivePlan={effectivePlan}
           daysUntilExpiry={daysUntilExpiry}
+          stripeAvailable={stripeAvailable}
         />
       )}
       {tab === "preview" && (

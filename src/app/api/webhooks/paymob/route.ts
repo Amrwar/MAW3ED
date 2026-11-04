@@ -43,7 +43,7 @@ import { log } from "@/lib/logger";
 import { notifyLater } from "@/lib/notifications";
 import { releaseBookingHold } from "@/lib/bookings/state";
 import { inBookingQueueEvenIfBusy } from "@/lib/bookings/queue";
-import { recordBusinessMilestone } from "@/lib/business/lifecycle";
+import { activateSubscription } from "@/lib/payments/subscription-settle";
 
 interface PaymobWebhookBody {
   type?: string;
@@ -695,107 +695,11 @@ async function failAndRelease(payment: Payment, reason: string, transactionId: s
 
 // ─── Subscription ─────────────────────────────────────────────────────────────
 
-async function handleSubscriptionSuccess(
+/** Shared with the Stripe webhook: lib/payments/subscription-settle.ts. */
+function handleSubscriptionSuccess(
   payment: Payment,
   transactionId: string,
   obj: PaymobTransactionObj,
 ): Promise<string> {
-  const plan = payment.plan as Plan | null;
-  if (!plan || plan === "FREE") {
-    log.warn("paymob webhook: subscription payment with no plan", { paymentId: payment.id });
-    return "subscription-without-plan";
-  }
-
-  // A holder, because control-flow analysis cannot see that the
-  // settle callback runs before this is read.
-  const period: { until: Date | null } = { until: null };
-
-  const { changed } = await settlePayment({
-    paymentId: payment.id,
-    providerTransactionId: transactionId,
-    method: methodOf(obj),
-    onFirstSettle: async (tx, settled) => {
-      const business = await tx.business.findUniqueOrThrow({
-        where: { id: settled.businessId },
-        select: { plan: true, currentPeriodEnd: true, referredById: true, referralRewardedAt: true },
-      });
-
-      // Extends from whatever is left, not from today — renewing early
-      // used to forfeit the remaining days, which is why the upgrade
-      // route had to refuse renewals more than a week out. Days left on
-      // a cheaper plan are converted at the price difference first, and
-      // a payment that bought a year (periodMonths 12) adds a year.
-      period.until = purchasePeriodEnd({
-        currentPlan: business.plan as Plan,
-        currentEnd: business.currentPeriodEnd,
-        newPlan: plan,
-        months: settled.periodMonths,
-      });
-
-      await tx.business.update({
-        where: { id: settled.businessId },
-        data: {
-          plan,
-          subscriptionStatus: "ACTIVE",
-          currentPeriodEnd: period.until,
-          pendingPlan: null,
-          subscriptionPaymobOrderId: null,
-          subscriptionReminderSentAt: null,
-        },
-      });
-
-      await rewardReferrer(tx, settled.businessId, business);
-    },
-  });
-
-  if (!changed) return "already-settled";
-
-  await recordBusinessMilestone("FIRST_PAID_SUBSCRIPTION", payment.businessId);
-
-  log.info("[paymob webhook] subscription activated", {
-    businessId: payment.businessId,
-    plan,
-    until: period.until?.toISOString(),
-  });
-
-  if (period.until) {
-    notifyLater({
-      type: "subscription.renewed",
-      businessId: payment.businessId,
-      until: period.until,
-    });
-  }
-
-  return "subscription-settled";
-}
-
-/**
- * A business whose referral finally paid gets the referrer 30 days.
- *
- * Inside the settlement transaction, and guarded by referralRewardedAt,
- * so a replay cannot hand out the reward twice.
- */
-async function rewardReferrer(
-  tx: Prisma.TransactionClient,
-  businessId: string,
-  business: { referredById: string | null; referralRewardedAt: Date | null },
-): Promise<void> {
-  if (!business.referredById || business.referralRewardedAt) return;
-
-  const referrer = await tx.business.findUnique({
-    where: { id: business.referredById },
-    select: { id: true, currentPeriodEnd: true },
-  });
-  if (!referrer) return;
-
-  await tx.business.update({
-    where: { id: referrer.id },
-    data: { currentPeriodEnd: renewalPeriodEnd(referrer.currentPeriodEnd) },
-  });
-  await tx.business.update({
-    where: { id: businessId },
-    data: { referralRewardedAt: new Date() },
-  });
-
-  log.info("[referral reward] 30 days added", { referrerId: referrer.id });
+  return activateSubscription(payment, transactionId, methodOf(obj), "paymob");
 }

@@ -24,6 +24,8 @@ interface SubscriptionPanelProps {
   currentPeriodEnd:   string | null; // ISO date string
   effectivePlan:      Plan;
   daysUntilExpiry:    number | null; // null if no expiry date
+  /** Offer "international card" (Stripe) next to Paymob. */
+  stripeAvailable?:   boolean;
 }
 
 const PLAN_ICONS = {
@@ -44,11 +46,15 @@ export default function SubscriptionPanel({
   currentPeriodEnd,
   effectivePlan,
   daysUntilExpiry,
+  stripeAvailable = false,
 }: SubscriptionPanelProps) {
   const [loading, setLoading] = useState<Plan | null>(null);
   const [error,   setError]   = useState<string | null>(null);
   // Applies to renewals too: a year paid up front is ten months' price.
   const [cycle,   setCycle]   = useState<BillingCycle>("monthly");
+  // Paymob takes Egyptian cards, Meeza and wallets; Stripe (when set up)
+  // international cards. The price is the same EGP figure either way.
+  const [provider, setProvider] = useState<"PAYMOB" | "STRIPE">("PAYMOB");
 
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
   const isInactive     = subscriptionStatus === "INACTIVE" && plan !== "FREE";
@@ -63,7 +69,7 @@ export default function SubscriptionPanel({
       const res  = await fetch("/api/business/subscription/upgrade", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ plan: targetPlan, cycle }),
+        body:    JSON.stringify({ plan: targetPlan, cycle, provider: stripeAvailable ? provider : "PAYMOB" }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -94,6 +100,39 @@ export default function SubscriptionPanel({
       {!isTopPlan || isInactive || isExpiringSoon ? (
         <BillingCycleToggle value={cycle} onChange={setCycle} lang="ar" />
       ) : null}
+
+      {/* How to pay — only when there is a choice. */}
+      {stripeAvailable && (!isTopPlan || isInactive || isExpiringSoon) && (
+        <fieldset className="card m-0 p-4">
+          <legend className="px-1 text-sm font-bold text-[var(--color-text-primary)]">طريقة الدفع</legend>
+          <div className="mt-1 grid gap-2 sm:grid-cols-2">
+            {([
+              ["PAYMOB", "كارت مصري أو محفظة", "فيزا وماستركارد وميزة والمحافظ — بالجنيه"],
+              ["STRIPE", "كارت دولي", "كروت من برّه مصر — نفس السعر بالجنيه، والبنك ممكن يحوّل العملة"],
+            ] as const).map(([value, title, hint]) => (
+              <label
+                key={value}
+                className={`flex min-h-11 cursor-pointer items-start gap-2 rounded-[var(--radius-md)] border p-3 text-sm ${
+                  provider === value ? "border-[var(--color-brand)] bg-[var(--color-jade-soft)]" : "border-[var(--color-border)]"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="pay-provider"
+                  value={value}
+                  checked={provider === value}
+                  onChange={() => setProvider(value)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-bold text-[var(--color-text-primary)]">{title}</span>
+                  <span className="block text-xs text-[var(--color-text-muted)]">{hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       {/* Expired / inactive banner */}
       {isInactive && (

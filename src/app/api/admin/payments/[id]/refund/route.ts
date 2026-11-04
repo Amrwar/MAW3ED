@@ -5,6 +5,7 @@ import { log } from "@/lib/logger";
 import { adminNotFound, requireAdminApi } from "@/lib/admin/guard";
 import { recordAudit } from "@/lib/admin/audit";
 import { refundTransaction } from "@/lib/services/paymob";
+import { refundStripePayment } from "@/lib/services/stripe";
 import { formatCents } from "@/lib/payments/money";
 import {
   reserveRefund,
@@ -109,9 +110,13 @@ export async function POST(req: Request, { params }: Params) {
     const outcome =
       payment.provider === "MANUAL"
         ? { ok: true as const, providerRefundId: undefined, error: undefined }
-        : payment.providerTransactionId
-          ? await refundTransaction(payment.providerTransactionId, amount)
-          : { ok: false as const, providerRefundId: undefined, error: "no provider transaction id" };
+        : !payment.providerTransactionId
+          ? { ok: false as const, providerRefundId: undefined, error: "no provider transaction id" }
+          : payment.provider === "STRIPE"
+            ? // The refund row's id keys the request, so a retry of this
+              // same refund can never send the money twice.
+              await refundStripePayment(payment.providerTransactionId, amount, refund.id)
+            : await refundTransaction(payment.providerTransactionId, amount);
 
     // ── 4. Settle the record ──
     if (!outcome.ok && outcome.uncertain) {

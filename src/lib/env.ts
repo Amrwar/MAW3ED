@@ -76,6 +76,8 @@ const optional = z.object({
   PAYMOB_HMAC_SECRET: z.string().optional(),
   PAYMOB_IFRAME_ID: z.string().optional(),
   PAYMOB_INTEGRATION_ID: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
 
   // Local QA only: a stand-in for Paymob's hosted page (paymob-fake.ts).
   // Ignored in production — the code checks NODE_ENV and VERCEL_ENV too.
@@ -218,6 +220,8 @@ export function assertEnv(): void {
 export interface Integrations {
   email: boolean;
   payments: boolean;
+  /** Plan payments by Stripe (lib/services/stripe.ts). */
+  stripe: boolean;
   whatsapp: boolean;
   /** No gateway is wired; the channel is dormant, not broken. */
   sms: boolean;
@@ -241,6 +245,7 @@ export function getIntegrations(): Integrations {
       has("PAYMOB_HMAC_SECRET") &&
       has("PAYMOB_IFRAME_ID") &&
       has("PAYMOB_INTEGRATION_ID"),
+    stripe: has("STRIPE_SECRET_KEY") && has("STRIPE_WEBHOOK_SECRET"),
     whatsapp: has("WHATSAPP_ACCESS_TOKEN") && has("WHATSAPP_PHONE_NUMBER_ID"),
     sms: has("SMS_API_URL") && has("SMS_API_KEY"),
     uploads:
