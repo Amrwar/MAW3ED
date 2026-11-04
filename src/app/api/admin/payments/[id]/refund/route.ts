@@ -5,6 +5,7 @@ import { log } from "@/lib/logger";
 import { adminNotFound, requireAdminApi } from "@/lib/admin/guard";
 import { recordAudit } from "@/lib/admin/audit";
 import { refundTransaction } from "@/lib/services/paymob";
+import { refundStripePayment, stripeRefundedCents } from "@/lib/services/stripe";
 import { formatCents } from "@/lib/payments/money";
 import {
   reserveRefund,
@@ -109,9 +110,13 @@ export async function POST(req: Request, { params }: Params) {
     const outcome =
       payment.provider === "MANUAL"
         ? { ok: true as const, providerRefundId: undefined, error: undefined }
-        : payment.providerTransactionId
-          ? await refundTransaction(payment.providerTransactionId, amount)
-          : { ok: false as const, providerRefundId: undefined, error: "no provider transaction id" };
+        : !payment.providerTransactionId
+          ? { ok: false as const, providerRefundId: undefined, error: "no provider transaction id" }
+          : payment.provider === "STRIPE"
+            ? // The refund row's id keys the request, so a retry of this
+              // same refund can never send the money twice.
+              await refundStripePayment(payment.providerTransactionId, amount, refund.id)
+            : await refundTransaction(payment.providerTransactionId, amount);
 
     // ── 4. Settle the record ──
     if (!outcome.ok && outcome.uncertain) {
@@ -142,6 +147,18 @@ export async function POST(req: Request, { params }: Params) {
       // Hand the reservation back: no money moved, so the headroom
       // must not stay held against a later legitimate refund.
       await releaseRefundReservation(payment.id, amount);
+      // A refund made in the Stripe Dashboard may have been recorded by
+      // the webhook while this one was in flight; subtracting this
+      // reservation could then put the ledger below what Stripe has
+      // actually returned. Raise it back to Stripe's own figure.
+      if (payment.provider === "STRIPE" && payment.providerTransactionId) {
+        const actual = await stripeRefundedCents(payment.providerTransactionId);
+        if (actual !== null) {
+          await db.$executeRaw`
+            UPDATE "Payment" SET "refundedCents" = LEAST("amountCents", ${actual})
+             WHERE "id" = ${payment.id} AND "refundedCents" < ${actual}`;
+        }
+      }
       await db.refund.update({
         where: { id: refund.id },
         data: { status: "FAILED", failureReason: outcome.error?.slice(0, 500) ?? "رفض" },

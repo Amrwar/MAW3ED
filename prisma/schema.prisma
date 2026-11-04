@@ -1179,6 +1179,7 @@ enum PaymentKind {
 enum PaymentProvider {
   PAYMOB
   MANUAL /// taken in person and recorded by the owner
+  STRIPE /// plan payments only, through the owner's Canadian Stripe account (stripe_provider.sql)
 }
 
 enum PaymentMethod {

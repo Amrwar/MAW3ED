@@ -84,6 +84,12 @@ with the same number, unknown order, declined, pending, a reversal
 performed at the provider, an attempt to orphan a payment, five
 concurrent refunds, and the abandoned-checkout reaper.
 
+## Stripe (plan payments only)
+
+Since 2026-11-05 businesses can also pay for their plan by international
+card through Stripe. Design, setup and what was verified:
+`docs/payments-stripe.md`. Booking payments are Paymob only.
+
 ## What nobody has verified
 
 **A real card has never been charged through this system successfully.**
