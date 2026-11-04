@@ -63,13 +63,17 @@ it can no longer be paid.
      `checkout.session.async_payment_succeeded`,
      `checkout.session.async_payment_failed`,
      `checkout.session.expired`, `charge.refunded`
+   - API version: **2026-09-30.endive** (the version the code pins; the
+     webhook payload is rendered in the endpoint's version)
    - copy its **signing secret** (`whsec_…`)
 4. **Vercel → maw-3-ed → Settings → Environment Variables (Production)**:
    `STRIPE_SECRET_KEY` = the restricted key, `STRIPE_WEBHOOK_SECRET` =
    the signing secret. Redeploy. Until both are set the option is hidden
    and the route refuses `provider: "STRIPE"`.
 5. **Payment methods:** chosen in the Stripe Dashboard (Settings → Payment
-   methods); the code does not restrict them.
+   methods); the code does not restrict them. Adaptive Pricing is switched
+   off per session in the code, so every plan is charged in EGP whatever
+   the Dashboard default.
 6. **Test first** in a Stripe sandbox (test keys and a test webhook
    endpoint on a preview or the staging server), then live.
 
@@ -79,8 +83,18 @@ it can no longer be paid.
 |---|---|---|
 | Signature: valid, rolled secrets, tampered body, wrong secret, missing, malformed, replay outside 5 min | `src/lib/services/stripe.test.ts` | PASS |
 | Form encoding of the session request | same | PASS |
-| Webhook on a real database: unsigned refused; paid → plan, receipt, period; redelivery and a second event change nothing; a year is a year; unpaid waits then async decides; failed and expired release the plan; wrong amount or currency never activate; another session ignored; Dashboard refunds recorded once; unknown events ignored | `src/app/api/webhooks/stripe/route.db.test.ts` (QA Postgres) | PASS 9/9 |
+| Webhook on a real database: unsigned refused; paid → plan, receipt, period; redelivery and a second event change nothing; a year is a year; unpaid waits then async decides; failed and expired release the plan; wrong amount or currency never activate; another session ignored; Dashboard refunds recorded once; unknown events ignored | `src/app/api/webhooks/stripe/route.db.test.ts` (QA Postgres) | PASS 10/10 |
 | Paymob unchanged after sharing the settlement code | `src/app/api/webhooks/paymob/route.db.test.ts` | PASS 9/9 |
+
+## Review (high) — 10 findings, all fixed
+
+Uncertain admin refunds settled by `charge.refunded`; Adaptive Pricing off
+(a paid session could otherwise fail the EGP check); Paymob's plan failure
+releases only its own attempt; a refused admin refund resyncs to Stripe's
+figure; no `integration_identifier` (an unknown parameter would fail every
+session); webhook API version documented; a second click reuses the open
+checkout; admin list labels Stripe; unused imports; one definition of
+"configured".
 
 ## Not verified
 

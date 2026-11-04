@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { getIntegrations } from "@/lib/env";
 
 /**
  * Stripe, for plan payments only (a business buying Pro or Premium).
@@ -19,10 +20,14 @@ import { createHmac, timingSafeEqual } from "crypto";
  */
 
 const API = "https://api.stripe.com/v1";
-/** Pinned, so a Dashboard default upgrade cannot change what we parse. */
+/**
+ * Pinned on every request we send. Webhook payloads are rendered in the
+ * webhook ENDPOINT's API version, so the endpoint must be created with this
+ * same version (docs/payments-stripe.md); the handler reads only fields
+ * that are stable across recent versions (id, payment_status, amount_total,
+ * currency, payment_intent, metadata; charge amount_refunded).
+ */
 export const STRIPE_API_VERSION = "2026-09-30.endive";
-/** Tags these sessions in the Dashboard (integration_identifier). */
-const INTEGRATION_ID = "maw3ed-plans-hqtvzmrk";
 /**
  * Sessions expire after an hour: well inside the two hours after which
  * an unanswered payment is reaped (lib/payments/reap.ts), so a session
@@ -30,8 +35,9 @@ const INTEGRATION_ID = "maw3ed-plans-hqtvzmrk";
  */
 export const SESSION_TTL_SECONDS = 60 * 60;
 
+/** One definition of "configured": the integrations list (lib/env.ts). */
 export function stripeEnabled(): boolean {
-  return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET);
+  return getIntegrations().stripe;
 }
 
 /** Stripe's form encoding, nested keys as a[b][c]. */
@@ -55,17 +61,21 @@ export function formEncode(obj: Record<string, unknown>, prefix = ""): string[] 
 }
 
 async function stripePost<T>(path: string, body: Record<string, unknown>, idempotencyKey?: string): Promise<T> {
+  return stripeRequest<T>("POST", path, body, idempotencyKey);
+}
+
+async function stripeRequest<T>(method: "GET" | "POST", path: string, body?: Record<string, unknown>, idempotencyKey?: string): Promise<T> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY is not set");
   const res = await fetch(`${API}${path}`, {
-    method: "POST",
+    method,
     headers: {
       Authorization: `Bearer ${key}`,
-      "Content-Type": "application/x-www-form-urlencoded",
       "Stripe-Version": STRIPE_API_VERSION,
+      ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
       ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
-    body: formEncode(body).join("&"),
+    ...(method === "POST" && body ? { body: formEncode(body).join("&") } : {}),
     signal: AbortSignal.timeout(15_000),
   });
   const json = (await res.json().catch(() => ({}))) as T & { error?: { message?: string; code?: string } };
@@ -125,12 +135,49 @@ export async function createPlanCheckout(params: {
       cancel_url: params.cancelUrl,
       expires_at: Math.floor(now.getTime() / 1000) + SESSION_TTL_SECONDS,
       locale: "auto",
-      integration_identifier: INTEGRATION_ID,
+      // Always EGP: with Adaptive Pricing a foreign card could be shown
+      // and charged in its own currency, and the webhook — which checks
+      // the session against the EGP ledger row — would refuse a payment
+      // that was really made.
+      adaptive_pricing: { enabled: false },
     },
     `maw3ed-plan-${params.paymentId}`,
   );
   if (!session.url || !session.id) throw new Error("stripe returned a session without a url");
   return { url: session.url, sessionId: session.id };
+}
+
+/**
+ * A session the owner already opened, if it can still be paid: a second
+ * click on "upgrade" returns to it rather than opening a second payable
+ * checkout. Null when it is gone, paid or expired, or Stripe cannot say.
+ */
+export async function openCheckoutUrl(sessionId: string): Promise<string | null> {
+  try {
+    const s = await stripeRequest<{ status?: string; url?: string | null }>("GET", `/checkout/sessions/${encodeURIComponent(sessionId)}`);
+    return s.status === "open" && s.url ? s.url : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * What Stripe says has been refunded on a payment, in the payment's minor
+ * unit; null when it cannot be read. Used to resynchronise the ledger
+ * after an admin refund Stripe refused, so a Dashboard refund landing in
+ * between is not lost.
+ */
+export async function stripeRefundedCents(paymentIntentId: string): Promise<number | null> {
+  try {
+    const pi = await stripeRequest<{ latest_charge?: { amount_refunded?: number } | string | null }>(
+      "GET",
+      `/payment_intents/${encodeURIComponent(paymentIntentId)}?expand[]=latest_charge`,
+    );
+    const charge = pi.latest_charge;
+    return charge && typeof charge === "object" && typeof charge.amount_refunded === "number" ? charge.amount_refunded : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

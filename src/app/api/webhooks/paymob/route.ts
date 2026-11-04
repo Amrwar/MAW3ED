@@ -24,7 +24,7 @@
  * https://your-domain/api/webhooks/paymob
  */
 
-import type { Prisma, Payment } from "@prisma/client";
+import type { Payment } from "@prisma/client";
 import { db } from "@/lib/db";
 import { err } from "@/lib/api";
 import { verifyWebhookHmac, type PaymobTransactionObj } from "@/lib/services/paymob";
@@ -35,15 +35,13 @@ import {
   releaseWebhookEvent,
   settlePayment,
 } from "@/lib/payments/ledger";
-import { purchasePeriodEnd, renewalPeriodEnd } from "@/lib/payments/subscription";
 import { bookingMoney, toCents } from "@/lib/payments/money";
 import { classifyCallback, planReversal, shouldReleaseHold } from "@/lib/payments/webhook-rules";
-import type { Plan } from "@/lib/plans";
 import { log } from "@/lib/logger";
 import { notifyLater } from "@/lib/notifications";
 import { releaseBookingHold } from "@/lib/bookings/state";
 import { inBookingQueueEvenIfBusy } from "@/lib/bookings/queue";
-import { activateSubscription } from "@/lib/payments/subscription-settle";
+import { activateSubscription, releasePendingPlan } from "@/lib/payments/subscription-settle";
 
 interface PaymobWebhookBody {
   type?: string;
@@ -641,11 +639,10 @@ async function failAndRelease(payment: Payment, reason: string, transactionId: s
     providerTransactionId: transactionId,
     onFirstFail: async (tx, failed) => {
       if (failed.kind === "SUBSCRIPTION") {
-        // Let go of the pending plan so the owner can try again.
-        await tx.business.update({
-          where: { id: failed.businessId },
-          data: { pendingPlan: null, subscriptionPaymobOrderId: null },
-        });
+        // Let go of the pending plan so the owner can try again — only
+        // this attempt's: a newer one (a Stripe checkout opened since)
+        // stays live.
+        await releasePendingPlan(tx, failed);
         return;
       }
 

@@ -153,8 +153,35 @@ async function onRefund(charge: Charge): Promise<string> {
   const changed = await db.$executeRaw`
     UPDATE "Payment" SET "refundedCents" = ${refunded}
      WHERE "id" = ${payment.id} AND "refundedCents" < ${refunded}`;
-  if (changed === 0) return "refund-already-recorded";
+  // Refunds asked for through /admin/payments whose answer never came
+  // back ("uncertain": the reservation was kept, the row left PENDING) are
+  // settled now that Stripe reports the money as returned — the oldest
+  // first, as far as what Stripe reports covers them.
+  const pending = await db.refund.findMany({
+    where: { paymentId: payment.id, status: "PENDING" },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, amountCents: true },
+  });
+  const confirmedByAdmin = await db.refund.aggregate({
+    where: { paymentId: payment.id, status: "SUCCEEDED" },
+    _sum: { amountCents: true },
+  });
+  let room = refunded - (confirmedByAdmin._sum.amountCents ?? 0);
+  let settled = 0;
+  for (const r of pending) {
+    if (r.amountCents > room) break;
+    await db.refund.update({ where: { id: r.id }, data: { status: "SUCCEEDED", failureReason: null } });
+    room -= r.amountCents;
+    settled++;
+  }
+  if (changed === 0 && settled === 0) {
+    // Nothing new, but the status may still lag a reservation that has
+    // now been confirmed by Stripe's own figure.
+    const p = await db.payment.findUniqueOrThrow({ where: { id: payment.id }, select: { status: true, refundedCents: true } });
+    if (p.status === "SUCCEEDED" && p.refundedCents > 0 && p.refundedCents <= refunded) await markRefundOutcome(payment.id);
+    return "refund-already-recorded";
+  }
   await markRefundOutcome(payment.id);
-  log.warn("[stripe webhook] refund recorded from Stripe", { paymentId: payment.id, refundedCents: refunded });
+  log.warn("[stripe webhook] refund recorded from Stripe", { paymentId: payment.id, refundedCents: refunded, settledPendingRefunds: settled });
   return "refund-recorded";
 }

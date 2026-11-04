@@ -165,6 +165,21 @@ describe.skipIf(!local)("POST /api/webhooks/stripe on a real database", () => {
     expect(await db.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({ refundedCents: 29900, status: "REFUNDED" });
   });
 
+  it("an admin refund left 'uncertain' is settled when Stripe reports the money returned", async () => {
+    const { payment, session } = await pendingPlan();
+    await deliver("checkout.session.completed", session());
+    // What the refund route leaves after a timeout: the reservation kept, the row PENDING.
+    await db.payment.update({ where: { id: payment.id }, data: { refundedCents: 29900 } });
+    const refund = await db.refund.create({
+      data: { paymentId: payment.id, amountCents: 29900, reason: "test", actorId: null, actorName: "admin (test)", status: "PENDING", failureReason: "uncertain: timeout" },
+    });
+    const charge = { id: `ch_${tag}_u`, payment_intent: session().payment_intent, amount: 29900, amount_refunded: 29900, currency: "egp" };
+    expect(await deliver("charge.refunded", charge)).toMatchObject({ status: 200 });
+    expect(await db.refund.findUniqueOrThrow({ where: { id: refund.id } })).toMatchObject({ status: "SUCCEEDED", failureReason: null });
+    expect(await db.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({ refundedCents: 29900, status: "REFUNDED" });
+    await db.refund.deleteMany({ where: { paymentId: payment.id } });
+  });
+
   it("acknowledges events it does not handle without claiming them", async () => {
     expect(await deliver("customer.created", { id: "cus_x" })).toMatchObject({ status: 200, outcome: "ignored" });
   });

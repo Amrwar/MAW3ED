@@ -24,7 +24,7 @@ import { db } from "@/lib/db";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { BILLING_CYCLES, PAID_PLANS, PLAN_NAMES_EN, cycleMonths } from "@/lib/plans";
 import { createSubscriptionPaymentSession } from "@/lib/services/paymob";
-import { createPlanCheckout, stripeEnabled } from "@/lib/services/stripe";
+import { createPlanCheckout, openCheckoutUrl, stripeEnabled, SESSION_TTL_SECONDS } from "@/lib/services/stripe";
 import { siteUrl } from "@/lib/env";
 import { attachProviderOrder, openPayment } from "@/lib/payments/ledger";
 import { canPurchase, priceCentsFor } from "@/lib/payments/subscription";
@@ -75,6 +75,34 @@ export async function POST(req: Request) {
     const ownerName  = owner?.name ?? business.nameAr;
     const ownerPhone = business.phone ?? business.whatsapp ?? "01000000000";
     const amountCents = priceCentsFor(plan, cycle);
+
+    // A second click (or a second tab) on the same purchase goes back to
+    // the checkout already open, rather than opening a second one that
+    // could also be paid.
+    if (provider === "STRIPE") {
+      const recent = await db.payment.findFirst({
+        where: {
+          businessId: business.id,
+          kind: "SUBSCRIPTION",
+          provider: "STRIPE",
+          status: "PENDING",
+          plan,
+          periodMonths: cycleMonths(cycle),
+          providerOrderId: { not: null },
+          createdAt: { gt: new Date(Date.now() - (SESSION_TTL_SECONDS - 120) * 1000) },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { providerOrderId: true },
+      });
+      const url = recent?.providerOrderId ? await openCheckoutUrl(recent.providerOrderId) : null;
+      if (url && recent?.providerOrderId) {
+        await db.business.update({
+          where: { id: business.id },
+          data:  { pendingPlan: plan, subscriptionPaymobOrderId: recent.providerOrderId },
+        });
+        return ok({ paymentUrl: url });
+      }
+    }
 
     // Opened before the owner leaves, so an abandoned upgrade is a
     // PENDING row naming the plan rather than nothing at all.

@@ -153,7 +153,7 @@ export default function PaymentsClient({
               )}
             </span>,
             <span key="m" className="text-[0.6875rem] text-[var(--color-subtle)]">
-              {p.provider === "MANUAL" ? "يدوي" : "Paymob"}
+              {p.provider === "MANUAL" ? "يدوي" : p.provider === "STRIPE" ? "Stripe" : "Paymob"}
               {p.method ? ` · ${METHOD_AR[p.method]}` : ""}
             </span>,
             <span key="s">
