@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { arabicStem, searchTerms } from "./synonyms";
+import { arabicStem, englishSingular, MAX_WORDS, searchTerms } from "./synonyms";
+import { normalizeSearch, SQL_FOLD_FROM, SQL_FOLD_TO } from "./normalize";
 
 describe("arabicStem", () => {
   it("lets singular and plural meet", () => {
@@ -24,7 +25,8 @@ describe("searchTerms", () => {
   });
 
   it("widens a word to the places it names, in both languages", () => {
-    expect(searchTerms("doctor")[0]).toEqual(expect.arrayContaining(["clinic", "عيادة", "دكتور"]));
+    // Alternatives come folded (ة → ه), the spelling the stored names are compared in.
+    expect(searchTerms("doctor")[0]).toEqual(expect.arrayContaining(["clinic", "عياده", "دكتور"]));
     expect(searchTerms("dentist")[0]).toEqual(expect.arrayContaining(["سنان", "teeth"]));
     expect(searchTerms("أسنان")[0]).toEqual(expect.arrayContaining(["dentist"]));
   });
@@ -55,5 +57,49 @@ describe("searchTerms", () => {
 
   it("leaves an unknown word as it is", () => {
     expect(searchTerms("berrygum")).toEqual([["berrygum"]]);
+  });
+});
+
+describe("Arabic folding (Phase 26)", () => {
+  it("folds the spellings people actually type", () => {
+    expect(normalizeSearch("أحمد")).toBe(normalizeSearch("احمد"));
+    expect(normalizeSearch("إسلام")).toBe("اسلام");
+    expect(normalizeSearch("مستشفى")).toBe(normalizeSearch("مستشفي"));
+    expect(normalizeSearch("عيادة")).toBe(normalizeSearch("عياده"));
+    expect(normalizeSearch("عيَادَة")).toBe("عياده");
+    expect(normalizeSearch("عيـــادة")).toBe("عياده");
+    expect(normalizeSearch("المعادى")).toBe("المعادي");
+    expect(normalizeSearch("مؤسسة")).toBe("موسسه");
+    expect(normalizeSearch("٢٠٢٦ ۱۲")).toBe("2026 12");
+    expect(normalizeSearch("  Dr.   HANEM ")).toBe("dr. hanem");
+    expect(normalizeSearch(null)).toBe("");
+  });
+
+  it("the TypeScript and SQL fold tables are the same table", () => {
+    expect([...SQL_FOLD_FROM].length).toBe([...SQL_FOLD_TO].length);
+    for (const [i, c] of [...SQL_FOLD_FROM].entries()) expect(normalizeSearch(c)).toBe([...SQL_FOLD_TO][i]);
+  });
+
+  it("a query is folded before it is widened", () => {
+    expect(searchTerms("احمد")).toEqual([["احمد"]]);
+    expect(searchTerms("أحمد")).toEqual([["احمد"]]);
+    expect(searchTerms("اسنان")[0]).toEqual(expect.arrayContaining(["dentist"]));
+    expect(searchTerms("عياده")[0]).toEqual(expect.arrayContaining(["doctor"]));
+  });
+
+  it("caps the number of words", () => {
+    expect(searchTerms("a b c d e f g h")).toHaveLength(MAX_WORDS);
+  });
+});
+
+describe("englishSingular", () => {
+  it("widens plurals to the singular, leaves the rest", () => {
+    expect(englishSingular("clinics")).toBe("clinic");
+    expect(englishSingular("therapies")).toBe("therapy");
+    expect(englishSingular("glass")).toBeNull();
+    expect(englishSingular("campus")).toBeNull();
+    expect(englishSingular("gas")).toBeNull();
+    expect(englishSingular("عيادات")).toBeNull();
+    expect(searchTerms("physiotherapists")[0]).toContain("physiotherapist");
   });
 });

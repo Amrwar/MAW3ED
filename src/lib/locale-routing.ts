@@ -28,6 +28,13 @@ import { hasTwin, localizePath, splitLang } from "@/lib/locale-path";
  *                      a single-address one (and for posts).
  */
 export type LocaleAction =
+  /**
+   * Always temporary (307). Phase 26 tried 308 for /ar/x and ?lang=, but
+   * those redirects also save the language (`remember`), and a browser
+   * replays a cached 308 without asking the server — so a later /ar/ link
+   * opened after switching to English would land in English. The
+   * canonical tags already tell search engines which address to index.
+   */
   | { type: "redirect"; to: string; remember?: Lang }
   | { type: "rewrite"; to: string; lang: Lang; remember?: Lang }
   | { type: "next"; lang: Lang };
@@ -55,7 +62,18 @@ export function routeLocale({
   const { lang: urlLang, path } = splitLang(pathname);
   const twin = hasTwin(path);
 
-  if (urlLang === "ar") return { type: "redirect", to: path + search, remember: "ar" };
+  if (urlLang === "ar") {
+    // One hop, even when a ?lang= rides along: /ar/x?lang=en goes to
+    // /en/x directly rather than via /x?lang=en.
+    const params = new URLSearchParams(search);
+    const asked = params.get("lang");
+    if (twin && read && (asked === "en" || asked === "ar")) {
+      params.delete("lang");
+      const rest = params.size ? `?${params}` : "";
+      return { type: "redirect", to: localizePath(path, asked) + rest, remember: asked };
+    }
+    return { type: "redirect", to: path + search, remember: "ar" };
+  }
   if (urlLang === "en" && !twin) return { type: "redirect", to: path + search, remember: "en" };
 
   if (read && twin) {

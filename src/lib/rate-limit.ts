@@ -114,9 +114,18 @@ export const RULES = {
   accessWebhookInvalid: { limit: 30, windowSeconds: 60 * 60 },
   // The venue security desk's holds, reinstatements and escalations, per account.
   accessOverride: { limit: 60, windowSeconds: 60 * 60 },
+  // Funnel steps reported by a browser, per step, subject and address —
+  // the shape of profileView: per address alone, one carrier NAT shared
+  // by thousands of phones would stop counting after a few dozen.
+  funnel: { limit: 60, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type Bucket = keyof typeof RULES;
+
+/** The keyed hash, for other counters that must not store what they key on (lib/analytics/funnel.ts). */
+export function keyedHash(value: string): string {
+  return hashIdentifier(value);
+}
 
 function hashIdentifier(value: string): string {
   const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";

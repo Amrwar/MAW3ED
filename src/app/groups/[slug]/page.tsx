@@ -7,9 +7,10 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Breadcrumbs from "@/components/shared/Breadcrumbs";
 import RecordView from "@/features/company/RecordView";
+import FunnelView from "@/components/shared/FunnelView";
 import { getLang } from "@/lib/lang-server";
 import { buildMetadata, notFoundMetadata } from "@/lib/seo/meta";
-import { buildBreadcrumbJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
+import { buildBreadcrumbJsonLd, buildItemListJsonLd, buildOrganizationJsonLd } from "@/lib/jsonld";
 import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { requestNonce } from "@/lib/security/nonce";
 import { resolveSource } from "@/lib/attribution/source";
@@ -317,7 +318,13 @@ export default async function GroupPage({ params, searchParams }: Props) {
         </div>
       </main>
       <Footer />
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(buildOrganizationJsonLd(org)) }}
+      />
       <RecordView slug={org.slug} source={source} endpoint={`/api/public/groups/${encodeURIComponent(org.slug)}/view`} />
+      <FunnelView step="ORGANIZATION_VIEW" org={org.slug} />
       <script
         type="application/ld+json"
         nonce={nonce}

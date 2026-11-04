@@ -43,3 +43,20 @@ describe("buildLocalBusinessJsonLd", () => {
     ).toBe("500 EGP");
   });
 });
+
+describe("organization and venue JSON-LD (Phase 26)", () => {
+  it("a mall is a ShoppingCenter with absolute sameAs links and no rating", async () => {
+    const { buildOrganizationJsonLd } = await import("./jsonld");
+    const ld = buildOrganizationJsonLd({
+      slug: "m", kind: "MALL", nameAr: "مول", nameEn: "Mall",
+      website: "www.example.com", instagram: "@mall", facebook: "https://facebook.com/mall",
+    });
+    expect(ld["@type"]).toBe("ShoppingCenter");
+    expect(ld.sameAs).toEqual(["https://www.example.com/", "https://instagram.com/mall", "https://facebook.com/mall"]);
+    expect(JSON.stringify(ld)).not.toMatch(/aggregateRating|reviewCount/);
+  });
+  it("drops a website that is not one", async () => {
+    const { buildOrganizationJsonLd } = await import("./jsonld");
+    expect(buildOrganizationJsonLd({ slug: "g", kind: "BUSINESS_GROUP", nameAr: "ج", nameEn: null, website: "not a site" }).sameAs).toBeUndefined();
+  });
+});

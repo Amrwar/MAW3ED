@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { getLang } from "@/lib/lang-server";
 import { buildMetadata } from "@/lib/seo/meta";
+import { translations } from "@/lib/i18n";
+import { jsonLdScript } from "@/lib/seo/jsonld-script";
+import { requestNonce } from "@/lib/security/nonce";
 
 /** Client page, so the metadata lives here. See the pricing layout. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -20,6 +23,34 @@ export async function generateMetadata(): Promise<Metadata> {
       });
 }
 
-export default function FaqLayout({ children }: { children: React.ReactNode }) {
-  return children;
+/**
+ * FAQPage structured data: the same questions and answers the page shows,
+ * in the page's language, from the same translations. Nothing here the
+ * reader cannot see.
+ */
+export default async function FaqLayout({ children }: { children: React.ReactNode }) {
+  const [lang, nonce] = await Promise.all([getLang(), requestNonce()]);
+  const f = translations[lang].faq;
+  const items = [...f.items, ...f.customerItems, ...f.businessItems];
+  return (
+    <>
+      {children}
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        dangerouslySetInnerHTML={{
+          __html: jsonLdScript({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            inLanguage: lang,
+            mainEntity: items.map((i) => ({
+              "@type": "Question",
+              name: i.q,
+              acceptedAnswer: { "@type": "Answer", text: i.a },
+            })),
+          }),
+        }}
+      />
+    </>
+  );
 }

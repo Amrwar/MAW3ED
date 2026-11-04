@@ -15,6 +15,7 @@ vi.mock("@/lib/db", () => ({ db: { business } }));
 vi.mock("@/lib/notifications", () => ({ notify: (event: unknown) => notify(event) }));
 vi.mock("@/lib/security/cron-auth", () => ({ authorizeCron: () => ({ ok: true }) }));
 vi.mock("@/lib/rate-limit", () => ({ pruneRateLimits: async () => 0 }));
+vi.mock("@/lib/analytics/funnel", () => ({ pruneFunnelSeen: async () => 0 }));
 vi.mock("@/lib/logger", () => ({ log: { info: () => undefined, error: () => undefined, warn: () => undefined } }));
 
 import { GET } from "./route";

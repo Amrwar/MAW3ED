@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useId } from "react";
 import type { TrafficSource } from "@prisma/client";
+import { useFunnelStep } from "@/lib/analytics/funnel-client";
 import {
   ChevronRight, ChevronLeft, CheckCircle,
   Loader2, CalendarDays, Clock, Check, Users, Scissors,
@@ -437,6 +438,15 @@ export default function BookingWidget({
   );
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  // The booking funnel (lib/analytics/funnel-client.ts): each step once
+  // per tab and day, credited to the organization only if the server
+  // finds this business listed in it. Confirmation is not reported from
+  // here — it is read from the booking itself.
+  const funnelCtx = { business: slug, org: fromOrganization };
+  useFunnelStep("SERVICE_SELECTED", funnelCtx, selectedService !== null);
+  useFunnelStep("BOOKING_STARTED", funnelCtx, selectedService !== null && step !== "service");
+  useFunnelStep("TIME_SELECTED", funnelCtx, selectedTime !== null);
 
   /**
    * One key per attempt at this booking, minted when the summary is

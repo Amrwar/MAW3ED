@@ -226,3 +226,140 @@ export function buildItemListJsonLd(
     })),
   };
 }
+
+/* ─── Phase 26: organizations and venues ─────────────────────────────── */
+
+/** A handle or a link, as an owner typed it, as a full profile URL. */
+function profileUrl(base: string, value: string | null | undefined): string | undefined {
+  const v = value?.trim();
+  if (!v) return undefined;
+  if (/^https?:\/\//i.test(v)) return v;
+  return `${base}/${v.replace(/^@/, "")}`;
+}
+
+/** An owner's website as an absolute URL ("example.com" → "https://example.com"); undefined if it is not one. */
+function websiteUrl(value: string | null | undefined): string | undefined {
+  const v = value?.trim();
+  if (!v) return undefined;
+  try {
+    const u = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
+    return u.hostname.includes(".") ? u.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function hasValue<T>(v: T | undefined | null | ""): v is T {
+  return v !== undefined && v !== null && v !== "";
+}
+
+/**
+ * An organization page: a mall is a ShoppingCenter, anything else an
+ * Organization. Only what the owner entered and the page shows — no
+ * rating, no review count, no business count (the ItemList on the page
+ * lists the businesses themselves).
+ */
+export function buildOrganizationJsonLd(o: {
+  slug: string;
+  kind: string;
+  nameAr: string;
+  nameEn: string | null;
+  descriptionAr?: string | null;
+  logoImage?: string | null;
+  coverImage?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  website?: string | null;
+  instagram?: string | null;
+  facebook?: string | null;
+  city?: { nameAr: string; nameEn: string | null } | null;
+  parent?: { slug: string; nameAr: string } | null;
+  children?: { slug: string; nameAr: string }[];
+}): Record<string, unknown> {
+  const url = `${BASE_URL}/groups/${o.slug}`;
+  const sameAs = [
+    websiteUrl(o.website),
+    profileUrl("https://instagram.com", o.instagram),
+    profileUrl("https://facebook.com", o.facebook),
+  ].filter(hasValue);
+  const address =
+    o.address || o.city
+      ? {
+          "@type": "PostalAddress",
+          ...(o.address ? { streetAddress: o.address } : {}),
+          ...(o.city ? { addressLocality: o.city.nameAr } : {}),
+          addressCountry: "EG",
+        }
+      : undefined;
+  return {
+    "@context": "https://schema.org",
+    "@type": o.kind === "MALL" ? "ShoppingCenter" : "Organization",
+    "@id": `${url}#organization`,
+    name: o.nameAr,
+    ...(o.nameEn ? { alternateName: o.nameEn } : {}),
+    url,
+    ...(o.descriptionAr?.trim() ? { description: o.descriptionAr.trim() } : {}),
+    ...(o.logoImage ? { logo: o.logoImage } : {}),
+    ...(o.coverImage || o.logoImage ? { image: o.coverImage ?? o.logoImage } : {}),
+    ...(o.phone ? { telephone: o.phone } : {}),
+    ...(address ? { address } : {}),
+    ...(sameAs.length ? { sameAs } : {}),
+    ...(o.parent ? { parentOrganization: { "@type": "Organization", name: o.parent.nameAr, url: `${BASE_URL}/groups/${o.parent.slug}` } } : {}),
+    ...(o.children?.length
+      ? { subOrganization: o.children.map((c) => ({ "@type": "Organization", name: c.nameAr, url: `${BASE_URL}/groups/${c.slug}` })) }
+      : {}),
+  };
+}
+
+/**
+ * A venue page: a mall is a ShoppingCenter, anything else a Place, with
+ * the address, the pin and the weekly hours its operator set.
+ */
+export function buildVenueJsonLd(v: {
+  slug: string;
+  kind: string;
+  nameAr: string;
+  nameEn: string | null;
+  descriptionAr?: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone?: string | null;
+  coverImage?: string | null;
+  logoImage?: string | null;
+  city: { nameAr: string };
+  hours: { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }[];
+}): Record<string, unknown> {
+  const url = `${BASE_URL}/venues/${v.slug}`;
+  const open = v.hours.filter((h) => !h.isClosed);
+  return {
+    "@context": "https://schema.org",
+    "@type": v.kind === "MALL" ? "ShoppingCenter" : "Place",
+    "@id": `${url}#place`,
+    name: v.nameAr,
+    ...(v.nameEn ? { alternateName: v.nameEn } : {}),
+    url,
+    ...(v.descriptionAr?.trim() ? { description: v.descriptionAr.trim() } : {}),
+    ...(v.coverImage || v.logoImage ? { image: v.coverImage ?? v.logoImage } : {}),
+    ...(v.phone ? { telephone: v.phone } : {}),
+    address: {
+      "@type": "PostalAddress",
+      ...(v.address ? { streetAddress: v.address } : {}),
+      addressLocality: v.city.nameAr,
+      addressCountry: "EG",
+    },
+    ...(v.latitude !== null && v.longitude !== null
+      ? { geo: { "@type": "GeoCoordinates", latitude: v.latitude, longitude: v.longitude } }
+      : {}),
+    ...(open.length
+      ? {
+          openingHoursSpecification: open.map((h) => ({
+            "@type": "OpeningHoursSpecification",
+            dayOfWeek: `https://schema.org/${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][h.dayOfWeek]}`,
+            opens: h.openTime,
+            closes: h.closeTime,
+          })),
+        }
+      : {}),
+  };
+}

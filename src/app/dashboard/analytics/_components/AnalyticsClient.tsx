@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import KPICards        from "./KPICards";
@@ -38,10 +38,12 @@ function presetRange(p: Preset): { from: string; to: string } {
 
 interface Props {
   initial: AnalyticsPayload;
+  /** The range `initial` was computed for (this month in Cairo). */
+  initialRange: { from: string; to: string };
 }
 
-export default function AnalyticsClient({ initial }: Props) {
-  const { t }  = useLanguage();
+export default function AnalyticsClient({ initial, initialRange }: Props) {
+  const { t, lang } = useLanguage();
   const an     = t.dashboard.analytics;
 
   const PRESETS: Array<{ key: Preset; label: string }> = [
@@ -52,26 +54,39 @@ export default function AnalyticsClient({ initial }: Props) {
   ];
 
   const [preset,  setPreset]  = useState<Preset>("thisMonth");
-  const [from,    setFrom]    = useState(() => presetRange("thisMonth").from);
-  const [to,      setTo]      = useState(() => presetRange("thisMonth").to);
+  const [from,    setFrom]    = useState(initialRange.from);
+  const [to,      setTo]      = useState(initialRange.to);
   const [data,    setData]    = useState<AnalyticsPayload>(initial);
   // The range whose figures are on screen; loading until it matches.
-  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  // The server already computed the first range: no second fetch for it.
+  const [loadedKey, setLoadedKey] = useState<string | null>(`${initialRange.from}|${initialRange.to}`);
+  const loadedKeyRef = useRef(loadedKey);
+  const [failed, setFailed] = useState(false);
   const rangeKey = `${from}|${to}`;
   const loading  = loadedKey !== rangeKey;
 
   useEffect(() => {
+    if (loadedKeyRef.current === `${from}|${to}`) return;
     let stale = false;
     fetch(`/api/business/analytics?from=${from}&to=${to}`)
       .then(async (res) => {
-        const json = await res.json();
-        if (!stale && res.ok) setData(json);
+        const json = await res.json().catch(() => null);
+        if (stale) return;
+        // A refused range (too long, malformed) must not leave the last
+        // range's figures under the new range's heading.
+        if (res.ok && json) {
+          setData(json);
+          setFailed(false);
+        } else setFailed(true);
       })
       .catch(() => {
-        // keep previous data
+        if (!stale) setFailed(true);
       })
       .finally(() => {
-        if (!stale) setLoadedKey(`${from}|${to}`);
+        if (!stale) {
+          loadedKeyRef.current = `${from}|${to}`;
+          setLoadedKey(`${from}|${to}`);
+        }
       });
     return () => {
       stale = true;
@@ -149,6 +164,13 @@ export default function AnalyticsClient({ initial }: Props) {
 
       {/* KPI cards */}
       <div style={{ opacity: loading ? 0.6 : 1, transition: "opacity 0.2s" }}>
+        {failed && (
+          <p role="alert" className="m-0 rounded-[var(--radius-md)] border border-[var(--color-warn-line)] bg-[var(--color-warn-soft)] px-4 py-3 text-sm">
+            {lang === "en"
+              ? "These figures could not be loaded for this period (a year at most). Showing the previous period."
+              : "مقدرناش نجيب أرقام الفترة دي (أقصاها سنة). اللي ظاهر هو الفترة اللي قبلها."}
+          </p>
+        )}
         <KPICards kpis={data.kpis} />
       </div>
 

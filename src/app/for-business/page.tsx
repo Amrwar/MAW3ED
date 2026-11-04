@@ -4,6 +4,7 @@ import { buildMetadata } from "@/lib/seo/meta";
 import { db } from "@/lib/db";
 import { getPlatformReach, SHOW_COUNTS_FROM } from "@/lib/data";
 import ForBusinessContent from "./_components/ForBusinessContent";
+import FunnelView from "@/components/shared/FunnelView";
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getLang();
@@ -50,18 +51,21 @@ export default async function ForBusinessPage() {
   ]);
 
   return (
-    <ForBusinessContent
-      total={total >= SHOW_COUNTS_FROM ? total : null}
-      businesses={businesses.map((b) => ({
-        slug: b.slug,
-        nameAr: b.nameAr,
-        nameEn: b.nameEn,
-        logoImage: b.logoImage,
-        categoryAr: b.category.nameAr,
-        categoryEn: b.category.nameEn,
-        cityAr: b.city.nameAr,
-        cityEn: b.city.nameEn,
-      }))}
-    />
+    <>
+      <FunnelView step="FOR_BUSINESS_VIEW" />
+      <ForBusinessContent
+        total={total >= SHOW_COUNTS_FROM ? total : null}
+        businesses={businesses.map((b) => ({
+          slug: b.slug,
+          nameAr: b.nameAr,
+          nameEn: b.nameEn,
+          logoImage: b.logoImage,
+          categoryAr: b.category.nameAr,
+          categoryEn: b.category.nameEn,
+          cityAr: b.city.nameAr,
+          cityEn: b.city.nameEn,
+        }))}
+      />
+    </>
   );
 }

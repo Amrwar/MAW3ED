@@ -7,8 +7,10 @@ import { redirect } from "next/navigation";
 import { requestNonce } from "@/lib/security/nonce";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { discoveryHref, parseDiscoveryQuery } from "@/lib/discovery/params";
+import { PAGE_SIZE, discoveryHref, parseDiscoveryQuery } from "@/lib/discovery/params";
 import { getFacets, searchBusinesses } from "@/lib/discovery/search";
+import { searchPlaces } from "@/lib/discovery/places";
+import { siteUrl } from "@/lib/url";
 import { translations } from "@/lib/i18n";
 import BusinessesClient from "./_components/BusinessesClient";
 
@@ -56,9 +58,12 @@ export default async function BusinessesPage({ searchParams }: Props) {
 
   // Facets are scoped to the chosen city so the neighbourhood list is
   // only fetched when it can be shown.
-  const [result, facets] = await Promise.all([
+  // Malls, groups and venues matching the words, on the first page of a
+  // search only (lib/discovery/places.ts).
+  const [result, facets, places] = await Promise.all([
     searchBusinesses(query),
     getFacets(query.city || undefined),
+    query.q && query.page === 1 ? searchPlaces(query.q) : Promise.resolve([]),
   ]);
 
   // Past the last page — an old link, a hand-edited URL — the grid was
@@ -79,6 +84,7 @@ export default async function BusinessesPage({ searchParams }: Props) {
           pageCount={result.pageCount}
           facets={facets}
           priceBounds={result.priceBounds}
+          places={places}
         />
       </main>
       <Footer />
@@ -93,11 +99,15 @@ export default async function BusinessesPage({ searchParams }: Props) {
             "@context": "https://schema.org",
             "@type": "ItemList",
             name: t.businesses.pageTitle,
-            numberOfItems: result.total,
+            // The list holds this page's businesses, so it counts them —
+            // not the whole catalogue it does not contain.
+            numberOfItems: result.businesses.length,
             itemListElement: result.businesses.map((b, i) => ({
               "@type": "ListItem",
-              position: (query.page - 1) * result.businesses.length + i + 1,
-              url: `/company/${b.slug}`,
+              // By the page size, not this page's length: the last page
+              // is shorter, and its positions still follow on.
+              position: (query.page - 1) * PAGE_SIZE + i + 1,
+              url: siteUrl(`/company/${b.slug}`),
               name: lang === "en" && b.nameEn ? b.nameEn : b.nameAr,
             })),
           }),

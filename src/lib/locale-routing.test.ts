@@ -62,3 +62,23 @@ describe("routeLocale", () => {
     expect(get("/sitemap.xml", "", "en")).toEqual({ type: "next", lang: "en" });
   });
 });
+
+describe("redirects (Phase 26)", () => {
+  const go = (pathname: string, search = "", cookieLang?: string) =>
+    routeLocale({ pathname, search, method: "GET", cookieLang });
+  it("every language redirect is temporary: each one may save a choice a cached 308 would skip", () => {
+    for (const r of [go("/ar/faq"), go("/faq", "?lang=en"), go("/faq", "", "en"), go("/en/dashboard")]) {
+      expect(r.type).toBe("redirect");
+      expect(r).not.toHaveProperty("permanent");
+    }
+  });
+  it("never redirects to itself: following a redirect once lands where no redirect is left", () => {
+    for (const [p, q, c] of [["/ar/faq", "", undefined], ["/faq", "?lang=en", undefined], ["/faq", "", "en"], ["/en/dashboard", "", "en"], ["/ar", "?lang=en", undefined]] as const) {
+      const first = go(p, q, c);
+      if (first.type !== "redirect") continue;
+      const u = new URL(first.to, "https://x.test");
+      const second = go(u.pathname, u.search, first.remember ?? c);
+      expect(second.type, `${p}${q} → ${first.to}`).not.toBe("redirect");
+    }
+  });
+});

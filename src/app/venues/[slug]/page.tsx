@@ -7,7 +7,7 @@ import Footer from "@/components/layout/Footer";
 import Breadcrumbs from "@/components/shared/Breadcrumbs";
 import { getLang } from "@/lib/lang-server";
 import { buildMetadata, notFoundMetadata } from "@/lib/seo/meta";
-import { buildBreadcrumbJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
+import { buildBreadcrumbJsonLd, buildItemListJsonLd, buildVenueJsonLd } from "@/lib/jsonld";
 import { jsonLdScript } from "@/lib/seo/jsonld-script";
 import { requestNonce } from "@/lib/security/nonce";
 import { loadPublicVenue, filterDirectory, directoryCategories } from "@/lib/venues/public";
@@ -337,6 +337,11 @@ export default async function VenuePage({ params, searchParams }: Props) {
         </div>
       </main>
       <Footer />
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(buildVenueJsonLd(venue)) }}
+      />
       <script
         type="application/ld+json"
         nonce={nonce}

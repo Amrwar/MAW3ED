@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFunnelStep } from "@/lib/analytics/funnel-client";
 import Link from "@/components/shared/LocaleLink";
 import { Check, Minus, Zap, Crown, Sparkles, ChevronDown, MessageCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
@@ -103,6 +104,7 @@ export default function PricingPage() {
   const { t, lang } = useLanguage();
   const p    = t.pricing;
   const isAr = lang === "ar";
+  useFunnelStep("PRICING_VIEW");
 
   // One row per entitlement, per plan, already worded and counted.
   const rowsFor = (planId: PlanId) => featureRows(planId);

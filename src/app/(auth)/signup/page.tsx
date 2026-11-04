@@ -13,6 +13,7 @@ import { signUpSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { localizePath } from "@/lib/locale-path";
+import { useFunnelStep } from "@/lib/analytics/funnel-client";
 import Alert from "@/components/ui/Alert";
 
 const formSchema = signUpSchema.extend({
@@ -32,6 +33,9 @@ export default function SignupPage() {
   // onSubmit; with method="post" nothing would land in the URL anyway,
   // but the credentials should not leave the page at all.
   const hydrated = useMounted();
+  // The acquisition funnel: the form was reached. Registering is counted
+  // from the account itself (LifecycleEvent BUSINESS_REGISTERED).
+  useFunnelStep("SIGNUP_VIEW");
   const s = t.auth.signup;
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);

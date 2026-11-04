@@ -5,6 +5,7 @@ import { localizePath } from "@/lib/locale-path";
 import { siteUrl } from "@/lib/url";
 import { listPublicVenues } from "@/lib/venues/public";
 import { listPublicOrganizations } from "@/lib/organizations/public";
+import { HELP_ARTICLES } from "@/lib/help/articles";
 import {
   getLandingCategories,
   getLandingCities,
@@ -58,7 +59,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     prerenderHints("published businesses", () =>
       db.business.findMany({
         where: { isPublished: true },
-        select: { slug: true, updatedAt: true },
+        select: {
+          slug: true,
+          updatedAt: true,
+          city: { select: { slug: true } },
+          category: { select: { slug: true } },
+        },
         orderBy: { updatedAt: "desc" },
       }),
     ),
@@ -70,32 +76,50 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     prerenderHints("published organizations", async () => (await listPublicOrganizations()).filter((o) => o.businesses > 0)),
   ]);
 
-  const now = new Date();
+  // lastModified is a claim that a page changed. "Now" on every hourly
+  // regeneration claimed everything always had; a crawler learns to
+  // ignore that. A listing page changed when the newest of the
+  // businesses it lists changed; a page without such a date says
+  // nothing rather than something false.
+  const newest = (key: (b: (typeof businesses)[number]) => string | null) => {
+    const m = new Map<string, Date>();
+    for (const b of businesses) {
+      const k = key(b);
+      if (k !== null && (!m.has(k) || b.updatedAt > m.get(k)!)) m.set(k, b.updatedAt);
+    }
+    return m;
+  };
+  const anyBusiness = businesses[0]?.updatedAt; // ordered newest first
+  const byCity = newest((b) => b.city.slug);
+  const byCategory = newest((b) => b.category.slug);
+  const byCombo = newest((b) => `${b.city.slug}/${b.category.slug}`);
 
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: siteUrl("/"), lastModified: now, changeFrequency: "daily", priority: 1.0 },
-    { url: siteUrl("/businesses"), lastModified: now, changeFrequency: "daily", priority: 0.9 },
-    { url: siteUrl("/categories"), lastModified: now, changeFrequency: "weekly", priority: 0.6 },
-    { url: siteUrl("/cities"), lastModified: now, changeFrequency: "weekly", priority: 0.6 },
-    { url: siteUrl("/for-business"), lastModified: now, changeFrequency: "monthly", priority: 0.6 },
-    { url: siteUrl("/pricing"), lastModified: now, changeFrequency: "monthly", priority: 0.5 },
-    { url: siteUrl("/faq"), lastModified: now, changeFrequency: "monthly", priority: 0.4 },
-    { url: siteUrl("/contact"), lastModified: now, changeFrequency: "yearly", priority: 0.3 },
-    { url: siteUrl("/terms"), lastModified: now, changeFrequency: "yearly", priority: 0.2 },
-    { url: siteUrl("/privacy"), lastModified: now, changeFrequency: "yearly", priority: 0.2 },
-    { url: siteUrl("/account-deletion"), lastModified: now, changeFrequency: "yearly", priority: 0.2 },
+    { url: siteUrl("/"), lastModified: anyBusiness, changeFrequency: "daily", priority: 1.0 },
+    { url: siteUrl("/businesses"), lastModified: anyBusiness, changeFrequency: "daily", priority: 0.9 },
+    { url: siteUrl("/categories"), lastModified: anyBusiness, changeFrequency: "weekly", priority: 0.6 },
+    { url: siteUrl("/cities"), lastModified: anyBusiness, changeFrequency: "weekly", priority: 0.6 },
+    { url: siteUrl("/for-business"), changeFrequency: "monthly", priority: 0.6 },
+    { url: siteUrl("/pricing"), changeFrequency: "monthly", priority: 0.5 },
+    { url: siteUrl("/faq"), changeFrequency: "monthly", priority: 0.4 },
+    { url: siteUrl("/help"), changeFrequency: "monthly", priority: 0.4 },
+    ...HELP_ARTICLES.map((a) => ({ url: siteUrl(`/help/${a.slug}`), changeFrequency: "monthly" as const, priority: 0.3 })),
+    { url: siteUrl("/contact"), changeFrequency: "yearly", priority: 0.3 },
+    { url: siteUrl("/terms"), changeFrequency: "yearly", priority: 0.2 },
+    { url: siteUrl("/privacy"), changeFrequency: "yearly", priority: 0.2 },
+    { url: siteUrl("/account-deletion"), changeFrequency: "yearly", priority: 0.2 },
   ];
 
   const cityRoutes: MetadataRoute.Sitemap = cities.map((c) => ({
     url: siteUrl(`/cities/${c.slug}`),
-    lastModified: now,
+    lastModified: byCity.get(c.slug),
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }));
 
   const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
     url: siteUrl(`/categories/${c.slug}`),
-    lastModified: now,
+    lastModified: byCategory.get(c.slug),
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }));
@@ -107,7 +131,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
    */
   const comboRoutes: MetadataRoute.Sitemap = combos.map((c) => ({
     url: siteUrl(`/${c.citySlug}/${c.categorySlug}`),
-    lastModified: now,
+    lastModified: byCombo.get(`${c.citySlug}/${c.categorySlug}`),
     changeFrequency: "weekly" as const,
     // Above the broader city and category pages: more specific, and
     // the only page on the site that matches that search exactly.
@@ -116,7 +140,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const venueRoutes: MetadataRoute.Sitemap = venues.length
     ? [
-        { url: siteUrl("/venues"), lastModified: now, changeFrequency: "weekly" as const, priority: 0.6 },
+        { url: siteUrl("/venues"), lastModified: latest(venues.map((v) => v.updatedAt)), changeFrequency: "weekly" as const, priority: 0.6 },
         ...venues.map((v) => ({
           url: siteUrl(`/venues/${v.slug}`),
           lastModified: new Date(v.updatedAt),
@@ -128,7 +152,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const organizationRoutes: MetadataRoute.Sitemap = organizations.length
     ? [
-        { url: siteUrl("/groups"), lastModified: now, changeFrequency: "weekly" as const, priority: 0.6 },
+        { url: siteUrl("/groups"), lastModified: latest(organizations.map((o) => o.updatedAt)), changeFrequency: "weekly" as const, priority: 0.6 },
         ...organizations.map((o) => ({
           url: siteUrl(`/groups/${o.slug}`),
           lastModified: new Date(o.updatedAt),
@@ -154,6 +178,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...organizationRoutes,
     ...businessRoutes,
   ]);
+}
+
+/** The newest of some ISO timestamps, or undefined for none. */
+function latest(isos: string[]): Date | undefined {
+  return isos.length ? new Date(Math.max(...isos.map((i) => Date.parse(i)))) : undefined;
 }
 
 /** Each Arabic entry, followed by its English twin; both name both. */

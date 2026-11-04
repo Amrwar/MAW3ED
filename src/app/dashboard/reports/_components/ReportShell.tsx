@@ -14,6 +14,7 @@ const TABS = [
   { href: "/dashboard/reports/bookings", ar: "الحجوزات", en: "Bookings" },
   { href: "/dashboard/reports/customers", ar: "العملاء", en: "Customers" },
   { href: "/dashboard/reports/performance", ar: "الأداء", en: "Performance" },
+  { href: "/dashboard/reports/funnel", ar: "رحلة الحجز", en: "Booking funnel" },
 ];
 
 const PERIODS = [7, 30, 90, 365];
