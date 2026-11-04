@@ -73,7 +73,6 @@ export function reportFunnelStep(step: FunnelStep, ctx: FunnelContext = {}): voi
     if (!s) return;
     const sentKey = `${SENT_PREFIX}${step}|${ctx.business ?? ""}|${ctx.org ?? ""}|${cairoToday()}`;
     if (s.getItem(sentKey)) return;
-    s.setItem(sentKey, "1");
 
     const body = JSON.stringify({
       step,
@@ -83,8 +82,19 @@ export function reportFunnelStep(step: FunnelStep, ctx: FunnelContext = {}): voi
       org: ctx.org ?? null,
     });
     const url = "/api/public/funnel";
-    if (navigator.sendBeacon?.(url, new Blob([body], { type: "application/json" }))) return;
-    void fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
+    // Marked as sent only once a request is on its way: a beacon that
+    // throws (some browsers refuse a JSON Blob) falls back to fetch
+    // instead of silently losing the step for the rest of the day.
+    let queued = false;
+    try {
+      queued = navigator.sendBeacon?.(url, new Blob([body], { type: "application/json" })) ?? false;
+    } catch {
+      queued = false;
+    }
+    if (!queued) {
+      void fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
+    }
+    s.setItem(sentKey, "1");
   } catch {
     // A step that was not counted troubles nobody.
   }

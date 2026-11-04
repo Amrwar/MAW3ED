@@ -83,3 +83,54 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS "Booking_customerPhoneE164_idx"
   ON "Booking" ("customerPhoneE164");
+
+-- ─── Phase 26: every "searchKey" must be GENERATED ─────────────────
+--
+-- Search matches only on these folded columns (phase26_search_funnel.sql).
+-- Created plain by `db push`, they are NULL on every row and every text
+-- search finds nothing, silently — the customerPhoneE164 failure again.
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE OR REPLACE FUNCTION maw3ed_search_norm(t text) RETURNS text
+LANGUAGE sql IMMUTABLE PARALLEL SAFE
+RETURN btrim(regexp_replace(
+  translate(
+    regexp_replace(lower(coalesce(t, '')), '[ً-ٰٟـ]', '', 'g'),
+    'أإآٱةىؤئ٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹',
+    'ااااهيوي01234567890123456789'
+  ),
+  '\s+', ' ', 'g'));
+
+DO $$
+DECLARE
+  t record;
+BEGIN
+  FOR t IN SELECT * FROM (VALUES
+    ('Business', 'coalesce("nameAr", '''') || '' '' || coalesce("nameEn", '''') || '' '' || coalesce("taglineAr", '''')'),
+    ('Service', 'coalesce("nameAr", '''') || '' '' || coalesce("nameEn", '''')'),
+    ('StaffMember', 'coalesce("nameAr", '''') || '' '' || coalesce("nameEn", '''')'),
+    ('Category', 'coalesce("nameAr", '''') || '' '' || coalesce("nameEn", '''')'),
+    ('City', 'coalesce("nameAr", '''') || '' '' || coalesce("nameEn", '''')'),
+    ('Neighborhood', 'coalesce("nameAr", '''') || '' '' || coalesce("nameEn", '''')'),
+    ('VenueOrganization', 'coalesce("nameAr", '''') || '' '' || coalesce("nameEn", '''')'),
+    ('Venue', 'coalesce("nameAr", '''') || '' '' || coalesce("nameEn", '''')')
+  ) AS v(tbl, expr) LOOP
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+       WHERE table_schema = current_schema() AND table_name = t.tbl
+         AND column_name = 'searchKey' AND is_generated <> 'ALWAYS'
+    ) THEN
+      EXECUTE format('ALTER TABLE %I DROP COLUMN "searchKey"', t.tbl);
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+       WHERE table_schema = current_schema() AND table_name = t.tbl AND column_name = 'searchKey'
+    ) THEN
+      EXECUTE format('ALTER TABLE %I ADD COLUMN "searchKey" TEXT GENERATED ALWAYS AS (maw3ed_search_norm(%s)) STORED', t.tbl, t.expr);
+    END IF;
+  END LOOP;
+END $$;
+
+CREATE INDEX IF NOT EXISTS "Business_searchKey_trgm" ON "Business" USING gin ("searchKey" gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS "Service_searchKey_trgm" ON "Service" USING gin ("searchKey" gin_trgm_ops);

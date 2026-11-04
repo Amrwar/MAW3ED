@@ -73,6 +73,9 @@ export async function getFunnelReport(scope: FunnelScope, days = 30, now: Date =
     day: { gte: w.from, lte: w.to },
     ...(scope.kind === "business" ? { businessId: scope.businessId } : {}),
     ...(scope.kind === "organization" ? { organizationId: scope.organizationId } : {}),
+    // The platform reads its own rows only: each step once per tab
+    // site-wide (funnel.ts), not the sum of every business's rows.
+    ...(scope.kind === "platform" ? { businessId: "", organizationId: "" } : {}),
   };
   // Booking scope, as SQL. An organization sees only the bookings
   // attributed to its own directory.
@@ -168,9 +171,4 @@ export async function getFunnelReport(scope: FunnelScope, days = 30, now: Date =
     },
     madeBySource,
   };
-}
-
-/** A step as a share of the one before it; null when there is nothing to divide by. */
-export function stepRate(n: number | undefined, of: number | undefined): number | null {
-  return of && of > 0 ? Math.min(1, (n ?? 0) / of) : null;
 }

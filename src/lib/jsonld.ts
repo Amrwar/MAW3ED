@@ -237,6 +237,18 @@ function profileUrl(base: string, value: string | null | undefined): string | un
   return `${base}/${v.replace(/^@/, "")}`;
 }
 
+/** An owner's website as an absolute URL ("example.com" → "https://example.com"); undefined if it is not one. */
+function websiteUrl(value: string | null | undefined): string | undefined {
+  const v = value?.trim();
+  if (!v) return undefined;
+  try {
+    const u = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
+    return u.hostname.includes(".") ? u.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function hasValue<T>(v: T | undefined | null | ""): v is T {
   return v !== undefined && v !== null && v !== "";
 }
@@ -266,7 +278,7 @@ export function buildOrganizationJsonLd(o: {
 }): Record<string, unknown> {
   const url = `${BASE_URL}/groups/${o.slug}`;
   const sameAs = [
-    profileUrl("", o.website ?? null),
+    websiteUrl(o.website),
     profileUrl("https://instagram.com", o.instagram),
     profileUrl("https://facebook.com", o.facebook),
   ].filter(hasValue);

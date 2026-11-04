@@ -170,7 +170,7 @@ function buildWhere(q: DiscoveryQuery, now: Date): Prisma.BusinessWhereInput {
     const day = dayOffsetToWeekday(dayOfWeek, offset);
     const date = new Date(today.getTime() + offset * 86_400_000);
     and.push({ availability: { some: { dayOfWeek: day, isClosed: false } } });
-    and.push({ NOT: { timeBlocks: { some: closedAllDay(date) } } });
+    and.push({ NOT: { timeBlocks: { some: closedAllDay(date, day) } } });
   }
 
   if (q.availability === "open-now") {
@@ -201,9 +201,9 @@ function buildWhere(q: DiscoveryQuery, now: Date): Prisma.BusinessWhereInput {
         timeBlocks: {
           some: {
             OR: [
-              closedAllDay(today),
-              { ...WHOLE_BUSINESS, ...covering(today), startTime: { lte: time }, endTime: { gt: time } },
-              { ...WHOLE_BUSINESS, dayOfWeek, startsOn: null, startTime: { lte: time }, endTime: { gt: time } },
+              closedAllDay(today, dayOfWeek),
+              // Blocked right now: a timed block, dated or weekly.
+              { AND: [WHOLE_BUSINESS, appliesOn(today, dayOfWeek), { startTime: { lte: time }, endTime: { gt: time } }] },
             ],
           },
         },
@@ -217,14 +217,27 @@ function buildWhere(q: DiscoveryQuery, now: Date): Prisma.BusinessWhereInput {
 /** A time block that takes the whole business, not one person or branch. */
 const WHOLE_BUSINESS = { staffMemberId: null, branchId: null } as const;
 
-/** A dated block whose inclusive range holds `day` (a UTC-midnight date). */
-const covering = (day: Date) => ({ startsOn: { lte: day }, endsOn: { gte: day } });
+/*
+ * Time blocks, read exactly as the booking engine reads them
+ * (lib/scheduling/calendar.ts): a weekly block (dayOfWeek set) applies on
+ * that weekday; a dated block covers startsOn to endsOn inclusive, or
+ * startsOn alone when endsOn is empty; a block missing its start or end
+ * time is the whole day. The filter must never call open a business the
+ * booking panel would offer no time at.
+ */
 
-/** The whole business closed all of `day`: a dated, all-day block. */
-const closedAllDay = (day: Date): Prisma.TimeBlockWhereInput => ({
-  ...WHOLE_BUSINESS,
-  ...covering(day),
-  startTime: null,
+/** A block that applies on `day` (UTC-midnight date), whose weekday is `dow`. */
+const appliesOn = (day: Date, dow: number): Prisma.TimeBlockWhereInput => ({
+  OR: [
+    { dayOfWeek: dow },
+    { startsOn: { lte: day }, endsOn: { gte: day } },
+    { startsOn: day, endsOn: null },
+  ],
+});
+
+/** The whole business closed all of `day`. */
+const closedAllDay = (day: Date, dow: number): Prisma.TimeBlockWhereInput => ({
+  AND: [WHOLE_BUSINESS, appliesOn(day, dow), { OR: [{ startTime: null }, { endTime: null }] }],
 });
 
 /** The plans that may take deposits, as a WHERE (mirrors getEffectivePlan). */

@@ -220,6 +220,12 @@ try {
   if (bk2Id) created.bookings.push(bk2Id);
   check("a forged org slug books fine but credits nobody", bk2.status === 201 && (await pg.query(`SELECT 1 FROM "OrganizationBookingAttribution" WHERE "bookingId"=$1`, [bk2Id])).rows.length === 0, `status ${bk2.status}`);
 
+  // qa-salon takes deposits, so the booking waits for payment. Since
+  // Phase 26 an unpaid checkout is not a booking the directory sent; once
+  // paid (CONFIRMED, as the payment webhook sets it) it is.
+  const unpaid = await json(await call(founder, `/api/organizations/${org.id}/metrics`));
+  check("an attributed booking still waiting for payment is not counted yet (Phase 26)", unpaid.attributedBookings === 0, JSON.stringify(unpaid.attributedBookings));
+  await pg.query(`UPDATE "Booking" SET status = 'CONFIRMED' WHERE id = $1 AND status = 'PENDING_PAYMENT'`, [bk1Id]);
   const metrics = await json(await call(founder, `/api/organizations/${org.id}/metrics`));
   check("metrics are counts only (views by channel, attributed bookings, per business)", metrics.attributedBookings === 1 && (metrics.views?.QR ?? 0) >= 1 && !/زبون|010192221|customerPhone|customerName|price/i.test(JSON.stringify(metrics)), JSON.stringify(metrics));
   check("the business owner cannot read the organization's metrics (404)", (await call(owner, `/api/organizations/${org.id}/metrics`)).status === 404);

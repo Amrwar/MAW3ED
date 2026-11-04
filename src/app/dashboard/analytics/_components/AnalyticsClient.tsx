@@ -43,7 +43,7 @@ interface Props {
 }
 
 export default function AnalyticsClient({ initial, initialRange }: Props) {
-  const { t }  = useLanguage();
+  const { t, lang } = useLanguage();
   const an     = t.dashboard.analytics;
 
   const PRESETS: Array<{ key: Preset; label: string }> = [
@@ -61,6 +61,7 @@ export default function AnalyticsClient({ initial, initialRange }: Props) {
   // The server already computed the first range: no second fetch for it.
   const [loadedKey, setLoadedKey] = useState<string | null>(`${initialRange.from}|${initialRange.to}`);
   const loadedKeyRef = useRef(loadedKey);
+  const [failed, setFailed] = useState(false);
   const rangeKey = `${from}|${to}`;
   const loading  = loadedKey !== rangeKey;
 
@@ -69,11 +70,17 @@ export default function AnalyticsClient({ initial, initialRange }: Props) {
     let stale = false;
     fetch(`/api/business/analytics?from=${from}&to=${to}`)
       .then(async (res) => {
-        const json = await res.json();
-        if (!stale && res.ok) setData(json);
+        const json = await res.json().catch(() => null);
+        if (stale) return;
+        // A refused range (too long, malformed) must not leave the last
+        // range's figures under the new range's heading.
+        if (res.ok && json) {
+          setData(json);
+          setFailed(false);
+        } else setFailed(true);
       })
       .catch(() => {
-        // keep previous data
+        if (!stale) setFailed(true);
       })
       .finally(() => {
         if (!stale) {
@@ -157,6 +164,13 @@ export default function AnalyticsClient({ initial, initialRange }: Props) {
 
       {/* KPI cards */}
       <div style={{ opacity: loading ? 0.6 : 1, transition: "opacity 0.2s" }}>
+        {failed && (
+          <p role="alert" className="m-0 rounded-[var(--radius-md)] border border-[var(--color-warn-line)] bg-[var(--color-warn-soft)] px-4 py-3 text-sm">
+            {lang === "en"
+              ? "These figures could not be loaded for this period (a year at most). Showing the previous period."
+              : "مقدرناش نجيب أرقام الفترة دي (أقصاها سنة). اللي ظاهر هو الفترة اللي قبلها."}
+          </p>
+        )}
         <KPICards kpis={data.kpis} />
       </div>
 

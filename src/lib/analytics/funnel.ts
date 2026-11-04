@@ -77,9 +77,19 @@ export async function recordFunnelStep(r: FunnelReport, now: Date = new Date()):
   }
 
   const day = cairoDay(now);
+  const counted = await countOnce(r, day, businessId, organizationId);
+  // The platform's own row (no business, no organization): the same step
+  // counted once per tab across the whole site, so the marketplace funnel
+  // counts tabs — not tab-and-business pairs, which a visitor opening
+  // three business pages would make three of.
+  if (businessId || organizationId) await countOnce(r, day, "", "");
+  return counted ? "counted" : "duplicate";
+}
+
+/** One deduplicated increment; true when it counted. */
+async function countOnce(r: FunnelReport, day: Date, businessId: string, organizationId: string): Promise<boolean> {
   const dayStr = day.toISOString().slice(0, 10);
   const key = keyedHash(`funnel|${r.tab}|${r.step}|${businessId}|${organizationId}|${dayStr}`);
-
   const counted = await db.$executeRaw`
     WITH seen AS (
       INSERT INTO "FunnelSeen" ("key", "day") VALUES (${key}, ${day}::date)
@@ -91,8 +101,7 @@ export async function recordFunnelStep(r: FunnelReport, now: Date = new Date()):
     FROM seen
     ON CONFLICT ("day", "step", "source", "businessId", "organizationId")
     DO UPDATE SET "count" = "FunnelCount"."count" + 1`;
-
-  return counted > 0 ? "counted" : "duplicate";
+  return counted > 0;
 }
 
 /** Drop dedup markers older than yesterday (Cairo). Called by the daily cron. */

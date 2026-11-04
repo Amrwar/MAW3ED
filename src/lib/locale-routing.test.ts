@@ -38,13 +38,13 @@ describe("routeLocale", () => {
   });
 
   it("sends /ar/x to the bare page", () => {
-    expect(get("/ar/faq", "?a=1", "en")).toEqual({ type: "redirect", to: "/faq?a=1", remember: "ar", permanent: true });
-    expect(get("/ar")).toEqual({ type: "redirect", to: "/", remember: "ar", permanent: true });
+    expect(get("/ar/faq", "?a=1", "en")).toEqual({ type: "redirect", to: "/faq?a=1", remember: "ar" });
+    expect(get("/ar")).toEqual({ type: "redirect", to: "/", remember: "ar" });
   });
 
   it("turns ?lang= into the twin's address, keeping the rest of the query", () => {
-    expect(get("/privacy", "?lang=en")).toEqual({ type: "redirect", to: "/en/privacy", remember: "en", permanent: true });
-    expect(get("/en/privacy", "?lang=ar&x=1", "en")).toEqual({ type: "redirect", to: "/privacy?x=1", remember: "ar", permanent: true });
+    expect(get("/privacy", "?lang=en")).toEqual({ type: "redirect", to: "/en/privacy", remember: "en" });
+    expect(get("/en/privacy", "?lang=ar&x=1", "en")).toEqual({ type: "redirect", to: "/privacy?x=1", remember: "ar" });
   });
 
   it("keeps one address for single-address sections, in the saved language", () => {
@@ -63,15 +63,14 @@ describe("routeLocale", () => {
   });
 });
 
-describe("redirect permanence (Phase 26)", () => {
+describe("redirects (Phase 26)", () => {
   const go = (pathname: string, search = "", cookieLang?: string) =>
     routeLocale({ pathname, search, method: "GET", cookieLang });
-  it("permanent only where the URL alone decides the target", () => {
-    expect(go("/ar/faq")).toMatchObject({ type: "redirect", permanent: true });
-    expect(go("/faq", "?lang=en")).toMatchObject({ type: "redirect", permanent: true });
-    // The cookie decides these: temporary, so the server is asked every time.
-    expect(go("/faq", "", "en")).not.toHaveProperty("permanent");
-    expect(go("/en/dashboard")).not.toHaveProperty("permanent");
+  it("every language redirect is temporary: each one may save a choice a cached 308 would skip", () => {
+    for (const r of [go("/ar/faq"), go("/faq", "?lang=en"), go("/faq", "", "en"), go("/en/dashboard")]) {
+      expect(r.type).toBe("redirect");
+      expect(r).not.toHaveProperty("permanent");
+    }
   });
   it("never redirects to itself: following a redirect once lands where no redirect is left", () => {
     for (const [p, q, c] of [["/ar/faq", "", undefined], ["/faq", "?lang=en", undefined], ["/faq", "", "en"], ["/en/dashboard", "", "en"], ["/ar", "?lang=en", undefined]] as const) {

@@ -42,8 +42,10 @@ export default function FunnelReportView({
 }) {
   const { lang } = useLanguage();
   const ar = lang === "ar";
+  // Not clamped: a visitor can enter at any step (a shared business link
+  // skips the listing), so a step can exceed the one before. Shown as it is.
   const pct = (n: number | undefined, of: number | undefined) =>
-    of && of > 0 ? `${num(Math.round(Math.min(1, (n ?? 0) / of) * 100), lang)}%` : "—";
+    of && of > 0 ? `${num(Math.round(((n ?? 0) / of) * 100), lang)}%` : "—";
   const src = (s: TrafficSource) => (ar ? SOURCE_LABELS[s].ar : SOURCE_LABELS[s].en);
 
   const rows = steps.map((s, i) => {
@@ -69,8 +71,8 @@ export default function FunnelReportView({
           </h2>
           <p className="m-0 mt-1 text-[0.75rem] leading-relaxed text-[var(--color-subtle)]">
             {ar
-              ? "كل رقم = عدد تابات المتصفح اللي وصلت للخطوة، مرة واحدة في اليوم. مفيش أي بيانات عن الزائر نفسه."
-              : "Each figure is browser tabs that reached the step, once a day. Nothing about the visitor is recorded."}
+              ? "كل رقم = عدد تابات المتصفح اللي وصلت للخطوة، مرة واحدة في اليوم. الزائر ممكن يدخل من أي خطوة (لينك نشاط مثلًا)، فالنسبة ممكن تعدّي ١٠٠٪. مفيش أي بيانات عن الزائر نفسه."
+              : "Each figure is browser tabs that reached the step, once a day. Visitors can enter at any step (a shared business link, say), so a share can pass 100%. Nothing about the visitor is recorded."}
             {note ? ` ${note}` : ""}
           </p>
         </header>

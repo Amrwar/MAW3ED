@@ -29,13 +29,13 @@ import { hasTwin, localizePath, splitLang } from "@/lib/locale-path";
  */
 export type LocaleAction =
   /**
-   * `permanent` (308) only where the target depends on the URL alone, so
-   * a search engine moves its index to the target: /ar/x and ?lang=.
-   * A redirect that depends on the cookie, or exists to save a choice,
-   * stays temporary (307) — a browser caches a 308 and would skip the
-   * server, and the cookie, the next time.
+   * Always temporary (307). Phase 26 tried 308 for /ar/x and ?lang=, but
+   * those redirects also save the language (`remember`), and a browser
+   * replays a cached 308 without asking the server — so a later /ar/ link
+   * opened after switching to English would land in English. The
+   * canonical tags already tell search engines which address to index.
    */
-  | { type: "redirect"; to: string; remember?: Lang; permanent?: true }
+  | { type: "redirect"; to: string; remember?: Lang }
   | { type: "rewrite"; to: string; lang: Lang; remember?: Lang }
   | { type: "next"; lang: Lang };
 
@@ -70,9 +70,9 @@ export function routeLocale({
     if (twin && read && (asked === "en" || asked === "ar")) {
       params.delete("lang");
       const rest = params.size ? `?${params}` : "";
-      return { type: "redirect", to: localizePath(path, asked) + rest, remember: asked, permanent: true };
+      return { type: "redirect", to: localizePath(path, asked) + rest, remember: asked };
     }
-    return { type: "redirect", to: path + search, remember: "ar", permanent: true };
+    return { type: "redirect", to: path + search, remember: "ar" };
   }
   if (urlLang === "en" && !twin) return { type: "redirect", to: path + search, remember: "en" };
 
@@ -82,7 +82,7 @@ export function routeLocale({
     if (asked === "en" || asked === "ar") {
       params.delete("lang");
       const rest = params.size ? `?${params}` : "";
-      return { type: "redirect", to: localizePath(path, asked) + rest, remember: asked, permanent: true };
+      return { type: "redirect", to: localizePath(path, asked) + rest, remember: asked };
     }
     if (urlLang === null && saved === "en") {
       return { type: "redirect", to: localizePath(path, "en") + search };

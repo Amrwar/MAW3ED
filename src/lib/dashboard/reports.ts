@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { ABANDONED, tally } from "./stats";
 import { cairoDateString } from "@/lib/bookings/instants";
-import { cairoDay } from "@/lib/attribution/day";
+import { cairoDay, cairoDayBefore } from "@/lib/attribution/day";
 
 /**
  * The reports, counted from booking rows.
@@ -72,7 +72,9 @@ async function load(businessId: string, period: Period, by: "received" | "held")
       isTest: false,
       ...(by === "received"
         ? { createdAt: { gte: period.from, lte: period.to } }
-        : { date: { gte: cairoDay(period.from), lte: cairoDay(period.to) } }),
+        : // `days` Cairo calendar days ending today: 7 days is 7 dates,
+          // not the 8 that cairoDay(now − 7×24h)…today would span.
+          { date: { gte: cairoDayBefore(period.days - 1, period.to), lte: cairoDay(period.to) } }),
     },
     select: SELECT,
     orderBy: { id: "asc" },

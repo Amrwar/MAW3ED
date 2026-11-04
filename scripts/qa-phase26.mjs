@@ -118,13 +118,13 @@ try {
     return { status: r.status, to: r.headers.get("location") };
   };
   const ar = await hop("/ar/faq");
-  check("1.13 /ar/faq → /faq, permanent (308)", ar.status === 308 && /\/faq$/.test(new URL(ar.to, B).pathname));
+  check("1.13 /ar/faq → /faq (307: it also saves the language)", ar.status === 307 && /\/faq$/.test(new URL(ar.to, B).pathname));
   const qlang = await hop("/faq?lang=en");
-  check("1.13 /faq?lang=en → /en/faq, permanent (308)", qlang.status === 308 && new URL(qlang.to, B).pathname === "/en/faq");
+  check("1.13 /faq?lang=en → /en/faq (307)", qlang.status === 307 && new URL(qlang.to, B).pathname === "/en/faq");
   const cookie = await hop("/faq", { Cookie: "maw3ed-lang=en" });
   check("1.13 a saved English choice → /en/faq, temporary (307)", cookie.status === 307 && new URL(cookie.to, B).pathname === "/en/faq");
   const both = await hop("/ar/faq?lang=en");
-  check("1.13 /ar/faq?lang=en goes to /en/faq in one hop", both.status === 308 && new URL(both.to, B).pathname === "/en/faq");
+  check("1.13 /ar/faq?lang=en goes to /en/faq in one hop", both.status === 307 && new URL(both.to, B).pathname === "/en/faq");
   let chainsOk = true;
   for (const start of ["/ar", "/ar/faq?lang=en", "/faq?lang=ar", "/en/dashboard", "/ar/businesses?q=x", "/businesses?page=999", `/en/company/${ahmed.slug}?lang=ar`]) {
     let path = start;
@@ -160,12 +160,18 @@ try {
   check("2.4 a 28-word query is answered (capped at five words), not refused or slow", longQ.status === 200);
 
   // Closures and "open now".
-  await pg.query(`INSERT INTO "TimeBlock" (id, "businessId", kind, "startsOn", "endsOn") VALUES ($1, $2, 'HOLIDAY', $3::date, $3::date)`, [`${tag}-tb`, closed.id, new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" })]);
+  // A one-day closure written as the dashboard writes it: no end date.
+  await pg.query(`INSERT INTO "TimeBlock" (id, "businessId", kind, "startsOn", "endsOn") VALUES ($1, $2, 'HOLIDAY', $3::date, NULL)`, [`${tag}-tb`, closed.id, new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" })]);
+  // A weekly all-day block on today's weekday (no dates, no end time).
+  const dow = new Date(`${new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" })}T12:00:00Z`).getUTCDay();
+  await pg.query(`INSERT INTO "TimeBlock" (id, "businessId", kind, "dayOfWeek", "startTime") VALUES ($1, $2, 'BREAK', $3, '00:00')`, [`${tag}-tb2`, hospital.id, dow]);
   const openNow = await search("Closed Today Test", "&available=open-now");
   const today = await search("Closed Today Test", "&available=today");
   const anyDay = await search("Closed Today Test");
   check("2.5 a business closed all day today is left out of 'open now' and 'today'", has(anyDay, closed) && !has(openNow, closed) && !has(today, closed));
   check("2.5 …and a business open all day is in 'open now'", has(await search("Islam Test Salon", "&available=open-now"), salon));
+  check("2.5 a weekly all-day block on today's weekday also closes it today", has(await search("Nile Test Hospital"), hospital) && !has(await search("Nile Test Hospital", "&available=today"), hospital) && !has(await search("Nile Test Hospital", "&available=open-now"), hospital));
+  await pg.query(`DELETE FROM "TimeBlock" WHERE id = $1`, [`${tag}-tb2`]);
 
   // Online payment needs deposits on AND a plan that allows them.
   await pg.query(`UPDATE "Business" SET "depositEnabled" = true, "depositPercent" = 20 WHERE id = ANY($1)`, [[ahmed.id, salon.id]]);
@@ -260,6 +266,11 @@ try {
   const fakeMall = await funnel({ step: "BUSINESS_VIEW", tab: tabId(), source: "QR", business: hospital.slug, org: mall.slug });
   check("5.5 a business page opened from the mall's directory is credited to the mall", viaMall.headers.get("x-funnel") === "counted" && (await funnelCount("BUSINESS_VIEW", { businessId: ahmed.id, organizationId: mall.id })) === 1);
   check("5.5 a business the mall does not list is not credited to it (no invented affiliation)", fakeMall.headers.get("x-funnel") === "counted" && (await funnelCount("BUSINESS_VIEW", { businessId: hospital.id, organizationId: mall.id })) === 0);
+  const platformViews = () => funnelCount("BUSINESS_VIEW");
+  const before = await platformViews();
+  const roamer = tabId();
+  for (const b of [ahmed, hospital, salon]) await funnel({ step: "BUSINESS_VIEW", tab: roamer, source: "DIRECT", business: b.slug });
+  check("5.6 one tab opening three business pages is three business views, and one platform-wide (the marketplace funnel counts tabs)", (await platformViews()) - before === 1);
   const plain = await funnel({ step: "MARKETPLACE_VIEW", tab: tabId(), source: "GOOGLE", business: ahmed.slug });
   check("5.6 a site-wide step is never tied to a business, whatever the request says", plain.headers.get("x-funnel") === "counted" && Number((await pg.query(`SELECT COUNT(*)::int AS n FROM "FunnelCount" WHERE step = 'MARKETPLACE_VIEW' AND "businessId" <> ''`)).rows[0].n) === 0);
 

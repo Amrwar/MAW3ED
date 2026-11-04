@@ -58,8 +58,8 @@ below is planned in detail yet, and no phase starts automatically.
 | 22 final | Organization relationships: OWNED / HOSTED / MANAGED, delegated management (scopes, branch limits, expiry, revocation) through the regular dashboard, one owner per business, parent organizations without cycles | PARTIAL — merged #46, live 2026-10-31; signed-in production check pending — `docs/phases/PHASE_22_REPORT.md`, `docs/architecture/ORGANIZATION_RELATIONSHIPS.md`, `docs/architecture/ORGANIZATION_PERMISSIONS.md` |
 | 23 | Booking check-in QR, optional visitor-pass module, provider-neutral gate adapter with a sandbox provider (`docs/roadmap/UPDATED_PHASES_22_24.md`) | PARTIAL — merged #48, live 2026-11-02; a real gate provider BLOCKED on a partner — `docs/phases/PHASE_23_REPORT.md` |
 | 24 | Organization platform validation under realistic conditions with a clearly fictional Eterna-style mall (the owner: Eterna is a concept only); a group report across businesses and a RESOURCES delegation scope added; pilot plan and operations; the real gate partner a separate, BLOCKED milestone | PASS (local; generic organization readiness) — real pilot NOT LIVE, Emaar BLOCKED — branch `phase-24`, `docs/phases/PHASE_24_REPORT.md` |
-| 25 | Awaiting instructions | NOT STARTED |
-| 26 | Awaiting instructions | NOT STARTED |
+| 25 | Production customer app (Android/iOS) | PARTIAL — merged #52; native builds and device tests on owner accounts — `docs/phases/PHASE_25_REPORT.md` |
+| 26 | SEO, marketplace discovery, growth and analytics: Arabic-aware search, organization discovery, technical SEO fixes, a privacy-first booking funnel, organization and business analytics corrections | PASS (local) — branch `phase-26` — `docs/phases/PHASE_26_REPORT.md` |
 | 27 | Awaiting instructions | NOT STARTED |
 | 28 | Awaiting instructions | NOT STARTED |
 
