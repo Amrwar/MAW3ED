@@ -49,8 +49,9 @@ it can no longer be paid.
 
 ## Setup (owner)
 
-1. **Database:** run `prisma/migrations/stripe_provider.sql` on production
-   (adds `STRIPE` to the provider enum). Helper: `migrate-stripe.sh`.
+1. **Database:** `prisma/migrations/stripe_provider.sql` (adds `STRIPE` to
+   the provider enum) — **done 2026-11-05**, applied on production by the
+   owner with `migrate-stripe.sh` and verified.
 2. **Stripe Dashboard → Developers → API keys → Create restricted key**:
    - Checkout Sessions: **Write**
    - Refunds: **Write**
