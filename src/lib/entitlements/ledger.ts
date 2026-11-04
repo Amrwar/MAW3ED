@@ -40,6 +40,7 @@ export type EntitlementRef = { packageId: string } | { membershipId: string };
 export async function consumeEntitlement(
   tx: Tx,
   ref: EntitlementRef,
+  /** startsAt: the appointment's real instant (wallToInstant), not the wall-clock column. */
   b: { bookingId: string; businessId: string; phoneE164: string; serviceId: string; startsAt: Date },
 ): Promise<void> {
   if ("packageId" in ref) {
@@ -121,7 +122,7 @@ export interface UsableEntitlement {
   expiresAt: Date | null;
 }
 
-/** What a customer holds at a business that would cover this service at this time. */
+/** What a customer holds at a business that would cover this service at this (real) time. */
 export async function usableEntitlements(
   businessId: string,
   phoneE164: string,

@@ -6,7 +6,7 @@ import type { TrafficSource } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
-import { bookingInstants, dateToUTC } from "./instants";
+import { bookingInstants, dateToUTC, wallToInstant } from "./instants";
 import { generateReference } from "./reference";
 import { loadAvailability } from "./schedule";
 import { isTransactionStartTimeout, queuedTransaction } from "./queue";
@@ -346,7 +346,9 @@ export async function createBooking(
               businessId: input.businessId,
               phoneE164,
               serviceId: input.serviceId,
-              startsAt,
+              // The real moment (startsAt is Cairo wall-clock written as
+              // UTC): package expiry and membership periods are instants.
+              startsAt: wallToInstant(input.date, timeToMinutes(input.startTime)),
             });
           }
 

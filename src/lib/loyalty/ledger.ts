@@ -286,6 +286,24 @@ export async function reverseEarn(
   return { reversed: taken, shortfall: want - taken };
 }
 
+/**
+ * After money for a booking went back: the share of its value refunded
+ * comes off the points it earned. Its own transaction; never throws (the
+ * refund has already happened and must still be reported).
+ */
+export async function reverseEarnForRefund(bookingId: string, refundedCents: number, refundKey: string): Promise<void> {
+  try {
+    await db.$transaction(async (tx) => {
+      const b = await tx.booking.findUnique({ where: { id: bookingId }, select: { totalPrice: true } });
+      const valueCents = b ? Math.round(Number(b.totalPrice) * 100) : 0;
+      if (valueCents <= 0) return;
+      await reverseEarn(tx, bookingId, refundedCents / valueCents, refundKey);
+    });
+  } catch (e) {
+    log.error("[loyalty] could not reverse points after a refund", e, { bookingId, refundKey });
+  }
+}
+
 // ─── The owner, by hand ──────────────────────────────────────────────────────
 
 /**
