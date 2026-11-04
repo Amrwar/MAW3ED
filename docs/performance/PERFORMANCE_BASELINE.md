@@ -41,8 +41,9 @@ and venues are small tables and are scanned.
 | `/en` | 40 | 181 | 251 | 188 | 418 | 20 |
 
 All times in milliseconds. JS is the bytes the browser received for scripts
-(Content-Length when sent, else the body), the same way on every run. The `?q=عيادة` page loads the map chunk because
-its results have pins (the larger JS figure); the other search does not.
+(Content-Length when sent, else the body), the same way on every run. The `?q=عيادة` page received about 110 KB more
+script than the other search; the cause was not investigated (a
+results-dependent chunk is the likely one). Recheck on the next run.
 
 ## 3. Server (20 sequential requests after one warm-up)
 
