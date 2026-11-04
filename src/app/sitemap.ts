@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { siteNoindex } from "@/lib/seo/noindex";
 import { db } from "@/lib/db";
 import { localizePath } from "@/lib/locale-path";
 import { siteUrl } from "@/lib/url";
@@ -40,6 +41,8 @@ export const revalidate = 3600;
  * asked not to be indexed is a contradiction.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // A test server lists nothing (src/lib/seo/noindex.ts).
+  if (siteNoindex()) return [];
   // Each of the four is allowed to come back empty.
   //
   // The sitemap is prerendered, so an unreachable database used to fail

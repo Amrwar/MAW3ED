@@ -1,6 +1,7 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { withoutChannelBinding } from "./db-url";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -20,19 +21,15 @@ const globalForPrisma = globalThis as unknown as {
 function isLocalDatabase(url: string): boolean {
   try {
     const { hostname } = new URL(url);
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+    // An IPv6 host keeps its brackets in a parsed URL.
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
   } catch {
     return false;
   }
 }
 
 function createPrismaClient() {
-  // Strip channel_binding=require — @neondatabase/serverless uses HTTP/WS
-  // transport which doesn't support SCRAM channel binding.
-  const connectionString = (process.env.DATABASE_URL ?? "").replace(
-    /[&?]channel_binding=require/g,
-    ""
-  );
+  const connectionString = withoutChannelBinding(process.env.DATABASE_URL ?? "");
   const adapter = isLocalDatabase(connectionString)
     ? new PrismaPg({ connectionString })
     : new PrismaNeon({ connectionString });

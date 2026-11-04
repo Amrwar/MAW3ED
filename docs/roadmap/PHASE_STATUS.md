@@ -3,8 +3,9 @@
 Four separate claims, never merged into one:
 
 - **Code complete:** merged to `main` with CI green.
-- **Staging verified:** exercised on a staging deployment. *There is no
-  staging environment yet, so this is NOT RUN for everything.*
+- **Staging verified:** exercised on the staging deployment
+  (`maw3ed-staging.vercel.app`, fictional data; see `docs/staging.md`).
+  It was set up on 2026-11-03, so earlier phases show NOT RUN.
 - **Production verified:** checked on maw3ed.net after deploy.
 - **Partner verified:** checked with the external party (Paymob,
   Meta/WhatsApp, Apple/Google, Emaar…).
@@ -24,8 +25,8 @@ Four separate claims, never merged into one:
 | 22 final | PARTIAL (code complete, locally verified, live; post-phase audit done) — relationship types, delegated management, hierarchy | merged 2026-10-31 (#46); main CI success | NOT RUN | PARTIAL — 2026-10-31: production served `312facd`; `/groups` and `/en/groups` 200, unknown organization 404, public groups API 200 (no organizations yet), `/org-admin`, `/dashboard`, `/dashboard/organizations` redirect to sign-in, organizations, operable, business-organizations and acting APIs 401 anonymously, existing pages 200; signed-in organization and delegation flows not exercised on production (none registered yet) | n/a — no gate integration exists or is claimed | `docs/phases/PHASE_22_REPORT.md` (final section) |
 | 23 | PARTIAL (code complete, locally verified, live; E — a real gate provider — BLOCKED on a partner) — booking QR, check-in, visitor passes (sandbox) | merged 2026-11-02 (#48); production migrations `phase23_access_enums.sql` + `phase23_access.sql` applied and verified 2026-11-01 | NOT RUN | PARTIAL — 2026-11-02: production served `1864f7e`; `/`, `/en` and the check-in page `/c/<code>` 200 (new page, Arabic title), unknown pass and booking links 404, live stream 401 anonymously; signed-in check 2026-11-03 (owner-preview test bookings on the owner's unpublished business): the booking page's QR in Arabic and English, the desk lookup, `/c/<code>`, "too early" and the live stream all verified; **the check-in itself was not run** (the timer for its window was stopped by a low-memory reaper and the window passed); both test bookings cancelled | NOT RUN (no gate partner) | `docs/phases/PHASE_23_REPORT.md`, `docs/qa/PHASE_23_*.md` |
 | 24 | PASS (local: generic organization readiness, items 1–8) · real pilot NOT LIVE · item 9 (Emaar) BLOCKED | merged 2026-11-03 (#50); production migration `phase24_resources_scope.sql` applied and verified 2026-11-03 | NOT RUN | NOT RUN — nothing created on production (fictional test data, QA only) | BLOCKED (no gate partner, no operator agreement) | `docs/phases/PHASE_24_REPORT.md`, `docs/eterna/*` |
-| 24F1 | PASS (offline booking QR and Save QR; 31/31 in Chromium, WebKit, Firefox) | branch `offline-qr`, PR #51 open | NOT RUN | NOT RUN | n/a | `docs/qa/PHASE_24_OPEN_ISSUES.md` (P24-F1) |
-| 25 | PARTIAL — customer app complete in code and its web build (35/35, 240 unit tests); native builds and device tests BLOCKED on owner accounts | branch `phase-25` (includes #51), PR open | NOT RUN | NOT RUN | BLOCKED (Expo, Apple, Google accounts; test backend) | `docs/phases/PHASE_25_REPORT.md`, `docs/qa/PHASE_25_*` |
+| 24F1 | PASS (offline booking QR and Save QR; 31/31 in Chromium, WebKit, Firefox) | merged 2026-11-03 (#51) | NOT RUN | PARTIAL — 2026-11-03: production served `6aea9b0`; `sw.js` carries the offline-QR code; saving a QR while signed in was not exercised on production | n/a | `docs/qa/PHASE_24_OPEN_ISSUES.md` (P24-F1) |
+| 25 | PARTIAL — customer app complete in code and its web build (35/35, 240 unit tests); native builds and device tests BLOCKED on owner accounts | merged 2026-11-03 (#52) | PARTIAL — staging server live 2026-11-03; Android test APK built on EAS 2026-11-04 (build `908ad38a`) against staging; the owner's on-device check is pending; automated Maestro runs need a paid Expo plan | PARTIAL — 2026-11-03: signed-out smoke OK (pages 200, mobile `me` and account export 401); app-link files 404 until `ANDROID_CERT_SHA`/`APPLE_TEAM_ID` are set | BLOCKED (Apple and Google developer accounts) | `docs/phases/PHASE_25_REPORT.md`, `docs/qa/PHASE_25_*` |
 | 26–28 | NOT STARTED | — | — | — | — | — |
 
 ## Historical phases (merged before this programme)

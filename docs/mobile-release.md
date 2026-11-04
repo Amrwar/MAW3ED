@@ -38,14 +38,17 @@ Both are blocked on the owner's accounts (below), not on code.
    ! npx eas-cli login
    ```
    The project is already linked (`expo.dev/@amrwar/maw3ed`).
-2. **A test backend for device E2E.**
-   - The `e2e` build profile no longer points anywhere. Before Phase 25 it
-     used the production site, so every automated flow counted as real
-     visits.
-   - Set `EXPO_PUBLIC_API_URL` in the EAS **preview** environment to a
-     non-production deployment: a Vercel preview with its own database, a
-     Neon branch.
-   - Without it, an `e2e` build stops at configuration, on purpose.
+2. **The test backend for device E2E: done.**
+   - The `e2e` build profile points at the staging server,
+     `https://maw3ed-staging.vercel.app` (`docs/staging.md`): its own
+     Vercel project and database, fictional data, no messaging or payment
+     keys. Before Phase 25 it used the production site, so every automated
+     flow counted as real visits.
+   - If `EXPO_PUBLIC_API_URL` was ever set in the EAS **preview**
+     environment, delete it there: `eas.json` is now the one place.
+   - Still to do: add the staging review account to the EAS **preview**
+     environment as `MAESTRO_REVIEW_EMAIL` and `MAESTRO_REVIEW_PASSWORD`
+     (secret visibility). The values are not in the repository.
    - The `preview` profile (internal testers) still uses the live site, as
      a customer would.
 3. **Android:**

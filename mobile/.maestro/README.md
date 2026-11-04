@@ -1,8 +1,9 @@
 # End-to-end tests (Maestro)
 
-Flows that drive the Android app the way a person would. They run against
-the **staging** API (`https://maw-3-ed.vercel.app`), whose data is not ours
-to change and may be real, so every flow is:
+Flows that drive the Android app the way a person would. On EAS they run
+against the **staging** server (`https://maw3ed-staging.vercel.app`, see
+`docs/staging.md`): fictional data in its own database. Run locally against
+any other server, its data may be real, so every flow is:
 
 - **Read-only.** Nothing is booked, cancelled, rescheduled, reviewed,
   reported, saved as a favourite or created, no sign-in code is requested

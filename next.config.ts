@@ -57,7 +57,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 
   async headers() {
-    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+    // A test server (docs/staging.md) is public but must never be
+    // indexed: its businesses are fictional. Production never sets this.
+    // Same rule as src/lib/seo/noindex.ts.
+    const noindex = process.env.SITE_NOINDEX === "1" ? [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] : [];
+    return [{ source: "/:path*", headers: [...SECURITY_HEADERS, ...noindex] }];
   },
 
   images: {

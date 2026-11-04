@@ -28,7 +28,8 @@
       "distribution": "internal",
       "environment": "preview",
       "env": {
-        "APP_ENV": "staging"
+        "APP_ENV": "staging",
+        "EXPO_PUBLIC_API_URL": "https://maw3ed-staging.vercel.app"
       },
       "android": {
         "buildType": "apk",

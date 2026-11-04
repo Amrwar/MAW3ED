@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { siteUrl } from "@/lib/url";
+import { siteNoindex } from "@/lib/seo/noindex";
 
 /**
  * What a crawler may fetch.
@@ -14,6 +15,9 @@ import { siteUrl } from "@/lib/url";
  * private, useless to a search engine, or a trap.
  */
 export default function robots(): MetadataRoute.Robots {
+  // A test server: crawlers may fetch, so they read the noindex on every
+  // response; no sitemap to follow (src/lib/seo/noindex.ts).
+  if (siteNoindex()) return { rules: [{ userAgent: "*", allow: "/" }] };
   return {
     rules: [
       {

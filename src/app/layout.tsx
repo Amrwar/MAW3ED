@@ -4,6 +4,7 @@ import Providers from "./providers";
 import { getLang } from "@/lib/lang-server";
 import { DEFAULT_OG_IMAGE, ogLocale } from "@/lib/seo/meta";
 import { siteUrl } from "@/lib/url";
+import { siteNoindex } from "@/lib/seo/noindex";
 
 // The defaults every page inherits, in the language the page is served
 // in. They were Arabic over an English page for anyone who had switched,
@@ -51,7 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: m.short,
       images: [DEFAULT_OG_IMAGE.url],
     },
-    robots: { index: true, follow: true },
+    robots: siteNoindex() ? { index: false, follow: false } : { index: true, follow: true },
   };
 }
 
