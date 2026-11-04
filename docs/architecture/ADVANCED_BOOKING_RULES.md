@@ -11,8 +11,9 @@ way except the desk route, which keeps its Phase 17 rule (no slot check, constra
 - The same service and time every 1–4 weeks, 2–12 times. The database bounds it
   (`BookingSeries_bounds_chk`), so no series runs on for ever whatever writes it.
 - Each occurrence is an ordinary booking made through `createBooking`, with its own slot
-  check, idempotency key `series:<id>:<n>` and `(seriesId, seriesIndex)` unique — retrying
-  makes only what is missing.
+  check, idempotency key `series:<id>:<n>` and `(seriesId, seriesIndex)` unique. The desk
+  form sends a request key (`BookingSeries.requestKey`, unique): a double-click or a retry
+  continues the same series and makes only what is missing.
 - An occurrence that cannot be had is **skipped and reported** (`skipped[{index, date, why}]`),
   never squeezed in.
 - Ending a series cancels each upcoming occurrence through the state machine (so a
@@ -58,15 +59,20 @@ apply: a walk-in cannot take a chair that is already busy.
   entry per number per business per day (partial unique index), at most 50 live per day.
 - When a time frees (a cancellation, a failed payment, the reaper), it is offered **after
   the transaction commits** (`after()`), and every 10 minutes by the operations cron in any
-  case. One offering pass per business-day at a time (advisory try-lock — two concurrent
-  passes could otherwise offer the same time to two people; caught by a database test).
+  case. An offer never overlaps a live one with the same member of staff (an hour freed at
+  10:00 is not offered as 10:00 to one person and 10:30 to another), and the database holds
+  one live offer per start time per staff member (`SlotWaitlistEntry_offer_slot_key`), so
+  two passes racing cannot both offer it (caught by a database test). The offer records
+  who it is with (`offeredStaffId`); accepting books with them. Schedule loads are cached
+  per service, staff and party within a pass.
 - **Priority:** oldest entry first among those whose window and service fit. An offer holds
   nothing: it is a link, valid `waitlistOfferMinutes` (10–240). Accepting books through the
   engine; if somebody else took the time, the entry goes back to waiting.
 - **Bounded:** at most 3 offers per entry (`SlotWaitlistEntry_offers_chk`), then EXPIRED;
   days that passed close their entries.
 - Accepting is idempotent (`waitlist:<entry>:<offer n>`); a second tap returns the same
-  booking. A number restricted by the no-show policy is told to call.
+  booking. Once the booking exists the entry is BOOKED even if the sweep lapsed the offer in
+  the same moment, so nobody holds a booking and still waits. A number restricted by the no-show policy is told to call.
 - Where the business takes deposits, a booking taken from the waitlist link has no online
   payment and waits for the owner (PENDING).
 
@@ -102,6 +108,9 @@ and isolated from the others: waitlist sweep, loyalty lot expiry, package/member
 expiry, follow-ups, rebook nudges, membership renewal notices, points-expiring notices,
 package-expiring notices, and retries of failed messages.
 
+- Each job pages through every row due (id order, up to 2,000 per job per run), so a large
+  platform is not stuck on the first page; points notices are summed per account in the
+  database. Rebook nudges skip anyone with an upcoming visit, however long ago it was made.
 - Every message is claimed on the notification ledger (`NotificationDelivery`) under a
   unique key before it is sent: a cron that runs twice says it once.
 - Failures retry on the outbox backoff and stop at 5 attempts (DEAD).

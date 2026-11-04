@@ -243,9 +243,8 @@ export async function POST(req: Request, { params }: Params) {
     let loyalty: { programId: string; phoneE164: string; points: number; amountCents: number } | null = null;
     if (redeemPoints && !entitlement && phoneE164 && totalCents > 0) {
       const q = await quoteRedemption(business.id, phoneE164, redeemPoints, totalCents);
-      if (!q.ok) {
-        return err(q.why === "loyalty-unavailable" ? "المكان ده مفيهوش برنامج نقاط" : "النقاط مش كفاية للخصم", 422, { code: q.why });
-      }
+      if (!q.ok && q.why === "loyalty-unavailable") return err("المكان ده مفيهوش برنامج نقاط", 422, { code: "loyalty-unavailable" });
+      if (!q.ok) return err("النقاط مش كفاية للخصم", 422, { code: "loyalty-insufficient" });
       loyalty = { programId: q.programId, phoneE164, points: q.points, amountCents: q.amountCents };
       totalCents -= q.amountCents;
     }

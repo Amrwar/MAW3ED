@@ -125,7 +125,7 @@ try {
   check("it pauses and resumes", pause.status === 200 && resume.status === 200, `${pause.status}/${resume.status}`);
   const renew1 = await send(salon.owner, `/api/business/packages/sold/${msale.id}`, "POST", { kind: "membership", action: "renew", method: "CASH" });
   const renew2 = await send(salon.owner, `/api/business/packages/sold/${msale.id}`, "POST", { kind: "membership", action: "renew", method: "CASH" });
-  check("renewal is bounded to one period ahead", renew1.status === 200 && renew2.status === 409, `${renew1.status}/${renew2.status}`);
+  check("renewal is bounded to one period ahead", renew1.status === 200 && renew2.status === 409, `${renew1.status}/${renew2.status} ${JSON.stringify(await json(renew1))}`);
 
   // ── Desk: walk-ins and series ────────────────────────────────────────
   part("desk");
@@ -230,6 +230,34 @@ try {
   check("the organization sees package counts for brands sharing reports", pk.status === 200 && (data(await json(pk)).businesses ?? []).length === 1, pk.status);
   const stranger = await call(cust, `/api/organizations/${org.id}/loyalty`);
   check("a stranger cannot read the organization's program", stranger.status === 404 || stranger.status === 401, stranger.status);
+
+  // ── The new screens render (server-side, both languages) ────────────
+  part("pages");
+  const page = async (jar, path) => {
+    const r = await call(jar, path, { redirect: "manual" });
+    const html = r.status === 200 ? await r.text() : "";
+    return { status: r.status, ok: r.status === 200 && !/Application error|Internal Server Error/.test(html) };
+  };
+  for (const lang of ["", "/en"]) {
+    for (const p of ["/dashboard/loyalty", "/dashboard/packages", "/dashboard/waitlist", "/dashboard/operations", "/dashboard/bookings", "/dashboard/staff", "/dashboard/services"]) {
+      // The dashboard is a single address; /en is only a language cookie there.
+      if (lang) continue;
+      const r = await page(salon.owner, p);
+      check(`${p} renders for the owner`, r.ok, r.status);
+    }
+    const w = await page(cust, `${lang}/account/wallet`.replace("/en/account", "/account"));
+    check(`the wallet renders${lang ? " (en)" : ""}`, w.ok, w.status);
+    const c = await page(null, `${lang}/company/${salon.slug}`);
+    check(`the business page with its widget renders${lang ? " (en)" : ""}`, c.ok, c.status);
+  }
+  const wl = await page(null, `/booking-waitlist/${token}`);
+  check("the waitlist link page renders", wl.ok, wl.status);
+  const bad = await page(null, "/booking-waitlist/not-a-real-token-123");
+  check("an unknown waitlist link does not crash", bad.status === 200 || bad.status === 404, bad.status);
+  const ol = await page(founder, `/org-admin/${org.id}/loyalty`);
+  check("the organization loyalty console renders", ol.ok, ol.status);
+  const anon = await page(null, "/dashboard/loyalty");
+  check("the dashboard page sends a stranger to sign in", anon.status === 307 || anon.status === 302 || anon.status === 303, anon.status);
 } catch (e) {
   failedHard = 1;
   console.error("QA aborted:", e);
