@@ -7,6 +7,7 @@ import { toCents } from "@/lib/payments/money";
 import { bookingSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import { createBooking } from "@/lib/bookings/create";
+import { moveBooking } from "@/lib/bookings/state";
 import { createPaymentSession } from "@/lib/services/paymob";
 import { depositCents as calcDepositCents } from "@/lib/payments/money";
 import { attachProviderOrder, openPayment } from "@/lib/payments/ledger";
@@ -454,15 +455,11 @@ export async function POST(req: Request, { params }: Params) {
           201,
         );
       } catch (paymobError) {
-        // The payment could not be started — release the PENDING_PAYMENT
-        // booking so the slot is freed, then return an error. Each step
-        // is best-effort on its own: one failing must not stop the other.
-        await db.booking
-          .updateMany({
-            where: { id: booking.id, status: "PENDING_PAYMENT" },
-            data:  { status: "FAILED_PAYMENT" },
-          })
-          .catch((e) => log.error("[booking POST] could not release the hold", e));
+        // The payment could not be started — fail it, then release the
+        // PENDING_PAYMENT booking through the state machine so the slot is
+        // freed and whatever it took comes back (an offer's use, points,
+        // a package session). Each step is best-effort on its own: one
+        // failing must not stop the other; the reaper finishes either.
         if (paymentId) {
           await db.payment
             .updateMany({
@@ -471,6 +468,13 @@ export async function POST(req: Request, { params }: Params) {
             })
             .catch((e) => log.error("[booking POST] could not fail the payment", e));
         }
+        await moveBooking({
+          bookingId: booking.id,
+          from: "PENDING_PAYMENT",
+          to: "FAILED_PAYMENT",
+          by: "system",
+          reason: "could not open a Paymob session",
+        }).catch((e) => log.error("[booking POST] could not release the hold", e));
         log.error("[booking POST] payment could not be started:", paymobError);
         return err("تعذّر بدء عملية الدفع، حاول مرة أخرى", 502, { code: "payment-unavailable" });
       }

@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "الفريق" };
 
 export default async function StaffPage() {
   // An editor: the owner, or a delegate granted STAFF.
-  const { business } = await requireDashboardAccess("staff.manage");
+  const { business, actor } = await requireDashboardAccess("staff.manage");
   const businessId = business.id;
 
   const [staffMembers, services, businessHours, timeBlocks] = await Promise.all([
@@ -48,6 +48,7 @@ export default async function StaffPage() {
     specialties: m.specialties as string[],
     serviceIds:  m.services.map((ss) => ss.serviceId),
     serviceNames: m.services.map((ss) => ss.service.nameAr),
+    commissionPercent: m.commissionPercent,
     hours: m.hours.map((h) => ({
       dayOfWeek: h.dayOfWeek,
       startTime: h.startTime,
@@ -59,6 +60,8 @@ export default async function StaffPage() {
   return (
     <StaffClient
       initialStaff={serialized}
+      // Commission is money: only the owner sets it (the API refuses others).
+      canSetCommission={actor.role === "OWNER"}
       availableServices={services.map((s) => ({ id: s.id, nameAr: s.nameAr }))}
       businessHours={businessHours}
       timeBlocks={timeBlocks.map((b) => ({

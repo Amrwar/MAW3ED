@@ -21,6 +21,8 @@ export type StaffMember = {
   specialties:  string[];
   serviceIds:   string[];
   serviceNames: string[];
+  /** Share of their completed revenue, for the operations report. Null: none. */
+  commissionPercent?: number | null;
   /** Their own week, where they have set one. Empty follows the shop. */
   hours?:       StaffHoursRow[];
 };
@@ -32,6 +34,7 @@ type Props = {
   availableServices: AvailableService[];
   businessHours:     { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }[];
   timeBlocks:        TimeBlockRow[];
+  canSetCommission?: boolean;
 };
 
 const DAY_LABELS_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
@@ -56,6 +59,7 @@ export default function StaffClient({
   availableServices,
   businessHours,
   timeBlocks,
+  canSetCommission = false,
 }: Props) {
   const [staff,      setStaff]      = useState<StaffMember[]>(initialStaff);
   const [panelOpen,  setPanelOpen]  = useState(false);
@@ -318,6 +322,7 @@ export default function StaffClient({
         onSaved={handleSaved}
         editing={editing}
         availableServices={availableServices}
+        canSetCommission={canSetCommission}
       />
     </div>
   );

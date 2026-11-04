@@ -50,6 +50,8 @@ export default function robots(): MetadataRoute.Robots {
           // A booking's management page is reachable only with its
           // secret token. Indexing one would publish it.
           "/booking/",
+          // A waitlist entry is reachable only with its secret link.
+          "/booking-waitlist/",
 
           // Filtered search is a combinatorial surface — every
           // permutation of city, category, price, rating and sort is a

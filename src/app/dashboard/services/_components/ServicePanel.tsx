@@ -21,6 +21,7 @@ const DEFAULT = {
   nameAr:        "",
   nameEn:        "",
   descriptionAr: "",
+  groupName:     "",
   // No default length: a preset 30 was kept by almost every owner, so
   // every service on the site read "30 min" whatever it really took.
   duration:      0,
@@ -162,6 +163,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
               nameAr:        editing.nameAr,
               nameEn:        editing.nameEn,
               descriptionAr: editing.descriptionAr,
+              groupName:     editing.groupName ?? "",
               duration:      editing.duration,
               price:         editing.price,
               isAvailable:   editing.isAvailable,
@@ -204,6 +206,8 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
           // JSON.stringify and the old value survives the save.
           nameEn:        form.nameEn.trim()        || null,
           descriptionAr: form.descriptionAr.trim() || null,
+          // "" clears the category.
+          groupName:     form.groupName.trim(),
           duration:      form.duration,
           price:         form.price,
           isAvailable:   form.isAvailable,
@@ -220,6 +224,7 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
           nameAr:        data.nameAr,
           nameEn:        data.nameEn        ?? "",
           descriptionAr: data.descriptionAr ?? "",
+          groupName:     data.groupName ?? "",
           duration:      data.duration,
           price:         Number(data.price),
           currency:      data.currency,
@@ -357,6 +362,34 @@ export default function ServicePanel({ open, onClose, editing, onSave }: Props) 
                 onFocus={focusStyle}
                 onBlur={blurStyle}
               />
+            </div>
+
+            {/* Category */}
+            <div>
+              <FieldLabel htmlFor="groupName">
+                <span className="flex items-center gap-1.5">
+                  {isAr ? "الفئة" : "Category"}
+                  <span
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-[var(--radius-xs)]"
+                    style={{ background: "var(--color-surface-3)", color: "var(--color-subtle)" }}
+                  >
+                    {isAr ? "اختياري" : "Optional"}
+                  </span>
+                </span>
+              </FieldLabel>
+              <input
+                id="groupName"
+                maxLength={60}
+                value={form.groupName}
+                onChange={(e) => set("groupName", e.target.value)}
+                placeholder={isAr ? "مثال: أسنان، جلدية، شعر" : "e.g. Dental, Dermatology, Hair"}
+                style={fieldBase}
+                onFocus={focusStyle}
+                onBlur={blurStyle}
+              />
+              <p className="m-0 mt-1 text-[0.6875rem]" style={{ color: "var(--color-subtle)" }}>
+                {isAr ? "بتجمّع الخدمات في التقارير وصفحة الحجز." : "Groups services in reports and on the booking page."}
+              </p>
             </div>
           </FormSection>
 

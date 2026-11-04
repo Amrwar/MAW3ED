@@ -2789,7 +2789,7 @@ model PackagePlan {
 model CustomerPackage {
   id            String           @id @default(cuid())
   planId        String
-  plan          PackagePlan      @relation(fields: [planId], references: [id], onDelete: Restrict)
+  plan          PackagePlan      @relation(fields: [planId], references: [id], onDelete: NoAction)
   businessId    String
   business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   phoneE164     String
@@ -2840,7 +2840,7 @@ model MembershipPlan {
 model CustomerMembership {
   id                String                   @id @default(cuid())
   planId            String
-  plan              MembershipPlan           @relation(fields: [planId], references: [id], onDelete: Restrict)
+  plan              MembershipPlan           @relation(fields: [planId], references: [id], onDelete: NoAction)
   businessId        String
   business          Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
   phoneE164         String

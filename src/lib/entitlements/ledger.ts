@@ -349,7 +349,6 @@ export type DeskRefund =
  */
 export async function refundAtDesk(
   r: { businessId: string; target: EntitlementRef; amountCents: number; reason: string; actorId: string; actorName: string },
-  now: Date = new Date(),
 ): Promise<DeskRefund> {
   if (!Number.isInteger(r.amountCents) || r.amountCents <= 0) return { ok: false, why: "too-much" };
   return db.$transaction(async (tx) => {

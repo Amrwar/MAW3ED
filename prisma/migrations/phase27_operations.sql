@@ -106,6 +106,9 @@ CREATE INDEX IF NOT EXISTS "SlotWaitlistEntry_businessId_date_status_createdAt_i
 CREATE INDEX IF NOT EXISTS "SlotWaitlistEntry_status_offerExpiresAt_idx" ON "SlotWaitlistEntry"("status", "offerExpiresAt");
 -- One live entry per number, business and day.
 CREATE UNIQUE INDEX IF NOT EXISTS "SlotWaitlistEntry_live_key" ON "SlotWaitlistEntry"("businessId", "date", "phoneE164") WHERE "status" IN ('WAITING', 'OFFERED');
+-- One live offer per time per business-day: two offering passes racing
+-- cannot offer the same freed time to two people.
+CREATE UNIQUE INDEX IF NOT EXISTS "SlotWaitlistEntry_offer_time_key" ON "SlotWaitlistEntry"("businessId", "date", "offeredTime") WHERE "status" = 'OFFERED';
 
 CREATE TABLE IF NOT EXISTS "LoyaltyProgram" (
   "id" TEXT PRIMARY KEY,
@@ -203,7 +206,10 @@ CREATE INDEX IF NOT EXISTS "PackagePlan_businessId_isActive_idx" ON "PackagePlan
 
 CREATE TABLE IF NOT EXISTS "CustomerPackage" (
   "id" TEXT PRIMARY KEY,
-  "planId" TEXT NOT NULL REFERENCES "PackagePlan"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  -- NO ACTION, not RESTRICT: a plan is never deleted on its own while it
+  -- has sales, but deleting the whole business must still cascade (RESTRICT
+  -- is checked mid-cascade and would block it).
+  "planId" TEXT NOT NULL CONSTRAINT "CustomerPackage_planId_fkey" REFERENCES "PackagePlan"("id") ON DELETE NO ACTION ON UPDATE CASCADE,
   "businessId" TEXT NOT NULL REFERENCES "Business"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   "phoneE164" TEXT NOT NULL,
   "customerName" TEXT NOT NULL,
@@ -240,7 +246,7 @@ CREATE INDEX IF NOT EXISTS "MembershipPlan_businessId_isActive_idx" ON "Membersh
 
 CREATE TABLE IF NOT EXISTS "CustomerMembership" (
   "id" TEXT PRIMARY KEY,
-  "planId" TEXT NOT NULL REFERENCES "MembershipPlan"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  "planId" TEXT NOT NULL CONSTRAINT "CustomerMembership_planId_fkey" REFERENCES "MembershipPlan"("id") ON DELETE NO ACTION ON UPDATE CASCADE,
   "businessId" TEXT NOT NULL REFERENCES "Business"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   "phoneE164" TEXT NOT NULL,
   "customerName" TEXT NOT NULL,
@@ -262,6 +268,13 @@ CREATE TABLE IF NOT EXISTS "CustomerMembership" (
 );
 CREATE INDEX IF NOT EXISTS "CustomerMembership_businessId_phoneE164_status_idx" ON "CustomerMembership"("businessId", "phoneE164", "status");
 CREATE INDEX IF NOT EXISTS "CustomerMembership_status_paidThrough_idx" ON "CustomerMembership"("status", "paidThrough");
+
+-- A database where an earlier draft of this file made the plan keys
+-- RESTRICT: re-made as NO ACTION (idempotent).
+ALTER TABLE "CustomerPackage" DROP CONSTRAINT IF EXISTS "CustomerPackage_planId_fkey";
+ALTER TABLE "CustomerPackage" ADD CONSTRAINT "CustomerPackage_planId_fkey" FOREIGN KEY ("planId") REFERENCES "PackagePlan"("id") ON DELETE NO ACTION ON UPDATE CASCADE;
+ALTER TABLE "CustomerMembership" DROP CONSTRAINT IF EXISTS "CustomerMembership_planId_fkey";
+ALTER TABLE "CustomerMembership" ADD CONSTRAINT "CustomerMembership_planId_fkey" FOREIGN KEY ("planId") REFERENCES "MembershipPlan"("id") ON DELETE NO ACTION ON UPDATE CASCADE;
 
 CREATE TABLE IF NOT EXISTS "MembershipPeriod" (
   "id" TEXT PRIMARY KEY,

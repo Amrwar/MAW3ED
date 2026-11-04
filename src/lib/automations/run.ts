@@ -60,39 +60,38 @@ export async function runOperations(now: Date = new Date()): Promise<OperationsR
  */
 async function followUps(now: Date): Promise<number> {
   const wall = cairoWallClock(now);
-  // Visits that ended between (delay + 24h) and delay ago, per business.
-  const rows = await db.booking.findMany({
-    where: {
-      status: "COMPLETED",
-      isTest: false,
-      customerPhoneE164: { not: null },
-      business: { followUpEnabled: true, isPublished: true },
-      endsAt: { gte: new Date(wall.getTime() - 8 * DAY), lte: wall },
-    },
-    select: {
-      id: true, endsAt: true, customerPhoneE164: true, serviceId: true, staffMemberId: true,
-      business: { select: { id: true, slug: true, nameAr: true, followUpDelayHours: true } },
-    },
-    orderBy: { endsAt: "desc" },
+  const businesses = await db.business.findMany({
+    where: { followUpEnabled: true, isPublished: true },
+    select: { id: true, slug: true, nameAr: true, followUpDelayHours: true },
     take: BATCH,
   });
   let n = 0;
-  for (const b of rows) {
-    if (!b.endsAt) continue;
-    const delay = b.business.followUpDelayHours * 3_600_000;
-    const age = wall.getTime() - b.endsAt.getTime();
-    if (age < delay || age > delay + DAY) continue;
-    const r = await sendAutoMessage({
-      key: `follow-up:${b.id}`,
-      businessId: b.business.id,
-      bookingId: b.id,
-      phoneE164: b.customerPhoneE164,
-      title: `شكراً لزيارتك ${b.business.nameAr}`,
-      body: "نتمنى تكون الزيارة عجبتك. لو حابب تحجز تاني، ميعادك الجاي على بعد ضغطة.",
-      href: rebookHref(b.business.slug, b.serviceId, b.staffMemberId),
-      marketing: true,
-    }, now);
-    if (r.some((o) => o.status === "SENT")) n++;
+  for (const biz of businesses) {
+    // Exactly this business's window: visits that ended between
+    // (delay + 24h) and delay ago. A day wide, so an hourly or ten-minute
+    // run sees each visit many times and the key sends it once.
+    const latest = new Date(wall.getTime() - biz.followUpDelayHours * 3_600_000);
+    const visits = await db.booking.findMany({
+      where: {
+        businessId: biz.id, status: "COMPLETED", isTest: false, customerPhoneE164: { not: null },
+        endsAt: { gte: new Date(latest.getTime() - DAY), lte: latest },
+      },
+      select: { id: true, customerPhoneE164: true, serviceId: true, staffMemberId: true },
+      take: 100,
+    });
+    for (const b of visits) {
+      const r = await sendAutoMessage({
+        key: `follow-up:${b.id}`,
+        businessId: biz.id,
+        bookingId: b.id,
+        phoneE164: b.customerPhoneE164,
+        title: `شكراً لزيارتك ${biz.nameAr}`,
+        body: "نتمنى تكون الزيارة عجبتك. لو حابب تحجز تاني، ميعادك الجاي على بعد ضغطة.",
+        href: rebookHref(biz.slug, b.serviceId, b.staffMemberId),
+        marketing: true,
+      }, now);
+      if (r.some((o) => o.status === "SENT")) n++;
+    }
   }
   return n;
 }

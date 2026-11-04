@@ -24,6 +24,7 @@ export default async function ServicesPage() {
     currency:      s.currency,
     isAvailable:   s.isAvailable,
     sortOrder:     s.sortOrder,
+    groupName:     s.groupName ?? "",
   }));
 
   return <ServicesClient initialServices={serialized} />;

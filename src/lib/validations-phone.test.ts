@@ -34,7 +34,7 @@ describe("booking phone numbers", () => {
 
 describe("walk-ins at the desk", () => {
   it("needs no date or time for a walk-in, and both otherwise", () => {
-    const { date: _d, startTime: _t, ...noTime } = base;
+    const noTime = { serviceId: base.serviceId, customerName: base.customerName };
     expect(ownerBookingSchema.safeParse({ ...noTime, customerPhone: "01012345678", walkIn: true }).success).toBe(true);
     expect(ownerBookingSchema.safeParse({ ...noTime, customerPhone: "01012345678" }).success).toBe(false);
   });

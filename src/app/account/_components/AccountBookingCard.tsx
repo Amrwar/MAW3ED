@@ -21,6 +21,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { telHref, whatsappHref } from "@/lib/contact";
 import { money, num, clockRange } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
+import { rebookHref } from "@/lib/bookings/rebook";
 
 interface Props {
   booking: AccountBooking;
@@ -222,7 +223,7 @@ export default function AccountBookingCard({ booking: b, variant }: Props) {
 
         {variant === "past" && (
           <Link
-            href={`/company/${b.business.slug}#booking`}
+            href={rebookHref(b.business.slug, b.serviceId, b.staffMemberId)}
             className={cn("btn btn-sm btn-pill ms-auto", b.canReview ? "btn-outline" : "btn-primary")}
           >
             <RotateCcw size={13} strokeWidth={2} aria-hidden="true" />

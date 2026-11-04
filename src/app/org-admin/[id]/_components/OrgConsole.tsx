@@ -198,6 +198,9 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
           )}
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href={`/org-admin/${organizationId}/loyalty`} className="btn btn-outline btn-sm">
+            {t("النقاط والعروض", "Loyalty & promotions")}
+          </Link>
           {org.isPublished && (
             <Link href={`/groups/${org.slug}`} target="_blank" className="btn btn-outline btn-sm gap-1.5">
               <ExternalLink size={14} aria-hidden="true" />

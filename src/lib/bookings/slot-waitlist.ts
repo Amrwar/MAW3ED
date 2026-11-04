@@ -107,8 +107,10 @@ export async function leaveWaitlist(manageToken: string): Promise<boolean> {
 /**
  * Offers freed times on one business-day to whoever waits for them,
  * oldest entry first. Safe to call from anywhere, any number of times:
- * an entry moves WAITING → OFFERED by a conditional update, and the same
- * time is never offered to two live entries at once.
+ * an entry moves WAITING → OFFERED by a conditional update, and a time
+ * is on offer to at most one entry per business-day — the database
+ * holds that (SlotWaitlistEntry_offer_time_key), so two passes racing
+ * cannot both offer it; the loser moves on to the next time.
  */
 export async function offerFreedTimes(businessId: string, date: string, now: Date = new Date()): Promise<number> {
   const business = await db.business.findUnique({
@@ -146,16 +148,26 @@ export async function offerFreedTimes(businessId: string, date: string, now: Dat
     });
     if (!time) continue;
     const offerToken = randomBytes(24).toString("hex");
-    const { count } = await db.slotWaitlistEntry.updateMany({
-      where: { id: entry.id, status: "WAITING", offers: { lt: MAX_OFFERS } },
-      data: {
-        status: "OFFERED",
-        offeredTime: time,
-        offerToken,
-        offerExpiresAt: new Date(now.getTime() + business.waitlistOfferMinutes * 60_000),
-        offers: { increment: 1 },
-      },
-    });
+    let count = 0;
+    try {
+      ({ count } = await db.slotWaitlistEntry.updateMany({
+        where: { id: entry.id, status: "WAITING", offers: { lt: MAX_OFFERS } },
+        data: {
+          status: "OFFERED",
+          offeredTime: time,
+          offerToken,
+          offerExpiresAt: new Date(now.getTime() + business.waitlistOfferMinutes * 60_000),
+          offers: { increment: 1 },
+        },
+      }));
+    } catch (e) {
+      // Another pass offered this time a moment ago.
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        taken.add(time);
+        continue;
+      }
+      throw e;
+    }
     if (count !== 1) continue;
     taken.add(time);
     offered++;

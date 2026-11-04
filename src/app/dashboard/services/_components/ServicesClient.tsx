@@ -18,6 +18,8 @@ export type Service = {
   currency:      string;
   isAvailable:   boolean;
   sortOrder:     number;
+  /** A category the business groups services under; "" for none. */
+  groupName?:    string;
 };
 
 type Props = { initialServices: Service[] };

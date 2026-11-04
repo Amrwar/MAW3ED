@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef, useId } from "react";
 import type { TrafficSource } from "@prisma/client";
+import { useSession } from "next-auth/react";
+import type { DayHours } from "@/lib/discovery/hours";
 import { useFunnelStep } from "@/lib/analytics/funnel-client";
 import {
   ChevronRight, ChevronLeft, CheckCircle,
-  Loader2, CalendarDays, Clock, Check, Users, Scissors,
+  Loader2, CalendarDays, Clock, Check, Users, Scissors, Hourglass,
 } from "lucide-react";
 import type { Service } from "@/types/service";
 import type { PublicResource, PublicStaff } from "./CompanyContent";
@@ -59,7 +61,33 @@ interface BookingWidgetProps {
    * shown here is the one the API applies.
    */
   changeCutoffHours?:  number;
+  /** A fully booked day offers to wait for a time instead (Business.waitlistEnabled). */
+  waitlistEnabled?:    boolean;
+  /** How many people may come along on one booking (Business.maxCompanions); 0 asks nothing. */
+  maxCompanions?:      number;
+  /** Opening hours, for the waitlist's time window. */
+  hours?:              DayHours[];
 }
+
+/** What the signed-in customer could spend on this booking (GET /api/account/wallet). */
+type Usable = {
+  loyalty: {
+    programName:      string;
+    available:        number;
+    maxPoints:        number;
+    maxOffCents:      number;
+    redeemPoints:     number;
+    redeemValueCents: number;
+  } | null;
+  entitlements: {
+    kind:      "package" | "membership";
+    id:        string;
+    nameAr:    string;
+    nameEn:    string | null;
+    left:      number;
+    expiresAt: string | null;
+  }[];
+};
 
 export type PublicBranch = {
   id:      string;
@@ -164,6 +192,83 @@ function emptyDayMessage(reason: string | null, lang: Lang): string {
     case "too-far-ahead":   return en ? "Booking isn't open for this date yet" : "الحجز مش مفتوح للتاريخ ده لسه";
     case "past":            return en ? "This day has passed" : "اليوم ده عدّى";
     default:                return en ? "No available times" : "مفيش مواعيد متاحة";
+  }
+}
+
+/**
+ * Whether an empty day is empty because it is full. Every other reason
+ * (closed, a holiday, past the cutoff) is not something waiting would
+ * fix, so the waitlist is offered only when the server gives none.
+ */
+function dayIsFull(reason: string | null): boolean {
+  return reason === null;
+}
+
+/** Half-hour steps through the day's opening hours, for the waitlist window. */
+function windowTimes(hours: DayHours[], iso: string | null): string[] {
+  const toMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  let start = 8 * 60;
+  let end = 23 * 60 + 30;
+  if (iso) {
+    const [y, m, d] = iso.split("-").map(Number);
+    const rule = hours.find((h) => h.dayOfWeek === new Date(Date.UTC(y, m - 1, d)).getUTCDay());
+    if (rule && !rule.isClosed) {
+      start = toMin(rule.openTime);
+      const close = toMin(rule.closeTime);
+      // A day open past midnight is waited on up to the end of the day
+      // it starts: the window cannot cross midnight.
+      end = close > start ? close : 23 * 60 + 30;
+    }
+  }
+  start = Math.ceil(start / 30) * 30;
+  const out: string[] = [];
+  for (let t = start; t <= end; t += 30) {
+    out.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
+  }
+  return out;
+}
+
+/**
+ * The booking route's refusals about the customer's balance, number or
+ * party, in both languages. Null for anything else, which keeps the
+ * server's own sentence.
+ */
+function balanceRefusal(code: string | undefined, lang: Lang): string | null {
+  const en = lang === "en";
+  switch (code) {
+    case "loyalty-insufficient":
+      return en ? "Those points were just used on another booking. Try without points." : "النقاط اتصرفت في حجز تاني. جرّب من غير نقاط.";
+    case "loyalty-unavailable":
+      return en ? "This place doesn't have a points programme any more. Try without points." : "المكان ده مبقاش فيه برنامج نقاط. جرّب من غير نقاط.";
+    case "entitlement-gone":
+      return en ? "That package or membership has no visit left for this time. Choose again, or book and pay as usual." : "الباقة أو العضوية مبقاش فيها جلسات للموعد ده. اختار تاني، أو احجز وادفع عادي.";
+    case "no-show-blocked":
+      return en ? "Online booking isn't available for this number. Please call the business to book." : "الحجز أونلاين مش متاح للرقم ده. كلّم المكان عشان تحجز.";
+    case "too-many-companions":
+      return en ? "That's more people than this place takes on one booking." : "العدد ده أكتر من اللي المكان بيقبله في حجز واحد.";
+    case "balance-not-for-test":
+      return en ? "A test booking can't use points or packages." : "الحجز التجريبي مبيستخدمش نقاط أو باقات.";
+    default:
+      return null;
+  }
+}
+
+/** The waitlist route's refusals, in both languages. */
+function waitlistRefusal(code: string | undefined, fallback: string | undefined, lang: Lang): string {
+  const en = lang === "en";
+  switch (code) {
+    case "disabled":          return en ? "This place doesn't take a waitlist." : "المكان ده مش مفعّل قائمة الانتظار.";
+    case "bad-window":        return en ? "Choose a start time before the end time." : "اختار وقت بداية قبل وقت النهاية.";
+    case "bad-date":          return en ? "This date can't be booked." : "التاريخ ده مش متاح للحجز.";
+    case "already-waiting":   return en ? "You're already on the waitlist for this day." : "إنت في قائمة الانتظار لليوم ده بالفعل.";
+    case "full":              return en ? "The waitlist for this day is full." : "قائمة الانتظار لليوم ده كاملة.";
+    case "bad-phone":         return en ? "That mobile number isn't valid." : "رقم الموبايل غير صحيح.";
+    case "service-not-found": return en ? "This service isn't available any more." : "الخدمة دي مبقتش متاحة.";
+    default:
+      return (!en && fallback) || (en ? "Couldn't add you to the waitlist. Try again." : "معرفناش نضيفك لقائمة الانتظار، جرّب تاني.");
   }
 }
 
@@ -338,6 +443,9 @@ export default function BookingWidget({
   depositEnabled = false,
   depositPercent = 0,
   changeCutoffHours = 2,
+  waitlistEnabled = false,
+  maxCompanions = 0,
+  hours = [],
 }: BookingWidgetProps) {
   // Ids for the details step. The four fields had visible <label>s with
   // no htmlFor and no id to point at, and a label that neither wraps
@@ -480,6 +588,25 @@ export default function BookingWidget({
   const [otp,        setOtp]        = useState("");
   const [phoneProof, setPhoneProof] = useState<string | null>(null);
 
+  // People coming along, when the business takes any.
+  const [companions, setCompanions] = useState(0);
+
+  // Waiting for a time on a full day (POST /api/public/<slug>/waitlist).
+  const [waitOpen,  setWaitOpen]  = useState(false);
+  const [waitFrom,  setWaitFrom]  = useState("");
+  const [waitTo,    setWaitTo]    = useState("");
+  const [waitBusy,  setWaitBusy]  = useState(false);
+  const [waitError, setWaitError] = useState<string | null>(null);
+  const [waitDone,  setWaitDone]  = useState<string | null>(null);
+
+  // A signed-in customer's points, packages and memberships this booking
+  // could use. Anonymous visitors are never asked about.
+  const { status: authStatus } = useSession();
+  const [usable,         setUsable]         = useState<Usable | null>(null);
+  const [useEntitlement, setUseEntitlement] = useState<string | null>(null);
+  const [usePoints,      setUsePoints]      = useState(false);
+  const [usableNonce,    setUsableNonce]    = useState(0);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const days = getUpcomingDays(30);
   // Whether the day strip has more to show toward earlier / later days,
@@ -547,7 +674,45 @@ export default function BookingWidget({
       setSlotsError(null);
       setSlotsLoading(true);
     }
+    setWaitOpen(false);
+    setWaitError(null);
+    setWaitDone(null);
   }
+
+  // What the customer could spend here, asked once the service, day and
+  // time are known, and asked again from nothing chosen whenever any of
+  // them changes: a package for one service is never offered on another.
+  const usableKey =
+    authStatus === "authenticated" && selectedService && selectedDate && selectedTime
+      ? [slug, selectedService.id, selectedDate, selectedTime, usableNonce].join("|")
+      : null;
+  const [usableFor, setUsableFor] = useState<string | null>(null);
+  if (usableKey !== usableFor) {
+    setUsableFor(usableKey);
+    setUsable(null);
+    setUseEntitlement(null);
+    setUsePoints(false);
+  }
+
+  useEffect(() => {
+    if (!usableKey || !selectedService || !selectedDate || !selectedTime) return;
+    let stale = false;
+    const q = new URLSearchParams({ slug, serviceId: selectedService.id, date: selectedDate, time: selectedTime });
+    // 401, or a number not verified, answers with nothing to offer.
+    fetch(`/api/account/wallet?${q}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (stale || !data) return;
+        const body = data.data ?? data;
+        if (!body?.verified || !body.usable) return;
+        setUsable(body.usable as Usable);
+      })
+      .catch(() => {});
+    return () => {
+      stale = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usableKey]);
 
   // Fetch available slots when date / service / resource changes. A
   // reply that arrives after the choice has moved on is dropped, so a
@@ -707,8 +872,15 @@ export default function BookingWidget({
           // Only the code. The price is re-derived server-side from the
           // same rules that produced the quote, so a tampered payload
           // gets the honest number rather than its own.
-          discountCode: quote?.discount?.code ?? undefined,
+          // Not with a package or membership, which pays in full.
+          discountCode: chosenEntitlement ? undefined : quote?.discount?.code ?? undefined,
           phoneProof: proof ?? undefined,
+          companions: maxCompanions > 0 ? companions : undefined,
+          // A package session or membership visit pays for it in full;
+          // points come off what is left without one.
+          usePackageId:    chosenEntitlement?.kind === "package" ? chosenEntitlement.id : undefined,
+          useMembershipId: chosenEntitlement?.kind === "membership" ? chosenEntitlement.id : undefined,
+          redeemPoints:    pointsOff > 0 && usable?.loyalty ? usable.loyalty.maxPoints : undefined,
         }),
       });
 
@@ -721,12 +893,21 @@ export default function BookingWidget({
         return;
       }
       if (!res.ok) {
-        setSubmitError(data.error ?? tr("حصلت مشكلة في الحجز، جرّب تاني", "Something went wrong with the booking. Try again."));
+        // A balance that changed since it was offered: ask again what
+        // there is, with nothing chosen, so the next try is honest.
+        if (data?.code === "loyalty-insufficient" || data?.code === "loyalty-unavailable" || data?.code === "entitlement-gone") {
+          setUsableNonce((n) => n + 1);
+        }
+        setSubmitError(
+          balanceRefusal(data?.code, lang) ??
+            data.error ??
+            tr("حصلت مشكلة في الحجز، جرّب تاني", "Something went wrong with the booking. Try again."),
+        );
         return;
       }
 
       if (data.requiresPayment && data.paymentUrl) {
-        window.location.href = data.paymentUrl;
+        window.location.assign(data.paymentUrl);
         return;
       }
 
@@ -756,6 +937,57 @@ export default function BookingWidget({
     setConfirmation(null);
     setSubmitError(null);
     setPartySize(2);
+    setCompanions(0);
+    setWaitOpen(false); setWaitError(null); setWaitDone(null);
+    setUseEntitlement(null); setUsePoints(false);
+  }
+
+  /** Puts this customer on the waitlist for the chosen day. */
+  async function joinWaitlist() {
+    if (!selectedService || !selectedDate) return;
+    if (!validate()) return;
+    if (!waitFrom || !waitTo || waitFrom >= waitTo) {
+      setWaitError(waitlistRefusal("bad-window", undefined, lang));
+      return;
+    }
+    setWaitBusy(true);
+    setWaitError(null);
+    try {
+      const res = await fetch(`/api/public/${slug}/waitlist`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceId:     selectedService.id,
+          staffMemberId: selectedStaff?.id,
+          date:          selectedDate,
+          fromTime:      waitFrom,
+          toTime:        waitTo,
+          partySize:     resourcesCountSeats ? partySize : undefined,
+          customerName:  name.trim(),
+          customerPhone: phone.trim(),
+          customerEmail: email.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      const body = data?.data ?? data;
+      if (res.ok && body?.manageUrl) {
+        setWaitDone(body.manageUrl as string);
+        return;
+      }
+      setWaitError(waitlistRefusal(data?.code, data?.error, lang));
+    } catch {
+      setWaitError(tr("معرفناش نوصل للسيرفر، اتأكد من النت وجرّب تاني", "Couldn't reach the server. Check your connection and try again."));
+    } finally {
+      setWaitBusy(false);
+    }
+  }
+
+  function openWaitlist() {
+    // The whole opening day by default; the customer narrows it.
+    setWaitFrom(waitOptions[0] ?? "");
+    setWaitTo(waitOptions[waitOptions.length - 1] ?? "");
+    setWaitError(null);
+    setWaitOpen(true);
   }
 
   // ── Derived ─────────────────────────────────────────────
@@ -766,13 +998,35 @@ export default function BookingWidget({
    * the switch — so this is a preview, and it stays null unless the
    * business both takes deposits and has a price to take one from.
    */
+  // The balance chosen to pay with, if any. A package or membership
+  // covers the whole price; points take off what the program allows.
+  // The server works all of this out again; this is the preview.
+  const chosenEntitlement = usable?.entitlements.find((e) => e.id === useEntitlement) ?? null;
+  const listCents = selectedService ? Math.round(selectedService.price * 100) : 0;
+  const beforePointsCents = quote ? quote.totalCents : listCents;
+  const pointsOff =
+    !chosenEntitlement && usePoints && usable?.loyalty && usable.loyalty.maxPoints > 0
+      ? Math.min(usable.loyalty.maxOffCents, beforePointsCents)
+      : 0;
+  const payCents = chosenEntitlement ? 0 : beforePointsCents - pointsOff;
+
   const depositDue =
     // The server's own rule (rounded up to the piastre), so the preview
     // and the charge agree — Math.round on pounds showed 38 for a 37.50
-    // deposit.
-    depositEnabled && depositPercent > 0 && depositPercent <= 100 && selectedService && selectedService.price > 0
-      ? depositCents(selectedService.price, depositPercent) / 100
+    // deposit. Nothing is due on a booking a package or membership pays
+    // for; with points it is a share of what is left.
+    depositEnabled && depositPercent > 0 && depositPercent <= 100 && selectedService && selectedService.price > 0 && !chosenEntitlement
+      ? pointsOff > 0
+        ? payCents > 0 ? depositCents(payCents / 100, depositPercent) / 100 : null
+        : depositCents(selectedService.price, depositPercent) / 100
       : null;
+
+  const companionsLabel = en
+    ? `${companions} ${companions === 1 ? "person" : "people"}`
+    : arCount(companions, { one: "شخص واحد", two: "شخصين", few: "أشخاص", many: "شخص" });
+
+  // The waitlist window's choices: the chosen day's opening hours.
+  const waitOptions = windowTimes(hours, selectedDate);
 
   const partyLabel = en
     ? `${partySize} ${partySize === 1 ? "person" : "people"}`
@@ -1321,9 +1575,191 @@ export default function BookingWidget({
                 <CalendarDays size={28} className="mx-auto text-[var(--color-faint)] mb-2" />
                 {/* The server says why the day is empty rather than
                     leaving a blank grid to be puzzled over. */}
-                <p className="text-sm text-[var(--color-subtle)]">{emptyDayMessage(slotsReason, lang)}</p>
-                <p className="text-xs text-[var(--color-subtle)] mt-1">{tr("اختار يوم تاني", "Pick another day")}</p>
+                <p className="text-sm text-[var(--color-subtle)]">
+                  {waitlistEnabled && dayIsFull(slotsReason)
+                    ? tr("اليوم ده محجوز بالكامل", "This day is fully booked")
+                    : emptyDayMessage(slotsReason, lang)}
+                </p>
+                <p className="text-xs text-[var(--color-subtle)] mt-1">
+                  {waitlistEnabled && dayIsFull(slotsReason)
+                    ? tr("اختار يوم تاني، أو استنى ميعاد يفضى", "Pick another day, or wait for a time to free up")
+                    : tr("اختار يوم تاني", "Pick another day")}
+                </p>
               </div>
+            )}
+
+            {/* A full day need not be a dead end: wait for a time in a
+                window that suits, and be offered it if one frees up. */}
+            {!slotsLoading && !slotsError && slots.length === 0 && waitlistEnabled && dayIsFull(slotsReason) && (
+              waitDone ? (
+                <div role="status" className="rounded-[var(--radius-lg)] border border-[var(--color-ok-line)] bg-[var(--color-ok-soft)] px-4 py-4 text-center">
+                  <CheckCircle size={26} aria-hidden="true" className="mx-auto mb-2 text-[var(--color-ok)]" />
+                  <p className="m-0 text-sm font-bold text-[var(--color-ink)]">{tr("إنت في قائمة الانتظار", "You're on the waitlist")}</p>
+                  <p className="m-0 mt-1.5 text-xs leading-relaxed text-[var(--color-muted)]">
+                    {email.trim()
+                      ? tr("لو فضي ميعاد في الوقت اللي اخترته، هنبعتلك عرض على إيميلك (وفي حسابك لو عندك حساب).", "If a time frees up in your window, we'll email you an offer (and show it in your account if you have one).")
+                      : tr("لو فضي ميعاد في الوقت اللي اخترته، هتلاقي العرض في حسابك لو عندك حساب بنفس الرقم. احتفظ بالرابط ده عشان تتابع.", "If a time frees up in your window, the offer appears in your account if you have one with this number. Keep this link to check on it.")}
+                  </p>
+                  <a
+                    href={waitDone}
+                    className="mt-3 inline-flex min-h-11 items-center justify-center rounded-[var(--radius-lg)] border-2 border-[var(--color-jade)] px-4 text-sm font-bold text-[var(--color-jade)] transition-colors hover:bg-[var(--color-jade-soft)]"
+                  >
+                    {tr("تابع طلب الانتظار", "View your waitlist request")}
+                  </a>
+                </div>
+              ) : !waitOpen ? (
+                <button
+                  type="button"
+                  onClick={openWaitlist}
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] border-2 border-[var(--color-jade)] py-3 text-sm font-bold text-[var(--color-jade)] transition-colors hover:bg-[var(--color-jade-soft)]"
+                >
+                  <Hourglass size={15} aria-hidden="true" />
+                  {tr("ادخل قائمة الانتظار لليوم ده", "Join the waitlist for this day")}
+                </button>
+              ) : (
+                <form
+                  onSubmit={(e) => { e.preventDefault(); void joinWaitlist(); }}
+                  aria-labelledby={`${fid}-wait-title`}
+                  className="rounded-[var(--radius-lg)] border border-[var(--color-line-2)] bg-[var(--color-surface-2)] p-4"
+                  noValidate
+                >
+                  <p id={`${fid}-wait-title`} className="m-0 text-sm font-bold text-[var(--color-ink)]">
+                    {tr("قائمة الانتظار", "Waitlist")}{selectedDate ? ` — ${formatDateAr(selectedDate, lang)}` : ""}
+                  </p>
+                  <p className="m-0 mt-1 text-xs leading-relaxed text-[var(--color-subtle)]">
+                    {tr(
+                      "قولنا الوقت اللي يناسبك. لو ميعاد فضي فيه هنعرضه عليك، والأسبقية للي طلب الأول.",
+                      "Tell us the window that suits you. If a time frees up in it we'll offer it to you, oldest request first.",
+                    )}
+                  </p>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="min-w-0">
+                      <label htmlFor={`${fid}-wfrom`} className="mb-1 block text-xs font-semibold text-[var(--color-subtle)]">
+                        {tr("من", "From")}
+                      </label>
+                      <select
+                        id={`${fid}-wfrom`}
+                        value={waitFrom}
+                        onChange={(e) => { setWaitFrom(e.target.value); setWaitError(null); }}
+                        className="min-h-11 w-full min-w-0 rounded-[var(--radius-md)] border-2 border-[var(--color-line-2)] bg-[var(--color-surface)] px-2 text-sm outline-none focus:border-[var(--color-jade)]"
+                      >
+                        {waitOptions.slice(0, -1).map((t) => (
+                          <option key={t} value={t}>{clock12(t, lang)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="min-w-0">
+                      <label htmlFor={`${fid}-wto`} className="mb-1 block text-xs font-semibold text-[var(--color-subtle)]">
+                        {tr("لحد", "To")}
+                      </label>
+                      <select
+                        id={`${fid}-wto`}
+                        value={waitTo}
+                        onChange={(e) => { setWaitTo(e.target.value); setWaitError(null); }}
+                        className="min-h-11 w-full min-w-0 rounded-[var(--radius-md)] border-2 border-[var(--color-line-2)] bg-[var(--color-surface)] px-2 text-sm outline-none focus:border-[var(--color-jade)]"
+                      >
+                        {waitOptions.slice(1).map((t) => (
+                          <option key={t} value={t}>{clock12(t, lang)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label htmlFor={`${fid}-wname`} className="mb-1 block text-xs font-semibold text-[var(--color-subtle)]">
+                        {tr("الاسم بالكامل", "Full name")} <span className="text-[var(--color-danger)]">*</span>
+                      </label>
+                      <input
+                        id={`${fid}-wname`}
+                        type="text"
+                        autoComplete="name"
+                        aria-required="true"
+                        aria-invalid={errors.name ? true : undefined}
+                        aria-describedby={errors.name ? `${fid}-wname-err` : undefined}
+                        value={name}
+                        onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: undefined })); }}
+                        className={`min-h-11 w-full rounded-[var(--radius-md)] border-2 bg-[var(--color-surface)] px-3 text-sm outline-none transition-all ${errors.name ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
+                      />
+                      {errors.name && <p id={`${fid}-wname-err`} className="field-error">{errors.name}</p>}
+                    </div>
+                    <div>
+                      <label htmlFor={`${fid}-wphone`} className="mb-1 block text-xs font-semibold text-[var(--color-subtle)]">
+                        {tr("رقم الموبايل", "Mobile number")} <span className="text-[var(--color-danger)]">*</span>
+                      </label>
+                      <input
+                        id={`${fid}-wphone`}
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        aria-required="true"
+                        aria-invalid={errors.phone ? true : undefined}
+                        aria-describedby={errors.phone ? `${fid}-wphone-err` : undefined}
+                        placeholder="01xxxxxxxxx"
+                        dir="ltr"
+                        value={phone}
+                        onChange={(e) => {
+                          setPhone(e.target.value);
+                          setErrors((p) => ({ ...p, phone: undefined }));
+                          setCodeSent(false); setPhoneProof(null); setOtp("");
+                        }}
+                        className={`min-h-11 w-full rounded-[var(--radius-md)] border-2 bg-[var(--color-surface)] px-3 text-sm outline-none transition-all ${errors.phone ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
+                      />
+                      {errors.phone && <p id={`${fid}-wphone-err`} className="field-error">{errors.phone}</p>}
+                    </div>
+                    <div>
+                      <label htmlFor={`${fid}-wemail`} className="mb-1 block text-xs font-semibold text-[var(--color-subtle)]">
+                        {tr("الإيميل", "Email")} <span className="font-normal">{tr("(مستحسن)", "(recommended)")}</span>
+                      </label>
+                      <input
+                        id={`${fid}-wemail`}
+                        type="email"
+                        autoComplete="email"
+                        aria-invalid={errors.email ? true : undefined}
+                        aria-describedby={`${fid}-wemail-hint${errors.email ? ` ${fid}-wemail-err` : ""}`}
+                        placeholder="example@email.com"
+                        dir="ltr"
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); }}
+                        className={`min-h-11 w-full rounded-[var(--radius-md)] border-2 bg-[var(--color-surface)] px-3 text-sm outline-none transition-all ${errors.email ? "border-[var(--color-danger)]" : "border-[var(--color-line-2)] focus:border-[var(--color-jade)]"}`}
+                      />
+                      <p id={`${fid}-wemail-hint`} className="m-0 mt-1 text-[11px] leading-relaxed text-[var(--color-subtle)]">
+                        {tr(
+                          "العرض بيوصل على الإيميل، وفي حسابك لو عندك حساب بنفس الرقم.",
+                          "Offers are sent to this email, and to your account if you have one with this number.",
+                        )}
+                      </p>
+                      {errors.email && <p id={`${fid}-wemail-err`} className="field-error">{errors.email}</p>}
+                    </div>
+                  </div>
+
+                  {waitError && (
+                    <p role="alert" className="m-0 mt-3 rounded-[var(--radius-md)] border border-[var(--color-danger-line)] bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">
+                      {waitError}
+                    </p>
+                  )}
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWaitOpen(false)}
+                      disabled={waitBusy}
+                      className="min-h-11 flex-1 rounded-[var(--radius-lg)] border-2 border-[var(--color-line-2)] text-sm font-bold text-[var(--color-muted)] disabled:opacity-50"
+                    >
+                      {tr("إلغاء", "Cancel")}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={waitBusy}
+                      className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--radius-lg)] bg-[var(--color-jade)] text-sm font-bold text-[var(--color-inverse)] hover:bg-[var(--color-jade-hover)] disabled:opacity-60"
+                    >
+                      {waitBusy && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+                      {tr("ادخل قائمة الانتظار", "Join the waitlist")}
+                    </button>
+                  </div>
+                </form>
+              )
             )}
 
             {!slotsLoading && !slotsError && slots.length > 0 && (
@@ -1468,6 +1904,42 @@ export default function BookingWidget({
                 {errors.email && <p id={`${fid}-email-err`} className="field-error">{errors.email}</p>}
               </div>
 
+              {/* Who else is coming, where the business takes companions
+                  on one booking. Not the party size of a table: that is
+                  asked with the table. */}
+              {maxCompanions > 0 && (
+                <div className="flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-line-2)] bg-[var(--color-surface-2)] px-4 py-3">
+                  <div className="min-w-0">
+                    <p id={`${fid}-comp-label`} className="m-0 flex items-center gap-2 text-sm font-semibold text-[var(--color-ink-2)]">
+                      <Users size={15} aria-hidden="true" className="shrink-0 text-[var(--color-jade)]" />
+                      {tr("حد جاي معاك؟", "People coming with you")}
+                    </p>
+                    <p className="m-0 mt-0.5 text-[11px] text-[var(--color-subtle)]">
+                      {tr(`لحد ${maxCompanions}`, `Up to ${maxCompanions}`)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3" role="group" aria-labelledby={`${fid}-comp-label`}>
+                    <button
+                      type="button"
+                      aria-label={tr("أقل", "Fewer")}
+                      disabled={companions <= 0}
+                      onClick={() => setCompanions((n) => Math.max(0, n - 1))}
+                      className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-line-2)] bg-white text-lg font-bold leading-none text-[var(--color-muted)] transition-all hover:border-[var(--color-jade)] disabled:opacity-40"
+                    >−</button>
+                    <span className="num w-5 text-center text-base font-extrabold text-[var(--color-ink)]" aria-live="polite">
+                      {companions}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={tr("أكتر", "More")}
+                      disabled={companions >= maxCompanions}
+                      onClick={() => setCompanions((n) => Math.min(maxCompanions, n + 1))}
+                      className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-line-2)] bg-white text-lg font-bold leading-none text-[var(--color-muted)] transition-all hover:border-[var(--color-jade)] disabled:opacity-40"
+                    >+</button>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label
                   htmlFor={`${fid}-notes`}
@@ -1529,6 +2001,9 @@ export default function BookingWidget({
               {selectedResource?.capacity != null && (
                 <SummaryRow label={tr("عدد الأشخاص", "Party size")} value={partyLabel} />
               )}
+              {maxCompanions > 0 && companions > 0 && (
+                <SummaryRow label={tr("جايين معاك", "Coming with you")} value={companionsLabel} />
+              )}
               <SummaryRow label={tr("التاريخ", "Date")} value={selectedDate ? formatDateAr(selectedDate, lang) : ""} />
               <SummaryRow label={tr("الوقت", "Time")} value={selectedTime ? clock12(selectedTime, lang) : ""} />
               <SummaryRow label={tr("المدة", "Duration")} value={fmtDuration(selectedService.duration, lang)} />
@@ -1537,21 +2012,50 @@ export default function BookingWidget({
                 {/* The struck-through original only appears when
                     something actually came off it. A price crossed out
                     beside the same price is a sales trick. */}
-                {quote?.discount ? (
+                {chosenEntitlement ? (
                   <>
+                    {selectedService.price > 0 && (
+                      <SummaryRow
+                        label={tr("السعر", "Price")}
+                        value={money(selectedService.price, lang, selectedService.currency)}
+                        strike
+                      />
+                    )}
                     <SummaryRow
-                      label={tr("السعر", "Price")}
-                      value={money(quote.subtotalCents / 100, lang, selectedService.currency)}
-                      strike
-                    />
-                    <SummaryRow
-                      label={quote.discount.nameAr}
-                      value={`− ${money(quote.discount.amountCents / 100, lang, selectedService.currency)}`}
+                      label={chosenEntitlement.kind === "package" ? tr("من الباقة", "From your package") : tr("من العضوية", "From your membership")}
+                      value={en && chosenEntitlement.nameEn ? chosenEntitlement.nameEn : chosenEntitlement.nameAr}
                       good
                     />
                     <SummaryRow
                       label={tr("الإجمالي", "Total")}
-                      value={money(quote.totalCents / 100, lang, selectedService.currency)}
+                      value={money(0, lang, selectedService.currency)}
+                      bold
+                    />
+                  </>
+                ) : quote?.discount || pointsOff > 0 ? (
+                  <>
+                    <SummaryRow
+                      label={tr("السعر", "Price")}
+                      value={money((quote?.discount ? quote.subtotalCents : listCents) / 100, lang, selectedService.currency)}
+                      strike
+                    />
+                    {quote?.discount && (
+                      <SummaryRow
+                        label={quote.discount.nameAr}
+                        value={`− ${money(quote.discount.amountCents / 100, lang, selectedService.currency)}`}
+                        good
+                      />
+                    )}
+                    {pointsOff > 0 && usable?.loyalty && (
+                      <SummaryRow
+                        label={tr(`${usable.loyalty.maxPoints} نقطة`, `${usable.loyalty.maxPoints} points`)}
+                        value={`− ${money(pointsOff / 100, lang, selectedService.currency)}`}
+                        good
+                      />
+                    )}
+                    <SummaryRow
+                      label={tr("الإجمالي", "Total")}
+                      value={money(payCents / 100, lang, selectedService.currency)}
                       bold
                     />
                   </>
@@ -1578,7 +2082,7 @@ export default function BookingWidget({
                 {/* A code the customer was given. An automatic
                     promotion is already applied, so the field would
                     only invite them to look for a better one. */}
-                {selectedService.price > 0 && !quote?.discount?.automatic && (
+                {selectedService.price > 0 && !quote?.discount?.automatic && !chosenEntitlement && (
                   <div className="mt-3">
                     <label
                       htmlFor={`${fid}-code`}
@@ -1614,6 +2118,89 @@ export default function BookingWidget({
               <SummaryRow label={tr("الاسم", "Name")} value={name.trim()} />
               <SummaryRow label={tr("الموبايل", "Mobile")} value={phone.trim()} ltr />
             </div>
+
+            {/* What the signed-in customer holds here and could use on
+                this booking: one package session or membership visit,
+                or points off the price. Only what the wallet says this
+                service, day and time can take. */}
+            {usable && (usable.entitlements.length > 0 || (usable.loyalty && usable.loyalty.maxPoints > 0)) && (
+              <fieldset className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line-2)] px-4 py-3">
+                <legend className="px-1 text-xs font-bold text-[var(--color-ink)]">{tr("استخدم رصيدك", "Use your balance")}</legend>
+
+                {usable.entitlements.length > 0 && (
+                  <div className="space-y-1">
+                    {usable.entitlements.map((e) => {
+                      const label = en && e.nameEn ? e.nameEn : e.nameAr;
+                      return (
+                        <label key={e.id} className="flex min-h-11 cursor-pointer items-start gap-2.5 py-1.5">
+                          <input
+                            type="radio"
+                            name={`${fid}-balance`}
+                            checked={useEntitlement === e.id}
+                            onChange={() => { setUseEntitlement(e.id); setUsePoints(false); setSubmitError(null); }}
+                            className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-jade)]"
+                          />
+                          <span className="min-w-0 text-sm">
+                            <span className="block font-semibold text-[var(--color-ink)]">
+                              {e.kind === "package"
+                                ? tr(`استخدم جلسة من "${label}"`, `Use a session from "${label}"`)
+                                : tr(`استخدم زيارة من عضوية "${label}"`, `Use a visit from your "${label}" membership`)}
+                            </span>
+                            <span className="block text-[11px] text-[var(--color-subtle)]">
+                              {e.kind === "package"
+                                ? tr(`فاضل ${e.left} جلسة`, `${e.left} ${e.left === 1 ? "session" : "sessions"} left`)
+                                : tr(`فاضل ${e.left} زيارة في الفترة دي`, `${e.left} ${e.left === 1 ? "visit" : "visits"} left this period`)}
+                              {e.expiresAt ? ` · ${tr("لحد", "until")} ${formatDateAr(e.expiresAt.slice(0, 10), lang)}` : ""}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                    {chosenEntitlement && (
+                      <label className="flex min-h-11 cursor-pointer items-center gap-2.5 py-1.5">
+                        <input
+                          type="radio"
+                          name={`${fid}-balance`}
+                          checked={false}
+                          onChange={() => { setUseEntitlement(null); setSubmitError(null); }}
+                          className="h-4 w-4 shrink-0 accent-[var(--color-jade)]"
+                        />
+                        <span className="text-sm text-[var(--color-muted)]">{tr("لا، هدفع عادي", "No, I'll pay as usual")}</span>
+                      </label>
+                    )}
+                  </div>
+                )}
+
+                {usable.loyalty && usable.loyalty.maxPoints > 0 && !chosenEntitlement && (
+                  <label className="flex min-h-11 cursor-pointer items-start gap-2.5 py-1.5">
+                    <input
+                      type="checkbox"
+                      checked={usePoints}
+                      onChange={(e) => { setUsePoints(e.target.checked); setSubmitError(null); }}
+                      className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-jade)]"
+                    />
+                    <span className="min-w-0 text-sm">
+                      <span className="block font-semibold text-[var(--color-ink)]">
+                        {tr(
+                          `استخدم ${usable.loyalty.maxPoints} نقطة وخد خصم ${money(Math.min(usable.loyalty.maxOffCents, beforePointsCents) / 100, lang, selectedService.currency)}`,
+                          `Use ${usable.loyalty.maxPoints} points for ${money(Math.min(usable.loyalty.maxOffCents, beforePointsCents) / 100, lang, selectedService.currency)} off`,
+                        )}
+                      </span>
+                      <span className="block text-[11px] text-[var(--color-subtle)]">
+                        {tr(`عندك ${usable.loyalty.available} نقطة هنا`, `You have ${usable.loyalty.available} points here`)}
+                      </span>
+                    </span>
+                  </label>
+                )}
+
+                <p className="m-0 mt-1 text-[11px] leading-relaxed text-[var(--color-subtle)]">
+                  {tr(
+                    "الرصيد ده على رقم حسابك، فاحجز بنفس الرقم عشان تستخدمه.",
+                    "This balance is on your account's number, so book with that number to use it.",
+                  )}
+                </p>
+              </fieldset>
+            )}
 
             {codeSent && !phoneProof && (
               <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-jade)]/30 bg-[var(--color-jade-tint)] px-4 py-3">
