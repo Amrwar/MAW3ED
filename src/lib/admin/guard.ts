@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { AdminRole } from "@prisma/client";
-import { currentCaller } from "@/lib/api";
+import { currentCaller, err } from "@/lib/api";
 import { db } from "@/lib/db";
 import { can, type Permission } from "./permissions";
 
@@ -67,5 +67,5 @@ export async function requireAdminApi(permission: Permission): Promise<AdminActo
 
 /** The 404 an admin route answers. Identical to a route that is not there. */
 export function adminNotFound(): Response {
-  return Response.json({ error: "غير موجود" }, { status: 404 });
+  return err("غير موجود", 404);
 }

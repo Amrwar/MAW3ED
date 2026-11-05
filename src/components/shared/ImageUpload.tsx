@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ImagePlus, Loader2, X } from "lucide-react";
+import { useLang } from "@/contexts/LanguageContext";
 
 interface Props {
   value?:    string | null;
@@ -26,13 +27,14 @@ export default function ImageUpload({
   const inputRef            = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error,     setError]     = useState("");
+  const en = useLang() === "en";
 
   const isCover = variant === "cover";
 
   async function handleFile(file: File) {
     setError("");
     if (file.size > 5 * 1024 * 1024) {
-      setError("حجم الصورة يجب أن يكون أقل من 5MB");
+      setError(en ? "The image must be smaller than 5MB." : "حجم الصورة يجب أن يكون أقل من 5MB");
       return;
     }
 
@@ -45,10 +47,10 @@ export default function ImageUpload({
       const res  = await fetch("/api/upload/image", { method: "POST", body: form });
       const data = await res.json();
 
-      if (!res.ok) { setError(data.error ?? "حدث خطأ أثناء الرفع"); return; }
+      if (!res.ok) { setError(data.error ?? (en ? "We couldn't upload the image. Try again." : "حدث خطأ أثناء الرفع")); return; }
       onChange(data.url);
     } catch {
-      setError("حدث خطأ في الاتصال");
+      setError(en ? "Couldn't reach the server. Check your connection and try again." : "حدث خطأ في الاتصال");
     } finally {
       setUploading(false);
     }
@@ -104,13 +106,13 @@ export default function ImageUpload({
               disabled={uploading}
               className="text-xs bg-white text-[var(--color-text-primary)] px-2 py-1 rounded-lg font-medium hover:bg-[var(--color-surface-3)] transition-colors"
             >
-              {uploading ? <Loader2 size={14} className="animate-spin" /> : "تغيير"}
+              {uploading ? <Loader2 size={14} className="animate-spin" /> : en ? "Change" : "تغيير"}
             </button>
             {onRemove && (
               <button
                 type="button"
                 onClick={onRemove}
-                aria-label="حذف الصورة"
+                aria-label={en ? "Remove image" : "حذف الصورة"}
                 className="text-xs bg-[var(--color-danger)] text-white px-2 py-1 rounded-lg font-medium hover:bg-[var(--color-danger)] transition-colors"
               >
                 <X size={14} aria-hidden="true" />
@@ -133,7 +135,7 @@ export default function ImageUpload({
               <ImagePlus size={isCover ? 24 : 20} className="text-[var(--color-text-muted)]" />
               {isCover && (
                 <p className="text-xs text-[var(--color-text-muted)]">
-                  اضغط أو اسحب صورة هنا
+                  {en ? "Click or drag an image here" : "اضغط أو اسحب صورة هنا"}
                 </p>
               )}
             </>

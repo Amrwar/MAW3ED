@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, Link2, Loader2, Wallet } from "lucide-react";
 import { formatCents } from "@/lib/payments/money";
+import { useSay } from "@/components/dashboard/kit";
 
 interface LedgerLine {
   id: string;
@@ -60,6 +61,7 @@ export default function CollectBalance({ bookingId }: { bookingId: string }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<"link" | "manual" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { say } = useSay();
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -100,13 +102,13 @@ export default function CollectBalance({ bookingId }: { bookingId: string }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "تعذّر تنفيذ العملية");
+        setError(data.error ?? say("تعذّر تنفيذ العملية", "Something went wrong. Try again."));
         return;
       }
       if (mode === "link") setLink((data.data ?? data).paymentUrl ?? null);
       await load();
     } catch {
-      setError("تعذّر الاتصال");
+      setError(say("تعذّر الاتصال", "Couldn't reach the server. Check your connection and try again."));
     } finally {
       setBusy(null);
     }

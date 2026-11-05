@@ -145,12 +145,12 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
     e.preventDefault();
     setError("");
 
-    if (!serviceId)       { setError("اختر الخدمة");              return; }
+    if (!serviceId)       { setError(say("اختر الخدمة", "Choose a service"));              return; }
     const walkIn = mode === "walkin";
-    if (!walkIn && !date)      { setError("اختر التاريخ");             return; }
-    if (!walkIn && !startTime) { setError("اختر الوقت المناسب");       return; }
-    if (!customerName.trim()) { setError("أدخل اسم العميل");     return; }
-    if (!customerPhone.trim()) { setError("أدخل رقم هاتف العميل"); return; }
+    if (!walkIn && !date)      { setError(say("اختر التاريخ", "Choose a date"));             return; }
+    if (!walkIn && !startTime) { setError(say("اختر الوقت المناسب", "Choose a time"));       return; }
+    if (!customerName.trim()) { setError(say("أدخل اسم العميل", "Enter the customer's name"));     return; }
+    if (!customerPhone.trim()) { setError(say("أدخل رقم هاتف العميل", "Enter the customer's phone number")); return; }
 
     setSaving(true);
     try {
@@ -198,14 +198,14 @@ export default function ManualBookingPanel({ open, onClose, slug, services, onCr
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "حدث خطأ أثناء إنشاء الحجز");
+        setError(data.error || say("حدث خطأ أثناء إنشاء الحجز", "We couldn't create the booking. Try again."));
         return;
       }
 
       setCreated(data as DashboardBooking);
       onCreated(data as DashboardBooking);
     } catch {
-      setError("حدث خطأ في الاتصال");
+      setError(say("حدث خطأ في الاتصال", "Couldn't reach the server. Check your connection and try again."));
     } finally {
       setSaving(false);
     }

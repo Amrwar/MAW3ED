@@ -5,6 +5,7 @@ import { CalendarDays, Plus, ArrowLeft } from "lucide-react";
 import Link from "@/components/shared/LocaleLink";
 import TodaySchedule from "@/app/dashboard/bookings/_components/TodaySchedule";
 import BookingDetailPanel from "@/app/dashboard/bookings/_components/BookingDetailPanel";
+import { useSay } from "@/components/dashboard/kit";
 import ManualBookingPanel, { type ServiceOption } from "@/features/dashboard/ManualBookingPanel";
 import { type DashboardBooking, type DashboardBookingStatus } from "@/features/dashboard/bookings/types";
 
@@ -22,6 +23,7 @@ export default function DashboardTodayWidget({
   const [bookings,        setBookings]        = useState<DashboardBooking[]>(initialBookings);
   const [selectedBooking, setSelectedBooking] = useState<DashboardBooking | null>(null);
   const [newBookingOpen,  setNewBookingOpen]  = useState(false);
+  const { say } = useSay();
 
   const handleStatusChange = useCallback(async (id: string, status: DashboardBookingStatus) => {
     // /api/dashboard/bookings/[id]/status was the address here, and no
@@ -36,11 +38,11 @@ export default function DashboardTodayWidget({
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error ?? "فشل تحديث الحالة");
+      throw new Error(data.error ?? say("فشل تحديث الحالة", "We couldn't update the booking. Try again."));
     }
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
     setSelectedBooking((prev) => (prev?.id === id ? { ...prev, status } : prev));
-  }, []);
+  }, [say]);
 
   const handleCreated = useCallback((booking: DashboardBooking) => {
     const today = new Date();

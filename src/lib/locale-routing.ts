@@ -94,3 +94,50 @@ export function routeLocale({
   }
   return { type: "next", lang: twin && read ? "ar" : saved };
 }
+
+/**
+ * The language an /api request is answered in (lib/api-lang.ts reads
+ * it back from the header the proxy sets).
+ *
+ *   ?lang=en|ar       what the app and some screens send;
+ *   the calling page  a fetch from /en/account-login is English, one
+ *                     from /account-login Arabic: the page's language,
+ *                     even when the saved choice differs (an English
+ *                     link opened by someone who chose Arabic is still
+ *                     an English page). Only a page of ours with a twin
+ *                     says anything; a single-address page follows the
+ *                     saved choice, as it does itself;
+ *   the saved choice  the maw3ed-lang cookie; Arabic without one.
+ */
+export function apiLang({
+  search,
+  referer,
+  host,
+  cookieLang,
+}: {
+  search: string;
+  referer: string | null | undefined;
+  /** The request's own host, to tell our pages from another site's. */
+  host: string | null | undefined;
+  cookieLang: string | undefined;
+}): Lang {
+  const asked = new URLSearchParams(search).get("lang");
+  if (asked === "en" || asked === "ar") return asked;
+  const page = pageLang(referer, host);
+  if (page) return page;
+  return cookieLang === "en" ? "en" : "ar";
+}
+
+function pageLang(referer: string | null | undefined, host: string | null | undefined): Lang | null {
+  if (!referer || !host) return null;
+  let url: URL;
+  try {
+    url = new URL(referer);
+  } catch {
+    return null;
+  }
+  if (url.host !== host) return null;
+  const { lang, path } = splitLang(url.pathname);
+  if (!hasTwin(path)) return null;
+  return lang === "en" ? "en" : "ar";
+}

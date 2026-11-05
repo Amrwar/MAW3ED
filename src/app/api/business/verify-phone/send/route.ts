@@ -2,6 +2,7 @@ import { formatPhone, normalisePhone, PHONE_INVALID } from "@/lib/phone";
 import { db } from "@/lib/db";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err, requireBusiness } from "@/lib/api";
+import { requestLang } from "@/lib/api-lang";
 import { log } from "@/lib/logger";
 import { sendCode } from "@/lib/auth/send-code";
 import {
@@ -62,12 +63,13 @@ export async function POST(req: Request) {
       },
     });
 
-    const delivery = await sendCode(
-      phone,
-      code,
-      `كود تأكيد رقمك على موعد: ${code}\n\n` +
-        `الكود صالح لمدة 10 دقائق. لو مش إنت اللي طلبته، تجاهل الرسالة.`,
-    );
+    const whatsAppText =
+      (await requestLang(req)) === "en"
+        ? `Your code to confirm your number on Maw3ed: ${code}\n\n` +
+          `The code is valid for 10 minutes. If you didn't ask for it, ignore this message.`
+        : `كود تأكيد رقمك على موعد: ${code}\n\n` +
+          `الكود صالح لمدة 10 دقائق. لو مش إنت اللي طلبته، تجاهل الرسالة.`;
+    const delivery = await sendCode(phone, code, whatsAppText);
     // "Check your WhatsApp" only when a code really went out.
     if (!delivery.ok) {
       log.error("code not delivered", { reason: delivery.reason });

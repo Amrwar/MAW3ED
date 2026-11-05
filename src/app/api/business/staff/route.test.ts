@@ -8,6 +8,9 @@ import { describe, expect, it, vi } from "vitest";
 
 const { created } = vi.hoisted(() => ({ created: [] as unknown[] }));
 
+// The route answers refusals through err() (lib/api), whose sign-in
+// helpers import NextAuth; none of them runs here.
+vi.mock("@/auth", () => ({ auth: async () => null }));
 vi.mock("@/lib/business-access", () => ({
   can: () => true,
   requireBusinessAccess: async () => ({ business: { id: "mine" }, actor: { role: "OWNER" } }),

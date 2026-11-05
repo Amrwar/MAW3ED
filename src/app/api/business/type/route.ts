@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireBusiness } from "@/lib/api";
+import { err, requireBusiness } from "@/lib/api";
 import { db } from "@/lib/db";
 
 const VALID_TYPES = ["GENERAL", "RESTAURANT", "BARBERSHOP"] as const;
@@ -13,7 +13,7 @@ export async function PUT(req: Request) {
 
   const { businessType } = await req.json();
   if (!VALID_TYPES.includes(businessType)) {
-    return NextResponse.json({ error: "نوع العمل غير صالح" }, { status: 400 });
+    return err("نوع العمل غير صالح", 400);
   }
 
   const business = await db.business.update({

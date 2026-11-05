@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { err } from "@/lib/api";
 import {
   PLAN_NAMES_AR,
   cheapestPlanWith,
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
     const body = await req.json();
   const { nameAr, nameEn, role, photo, isActive, workingDays, specialties, serviceIds } = body;
 
-  if (!nameAr?.trim()) return NextResponse.json({ error: "اسم الموظف بالعربية مطلوب" }, { status: 400 });
+  if (!nameAr?.trim()) return err("اسم الموظف بالعربية مطلوب", 400);
 
   // The ceiling is asked before creating and never after, so a plan
   // that lapses leaves the staff a business already has in place — it
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
     where:  { id: owned.id },
     select: { plan: true, subscriptionStatus: true, trialEndsAt: true },
   });
-  if (!business) return NextResponse.json({ error: "سجّل دخولك الأول" }, { status: 401 });
+  if (!business) return err("سجّل دخولك الأول", 401);
 
   const plan    = effectivePlanOf(business);
   const current = await db.staffMember.count({ where: { businessId: owned.id } });
@@ -72,20 +73,18 @@ export async function POST(req: Request) {
   if (wouldExceed(plan, "staffMembers", current)) {
     const ceiling = limitOf(plan, "staffMembers");
     const upgrade = cheapestPlanWith("staffMembers");
-    return NextResponse.json(
-      {
-        error: ceiling === 0
+    return err(
+      ceiling === 0
           ? `إضافة فريق متاحة في خطة ${upgrade ? PLAN_NAMES_AR[upgrade] : "مدفوعة"}.`
           : `وصلت لأقصى عدد للفريق في باقتك الحالية (${ceiling}).`,
-      },
-      { status: 403 },
+      403,
     );
   }
 
   // As the PUT does: only this business's own services, so a request naming
   // another business's service cannot link it (final audit S-03).
   if (serviceIds !== undefined && serviceIds !== null && !Array.isArray(serviceIds)) {
-    return NextResponse.json({ error: "اختار الخدمات من القائمة" }, { status: 422 });
+    return err("اختار الخدمات من القائمة", 422);
   }
   const requested = ((serviceIds as unknown[] | undefined) ?? []).filter((x): x is string => typeof x === "string");
   const ownServiceIds = requested.length

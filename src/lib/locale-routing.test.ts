@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { routeLocale } from "./locale-routing";
+import { apiLang, routeLocale } from "./locale-routing";
 
 const get = (pathname: string, search = "", cookieLang?: string) =>
   routeLocale({ pathname, search, method: "GET", cookieLang });
@@ -80,5 +80,45 @@ describe("redirects (Phase 26)", () => {
       const second = go(u.pathname, u.search, first.remember ?? c);
       expect(second.type, `${p}${q} → ${first.to}`).not.toBe("redirect");
     }
+  });
+});
+
+describe("apiLang (the language an /api request is answered in)", () => {
+  const host = "www.maw3ed.net";
+  const lang = (search: string, referer: string | null, cookieLang?: string) =>
+    apiLang({ search, referer, host, cookieLang });
+
+  it("is Arabic by default", () => {
+    expect(lang("", null)).toBe("ar");
+    expect(apiLang({ search: "", referer: null, host: null, cookieLang: undefined })).toBe("ar");
+  });
+
+  it("follows ?lang= first, as the app asks", () => {
+    expect(lang("?lang=en", null)).toBe("en");
+    expect(lang("?lang=en", "https://www.maw3ed.net/account-login", "ar")).toBe("en");
+    expect(lang("?lang=ar", "https://www.maw3ed.net/en/account-login", "en")).toBe("ar");
+    expect(lang("?lang=fr", null, "en")).toBe("en");
+  });
+
+  it("answers a call from an /en page in English, even when Arabic is the saved choice", () => {
+    expect(lang("", "https://www.maw3ed.net/en/account-login", "ar")).toBe("en");
+    expect(lang("", "https://www.maw3ed.net/en/account-login?next=/account")).toBe("en");
+    expect(lang("", "https://www.maw3ed.net/en", "ar")).toBe("en");
+  });
+
+  it("answers a call from a bare public page in Arabic, even when English is saved", () => {
+    expect(lang("", "https://www.maw3ed.net/account-login", "en")).toBe("ar");
+  });
+
+  it("follows the saved choice from a single-address page (dashboard, account)", () => {
+    expect(lang("", "https://www.maw3ed.net/dashboard/bookings", "en")).toBe("en");
+    expect(lang("", "https://www.maw3ed.net/account", "ar")).toBe("ar");
+    expect(lang("", "https://www.maw3ed.net/dashboard")).toBe("ar");
+  });
+
+  it("ignores another site's page and an unreadable referer", () => {
+    expect(lang("", "https://evil.example/en/x", "ar")).toBe("ar");
+    expect(lang("", "https://evil.example/", "en")).toBe("en");
+    expect(lang("", "not a url", "en")).toBe("en");
   });
 });

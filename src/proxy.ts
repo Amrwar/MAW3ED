@@ -4,7 +4,7 @@ import { authConfig } from "./auth.config";
 import { buildCsp, generateNonce } from "./lib/security/csp";
 import { hasSessionCookie, isCrossSiteMutation } from "./lib/security/origin";
 import { LANG_COOKIE, LANG_COOKIE_MAX_AGE, LANG_HEADER } from "./lib/lang";
-import { routeLocale } from "./lib/locale-routing";
+import { apiLang, routeLocale } from "./lib/locale-routing";
 import { ACTING_COOKIE, actingRedirect } from "./lib/organizations/acting-paths";
 
 // The lightweight config (no DB), shared with auth.config.ts's authorized().
@@ -56,7 +56,13 @@ export default auth((req) => {
       hasSessionCookie: hasSessionCookie(req.headers.get("cookie")),
     })
   ) {
-    return NextResponse.json({ error: "طلب مرفوض", code: "cross-site" }, { status: 403 });
+    const en = apiLang({
+      search: req.nextUrl.search,
+      referer: req.headers.get("referer"),
+      host: req.headers.get("host"),
+      cookieLang: req.cookies.get(LANG_COOKIE)?.value,
+    }) === "en";
+    return NextResponse.json({ error: en ? "Request refused." : "طلب مرفوض", code: "cross-site" }, { status: 403 });
   }
 
   // Operating a business for an organization: only the dashboard pages
@@ -80,8 +86,21 @@ export default auth((req) => {
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("content-security-policy", csp);
-  // Always set, so a header sent by the client is never believed.
-  requestHeaders.set(LANG_HEADER, locale.lang);
+  // Always set, so a header sent by the client is never believed. An
+  // API call is answered in the language of the page that made it
+  // (lib/locale-routing apiLang); err() reads it back (lib/api-lang).
+  const isApi = req.nextUrl.pathname === "/api" || req.nextUrl.pathname.startsWith("/api/");
+  requestHeaders.set(
+    LANG_HEADER,
+    isApi
+      ? apiLang({
+          search: req.nextUrl.search,
+          referer: req.headers.get("referer"),
+          host: req.headers.get("host"),
+          cookieLang: req.cookies.get(LANG_COOKIE)?.value,
+        })
+      : locale.lang,
+  );
 
   const res =
     locale.type === "rewrite"

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, err, requireSession } from "@/lib/api";
+import { requestLang } from "@/lib/api-lang";
 import { createLoginCode } from "@/lib/auth/login-code";
 import { deletionBlocker } from "@/lib/account/deletion";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -46,12 +47,13 @@ export async function POST() {
       return err("رقم الموبايل غير صالح", 422, { code: "invalid-phone" });
     }
 
-    const delivery = await sendCode(
-      result.phone,
-      result.code,
-      `كود تأكيد حذف حسابك على موعد: ${result.code}\n\n` +
-        `لو مش إنت اللي طلبت حذف الحساب، متديش الكود ده لحد.`,
-    );
+    const whatsAppText =
+      (await requestLang()) === "en"
+        ? `Your code to confirm deleting your Maw3ed account: ${result.code}\n\n` +
+          `If you didn't ask to delete your account, don't share this code with anyone.`
+        : `كود تأكيد حذف حسابك على موعد: ${result.code}\n\n` +
+          `لو مش إنت اللي طلبت حذف الحساب، متديش الكود ده لحد.`;
+    const delivery = await sendCode(result.phone, result.code, whatsAppText);
     // "Check your WhatsApp" only when a code really went out.
     if (!delivery.ok) {
       log.error("code not delivered", { reason: delivery.reason });

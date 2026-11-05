@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireBusiness } from "@/lib/api";
+import { err, requireBusiness } from "@/lib/api";
 import { db } from "@/lib/db";
 
 /**
@@ -35,8 +35,8 @@ export async function POST(req: Request) {
     const body = await req.json();
   const { name, tableType, capacity, notes, photo, isActive } = body;
 
-  if (!name?.trim()) return NextResponse.json({ error: "اسم الطاولة مطلوب" }, { status: 400 });
-  if (!capacity || capacity < 1) return NextResponse.json({ error: "السعة يجب أن تكون 1 على الأقل" }, { status: 400 });
+  if (!name?.trim()) return err("اسم الطاولة مطلوب", 400);
+  if (!capacity || capacity < 1) return err("السعة يجب أن تكون 1 على الأقل", 400);
 
   const table = await db.table.create({
     data: {

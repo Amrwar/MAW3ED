@@ -4,6 +4,7 @@ import { RELATIONSHIP_LABELS, SCOPE_LABELS } from "@/lib/organizations/scopes";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useLang } from "@/contexts/LanguageContext";
 import type { Category, City } from "@prisma/client";
 import { CheckCircle, Store, ClipboardList, Settings2, Clock, Rocket } from "lucide-react";
 import Step1BasicInfo from "./Step1BasicInfo";
@@ -99,6 +100,7 @@ export default function OnboardingForm({ categories, cities, invite = null, invi
   const { update }  = useSession();
 
   const [step,         setStep]         = useState(1);
+  const en = useLang() === "en";
   const [data,         setData]         = useState<OnboardingData>(DEFAULT_DATA);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError,  setSubmitError]  = useState<string | null>(null);
@@ -203,7 +205,7 @@ export default function OnboardingForm({ categories, cities, invite = null, invi
       });
       const json = await res.json();
       if (!res.ok) {
-        setSubmitError(json.error ?? "حدث خطأ أثناء الحفظ");
+        setSubmitError(json.error ?? (en ? "We couldn't save your business. Try again." : "حدث خطأ أثناء الحفظ"));
         return;
       }
       // Refresh session JWT to include new businessId
@@ -214,7 +216,7 @@ export default function OnboardingForm({ categories, cities, invite = null, invi
       // Show success screen
       setSubmitted({ slug: finalData.slug, nameAr: finalData.nameAr, published: json.business?.isPublished === true });
     } catch {
-      setSubmitError("حدث خطأ في الاتصال بالسيرفر");
+      setSubmitError(en ? "Couldn't reach the server. Check your connection and try again." : "حدث خطأ في الاتصال بالسيرفر");
     } finally {
       setIsSubmitting(false);
     }
