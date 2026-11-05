@@ -49,7 +49,7 @@ anyone.
   automated suite passes on the final build.
 - **The audit found and fixed real defects:** 3 P1, 17 P2 and 18 P3, plus
   part of a P0 legal gap. The most important:
-  - the off-site backup had **never** worked;
+  - the off-site backup had **never** worked (fixed; backup and restore verified 2026-11-05);
   - an organization granted only REPORTS could read revenue and staff commission;
   - a second Paymob order for the same booking would be refused;
   - a revoked session sent the browser into a redirect loop;
@@ -59,7 +59,6 @@ anyone.
   - legal text (the operator's identity, money terms);
   - a first real payment and refund on each provider;
   - live WhatsApp delivery;
-  - the backup re-run;
   - store builds and device tests;
   - any real organization, operator or gate partner.
 
@@ -81,7 +80,7 @@ anyone.
 | 12 | Notifications and background processing | **CONDITIONAL GO** | Outbox, retries, dead-letter and cron bounds verified. Deadlines and stable ordering added. Conditions: one live WhatsApp and email delivery confirmed; the backup re-run (F-01) |
 | 13 | Enterprise multi-venue system | **CONDITIONAL GO** (code) | API, keys, webhooks and contracts verified locally (46/46); SSRF hardened. Real partner validation NOT DONE — no real contract, consumer or provider |
 | 14 | Overall platform security | **CONDITIONAL GO** | No open P0/P1. Open P2: self-review (decision) and a latent flag that must stay off. Conditions: legal review; a third-party penetration test before enterprise contracts |
-| 15 | Overall production operations | **CONDITIONAL GO** | Health, job records, flags, rollback (rehearsed) and restore (drilled on QA) are in place. **Hard condition:** run the fixed backup workflow and restore its artifact once. Also: uptime monitor and Sentry alert rules |
+| 15 | Overall production operations | **CONDITIONAL GO** | Health, job records, flags, rollback (rehearsed) and restore (drilled on QA) are in place. The fixed backup was run and restored from its artifact on 2026-11-05. Conditions: uptime monitor and Sentry alert rules |
 
 No subsystem gets an unconditional GO. Every one depends on at least one
 external confirmation that this repository cannot produce.
@@ -89,8 +88,8 @@ external confirmation that this repository cannot produce.
 ## P. Remaining work, by priority
 
 **Before any public launch**
-1. Owner: merge `final-audit` (no migration). Then run the "Database backup"
-   workflow by hand and restore its artifact into a scratch database (F-01).
+1. Owner: merge `final-audit` (no migration). Done: merged as `2d0e443`; the backup
+   was run by hand and restored into a scratch database on 2026-11-05 (F-01).
 2. Owner/counsel: name the operator on the privacy and terms pages. Complete
    retention and minimum age. Write terms for plans, deposits, refunds,
    cancellation, no-shows, liability and governing law (F-30b).
@@ -248,7 +247,7 @@ See `FINAL_DATABASE_INTEGRITY.md`.
   - nothing left NOT VALID.
 - **Schema drift:** one-way and deliberate, so `db:push` must never run.
 - **Fixed:** six data-integrity defects.
-- **Backups:** the off-site backup had never worked (fixed; needs a re-run).
+- **Backups:** the off-site backup had never worked (fixed; run and restore verified 2026-11-05).
 
 ## J. Mobile readiness
 
@@ -278,7 +277,6 @@ See `FINAL_DATABASE_INTEGRITY.md`.
 **CONDITIONAL GO.**
 - This release needs no migration.
 - Before any launch:
-  - re-run and restore the backup;
   - an uptime monitor and alert rules.
 - Rollback is rehearsed; migrations are additive.
 - See `FINAL_DEPLOYMENT_CHECKLIST.md`.

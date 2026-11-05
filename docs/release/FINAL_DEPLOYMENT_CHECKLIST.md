@@ -15,8 +15,8 @@ write "done" without it.
 | 5 | Staging: sign in, "sign out everywhere" in another browser, reopen `/dashboard` in the first: lands on the sign-in form, **no redirect loop** (F-27) | Engineering | Browser |
 | 6 | Merge (owner) | Owner | Merge commit |
 | 7 | Production serves the merge commit (`/api/version`); signed-out smoke as step 3 | Engineering | curl |
-| 8 | **Run "Database backup" by hand** (Actions → Database backup → Run workflow) and confirm an artifact `maw3ed-db-<stamp>` exists (F-01) | Owner | Run id + artifact |
-| 9 | Restore that artifact into a scratch database once (commands in `db-backup.yml` header); compare table counts | Owner / Engineering | Counts |
+| 8 | **Run "Database backup" by hand** (Actions → Database backup → Run workflow) and confirm an artifact `maw3ed-db-<stamp>` exists (F-01) | Owner | **Done 2026-11-05**: run 42083812601, `maw3ed-db-20261105-1823` |
+| 9 | Restore that artifact into a scratch database once (`scripts/backup-restore-drill.sh`); compare table counts | Owner / Engineering | **Done 2026-11-05**: 0 errors |
 | 10 | Uptime monitor on `https://www.maw3ed.net/api/health` (200 healthy, 503 database down); alert on two consecutive failures | Owner | Monitor URL |
 | 11 | Sentry alert rules (see `POST_LAUNCH_MONITORING.md`) | Owner | Rule list |
 
