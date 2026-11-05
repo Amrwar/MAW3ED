@@ -155,6 +155,26 @@ export async function accountForVerifiedPhone(phone: string): Promise<{ id: stri
     return existing;
   }
 
+  const fresh = await newHolderOf(phone);
+
+  return db.user.create({
+    data: {
+      phone,
+      phoneVerifiedAt: new Date(),
+      name: fresh.name,
+      historySince: fresh.historySince,
+    },
+    select: { id: true },
+  });
+}
+
+/**
+ * What an account that has just become the holder of `phone` starts
+ * with: where its history begins and the name it last booked under.
+ * Shared by a phone sign-in that creates the account and by an account
+ * (a Google one, say) that adds the number later (lib/account/link-phone).
+ */
+export async function newHolderOf(phone: string): Promise<{ historySince: Date | null; name: string | null }> {
   // A number a deleted account released starts afresh: nothing from
   // before the release — not the name, not the bookings — is this
   // person's to see (lib/account/deletion.ts).
@@ -173,13 +193,5 @@ export async function accountForVerifiedPhone(phone: string): Promise<{ id: stri
     select: { customerName: true },
   });
 
-  return db.user.create({
-    data: {
-      phone,
-      phoneVerifiedAt: new Date(),
-      name: lastBooking?.customerName ?? null,
-      historySince: release?.releasedAt ?? null,
-    },
-    select: { id: true },
-  });
+  return { historySince: release?.releasedAt ?? null, name: lastBooking?.customerName ?? null };
 }

@@ -1,34 +1,19 @@
-"use client";
+import { googleEnabled } from "@/lib/auth/google";
+import { socialLinks } from "@/lib/social-links";
+import AuthShell from "./_components/AuthShell";
 
-import Logo from "@/components/shared/Logo";
-import Link from "@/components/shared/LocaleLink";
-import { ArrowLeft } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
-
+/**
+ * Every sign-in page: customer phone sign-in, business sign-in and
+ * sign-up, forgot and reset password.
+ *
+ * A server component only to read the environment, which decides
+ * whether Google is offered and which "Follow us" links exist; the
+ * pages and the shell are client components and cannot.
+ */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  const { t } = useLanguage();
-  const a = t.auth;
-
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-ground)]">
-      <header className="flex h-20 shrink-0 items-center gap-4 border-b border-[var(--color-line)] px-6">
-        <Logo size="sm" />
-        <Link
-          href="/"
-          className="ms-auto flex min-h-11 items-center gap-2 text-[0.84375rem] text-[var(--color-muted)] transition-colors hover:text-[var(--color-ink)]"
-        >
-          {a.backToHome}
-          <ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />
-        </Link>
-      </header>
-
-      <main id="main" className="flex flex-1 items-center justify-center px-5 py-14">
-        <div className="w-full max-w-[26rem]">{children}</div>
-      </main>
-
-      <footer className="py-6 text-center text-xs text-[var(--color-subtle)]">
-        {a.copyright}
-      </footer>
-    </div>
+    <AuthShell google={googleEnabled()} social={socialLinks()}>
+      {children}
+    </AuthShell>
   );
 }

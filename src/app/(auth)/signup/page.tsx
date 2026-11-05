@@ -15,6 +15,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { localizePath } from "@/lib/locale-path";
 import { useFunnelStep } from "@/lib/analytics/funnel-client";
 import Alert from "@/components/ui/Alert";
+import GoogleButton from "@/components/auth/GoogleButton";
 
 const formSchema = signUpSchema.extend({
   confirmPassword: z.string(),
@@ -81,15 +82,23 @@ export default function SignupPage() {
     router.refresh();
   }
 
-  return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-raised)]">
+  function googleDestination(): string {
+    const orgInvite = new URLSearchParams(window.location.search).get("org_invite");
+    return orgInvite ? `/onboarding?org_invite=${encodeURIComponent(orgInvite)}` : localizePath("/login", lang);
+  }
 
-      <div className="mb-8">
-        <h1 className="m-0 text-[1.75rem] font-light tracking-tight text-[var(--color-ink)]">
-          {s.title}
-        </h1>
-        <p className="m-0 mt-2 text-[0.875rem] text-[var(--color-subtle)]">{s.subtitle}</p>
+  return (
+    <div className="flex flex-col gap-6">
+
+      <div>
+        <h1 className="auth-title">{s.title}</h1>
+        <p className="auth-sub">{s.subtitle}</p>
       </div>
+
+      {/* A new Google account lands on /login, whose layout sends it on
+          to onboarding (bounceSignedIn), the same place this form does;
+          an organization's invitation goes straight there with it. */}
+      <GoogleButton redirectTo={googleDestination} divider={t.auth.google.orEmail} />
 
       <form method="post" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
 
@@ -186,7 +195,7 @@ export default function SignupPage() {
         </p>
       </form>
 
-      <p className="m-0 mt-7 text-center text-[0.84375rem] text-[var(--color-subtle)]">
+      <p className="m-0 text-center text-[0.875rem] text-[var(--color-muted)]">
         {s.hasAccount}{" "}
         <Link href="/login" className="font-bold text-[var(--color-jade)]">
           {s.loginLink}

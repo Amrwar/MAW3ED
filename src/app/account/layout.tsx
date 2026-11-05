@@ -1,24 +1,23 @@
 import { getLang } from "@/lib/lang-server";
 import { localizePath } from "@/lib/locale-path";
 import { redirect } from "next/navigation";
-import Link from "@/components/shared/LocaleLink";
 import { auth } from "@/auth";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import Alert from "@/components/ui/Alert";
 import { getAccountUser, getNotifications } from "@/lib/account/queries";
 import { translations } from "@/lib/i18n";
 import { Suspense } from "react";
 import AccountNav from "./_components/AccountNav";
+import AddPhone from "./_components/AddPhone";
 import NoBusinessNotice from "./_components/NoBusinessNotice";
 
 /**
  * The customer area.
  *
- * A customer is a User with a verified phone. Somebody signed in as a
- * business owner lands here with no phone and no bookings to show, so
- * rather than an account that looks broken they get told plainly what
- * to do — sign in with the number they book with.
+ * A customer is a User with a verified phone. Somebody signed in
+ * without one (with Google, or as a business owner with email) has no
+ * bookings to show yet, so rather than an account that looks broken
+ * they are asked to add the number they book with, proved by a code.
  */
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -29,25 +28,16 @@ export default async function AccountLayout({ children }: { children: React.Reac
 
   const user = await getAccountUser();
 
+  // Signed in, but with no proved phone: a Google sign-in, or an owner
+  // who signed in with email. Asked for the number rather than shown
+  // an account with nothing in it (AddPhone).
   if (!user) {
     return (
       <>
         <Navbar />
         <main id="main" className="min-h-screen bg-[var(--color-ground)] pt-20">
-          <div className="container-app max-w-[40rem] py-14">
-            <Alert tone="info" title={t.account.title}>
-              {t.account.ownerNotice}
-            </Alert>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link href="/account-login" className="btn btn-primary">
-                {t.accountLogin.title}
-              </Link>
-              {session.user.businessId && (
-                <Link href="/dashboard" className="btn btn-outline">
-                  {t.account.goToDashboard}
-                </Link>
-              )}
-            </div>
+          <div className="container-app py-14">
+            <AddPhone isOwner={!!session.user.businessId} />
           </div>
         </main>
         <Footer />

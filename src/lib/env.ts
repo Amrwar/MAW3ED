@@ -58,6 +58,20 @@ const optional = z.object({
   NEXTAUTH_URL: z.string().url().optional(),
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
 
+  /**
+   * "Continue with Google" (lib/auth/google.ts). Both or neither: with
+   * either missing the provider is not registered and no button shows.
+   */
+  AUTH_GOOGLE_ID: z.string().optional(),
+  AUTH_GOOGLE_SECRET: z.string().optional(),
+
+  /**
+   * The "Follow us" links beside the sign-in forms. Each is drawn only
+   * when set; only http(s) addresses are used (lib/social-links.ts).
+   */
+  NEXT_PUBLIC_INSTAGRAM_URL: z.union([z.string().url(), z.literal("")]).optional(),
+  NEXT_PUBLIC_FACEBOOK_URL: z.union([z.string().url(), z.literal("")]).optional(),
+
   DATABASE_URL_UNPOOLED: z.string().optional(),
   CRON_SECRET: z.string().optional(),
 
