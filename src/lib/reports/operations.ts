@@ -146,18 +146,22 @@ export async function operationsReport(businessId: string, from: string, days: n
  * management company granted REPORTS, which the database deliberately
  * keeps from FINANCE (final audit F-20).
  */
-export type OperationsCounts = Omit<OperationsReport, "totals" | "staff"> & {
+export type OperationsCounts = Omit<OperationsReport, "totals" | "staff" | "packages"> & {
   totals: Omit<OperationsReport["totals"], "revenueCents">;
   staff: Omit<StaffRow, "revenueCents" | "commissionPercent" | "commissionCents">[];
+  packages: Omit<OperationsReport["packages"], "soldCents">;
   money: false;
 };
 
 export function withoutMoney(r: OperationsReport): OperationsCounts {
   const { revenueCents: _revenue, ...totals } = r.totals;
+  const { soldCents: _sold, ...packages } = r.packages;
   void _revenue;
+  void _sold;
   return {
     ...r,
     totals,
+    packages,
     staff: r.staff
       .map(({ revenueCents: _r, commissionPercent: _p, commissionCents: _c, ...rest }) => (void _r, void _p, void _c, rest))
       .sort((a, b) => b.completed - a.completed),

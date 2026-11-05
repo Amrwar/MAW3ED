@@ -177,17 +177,7 @@ async function offerFreedTimeLater(tx: Tx, bookingId: string) {
   }
 }
 
-/**
- * What giving a time back entails, beyond the status itself.
- *
- * Exported for the paths that release a hold without going through
- * moveBooking: the webhook's decline handling and the reaper, which
- * decide the status under their own locks. Returns the net money that
- * had already landed against the booking, in piastres — the amount a
- * person now has to refund — and writes an audit entry when it is
- * more than zero. Refunds are never issued from here: money leaving is
- * a super-admin action with a second pair of eyes (admin/payments).
- */
+/** The audit row that remembers a released discount, so a revival can take it back. */
 const DISCOUNT_RELEASED = "booking.discount_released";
 
 /**
@@ -234,6 +224,17 @@ export async function retakeDiscount(tx: Tx, bookingId: string): Promise<"none" 
   return claimed ? "retaken" : "over-cap";
 }
 
+/**
+ * What giving a time back entails, beyond the status itself.
+ *
+ * Exported for the paths that release a hold without going through
+ * moveBooking: the webhook's decline handling and the reaper, which
+ * decide the status under their own locks. Returns the net money that
+ * had already landed against the booking, in piastres — the amount a
+ * person now has to refund — and writes an audit entry when it is
+ * more than zero. Refunds are never issued from here: money leaving is
+ * a super-admin action with a second pair of eyes (admin/payments).
+ */
 export async function releaseBookingHold(
   tx: Tx,
   p: { bookingId: string; to: BookingStatusValue; by: Mover; reason?: string; actorUserId?: string | null },

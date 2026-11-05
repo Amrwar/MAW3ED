@@ -112,11 +112,16 @@ export async function moveEntitlement(tx: Tx, bookingId: string, startsAt: Date)
   if (use.packageId) {
     const ok = await tx.$queryRaw<{ id: string }[]>`
       SELECT "id" FROM "CustomerPackage"
-       WHERE "id" = ${use.packageId} AND ("expiresAt" IS NULL OR "expiresAt" > ${startsAt})`;
+       WHERE "id" = ${use.packageId} AND "status" IN ('ACTIVE', 'EXHAUSTED')
+         AND ("expiresAt" IS NULL OR "expiresAt" > ${startsAt})`;
     if (ok.length !== 1) throw new EntitlementGone();
     return;
   }
   if (!use.membershipId) return;
+  // A cancelled or refunded membership covers nothing new, as at booking.
+  const live = await tx.$queryRaw<{ id: string }[]>`
+    SELECT "id" FROM "CustomerMembership" WHERE "id" = ${use.membershipId} AND "status" IN ('ACTIVE', 'PAUSED')`;
+  if (live.length !== 1) throw new EntitlementGone();
   const target = await tx.$queryRaw<{ id: string }[]>`
     SELECT "id" FROM "MembershipPeriod"
      WHERE "membershipId" = ${use.membershipId} AND "startsAt" <= ${startsAt} AND "endsAt" > ${startsAt}`;

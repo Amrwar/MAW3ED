@@ -62,3 +62,31 @@ describe("isPrivateAddress, embedded IPv4", () => {
     expect(isPrivateAddress("2606:4700:4700::1111")).toBe(false);
   });
 });
+
+describe("postPinned deadline", () => {
+  it("gives up on a receiver that trickles its headers, within the total timeout", async () => {
+    process.env.WEBHOOK_ALLOW_PRIVATE = "1";
+    const prev = process.env.VERCEL;
+    delete process.env.VERCEL;
+    const { createServer: raw } = await import("net");
+    const slow = raw((socket) => {
+      // A valid status line, then a header that never ends, one byte every
+      // 100 ms: the response never completes and the socket is never idle.
+      socket.write("HTTP/1.1 200 OK\r\nX-Slow: ");
+      const t = setInterval(() => socket.write("a"), 100);
+      socket.on("close", () => clearInterval(t));
+      socket.on("error", () => clearInterval(t));
+    });
+    await new Promise<void>((r) => slow.listen(0, "127.0.0.1", () => r()));
+    const p = (slow.address() as { port: number }).port;
+    try {
+      const started = Date.now();
+      const e = await postPinned(new URL(`http://localhost:${p}/hook`), {}, "{}", 600).catch((x) => x);
+      expect((e as Error).name).toBe("TimeoutError");
+      expect(Date.now() - started).toBeLessThan(2000);
+    } finally {
+      if (prev !== undefined) process.env.VERCEL = prev;
+      await new Promise<void>((r) => slow.close(() => r()));
+    }
+  });
+});

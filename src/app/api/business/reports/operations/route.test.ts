@@ -29,6 +29,7 @@ vi.mock("@/lib/reports/operations", async () => {
       resources: [],
       areas: [],
       groups: [],
+      packages: { sold: 2, soldCents: 77700, sessionsUsed: 3, membershipsActive: 1, membershipVisits: 2 },
     }),
   };
 });
@@ -57,6 +58,9 @@ describe("operations report money", () => {
     expect(r.staff[0]).not.toHaveProperty("revenueCents");
     expect(r.staff[0]).not.toHaveProperty("commissionCents");
     expect(r.staff[0]).not.toHaveProperty("commissionPercent");
+    expect(r.packages.sold).toBe(2);
+    expect(r.packages).not.toHaveProperty("soldCents");
+    expect(JSON.stringify(r)).not.toContain("77700");
     expect(JSON.stringify(r)).not.toContain("90000");
   });
 

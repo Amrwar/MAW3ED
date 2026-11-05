@@ -108,7 +108,9 @@ export const publicOnlyLookup: LookupFunction = (hostname, options, callback) =>
 /**
  * POSTs `body` and returns the status code, connecting only to a public
  * address (checked at connect time), never following redirects, and giving
- * up after `timeoutMs`. The response body is drained and discarded.
+ * up after `timeoutMs` in total — however slowly the other end trickles
+ * its answer. The response body is never read: the socket is closed as soon
+ * as the status line arrives.
  */
 export function postPinned(url: URL, headers: Record<string, string>, body: string, timeoutMs: number): Promise<number> {
   const request = url.protocol === "http:" ? httpRequest : httpsRequest;
@@ -117,12 +119,20 @@ export function postPinned(url: URL, headers: Record<string, string>, body: stri
       url,
       { method: "POST", headers: { ...headers, "Content-Length": String(Buffer.byteLength(body)) }, lookup: publicOnlyLookup, timeout: timeoutMs },
       (res) => {
-        res.resume();
+        clearTimeout(deadline);
         resolve(res.statusCode ?? 0);
+        res.destroy();
       },
     );
+    // A total deadline: the socket `timeout` above only fires when the
+    // connection goes idle, which a receiver sending a byte at a time never
+    // lets happen.
+    const deadline = setTimeout(() => req.destroy(Object.assign(new Error("timeout"), { name: "TimeoutError" })), timeoutMs);
     req.on("timeout", () => req.destroy(Object.assign(new Error("timeout"), { name: "TimeoutError" })));
-    req.on("error", reject);
+    req.on("error", (e) => {
+      clearTimeout(deadline);
+      reject(e);
+    });
     req.end(body);
   });
 }

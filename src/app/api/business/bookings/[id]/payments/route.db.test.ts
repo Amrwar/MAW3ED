@@ -74,7 +74,7 @@ describe.skipIf(!local)("POST /api/business/bookings/[id]/payments (link) on a r
     await db.user.deleteMany({ where: { id: { in: ids.users } } });
   });
 
-  it("opens one link, refuses a second while it is live, and allows one once it has expired", async () => {
+  it("opens one link, refuses a double click, and lets a later link supersede it", async () => {
     const first = await send();
     expect(first.status).toBe(200);
     const [a, b] = await Promise.all([send(), send()]);
@@ -82,10 +82,20 @@ describe.skipIf(!local)("POST /api/business/bookings/[id]/payments (link) on a r
     expect((await a.json()).code).toBe("payment-in-progress");
     expect(await db.payment.count({ where: { bookingId, status: "PENDING" } })).toBe(1);
 
-    // Past its lifetime the old link cannot be paid: a new one replaces it.
-    await db.payment.updateMany({ where: { bookingId }, data: { createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) } });
+    // Eleven minutes on — the customer says it never arrived — the owner
+    // can send another; the old one is closed (review of F-14).
+    await db.payment.updateMany({ where: { bookingId }, data: { createdAt: new Date(Date.now() - 11 * 60 * 1000) } });
     expect((await send()).status).toBe(200);
     expect(await db.payment.count({ where: { bookingId, status: "PENDING" } })).toBe(1);
     expect(await db.payment.count({ where: { bookingId, status: "ABANDONED" } })).toBe(1);
+  });
+
+  it("is not blocked by a link Paymob never opened", async () => {
+    await db.payment.updateMany({ where: { bookingId, status: "PENDING" }, data: { status: "ABANDONED" } });
+    // As a crash between creating the row and Paymob's answer leaves it.
+    await db.payment.create({
+      data: { kind: "BOOKING_FULL", businessId: (who.business as { id: string }).id, bookingId, amountCents: 25000, currency: "EGP", provider: "PAYMOB", status: "PENDING" },
+    });
+    expect((await send()).status).toBe(200);
   });
 });

@@ -134,10 +134,7 @@ export async function POST(req: Request, { params }: Params) {
     try {
       // In the business's booking queue, like every write of a time.
       const moved = await inBookingQueue(booking.businessId, async (tx) => {
-        // A package or membership visit it uses must still cover the new
-        // time (final audit F-11); refused otherwise, before anything moves.
-        await moveEntitlement(tx, booking.id, wallToInstant(newDate, timeToMinutes(newStartTime)));
-        return tx.booking.updateMany({
+        const result = await tx.booking.updateMany({
           where: { id: booking.id, status: booking.status },
           data: {
             date:                  newDateUTC,
@@ -155,6 +152,13 @@ export async function POST(req: Request, { params }: Params) {
             resourceId:    booking.resourceId ?? availability.resourceAssignments[newStartTime] ?? null,
           },
         });
+        // A package or membership visit it uses must still cover the new
+        // time (final audit F-11). After the move and only if it happened:
+        // a booking that changed under us moves nothing, and a refusal
+        // (EntitlementGone) rolls the move back with it. The real instant,
+        // not the wall-clock column, is what entitlements are dated by.
+        if (result.count === 1) await moveEntitlement(tx, booking.id, wallToInstant(newDate, timeToMinutes(newStartTime)));
+        return result;
       });
       if (moved.count === 0) {
         return err("الحجز اتغيّر دلوقتي، حدّث الصفحة وجرّب تاني", 409, { code: "changed" });

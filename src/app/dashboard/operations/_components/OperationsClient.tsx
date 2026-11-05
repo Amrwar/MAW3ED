@@ -8,7 +8,7 @@ import Tabs from "@/components/ui/Tabs";
 import { Field, INPUT, PageHeader, Stat, api, cairoToday, useLoad, useSay } from "@/components/dashboard/kit";
 import { formatCents } from "@/lib/payments/money";
 import { num } from "@/lib/fmt";
-import type { OperationsReport } from "@/lib/reports/operations";
+import type { OperationsCounts, OperationsReport } from "@/lib/reports/operations";
 
 interface Settings {
   noShowLimit: number | null;
@@ -201,8 +201,11 @@ function Report() {
   const [from, setFrom] = useState(cairoToday);
   const [days, setDays] = useState<"1" | "7" | "30">("1");
   const valid = /^\d{4}-\d{2}-\d{2}$/.test(from);
-  const { data: r, error, loading } = useLoad<OperationsReport>(valid ? `/api/business/reports/operations?from=${from}&days=${days}` : null);
+  const { data: r, error, loading } = useLoad<OperationsReport | OperationsCounts>(valid ? `/api/business/reports/operations?from=${from}&days=${days}` : null);
   const money = (c: number) => formatCents(c, "EGP", lang);
+  // Without finance.read the report carries counts only (final audit F-20):
+  // the money tiles and columns are left out, not shown as NaN.
+  const full = r && !("money" in r) ? (r as OperationsReport) : null;
   const n = (v: number) => num(v, lang);
 
   return (
@@ -235,17 +238,24 @@ function Report() {
             <Stat label={say("اتلغت", "Cancelled")} value={n(r.totals.cancelled)} />
             <Stat label={say("غياب", "No-shows")} value={n(r.totals.noShows)} hint={say(`${r.totals.noShowRate}% من اللي خلصت`, `${r.totals.noShowRate}% of ended`)} />
             <Stat label={say("من غير حجز (walk-in)", "Walk-ins")} value={n(r.totals.walkIns)} />
-            <Stat label={say("الإيراد", "Revenue")} value={money(r.totals.revenueCents)} />
+            {full && <Stat label={say("الإيراد", "Revenue")} value={money(full.totals.revenueCents)} />}
           </div>
 
           {r.staff.length > 0 && (
             <Table
-              title={say("الفريق والعمولة", "Staff and commission")}
-              head={[say("الاسم", "Name"), say("حجوزات", "Booked"), say("اكتملت", "Completed"), say("غياب", "No-shows"), say("الإيراد", "Revenue"), say("العمولة", "Commission")]}
-              rows={r.staff.map((s) => [
-                s.name, n(s.booked), n(s.completed), n(s.noShows), money(s.revenueCents),
-                s.commissionPercent == null ? "—" : `${money(s.commissionCents)} (${s.commissionPercent}%)`,
-              ])}
+              title={full ? say("الفريق والعمولة", "Staff and commission") : say("الفريق", "Staff")}
+              head={[
+                say("الاسم", "Name"), say("حجوزات", "Booked"), say("اكتملت", "Completed"), say("غياب", "No-shows"),
+                ...(full ? [say("الإيراد", "Revenue"), say("العمولة", "Commission")] : []),
+              ]}
+              rows={
+                full
+                  ? full.staff.map((s) => [
+                      s.name, n(s.booked), n(s.completed), n(s.noShows), money(s.revenueCents),
+                      s.commissionPercent == null ? "—" : `${money(s.commissionCents)} (${s.commissionPercent}%)`,
+                    ])
+                  : r.staff.map((s) => [s.name, n(s.booked), n(s.completed), n(s.noShows)])
+              }
             />
           )}
 
@@ -286,7 +296,7 @@ function Report() {
             <div className="card p-4">
               <h3 className="m-0 mb-2 text-[0.875rem] font-bold">{say("الباقات والعضويات", "Packages & memberships")}</h3>
               <dl className="num m-0 grid grid-cols-2 gap-1 text-[0.8125rem]">
-                <dt className="text-[var(--color-subtle)]">{say("باقات اتباعت", "Packages sold")}</dt><dd className="m-0">{n(r.packages.sold)} · {money(r.packages.soldCents)}</dd>
+                <dt className="text-[var(--color-subtle)]">{say("باقات اتباعت", "Packages sold")}</dt><dd className="m-0">{n(r.packages.sold)}{full ? ` · ${money(full.packages.soldCents)}` : ""}</dd>
                 <dt className="text-[var(--color-subtle)]">{say("جلسات اتستخدمت", "Sessions used")}</dt><dd className="m-0">{n(r.packages.sessionsUsed)}</dd>
                 <dt className="text-[var(--color-subtle)]">{say("عضويات شغّالة", "Active memberships")}</dt><dd className="m-0">{n(r.packages.membershipsActive)}</dd>
                 <dt className="text-[var(--color-subtle)]">{say("زيارات بالعضوية", "Membership visits")}</dt><dd className="m-0">{n(r.packages.membershipVisits)}</dd>

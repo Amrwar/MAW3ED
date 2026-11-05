@@ -115,10 +115,7 @@ export async function POST(req: Request, { params }: Params) {
       // had nobody, or no table, is given the one free at the new time.
       // In the business's booking queue, like every write of a time.
       const moved = await inBookingQueue(booking.businessId, async (tx) => {
-        // A package or membership visit it uses must still cover the new
-        // time (final audit F-11); refused otherwise, before anything moves.
-        await moveEntitlement(tx, booking.id, wallToInstant(date, timeToMinutes(startTime)));
-        return tx.booking.updateMany({
+        const result = await tx.booking.updateMany({
           where: { id: booking.id, status: booking.status },
           data: {
             date: dateToUTC(date), startTime, endTime, startsAt, endsAt, customerReminderSentAt: null,
@@ -126,6 +123,11 @@ export async function POST(req: Request, { params }: Params) {
             resourceId: booking.resourceId ?? availability.resourceAssignments[startTime] ?? null,
           },
         });
+        // After the move, and only if it happened (final audit F-11): a
+        // refusal rolls the move back; a booking that changed moves nothing.
+        // Entitlements are dated by the real instant, not the wall-clock column.
+        if (result.count === 1) await moveEntitlement(tx, booking.id, wallToInstant(date, timeToMinutes(startTime)));
+        return result;
       });
       if (moved.count === 0) {
         return err("الحجز اتغيّر دلوقتي، حدّث الصفحة وجرّب تاني", 409, { code: "changed" });

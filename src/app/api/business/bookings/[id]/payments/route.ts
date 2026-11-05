@@ -16,11 +16,10 @@ import { notifyLater } from "@/lib/notifications";
 type Params = { params: Promise<{ id: string }> };
 
 /**
- * How long a payment link can still be completed: Paymob's payment key
- * lives an hour (expiration 3600), plus a margin — the same window as
- * the customer's own /pay page.
+ * A second link within this of the first is a double click and refused;
+ * later, a new link supersedes the old (final audit F-14, as reviewed).
  */
-const LINK_LIFETIME_MS = 65 * 60 * 1000;
+const DOUBLE_CLICK_MS = 10 * 60 * 1000;
 
 const schema = z
   .object({
@@ -235,11 +234,16 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     // One live link per booking (final audit F-14). Without this, a double
-    // click or a re-send a day later opened a second payable page for the
-    // same balance, and a customer who paid both was charged twice with
-    // nothing flagged. Serialised under the same per-booking lock /pay
-    // takes; a link still inside its lifetime is refused, older ones are
-    // closed so exactly one can be paid.
+    // click opened a second payable page for the same balance, and a
+    // customer who paid both was charged twice with nothing flagged.
+    // Serialised under the same per-booking lock /pay takes. A link opened
+    // at Paymob in the last few minutes is refused (the double click);
+    // after that a new link supersedes the old one, which is closed here —
+    // an owner who lost the link, or whose customer never got it, must be
+    // able to send another, and the URL is not stored to resend. If the old
+    // page is paid anyway, the webhook flags the overpayment for a refund
+    // (payment.overpaid). A row Paymob never answered for opened no page
+    // and blocks nothing.
     const decision = await db.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${booking.id}))`;
       const live = await tx.payment.findFirst({
@@ -247,12 +251,13 @@ export async function POST(req: Request, { params }: Params) {
           bookingId: booking.id,
           kind: { in: ["BOOKING_FULL", "BOOKING_BALANCE"] },
           status: "PENDING",
-          createdAt: { gt: new Date(Date.now() - LINK_LIFETIME_MS) },
+          providerOrderId: { not: null },
+          createdAt: { gt: new Date(Date.now() - DOUBLE_CLICK_MS) },
         },
         orderBy: { createdAt: "desc" },
         select: { createdAt: true },
       });
-      if (live) return { refuse: true as const, retryAt: new Date(live.createdAt.getTime() + LINK_LIFETIME_MS), payment: null };
+      if (live) return { refuse: true as const, retryAt: new Date(live.createdAt.getTime() + DOUBLE_CLICK_MS), payment: null };
       await tx.payment.updateMany({
         where: { bookingId: booking.id, kind: { in: ["BOOKING_FULL", "BOOKING_BALANCE"] }, status: "PENDING" },
         data: { status: "ABANDONED", failureReason: "superseded by a new payment link" },
@@ -271,7 +276,7 @@ export async function POST(req: Request, { params }: Params) {
       return { refuse: false as const, retryAt: null, payment: created };
     });
     if (decision.refuse) {
-      return err("في رابط دفع لسه شغال للحجز ده. ابعته تاني للعميل، أو استنى لحد ما تخلص صلاحيته.", 409, {
+      return err("لسه عامل رابط دفع للحجز ده من دقايق. استنى شوية قبل ما تعمل رابط جديد.", 409, {
         code: "payment-in-progress",
         retryAt: decision.retryAt.toISOString(),
       });

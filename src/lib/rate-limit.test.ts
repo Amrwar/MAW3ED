@@ -80,9 +80,8 @@ describe("the refusal", () => {
   });
 });
 
-describe("final audit S-01 / S-09: both sides of a sign-in are limited", () => {
-  it("has a per-caller password bucket and a per-address reset bucket", () => {
+describe("final audit S-01: both sides of a password sign-in are limited", () => {
+  it("has a per-caller password bucket wider than the per-account one", () => {
     expect(RULES.loginCaller.limit).toBeGreaterThan(RULES.login.limit);
-    expect(RULES.forgotPasswordEmail.limit).toBeLessThanOrEqual(RULES.forgotPassword.limit);
   });
 });

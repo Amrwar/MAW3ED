@@ -437,12 +437,6 @@ export async function createBooking(
 }
 
 /**
- * The bookings a monthly plan limit counts: made this calendar month
- * (UTC), and not cancelled or failed at payment. Shared with the
- * dashboard's usage warning, so it warns about the number that is
- * actually enforced.
- */
-/**
  * The calendar month the plan's allowance counts, in Cairo (final audit
  * F-16): it was the UTC month, so bookings made between midnight and
  * 02:00/03:00 Cairo on the 1st counted toward the month before, and the
@@ -460,6 +454,12 @@ export function cairoMonthBounds(now: Date = new Date()): { gte: Date; lt: Date 
   return { gte: wallToInstant(first(y, m), 0, "Africa/Cairo"), lt: wallToInstant(first(y, m + 1), 0, "Africa/Cairo") };
 }
 
+/**
+ * The bookings a monthly plan limit counts: made this calendar month
+ * (in Cairo), and not cancelled or failed at payment. Shared with the
+ * dashboard's usage warning, so it warns about the number that is
+ * actually enforced.
+ */
 export function countedThisMonth(businessId: string, now: Date = new Date()) {
   return {
     businessId,

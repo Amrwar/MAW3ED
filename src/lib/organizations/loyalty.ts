@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { liveGrant } from "./live-grant";
 
 /**
  * Organization-level loyalty and promotions (Phase 27, module I).
@@ -64,15 +65,11 @@ export async function distributePromotion(organizationId: string, promotionId: s
  * Packages and memberships across the owned brands that share reports
  * with the organization (the REPORTS scope): counts and sums only.
  */
-export async function organizationPackageReport(organizationId: string) {
+export async function organizationPackageReport(organizationId: string, now: Date = new Date()) {
   const assoc = await db.organizationBusiness.findMany({
     // Live grants only, of an organization still approved: an expired grant
     // or a suspended organization sees nothing (final audit F-25).
-    where: {
-      organizationId, relation: "OWNED", status: "APPROVED", suspendedAt: null, scopes: { has: "REPORTS" },
-      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      organization: { status: "APPROVED" },
-    },
+    where: { organizationId, relation: "OWNED", status: "APPROVED", suspendedAt: null, scopes: { has: "REPORTS" }, ...liveGrant(now) },
     select: { businessId: true, business: { select: { nameAr: true } } },
   });
   const rows = [];

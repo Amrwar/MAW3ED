@@ -103,4 +103,14 @@ describe.skipIf(!local)("moveEntitlement on a real database", () => {
     await expect(db.$transaction((tx) => ledger.moveEntitlement(tx, b.id, dec))).rejects.toBeInstanceOf(ledger.EntitlementGone);
     await db.$transaction((tx) => ledger.moveEntitlement(tx, b.id, nov));
   });
+
+  it("refuses to move a session of a package that was cancelled or refunded", async () => {
+    const plan = await db.packagePlan.create({ data: { businessId, nameAr: "باقة ملغية", sessions: 5, priceCents: 100, validityDays: 30 } });
+    const pkg = await db.customerPackage.create({
+      data: { planId: plan.id, businessId, phoneE164: phone, customerName: "M", sessionsTotal: 5, sessionsUsed: 1, priceCents: 100, status: "CANCELLED", expiresAt: null },
+    });
+    const b = await booking();
+    await db.entitlementUse.create({ data: { bookingId: b.id, packageId: pkg.id } });
+    await expect(db.$transaction((tx) => ledger.moveEntitlement(tx, b.id, nov))).rejects.toBeInstanceOf(ledger.EntitlementGone);
+  });
 });
