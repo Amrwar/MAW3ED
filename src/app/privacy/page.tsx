@@ -3,7 +3,7 @@ import { getLang } from "@/lib/lang-server";
 import Link from "@/components/shared/LocaleLink";
 import { buildMetadata } from "@/lib/seo/meta";
 import LegalPage, { LegalList, LegalSection } from "@/components/legal/LegalPage";
-import { BUSINESS_ADDRESS, SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/support";
+import { BUSINESS_ADDRESS, SUPPORT_EMAIL, SUPPORT_MAILTO, operatorLine } from "@/lib/support";
 
 export async function generateMetadata(): Promise<Metadata> {
   // The stores link /privacy?lang=en; the proxy sends that to /en/privacy.
@@ -61,7 +61,7 @@ export default async function PrivacyPage() {
 
   const ar = (
     <>
-      {/* VERIFY: the legal entity that operates Maw3ed (company name, registration country) — the code only has the brand name and the address in src/lib/support.ts. */}
+      <p>{operatorLine("ar")}</p>
       <p>
         موعد (Maw3ed) منصة لحجز المواعيد بين العملاء والأنشطة (عيادات وصالونات ومطاعم وغيرها)، على الموقع maw3ed.net
         وتطبيق موعد للموبايل. السياسة دي بتشرح البيانات اللي بنجمعها، وبنستخدمها في إيه، ومين بيستلمها، وإزاي تتحكم فيها.
@@ -218,7 +218,7 @@ export default async function PrivacyPage() {
 
   const en = (
     <>
-      {/* VERIFY: the legal entity that operates Maw3ed (company name, registration country) — the code only has the brand name and the address in src/lib/support.ts. */}
+      <p>{operatorLine("en")}</p>
       <p>
         Maw3ed is an appointment-booking platform connecting customers with businesses (clinics, salons, restaurants and
         more), on maw3ed.net and in the Maw3ed mobile app. This policy explains what data we collect, what we use it for,
@@ -379,7 +379,7 @@ export default async function PrivacyPage() {
     <LegalPage
       path="/privacy"
       title={{ ar: "سياسة الخصوصية", en: "Privacy Policy" }}
-      updated={{ ar: "آخر تحديث: 27 أكتوبر 2026", en: "Last updated: 27 October 2026" }}
+      updated={{ ar: "آخر تحديث: 5 نوفمبر 2026", en: "Last updated: 5 November 2026" }}
       body={{ ar, en }}
     />
   );
