@@ -121,8 +121,9 @@ thousands.
 
 1. **Enterprise code readiness — READY (local).**
 2. **Second test organization readiness — READY (fictional, QA).**
-3. **Production deployment readiness — READY after the migration** (`phase28_enterprise.sql`,
-   prepared script `migrate-phase28.sh`), plus an uptime monitor on `/api/health`.
+3. **Production deployment readiness — READY.** The migration (`phase28_enterprise.sql`) was
+   applied and verified on production and staging on 2026-11-05; rollback rehearsed on staging.
+   Still to do after the deploy: point an uptime monitor at `/api/health`.
 4. **Real partner validation — NOT DONE.** No real organization, contract, API consumer or
    access-provider partner has been exercised. Not claimed.
 

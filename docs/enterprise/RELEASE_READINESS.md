@@ -26,7 +26,7 @@ production.
 
 ## 3. Production deployment readiness — READY AFTER THE MIGRATION
 
-- Requires `prisma/migrations/phase28_enterprise.sql` on production before the deploy
+- Requires `prisma/migrations/phase28_enterprise.sql` on production before the deploy — applied and verified 2026-11-05 (production and staging)
   (additive, idempotent; the owner runs the prepared script).
 - Requires nothing else: no new environment variable is mandatory. Optional:
   `FEATURE_FLAGS_OFF`, `ACCESS_CREDENTIAL_KEY` (a dedicated sealing key — recommended before
