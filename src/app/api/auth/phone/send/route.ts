@@ -1,6 +1,7 @@
 import { createLoginCode } from "@/lib/auth/login-code";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { ok, err } from "@/lib/api";
+import { requestLang } from "@/lib/api-lang";
 import { sendCode } from "@/lib/auth/send-code";
 import { formatPhone, PHONE_INVALID } from "@/lib/phone";
 import { log } from "@/lib/logger";
@@ -47,13 +48,16 @@ export async function POST(req: Request) {
 
     // The same code serves a guest confirming the number on a booking
     // (POST /api/public/phone-proof); only the free-text wording differs.
-    const lead = body?.purpose === "booking" ? "كود تأكيد الحجز على موعد" : "كود الدخول على موعد";
-    const delivery = await sendCode(
-      result.phone,
-      result.code,
-      `${lead}: ${result.code}\n\n` +
-        `الكود صالح لمدة 10 دقائق. لو مش إنت اللي طلبته، تجاهل الرسالة ومتديهوش لحد.`,
-    );
+    // The free text follows the request's language; the template, when
+    // configured, is unchanged.
+    const booking = body?.purpose === "booking";
+    const whatsAppText =
+      (await requestLang(req)) === "en"
+        ? `${booking ? "Your Maw3ed booking confirmation code" : "Your Maw3ed sign-in code"}: ${result.code}\n\n` +
+          `The code is valid for 10 minutes. If you didn't ask for it, ignore this message and don't share it with anyone.`
+        : `${booking ? "كود تأكيد الحجز على موعد" : "كود الدخول على موعد"}: ${result.code}\n\n` +
+          `الكود صالح لمدة 10 دقائق. لو مش إنت اللي طلبته، تجاهل الرسالة ومتديهوش لحد.`;
+    const delivery = await sendCode(result.phone, result.code, whatsAppText);
     // "Check your WhatsApp" only when a code really went out.
     if (!delivery.ok) {
       log.error("code not delivered", { reason: delivery.reason });

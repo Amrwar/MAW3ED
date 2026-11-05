@@ -64,10 +64,10 @@ export function bookingRefusalEn(body: { code?: unknown; reason?: unknown; cutof
 }
 
 /**
- * A refused request's message for the screen. The access routes word
- * their own errors in English when asked, but shared pieces (sign-in
- * and role guards, the rate limiter) answer in Arabic, so an English
- * screen words those by status instead.
+ * A refused request's message for the screen. API errors come back in
+ * English for an English request (lib/api-lang.ts) and pass through
+ * here untouched; an Arabic one that still slips through (a request
+ * the proxy resolved as Arabic) is worded by status instead.
  */
 export function refusalText(status: number, error: unknown, en: boolean, arFallback: string): string {
   const text = typeof error === "string" && error ? error : null;

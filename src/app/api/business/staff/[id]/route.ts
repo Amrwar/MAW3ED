@@ -1,4 +1,5 @@
 import { can, requireBusinessAccess } from "@/lib/business-access";
+import { err } from "@/lib/api";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
@@ -36,7 +37,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   const { id } = await params;
   const existing = await getOwned(id, guard.id);
-  if (!existing) return NextResponse.json({ error: "الموظف ده مش موجود" }, { status: 404 });
+  if (!existing) return err("الموظف ده مش موجود", 404);
 
   const body = await req.json();
   const { serviceIds, ...rest } = body;
@@ -49,7 +50,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   let ownServiceIds: string[] | undefined;
   if (serviceIds !== undefined) {
     if (!Array.isArray(serviceIds)) {
-      return NextResponse.json({ error: "اختار الخدمات من القائمة" }, { status: 422 });
+      return err("اختار الخدمات من القائمة", 422);
     }
     const mine = await db.service.findMany({
       where: { businessId: guard.id, id: { in: serviceIds as string[] } },
@@ -61,18 +62,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   // Deactivating someone who signs in ends their access: that is the
   // owner's power over sign-in (staff.manageAccess), not a staff edit.
   if (!guard.canManageAccess && rest.isActive != null && rest.isActive !== existing.isActive && (existing.userId || existing.access)) {
-    return NextResponse.json({ error: "تفعيل وإيقاف حساب دخول الموظف لصاحب النشاط بس", code: "forbidden" }, { status: 403 });
+    return err("تفعيل وإيقاف حساب دخول الموظف لصاحب النشاط بس", 403, { code: "forbidden" });
   }
 
   // Commission is money: the owner's to set (Phase 27, daily operations report).
   let commissionPercent = existing.commissionPercent;
   if ("commissionPercent" in rest) {
     if (!guard.canManageAccess) {
-      return NextResponse.json({ error: "العمولة يحددها صاحب النشاط بس", code: "forbidden" }, { status: 403 });
+      return err("العمولة يحددها صاحب النشاط بس", 403, { code: "forbidden" });
     }
     const c = rest.commissionPercent;
     if (c !== null && !(Number.isInteger(c) && c >= 0 && c <= 100)) {
-      return NextResponse.json({ error: "العمولة نسبة من 0 لـ 100" }, { status: 422 });
+      return err("العمولة نسبة من 0 لـ 100", 422);
     }
     commissionPercent = c;
   }
@@ -109,10 +110,10 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const existing = await getOwned(id, guard.id);
-  if (!existing) return NextResponse.json({ error: "الموظف ده مش موجود" }, { status: 404 });
+  if (!existing) return err("الموظف ده مش موجود", 404);
   // Removing someone who signs in removes their access too: the owner's.
   if (!guard.canManageAccess && (existing.userId || existing.access)) {
-    return NextResponse.json({ error: "حذف موظف له حساب دخول لصاحب النشاط بس", code: "forbidden" }, { status: 403 });
+    return err("حذف موظف له حساب دخول لصاحب النشاط بس", 403, { code: "forbidden" });
   }
 
   await db.staffMember.delete({ where: { id } });

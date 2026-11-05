@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { installArabicZodErrors } from "./zod-arabic";
+import { errorResponse } from "@/lib/api-lang";
 import { auth } from "@/auth";
 import { readAccessToken } from "@/lib/auth/mobile-token";
 import { db } from "@/lib/db";
@@ -18,11 +19,14 @@ export const ok = (data: unknown, status = 200) =>
 
 /**
  * `extra` carries machine-readable fields beside the message — a `code`
- * the mobile app can act on and word in either language, where the
- * Arabic sentence is all the website needs.
+ * the mobile app can act on whatever the language.
+ *
+ * The message is written in Arabic; an English request (?lang=en, an
+ * /en page, or the saved choice — lib/api-lang.ts) gets it in English,
+ * from lib/api-messages-en.ts.
  */
 export const err = (message: string, status = 400, extra?: Record<string, unknown>) =>
-  Response.json({ ...extra, error: message }, { status });
+  errorResponse({ ...extra, error: message }, status);
 
 /**
  * Require a signed-in caller.

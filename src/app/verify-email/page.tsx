@@ -3,8 +3,11 @@ import Link from "@/components/shared/LocaleLink";
 import { CheckCircle2, AlertTriangle, Clock, XCircle } from "lucide-react";
 import Logo from "@/components/shared/Logo";
 import ResendVerificationButton from "./_components/ResendVerificationButton";
+import { getLang } from "@/lib/lang-server";
 
-export const metadata: Metadata = { title: "تأكيد البريد الإلكتروني" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getLang()) === "en" ? "Confirm your email" : "تأكيد البريد الإلكتروني" };
+}
 
 type Status = "success" | "setup" | "verified" | "changed" | "taken" | "expired" | "invalid" | "error" | "busy" | "pending";
 
@@ -69,6 +72,29 @@ const COPY: Record<
   },
 };
 
+/** The same, for an English visitor. */
+const COPY_EN: Record<Status, { title: string; body: string }> = {
+  success: { title: "Your email is confirmed", body: "Your business page is live and taking bookings." },
+  setup: {
+    title: "Your email is confirmed",
+    body: "Your page is still private. The setup page shows what's left, lets you try a test booking, and publish.",
+  },
+  verified: { title: "Your email is confirmed", body: "Finish setting up your business, and your page goes live when you're done." },
+  changed: { title: "Your email has changed", body: "Booking confirmations and sign-in links now go to the new address." },
+  taken: {
+    title: "That email belongs to another account",
+    body: "Someone signed up with this address before you opened the link, so your email stayed the same. Try a different address from your account page.",
+  },
+  expired: { title: "This link has expired", body: "Links work for 24 hours. Sign in and ask for a new one." },
+  busy: { title: "Too many tries", body: "Wait a little and open the link again." },
+  invalid: { title: "This link isn't valid", body: "It may have been used already or copied only in part. Ask for a new one." },
+  error: { title: "Something went wrong", body: "We couldn't confirm your email right now. Try again in a little while." },
+  pending: {
+    title: "Confirm your email",
+    body: "We sent you a confirmation link. Open your email and tap the link. You need to confirm your email before your page can go live.",
+  },
+};
+
 const ICONS = {
   ok: CheckCircle2,
   warn: Clock,
@@ -90,7 +116,8 @@ export default async function VerifyEmailPage({ searchParams }: Props) {
     ? (status as Status)
     : "pending";
 
-  const copy = COPY[key];
+  const en = (await getLang()) === "en";
+  const copy = en ? { ...COPY[key], ...COPY_EN[key] } : COPY[key];
   const Icon = ICONS[copy.tone];
 
   return (
@@ -119,19 +146,19 @@ export default async function VerifyEmailPage({ searchParams }: Props) {
           <div className="mt-8 flex flex-col gap-2.5">
             {key === "success" ? (
               <Link href="/dashboard" className="btn btn-primary w-full">
-                لوحة التحكم
+                {en ? "Dashboard" : "لوحة التحكم"}
               </Link>
             ) : key === "setup" ? (
               <Link href="/dashboard/setup" className="btn btn-primary w-full">
-                كمّل تجهيز النشاط
+                {en ? "Finish setting up" : "كمّل تجهيز النشاط"}
               </Link>
             ) : key === "verified" ? (
               <Link href="/onboarding" className="btn btn-primary w-full">
-                كمّل إعداد نشاطك
+                {en ? "Finish setting up your business" : "كمّل إعداد نشاطك"}
               </Link>
             ) : key === "changed" || key === "taken" ? (
               <Link href="/account" className="btn btn-primary w-full">
-                صفحة حسابك
+                {en ? "Your account" : "صفحة حسابك"}
               </Link>
             ) : key === "busy" ? null : (
               <ResendVerificationButton />
@@ -139,7 +166,7 @@ export default async function VerifyEmailPage({ searchParams }: Props) {
 
             {key !== "verified" && key !== "success" ? (
               <Link href="/dashboard" className="btn btn-outline w-full">
-                الذهاب للوحة التحكم
+                {en ? "Go to the dashboard" : "الذهاب للوحة التحكم"}
               </Link>
             ) : null}
           </div>

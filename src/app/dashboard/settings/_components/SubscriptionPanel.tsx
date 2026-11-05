@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSay } from "@/components/dashboard/kit";
 import { arCount } from "@/lib/fmt";
 import BillingCycleToggle from "@/components/shared/BillingCycleToggle";
 import { Zap, CheckCircle, Loader2, Crown, Star, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
@@ -50,6 +51,7 @@ export default function SubscriptionPanel({
 }: SubscriptionPanelProps) {
   const [loading, setLoading] = useState<Plan | null>(null);
   const [error,   setError]   = useState<string | null>(null);
+  const { say } = useSay();
   // Applies to renewals too: a year paid up front is ten months' price.
   const [cycle,   setCycle]   = useState<BillingCycle>("monthly");
   // Paymob takes Egyptian cards, Meeza and wallets; Stripe (when set up)
@@ -73,12 +75,12 @@ export default function SubscriptionPanel({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "حدث خطأ أثناء بدء عملية الدفع");
+        setError(data.error ?? say("حدث خطأ أثناء بدء عملية الدفع", "We couldn't start the payment. Try again."));
         return;
       }
       window.location.href = data.paymentUrl;
     } catch {
-      setError("تعذّر الاتصال بالخادم");
+      setError(say("تعذّر الاتصال بالخادم", "Couldn't reach the server. Check your connection and try again."));
     } finally {
       setLoading(null);
     }

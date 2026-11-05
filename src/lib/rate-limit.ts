@@ -2,6 +2,7 @@ import { createHmac } from "crypto";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
+import { errorResponse } from "@/lib/api-lang";
 
 /**
  * Rate limiting that survives being deployed serverlessly.
@@ -228,12 +229,13 @@ export async function rateLimitWith(
  * it a disclosure rather than a defence.
  */
 export function tooManyRequests(result: RateLimitResult): Response {
-  return Response.json(
+  return errorResponse(
     // `code` for the clients that branch on it rather than on the
-    // Arabic sentence, as the booking flow does.
+    // sentence, as the booking flow does. English for an English
+    // request (lib/api-lang.ts).
     { error: "محاولات كتير. استنى شوية وحاول تاني.", code: "rate-limited" },
+    429,
     {
-      status: 429,
       headers: {
         "Retry-After": String(result.retryAfter),
         "Cache-Control": "no-store",

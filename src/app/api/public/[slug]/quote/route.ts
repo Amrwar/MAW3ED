@@ -2,6 +2,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { isOwnerPreview } from "@/lib/business/preview";
 import { ok, err } from "@/lib/api";
+import { localText } from "@/lib/api-lang";
 import { log } from "@/lib/logger";
 import { toCents } from "@/lib/payments/money";
 import { FAILURE_AR } from "@/lib/discounts/apply";
@@ -63,7 +64,7 @@ export async function POST(req: Request, { params }: Params) {
         totalCents: subtotalCents,
         discount: null,
         currency: service.currency,
-        codeError: resolved.reason === "not-found" ? "الكود ده مش موجود" : FAILURE_AR[resolved.reason],
+        codeError: await localText(resolved.reason === "not-found" ? "الكود ده مش موجود" : FAILURE_AR[resolved.reason], req),
       });
     }
 

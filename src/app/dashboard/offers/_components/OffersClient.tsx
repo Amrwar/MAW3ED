@@ -8,6 +8,7 @@ import type { DiscountKind } from "@prisma/client";
 import Alert from "@/components/ui/Alert";
 import { formatCents } from "@/lib/payments/money";
 import { cn } from "@/lib/utils";
+import { useSay } from "@/components/dashboard/kit";
 
 const SERVICE = { one: "خدمة واحدة", two: "خدمتين", few: "خدمات", many: "خدمة" };
 const TIMES = { one: "مرة واحدة", two: "مرتين", few: "مرات", many: "مرة" };
@@ -48,6 +49,7 @@ export default function OffersClient({
   services: { id: string; nameAr: string }[];
 }) {
   const router = useRouter();
+  const { say } = useSay();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +96,7 @@ export default function OffersClient({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "تعذّر إنشاء العرض");
+        setError(data.error ?? say("تعذّر إنشاء العرض", "We couldn't create the offer. Try again."));
         return;
       }
       setOpen(false);
@@ -104,7 +106,7 @@ export default function OffersClient({
       });
       router.refresh();
     } catch {
-      setError("تعذّر الاتصال");
+      setError(say("تعذّر الاتصال", "Couldn't reach the server. Check your connection and try again."));
     } finally {
       setBusy(null);
     }
@@ -121,7 +123,7 @@ export default function OffersClient({
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setError(d.error ?? "تعذّر التغيير");
+        setError(d.error ?? say("تعذّر التغيير", "We couldn't change the offer. Try again."));
         return;
       }
       router.refresh();
@@ -137,7 +139,7 @@ export default function OffersClient({
       const res = await fetch(`/api/business/discounts/${row.id}`, { method: "DELETE" });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setError(d.error ?? "تعذّر الحذف");
+        setError(d.error ?? say("تعذّر الحذف", "We couldn't delete the offer. Try again."));
         return;
       }
       router.refresh();
