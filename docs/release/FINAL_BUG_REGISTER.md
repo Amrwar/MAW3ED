@@ -18,7 +18,7 @@ Severity: **P0** data loss, security breach or money wrong in normal use ·
 | | Found | Fixed | Open |
 |---|---|---|---|
 | P0 | 1 (legal text) | the factual part (Stripe disclosed, F-30) | 1: operator identity, retention, minimum age and money terms (F-30b, owner/counsel) |
-| P1 | 3 (F-01, F-10, F-20) | 3 | 0 (F-01 and F-10 still need an external confirmation) |
+| P1 | 3 (F-01, F-10, F-20) | 3 | 0 (F-01 confirmed on 2026-11-05; F-10 still needs a real Paymob order) |
 | P2 | 19 | 17 | 2 (S-02 decision, M-03 latent) |
 | P3 | 30 | 18 | 12 (one, S-09, fixed then reverted on review: the fix was worse than the risk) |
 
@@ -28,7 +28,7 @@ Plus one test defect (T-01, fixed), one accepted design (S-04), one decision (M-
 
 | ID | Sev | Area | Defect (reproduction) | Root cause | Fix | Test |
 |---|---|---|---|---|---|---|
-| F-01 | P1 | Operations | The weekly off-site backup never produced a copy: run 2026-11-02 dumped 265 KB, then `shred: Permission denied`, so no upload | The Docker container wrote the dump as root | Containers run as the runner's user | **Needs a manual run after merge** (no CI test possible) |
+| F-01 | P1 | Operations | The weekly off-site backup never produced a copy: run 2026-11-02 dumped 265 KB, then `shred: Permission denied`, so no upload | The Docker container wrote the dump as root | Containers run as the runner's user | **Verified** 2026-11-05: manual run 42083812601 uploaded an artifact; restored with 0 errors |
 | F-02 | P2 | Check-in | Pressing "scan" on `/dashboard/check-in` always said the camera was denied | `Permissions-Policy: camera=()` site-wide | `camera=(self)` | `security/permissions-policy.test.ts` |
 | F-03 | P2 | Push | After "sign out everywhere" or a password reset, a lost phone kept getting booking pushes | Device tokens outlived sessions | Tokens deleted with sessions; push needs a live session | `notifications/push-session.test.ts` |
 | F-04 | P2 | Mobile / account | A wrong deletion code spent 2 of 5 attempts and showed "session ended" | 401 for a form error triggered refresh-and-replay | 422 `wrong-code` | `api/account/delete/route.test.ts` |
@@ -99,4 +99,4 @@ Plus one test defect (T-01, fixed), one accepted design (S-04), one decision (M-
 | P17-24 Reported reviews count; owner can review self | Reported-review counting is deliberate (documented in `reviews.ts`); self-review still open (S-02) |
 | P17-26 Badge survives phone change; mobile login per-IP only | Both fixed (S-10, S-01) |
 | P17-27 Maestro failing | Still failing: no APK (CI-01) |
-| P17-28 No backup procedure | Procedure exists; first run failed (F-01, fixed) |
+| P17-28 No backup procedure | Procedure exists; first run failed (F-01), fixed and restore-tested 2026-11-05 |

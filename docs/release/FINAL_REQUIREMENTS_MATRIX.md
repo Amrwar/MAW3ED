@@ -102,7 +102,7 @@ against the code and the evidence produced in this audit. Status meanings:
 | Requirement | Status | Evidence |
 |---|---|---|
 | Health, job records, feature flags, runbooks | VERIFIED (local); production health 200 | Phase 28; this audit |
-| Off-site backups | **FAILING → fixed, unverified** | F-01: never succeeded; fix needs a manual run |
+| Off-site backups | **Verified** | F-01: never succeeded before the fix; manual run and restore drill passed 2026-11-05 |
 | Restore | VERIFIED on QA | Phase 28 drill |
 | Rollback | VERIFIED on staging | Phase 28 rehearsal |
 | Monitoring and alerting | PARTIAL | Sentry DSN set; uptime monitor and alert rules not in evidence |

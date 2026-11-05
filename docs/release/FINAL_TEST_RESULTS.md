@@ -99,8 +99,8 @@ server. Recorded as transient and not reproduced, not as a pass.
 
 | Check | Result |
 |---|---|
-| Backup workflow on GitHub | Its only scheduled run (2026-11-02) **failed**: the cause was found and fixed (F-01). Re-run after merge is required |
-| Restore drill | Phase 28 on QA (identical schema and counts). Not repeated in this audit |
+| Backup workflow on GitHub | The first scheduled run (2026-11-02) **failed**; the cause was found and fixed (F-01). After merge, manual run 42083812601 (2026-11-05) **succeeded**: 102 tables with data, encrypted artifact `maw3ed-db-20261105-1823` |
+| Restore drill | **Passed 2026-11-05 from the off-site artifact:** decrypted with the passphrase from the owner's password manager, restored into a scratch Postgres 17 database with 0 errors (93 public tables; users, businesses, services, bookings and payments present; newest booking 2026-11-04). Phase 28 had drilled on QA |
 | Rollback | Rehearsed on staging in Phase 28 (5 s each way) |
 | Production, read-only | `/api/version` = `d9e8ece`; `/api/health` 200; 64/64 sitemap URLs 200; security headers present |
 

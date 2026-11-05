@@ -29,4 +29,4 @@ the owner: none could be verified from this repository.
   ledger, the receipt number and reconciliation agree.
 - After the first real WhatsApp OTP and reminder: confirm delivery rows say
   SENT and the customer received them.
-- Weekly: the backup artifact exists and restores.
+- Weekly: the backup artifact exists. Monthly: restore it (`scripts/backup-restore-drill.sh`, passphrase from the password manager).
