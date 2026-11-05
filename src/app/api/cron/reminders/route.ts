@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { withCronRun } from "@/lib/ops/cron-run";
 import { cairoWallClock } from "@/lib/bookings/instants";
 import { businessAllows } from "@/lib/plans";
 import { notify } from "@/lib/notifications";
@@ -41,7 +42,7 @@ const REVIEW_DELAY_HOURS = 3;
 /** And how long before we stop asking. */
 const REVIEW_WINDOW_HOURS = 72;
 
-export async function GET(req: Request) {
+async function handle(req: Request): Promise<Response> {
   const allowed = authorizeCron(req, "reminders");
   if (!allowed.ok) return allowed.response;
 
@@ -63,7 +64,13 @@ export async function GET(req: Request) {
       // Nobody is reminded about the owner's own test booking.
       isTest: false,
       startsAt: { gte: wall, lte: horizon },
+      // Bounded per run (Phase 28), and progressing: a booking already
+      // reminded is only read again once inside the longest starting-soon
+      // lead (12 h), where its "starting soon" may still be due.
+      OR: [{ customerReminderSentAt: null }, { startsAt: { lte: new Date(wall.getTime() + 12 * 3_600_000) } }],
     },
+    orderBy: { startsAt: "asc" },
+    take: 1000,
     select: {
       id: true,
       startsAt: true,
@@ -141,18 +148,20 @@ export async function GET(req: Request) {
   const reviewFrom = new Date(wall.getTime() - REVIEW_WINDOW_HOURS * 3_600_000);
   const reviewTo = new Date(wall.getTime() - REVIEW_DELAY_HOURS * 3_600_000);
 
-  const finished = await db.booking.findMany({
-    where: {
-      status: "COMPLETED",
-      isTest: false,
-      endsAt: { gte: reviewFrom, lte: reviewTo },
-      // Asking somebody to review something they already reviewed is
-      // the fastest way to teach them to ignore us.
-      review: null,
-      business: { reviewRequestEnabled: true },
-    },
-    select: { id: true },
-  });
+  // Bounded per run (Phase 28), and progressing: a booking already asked
+  // (its request is on the notification ledger) is not read again.
+  const finished = await db.$queryRaw<{ id: string }[]>`
+    SELECT b."id" FROM "Booking" b
+      JOIN "Business" x ON x."id" = b."businessId"
+     WHERE b."status" = 'COMPLETED' AND b."isTest" = false
+       AND b."endsAt" >= ${reviewFrom} AND b."endsAt" <= ${reviewTo}
+       AND x."reviewRequestEnabled" = true
+       -- Asking somebody to review something they already reviewed is
+       -- the fastest way to teach them to ignore us.
+       AND NOT EXISTS (SELECT 1 FROM "Review" r WHERE r."bookingId" = b."id")
+       AND NOT EXISTS (SELECT 1 FROM "NotificationDelivery" d WHERE d."bookingId" = b."id" AND d."kind" = 'REVIEW_REQUEST')
+     ORDER BY b."endsAt" ASC
+     LIMIT 1000`;
 
   log.info(`[Reminders] ${finished.length} finished booking(s) to ask about`);
 
@@ -185,4 +194,9 @@ export async function GET(req: Request) {
   log.info(`[Reminders] Complete — ${JSON.stringify({ ...counts, ...reaped })}`);
 
   return Response.json({ ok: true, at: now.toISOString(), ...counts, ...reaped });
+}
+
+/** Recorded in CronRun (lib/ops/cron-run) — when it ran, whether it worked. */
+export async function GET(req: Request) {
+  return withCronRun("reminders", req, () => handle(req));
 }

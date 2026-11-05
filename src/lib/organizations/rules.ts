@@ -103,6 +103,8 @@ export const orgProfileSchema = z
     address: optText(300),
     cityId: z.string().min(1).nullable().optional(),
     website: webUrl,
+    /** Phase 28: the accent colour on the organization's pages, "#RRGGBB" (DB CHECK). */
+    brandColor: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, "اللون لازم يكون بصيغة ‎#RRGGBB").nullable().optional(),
   })
   .partial();
 

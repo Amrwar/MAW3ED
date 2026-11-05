@@ -1,4 +1,5 @@
 import { notify } from "@/lib/notifications";
+import { withCronRun } from "@/lib/ops/cron-run";
 import { redriveNotifications } from "@/lib/notifications/outbox";
 import { cairoWallClock } from "@/lib/bookings/instants";
 import { authorizeCron } from "@/lib/security/cron-auth";
@@ -16,7 +17,7 @@ import { log } from "@/lib/logger";
  * Security: Vercel attaches Authorization: Bearer <CRON_SECRET>; with
  * no secret set the job refuses to run (lib/security/cron-auth).
  */
-export async function GET(req: Request) {
+async function handle(req: Request): Promise<Response> {
   const allowed = authorizeCron(req, "notifications");
   if (!allowed.ok) return allowed.response;
 
@@ -28,4 +29,9 @@ export async function GET(req: Request) {
     log.error("[notifications cron] re-drive failed", e);
     return Response.json({ ok: false, at: now.toISOString() }, { status: 500 });
   }
+}
+
+/** Recorded in CronRun (lib/ops/cron-run) — when it ran, whether it worked. */
+export async function GET(req: Request) {
+  return withCronRun("notifications", req, () => handle(req));
 }

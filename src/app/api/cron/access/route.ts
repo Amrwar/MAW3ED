@@ -1,4 +1,5 @@
 import { authorizeCron } from "@/lib/security/cron-auth";
+import { withCronRun } from "@/lib/ops/cron-run";
 import { log } from "@/lib/logger";
 import { reconcileAccess } from "@/lib/access/reconcile";
 
@@ -17,7 +18,7 @@ import { reconcileAccess } from "@/lib/access/reconcile";
  */
 export const maxDuration = 60;
 
-export async function GET(req: Request) {
+async function handle(req: Request): Promise<Response> {
   const allowed = authorizeCron(req, "access");
   if (!allowed.ok) return allowed.response;
   const now = new Date();
@@ -31,4 +32,9 @@ export async function GET(req: Request) {
     log.error("[access cron] failed", e);
     return Response.json({ ok: false, at: now.toISOString() }, { status: 500 });
   }
+}
+
+/** Recorded in CronRun (lib/ops/cron-run) — when it ran, whether it worked. */
+export async function GET(req: Request) {
+  return withCronRun("access", req, () => handle(req));
 }

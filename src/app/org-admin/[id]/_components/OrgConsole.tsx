@@ -14,6 +14,8 @@ interface Org {
   nameAr: string; nameEn: string | null; descriptionAr: string | null; descriptionEn: string | null;
   phone: string | null; email: string | null; instagram: string | null; facebook: string | null;
   address: string | null; website: string | null;
+  /** "#RRGGBB", an accent on the public page; never body text. */
+  brandColor: string | null;
   logoImage: string | null; coverImage: string | null; cityId: string | null;
   /** The administrator's written reason, when REJECTED or SUSPENDED. */
   statusReason: string | null;
@@ -200,6 +202,9 @@ export default function OrgConsole({ organizationId, cities }: { organizationId:
         <div className="flex flex-wrap gap-2">
           <Link href={`/org-admin/${organizationId}/loyalty`} className="btn btn-outline btn-sm">
             {t("النقاط والعروض", "Loyalty & promotions")}
+          </Link>
+          <Link href={`/org-admin/${organizationId}/integrations`} className="btn btn-outline btn-sm">
+            {t("الربط والتكامل", "Integrations")}
           </Link>
           {org.isPublished && (
             <Link href={`/groups/${org.slug}`} target="_blank" className="btn btn-outline btn-sm gap-1.5">
@@ -765,6 +770,8 @@ const KIND_LABELS: Record<string, [string, string]> = {
   OTHER: ["أخرى", "Other"],
 };
 
+const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
+
 function ProfileForm({ t, en, org, cities, onSave }: { t: T; en: boolean; org: Org; cities: City[]; onSave: (profile: Record<string, unknown>) => Promise<boolean> }) {
   const [v, setV] = useState({
     nameAr: org.nameAr, nameEn: org.nameEn ?? "", descriptionAr: org.descriptionAr ?? "", descriptionEn: org.descriptionEn ?? "",
@@ -773,6 +780,8 @@ function ProfileForm({ t, en, org, cities, onSave }: { t: T; en: boolean; org: O
   });
   const [logoImage, setLogo] = useState<string | null>(org.logoImage);
   const [coverImage, setCover] = useState<string | null>(org.coverImage);
+  const [brandColor, setBrandColor] = useState(org.brandColor ?? "");
+  const colorValid = brandColor === "" || HEX_COLOR.test(brandColor);
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setV((p) => ({ ...p, [k]: e.target.value }));
   // Name and kind are what the platform reviewed.
   const identityChanged = v.nameAr.trim() !== org.nameAr || (v.nameEn.trim() || null) !== (org.nameEn || null) || v.kind !== org.kind;
@@ -782,9 +791,11 @@ function ProfileForm({ t, en, org, cities, onSave }: { t: T; en: boolean; org: O
       aria-labelledby="prof-h"
       onSubmit={(e) => {
         e.preventDefault();
+        if (!colorValid) return;
         void onSave({
           ...v,
           cityId: v.cityId || null,
+          brandColor: brandColor ? brandColor.toUpperCase() : null,
           ...(logoImage !== org.logoImage ? { logoImage } : {}),
           ...(coverImage !== org.coverImage ? { coverImage } : {}),
         });
@@ -814,6 +825,39 @@ function ProfileForm({ t, en, org, cities, onSave }: { t: T; en: boolean; org: O
           </select>
         </L>
       </div>
+      <fieldset className="m-0 space-y-1 border-0 p-0 text-sm">
+        <legend className="p-0 font-bold">{t("لون العلامة (اختياري)", "Brand colour (optional)")}</legend>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="color"
+            className="h-9 w-12 cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] p-0.5"
+            value={HEX_COLOR.test(brandColor) ? brandColor : "#000000"}
+            onChange={(e) => setBrandColor(e.target.value.toUpperCase())}
+            aria-label={t("اختار اللون", "Pick the colour")}
+          />
+          <input
+            className={field + " w-32"}
+            value={brandColor}
+            onChange={(e) => setBrandColor(e.target.value.trim())}
+            placeholder="#RRGGBB"
+            maxLength={7}
+            dir="ltr"
+            aria-label={t("كود اللون", "Colour code")}
+            aria-invalid={!colorValid}
+            aria-describedby="prof-color-hint"
+          />
+          {brandColor && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setBrandColor("")}>
+              {t("من غير لون", "Clear")}
+            </button>
+          )}
+        </div>
+        <p id="prof-color-hint" className={`m-0 text-xs ${colorValid ? "text-[var(--color-subtle)]" : "text-[var(--color-danger)]"}`}>
+          {colorValid
+            ? t("بيظهر كلمسة خفيفة في صفحة الجهة العامة، مش كلون للكلام.", "Shown as a subtle accent on the public page, never as text colour.")
+            : t("اكتب اللون بصيغة #RRGGBB.", "Write the colour as #RRGGBB.")}
+        </p>
+      </fieldset>
       <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
         <ImageUpload variant="logo" folder="maw3ed/organizations" label={t("الشعار", "Logo")} value={logoImage} onChange={setLogo} onRemove={() => setLogo(null)} />
         <ImageUpload variant="cover" folder="maw3ed/organizations" label={t("صورة الغلاف", "Cover image")} value={coverImage} onChange={setCover} onRemove={() => setCover(null)} />
@@ -826,7 +870,7 @@ function ProfileForm({ t, en, org, cities, onSave }: { t: T; en: boolean; org: O
           )}
         </p>
       )}
-      <button type="submit" className="btn btn-primary">{t("احفظ", "Save")}</button>
+      <button type="submit" className="btn btn-primary" disabled={!colorValid}>{t("احفظ", "Save")}</button>
     </form>
   );
 }

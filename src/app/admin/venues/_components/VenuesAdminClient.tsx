@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
+import { useSay } from "@/components/dashboard/kit";
+import OrgContractPanel from "./OrgContractPanel";
 
 interface Props {
   canManage: boolean;
@@ -132,6 +134,8 @@ const ORG_STATUS: Record<string, string> = {
 function OrgRow({ o, canManage, send }: { o: Props["organizations"][number]; canManage: boolean; send: Send }) {
   const [reason, setReason] = useState("");
   const [asking, setAsking] = useState<"REJECTED" | "SUSPENDED" | null>(null);
+  const [contractOpen, setContractOpen] = useState(false);
+  const { say } = useSay();
   return (
     <li className="space-y-2 py-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -159,6 +163,15 @@ function OrgRow({ o, canManage, send }: { o: Props["organizations"][number]; can
               {o.status === "APPROVED" && (
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAsking(asking === "SUSPENDED" ? null : "SUSPENDED")}>إيقاف…</button>
               )}
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                aria-expanded={contractOpen}
+                aria-controls={`contract-${o.id}`}
+                onClick={() => setContractOpen(!contractOpen)}
+              >
+                {say("الاتفاق", "Contract")}
+              </button>
             </>
           )}
         </div>
@@ -184,6 +197,11 @@ function OrgRow({ o, canManage, send }: { o: Props["organizations"][number]; can
           />
           <button type="submit" className="btn btn-outline btn-sm">{asking === "REJECTED" ? "تأكيد الرفض" : "تأكيد الإيقاف"}</button>
         </form>
+      )}
+      {canManage && contractOpen && (
+        <div id={`contract-${o.id}`}>
+          <OrgContractPanel organizationId={o.id} />
+        </div>
       )}
     </li>
   );

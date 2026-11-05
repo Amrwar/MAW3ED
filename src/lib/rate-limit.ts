@@ -172,7 +172,18 @@ export async function rateLimit(
   bucket: Bucket,
   identifier?: string | null,
 ): Promise<RateLimitResult> {
-  const rule = RULES[bucket];
+  return rateLimitWith(bucket, RULES[bucket], identifier);
+}
+
+/**
+ * The same counter with a rule decided at run time — an API client's
+ * limit comes from its organization's contract (lib/enterprise/auth).
+ */
+export async function rateLimitWith(
+  bucket: string,
+  rule: RateLimitRule,
+  identifier?: string | null,
+): Promise<RateLimitResult> {
   const now = Date.now();
   const windowMs = rule.windowSeconds * 1000;
   const windowStart = Math.floor(now / windowMs) * windowMs;

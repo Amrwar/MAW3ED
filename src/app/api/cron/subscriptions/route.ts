@@ -22,13 +22,14 @@
  */
 
 import { db } from "@/lib/db";
+import { withCronRun } from "@/lib/ops/cron-run";
 import { pruneRateLimits } from "@/lib/rate-limit";
 import { pruneFunnelSeen } from "@/lib/analytics/funnel";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
 import { authorizeCron } from "@/lib/security/cron-auth";
 
-export async function GET(req: Request) {
+async function handle(req: Request): Promise<Response> {
   const allowed = authorizeCron(req, "subscriptions");
   if (!allowed.ok) return allowed.response;
 
@@ -46,6 +47,10 @@ export async function GET(req: Request) {
       currentPeriodEnd:   { lt: now },
     },
     include: { owner: { select: { email: true } } },
+    // Bounded per run (Phase 28); an expired one leaves this set, so the
+    // next run takes the rest.
+    orderBy: { currentPeriodEnd: "asc" },
+    take: 500,
   });
 
   log.info(`[subscriptions cron] ${overdueBusinesses.length} subscription(s) to expire`);
@@ -91,6 +96,7 @@ export async function GET(req: Request) {
       subscriptionReminderSentAt: null,
     },
     include: { owner: { select: { email: true } } },
+    take: 500,
   });
 
   log.info(`[subscriptions cron] ${upcomingExpiryBusinesses.length} renewal reminder(s) to send`);
@@ -138,4 +144,9 @@ export async function GET(req: Request) {
   );
 
   return Response.json({ ok: true, expired, reminded, failed, pruned, funnelPruned });
+}
+
+/** Recorded in CronRun (lib/ops/cron-run) — when it ran, whether it worked. */
+export async function GET(req: Request) {
+  return withCronRun("subscriptions", req, () => handle(req));
 }

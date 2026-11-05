@@ -32,6 +32,8 @@ export const ORG_ACTIONS = [
   // Owner (and platform) only.
   "org.publish",
   "org.members",
+  /** Phase 28: API keys and webhook endpoints — credentials, so the owner's. */
+  "org.integrations",
   // Platform only.
   "org.review",
 ] as const;
@@ -50,7 +52,7 @@ const MANAGER: OrgAction[] = [
 
 export const ORG_PERMISSIONS: Record<OrgAuthority, readonly OrgAction[]> = {
   PLATFORM: ORG_ACTIONS,
-  OWNER: [...MANAGER, "org.publish", "org.members"],
+  OWNER: [...MANAGER, "org.publish", "org.members", "org.integrations"],
   MANAGER,
 };
 
