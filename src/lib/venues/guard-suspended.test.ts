@@ -38,6 +38,11 @@ describe("venue access and the organization's status", () => {
     expect(r.authority).toBe("ORGANIZATION_OWNER");
   });
 
+  it("lets an operator the platform added itself (status PENDING) run its venues", async () => {
+    state.orgStatus = "PENDING";
+    expect((await requireVenueAccess("v1", "venue.access.view")).authority).toBe("ORGANIZATION_OWNER");
+  });
+
   it("refuses with 404 once the platform suspends the organization", async () => {
     state.orgStatus = "SUSPENDED";
     const thrown = await requireVenueAccess("v1", "venue.access.view").catch((e) => e);

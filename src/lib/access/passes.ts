@@ -142,7 +142,7 @@ export async function venueContext(
       id: v.id,
       nameAr: v.nameAr,
       nameEn: v.nameEn,
-      status: v.organization && v.organization.status !== "APPROVED" ? "SUSPENDED" : v.status,
+      status: v.organization && (v.organization.status === "SUSPENDED" || v.organization.status === "REJECTED") ? "SUSPENDED" : v.status,
       accessEnabled: v.accessEnabled,
       accessProvider,
     },
