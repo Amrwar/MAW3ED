@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { authorizeCron } from "@/lib/security/cron-auth";
+import { startCheckIn } from "@/lib/ops/cron-monitor";
 
 /**
  * Every scheduled job's runs, in CronRun: when it started and finished,
@@ -32,10 +33,12 @@ export async function withCronRun(job: string, req: Request, run: () => Promise<
   } catch (e) {
     log.error("[cron-run] could not record a start", e, { job });
   }
+  const finishCheckIn = startCheckIn(job);
   let res: Response;
   try {
     res = await run();
   } catch (e) {
+    await finishCheckIn(false);
     if (started) {
       await Promise.resolve()
         .then(() => db.cronRun.update({ where: { id: started!.id }, data: { finishedAt: new Date(), ok: false, error: String(e instanceof Error ? e.message : e).slice(0, 500) } }))
@@ -43,13 +46,15 @@ export async function withCronRun(job: string, req: Request, run: () => Promise<
     }
     throw e;
   }
+  let summary: unknown = null;
+  try {
+    summary = await res.clone().json();
+  } catch {
+    summary = null;
+  }
+  const ok = res.ok && (summary as { ok?: boolean } | null)?.ok !== false;
+  await finishCheckIn(ok);
   if (started) {
-    let summary: unknown = null;
-    try {
-      summary = await res.clone().json();
-    } catch {
-      summary = null;
-    }
     const text = JSON.stringify(summary ?? null);
     await Promise.resolve()
       .then(() =>
@@ -57,7 +62,7 @@ export async function withCronRun(job: string, req: Request, run: () => Promise<
           where: { id: started!.id },
           data: {
             finishedAt: new Date(),
-            ok: res.ok && (summary as { ok?: boolean } | null)?.ok !== false,
+            ok,
             summary: text.length <= 4000 ? ((summary as object) ?? undefined) : { truncated: true },
           },
         }),
