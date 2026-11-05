@@ -21,6 +21,11 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+    inputs:
+      url:
+        description: "Address to check (leave empty for production). A wrong address tests the alert."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -31,7 +36,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  URL: https://www.maw3ed.net/api/health
+  URL: ${{ inputs.url || 'https://www.maw3ed.net/api/health' }}
   GH_TOKEN: ${{ github.token }}
   GH_REPO: ${{ github.repository }}
 
@@ -61,7 +66,7 @@ jobs:
       - name: Open an issue when down
         if: steps.probe.outputs.up == 'false'
         run: |
-          open=$(gh issue list --label uptime --state open --json number -q '.[0].number')
+          open=$(gh issue list --label uptime --state open --json number -q '.[0].number // empty')
           if [ -z "$open" ]; then
             gh label create uptime --color B60205 --description "Opened by the Uptime workflow" --force >/dev/null
             gh issue create --label uptime --assignee "${{ github.repository_owner }}" \
@@ -83,7 +88,7 @@ jobs:
       - name: Close the issue when back up
         if: steps.probe.outputs.up == 'true'
         run: |
-          open=$(gh issue list --label uptime --state open --json number,createdAt -q '.[0] | "\(.number) \(.createdAt)"')
+          open=$(gh issue list --label uptime --state open --json number,createdAt -q '.[0] // empty | "\(.number) \(.createdAt)"')
           if [ -n "$open" ]; then
             read -r num since <<< "$open"
             mins=$(( ( $(date -u +%s) - $(date -u -d "$since" +%s) ) / 60 ))
