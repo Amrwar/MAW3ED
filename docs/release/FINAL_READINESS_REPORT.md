@@ -80,7 +80,7 @@ anyone.
 | 12 | Notifications and background processing | **CONDITIONAL GO** | Outbox, retries, dead-letter and cron bounds verified. Deadlines and stable ordering added. Conditions: one live WhatsApp and email delivery confirmed; the backup re-run (F-01) |
 | 13 | Enterprise multi-venue system | **CONDITIONAL GO** (code) | API, keys, webhooks and contracts verified locally (46/46); SSRF hardened. Real partner validation NOT DONE — no real contract, consumer or provider |
 | 14 | Overall platform security | **CONDITIONAL GO** | No open P0/P1. Open P2: self-review (decision) and a latent flag that must stay off. Conditions: legal review; a third-party penetration test before enterprise contracts |
-| 15 | Overall production operations | **CONDITIONAL GO** | Health, job records, flags, rollback (rehearsed) and restore (drilled on QA) are in place. The fixed backup was run and restored from its artifact on 2026-11-05. Conditions: uptime monitor and Sentry alert rules |
+| 15 | Overall production operations | **CONDITIONAL GO** | Health, job records, flags, rollback (rehearsed) and restore (drilled on QA) are in place. The fixed backup was run and restored from its artifact on 2026-11-05. Uptime monitor in place (GitHub Actions, every 5 min). Condition: Sentry alert rules |
 
 No subsystem gets an unconditional GO. Every one depends on at least one
 external confirmation that this repository cannot produce.
@@ -93,7 +93,7 @@ external confirmation that this repository cannot produce.
 2. Owner/counsel: name the operator on the privacy and terms pages. Complete
    retention and minimum age. Write terms for plans, deposits, refunds,
    cancellation, no-shows, liability and governing law (F-30b).
-3. Owner: uptime monitor on `/api/health`; Sentry alert rules.
+3. Owner: Sentry alert rules. (Uptime monitor on `/api/health`: done, `.github/workflows/uptime.yml`.)
 4. Owner, on a phone: the check-in camera prompt (F-02); "sign out
    everywhere" leaves no push on the old phone (F-03).
 
@@ -277,7 +277,7 @@ See `FINAL_DATABASE_INTEGRITY.md`.
 **CONDITIONAL GO.**
 - This release needs no migration.
 - Before any launch:
-  - an uptime monitor and alert rules.
+  - Sentry alert rules (the uptime monitor is in place).
 - Rollback is rehearsed; migrations are additive.
 - See `FINAL_DEPLOYMENT_CHECKLIST.md`.
 
