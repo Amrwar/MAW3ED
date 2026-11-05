@@ -190,6 +190,25 @@ try {
   const down = await send(founderB, `/api/organizations/${orgB.id}/parent`, "PUT", { parentId: orgA.id });
   check("an organization cannot be put under another without that one's say, and a cycle is refused", !(up.status === 200 && down.status === 200), `${up.status}/${down.status}`);
 
+  // ── The new screens ──────────────────────────────────────────────────
+  part("pages");
+  const page = async (jar, path) => {
+    const r = await call(jar, path, { redirect: "manual" });
+    const html = r.status === 200 ? await r.text() : "";
+    return { status: r.status, ok: r.status === 200 && !/Application error|Internal Server Error/.test(html), html };
+  };
+  const ia = await page(founderA, `/org-admin/${orgA.id}/integrations`);
+  check("the organization's Integrations page renders for its owner", ia.ok, ia.status);
+  const ib = await page(founderB, `/org-admin/${orgA.id}/integrations`);
+  check("…and not for another organization's owner", !ib.ok, ib.status);
+  const ops = await page(admin, "/admin/operations");
+  check("the admin Operations page renders", ops.ok, ops.status);
+  const ga = await page(null, `/groups/${orgA.slug}`);
+  const gb = await page(null, `/en/groups/${orgB.slug}`);
+  check("each organization's public directory renders (ar, en) with its own members", ga.ok && gb.ok && ga.html.includes(tenant1.slug) && !ga.html.includes(brand1.slug), `${ga.status}/${gb.status}`);
+  const anonOrg = await page(null, `/org-admin/${orgA.id}/integrations`);
+  check("the console sends a stranger to sign in", [302, 303, 307].includes(anonOrg.status), anonOrg.status);
+
   // ── Billing ──────────────────────────────────────────────────────────
   part("billing");
   const from = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);

@@ -61,7 +61,7 @@ below is planned in detail yet, and no phase starts automatically.
 | 25 | Production customer app (Android/iOS) | PARTIAL — merged #52; native builds and device tests on owner accounts — `docs/phases/PHASE_25_REPORT.md` |
 | 26 | SEO, marketplace discovery, growth and analytics: Arabic-aware search, organization discovery, technical SEO fixes, a privacy-first booking funnel, organization and business analytics corrections | PASS — merged #54, live 2026-11-04 — `docs/phases/PHASE_26_REPORT.md` |
 | 27 | Advanced booking, business operations, loyalty and retention: recurring series, slot waitlist, no-show policy, walk-ins, loyalty ledger, packages and memberships, automations with consent, operations report, organization loyalty and promotions | PASS — merged #57, live 2026-11-04 (multi-service bookings, shared-capacity classes and online package sale not built) — `docs/phases/PHASE_27_REPORT.md` |
-| 28 | Awaiting instructions | NOT STARTED |
+| 28 | Enterprise multi-organization and multi-venue platform: versioned API with scoped keys, signed webhooks, organization contracts, per-venue provider credentials, health and job observability, two-organization validation | PASS (local) · real partner validation NOT DONE — branch `phase-28` — `docs/phases/PHASE_28_REPORT.md`, `docs/enterprise/*` |
 
 ## Dependencies already visible
 
