@@ -115,7 +115,7 @@ thousands.
 | `qa-phase27.mjs` | 66/66 |
 | Regression battery (20 earlier QA scripts, production build) | all passed: qa-phase24 147/147, phase24-browser 23/23, redirects 108/108, offline-qr 31/31, responsive 380 loads clean, booking-e2e 22/22, phase23 48/48, phase23-loops 15/15, security 32/32, phase23-browser 49/49, loops-browser 9/9, venue console/page clean, phase22c 59/59, phase22b 84/84, phase22 68/68, phase21 44/44, phase19 21/21, phase17 13/13, phase18 544 loads 0 flagged |
 | Backup → restore drill (QA) | 92 tables' row counts, 229 constraints, triggers, 333 indexes identical; search function works; 3 s |
-| Rollback rehearsal (staging) | ROLLBACK_RESULT |
+| Rollback rehearsal (staging) | Staging migrated (`migrate-staging28.sh`: VERIFIED), Phase 28 deployed (`/api/health` 200, `/api/v1/organization` 401). `vercel rollback` to the previous build (`c371e47`) took 5 s: the new endpoints answered 404 (uncached; the edge kept the old answer for a few seconds) and the old build ran on the migrated database (the schema change is additive), home and sign-in 200. `vercel promote` back took 5 s; endpoints present again |
 
 ## Readiness (separately, as asked)
 
