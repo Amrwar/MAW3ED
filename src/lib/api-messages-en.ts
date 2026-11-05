@@ -79,6 +79,10 @@ export const MESSAGES: Record<string, string> = {
 
   /* ── Phone and codes ── */
   "أدخل رقم الموبايل": "Enter your mobile number.",
+  "اكتب رقم الموبايل والكود": "Enter your mobile number and the code.",
+  "حسابك عليه رقم موبايل متأكّد بالفعل": "Your account already has a confirmed mobile number.",
+  "الرقم ده مربوط بحساب تاني على موعد. اخرج وادخل برقم الموبايل عشان توصل لحجوزاته.":
+    "This number belongs to another Maw3ed account. Sign out, then sign in with the mobile number to reach its bookings.",
   "أدخل رقم الهاتف": "Enter a phone number.",
   "أدخل رقم الواتساب": "Enter your WhatsApp number.",
   "رقم الموبايل غير صحيح": "That mobile number isn't valid.",

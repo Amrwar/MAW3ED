@@ -6,7 +6,9 @@ import { countText } from "@/lib/i18n";
 import Link from "@/components/shared/LocaleLink";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { ArrowRight, MessageCircle, Smartphone } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import GoogleButton from "@/components/auth/GoogleButton";
+import AuthErrorNotice from "@/components/auth/AuthErrorNotice";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -116,25 +118,25 @@ export default function PhoneLogin() {
 
   return (
     <div className="w-full">
-      <header className="mb-7 text-center">
-        <span
-          aria-hidden="true"
-          className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-jade-soft)] text-[var(--color-jade)]"
-        >
-          {step === "phone" ? (
-            <Smartphone size={24} strokeWidth={1.8} />
-          ) : (
-            <MessageCircle size={24} strokeWidth={1.8} />
-          )}
-        </span>
-
-        <h1 className="m-0 text-[1.5rem] font-light tracking-tight text-[var(--color-ink)]">
-          {step === "phone" ? a.title : a.codeTitle}
-        </h1>
-        <p className="m-0 mx-auto mt-2.5 max-w-[34ch] text-[0.875rem] leading-relaxed text-[var(--color-subtle)]">
+      <header className="mb-6">
+        <h1 className="auth-title">{step === "phone" ? a.title : a.codeTitle}</h1>
+        <p className="auth-sub">
           {step === "phone" ? a.subtitle : a.codeSubtitle.replace("{phone}", phone.trim())}
         </p>
       </header>
+
+      {/* Errors from a Google sign-in started here and sent back. */}
+      <div className="mb-4 empty:hidden">
+        <AuthErrorNotice />
+      </div>
+
+      {/* Google first, the phone below it. A Google account has no
+          phone yet: the account area asks for it next (AddPhone). */}
+      {step === "phone" && (
+        <div className="mb-4 empty:hidden">
+          <GoogleButton redirectTo={next} divider={t.auth.google.orPhone} />
+        </div>
+      )}
 
       {step === "phone" ? (
         <form method="post" onSubmit={sendCode} className="flex flex-col gap-4">

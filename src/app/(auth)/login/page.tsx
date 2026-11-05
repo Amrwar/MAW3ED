@@ -1,7 +1,7 @@
 "use client";
 
 import { useMounted } from "@/hooks/useMounted";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "@/components/shared/LocaleLink";
 import { getSession, signIn } from "next-auth/react";
@@ -12,12 +12,15 @@ import { loginSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Alert from "@/components/ui/Alert";
-import { loginDestination } from "@/lib/auth/login-destination";
+import { googleReturnPath, loginDestination } from "@/lib/auth/login-destination";
+import { localizePath } from "@/lib/locale-path";
+import GoogleButton from "@/components/auth/GoogleButton";
+import AuthErrorNotice from "@/components/auth/AuthErrorNotice";
 
 type LoginForm = { email: string; password: string };
 
 export default function LoginPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   // The submit stays disabled until React has hydrated. Before then a
   // press would be a native form submission that never reaches
   // onSubmit; with method="post" nothing would land in the URL anyway,
@@ -52,14 +55,30 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-raised)]">
+    <div className="flex flex-col gap-6">
 
-      <div className="mb-8">
-        <h1 className="m-0 text-[1.75rem] font-light tracking-tight text-[var(--color-ink)]">
-          {l.title}
-        </h1>
-        <p className="m-0 mt-2 text-[0.875rem] text-[var(--color-subtle)]">{l.subtitle}</p>
+      <div>
+        <h1 className="auth-title">{l.title}</h1>
+        <p className="auth-sub">{l.subtitle}</p>
       </div>
+
+      {/* NextAuth comes back here with ?error= (auth.config.ts pages),
+          whichever page the sign-in started on: hence the way back to
+          the customer sign-in. */}
+      <Suspense fallback={null}>
+        <AuthErrorNotice customerLink />
+      </Suspense>
+
+      {/* A same-site return address this login honours (?next=,
+          ?callbackUrl=: lib/auth/login-destination) goes straight there;
+          otherwise back to /login, whose layout sends the account home
+          (bounceSignedIn): the dashboard, or onboarding. */}
+      <GoogleButton
+        redirectTo={() =>
+          googleReturnPath(window.location.search, window.location.origin) ?? localizePath("/login", lang)
+        }
+        divider={t.auth.google.orEmail}
+      />
 
       <form method="post" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
         <div>
@@ -120,7 +139,7 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <p className="m-0 mt-7 text-center text-[0.84375rem] text-[var(--color-subtle)]">
+      <p className="m-0 text-center text-[0.875rem] text-[var(--color-muted)]">
         {l.noAccount}{" "}
         <Link href="/signup" className="font-bold text-[var(--color-jade)]">
           {l.createAccount}
@@ -129,7 +148,7 @@ export default function LoginPage() {
 
       {/* This form is for business owners. A customer has no password —
           they sign in with a code — and nothing here said so. */}
-      <p className="m-0 mt-3 border-t border-[var(--color-line)] pt-5 text-center text-[0.8125rem] text-[var(--color-subtle)]">
+      <p className="m-0 -mt-2 border-t border-[var(--color-line)] pt-5 text-center text-[0.875rem] text-[var(--color-muted)]">
         <Link href="/account-login" className="font-bold text-[var(--color-jade)]">
           {t.account.customerSignIn}
         </Link>

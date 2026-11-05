@@ -10,6 +10,8 @@ import { db } from "@/lib/db";
 import { accountForVerifiedPhone, verifyLoginCode } from "@/lib/auth/login-code";
 import { normalisePhone } from "@/lib/phone";
 import { SESSION_MAX_AGE_SECONDS, needsRecheck, sessionRevoked } from "@/lib/security/session-policy";
+import { googleProfileAccepted, googleProviders } from "@/lib/auth/google";
+import { decideGoogleSignIn } from "@/lib/auth/google-signin";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -134,12 +136,46 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         };
       },
     }),
+
+    // "Continue with Google", only once AUTH_GOOGLE_ID and
+    // AUTH_GOOGLE_SECRET are set (lib/auth/google.ts).
+    ...googleProviders(),
   ],
+  events: {
+    // Google has just proved the address (the signIn callback below
+    // refuses one it has not), so an account whose email is that address
+    // counts as verified, which is what readiness and the verify-email
+    // banner ask about. An account that was unverified until now had its
+    // password removed before the link (lib/auth/google-signin.ts), so
+    // nothing set by whoever registered the address survives this.
+    async signIn({ user, account, profile }) {
+      if (account?.provider !== "google" || !user.id || !googleProfileAccepted(profile)) return;
+      const email = String(profile!.email).trim().toLowerCase();
+      await db.user
+        .updateMany({ where: { id: user.id, email, emailVerified: null }, data: { emailVerified: new Date() } })
+        .catch((e) => log.warn("[auth] could not mark Google email verified", { error: String(e) }));
+    },
+  },
   callbacks: {
     ...authConfig.callbacks,
 
+    /**
+     * Google only; the Credentials providers decide in authorize().
+     * Verified addresses only, never linked into an account somebody
+     * else left signed in, and an unverified pre-registered account is
+     * disarmed before it is linked (lib/auth/google-signin.ts). A refusal
+     * is the address of the sign-in page that explains it.
+     */
+    async signIn({ account, profile }) {
+      if (account?.provider !== "google") return true;
+      return decideGoogleSignIn(account, profile);
+    },
+
     async jwt({ token, user, trigger }) {
-      // On first sign-in, embed user data into token
+      // On first sign-in, embed user data into token. For Google, `user`
+      // is the adapter's row and has no businessId, so it starts null;
+      // the recheck below then fills businessId, phone and adminRole at
+      // once, because a token minted at sign-in has no `resolved` yet.
       if (user) {
         token.id         = user.id ?? "";
         token.businessId = (user as { businessId?: string | null }).businessId ?? null;

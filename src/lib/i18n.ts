@@ -489,8 +489,19 @@ export const translations = {
       notificationsSub:   "كل اللي حصل في حجوزاتك ومكانك.",
       ownerSignIn:        "صاحب مكان؟ ادخل من هنا",
       customerSignIn:     "عميل؟ ادخل برقم موبايلك",
-      ownerNotice:        "الحساب ده لصاحب نشاط. عشان تشوف حجوزاتك كعميل، ادخل برقم الموبايل اللي بتحجز بيه.",
       goToDashboard:      "لوحة تحكم نشاطي",
+      // Signed in without a verified phone (Google, or an owner's
+      // email): bookings are found by phone, so the number comes first.
+      addPhone: {
+        title:        "ضيف رقم موبايلك",
+        subtitle:     "حجوزاتك متسجّلة بالرقم اللي بتحجز بيه. أكّده مرة واحدة وهتلاقي كل مواعيدك هنا.",
+        codeTitle:    "اكتب الكود",
+        submit:       "أكّد الرقم",
+        switching:    "الرقم ده عليه حساب بالفعل على موعد. بندخلك عليه دلوقتي...",
+        failed:       "مقدرناش نضيف الرقم دلوقتي. جرّب تاني.",
+        switchFailed: "رقمك اتربط بحسابك على موعد، بس مقدرناش ندخلك عليه دلوقتي. دوس تاني عشان تكمّل بحساب Google.",
+        ownerHint:    "عندك نشاط؟ لوحة التحكم مكانها زي ما هي.",
+      },
       profile: {
         name:        "الاسم",
         phone:       "رقم الموبايل",
@@ -822,10 +833,46 @@ export const translations = {
       ],
     },
     auth: {
-      backToHome: "← العودة للرئيسية",
+      backToHome: "العودة للرئيسية",
       copyright:  "© 2026 موعد (Maw3ed). جميع الحقوق محفوظة.",
       showPassword: "إظهار كلمة المرور",
       hidePassword: "إخفاء كلمة المرور",
+      followUs:   "تابعنا",
+      instagram:  "موعد على إنستجرام",
+      facebook:   "موعد على فيسبوك",
+      // The brand panel beside every sign-in form. The ticket is an
+      // illustration, and says so: no real booking, no real business.
+      brand: {
+        label:         "عن موعد",
+        headline:      "كل مواعيدك في مكان واحد.",
+        subline:       "احجز في صالونات وعيادات واستوديوهات في كل مصر، ويوصلك تذكير على واتساب.",
+        ticketLabel:   "موعدك الجاي",
+        ticketExample: "مثال",
+        ticketStatus:  "مؤكد",
+        ticketWhen:    "الخميس · 4:30 م",
+        ticketWhere:   "قص شعر · صالون قريب منك",
+        factWhatsApp:  "تذكير على واتساب",
+        factLanguages: "عربي وإنجليزي",
+        factFree:      "مجاني للعملاء",
+      },
+      google: {
+        continue: "كمّل بحساب Google",
+        orEmail:  "أو بالبريد الإلكتروني",
+        orPhone:  "أو برقم الموبايل",
+        failed:   "مقدرناش نفتح Google دلوقتي. جرّب تاني.",
+      },
+      // What a sign-in's ?error= means, in words (lib/auth/error-key.ts).
+      errors: {
+        title:                 "مقدرناش ندخلك",
+        customerHint:          "بتدخل كعميل؟ ادخل من صفحة العملاء",
+        OAuthAccountNotLinked: "حساب Google ده مربوط بحساب تاني على موعد. ادخل بالطريقة اللي استخدمتها قبل كده.",
+        AccessDenied:          "مقدرناش ندخلك بالطريقة دي. جرّب تاني، أو ادخل بطريقة تانية.",
+        EmailUnverified:       "الإيميل بتاع حساب Google ده مش متأكَّد عند Google. أكّده عندهم الأول، أو ادخل بطريقة تانية.",
+        SignedIn:              "في حساب تاني مسجّل دخول على المتصفح ده. اخرج منه الأول، وبعدين كمّل بحساب Google.",
+        OAuthCallbackError:    "الدخول بحساب Google ماكملش. لو لغيته بالغلط، جرّب تاني.",
+        Configuration:         "الدخول بالطريقة دي مش شغال دلوقتي. جرّب بعد شوية أو ادخل بطريقة تانية.",
+        generic:               "حصلت مشكلة وإحنا بندخلك. حدّث الصفحة وجرّب تاني.",
+      },
       verifyEmail: {
         resend:          "ابعت رابط جديد",
         sent:            "تم الإرسال",
@@ -1559,8 +1606,19 @@ export const translations = {
       notificationsSub:   "Everything that has happened to your bookings and your place.",
       ownerSignIn:        "Own a business? Sign in here",
       customerSignIn:     "A customer? Sign in with your phone",
-      ownerNotice:        "This account belongs to a business owner. To see your own bookings as a customer, sign in with the mobile number you book with.",
       goToDashboard:      "My business dashboard",
+      // Signed in without a verified phone (Google, or an owner's
+      // email): bookings are found by phone, so the number comes first.
+      addPhone: {
+        title:        "Add your mobile number",
+        subtitle:     "Your bookings are saved under the number you book with. Confirm it once and every appointment shows up here.",
+        codeTitle:    "Enter the code",
+        submit:       "Confirm number",
+        switching:    "This number already has a Maw3ed account. Signing you in to it now…",
+        failed:       "We couldn't add the number right now. Try again.",
+        switchFailed: "Your number is now linked to your Maw3ed account, but we couldn't sign you in to it just now. Press the button to continue with Google.",
+        ownerHint:    "Own a business? Your dashboard stays where it is.",
+      },
       profile: {
         name:        "Name",
         phone:       "Mobile number",
@@ -1892,10 +1950,46 @@ export const translations = {
       ],
     },
     auth: {
-      backToHome: "← Back to Home",
+      backToHome: "Back to home",
       copyright:  "© 2026 Maw3ed. All rights reserved.",
       showPassword: "Show password",
       hidePassword: "Hide password",
+      followUs:   "Follow us",
+      instagram:  "Maw3ed on Instagram",
+      facebook:   "Maw3ed on Facebook",
+      // The brand panel beside every sign-in form. The ticket is an
+      // illustration, and says so: no real booking, no real business.
+      brand: {
+        label:         "About Maw3ed",
+        headline:      "Every appointment, in one place.",
+        subline:       "Book salons, clinics and studios across Egypt, and get reminders on WhatsApp.",
+        ticketLabel:   "Next appointment",
+        ticketExample: "Example",
+        ticketStatus:  "Confirmed",
+        ticketWhen:    "Thu · 4:30 PM",
+        ticketWhere:   "Haircut · a salon near you",
+        factWhatsApp:  "WhatsApp reminders",
+        factLanguages: "Arabic and English",
+        factFree:      "Free for customers",
+      },
+      google: {
+        continue: "Continue with Google",
+        orEmail:  "or use your email",
+        orPhone:  "or use your mobile number",
+        failed:   "We couldn't open Google right now. Try again.",
+      },
+      // What a sign-in's ?error= means, in words (lib/auth/error-key.ts).
+      errors: {
+        title:                 "We couldn't sign you in",
+        customerHint:          "Signing in as a customer? Use the customer sign-in",
+        OAuthAccountNotLinked: "This Google account is linked to a different Maw3ed account. Sign in the way you did before.",
+        AccessDenied:          "We couldn't sign you in that way. Try again, or sign in another way.",
+        EmailUnverified:       "This Google account's email isn't verified with Google. Verify it there first, or sign in another way.",
+        SignedIn:              "Another account is signed in on this browser. Sign out of it first, then continue with Google.",
+        OAuthCallbackError:    "Signing in with Google didn't finish. If you cancelled by mistake, try again.",
+        Configuration:         "This way of signing in isn't working right now. Try again later or sign in another way.",
+        generic:               "Something went wrong while signing you in. Refresh the page and try again.",
+      },
       verifyEmail: {
         resend:          "Send a new link",
         sent:            "Sent",

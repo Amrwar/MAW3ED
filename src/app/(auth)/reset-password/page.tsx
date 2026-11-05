@@ -4,7 +4,7 @@ import { useMounted } from "@/hooks/useMounted";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "@/components/shared/LocaleLink";
-import { Eye, EyeOff, Lock, CheckCircle2, Loader2 } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2, Loader2 } from "lucide-react";
 import Alert from "@/components/ui/Alert";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { localizePath } from "@/lib/locale-path";
@@ -88,7 +88,7 @@ function ResetPasswordForm() {
   // ── Success state ─────────────────────────────────────────
   if (done) {
     return (
-      <div className="card p-7 text-center space-y-4">
+      <div className="text-center space-y-4">
         <div className="w-14 h-14 rounded-full bg-[var(--color-ok-soft)] flex items-center justify-center mx-auto">
           <CheckCircle2 size={28} className="text-[var(--color-ok)]" />
         </div>
@@ -110,15 +110,12 @@ function ResetPasswordForm() {
 
   // ── Form ──────────────────────────────────────────────────
   return (
-    <div className="card p-7">
-      <div className="text-center mb-7">
-        <div className="w-12 h-12 rounded-[var(--radius-lg)] bg-[var(--color-accent-light)] flex items-center justify-center mx-auto mb-4">
-          <Lock size={22} className="text-[var(--color-accent)]" />
-        </div>
-        <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)] mb-1">
+    <div>
+      <div className="mb-7">
+        <h1 className="auth-title">
           {T("كلمة مرور جديدة", "New password")}
         </h1>
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <p className="auth-sub">
           {T("أدخل كلمة مرورك الجديدة أدناه", "Enter your new password below")}
         </p>
       </div>

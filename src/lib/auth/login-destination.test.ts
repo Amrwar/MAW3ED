@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loginDestination } from "./login-destination";
+import { googleReturnPath, loginDestination } from "./login-destination";
 
 /**
  * Phase 23 post-audit: the login page read only `callbackUrl` and only
@@ -56,5 +56,22 @@ describe("loginDestination", () => {
     expect(loginDestination("", O, owner)).toBe("/dashboard");
     expect(loginDestination("", O, security)).toBe("/onboarding");
     expect(loginDestination("", O, undefined)).toBe("/onboarding");
+  });
+});
+
+describe("where Continue with Google on /login returns to", () => {
+  it("keeps the return addresses the password login honours", () => {
+    expect(googleReturnPath("?next=/venue-admin", O)).toBe("/venue-admin");
+    expect(googleReturnPath("?callbackUrl=https%3A%2F%2Fwww.maw3ed.net%2Fdashboard%2Fbookings%3Fd%3D1", O)).toBe("/dashboard/bookings?d=1");
+    expect(googleReturnPath("?next=/c/ABC123", O)).toBe("/c/ABC123");
+  });
+
+  it("drops anything else, so /login sends the account home", () => {
+    expect(googleReturnPath("", O)).toBeNull();
+    expect(googleReturnPath("?next=https://evil.example/dashboard", O)).toBeNull();
+    expect(googleReturnPath("?next=//evil.example", O)).toBeNull();
+    expect(googleReturnPath("?callbackUrl=https%3A%2F%2Fevil.example%2Fdashboard", O)).toBeNull();
+    expect(googleReturnPath("?next=/admin", O)).toBeNull();
+    expect(googleReturnPath("?next=/venue-admin/../admin", O)).toBeNull();
   });
 });

@@ -3,7 +3,7 @@
 import { useMounted } from "@/hooks/useMounted";
 import { useState } from "react";
 import Link from "@/components/shared/LocaleLink";
-import { Mail, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import Alert from "@/components/ui/Alert";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
   // ── Success state ─────────────────────────────────────────
   if (sent) {
     return (
-      <div className="card p-7 text-center space-y-4">
+      <div className="text-center space-y-4">
         <div className="w-14 h-14 rounded-full bg-[var(--color-ok-soft)] flex items-center justify-center mx-auto">
           <CheckCircle2 size={28} className="text-[var(--color-ok)]" aria-hidden="true" />
         </div>
@@ -96,15 +96,12 @@ export default function ForgotPasswordPage() {
 
   // ── Form ──────────────────────────────────────────────────
   return (
-    <div className="card p-7">
-      <div className="text-center mb-7">
-        <div className="w-12 h-12 rounded-[var(--radius-lg)] bg-[var(--color-accent-light)] flex items-center justify-center mx-auto mb-4">
-          <Mail size={22} className="text-[var(--color-accent)]" aria-hidden="true" />
-        </div>
-        <h1 className="text-2xl font-extrabold text-[var(--color-text-primary)] mb-1">
+    <div>
+      <div className="mb-7">
+        <h1 className="auth-title">
           {T("نسيت كلمة المرور؟", "Forgot your password?")}
         </h1>
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <p className="auth-sub">
           {T("أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين", "Enter your email and we'll send you a reset link")}
         </p>
       </div>
