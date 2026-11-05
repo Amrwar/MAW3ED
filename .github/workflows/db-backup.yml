@@ -45,13 +45,16 @@ jobs:
         run: |
           STAMP=$(date -u +%Y%m%d-%H%M)
           echo "STAMP=$STAMP" >> "$GITHUB_ENV"
-          docker run --rm -e PGURL="$DATABASE_URL_UNPOOLED" -v "$PWD:/out" postgres:17-alpine \
+          # As the runner's own user: a root-owned dump cannot be shredded
+          # below. That failed the first scheduled run (2026-11-02) after the
+          # dump itself had succeeded, so no copy was ever uploaded.
+          docker run --rm --user "$(id -u):$(id -g)" -e PGURL="$DATABASE_URL_UNPOOLED" -v "$PWD:/out" postgres:17-alpine \
             sh -c 'pg_dump "$PGURL" -Fc -f /out/maw3ed.dump && pg_restore --list /out/maw3ed.dump | wc -l'
           ls -l maw3ed.dump
 
       - name: Verify the dump reads back
         run: |
-          docker run --rm -v "$PWD:/out" postgres:17-alpine \
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/out" postgres:17-alpine \
             sh -c 'pg_restore --list /out/maw3ed.dump | grep -c "TABLE DATA" '
 
       - name: Encrypt

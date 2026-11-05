@@ -122,24 +122,28 @@ describe.skipIf(!local)("notification outbox on a real database", () => {
 
     // Not due yet: nothing happens.
     email.calls.length = 0;
-    const early = await redriveNotifications(notify, new Date());
+    // The re-drive is global and other database test files run at the same
+    // time, so its counts include their rows: each test checks its own row.
+    await redriveNotifications(notify, new Date());
     expect(email.calls.filter((to) => to === b.customerEmail)).toHaveLength(0);
-    expect(early.events).toBe(0);
+    const untouched = await customerEmailRow(b.id, "booking.completed");
+    expect(untouched.status).toBe("FAILED");
+    expect(untouched.attempts).toBe(1);
 
     // The provider is back and the backoff has elapsed (the clock is
     // moved by moving the row: the dispatcher reads the real clock).
     email.outcome = { ok: true };
     await db.notificationDelivery.update({ where: { id: row.id }, data: { nextAttemptAt: new Date(Date.now() - 1000) } });
     const result = await redriveNotifications(notify, new Date());
-    expect(result.events).toBe(1);
+    expect(result.events).toBeGreaterThanOrEqual(1);
     expect(email.calls.filter((to) => to === b.customerEmail)).toHaveLength(1);
     row = await customerEmailRow(b.id, "booking.completed");
     expect(row.status).toBe("SENT");
     expect(row.attempts).toBe(2);
 
     // Nothing is left to do, and the sent row is never sent again.
-    const again = await redriveNotifications(notify, new Date());
-    expect(again.events).toBe(0);
+    await redriveNotifications(notify, new Date());
+    expect((await customerEmailRow(b.id, "booking.completed")).attempts).toBe(2);
     expect(email.calls.filter((to) => to === b.customerEmail)).toHaveLength(1);
   });
 
@@ -160,7 +164,7 @@ describe.skipIf(!local)("notification outbox on a real database", () => {
     // Pretend four attempts have already failed.
     await db.notificationDelivery.update({ where: { id: row.id }, data: { attempts: 4, nextAttemptAt: new Date(Date.now() - 1000) } });
     const result = await redriveNotifications(notify, new Date());
-    expect(result.events).toBe(1);
+    expect(result.events).toBeGreaterThanOrEqual(1);
     const dead = await db.notificationDelivery.findUniqueOrThrow({ where: { id: row.id } });
     expect(dead.status).toBe("DEAD");
     expect(dead.attempts).toBe(5);
@@ -175,7 +179,7 @@ describe.skipIf(!local)("notification outbox on a real database", () => {
     await db.$executeRaw`UPDATE "NotificationDelivery" SET status = 'PENDING', "attempts" = 1, "updatedAt" = NOW() - interval '10 minutes' WHERE id = ${row.id}`;
     email.calls.length = 0;
     const result = await redriveNotifications(notify, new Date());
-    expect(result.events).toBe(1);
+    expect(result.events).toBeGreaterThanOrEqual(1);
     expect(email.calls.filter((to) => to === b.customerEmail)).toHaveLength(1);
     const after = await db.notificationDelivery.findUniqueOrThrow({ where: { id: row.id } });
     expect(after.status).toBe("SENT");

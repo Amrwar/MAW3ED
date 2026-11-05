@@ -25,6 +25,7 @@ export interface AvailabilityRule {
 
 export interface ServicePrice {
   nameAr?:  string;
+  nameEn?:  string | null;
   price:    number;
   currency: string;
   duration?: number;
@@ -40,9 +41,9 @@ export interface LocalBusinessInput {
   coverImage:   string | null;
   logoImage:    string | null;
   address:      string | null;
-  city:          { nameAr: string };
-  neighborhood?: { nameAr: string } | null;
-  category:      { nameAr: string };
+  city:          { nameAr: string; nameEn?: string | null };
+  neighborhood?: { nameAr: string; nameEn?: string | null } | null;
+  category:      { nameAr: string; nameEn?: string | null };
   availability:  AvailabilityRule[];
   services:      ServicePrice[];
   /** The owner's map pin, when they have dropped one. */
@@ -54,6 +55,12 @@ export interface LocalBusinessInput {
    * demoted rather than promoted.
    */
   rating?:       { value: number; count: number } | null;
+  /**
+   * The page's language. On /en the markup describes the page in English
+   * (final audit F-37: it was always Arabic); the Arabic name stays as the
+   * alternate. Arabic by default.
+   */
+  lang?:         "ar" | "en";
 }
 
 /**
@@ -61,7 +68,11 @@ export interface LocalBusinessInput {
  * All optional fields are omitted when data is absent — never outputs nulls.
  */
 export function buildLocalBusinessJsonLd(b: LocalBusinessInput): Record<string, unknown> {
-  const pageUrl = `${BASE_URL}/company/${b.slug}`;
+  const en = b.lang === "en";
+  const pageUrl = en ? `${BASE_URL}/en/company/${b.slug}` : `${BASE_URL}/company/${b.slug}`;
+  const pick = (x: { nameAr: string; nameEn?: string | null }) => (en && x.nameEn?.trim() ? x.nameEn : x.nameAr);
+  const name = en && b.nameEn?.trim() ? b.nameEn : b.nameAr;
+  const alternateName = name === b.nameAr ? b.nameEn : b.nameAr;
 
   // Description: about → tagline → omit
   const description = b.about?.trim() || b.taglineAr?.trim() || undefined;
@@ -80,20 +91,20 @@ export function buildLocalBusinessJsonLd(b: LocalBusinessInput): Record<string, 
   const jsonld: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type":    "LocalBusiness",
-    name:       b.nameAr,
+    name,
     url:        pageUrl,
     address: {
       "@type":          "PostalAddress",
-      addressLocality:  b.city.nameAr,
+      addressLocality:  pick(b.city),
       addressCountry:   "EG",
-      ...(b.neighborhood ? { addressRegion: b.neighborhood.nameAr } : {}),
+      ...(b.neighborhood ? { addressRegion: pick(b.neighborhood) } : {}),
       ...(b.address ? { streetAddress: b.address } : {}),
     },
-    areaServed: b.city.nameAr,
+    areaServed: pick(b.city),
   };
 
   // Inject optional fields only when present
-  if (b.nameEn)               jsonld.alternateName  = b.nameEn;
+  if (alternateName)          jsonld.alternateName  = alternateName;
   if (description)            jsonld.description    = description;
   if (image)                  jsonld.image          = image;
   if (b.phone)                jsonld.telephone      = normalisePhone(b.phone);
@@ -124,7 +135,7 @@ export function buildLocalBusinessJsonLd(b: LocalBusinessInput): Record<string, 
       "@type": "Offer",
       itemOffered: {
         "@type": "Service",
-        name:    svc.nameAr,
+        name:    en && svc.nameEn?.trim() ? svc.nameEn : svc.nameAr,
         ...(svc.duration ? { serviceOutput: `${svc.duration} min` } : {}),
       },
       price:         String(svc.price),
@@ -133,7 +144,7 @@ export function buildLocalBusinessJsonLd(b: LocalBusinessInput): Record<string, 
   if (offers.length) {
     jsonld.hasOfferCatalog = {
       "@type": "OfferCatalog",
-      name:    b.category.nameAr,
+      name:    pick(b.category),
       itemListElement: offers,
     };
   }

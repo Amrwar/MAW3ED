@@ -66,6 +66,9 @@ export async function POST(req: Request) {
       const [, mobile] = await db.$transaction([
         db.user.update({ where: { id: session.user.id }, data: { sessionsRevokedAt: now } }),
         db.mobileSession.deleteMany({ where: { userId: session.user.id } }),
+        // And their push registrations: a lost phone must stop showing
+        // bookings on its lock screen, not only stop signing in.
+        db.deviceToken.deleteMany({ where: { userId: session.user.id } }),
       ]);
       await recordAccountEvent({ userId: session.user.id, action: "account.sessions_revoked", summary: "Signed out of every device and browser." });
 

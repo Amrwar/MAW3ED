@@ -91,8 +91,8 @@ export default async function PrivacyPage() {
             بيها والمدينة. بنبعت إيميل تأكيد الأول، ولو مأكدتش مش هيوصلك غيره. بعد التأكيد بنبعت إيميل واحد لما يتضاف مكان مناسب، ومش بنضيفك لأي قائمة تانية.
           </li>
           <li>
-            <strong>المدفوعات:</strong> المبلغ والحالة وطريقة الدفع وأرقام العملية عند Paymob. بيانات الكارت بتتكتب على صفحة
-            Paymob مباشرةً ومش بتوصل لموعد خالص.
+            <strong>المدفوعات:</strong> المبلغ والحالة وطريقة الدفع وأرقام العملية عند بوابة الدفع: Paymob، أو Stripe
+            لدفع اشتراك النشاط بكارت دولي. بيانات الكارت بتتكتب على صفحة البوابة نفسها مباشرةً ومش بتوصل لموعد خالص.
           </li>
           <li>
             <strong>الجهاز والتطبيق:</strong> رمز إشعارات الموبايل (Push token) ونوع النظام، واسم الجهاز لجلسات الدخول على
@@ -139,6 +139,7 @@ export default async function PrivacyPage() {
               <li>Resend: البريد الإلكتروني ونص الرسالة، لرسائل البريد.</li>
               <li>Expo ومن خلالها Apple وGoogle: رمز الإشعارات ونص الإشعار، لإشعارات الموبايل.</li>
               <li>Paymob: المبلغ والاسم والبريد ورقم الموبايل، لإتمام الدفع على صفحتهم.</li>
+              <li>Stripe: لما صاحب النشاط يدفع الاشتراك بكارت دولي — المبلغ وإيميل صاحب النشاط، والكارت بيتكتب على صفحة Stripe نفسها.</li>
               <li>Cloudinary: الصور اللي بتترفع (صور الأنشطة والتقييمات).</li>
               <li>Sentry: تقارير الأعطال (تفاصيل بالأسفل).</li>
               <li>Vercel (الاستضافة) وNeon (قاعدة البيانات): كل البيانات المخزنة على المنصة.</li>
@@ -248,8 +249,9 @@ export default async function PrivacyPage() {
             searched for and the city. We send a confirmation email first, and nothing else unless you confirm. Once confirmed, it is used for one email when a match is listed, and not added to any other list.
           </li>
           <li>
-            <strong>Payments:</strong> amount, status, method and Paymob transaction references. Card details are entered on
-            Paymob&apos;s own page and never reach Maw3ed.
+            <strong>Payments:</strong> amount, status, method and transaction references at the payment gateway: Paymob, or
+            Stripe when a business pays its plan with an international card. Card details are entered on the
+            gateway&apos;s own page and never reach Maw3ed.
           </li>
           <li>
             <strong>Device and app:</strong> your push-notification token and platform, and the device name for app sign-in
@@ -296,6 +298,7 @@ export default async function PrivacyPage() {
               <li>Resend: email address and message content, for email.</li>
               <li>Expo, and through it Apple and Google: push token and notification text, for push notifications.</li>
               <li>Paymob: amount, name, email and mobile number, to take payment on its hosted page.</li>
+              <li>Stripe: when a business owner pays a plan with an international card, the amount and the owner&apos;s email; the card is entered on Stripe&apos;s own page.</li>
               <li>Cloudinary: uploaded images (business and review photos).</li>
               <li>Sentry: error reports (see below).</li>
               <li>Vercel (hosting) and Neon (database): all data stored on the platform.</li>

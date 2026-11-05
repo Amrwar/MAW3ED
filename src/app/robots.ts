@@ -30,8 +30,19 @@ export default function robots(): MetadataRoute.Robots {
           "/onboarding/",
           "/account/",
           "/admin/",
+          "/org-admin/",
+          "/venue-admin/",
           "/notifications",
           "/verify-email",
+          // The same at their English addresses (lib/locale-path).
+          "/en/dashboard/",
+          "/en/onboarding/",
+          "/en/account/",
+          "/en/admin/",
+          "/en/org-admin/",
+          "/en/venue-admin/",
+          "/en/notifications",
+          "/en/verify-email",
 
           // The reset link carries a token. Kept out of crawlers'
           // hands even though the page says noindex.

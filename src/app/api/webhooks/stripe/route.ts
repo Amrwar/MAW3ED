@@ -174,6 +174,24 @@ async function onRefund(charge: Charge): Promise<string> {
     room -= r.amountCents;
     settled++;
   }
+  // What Stripe reports beyond every refund we have a row for was refunded
+  // outside Maw3ed (the Stripe Dashboard). It gets its own row, so the
+  // Refund rows add up to refundedCents and reconciliation does not report
+  // a permanent refund-sum discrepancy (final audit F-15). Idempotent: a
+  // redelivery finds the sum already matching and adds nothing.
+  if (room > 0) {
+    await db.refund.create({
+      data: {
+        paymentId: payment.id,
+        amountCents: room,
+        status: "SUCCEEDED",
+        providerRefundId: charge.id ?? null,
+        reason: "Refunded outside Maw3ed (reported by Stripe)",
+        actorName: "Stripe",
+      },
+    });
+    settled++;
+  }
   if (changed === 0 && settled === 0) {
     // Nothing new, but the status may still lag a reservation that has
     // now been confirmed by Stripe's own figure.

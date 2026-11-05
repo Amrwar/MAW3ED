@@ -6,6 +6,7 @@ import { accessAfterMove } from "@/lib/access/hooks";
 import { holdsBookingQueue, inBookingQueue } from "./queue";
 import { earnForBooking, reverseRedemption } from "@/lib/loyalty/ledger";
 import { releaseEntitlement } from "@/lib/entitlements/ledger";
+import { claimRedemption } from "@/lib/discounts/resolve";
 import { after } from "next/server";
 
 /**
@@ -187,6 +188,52 @@ async function offerFreedTimeLater(tx: Tx, bookingId: string) {
  * more than zero. Refunds are never issued from here: money leaving is
  * a super-admin action with a second pair of eyes (admin/payments).
  */
+const DISCOUNT_RELEASED = "booking.discount_released";
+
+/**
+ * A booking revived by a late payment keeps the discounted price it was
+ * booked at, so it takes its discount back (final audit F-12). Before,
+ * only loyalty points were re-taken: the booking stayed discounted with
+ * no redemption row, so maxRedemptions and the per-customer limit could
+ * be exceeded and the offer's report undercounted.
+ *
+ * If the offer has meanwhile run out, the customer still gets the price
+ * they paid for: the redemption is recorded anyway (the count may then
+ * pass the cap) and flagged for a person. Returns what happened.
+ */
+export async function retakeDiscount(tx: Tx, bookingId: string): Promise<"none" | "retaken" | "over-cap"> {
+  const existing = await tx.discountRedemption.findUnique({ where: { bookingId }, select: { id: true } });
+  if (existing) return "none";
+  const released = await tx.auditLog.findFirst({
+    where: { action: DISCOUNT_RELEASED, resourceType: "Booking", resourceId: bookingId },
+    orderBy: { at: "desc" },
+    select: { metadata: true },
+  });
+  const m = released?.metadata as { discountId?: string; customerId?: string | null; amountCents?: number } | null | undefined;
+  if (!m?.discountId || typeof m.amountCents !== "number") return "none";
+  const discount = await tx.discount.findUnique({ where: { id: m.discountId }, select: { id: true } });
+  if (!discount) return "none";
+  const claimed = await claimRedemption(tx, m.discountId);
+  if (!claimed) {
+    await tx.$executeRaw`UPDATE "Discount" SET "redemptionCount" = "redemptionCount" + 1, "updatedAt" = NOW() WHERE "id" = ${m.discountId}`;
+    await tx.auditLog.create({
+      data: {
+        actorName: "System",
+        actorRole: "system",
+        action: "booking.discount_over_cap",
+        resourceType: "Booking",
+        resourceId: bookingId,
+        summary: "A late payment revived this booking at its discounted price after the offer ran out; its redemption takes the offer past its cap.",
+        metadata: { discountId: m.discountId },
+      },
+    });
+  }
+  await tx.discountRedemption.create({
+    data: { discountId: m.discountId, bookingId, customerId: m.customerId ?? null, amountCents: m.amountCents },
+  });
+  return claimed ? "retaken" : "over-cap";
+}
+
 export async function releaseBookingHold(
   tx: Tx,
   p: { bookingId: string; to: BookingStatusValue; by: Mover; reason?: string; actorUserId?: string | null },
@@ -210,7 +257,7 @@ export async function releaseBookingHold(
   // case the row was written before counting existed.
   const redemption = await tx.discountRedemption.findUnique({
     where: { bookingId: p.bookingId },
-    select: { id: true, discountId: true },
+    select: { id: true, discountId: true, customerId: true, amountCents: true },
   });
   if (redemption) {
     await tx.discountRedemption.delete({ where: { id: redemption.id } });
@@ -218,6 +265,20 @@ export async function releaseBookingHold(
       UPDATE "Discount"
          SET "redemptionCount" = GREATEST(0, "redemptionCount" - 1), "updatedAt" = NOW()
        WHERE "id" = ${redemption.discountId}`;
+    // What was given back is written down, so a late payment that revives
+    // the booking can take the same discount again (retakeDiscount).
+    await tx.auditLog.create({
+      data: {
+        actorId: p.actorUserId ?? null,
+        actorName: p.by === "customer" ? "Customer" : p.by === "system" ? "System" : "Business",
+        actorRole: p.by,
+        action: DISCOUNT_RELEASED,
+        resourceType: "Booking",
+        resourceId: p.bookingId,
+        summary: `Discount returned with the booking's hold (${p.to}).`,
+        metadata: { discountId: redemption.discountId, customerId: redemption.customerId, amountCents: redemption.amountCents },
+      },
+    });
   }
 
   // Points spent on it come back, and a package session or membership

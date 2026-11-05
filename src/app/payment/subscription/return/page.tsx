@@ -12,13 +12,18 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
-import { PLAN_NAMES_AR, type Plan } from "@/lib/plans";
+import { PLAN_NAMES_AR, PLAN_NAMES_EN, type Plan } from "@/lib/plans";
+import { getLang } from "@/lib/lang-server";
 
-export const metadata: Metadata = { title: "نتيجة الاشتراك" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getLang()) === "en" ? "Subscription result" : "نتيجة الاشتراك", robots: { index: false, follow: false } };
+}
 export const dynamic = "force-dynamic";
 
 export default async function SubscriptionReturnPage() {
   const session = await auth();
+  const en = (await getLang()) === "en";
+  const names = en ? PLAN_NAMES_EN : PLAN_NAMES_AR;
   if (!session?.user?.businessId) redirect("/dashboard");
 
   const business = await db.business.findUnique({
@@ -38,13 +43,13 @@ export default async function SubscriptionReturnPage() {
   const isPending = !!business.pendingPlan;
 
   const planName = isActive
-    ? PLAN_NAMES_AR[business.plan as Plan]
+    ? names[business.plan as Plan]
     : business.pendingPlan
-    ? PLAN_NAMES_AR[business.pendingPlan as Plan]
+    ? names[business.pendingPlan as Plan]
     : "";
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4" dir={en ? "ltr" : "rtl"}>
       <div className="w-full max-w-md">
 
         {/* ── Active / success ── */}
@@ -54,15 +59,18 @@ export default async function SubscriptionReturnPage() {
               <CheckCircle size={44} className="text-[var(--color-ok)]" />
             </div>
             <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
-              تم تفعيل الاشتراك!
+              {en ? "Your plan is active" : "الاشتراك اتفعّل!"}
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
-              أنت الآن على خطة <strong>{planName}</strong>.
-              استمتع بجميع المميزات المتاحة في خطتك.
+              {en ? (
+                <>You&apos;re now on the <strong>{planName}</strong> plan, with everything it includes.</>
+              ) : (
+                <>إنت دلوقتي على باقة <strong>{planName}</strong>، بكل اللي فيها.</>
+              )}
             </p>
             {business.currentPeriodEnd && (
               <p className="text-xs text-[var(--color-text-muted)] mb-6">
-                تجديد الاشتراك بتاريخ:{" "}
+                {en ? "Renews on:" : "التجديد يوم:"}{" "}
                 <span dir="ltr" className="font-medium">
                   {business.currentPeriodEnd.toISOString().split("T")[0]}
                 </span>
@@ -72,7 +80,7 @@ export default async function SubscriptionReturnPage() {
               href="/dashboard"
               className="block w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
             >
-              الذهاب إلى لوحة التحكم
+              {en ? "Go to the dashboard" : "روح للوحة التحكم"}
             </Link>
           </div>
         )}
@@ -84,16 +92,18 @@ export default async function SubscriptionReturnPage() {
               <Clock size={44} className="text-[var(--color-star)]" />
             </div>
             <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
-              جارٍ التحقق من الدفع…
+              {en ? "Checking your payment…" : "بنتأكد من الدفع…"}
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
-              تم استلام دفعتك ونحن نتحقق منها. سيُفعَّل اشتراكك خلال دقيقة.
+              {en
+                ? "We received your payment and are checking it. Your plan will be active within a minute."
+                : "دفعتك وصلت وبنتأكد منها. الاشتراك هيتفعّل خلال دقيقة."}
             </p>
             <Link
-              href="/dashboard/settings"
+              href="/dashboard/settings?tab=subscription"
               className="block w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
             >
-              تحقق من حالة الاشتراك
+              {en ? "Check the subscription's status" : "شوف حالة الاشتراك"}
             </Link>
           </div>
         )}
@@ -105,17 +115,19 @@ export default async function SubscriptionReturnPage() {
               <XCircle size={44} className="text-[var(--color-danger)]" />
             </div>
             <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
-              فشلت عملية الدفع
+              {en ? "The payment didn't go through" : "الدفع ماتمّش"}
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
-              لم يتم استكمال الدفع. لم يُفعَّل الاشتراك. يمكنك المحاولة مرة أخرى.
+              {en
+                ? "The payment wasn't completed, so the plan isn't active. You can try again."
+                : "الدفع ماكملش، فالاشتراك ماتفعّلش. تقدر تجرب تاني."}
             </p>
             <Link
               href="/pricing"
               className="flex items-center justify-center gap-2 w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
             >
               <ArrowRight size={15} />
-              عرض الخطط
+              {en ? "See the plans" : "شوف الباقات"}
             </Link>
           </div>
         )}

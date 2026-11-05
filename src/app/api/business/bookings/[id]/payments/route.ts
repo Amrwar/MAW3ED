@@ -5,7 +5,6 @@ import { log } from "@/lib/logger";
 import { createPaymentSession } from "@/lib/services/paymob";
 import {
   attachProviderOrder,
-  openPayment,
   paidCentsForBooking,
   recordManualPayment,
 } from "@/lib/payments/ledger";
@@ -15,6 +14,13 @@ import { canUseFeature, getEffectivePlan } from "@/lib/plans";
 import { notifyLater } from "@/lib/notifications";
 
 type Params = { params: Promise<{ id: string }> };
+
+/**
+ * How long a payment link can still be completed: Paymob's payment key
+ * lives an hour (expiration 3600), plus a margin — the same window as
+ * the customer's own /pay page.
+ */
+const LINK_LIFETIME_MS = 65 * 60 * 1000;
 
 const schema = z
   .object({
@@ -228,13 +234,49 @@ export async function POST(req: Request, { params }: Params) {
       return err("إرسال رابط دفع متاح في الخطط المدفوعة", 403);
     }
 
-    const payment = await openPayment({
-      kind: paid === 0 ? "BOOKING_FULL" : "BOOKING_BALANCE",
-      businessId: business.id,
-      bookingId: booking.id,
-      amountCents: amount,
-      currency: booking.currency,
+    // One live link per booking (final audit F-14). Without this, a double
+    // click or a re-send a day later opened a second payable page for the
+    // same balance, and a customer who paid both was charged twice with
+    // nothing flagged. Serialised under the same per-booking lock /pay
+    // takes; a link still inside its lifetime is refused, older ones are
+    // closed so exactly one can be paid.
+    const decision = await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${booking.id}))`;
+      const live = await tx.payment.findFirst({
+        where: {
+          bookingId: booking.id,
+          kind: { in: ["BOOKING_FULL", "BOOKING_BALANCE"] },
+          status: "PENDING",
+          createdAt: { gt: new Date(Date.now() - LINK_LIFETIME_MS) },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      });
+      if (live) return { refuse: true as const, retryAt: new Date(live.createdAt.getTime() + LINK_LIFETIME_MS), payment: null };
+      await tx.payment.updateMany({
+        where: { bookingId: booking.id, kind: { in: ["BOOKING_FULL", "BOOKING_BALANCE"] }, status: "PENDING" },
+        data: { status: "ABANDONED", failureReason: "superseded by a new payment link" },
+      });
+      const created = await tx.payment.create({
+        data: {
+          kind: paid === 0 ? "BOOKING_FULL" : "BOOKING_BALANCE",
+          businessId: business.id,
+          bookingId: booking.id,
+          amountCents: amount,
+          currency: booking.currency,
+          provider: "PAYMOB",
+          status: "PENDING",
+        },
+      });
+      return { refuse: false as const, retryAt: null, payment: created };
     });
+    if (decision.refuse) {
+      return err("في رابط دفع لسه شغال للحجز ده. ابعته تاني للعميل، أو استنى لحد ما تخلص صلاحيته.", 409, {
+        code: "payment-in-progress",
+        retryAt: decision.retryAt.toISOString(),
+      });
+    }
+    const payment = decision.payment!;
 
     try {
       const { paymentUrl, paymobOrderId } = await createPaymentSession({

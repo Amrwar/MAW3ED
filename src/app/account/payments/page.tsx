@@ -3,23 +3,12 @@ import type { Metadata } from "next";
 import Link from "@/components/shared/LocaleLink";
 import { CreditCard, Receipt, ShieldCheck } from "lucide-react";
 import { getAccountUser, getPaymentHistory } from "@/lib/account/queries";
-import { translations } from "@/lib/i18n";
+import { PAYMENT_KIND_LABELS, cairoDay, translations } from "@/lib/i18n";
 import { formatCents } from "@/lib/payments/money";
-import type { PaymentKind } from "@prisma/client";
 
-export const metadata: Metadata = {
-  title: "المدفوعات",
-  robots: { index: false, follow: false },
-};
-
-const KIND_AR: Record<PaymentKind, string> = {
-  BOOKING_DEPOSIT: "عربون",
-  BOOKING_BALANCE: "باقي الحساب",
-  BOOKING_FULL: "دفع كامل",
-  SUBSCRIPTION: "اشتراك",
-  PACKAGE: "باقة جلسات",
-  MEMBERSHIP: "عضوية",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getLang()) === "en" ? "Payments" : "المدفوعات", robots: { index: false, follow: false } };
+}
 
 /**
  * What this customer has paid, and the receipt number for each.
@@ -73,13 +62,13 @@ export default async function PaymentsPage() {
                       {(isAr ? p.businessAr : p.businessEn) ?? p.businessAr}
                     </p>
                     <p className="m-0 mt-0.5 text-[0.8125rem] text-[var(--color-subtle)]">
-                      {KIND_AR[p.kind]}
+                      {PAYMENT_KIND_LABELS[p.kind][lang]}
                       {p.serviceAr ? ` · ${isAr ? p.serviceAr : (p.serviceEn ?? p.serviceAr)}` : ""}
                     </p>
                     <p className="num m-0 mt-1 text-[0.6875rem] text-[var(--color-subtle)]">
                       {p.receiptNumber && <span dir="ltr">{p.receiptNumber}</span>}
                       {p.paidAt && (
-                        <> · {new Date(p.paidAt).toLocaleDateString("ar-EG-u-nu-latn")}</>
+                        <> · {cairoDay(p.paidAt, lang)}</>
                       )}
                     </p>
                   </div>

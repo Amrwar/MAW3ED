@@ -32,6 +32,7 @@ import {
   claimWebhookEvent,
   closeWebhookEvent,
   failPayment,
+  paidCentsForBooking,
   releaseWebhookEvent,
   settlePayment,
 } from "@/lib/payments/ledger";
@@ -39,7 +40,7 @@ import { bookingMoney, toCents } from "@/lib/payments/money";
 import { classifyCallback, planReversal, shouldReleaseHold } from "@/lib/payments/webhook-rules";
 import { log } from "@/lib/logger";
 import { notifyLater } from "@/lib/notifications";
-import { releaseBookingHold } from "@/lib/bookings/state";
+import { releaseBookingHold, retakeDiscount } from "@/lib/bookings/state";
 import { reverseEarnForRefund, retakeRedemption } from "@/lib/loyalty/ledger";
 import { inBookingQueueEvenIfBusy } from "@/lib/bookings/queue";
 import { activateSubscription, releasePendingPlan } from "@/lib/payments/subscription-settle";
@@ -491,7 +492,11 @@ async function handleBookingSuccess(
         });
         // Its price was reduced by points the release gave back: they are
         // taken again with the revival (lib/loyalty/ledger).
-        if (r.count === 1) await retakeRedemption(tx, bookingId);
+        if (r.count === 1) {
+          await retakeRedemption(tx, bookingId);
+          // And the discount it was priced with (final audit F-12).
+          await retakeDiscount(tx, bookingId);
+        }
         return r;
       });
       revived = count === 1;
@@ -556,6 +561,33 @@ async function handleBookingSuccess(
         },
       })
       .catch((e) => log.error("[paymob webhook] could not write audit entry", e));
+  }
+
+  // More collected than the booking costs — two links for one balance
+  // both paid, or a link paid after cash — is a duplicate charge someone
+  // has to refund (final audit F-14). Before, only a deposit or a
+  // cancelled booking was flagged, so this passed silently.
+  if (payment.bookingId && (payment.kind === "BOOKING_FULL" || payment.kind === "BOOKING_BALANCE")) {
+    const [paidCents, owed] = await Promise.all([
+      paidCentsForBooking(payment.bookingId),
+      db.booking.findUnique({ where: { id: payment.bookingId }, select: { totalPrice: true } }),
+    ]);
+    const totalCents = owed ? toCents(owed.totalPrice) : null;
+    if (totalCents !== null && paidCents > totalCents) {
+      await db.auditLog
+        .create({
+          data: {
+            actorName: "Paymob",
+            actorRole: "system",
+            action: "payment.overpaid",
+            resourceType: "Payment",
+            resourceId: payment.id,
+            summary: `Booking paid ${paidCents} piastres against a price of ${totalCents}; refund the difference.`,
+            metadata: { bookingId: payment.bookingId, transactionId, paidCents, totalCents },
+          },
+        })
+        .catch((e) => log.error("[paymob webhook] could not write audit entry", e));
+    }
   }
 
   if (payment.bookingId) {

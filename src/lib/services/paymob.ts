@@ -21,6 +21,36 @@ import { log } from "@/lib/logger";
 
 const PAYMOB_BASE = "https://accept.paymob.com/api";
 
+/**
+ * Every call to Paymob gives up after this long (final audit F-17). With
+ * no timeout a hung Paymob outlived the function: it was killed before its
+ * catch ran, so a booking's PENDING_PAYMENT hold waited for the reaper and
+ * a refund stayed PENDING with its amount reserved. An abort is a thrown
+ * error, which every caller already handles: booking and link callers mark
+ * the payment FAILED, and refundTransaction reports it as uncertain.
+ */
+export const PAYMOB_TIMEOUT_MS = 15_000;
+const timeout = () => AbortSignal.timeout(PAYMOB_TIMEOUT_MS);
+
+/**
+ * The merchant_order_id sent with a booking's order (final audit F-10).
+ *
+ * Paymob refuses an order whose merchant_order_id it has seen before, and
+ * this used to be the bare booking id, so any second order for a booking —
+ * a fresh page after the first expired, or the owner's balance link after
+ * a deposit — failed with "duplicate". A suffix makes each order unique.
+ * The booking id is still recoverable (cuids contain no "_"); webhooks
+ * match on the order id Paymob returns, never on this.
+ */
+export function bookingMerchantOrderId(bookingId: string, now: number = Date.now()): string {
+  return `${bookingId}_${now.toString(36)}`;
+}
+
+/** The booking id a booking order's merchant_order_id carries (also accepts the old bare id). */
+export function bookingIdFromMerchantOrderId(merchantOrderId: string): string {
+  return merchantOrderId.split("_")[0];
+}
+
 // ─── Response shape types ─────────────────────────────────────────────────────
 
 interface PaymobAuthResponse    { token: string }
@@ -47,7 +77,7 @@ export interface PaymobTransactionObj {
   created_at:            string;
   order: {
     id:               number | string;
-    merchant_order_id?: string; // our booking ID
+    merchant_order_id?: string; // bookingMerchantOrderId(), or "sub_…" for a plan
   };
   source_data: {
     pan:      string;
@@ -81,6 +111,7 @@ export interface PaymobTransactionObj {
 async function authenticate(): Promise<string> {
   const res = await fetch(`${PAYMOB_BASE}/auth/tokens`, {
     method:  "POST",
+    signal:  timeout(),
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify({ api_key: process.env.PAYMOB_API_KEY }),
   });
@@ -159,17 +190,18 @@ async function createOrder(
   authToken:      string,
   amountCents:    number,
   currency:       string,
-  bookingId:      string,  // stored as merchant_order_id for webhook correlation
+  merchantOrderId: string, // unique per order: Paymob refuses a repeat
 ): Promise<number> {
   const res = await fetch(`${PAYMOB_BASE}/ecommerce/orders`, {
     method:  "POST",
+    signal:  timeout(),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       auth_token:        authToken,
       delivery_needed:   false,
       amount_cents:      amountCents,
       currency,
-      merchant_order_id: bookingId,
+      merchant_order_id: merchantOrderId,
       items:             [],
     }),
   });
@@ -199,6 +231,7 @@ async function getPaymentKey(
 
   const res = await fetch(`${PAYMOB_BASE}/acceptance/payment_keys`, {
     method:  "POST",
+    signal:  timeout(),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       auth_token:     authToken,
@@ -258,7 +291,7 @@ export async function createPaymentSession(params: {
   const lastName  = nameParts.slice(1).join(" ") || "NA";
 
   const authToken  = await authenticate();
-  const orderId    = await createOrder(authToken, amountCents, currency, bookingId);
+  const orderId    = await createOrder(authToken, amountCents, currency, bookingMerchantOrderId(bookingId));
   const paymentKey = await getPaymentKey(authToken, amountCents, orderId, currency, {
     firstName,
     lastName,
@@ -362,6 +395,7 @@ export async function refundTransaction(
 
     const res = await fetch(`${PAYMOB_BASE}/acceptance/void_refund/refund`, {
       method: "POST",
+      signal: timeout(),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         auth_token: authToken,

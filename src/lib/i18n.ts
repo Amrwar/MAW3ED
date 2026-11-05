@@ -26,6 +26,33 @@ export function countText(lang: Lang, n: number, forms: CountForms): string {
   return form.replace("{n}", num(n, lang));
 }
 
+/**
+ * What each kind of payment is called on receipts. Both languages, so a
+ * page never shows the Arabic label on /en (final audit F-32, F-33).
+ */
+export const PAYMENT_KIND_LABELS = {
+  BOOKING_DEPOSIT: { ar: "عربون", en: "Deposit" },
+  BOOKING_BALANCE: { ar: "باقي الحساب", en: "Balance" },
+  BOOKING_FULL: { ar: "دفع كامل", en: "Full payment" },
+  SUBSCRIPTION: { ar: "اشتراك", en: "Subscription" },
+  PACKAGE: { ar: "باقة جلسات", en: "Session package" },
+  MEMBERSHIP: { ar: "عضوية", en: "Membership" },
+} as const satisfies Record<string, Record<Lang, string>>;
+
+/**
+ * The Cairo calendar day of a real instant (a payment's paidAt, a period
+ * end): the server runs in UTC, so without the zone a payment made between
+ * midnight and 02:00/03:00 Cairo time showed the previous day.
+ */
+export function cairoDay(value: Date | string | number, lang: Lang): string {
+  return new Date(value).toLocaleDateString(lang === "en" ? "en-GB" : "ar-EG-u-nu-latn", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Africa/Cairo",
+  });
+}
+
 export const translations = {
   ar: {
     dir: "rtl" as const,
@@ -66,6 +93,7 @@ export const translations = {
         login:        "دخول أصحاب الأعمال",
         contact:      "تواصل معنا",
         faq:          "الأسئلة الشائعة",
+        help:         "مركز المساعدة",
         privacy:      "سياسة الخصوصية",
         accountDeletion: "حذف الحساب",
         terms:        "الشروط والأحكام",
@@ -770,7 +798,7 @@ export const translations = {
       businessItems: [
         { q:"كيف أضيف نشاطي التجاري؟",                a:"أنشئ حسابًا على موعد، ثم أضف بيانات نشاطك من خدمات وأسعار وأوقات عمل. ستحصل فورًا على صفحة احترافية ورابط حجز خاص بك." },
         { q:"إيه اللي بيحصل بعد 30 حجز في الباقة المجانية؟", a:"العملاء بيفضلوا يحجزوا عادي. الحجوزات اللي فوق الـ30 في الشهر بتوصلك مستنية تأكيدك بإيدك لحد أول الشهر الجاي، أو لحد ما ترقّي باقتك." },
-        { q:"إزاي بدفع الاشتراك؟",                       a:"شهر بشهر، أو سنة مقدّمًا بسعر 10 شهور، عن طريق Paymob بالكارت أو المحفظة. مفيش خصم تلقائي: بنفكّرك قبل ما الفترة تخلص." },
+        { q:"إزاي بدفع الاشتراك؟",                       a:"شهر بشهر، أو سنة مقدّمًا بسعر 10 شهور، عن طريق Paymob بالكارت أو المحفظة، أو Stripe لو كارتك دولي. مفيش خصم تلقائي: بنفكّرك قبل ما الفترة تخلص." },
         { q:"هل يمكنني إلغاء الاشتراك في أي وقت؟",    a:"نعم. مفيش تجديد تلقائي، فكفاية متجدّدش. مميزات باقتك بتفضل لحد آخر الفترة اللي دفعتها، وبعدها بترجع للباقة المجانية وصفحتك بتفضل ظاهرة." },
         { q:"أقدر آخد عربون من العملاء؟",              a:"أيوه في الباقات المدفوعة. بتحدد النسبة، والعميل بيدفعها أونلاين وقت الحجز، والفلوس بتتسجل مع الحجز في لوحة التحكم." },
         { q:"إزاي أخلّي الحجوزات تتأكد لوحدها؟",        a:"من الإعدادات، في «أوقات العمل»، فعّل «تأكيد الحجوزات الأونلاين تلقائيًا». من غيره كل حجز بيستناك تأكده أو ترفضه، والعميل بيوصله الرد في الحالتين." },
@@ -788,7 +816,7 @@ export const translations = {
       faqTitle:   "أسئلة شائعة",
       faqs: [
         { q:"هل يمكنني إلغاء الاشتراك؟",                      a:"نعم، يمكنك التوقف عن التجديد في أي وقت. ستستمر مميزات خطتك حتى نهاية فترة الاشتراك." },
-        { q:"كيف يتم الدفع؟",                                 a:"بتدفع شهر بشهر، أو سنة مقدّمًا بسعر 10 شهور، عن طريق بوابة Paymob الآمنة بالكارت أو المحفظة الإلكترونية. مفيش خصم تلقائي: قبل ما الفترة تخلص بنفكّرك تجدّد." },
+        { q:"كيف يتم الدفع؟",                                 a:"بتدفع شهر بشهر، أو سنة مقدّمًا بسعر 10 شهور، عن طريق بوابة Paymob الآمنة بالكارت أو المحفظة الإلكترونية، أو عن طريق Stripe لو كارتك دولي. مفيش خصم تلقائي: قبل ما الفترة تخلص بنفكّرك تجدّد." },
         { q:"ماذا يحدث إذا تجاوزت الحد الشهري للحجوزات؟",   a:"العملاء بيفضلوا يحجزوا عادي. الحجوزات اللي فوق الحد بتوصلك مستنية تأكيدك بإيدك لحد أول الشهر الجاي، أو لحد ما ترقّي باقتك." },
         { q:"هل البيانات الخاصة بي آمنة؟",                   a:"مش بنبيع بياناتك، وبنشاركها بس مع مزوّدي الخدمة اللي محتاجينهم لتشغيل المنصة (زي الدفع والرسائل والاستضافة). القائمة كاملة في سياسة الخصوصية." },
       ],
@@ -1135,6 +1163,7 @@ export const translations = {
         login:        "Business sign in",
         contact:      "Contact Us",
         faq:          "FAQ",
+        help:         "Help centre",
         privacy:      "Privacy Policy",
         accountDeletion: "Account deletion",
         terms:        "Terms of Service",
@@ -1839,7 +1868,7 @@ export const translations = {
       businessItems: [
         { q:"How do I add my business?",                a:"Create an account on Maw3ed, then add your business details including services, prices, and working hours. You'll immediately get a professional page and a custom booking link." },
         { q:"What happens after 30 bookings on the free plan?", a:"Customers can still book. Bookings beyond 30 in a month wait for you to confirm them by hand until the next month starts, or until you upgrade." },
-        { q:"How do I pay for a plan?",                 a:"Month by month, or a year up front for the price of 10 months, through Paymob by card or wallet. Nothing renews automatically: we remind you before your period ends." },
+        { q:"How do I pay for a plan?",                 a:"Month by month, or a year up front for the price of 10 months, through Paymob by card or wallet, or through Stripe with an international card. Nothing renews automatically: we remind you before your period ends." },
         { q:"Can I cancel my subscription anytime?",    a:"Yes. Nothing renews automatically, so simply don't renew. Your plan's features last until the end of the period you paid for, then you move to the free plan and your page stays up." },
         { q:"Can I take deposits from customers?",      a:"Yes, on the paid plans. You set the percentage, the customer pays it online when booking, and the money is recorded with the booking in your dashboard." },
         { q:"How do I have bookings confirmed automatically?", a:"In settings, under Working Hours, turn on “Confirm online bookings automatically”. Without it, each booking waits for you to confirm or decline it, and the customer is told either way." },
@@ -1857,7 +1886,7 @@ export const translations = {
       faqTitle:   "Frequently Asked Questions",
       faqs: [
         { q:"Can I cancel my subscription?",           a:"Yes, you can stop renewing at any time. Your plan's features will continue until the end of the billing period." },
-        { q:"How do I pay?",                           a:"Month by month, or a year up front for the price of 10 months, through the secure Paymob gateway by card or mobile wallet. Nothing is charged automatically: we remind you before your period ends." },
+        { q:"How do I pay?",                           a:"Month by month, or a year up front for the price of 10 months, through the secure Paymob gateway by card or mobile wallet, or through Stripe with an international card. Nothing is charged automatically: we remind you before your period ends." },
         { q:"What happens if I exceed the monthly booking limit?",a:"Customers can still book. Bookings over the limit wait for you to confirm them by hand until the next month starts, or until you upgrade." },
         { q:"Is my data secure?",                      a:"We never sell your data. We share it only with the providers needed to run the service (such as payments, messaging and hosting); the privacy policy lists them all." },
       ],

@@ -32,7 +32,12 @@ export async function integrationHealth(organizationId: string, now: Date = new 
       take: 100,
     }),
     db.organizationBusiness.findMany({
-      where: { organizationId, relation: "OWNED", status: "APPROVED", suspendedAt: null, scopes: { has: "FINANCE" } },
+      // As the portfolio: live grants of an approved organization (final audit F-25).
+      where: {
+        organizationId, relation: "OWNED", status: "APPROVED", suspendedAt: null, scopes: { has: "FINANCE" },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        organization: { status: "APPROVED" },
+      },
       select: { business: { select: { id: true, nameAr: true, plan: true, subscriptionStatus: true, trialEndsAt: true } } },
       take: 200,
     }),

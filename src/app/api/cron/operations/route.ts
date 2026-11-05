@@ -3,6 +3,9 @@ import { withCronRun } from "@/lib/ops/cron-run";
 import { runOperations } from "@/lib/automations/run";
 import { log } from "@/lib/logger";
 
+/** The run stops itself at 240 s (lib/automations/run.ts); this is the platform limit above it. */
+export const maxDuration = 300;
+
 /**
  * GET /api/cron/operations
  *

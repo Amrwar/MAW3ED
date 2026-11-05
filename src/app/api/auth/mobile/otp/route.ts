@@ -9,7 +9,9 @@ import { startMobileSession } from "@/lib/auth/mobile-session";
 const schema = z.object({
   phone: z.string().min(6).max(20),
   code: z.string().min(4).max(10),
-  deviceName: z.string().trim().max(80).optional(),
+  // Cut, not refused: an Android device name is the owner's to edit and
+  // can be longer; refusing it blocked sign-in (final audit M-05).
+  deviceName: z.string().trim().transform((s) => s.slice(0, 80)).optional(),
   platform: z.enum(["ios", "android"]).optional(),
 });
 

@@ -39,7 +39,10 @@ export async function POST(req: Request) {
     if (!user?.phone) return err("محتاجين رقم موبايل متأكَّد منه", 409, { code: "no-phone" });
 
     const check = await verifyLoginCode(user.phone, parsed.data.code);
-    if (!check.ok) return err("الكود غير صحيح أو انتهت صلاحيته", 401, { code: "wrong-code" });
+    // 422, not 401: a 401 tells the app its session expired, so it refreshed
+    // and replayed the request, spending two of the five attempts per typo
+    // and showing "session ended" (final audit F-04).
+    if (!check.ok) return err("الكود غير صحيح أو انتهت صلاحيته", 422, { code: "wrong-code" });
 
     const result = await deleteCustomerAccount(session.user.id);
     if (!result.ok) {

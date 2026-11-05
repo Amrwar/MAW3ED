@@ -6,7 +6,7 @@ import type { TrafficSource } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
-import { bookingInstants, dateToUTC, wallToInstant } from "./instants";
+import { bookingInstants, cairoWallClock, dateToUTC, wallToInstant } from "./instants";
 import { generateReference } from "./reference";
 import { loadAvailability } from "./schedule";
 import { isTransactionStartTimeout, queuedTransaction } from "./queue";
@@ -179,10 +179,8 @@ export async function createBooking(
 ): Promise<CreateBookingResult> {
   // ── Idempotency, before any work ─────────────────────────
   if (input.idempotencyKey) {
-    const existing = await db.booking.findUnique({
-      where: { idempotencyKey: input.idempotencyKey },
-      select: BOOKING_SELECT,
-    });
+    const existing = await reusedFor(input.idempotencyKey, input.businessId);
+    if (existing === "foreign") return { ok: false, failure: { kind: "slot-unavailable", reason: "idempotency-key-in-use" } };
     if (existing) return { ok: true, booking: existing, reused: true };
   }
 
@@ -395,11 +393,8 @@ export async function createBooking(
       // asking for the same slot. Reporting "somebody took it" to the
       // caller who took it is both wrong and alarming.
       if (conflicted && input.idempotencyKey) {
-        const existing = await db.booking.findUnique({
-          where: { idempotencyKey: input.idempotencyKey },
-          select: BOOKING_SELECT,
-        });
-        if (existing) return { ok: true, booking: existing, reused: true };
+        const existing = await reusedFor(input.idempotencyKey, input.businessId);
+        if (existing && existing !== "foreign") return { ok: true, booking: existing, reused: true };
       }
 
       // A write conflict, or the member
@@ -447,13 +442,28 @@ export async function createBooking(
  * dashboard's usage warning, so it warns about the number that is
  * actually enforced.
  */
+/**
+ * The calendar month the plan's allowance counts, in Cairo (final audit
+ * F-16): it was the UTC month, so bookings made between midnight and
+ * 02:00/03:00 Cairo on the 1st counted toward the month before, and the
+ * window was off by the offset at both ends. Real instants, because
+ * createdAt is one.
+ */
+export function cairoMonthBounds(now: Date = new Date()): { gte: Date; lt: Date } {
+  const wall = cairoWallClock(now);
+  const y = wall.getUTCFullYear();
+  const m = wall.getUTCMonth();
+  const first = (year: number, month: number) => {
+    const d = new Date(Date.UTC(year, month, 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  };
+  return { gte: wallToInstant(first(y, m), 0, "Africa/Cairo"), lt: wallToInstant(first(y, m + 1), 0, "Africa/Cairo") };
+}
+
 export function countedThisMonth(businessId: string, now: Date = new Date()) {
   return {
     businessId,
-    createdAt: {
-      gte: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
-      lt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
-    },
+    createdAt: cairoMonthBounds(now),
     status: { notIn: ["FAILED_PAYMENT", "CANCELLED"] as ("FAILED_PAYMENT" | "CANCELLED")[] },
     // A test booking is the owner trying their own page, not demand.
     isTest: false,
@@ -467,6 +477,24 @@ interface Plan {
   endTime: string;
   startsAt: Date;
   endsAt: Date;
+}
+
+/**
+ * The booking an idempotency key already made — only if it was made at
+ * this business (final audit F-18). Keys are global and chosen by the
+ * client, so a key reused for another business must not hand back that
+ * other booking (and its access token); it is refused instead.
+ */
+async function reusedFor(key: string, businessId: string): Promise<BookingRow | "foreign" | null> {
+  const existing = await db.booking.findUnique({
+    where: { idempotencyKey: key },
+    select: { ...BOOKING_SELECT, businessId: true },
+  });
+  if (!existing) return null;
+  if (existing.businessId !== businessId) return "foreign";
+  const { businessId: _ignored, ...booking } = existing;
+  void _ignored;
+  return booking;
 }
 
 /* ─── Error plumbing ─────────────────────────────────────── */

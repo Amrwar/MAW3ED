@@ -55,6 +55,7 @@ export async function POST(req: Request) {
       db.user.update({ where: { id: user.id }, data: { password: hashed, sessionsRevokedAt: new Date() } }),
       db.passwordResetToken.deleteMany({ where: { email: record.email } }),
       db.mobileSession.deleteMany({ where: { userId: user.id } }),
+      db.deviceToken.deleteMany({ where: { userId: user.id } }),
     ]);
     await recordAccountEvent({ userId: user.id, action: "account.password_reset", summary: "Password reset from an emailed link; every session ended." });
 

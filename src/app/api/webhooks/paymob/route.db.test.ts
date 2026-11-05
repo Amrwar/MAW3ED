@@ -248,6 +248,39 @@ describe.skipIf(!local)("POST /api/webhooks/paymob on a real database", () => {
     expect((await db.payment.findUniqueOrThrow({ where: { id: payment.id } })).status).toBe("SUCCEEDED");
   });
 
+  it("a booking revived by a late payment takes its discount back (final audit F-12)", async () => {
+    const { booking, orderId } = await heldBooking();
+    const discount = await db.discount.create({
+      data: { businessId: fixture.businessId, nameAr: "خصم", kind: "PERCENT", value: 10, maxRedemptions: 1, redemptionCount: 1 },
+    });
+    await db.discountRedemption.create({ data: { discountId: discount.id, bookingId: booking.id, customerId: fixture.customerId, amountCents: 2500 } });
+
+    await deliver(callback({ orderId, amountCents: 5000, success: false }));
+    expect(await db.discountRedemption.findUnique({ where: { bookingId: booking.id } })).toBeNull();
+    expect((await db.discount.findUniqueOrThrow({ where: { id: discount.id } })).redemptionCount).toBe(0);
+
+    expect((await deliver(callback({ orderId, amountCents: 5000 }))).outcome).toBe("booking-revived");
+    expect(await db.discountRedemption.findUnique({ where: { bookingId: booking.id } })).toMatchObject({ discountId: discount.id, amountCents: 2500 });
+    expect((await db.discount.findUniqueOrThrow({ where: { id: discount.id } })).redemptionCount).toBe(1);
+    await db.auditLog.deleteMany({ where: { resourceId: booking.id } });
+    await db.discountRedemption.deleteMany({ where: { bookingId: booking.id } });
+    await db.discount.delete({ where: { id: discount.id } });
+  });
+
+  it("flags a booking paid past its price, e.g. two balance links both paid (final audit F-14)", async () => {
+    const { booking, payment } = await heldBooking();
+    // The deposit-free version: a CONFIRMED booking of 250 EGP already paid in full once.
+    await db.payment.update({ where: { id: payment.id }, data: { kind: "BOOKING_FULL", amountCents: 25000, status: "SUCCEEDED", paidAt: new Date(), receiptNumber: `${tag}-r` } });
+    await db.booking.update({ where: { id: booking.id }, data: { status: "CONFIRMED" } });
+    const orderId = `8${String(Date.now()).slice(-9)}`;
+    const second = await db.payment.create({
+      data: { kind: "BOOKING_BALANCE", businessId: fixture.businessId, bookingId: booking.id, amountCents: 25000, currency: "EGP", provider: "PAYMOB", status: "PENDING", providerOrderId: orderId },
+    });
+    await deliver(callback({ orderId, amountCents: 25000 }));
+    expect((await db.payment.findUniqueOrThrow({ where: { id: second.id } })).status).toBe("SUCCEEDED");
+    expect(await db.auditLog.findFirst({ where: { action: "payment.overpaid", resourceId: second.id } })).not.toBeNull();
+  });
+
   it("records money that lands after the customer cancelled, without reviving the booking", async () => {
     const { booking, payment, orderId } = await heldBooking();
     const move = await moveBooking({ bookingId: booking.id, from: "PENDING_PAYMENT", to: "CANCELLED", by: "customer" });

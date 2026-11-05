@@ -29,6 +29,10 @@ export async function POST(req: Request) {
     if (!email || typeof email !== "string") return err("أدخل البريد الإلكتروني", 422);
 
     const normalised = email.trim().toLowerCase();
+    // Per address too, so many callers cannot flood one inbox (final audit
+    // S-09). Answered as a success: the limit must not say the account exists.
+    const forEmail = await rateLimit("forgotPasswordEmail", normalised);
+    if (!forEmail.ok) return ok({ sent: true });
 
     // Before the lookup, deliberately.
     //

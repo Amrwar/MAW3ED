@@ -58,6 +58,14 @@ export async function requireVenueAccess(
     select: { id: true, organizationId: true, compoundId: true, status: true, isPublished: true },
   });
   if (!venue) throw notFound();
+  // A suspended (or never approved) organization's people lose their
+  // venues with it: the desk shows visitors' names, and passes, decisions
+  // and overrides are all run from here (final audit F-22). The platform
+  // keeps access, to inspect and to restore.
+  if (!caller.platform && venue.organizationId) {
+    const org = await db.organization.findUnique({ where: { id: venue.organizationId }, select: { status: true } });
+    if (org?.status !== "APPROVED") throw notFound();
+  }
   const authority = authorityOver(caller, venue);
   if (!venueCan(authority, action)) throw notFound();
   return { caller, venue, authority: authority! };

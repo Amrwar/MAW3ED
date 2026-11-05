@@ -57,6 +57,7 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
       links: [
         { label: f.links.contact, href: "/contact" },
         { label: f.links.faq,     href: "/faq" },
+        { label: f.links.help,    href: "/help" },
         { label: f.links.privacy, href: "/privacy" },
         { label: f.links.accountDeletion, href: "/account-deletion" },
         { label: f.links.terms,   href: "/terms" },

@@ -37,8 +37,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         // office behind one NAT is not locked out because a colleague
         // mistyped. Returning null is the same answer a wrong password
         // gets, so the limit cannot be used to tell them apart.
-        const limited = await rateLimit("login", parsed.data.email);
-        if (!limited.ok) {
+        // Both: per account (the same bucket as the app's login, so web and
+        // app share it) and per caller across accounts (final audit S-01).
+        const limited = await rateLimit("login", parsed.data.email.trim().toLowerCase());
+        const byCaller = limited.ok ? await rateLimit("loginCaller") : limited;
+        if (!limited.ok || !byCaller.ok) {
           log.warn("[auth] login rate limited");
           return null;
         }

@@ -48,6 +48,14 @@ export interface RateLimitResult {
  */
 export const RULES = {
   login: { limit: 8, windowSeconds: 15 * 60 },
+  /**
+   * Password attempts from one caller across every account (final audit
+   * S-01): the per-email bucket alone let one address spray many
+   * accounts. Wide enough for an office behind one NAT.
+   */
+  loginCaller: { limit: 40, windowSeconds: 15 * 60 },
+  /** Reset emails to one address, whoever asks (final audit S-09). */
+  forgotPasswordEmail: { limit: 5, windowSeconds: 60 * 60 },
   signup: { limit: 5, windowSeconds: 60 * 60 },
   forgotPassword: { limit: 5, windowSeconds: 60 * 60 },
   resetPassword: { limit: 8, windowSeconds: 60 * 60 },

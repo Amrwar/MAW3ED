@@ -24,7 +24,6 @@ export const authConfig: NextAuthConfig = {
 
       const isProtected =
         path.startsWith("/dashboard") || path.startsWith("/onboarding");
-      const isAuthPage = path === "/login" || path === "/signup";
 
       if (isProtected) {
         return isLoggedIn; // redirect to /login if false
@@ -49,15 +48,11 @@ export const authConfig: NextAuthConfig = {
         }
         return true;
       }
-      // Redirect logged-in users away from auth pages
-      if (isAuthPage && isLoggedIn) {
-        const u = auth?.user as { businessId?: string | null; adminRole?: string | null } | undefined;
-        // By what the account is: an owner to the dashboard, an
-        // administrator without a business to the admin, and anybody
-        // else on to setting up their business.
-        const home = u?.businessId ? "/dashboard" : u?.adminRole ? "/admin" : "/onboarding";
-        return Response.redirect(new URL(home, nextUrl));
-      }
+      // Signed-in visitors of /login and /signup are sent home by those
+      // pages' own layouts (lib/auth/signed-in-home.ts), which check the
+      // account against the database. Not here: the proxy only decodes the
+      // cookie, and bouncing a revoked session to /dashboard looped with
+      // the dashboard sending it back (final audit F-27).
       return true;
     },
   },

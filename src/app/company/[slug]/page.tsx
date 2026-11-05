@@ -323,6 +323,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
         : null,
     services:     dbBusiness.services.map((s) => ({
       nameAr:   s.nameAr,
+      nameEn:   s.nameEn,
       price:    Number(s.price),
       currency: s.currency,
       duration: s.duration,
@@ -332,6 +333,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     rating: summary.count > 0 && summary.average !== null
       ? { value: summary.average, count: summary.count }
       : null,
+    lang,
   });
 
   const pricedServices = services.filter((s) => s.price > 0);

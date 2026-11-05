@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getLang } from "@/lib/lang-server";
+import { bounceSignedIn } from "@/lib/auth/signed-in-home";
 
 // The page is a client component, so its title lives here. Without one it
 // showed the site's home title, and could not be told apart from the
@@ -13,6 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function LoginLayout({ children }: { children: React.ReactNode }) {
+export default async function LoginLayout({ children }: { children: React.ReactNode }) {
+  await bounceSignedIn();
   return children;
 }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ok, err } from "@/lib/api";
+import { rateLimitWith, tooManyRequests } from "@/lib/rate-limit";
 import { requireOrgAccess } from "@/lib/organizations/guard";
 import { orgHandle, readJson } from "@/lib/organizations/route";
 import { deleteEndpoint, pingEndpoint, rotateEndpointSecret, setEndpointStatus } from "@/lib/enterprise/webhooks";
@@ -25,6 +26,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           ? ok({ ok: true })
           : err("العنوان غير موجود", 404, { code: "not-found" });
       case "ping": {
+        // A test send reports its result back, so it is bounded: an
+        // integration needs a handful of tests, not a probe (final audit F-23).
+        const limited = await rateLimitWith(`webhook-ping:${endpointId}`, { limit: 10, windowSeconds: 3600 }, endpointId);
+        if (!limited.ok) return tooManyRequests(limited);
         const r = await pingEndpoint(id, endpointId);
         return r ? ok(r) : err("العنوان غير موجود", 404, { code: "not-found" });
       }

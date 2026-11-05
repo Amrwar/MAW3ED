@@ -163,6 +163,11 @@ describe.skipIf(!local)("POST /api/webhooks/stripe on a real database", () => {
     expect(await deliver("charge.refunded", { ...charge, amount_refunded: 10000 })).toMatchObject({ outcome: "refund-already-recorded" });
     expect(await deliver("charge.refunded", { ...charge, amount_refunded: 99999 })).toMatchObject({ outcome: "refund-recorded" });
     expect(await db.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({ refundedCents: 29900, status: "REFUNDED" });
+    // Each figure has its Refund rows, so reconciliation adds up (final audit F-15).
+    const rows = await db.refund.findMany({ where: { paymentId: payment.id } });
+    expect(rows.every((r) => r.status === "SUCCEEDED" && r.actorName === "Stripe")).toBe(true);
+    expect(rows.reduce((sum, r) => sum + r.amountCents, 0)).toBe(29900);
+    expect(rows).toHaveLength(2);
   });
 
   it("an admin refund left 'uncertain' is settled when Stripe reports the money returned", async () => {

@@ -28,6 +28,7 @@ import { pruneFunnelSeen } from "@/lib/analytics/funnel";
 import { log } from "@/lib/logger";
 import { notify } from "@/lib/notifications";
 import { authorizeCron } from "@/lib/security/cron-auth";
+/** Explicit, so a slow run is cut at a known limit and recorded as failed (final audit F-28). */export const maxDuration = 300;
 
 async function handle(req: Request): Promise<Response> {
   const allowed = authorizeCron(req, "subscriptions");

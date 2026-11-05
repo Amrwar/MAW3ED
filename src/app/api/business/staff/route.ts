@@ -82,6 +82,16 @@ export async function POST(req: Request) {
     );
   }
 
+  // As the PUT does: only this business's own services, so a request naming
+  // another business's service cannot link it (final audit S-03).
+  if (serviceIds !== undefined && serviceIds !== null && !Array.isArray(serviceIds)) {
+    return NextResponse.json({ error: "اختار الخدمات من القائمة" }, { status: 422 });
+  }
+  const requested = ((serviceIds as unknown[] | undefined) ?? []).filter((x): x is string => typeof x === "string");
+  const ownServiceIds = requested.length
+    ? (await db.service.findMany({ where: { businessId: owned.id, id: { in: requested } }, select: { id: true } })).map((x) => x.id)
+    : [];
+
   const member = await db.staffMember.create({
     data: {
       businessId:  owned.id,
@@ -92,8 +102,8 @@ export async function POST(req: Request) {
       isActive:    isActive ?? true,
       workingDays: workingDays ?? [],
       specialties: specialties ?? [],
-      services:    serviceIds?.length
-        ? { create: (serviceIds as string[]).map((sid) => ({ serviceId: sid })) }
+      services:    ownServiceIds.length
+        ? { create: ownServiceIds.map((sid) => ({ serviceId: sid })) }
         : undefined,
     },
     include: {

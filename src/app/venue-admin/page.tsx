@@ -17,6 +17,12 @@ export default async function VenueAdminIndex() {
   const venues = await venuesFor(caller);
   if (!caller.platform && venues.length === 0) notFound();
   const en = (await getLang()) === "en";
+  // Labels, not the raw enum (final audit F-39: "DRAFT" showed in Arabic).
+  const VENUE_STATUS: Record<string, [string, string]> = {
+    DRAFT: ["مسودّة", "Draft"],
+    ACTIVE: ["شغّال", "Active"],
+    SUSPENDED: ["موقوف", "Suspended"],
+  };
 
   return (
     <main id="main" className="mx-auto max-w-3xl space-y-5 p-5 md:p-8" dir={en ? "ltr" : "rtl"}>
@@ -33,7 +39,7 @@ export default async function VenueAdminIndex() {
                   {en ? v.nameEn || v.nameAr : v.nameAr}
                 </span>
                 <span className="text-xs text-[var(--color-subtle)]">
-                  {v.status}
+                  {VENUE_STATUS[v.status]?.[en ? 1 : 0] ?? v.status}
                   {v.isPublished ? (en ? " · public" : " · منشور") : en ? " · not public" : " · مش منشور"}
                 </span>
               </Link>

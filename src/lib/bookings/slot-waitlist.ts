@@ -336,6 +336,11 @@ export async function sweepWaitlist(now: Date = new Date(), limit = 200): Promis
     where: { status: "WAITING", date: { gte: dateToUTC(cairoDateString(now)) } },
     select: { businessId: true, date: true },
     distinct: ["businessId", "date"],
+    // Soonest first: with more waiting days than `limit`, an unordered read
+    // could return the same set every run and never re-offer the rest
+    // (final audit F-29). Today's and tomorrow's matter most; later days
+    // move up as they come closer.
+    orderBy: [{ date: "asc" }, { businessId: "asc" }],
     take: limit,
   });
   for (const w of waitingDays) {

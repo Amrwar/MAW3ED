@@ -9,7 +9,9 @@ const schema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
   /** Shown back to the person in a list of their sessions. */
-  deviceName: z.string().trim().max(80).optional(),
+  // Cut, not refused: an Android device name is the owner's to edit and
+  // can be longer; refusing it blocked sign-in (final audit M-05).
+  deviceName: z.string().trim().transform((s) => s.slice(0, 80)).optional(),
   platform: z.enum(["ios", "android"]).optional(),
 });
 
@@ -31,7 +33,7 @@ export async function POST(req: Request) {
     // Keyed on the caller when no account is named yet. 429 with
     // Retry-After, and a message that says nothing about whether
     // the account exists.
-    const limited = await rateLimit("login");
+    const limited = await rateLimit("loginCaller");
     if (!limited.ok) return tooManyRequests(limited);
 
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -39,6 +41,12 @@ export async function POST(req: Request) {
     // one for a malformed body tells a prober how to shape their next
     // attempt.
     if (!parsed.success) return err("البريد الإلكتروني أو كلمة المرور غير صحيحة", 401);
+
+    // And per account, the bucket the web sign-in uses: with the caller's
+    // address alone, many addresses could grind one account without limit
+    // (final audit S-01).
+    const forAccount = await rateLimit("login", String(parsed.data.email).trim().toLowerCase());
+    if (!forAccount.ok) return tooManyRequests(forAccount);
 
     const user = await verifyEmailPassword(parsed.data);
     if (!user) return err("البريد الإلكتروني أو كلمة المرور غير صحيحة", 401);

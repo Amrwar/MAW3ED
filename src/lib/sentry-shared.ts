@@ -31,8 +31,22 @@ const PHONE_RE = /(?:\+|(?<!\d)00)\d(?:[\s-]?\d){6,14}|(?<!\d)\d{10,15}(?!\d)/g;
 
 const SENSITIVE_HEADER = /authorization|cookie|x-api-key|token|secret/i;
 
-function scrub(value: string): string {
-  return value.replace(EMAIL_RE, "[email]").replace(PHONE_RE, "[phone]");
+/**
+ * Bearer secrets in URLs (final audit S-08): a booking's manage token
+ * (/booking/<t>, /api/public/booking/<t>, /api/booking/<t>/…), a guest
+ * pass (/pass/<t>), a waitlist link (/booking-waitlist/<t>), a check-in
+ * code (/c/<t>), and reset / verification links (?token=). Anyone holding
+ * one acts as the customer, so none may reach an error tracker.
+ */
+const PATH_SECRET_RE = /(\/(?:booking|booking-waitlist|pass|c)\/)[A-Za-z0-9_-]{12,}/g;
+const QUERY_SECRET_RE = /([?&](?:token|code|key|secret|signature|sig)=)[^&#\s]+/gi;
+
+export function scrub(value: string): string {
+  return value
+    .replace(PATH_SECRET_RE, "$1[token]")
+    .replace(QUERY_SECRET_RE, "$1[redacted]")
+    .replace(EMAIL_RE, "[email]")
+    .replace(PHONE_RE, "[phone]");
 }
 
 function scrubDeep(input: unknown, depth = 0): unknown {

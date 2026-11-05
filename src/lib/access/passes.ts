@@ -114,7 +114,7 @@ export async function venueContext(
     where: { id: { in: [...new Set(memberships.map((m) => m.venueId))] } },
     // Stable, so a business listed in two venues keeps the same one run to run.
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select: { id: true, nameAr: true, nameEn: true, status: true, accessEnabled: true, accessProviderId: true },
+    select: { id: true, nameAr: true, nameEn: true, status: true, accessEnabled: true, accessProviderId: true, organization: { select: { status: true } } },
   });
   const activeBranchCount = await tx.branch.count({ where: { businessId: booking.businessId, isActive: true } });
   const listingsOf = (venueId: string) => memberships.filter((m) => m.venueId === venueId);
@@ -136,7 +136,16 @@ export async function venueContext(
     select: { id: true },
   });
   return {
-    venue: { id: v.id, nameAr: v.nameAr, nameEn: v.nameEn, status: v.status, accessEnabled: v.accessEnabled, accessProvider },
+    // A venue whose organization is suspended issues nothing: passes are
+    // decided as for a venue that is not active (final audit F-22).
+    venue: {
+      id: v.id,
+      nameAr: v.nameAr,
+      nameEn: v.nameEn,
+      status: v.organization && v.organization.status !== "APPROVED" ? "SUSPENDED" : v.status,
+      accessEnabled: v.accessEnabled,
+      accessProvider,
+    },
     policy: policy
       ? {
           visitorEligibility: policy.visitorEligibility,

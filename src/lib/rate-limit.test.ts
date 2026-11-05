@@ -79,3 +79,10 @@ describe("the refusal", () => {
     expect(body.error.length).toBeGreaterThan(0);
   });
 });
+
+describe("final audit S-01 / S-09: both sides of a sign-in are limited", () => {
+  it("has a per-caller password bucket and a per-address reset bucket", () => {
+    expect(RULES.loginCaller.limit).toBeGreaterThan(RULES.login.limit);
+    expect(RULES.forgotPasswordEmail.limit).toBeLessThanOrEqual(RULES.forgotPassword.limit);
+  });
+});

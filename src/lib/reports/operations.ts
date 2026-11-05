@@ -139,3 +139,28 @@ export async function operationsReport(businessId: string, from: string, days: n
     },
   };
 }
+
+/**
+ * The report without money: no revenue, no per-staff revenue or
+ * commission. For whoever may read reports but not finance — a
+ * management company granted REPORTS, which the database deliberately
+ * keeps from FINANCE (final audit F-20).
+ */
+export type OperationsCounts = Omit<OperationsReport, "totals" | "staff"> & {
+  totals: Omit<OperationsReport["totals"], "revenueCents">;
+  staff: Omit<StaffRow, "revenueCents" | "commissionPercent" | "commissionCents">[];
+  money: false;
+};
+
+export function withoutMoney(r: OperationsReport): OperationsCounts {
+  const { revenueCents: _revenue, ...totals } = r.totals;
+  void _revenue;
+  return {
+    ...r,
+    totals,
+    staff: r.staff
+      .map(({ revenueCents: _r, commissionPercent: _p, commissionCents: _c, ...rest }) => (void _r, void _p, void _c, rest))
+      .sort((a, b) => b.completed - a.completed),
+    money: false,
+  };
+}

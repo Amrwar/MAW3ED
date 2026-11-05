@@ -116,6 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setUnverified(false);
         queryClient.clear();
+        // As at sign-out: what the last person typed (booking drafts with
+        // their name and phone, payment links, searches) must not wait on
+        // the phone for the next person (final audit M-04).
+        void forgetLocalData().catch(() => undefined);
+        void forgetExports().catch(() => undefined);
         track("session_expired");
       }),
     [queryClient],
