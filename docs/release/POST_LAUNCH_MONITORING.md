@@ -1,14 +1,15 @@
 # Post-launch monitoring
 
 What to watch after launch, where it comes from in the code, and what to do
-when it moves. The signals exist today. The alert rules need setting up by
+when it moves. The signals exist today. The liveness alert is the "Uptime" workflow
+(`.github/workflows/uptime.yml`). The other alert rules need setting up by
 the owner: none could be verified from this repository.
 
 ## Signals
 
 | Signal | Source | Healthy | Alert when | First response |
 |---|---|---|---|---|
-| Liveness | `GET /api/health` (anonymous: one `SELECT 1`) | 200 `{"status":"ok"}` | Two consecutive non-200s | Neon status; Vercel status; recent deploy → rollback |
+| Liveness | `GET /api/health` (anonymous: one `SELECT 1`) | 200 `{"status":"ok"}` | Two consecutive failures, 60 s apart: the "Uptime" workflow (every 5 min) fails and opens an `uptime` issue; closes it on recovery | Neon status; Vercel status; recent deploy → rollback |
 | Job freshness and queues | `GET /api/health` with `Authorization: Bearer $CRON_SECRET` (`lib/ops/health.ts`) | Every job within its SLA (`JOB_SLA_MINUTES`); queues small | A job late or failing; a queue growing for an hour | Admin → Operations; the job's `CronRun` rows; Vercel function logs |
 | A missing `CRON_SECRET` | Recorded as a failed run (Phase 28) | — | Every job failing at once | Restore the variable |
 | Errors | Sentry (server, edge and client render errors since F-35) | — | New issue on `/api/public/*/bookings`, `/api/webhooks/*`, `/api/auth/*`; any spike | Sentry issue → logs by request id |
