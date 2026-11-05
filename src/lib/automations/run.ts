@@ -50,11 +50,23 @@ export interface OperationsRun {
   packageNotices?: number;
   redriven?: Awaited<ReturnType<typeof redriveAutomations>>;
   failed: string[];
+  /** Jobs not reached before the deadline; they run next time. */
+  skipped: string[];
 }
 
-export async function runOperations(now: Date = new Date()): Promise<OperationsRun> {
-  const out: OperationsRun = { failed: [] };
-  const step = async <K extends keyof OperationsRun>(name: K, f: () => Promise<OperationsRun[K]>) => {
+export async function runOperations(now: Date = new Date(), budgetMs = 240_000): Promise<OperationsRun> {
+  const out: OperationsRun = { failed: [], skipped: [] };
+  // A deadline under the function's limit (maxDuration 300 s): a run cut off
+  // by the platform would never reach the later jobs, and its messages
+  // would stop half-way (final audit F-28). What is not reached runs next
+  // time — every job is idempotent.
+  const deadline = Date.now() + budgetMs;
+  const over = () => Date.now() > deadline;
+  const step = async <K extends Exclude<keyof OperationsRun, "failed" | "skipped">>(name: K, f: () => Promise<OperationsRun[K]>) => {
+    if (over()) {
+      out.skipped.push(String(name));
+      return;
+    }
     try {
       out[name] = await f();
     } catch (e) {
@@ -65,12 +77,14 @@ export async function runOperations(now: Date = new Date()): Promise<OperationsR
   await step("waitlist", () => sweepWaitlist(now, BATCH));
   await step("loyaltyExpired", () => expireDueLots(now, BATCH));
   await step("entitlements", () => expireEntitlements(now, BATCH));
-  await step("followUps", () => followUps(now));
-  await step("rebooks", () => rebookNudges(now));
-  await step("renewals", () => renewalNotices(now));
-  await step("pointsNotices", () => pointsExpiringNotices(now));
-  await step("packageNotices", () => packageExpiringNotices(now));
+  // Retries of messages already due come before new ones, so a busy run
+  // cannot starve them.
   await step("redriven", () => redriveAutomations(now));
+  await step("followUps", () => followUps(now, over));
+  await step("rebooks", () => rebookNudges(now, over));
+  await step("renewals", () => renewalNotices(now, over));
+  await step("pointsNotices", () => pointsExpiringNotices(now, over));
+  await step("packageNotices", () => packageExpiringNotices(now, over));
   return out;
 }
 
@@ -78,7 +92,7 @@ export async function runOperations(now: Date = new Date()): Promise<OperationsR
  * A thank-you after a completed visit, followUpDelayHours after it
  * ended. Marketing: only to customers who opted in (lib/automations/send).
  */
-async function followUps(now: Date): Promise<number> {
+async function followUps(now: Date, over: () => boolean = () => false): Promise<number> {
   const wall = cairoWallClock(now);
   const businesses = await allRows((after, take) => db.business.findMany({
     where: { followUpEnabled: true, isPublished: true, ...afterId(after) },
@@ -88,6 +102,7 @@ async function followUps(now: Date): Promise<number> {
   }));
   let n = 0;
   for (const biz of businesses) {
+    if (over()) break;
     // Exactly this business's window: visits that ended between
     // (delay + 24h) and delay ago. A day wide, so an hourly or ten-minute
     // run sees each visit many times and the key sends it once.
@@ -102,6 +117,7 @@ async function followUps(now: Date): Promise<number> {
       take,
     }));
     for (const b of visits) {
+      if (over()) break;
       const r = await sendAutoMessage({
         key: `follow-up:${b.id}`,
         businessId: biz.id,
@@ -122,7 +138,7 @@ async function followUps(now: Date): Promise<number> {
  * "Time for your next visit?" rebookAfterDays after the customer's last
  * completed visit, unless they already have one coming. Marketing.
  */
-async function rebookNudges(now: Date): Promise<number> {
+async function rebookNudges(now: Date, over: () => boolean = () => false): Promise<number> {
   const wall = cairoWallClock(now);
   const businesses = await allRows((after, take) => db.business.findMany({
     where: { rebookReminderEnabled: true, isPublished: true, ...afterId(after) },
@@ -132,6 +148,7 @@ async function rebookNudges(now: Date): Promise<number> {
   }));
   let n = 0;
   for (const biz of businesses) {
+    if (over()) break;
     const dayStart = new Date(wall.getTime() - biz.rebookAfterDays * DAY - DAY);
     const dayEnd = new Date(wall.getTime() - biz.rebookAfterDays * DAY);
     const visits = await allRows((after, take) => db.booking.findMany({
@@ -141,6 +158,7 @@ async function rebookNudges(now: Date): Promise<number> {
       take,
     }));
     for (const v of visits) {
+      if (over()) break;
       const phone = v.customerPhoneE164!;
       // Booked since, or one still to come (however long ago it was
       // made — a next visit booked at the end of this one): no nudge.
@@ -171,7 +189,7 @@ async function rebookNudges(now: Date): Promise<number> {
 }
 
 /** A membership the customer holds runs out soon and is not renewed: transactional. */
-async function renewalNotices(now: Date): Promise<number> {
+async function renewalNotices(now: Date, over: () => boolean = () => false): Promise<number> {
   const rows = await allRows((after, take) => db.customerMembership.findMany({
     where: { status: "ACTIVE", cancelAtPeriodEnd: false, paidThrough: { gt: now, lte: new Date(now.getTime() + 14 * DAY) }, ...afterId(after) },
     orderBy: { id: "asc" },
@@ -184,6 +202,7 @@ async function renewalNotices(now: Date): Promise<number> {
   }));
   let n = 0;
   for (const m of rows) {
+    if (over()) break;
     if (!m.paidThrough) continue;
     if (m.paidThrough.getTime() - now.getTime() > m.business.membershipRenewalNoticeDays * DAY) continue;
     const r = await sendAutoMessage({
@@ -201,7 +220,7 @@ async function renewalNotices(now: Date): Promise<number> {
 }
 
 /** Points the customer holds expire within a week: one notice per account per week. */
-async function pointsExpiringNotices(now: Date): Promise<number> {
+async function pointsExpiringNotices(now: Date, over: () => boolean = () => false): Promise<number> {
   // Summed per account in the database, so every account with points
   // expiring is seen, not the accounts of the first page of lots.
   const due = { remaining: { gt: 0 }, expiresAt: { gt: now, lte: new Date(now.getTime() + 7 * DAY) } };
@@ -225,6 +244,7 @@ async function pointsExpiringNotices(now: Date): Promise<number> {
   const accountOf = new Map(accounts.map((a) => [a.id, a]));
   const byAccount = new Map<string, { phone: string; points: number; businessId: string | null; name: string; enabled: boolean }>();
   for (const x of sums) {
+    if (over()) break;
     const a = accountOf.get(x.accountId);
     if (!a) continue;
     byAccount.set(x.accountId, {
@@ -238,6 +258,7 @@ async function pointsExpiringNotices(now: Date): Promise<number> {
   const week = Math.floor(now.getTime() / (7 * DAY));
   let n = 0;
   for (const [accountId, a] of byAccount) {
+    if (over()) break;
     if (!a.enabled || !a.businessId) continue;
     const r = await sendAutoMessage({
       key: `points-expiring:${accountId}:${week}`,
@@ -254,7 +275,7 @@ async function pointsExpiringNotices(now: Date): Promise<number> {
 }
 
 /** A package with sessions left expires within a week: transactional. */
-async function packageExpiringNotices(now: Date): Promise<number> {
+async function packageExpiringNotices(now: Date, over: () => boolean = () => false): Promise<number> {
   const rows = await allRows((after, take) => db.customerPackage.findMany({
     where: { status: "ACTIVE", expiresAt: { gt: now, lte: new Date(now.getTime() + 7 * DAY) }, ...afterId(after) },
     orderBy: { id: "asc" },
@@ -263,6 +284,7 @@ async function packageExpiringNotices(now: Date): Promise<number> {
   }));
   let n = 0;
   for (const p of rows) {
+    if (over()) break;
     const left = p.sessionsTotal - p.sessionsUsed;
     if (left <= 0) continue;
     const r = await sendAutoMessage({

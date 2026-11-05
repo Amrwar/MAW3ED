@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { businessUpdateSchema } from "@/lib/validations";
 import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { syncVerifiedBadge } from "@/lib/business-verification";
+import { normalisePhone } from "@/lib/phone";
 
 /** GET /api/business — current user's business with relations */
 export async function GET() {
@@ -53,10 +55,21 @@ export async function PUT(req: Request) {
         : "GENERAL";
     }
 
+    // The verified WhatsApp number is the one the OTP proved: a different
+    // number is not verified until it is proved too, and the badge that
+    // rested on it is re-derived (final audit S-10, P17-26).
+    const before = await db.business.findUnique({ where: { id: business.id }, select: { whatsapp: true, phoneVerifiedAt: true } });
+    const numberChanged =
+      parsed.data.whatsapp !== undefined &&
+      !!before?.phoneVerifiedAt &&
+      // The same number typed another way (010… for +2010…) is the same number.
+      (normalisePhone(parsed.data.whatsapp) ?? parsed.data.whatsapp ?? "") !== (normalisePhone(before.whatsapp) ?? before.whatsapp ?? "");
+
     const updated = await db.business.update({
       where: { id: business.id },
-      data:  { ...parsed.data, ...extraData },
+      data:  { ...parsed.data, ...extraData, ...(numberChanged ? { phoneVerifiedAt: null } : {}) },
     });
+    if (numberChanged) await syncVerifiedBadge(business.id);
 
     // Only the profile goes back: a PROFILE delegate saves through this
     // route and must not receive the owner's private fields in the reply.

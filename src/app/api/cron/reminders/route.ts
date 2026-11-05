@@ -6,6 +6,7 @@ import { notify } from "@/lib/notifications";
 import { log } from "@/lib/logger";
 import { authorizeCron } from "@/lib/security/cron-auth";
 import { reapAbandonedPayments } from "@/lib/payments/reap";
+/** Explicit, so a slow run is cut at a known limit and recorded as failed (final audit F-28). */export const maxDuration = 300;
 
 /**
  * GET /api/cron/reminders

@@ -17,8 +17,13 @@ import pkg from "./package.json" with { type: "json" };
  *                      this stops the first request being the weak one.
  *                      Not preloaded — that is a decision with a long
  *                      undo, and it is yours to make.
- *   Permissions-Policy nothing here needs a camera, a microphone or a
- *                      payment handler, so nothing may ask.
+ *   Permissions-Policy no microphone or payment handler is needed, so
+ *                      nothing may ask. The camera is allowed for this
+ *                      site's own pages only: the check-in desk scans
+ *                      booking QR codes with it (components/access/
+ *                      CheckInDesk.tsx). `camera=()` refused it before
+ *                      the browser could even ask, so scanning never
+ *                      worked (final audit, FINAL_BUG_REGISTER F-02).
  *
  * Not here: Content-Security-Policy. It carries a per-request nonce, so
  * it is built in src/proxy.ts from src/lib/security/csp.ts — these
@@ -31,7 +36,7 @@ const SECURITY_HEADERS = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(self), payment=(), usb=()",
+    value: "camera=(self), microphone=(), geolocation=(self), payment=(), usb=()",
   },
   {
     key: "Strict-Transport-Security",

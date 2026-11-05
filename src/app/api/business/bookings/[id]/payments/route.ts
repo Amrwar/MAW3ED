@@ -5,7 +5,6 @@ import { log } from "@/lib/logger";
 import { createPaymentSession } from "@/lib/services/paymob";
 import {
   attachProviderOrder,
-  openPayment,
   paidCentsForBooking,
   recordManualPayment,
 } from "@/lib/payments/ledger";
@@ -15,6 +14,12 @@ import { canUseFeature, getEffectivePlan } from "@/lib/plans";
 import { notifyLater } from "@/lib/notifications";
 
 type Params = { params: Promise<{ id: string }> };
+
+/**
+ * A second link within this of the first is a double click and refused;
+ * later, a new link supersedes the old (final audit F-14, as reviewed).
+ */
+const DOUBLE_CLICK_MS = 10 * 60 * 1000;
 
 const schema = z
   .object({
@@ -228,13 +233,55 @@ export async function POST(req: Request, { params }: Params) {
       return err("إرسال رابط دفع متاح في الخطط المدفوعة", 403);
     }
 
-    const payment = await openPayment({
-      kind: paid === 0 ? "BOOKING_FULL" : "BOOKING_BALANCE",
-      businessId: business.id,
-      bookingId: booking.id,
-      amountCents: amount,
-      currency: booking.currency,
+    // One live link per booking (final audit F-14). Without this, a double
+    // click opened a second payable page for the same balance, and a
+    // customer who paid both was charged twice with nothing flagged.
+    // Serialised under the same per-booking lock /pay takes. A link opened
+    // at Paymob in the last few minutes is refused (the double click);
+    // after that a new link supersedes the old one, which is closed here —
+    // an owner who lost the link, or whose customer never got it, must be
+    // able to send another, and the URL is not stored to resend. If the old
+    // page is paid anyway, the webhook flags the overpayment for a refund
+    // (payment.overpaid). A row Paymob never answered for opened no page
+    // and blocks nothing.
+    const decision = await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${booking.id}))`;
+      const live = await tx.payment.findFirst({
+        where: {
+          bookingId: booking.id,
+          kind: { in: ["BOOKING_FULL", "BOOKING_BALANCE"] },
+          status: "PENDING",
+          providerOrderId: { not: null },
+          createdAt: { gt: new Date(Date.now() - DOUBLE_CLICK_MS) },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      });
+      if (live) return { refuse: true as const, retryAt: new Date(live.createdAt.getTime() + DOUBLE_CLICK_MS), payment: null };
+      await tx.payment.updateMany({
+        where: { bookingId: booking.id, kind: { in: ["BOOKING_FULL", "BOOKING_BALANCE"] }, status: "PENDING" },
+        data: { status: "ABANDONED", failureReason: "superseded by a new payment link" },
+      });
+      const created = await tx.payment.create({
+        data: {
+          kind: paid === 0 ? "BOOKING_FULL" : "BOOKING_BALANCE",
+          businessId: business.id,
+          bookingId: booking.id,
+          amountCents: amount,
+          currency: booking.currency,
+          provider: "PAYMOB",
+          status: "PENDING",
+        },
+      });
+      return { refuse: false as const, retryAt: null, payment: created };
     });
+    if (decision.refuse) {
+      return err("لسه عامل رابط دفع للحجز ده من دقايق. استنى شوية قبل ما تعمل رابط جديد.", 409, {
+        code: "payment-in-progress",
+        retryAt: decision.retryAt.toISOString(),
+      });
+    }
+    const payment = decision.payment!;
 
     try {
       const { paymentUrl, paymobOrderId } = await createPaymentSession({

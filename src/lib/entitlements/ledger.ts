@@ -87,6 +87,57 @@ export async function consumeEntitlement(
 }
 
 /**
+ * A booking that used a session or visit is moving to a new time
+ * (final audit F-11). The reschedule routes used to move it without
+ * looking, so a package could be used after it expired and a membership
+ * visit counted against the month it was booked in: four November visits
+ * moved into December, then four more booked there, gave eight. Inside
+ * the reschedule's own transaction, before the booking row is updated:
+ *
+ *   package     the new time must still be before its expiry;
+ *   membership  the visit is counted against the period the new time
+ *               falls in (taken there first, conditionally, then given
+ *               back to the old one), and refused if that period is full
+ *               or does not exist (not paid for yet).
+ *
+ * Throws EntitlementGone to refuse the move; does nothing for a booking
+ * that uses no entitlement. `startsAt` is the real instant.
+ */
+export async function moveEntitlement(tx: Tx, bookingId: string, startsAt: Date): Promise<void> {
+  const use = await tx.entitlementUse.findUnique({
+    where: { bookingId },
+    select: { id: true, packageId: true, membershipId: true, periodId: true, reversedAt: true },
+  });
+  if (!use || use.reversedAt) return;
+  if (use.packageId) {
+    const ok = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id" FROM "CustomerPackage"
+       WHERE "id" = ${use.packageId} AND "status" IN ('ACTIVE', 'EXHAUSTED')
+         AND ("expiresAt" IS NULL OR "expiresAt" > ${startsAt})`;
+    if (ok.length !== 1) throw new EntitlementGone();
+    return;
+  }
+  if (!use.membershipId) return;
+  // A cancelled or refunded membership covers nothing new, as at booking.
+  const live = await tx.$queryRaw<{ id: string }[]>`
+    SELECT "id" FROM "CustomerMembership" WHERE "id" = ${use.membershipId} AND "status" IN ('ACTIVE', 'PAUSED')`;
+  if (live.length !== 1) throw new EntitlementGone();
+  const target = await tx.$queryRaw<{ id: string }[]>`
+    SELECT "id" FROM "MembershipPeriod"
+     WHERE "membershipId" = ${use.membershipId} AND "startsAt" <= ${startsAt} AND "endsAt" > ${startsAt}`;
+  if (target.length !== 1) throw new EntitlementGone();
+  if (target[0].id === use.periodId) return;
+  const taken = await tx.$executeRaw`
+    UPDATE "MembershipPeriod" SET "used" = "used" + 1
+     WHERE "id" = ${target[0].id} AND "used" < "includedVisits"`;
+  if (taken !== 1) throw new EntitlementGone();
+  if (use.periodId) {
+    await tx.$executeRaw`UPDATE "MembershipPeriod" SET "used" = "used" - 1 WHERE "id" = ${use.periodId} AND "used" > 0`;
+  }
+  await tx.entitlementUse.update({ where: { id: use.id }, data: { periodId: target[0].id } });
+}
+
+/**
  * A booking that used a session or visit was cancelled (or its payment
  * failed): it comes back, once. Called from releaseBookingHold. A no-show
  * keeps it used — the slot was held — which is the policy the business
@@ -432,11 +483,15 @@ export async function expireEntitlements(now: Date = new Date(), limit = 500): P
        SET "status" = CASE WHEN "cancelAtPeriodEnd" THEN 'CANCELLED'::"CustomerMembershipStatus" ELSE 'EXPIRED'::"CustomerMembershipStatus" END,
            "updatedAt" = now()
      WHERE "id" IN (SELECT "id" FROM "CustomerMembership" WHERE "status" = 'ACTIVE' AND "paidThrough" <= ${now} LIMIT ${limit})`;
-  const paused = await db.customerMembership.findMany({
-    where: { status: "PAUSED" },
-    select: { id: true, businessId: true, pausedAt: true, pausedDays: true },
-    take: limit,
-  });
+  // Only pauses that have run out, soonest-due first, so `limit` not-yet-due
+  // rows read in no order cannot hide the due ones run after run (final
+  // audit F-29). The same rule as pauseRunsOutAt, in SQL.
+  const paused = await db.$queryRaw<{ id: string; businessId: string; pausedAt: Date | null; pausedDays: number }[]>`
+    SELECT "id", "businessId", "pausedAt", "pausedDays" FROM "CustomerMembership"
+     WHERE "status" = 'PAUSED' AND "pausedAt" IS NOT NULL
+       AND "pausedAt" + GREATEST(0, ${MAX_PAUSE_DAYS} - "pausedDays") * interval '1 day' <= ${now}
+     ORDER BY "pausedAt" + GREATEST(0, ${MAX_PAUSE_DAYS} - "pausedDays") * interval '1 day' ASC
+     LIMIT ${limit}`;
   let resumed = 0;
   for (const m of paused) {
     if (!m.pausedAt || pauseRunsOutAt(m.pausedAt, m.pausedDays) > now) continue;

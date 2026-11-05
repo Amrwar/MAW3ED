@@ -4,6 +4,7 @@ import { redriveNotifications } from "@/lib/notifications/outbox";
 import { cairoWallClock } from "@/lib/bookings/instants";
 import { authorizeCron } from "@/lib/security/cron-auth";
 import { log } from "@/lib/logger";
+/** Explicit, so a slow run is cut at a known limit and recorded as failed (final audit F-28). */export const maxDuration = 300;
 
 /**
  * GET /api/cron/notifications

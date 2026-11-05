@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { log } from "@/lib/logger";
 import { releaseBookingHold } from "@/lib/bookings/state";
+import { lockPayment } from "./ledger";
 
 /**
  * Payments that were started and never finished.
@@ -58,7 +59,9 @@ export async function reapAbandonedPayments(now = new Date()): Promise<ReapResul
       providerOrderId: true,
       createdAt: true,
     },
-    // A ceiling so one bad night cannot turn into an unbounded job.
+    // A ceiling so one bad night cannot turn into an unbounded job; oldest
+    // first, so the order is stable from run to run (final audit F-29).
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: 500,
   });
 
@@ -70,6 +73,9 @@ export async function reapAbandonedPayments(now = new Date()): Promise<ReapResul
         // Re-read inside the transaction. A webhook may have landed
         // between the query above and here, and a payment that just
         // succeeded must not be abandoned on top of it.
+        // Locked, so a settlement that is committing right now is waited
+        // for and seen, not overwritten (final audit F-13).
+        await lockPayment(tx, payment.id);
         const current = await tx.payment.findUnique({
           where: { id: payment.id },
           select: { status: true },

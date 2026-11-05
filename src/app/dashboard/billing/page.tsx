@@ -1,31 +1,36 @@
 import type { Metadata } from "next";
 import Link from "@/components/shared/LocaleLink";
-import { ArrowLeft, Receipt, Wallet } from "lucide-react";
+import { ArrowLeft, ArrowRight, Receipt, Wallet } from "lucide-react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/payments/money";
-import { PLAN_NAMES_AR } from "@/lib/plans";
+import { PLAN_NAMES_AR, PLAN_NAMES_EN } from "@/lib/plans";
+import { getLang } from "@/lib/lang-server";
+import { cairoDay, type Lang } from "@/lib/i18n";
 import type { PaymentKind, PaymentStatus } from "@prisma/client";
 
-export const metadata: Metadata = { title: "الفواتير والمدفوعات" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getLang()) === "en" ? "Billing and payments" : "الفواتير والمدفوعات" };
+}
 
-const KIND_AR: Record<PaymentKind, string> = {
-  BOOKING_DEPOSIT: "عربون من عميل",
-  BOOKING_BALANCE: "باقي حساب",
-  BOOKING_FULL: "دفع كامل من عميل",
-  SUBSCRIPTION: "اشتراك موعد",
-  PACKAGE: "باقة جلسات",
-  MEMBERSHIP: "عضوية",
+/** From the business's side: who paid whom (final audit F-33: was Arabic-only). */
+const KIND: Record<PaymentKind, Record<Lang, string>> = {
+  BOOKING_DEPOSIT: { ar: "عربون من عميل", en: "Customer deposit" },
+  BOOKING_BALANCE: { ar: "باقي حساب", en: "Balance" },
+  BOOKING_FULL: { ar: "دفع كامل من عميل", en: "Customer full payment" },
+  SUBSCRIPTION: { ar: "اشتراك موعد", en: "Maw3ed subscription" },
+  PACKAGE: { ar: "باقة جلسات", en: "Session package" },
+  MEMBERSHIP: { ar: "عضوية", en: "Membership" },
 };
 
-const STATUS_AR: Record<PaymentStatus, string> = {
-  PENDING: "قيد الدفع",
-  SUCCEEDED: "تم",
-  FAILED: "فشلت",
-  REFUNDED: "مُسترجَعة",
-  PARTIALLY_REFUNDED: "استرجاع جزئي",
-  ABANDONED: "متروكة",
+const STATUS: Record<PaymentStatus, Record<Lang, string>> = {
+  PENDING: { ar: "قيد الدفع", en: "Pending" },
+  SUCCEEDED: { ar: "تم", en: "Paid" },
+  FAILED: { ar: "فشلت", en: "Failed" },
+  REFUNDED: { ar: "مُسترجَعة", en: "Refunded" },
+  PARTIALLY_REFUNDED: { ar: "استرجاع جزئي", en: "Partly refunded" },
+  ABANDONED: { ar: "متروكة", en: "Abandoned" },
 };
 
 const STATUS_TONE: Record<PaymentStatus, string> = {
@@ -53,6 +58,10 @@ export default async function BillingPage() {
   const session = await auth();
   if (!session?.user?.businessId) redirect("/dashboard");
   const businessId = session.user.businessId;
+  const lang = await getLang();
+  const en = lang === "en";
+  const planNames = en ? PLAN_NAMES_EN : PLAN_NAMES_AR;
+  const Forward = en ? ArrowRight : ArrowLeft;
 
   const [business, payments, received, paidOut] = await Promise.all([
     db.business.findUnique({ where: { id: businessId }, select: { plan: true } }),
@@ -105,33 +114,35 @@ export default async function BillingPage() {
     <div className="space-y-5">
       <header>
         <h1 className="m-0 text-[1.375rem] font-bold text-[var(--color-ink)]">
-          الفواتير والمدفوعات
+          {en ? "Billing and payments" : "الفواتير والمدفوعات"}
         </h1>
         <p className="m-0 mt-1.5 text-[0.875rem] text-[var(--color-subtle)]">
-          كل عملية دفع على النشاط ده — اللي العملاء دفعوه واللي انت دفعته.
+          {en
+            ? "Every payment on this business — what customers paid, and what you paid."
+            : "كل عملية دفع على النشاط ده — اللي العملاء دفعوه واللي انت دفعته."}
         </p>
       </header>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Tile
           icon={<Wallet size={16} strokeWidth={1.8} aria-hidden="true" />}
-          label="محصّل من العملاء"
-          value={formatCents(net(received))}
+          label={en ? "Collected from customers" : "محصّل من العملاء"}
+          value={formatCents(net(received), "EGP", lang)}
         />
         <Tile
           icon={<Receipt size={16} strokeWidth={1.8} aria-hidden="true" />}
-          label="مدفوع لموعد"
-          value={formatCents(net(paidOut))}
-          hint={`الخطة الحالية: ${PLAN_NAMES_AR[business.plan]}`}
+          label={en ? "Paid to Maw3ed" : "مدفوع لموعد"}
+          value={formatCents(net(paidOut), "EGP", lang)}
+          hint={en ? `Current plan: ${planNames[business.plan]}` : `الخطة الحالية: ${planNames[business.plan]}`}
         />
         <Link
           href="/dashboard/settings?tab=subscription"
           className="card card-hover flex min-h-[5rem] flex-col justify-center p-4"
         >
-          <span className="text-[0.75rem] text-[var(--color-subtle)]">الاشتراك</span>
+          <span className="text-[0.75rem] text-[var(--color-subtle)]">{en ? "Subscription" : "الاشتراك"}</span>
           <span className="mt-1 flex items-center gap-1.5 text-[0.9375rem] font-bold text-[var(--color-jade)]">
-            إدارة الخطة
-            <ArrowLeft size={14} strokeWidth={2.2} aria-hidden="true" />
+            {en ? "Manage the plan" : "إدارة الخطة"}
+            <Forward size={14} strokeWidth={2.2} aria-hidden="true" />
           </span>
         </Link>
       </div>
@@ -139,7 +150,7 @@ export default async function BillingPage() {
       <section className="card overflow-hidden">
         {payments.length === 0 ? (
           <p className="m-0 p-10 text-center text-[0.875rem] text-[var(--color-subtle)]">
-            لسه مفيش عمليات دفع على النشاط ده.
+            {en ? "No payments on this business yet." : "لسه مفيش عمليات دفع على النشاط ده."}
           </p>
         ) : (
           <ul className="m-0 list-none p-0">
@@ -150,12 +161,12 @@ export default async function BillingPage() {
               >
                 <div className="min-w-0">
                   <p className="m-0 text-[0.875rem] font-bold text-[var(--color-ink)]">
-                    {KIND_AR[p.kind]}
-                    {p.plan ? ` · ${PLAN_NAMES_AR[p.plan]}` : ""}
+                    {KIND[p.kind][lang]}
+                    {p.plan ? ` · ${planNames[p.plan]}` : ""}
                   </p>
                   <p className="m-0 mt-0.5 text-[0.78125rem] text-[var(--color-subtle)]">
                     {p.booking?.customerName ?? "—"}
-                    {p.provider === "MANUAL" && " · اتسجّلت يدويًا"}
+                    {p.provider === "MANUAL" && (en ? " · recorded by hand" : " · اتسجّلت يدويًا")}
                   </p>
                   {p.failureReason && (
                     <p className="m-0 mt-1 text-[0.6875rem] text-[var(--color-danger)]">
@@ -166,16 +177,16 @@ export default async function BillingPage() {
                     {p.receiptNumber && <span dir="ltr">{p.receiptNumber}</span>}
                     {p.booking?.reference && <> · {p.booking.reference}</>}
                     {" · "}
-                    {new Date(p.paidAt ?? p.createdAt).toLocaleDateString("ar-EG-u-nu-latn")}
+                    {cairoDay(p.paidAt ?? p.createdAt, lang)}
                   </p>
                 </div>
 
                 <div className="shrink-0 text-end">
                   <span className="num block text-[0.9375rem] font-bold text-[var(--color-ink)]">
-                    {formatCents(p.amountCents - p.refundedCents, p.currency)}
+                    {formatCents(p.amountCents - p.refundedCents, p.currency, lang)}
                   </span>
                   <span className={`block text-[0.6875rem] font-bold ${STATUS_TONE[p.status]}`}>
-                    {STATUS_AR[p.status]}
+                    {STATUS[p.status][lang]}
                   </span>
                 </div>
               </li>

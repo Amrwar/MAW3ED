@@ -170,6 +170,21 @@ export async function nextReceiptNumber(tx: Prisma.TransactionClient): Promise<s
   return `MW-${String(row.nextval).padStart(6, "0")}`;
 }
 
+/**
+ * Lock the payment row for the rest of the transaction (final audit F-13).
+ *
+ * settlePayment, failPayment and the reaper each read the status and then
+ * write it. Without the lock two of them could both read PENDING: a
+ * decline and a success for the same order (different transaction ids, so
+ * the event claim does not dedupe them) could end FAILED on a CONFIRMED
+ * booking, two settles could both report `changed` (a subscription
+ * extended twice), and the reaper could ABANDON a payment that had just
+ * been paid. With it the second waits and reads what the first wrote.
+ */
+export async function lockPayment(tx: Prisma.TransactionClient, paymentId: string): Promise<void> {
+  await tx.$queryRaw`SELECT "id" FROM "Payment" WHERE "id" = ${paymentId} FOR UPDATE`;
+}
+
 export interface SettleResult {
   /** False when the payment had already succeeded. */
   changed: boolean;
@@ -197,6 +212,7 @@ export async function settlePayment(params: {
   const { paymentId, providerTransactionId, method, paidAt, onFirstSettle } = params;
 
   return db.$transaction(async (tx) => {
+    await lockPayment(tx, paymentId);
     const current = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
 
     // Already settled. Nothing to do, and nothing to repeat.
@@ -236,6 +252,7 @@ export async function failPayment(params: {
   const { paymentId, reason, providerTransactionId, onFirstFail } = params;
 
   return db.$transaction(async (tx) => {
+    await lockPayment(tx, paymentId);
     const current = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
 
     // A payment that already succeeded is not failed by a later

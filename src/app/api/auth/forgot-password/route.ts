@@ -29,6 +29,10 @@ export async function POST(req: Request) {
     if (!email || typeof email !== "string") return err("أدخل البريد الإلكتروني", 422);
 
     const normalised = email.trim().toLowerCase();
+    // Not limited per address (final audit S-09, as reviewed): a bucket
+    // keyed on the address alone lets a stranger use it up, silently
+    // stopping the owner's own reset emails — worse than the inbox flooding
+    // it would prevent, which the per-caller limit above already bounds.
 
     // Before the lookup, deliberately.
     //

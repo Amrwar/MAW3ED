@@ -250,6 +250,12 @@ export const pushChannel: Channel = {
   async send({ event, recipient, copy, bookingId }) {
     if (!recipient.userId) return skipped("no-account");
     try {
+      // A phone whose app session is gone (signed out everywhere, password
+      // reset, a reused refresh token, or simply expired) must not keep
+      // showing bookings on its lock screen: push only while the person
+      // has at least one live app session (final audit F-03).
+      const live = await db.mobileSession.count({ where: { userId: recipient.userId, expiresAt: { gt: new Date() } } });
+      if (live === 0) return skipped("no-session");
       const devices = await db.deviceToken.findMany({
         where: { userId: recipient.userId, disabledAt: null },
         select: { token: true },

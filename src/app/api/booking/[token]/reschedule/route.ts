@@ -5,7 +5,8 @@ import { timeToMinutes, minutesToTime } from "@/lib/bookings/time";
 import { loadAvailability } from "@/lib/bookings/schedule";
 import { inBookingQueue } from "@/lib/bookings/queue";
 import { queueBusyResponse } from "@/lib/bookings/busy";
-import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
+import { bookingInstants, dateToUTC, wallToInstant } from "@/lib/bookings/instants";
+import { EntitlementGone, moveEntitlement } from "@/lib/entitlements/ledger";
 import { Prisma } from "@prisma/client";
 import { notifyLater } from "@/lib/notifications";
 import { log } from "@/lib/logger";
@@ -132,8 +133,8 @@ export async function POST(req: Request, { params }: Params) {
     const nextStatus = booking.business.autoConfirm ? booking.status : "PENDING";
     try {
       // In the business's booking queue, like every write of a time.
-      const moved = await inBookingQueue(booking.businessId, (tx) =>
-        tx.booking.updateMany({
+      const moved = await inBookingQueue(booking.businessId, async (tx) => {
+        const result = await tx.booking.updateMany({
           where: { id: booking.id, status: booking.status },
           data: {
             date:                  newDateUTC,
@@ -150,14 +151,24 @@ export async function POST(req: Request, { params }: Params) {
             staffMemberId: booking.staffMemberId ?? availability.assignments[newStartTime] ?? null,
             resourceId:    booking.resourceId ?? availability.resourceAssignments[newStartTime] ?? null,
           },
-        }),
-      );
+        });
+        // A package or membership visit it uses must still cover the new
+        // time (final audit F-11). After the move and only if it happened:
+        // a booking that changed under us moves nothing, and a refusal
+        // (EntitlementGone) rolls the move back with it. The real instant,
+        // not the wall-clock column, is what entitlements are dated by.
+        if (result.count === 1) await moveEntitlement(tx, booking.id, wallToInstant(newDate, timeToMinutes(newStartTime)));
+        return result;
+      });
       if (moved.count === 0) {
         return err("الحجز اتغيّر دلوقتي، حدّث الصفحة وجرّب تاني", 409, { code: "changed" });
       }
     } catch (e) {
       // Somebody took the slot between the check above and this write.
       const message = e instanceof Prisma.PrismaClientKnownRequestError ? e.message : String(e);
+      if (e instanceof EntitlementGone) {
+        return err("الباقة أو الاشتراك مش بيغطي الميعاد الجديد، اختر وقت تاني", 409, { code: "entitlement-gone" });
+      }
       if (message.includes("booking_no_overlap")) {
         return err("حد تاني حجز الموعد ده دلوقتي، اختر وقت تاني", 409, { code: "slot-taken" });
       }

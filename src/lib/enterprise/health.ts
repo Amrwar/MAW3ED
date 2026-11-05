@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { contractInForce } from "./auth";
+import { liveGrant } from "@/lib/organizations/live-grant";
 
 /**
  * An organization's integration health for its console
@@ -32,7 +33,8 @@ export async function integrationHealth(organizationId: string, now: Date = new 
       take: 100,
     }),
     db.organizationBusiness.findMany({
-      where: { organizationId, relation: "OWNED", status: "APPROVED", suspendedAt: null, scopes: { has: "FINANCE" } },
+      // As the portfolio: live grants of an approved organization (final audit F-25).
+      where: { organizationId, relation: "OWNED", status: "APPROVED", suspendedAt: null, scopes: { has: "FINANCE" }, ...liveGrant(now) },
       select: { business: { select: { id: true, nameAr: true, plan: true, subscriptionStatus: true, trialEndsAt: true } } },
       take: 200,
     }),

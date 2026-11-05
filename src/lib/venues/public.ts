@@ -54,8 +54,20 @@ export interface PublicVenue {
   directory: DirectoryEntry[];
 }
 
-/** Published-and-approved, as one where-clause shared by every public read. */
-export const PUBLIC_VENUE = { status: "ACTIVE" as const, isPublished: true };
+/**
+ * Published-and-approved, as one where-clause shared by every public read.
+ * A venue whose organization the platform has suspended or rejected goes
+ * down with it (final audit F-22). Not "anything but APPROVED": operators
+ * the platform adds itself (/admin/venue-organizations) keep the default
+ * PENDING and run venues all the same. NOT, so callers may still add their
+ * own AND/OR.
+ */
+export const BLOCKED_ORG_STATUSES = ["SUSPENDED", "REJECTED"] as const;
+export const PUBLIC_VENUE = {
+  status: "ACTIVE" as const,
+  isPublished: true,
+  NOT: { organization: { is: { status: { in: [...BLOCKED_ORG_STATUSES] } } } },
+};
 /** Listed: approved, the business public, and the branch (if any) still open. */
 export const LISTED_MEMBERSHIP = {
   status: "APPROVED" as const,

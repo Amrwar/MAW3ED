@@ -524,7 +524,8 @@ async function loadBusiness(businessId: string): Promise<Loaded | null> {
           ? biz.currentPeriodEnd.toISOString().slice(0, 10)
           : "—",
         daysLeft: daysUntil(biz.currentPeriodEnd),
-        renewUrl: siteUrl("/dashboard/settings"),
+        // The subscription tab itself, not the profile tab (final audit F-38).
+        renewUrl: siteUrl("/dashboard/settings?tab=subscription"),
       },
     },
   };

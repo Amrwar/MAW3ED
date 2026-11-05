@@ -14,11 +14,16 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "@/components/shared/LocaleLink";
 import { db } from "@/lib/db";
+import { bookingIdFromMerchantOrderId } from "@/lib/services/paymob";
 import { CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
 import BackToApp from "./BackToApp";
 import { clockRange } from "@/lib/fmt";
+import { getLang } from "@/lib/lang-server";
+import { localName } from "@/lib/lang";
 
-export const metadata: Metadata = { title: "نتيجة الدفع" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getLang()) === "en" ? "Payment result" : "نتيجة الدفع", robots: { index: false, follow: false } };
+}
 
 // Force dynamic so query params are always fresh
 export const dynamic = "force-dynamic";
@@ -31,6 +36,7 @@ export default async function PaymentReturnPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
+  const en = (await getLang()) === "en";
   // Paymob passes our booking ID as merchant_order_id
   const merchantOrderId = typeof sp.merchant_order_id === "string" ? sp.merchant_order_id : null;
 
@@ -59,7 +65,8 @@ export default async function PaymentReturnPage({
     redirect(`/payment/subscription/return${suffix ? `?${suffix}` : ""}`);
   }
 
-  const bookingId = merchantOrderId;
+  // "<bookingId>_<suffix>" since the final audit (F-10): unique per order.
+  const bookingId = merchantOrderId ? bookingIdFromMerchantOrderId(merchantOrderId) : null;
   const paymobSuccess = sp.success === "true";
 
   let booking = null;
@@ -75,8 +82,8 @@ export default async function PaymentReturnPage({
         startTime:    true,
         endTime:      true,
         date:         true,
-        service:      { select: { nameAr: true } },
-        business:     { select: { nameAr: true, slug: true } },
+        service:      { select: { nameAr: true, nameEn: true } },
+        business:     { select: { nameAr: true, nameEn: true, slug: true } },
         depositAmount: true,
         currency:      true,
         paymobOrderId: true,
@@ -100,9 +107,11 @@ export default async function PaymentReturnPage({
   const isConfirmed    = booking?.status === "CONFIRMED";
   const isFailed       = booking?.status === "FAILED_PAYMENT";
   const isPending      = booking?.status === "PENDING_PAYMENT";
+  // Anything else (cancelled, completed, no-show…) once rendered nothing.
+  const isOther        = booking !== null && !isConfirmed && !isFailed && !isPending;
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4" dir={en ? "ltr" : "rtl"}>
       <div className="w-full max-w-md">
         {/* Made in the app: hand the person back to it. */}
         {booking?.accessToken && booking.idempotencyKey?.startsWith("app-") && (
@@ -116,21 +125,23 @@ export default async function PaymentReturnPage({
               <CheckCircle size={44} className="text-[var(--color-ok)]" />
             </div>
             <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
-              تم الدفع وتأكيد الحجز!
+              {en ? "Paid — your booking is confirmed" : "تم الدفع واتأكد الحجز!"}
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
-              تم استلام دفعتك وتأكيد حجزك. سيُرسَل إليك تذكير قبل الموعد.
+              {en
+                ? "We received your payment and confirmed your booking. You'll get a reminder before the appointment."
+                : "وصلتنا دفعتك واتأكد حجزك. هيوصلك تذكير قبل الميعاد."}
             </p>
 
             <div className="bg-[var(--color-surface-2)] rounded-[var(--radius-md)] p-4 text-start space-y-2.5 mb-6">
-              <Row label="العمل"    value={booking.business.nameAr} />
-              <Row label="الخدمة"   value={booking.service.nameAr} />
-              <Row label="التاريخ"  value={booking.date.toISOString().split("T")[0]} />
-              <Row label="الوقت"    value={clockRange(booking.startTime, booking.endTime)} ltr />
+              <Row label={en ? "Business" : "المكان"} value={localName(en, booking.business.nameAr, booking.business.nameEn)} />
+              <Row label={en ? "Service" : "الخدمة"} value={localName(en, booking.service.nameAr, booking.service.nameEn)} />
+              <Row label={en ? "Date" : "التاريخ"} value={booking.date.toISOString().split("T")[0]} ltr />
+              <Row label={en ? "Time" : "الوقت"} value={clockRange(booking.startTime, booking.endTime)} ltr />
               {booking.depositAmount !== null && (
                 <Row
-                  label="العربون المدفوع"
-                  value={`${Number(booking.depositAmount).toLocaleString("ar-EG-u-nu-latn")} ${booking.currency}`}
+                  label={en ? "Deposit paid" : "العربون المدفوع"}
+                  value={`${Number(booking.depositAmount).toLocaleString(en ? "en-GB" : "ar-EG-u-nu-latn")} ${booking.currency}`}
                   bold
                 />
               )}
@@ -141,14 +152,15 @@ export default async function PaymentReturnPage({
                 href={`/booking/${booking.accessToken}`}
                 className="block w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity mb-3"
               >
-                عرض تفاصيل الحجز
+                {en ? "View booking details" : "شوف تفاصيل الحجز"}
               </Link>
             )}
             <Link
               href={`/company/${booking.business.slug}`}
               className="block w-full text-center py-2.5 rounded-[var(--radius-md)] border-2 border-[var(--color-border)] text-[var(--color-text-secondary)] text-sm font-medium hover:bg-[var(--color-surface-2)] transition-colors"
             >
-              العودة إلى الصفحة الرئيسية
+              {/* It goes to the business's page, and now says so. */}
+              {en ? "Back to the business's page" : "ارجع لصفحة المكان"}
             </Link>
           </div>
         )}
@@ -160,10 +172,12 @@ export default async function PaymentReturnPage({
               <XCircle size={44} className="text-[var(--color-danger)]" />
             </div>
             <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
-              فشلت عملية الدفع
+              {en ? "The payment didn't go through" : "الدفع ماتمّش"}
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
-              لم يتم استكمال الدفع. الحجز لم يُؤكَّد. يمكنك المحاولة مرة أخرى.
+              {en
+                ? "The payment wasn't completed, so the booking isn't confirmed. You can try again."
+                : "الدفع ماكملش، فالحجز ماتأكدش. تقدر تجرب تاني."}
             </p>
             {booking?.business?.slug && (
               <Link
@@ -171,7 +185,7 @@ export default async function PaymentReturnPage({
                 className="flex items-center justify-center gap-2 w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
               >
                 <ArrowRight size={15} />
-                حاول الحجز مجددًا
+                {en ? "Try booking again" : "جرّب تحجز تاني"}
               </Link>
             )}
           </div>
@@ -184,19 +198,55 @@ export default async function PaymentReturnPage({
               <Clock size={44} className="text-[var(--color-star)]" />
             </div>
             <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
-              جارٍ التحقق من الدفع…
+              {en ? "Checking your payment…" : "بنتأكد من الدفع…"}
             </h1>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
               {paymobSuccess
-                ? "تم استلام الدفعة ونحن نتحقق منها. يرجى الانتظار لحظة."
-                : "لم نتلقَّ تأكيد الدفع بعد. إن كنت قد أتممت الدفع، سيُؤكَّد الحجز خلال دقائق."}
+                ? en
+                  ? "We received the payment and are checking it. Please wait a moment."
+                  : "الدفعة وصلت وبنتأكد منها. استنى لحظة."
+                : en
+                  ? "We haven't had the payment confirmation yet. If you paid, the booking will be confirmed within minutes."
+                  : "لسه ماوصلناش تأكيد الدفع. لو دفعت، الحجز هيتأكد خلال دقايق."}
             </p>
             {booking.accessToken && (
               <Link
                 href={`/booking/${booking.accessToken}`}
                 className="block w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
               >
-                تحقق من حالة الحجز
+                {en ? "Check the booking's status" : "شوف حالة الحجز"}
+              </Link>
+            )}
+          </div>
+        )}
+
+        {/* ── Any other state: say where the booking stands ── */}
+        {isOther && booking && (
+          <div className="card text-center p-8">
+            <div className="w-20 h-20 bg-[var(--color-surface-3)] rounded-full flex items-center justify-center mx-auto mb-5">
+              <Clock size={44} className="text-[var(--color-faint)]" />
+            </div>
+            <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
+              {en ? "This booking is no longer awaiting payment" : "الحجز ده مش مستني دفع"}
+            </h1>
+            <p className="text-sm text-[var(--color-text-muted)] mb-6 leading-relaxed">
+              {en
+                ? "Its status changed (for example, it was cancelled or completed). Open the booking to see where it stands."
+                : "حالته اتغيّرت (مثلًا اتلغى أو خلص). افتح الحجز عشان تعرف وصل لفين."}
+            </p>
+            {booking.accessToken ? (
+              <Link
+                href={`/booking/${booking.accessToken}`}
+                className="block w-full text-center py-3 rounded-[var(--radius-md)] bg-[var(--color-brand)] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+              >
+                {en ? "Open the booking" : "افتح الحجز"}
+              </Link>
+            ) : (
+              <Link
+                href={`/company/${booking.business.slug}`}
+                className="block w-full text-center py-2.5 rounded-[var(--radius-md)] border-2 border-[var(--color-border)] text-[var(--color-text-secondary)] text-sm font-medium hover:bg-[var(--color-surface-2)] transition-colors"
+              >
+                {en ? "Go to the business's page" : "روح لصفحة المكان"}
               </Link>
             )}
           </div>
@@ -209,10 +259,12 @@ export default async function PaymentReturnPage({
               <XCircle size={44} className="text-[var(--color-faint)]" />
             </div>
             <h1 className="text-xl font-extrabold text-[var(--color-text-primary)] mb-2">
-              الحجز غير موجود
+              {en ? "Booking not found" : "الحجز مش موجود"}
             </h1>
             <p className="text-sm text-[var(--color-text-muted)]">
-              تعذّر العثور على تفاصيل الحجز. تحقق من رابط الحجز أو تواصل مع الدعم.
+              {en
+                ? "We couldn't find this booking. Check the booking link or contact support."
+                : "ماقدرناش نلاقي الحجز. راجع لينك الحجز أو كلّم الدعم."}
             </p>
           </div>
         )}

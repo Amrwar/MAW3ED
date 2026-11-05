@@ -12,7 +12,13 @@ import { cairoDateString, dateToUTC } from "@/lib/bookings/instants";
  */
 export async function GET(req: Request) {
   return businessHandle("waitlist GET", async () => {
-    const { business } = await requireBusinessAccess("bookings.readAll");
+    const { business, actor } = await requireBusinessAccess("bookings.readAll");
+    // Waitlist entries carry no branch, so a delegation limited to some
+    // branches cannot be narrowed to them: it would read every branch's
+    // waiting customers, names and phones (final audit F-21).
+    if (actor.role === "DELEGATE" && actor.delegation?.branchIds) {
+      return err("قايمة الانتظار للنشاط كله، والصلاحية دي لفروع معيّنة بس", 403, { code: "branch-limited" });
+    }
     const date = new URL(req.url).searchParams.get("date") ?? cairoDateString();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err("تاريخ غير صحيح", 422);
     const rows = await db.slotWaitlistEntry.findMany({

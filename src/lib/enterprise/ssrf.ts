@@ -1,13 +1,17 @@
 import { lookup } from "dns/promises";
-import { isIP } from "net";
+import { lookup as lookupCb, type LookupAddress } from "dns";
+import { isIP, type LookupFunction } from "net";
+import { request as httpsRequest } from "https";
+import { request as httpRequest } from "http";
 
 /**
  * A webhook URL may only point at the public internet: https, no
  * credentials in it, the default port, and a host that resolves only to
  * public addresses. Checked when the endpoint is saved and again before
- * every send (an address can change). Residual risk — a host that changes
- * its answer between the check and the connection (DNS rebinding) — is
- * recorded in docs/enterprise/INTEGRATION_GUIDE.md.
+ * every send (an address can change). The send itself (postPinned) checks
+ * the address it actually connects to, so a host that answers one address
+ * for the check and another for the connection (DNS rebinding) is refused
+ * (final audit F-23).
  */
 
 export type UrlCheck = { ok: true; url: URL } | { ok: false; why: string };
@@ -41,6 +45,11 @@ export function isPrivateAddress(ip: string): boolean {
     const s = ip.toLowerCase();
     if (s === "::" || s === "::1") return true;
     if (s.startsWith("::ffff:")) return isPrivateAddress(s.slice(7));
+    // Translated or embedded IPv4 (NAT64 64:ff9b::/96, 6to4 2002::/16,
+    // IPv4-compatible ::a.b.c.d / ::7f00:1) can reach an internal IPv4
+    // address: refused outright (final audit F-23).
+    if (s.startsWith("64:ff9b:") || s.startsWith("2002:")) return true;
+    if (/^::[0-9a-f.:]+$/.test(s)) return true;
     return /^(fc|fd|fe8|fe9|fea|feb|ff)/.test(s);
   }
   return true; // not an address at all: refuse
@@ -78,4 +87,52 @@ export async function checkPublicUrl(raw: string): Promise<UrlCheck> {
     return { ok: false, why: "unresolvable" };
   }
   return shape;
+}
+
+/**
+ * A dns.lookup for http(s).request that refuses private answers. Used as the
+ * socket's own lookup, the address checked is the address connected to.
+ */
+export const publicOnlyLookup: LookupFunction = (hostname, options, callback) => {
+  lookupCb(hostname, { ...options, all: true, verbatim: true }, (e, addresses) => {
+    if (e) return callback(e, "", 4);
+    const list = addresses as unknown as LookupAddress[];
+    if (!privateTargetsAllowed() && (list.length === 0 || list.some((a) => isPrivateAddress(a.address)))) {
+      return callback(Object.assign(new Error("private-address"), { code: "EPRIVATE" }), "", 4);
+    }
+    if (options.all) return (callback as unknown as (err: null, a: LookupAddress[]) => void)(null, list);
+    return callback(null, list[0].address, list[0].family);
+  });
+};
+
+/**
+ * POSTs `body` and returns the status code, connecting only to a public
+ * address (checked at connect time), never following redirects, and giving
+ * up after `timeoutMs` in total — however slowly the other end trickles
+ * its answer. The response body is never read: the socket is closed as soon
+ * as the status line arrives.
+ */
+export function postPinned(url: URL, headers: Record<string, string>, body: string, timeoutMs: number): Promise<number> {
+  const request = url.protocol === "http:" ? httpRequest : httpsRequest;
+  return new Promise((resolve, reject) => {
+    const req = request(
+      url,
+      { method: "POST", headers: { ...headers, "Content-Length": String(Buffer.byteLength(body)) }, lookup: publicOnlyLookup, timeout: timeoutMs },
+      (res) => {
+        clearTimeout(deadline);
+        resolve(res.statusCode ?? 0);
+        res.destroy();
+      },
+    );
+    // A total deadline: the socket `timeout` above only fires when the
+    // connection goes idle, which a receiver sending a byte at a time never
+    // lets happen.
+    const deadline = setTimeout(() => req.destroy(Object.assign(new Error("timeout"), { name: "TimeoutError" })), timeoutMs);
+    req.on("timeout", () => req.destroy(Object.assign(new Error("timeout"), { name: "TimeoutError" })));
+    req.on("error", (e) => {
+      clearTimeout(deadline);
+      reject(e);
+    });
+    req.end(body);
+  });
 }

@@ -7,7 +7,7 @@ import { openWith, sealWith } from "@/lib/access/crypto";
 import { contractInForce } from "./auth";
 import { orgAudit, type Actor } from "./clients";
 import { isWebhookEvent } from "./scopes";
-import { checkPublicUrl } from "./ssrf";
+import { checkPublicUrl, postPinned } from "./ssrf";
 import { seesBookings, visibleBusinesses } from "./visibility";
 
 /**
@@ -324,11 +324,24 @@ export async function processDeliveries(now: Date = new Date(), limit = 50, budg
  * a suspension or a RESERVATIONS grant withdrawn after an event was queued
  * stops it going out.
  */
-async function orgAllows(organizationId: string, now: Date): Promise<{ ok: boolean; bookingsFor: Set<string> }> {
+/**
+ * What the organization may still be sent: bookings per business, with the
+ * branches (null = every branch). Branches matter too — a grant narrowed
+ * from the whole business to one branch must stop queued deliveries about
+ * the other branches (final audit F-24).
+ */
+async function orgAllows(organizationId: string, now: Date): Promise<{ ok: boolean; bookingsFor: Map<string, string[] | null> }> {
   const org = await db.organization.findUnique({ where: { id: organizationId }, select: { status: true, contract: true } });
-  if (!org || org.status !== "APPROVED" || !contractInForce(org.contract, now)) return { ok: false, bookingsFor: new Set() };
+  if (!org || org.status !== "APPROVED" || !contractInForce(org.contract, now)) return { ok: false, bookingsFor: new Map() };
   const visible = await visibleBusinesses(organizationId, now);
-  return { ok: true, bookingsFor: new Set(visible.filter(seesBookings).map((v) => v.businessId)) };
+  return { ok: true, bookingsFor: new Map(visible.filter(seesBookings).map((v) => [v.businessId, v.bookings!.branchIds])) };
+}
+
+/** Pure: may a booking event at this business and branch still go out? */
+export function bookingStillVisible(bookingsFor: Map<string, string[] | null>, businessId: string, branchId: string | null | undefined): boolean {
+  if (!bookingsFor.has(businessId)) return false;
+  const branches = bookingsFor.get(businessId);
+  return branches === null || branches === undefined ? true : !!branchId && branches.includes(branchId);
 }
 
 export async function sendDelivery(
@@ -359,10 +372,11 @@ export async function sendDelivery(
     allows = await orgAllows(ep.organizationId, now);
     cache.set(ep.organizationId, allows);
   }
-  const businessId = (d.payload as { businessId?: string } | null)?.businessId;
+  const payload = d.payload as { businessId?: string; branchId?: string | null } | null;
+  const businessId = payload?.businessId;
   const notAllowed = !allows.ok
     ? "organization no longer allowed (status or contract)"
-    : d.eventType.startsWith("booking.") && businessId && !allows.bookingsFor.has(businessId)
+    : d.eventType.startsWith("booking.") && businessId && !bookingStillVisible(allows.bookingsFor, businessId, payload?.branchId)
     ? "booking access withdrawn"
     : null;
   if (notAllowed) {
@@ -385,11 +399,12 @@ export async function sendDelivery(
       const body = JSON.stringify({ id: d.eventId, type: d.eventType, createdAt: d.createdAt.toISOString(), data: d.payload });
       const ts = Math.floor(now.getTime() / 1000);
       try {
-        const res = await fetch(checked.url, {
-          method: "POST",
-          redirect: "manual",
-          signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
-          headers: {
+        // Pinned: the address is checked again as the socket connects, so
+        // a rebinding DNS answer cannot turn this into a request to an
+        // internal address. Redirects are never followed (final audit F-23).
+        code = await postPinned(
+          checked.url,
+          {
             "Content-Type": "application/json",
             "User-Agent": "Maw3ed-Webhooks/1",
             "Maw3ed-Event-Id": d.eventId,
@@ -397,11 +412,12 @@ export async function sendDelivery(
             "Maw3ed-Signature": signatureHeader(body, ts, usable),
           },
           body,
-        });
-        code = res.status;
-        await res.body?.cancel().catch(() => {});
+          SEND_TIMEOUT_MS,
+        );
       } catch (e) {
-        error = e instanceof Error ? e.name === "TimeoutError" ? "timeout" : e.message.slice(0, 200) : "network-error";
+        error = e instanceof Error
+          ? e.name === "TimeoutError" ? "timeout" : (e as { code?: string }).code === "EPRIVATE" ? "blocked: private-address" : e.message.slice(0, 200)
+          : "network-error";
       }
     }
   }

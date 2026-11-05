@@ -6,6 +6,7 @@ import {
   closeWebhookEvent,
   releaseWebhookEvent,
   failPayment,
+  lockPayment,
   markRefundOutcome,
 } from "@/lib/payments/ledger";
 import { activateSubscription, releasePendingPlan } from "@/lib/payments/subscription-settle";
@@ -157,23 +158,49 @@ async function onRefund(charge: Charge): Promise<string> {
   // back ("uncertain": the reservation was kept, the row left PENDING) are
   // settled now that Stripe reports the money as returned — the oldest
   // first, as far as what Stripe reports covers them.
-  const pending = await db.refund.findMany({
-    where: { paymentId: payment.id, status: "PENDING" },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, amountCents: true },
+  // In one transaction under the payment's row lock: two charge.refunded
+  // events for the same charge (different event ids, so both are processed)
+  // must not both see the same gap and each write a row for it (final audit
+  // review of F-15).
+  const settled = await db.$transaction(async (tx) => {
+    await lockPayment(tx, payment.id);
+    const pending = await tx.refund.findMany({
+      where: { paymentId: payment.id, status: "PENDING" },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, amountCents: true },
+    });
+    const confirmedByAdmin = await tx.refund.aggregate({
+      where: { paymentId: payment.id, status: "SUCCEEDED" },
+      _sum: { amountCents: true },
+    });
+    let room = refunded - (confirmedByAdmin._sum.amountCents ?? 0);
+    let settled = 0;
+    for (const r of pending) {
+      if (r.amountCents > room) break;
+      await tx.refund.update({ where: { id: r.id }, data: { status: "SUCCEEDED", failureReason: null } });
+      room -= r.amountCents;
+      settled++;
+    }
+    // What Stripe reports beyond every refund we have a row for was refunded
+    // outside Maw3ed (the Stripe Dashboard). It gets its own row, so the
+    // Refund rows add up to refundedCents and reconciliation does not report
+    // a permanent refund-sum discrepancy (final audit F-15). Idempotent: a
+    // redelivery finds the sum already matching and adds nothing.
+    if (room > 0) {
+      await tx.refund.create({
+        data: {
+          paymentId: payment.id,
+          amountCents: room,
+          status: "SUCCEEDED",
+          providerRefundId: charge.id ?? null,
+          reason: "Refunded outside Maw3ed (reported by Stripe)",
+          actorName: "Stripe",
+        },
+      });
+      settled++;
+    }
+    return settled;
   });
-  const confirmedByAdmin = await db.refund.aggregate({
-    where: { paymentId: payment.id, status: "SUCCEEDED" },
-    _sum: { amountCents: true },
-  });
-  let room = refunded - (confirmedByAdmin._sum.amountCents ?? 0);
-  let settled = 0;
-  for (const r of pending) {
-    if (r.amountCents > room) break;
-    await db.refund.update({ where: { id: r.id }, data: { status: "SUCCEEDED", failureReason: null } });
-    room -= r.amountCents;
-    settled++;
-  }
   if (changed === 0 && settled === 0) {
     // Nothing new, but the status may still lag a reservation that has
     // now been confirmed by Stripe's own figure.

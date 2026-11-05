@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { currentCaller, err } from "@/lib/api";
 import { can } from "@/lib/admin/permissions";
 import { authorityOver, venueCan, type RoleGrant, type VenueAction, type VenueAuthority } from "./access";
+import { BLOCKED_ORG_STATUSES } from "./public";
 
 /**
  * The server-side gate for every venue route and page.
@@ -58,6 +59,14 @@ export async function requireVenueAccess(
     select: { id: true, organizationId: true, compoundId: true, status: true, isPublished: true },
   });
   if (!venue) throw notFound();
+  // A suspended or rejected organization's people lose their venues with
+  // it: the desk shows visitors' names, and passes, decisions and overrides
+  // are all run from here (final audit F-22). The platform keeps access, to
+  // inspect and to restore.
+  if (!caller.platform && venue.organizationId) {
+    const org = await db.organization.findUnique({ where: { id: venue.organizationId }, select: { status: true } });
+    if (org && (BLOCKED_ORG_STATUSES as readonly string[]).includes(org.status)) throw notFound();
+  }
   const authority = authorityOver(caller, venue);
   if (!venueCan(authority, action)) throw notFound();
   return { caller, venue, authority: authority! };

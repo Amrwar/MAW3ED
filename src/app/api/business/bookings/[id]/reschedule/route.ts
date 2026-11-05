@@ -6,7 +6,8 @@ import { bookingScope, requireBusinessAccess } from "@/lib/business-access";
 import { loadAvailability } from "@/lib/bookings/schedule";
 import { inBookingQueue } from "@/lib/bookings/queue";
 import { queueBusyResponse } from "@/lib/bookings/busy";
-import { bookingInstants, dateToUTC } from "@/lib/bookings/instants";
+import { bookingInstants, dateToUTC, wallToInstant } from "@/lib/bookings/instants";
+import { EntitlementGone, moveEntitlement } from "@/lib/entitlements/ledger";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
 import { notifyLater } from "@/lib/notifications";
 import { log } from "@/lib/logger";
@@ -113,21 +114,29 @@ export async function POST(req: Request, { params }: Params) {
       // turned back into a live booking at a new time. A booking that
       // had nobody, or no table, is given the one free at the new time.
       // In the business's booking queue, like every write of a time.
-      const moved = await inBookingQueue(booking.businessId, (tx) =>
-        tx.booking.updateMany({
+      const moved = await inBookingQueue(booking.businessId, async (tx) => {
+        const result = await tx.booking.updateMany({
           where: { id: booking.id, status: booking.status },
           data: {
             date: dateToUTC(date), startTime, endTime, startsAt, endsAt, customerReminderSentAt: null,
             staffMemberId: booking.staffMemberId ?? availability.assignments[startTime] ?? null,
             resourceId: booking.resourceId ?? availability.resourceAssignments[startTime] ?? null,
           },
-        }),
-      );
+        });
+        // After the move, and only if it happened (final audit F-11): a
+        // refusal rolls the move back; a booking that changed moves nothing.
+        // Entitlements are dated by the real instant, not the wall-clock column.
+        if (result.count === 1) await moveEntitlement(tx, booking.id, wallToInstant(date, timeToMinutes(startTime)));
+        return result;
+      });
       if (moved.count === 0) {
         return err("الحجز اتغيّر دلوقتي، حدّث الصفحة وجرّب تاني", 409, { code: "changed" });
       }
     } catch (e) {
       const message = e instanceof Prisma.PrismaClientKnownRequestError ? e.message : String(e);
+      if (e instanceof EntitlementGone) {
+        return err("الباقة أو الاشتراك مش بيغطي الميعاد الجديد، اختر وقت تاني", 409, { code: "entitlement-gone" });
+      }
       if (message.includes("booking_no_overlap")) {
         return err("حد تاني حجز الموعد ده دلوقتي، اختر وقت تاني", 409, { code: "slot-taken" });
       }

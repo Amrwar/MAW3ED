@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import ErrorPage from "@/components/shared/ErrorPage";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -8,10 +10,16 @@ interface Props {
   reset: () => void;
 }
 
-export default function GlobalError({ error, reset }: Props) {
+export default function RouteError({ error, reset }: Props) {
   const { lang } = useLanguage();
-  // Log to console so it's visible in dev; replace with Sentry/etc. in production
-  console.error("[GlobalError]", error);
+
+  // Render errors caught here never reached Sentry: the boundary only
+  // logged to the console (final audit F-35). Once per error; without a
+  // DSN, Sentry is a no-op.
+  useEffect(() => {
+    console.error("[RouteError]", error);
+    Sentry.captureException(error);
+  }, [error]);
 
   return (
     <ErrorPage
