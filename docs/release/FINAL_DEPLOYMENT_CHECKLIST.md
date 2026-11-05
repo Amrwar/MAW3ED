@@ -18,7 +18,7 @@ write "done" without it.
 | 8 | **Run "Database backup" by hand** (Actions → Database backup → Run workflow) and confirm an artifact `maw3ed-db-<stamp>` exists (F-01) | Owner | **Done 2026-11-05**: run 42083812601, `maw3ed-db-20261105-1823` |
 | 9 | Restore that artifact into a scratch database once (`scripts/backup-restore-drill.sh`); compare table counts | Owner / Engineering | **Done 2026-11-05**: 0 errors |
 | 10 | Uptime monitor on `https://www.maw3ed.net/api/health` (200 healthy, 503 database down); alert on two consecutive failures | Owner | **Done**: `.github/workflows/uptime.yml`, every 5 min (GitHub may run it late); opens an `uptime` issue when down, closes it when back. Optional: a 1-minute external monitor (UptimeRobot or Better Stack, owner's account) |
-| 11 | Sentry alert rules (see `POST_LAUNCH_MONITORING.md`) | Owner | Rule list |
+| 11 | Sentry alert rules: the ten rules listed in `POST_LAUNCH_MONITORING.md` (1–5 before launch); confirm six green Cron Monitors a day after deploy | Owner | Rule list; Crons page |
 
 ## B. Every production deploy
 
