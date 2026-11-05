@@ -4,6 +4,10 @@ Final audit, 2026-11-05. Every defect this audit confirmed, plus the older
 open items it re-checked. The fixes are on branch `final-audit`: commit
 `e79f2a1`, plus review fixes after it. Each fix has a regression test that
 was run with the fix removed and seen to fail, except where noted.
+The fixes were then reviewed independently (`/code-review`). Ten findings: nine fixed, among them a
+reschedule that could commit half a move, NaN money tiles, a refund-row race, and a
+webhook send a slow receiver could hold open. One was rejected (it would have dated
+entitlements by the wall-clock column).
 
 Severity: **P0** data loss, security breach or money wrong in normal use ·
 **P1** serious or likely production failure · **P2** real, limited ·
@@ -16,7 +20,7 @@ Severity: **P0** data loss, security breach or money wrong in normal use ·
 | P0 | 1 (legal text) | the factual part (Stripe disclosed, F-30) | 1: operator identity, retention, minimum age and money terms (F-30b, owner/counsel) |
 | P1 | 3 (F-01, F-10, F-20) | 3 | 0 (F-01 and F-10 still need an external confirmation) |
 | P2 | 19 | 17 | 2 (S-02 decision, M-03 latent) |
-| P3 | 30 | 19 | 11 |
+| P3 | 30 | 18 | 12 (one, S-09, fixed then reverted on review: the fix was worse than the risk) |
 
 Plus one test defect (T-01, fixed), one accepted design (S-04), one decision (M-07) and one blocked CI job (CI-01).
 
@@ -32,14 +36,14 @@ Plus one test defect (T-01, fixed), one accepted design (S-04), one decision (M-
 | F-11 | P2 | Entitlements | Rescheduling let a package be used after expiry, or stacked membership visits into one month | Reschedule ignored `EntitlementUse` | `moveEntitlement` in the transaction; 409 `entitlement-gone` | `entitlements/move.db.test.ts` (calls the new function; route wiring type-checked) |
 | F-12 | P2 | Discounts | A booking revived by a late payment kept its discount with no redemption, so caps could be exceeded | Revival re-took points only | Discount re-claimed; over-cap flagged | `webhooks/paymob/route.db.test.ts` |
 | F-13 | P2 | Payments | Overlapping decline and success could leave a paid payment FAILED; double settle | Read-then-write without a lock | `SELECT … FOR UPDATE` in settle, fail, reap | `payments/ledger-race.db.test.ts` |
-| F-14 | P2 | Payments | An owner could open several payable links for one balance; overpayment not flagged | No lock or live-link check in link mode | Advisory lock, one live link, `payment.overpaid` audit | `business/bookings/[id]/payments/route.db.test.ts` |
+| F-14 | P2 | Payments | An owner could open several payable links for one balance; overpayment not flagged | No lock or live-link check in link mode | Advisory lock; a second link within 10 min is refused (double click); later links supersede the old one; a row Paymob never opened blocks nothing; `payment.overpaid` audit | `business/bookings/[id]/payments/route.db.test.ts` |
 | F-15 | P3 | Reconciliation | Stripe Dashboard refunds showed as a permanent discrepancy | No `Refund` row | Row inserted for the difference | `webhooks/stripe/route.db.test.ts` |
 | F-16 | P3 | Plans | Bookings 00:00–02:00 Cairo on the 1st counted toward the previous month | UTC month | Cairo month bounds | `bookings/create-month-key.test.ts` |
 | F-17 | P3 | Payments | A hung Paymob call held a booking until the 2 h reaper | No timeout | 15 s timeouts | `paymob-order.test.ts` |
 | F-18 | P3 | Booking | An idempotency key could return another business's booking (with its token) | Unscoped lookup | Scoped to the business | `create-month-key.test.ts` |
 | F-20 | P1 | Organizations | A REPORTS-only delegate read revenue and staff commission | Route guarded by `reports.read` alone | Money only with `finance.read` | `business/reports/operations/route.test.ts` |
 | F-21 | P2 | Organizations | A branch-limited delegate read the whole waitlist (names, phones) | Entries carry no branch | Refused for branch-limited delegations | route reviewed; no route test |
-| F-22 | P2 | Venues | A suspended organization still ran its venues' desk, decisions and passes | Authority from role rows only | Organization must be APPROVED (guard, passes, public) | `venues/guard-suspended.test.ts` |
+| F-22 | P2 | Venues | A suspended organization still ran its venues' desk, decisions and passes | Authority from role rows only | A SUSPENDED or REJECTED organization stops its venues (guard, passes, public). Not "anything but APPROVED": operators the platform adds keep PENDING (caught by `phase22.db.test`) | `venues/guard-suspended.test.ts` |
 | F-23 | P2 | Webhooks | DNS rebinding past the SSRF check; ping as a probe; embedded-IPv4 IPv6 | Check and fetch resolved separately | Pinned lookup at connect; ping 10/h; ranges | `enterprise/ssrf-pinned.test.ts` |
 | F-24 | P3 | Webhooks | Queued deliveries ignored a grant narrowed to some branches | Business-only re-check | Branches compared | `enterprise/webhook-branches.test.ts` |
 | F-25 | P3 | Organizations | Expired grants / suspended organization still saw package and plan figures | Filters lacked expiry and status | Live grants only | `organizations/live-grants.test.ts` |
@@ -59,7 +63,6 @@ Plus one test defect (T-01, fixed), one accepted design (S-04), one decision (M-
 | S-01 | P2 | Auth | Distributed password guessing on mobile; spraying on web | One-sided limits | Per account and per caller on both | `rate-limit.test.ts` |
 | S-03 | P3 | Staff | Create linked another business's services | Missing filter | Filtered | `business/staff/route.test.ts` |
 | S-08 | P3 | Privacy | Bearer tokens in URLs sent to Sentry | Scrubber covered email/phone only | Paths and query secrets redacted | `sentry-scrub.test.ts` |
-| S-09 | P3 | Auth | Reset emails could flood one inbox | Per-IP limit only | Per address too | `rate-limit.test.ts` |
 | S-10 | P3 | Verification | Changing the WhatsApp number kept "verified" and the badge (also P17-26) | Not cleared | Cleared on a real change | `business/route.test.ts` |
 | M-04 | P3 | Mobile | Session expiry left the last person's drafts and searches | Only sign-out cleared them | Cleared on expiry too | typecheck + mobile tests (no component test) |
 | M-05 | P3 | Mobile | A long Android device name blocked sign-in (422) | `max(80)` refusal | Cut to 80 | type-checked |
@@ -77,6 +80,7 @@ Plus one test defect (T-01, fixed), one accepted design (S-04), one decision (M-
 | S-06 | P3 | Push to a logged-out device if unregister failed | Logout offline | No token↔session link | Bind tokens | Accept |
 | S-07 | P3 | One OTP for all purposes | — | No purpose column | `purpose` | Accept |
 | S-11 | P3 | Sign-up enumeration | Register a known email | 409 message | Generic answer | Accept |
+| S-09 | P3 | Many callers could send reset emails to one inbox | Request resets from many IPs | Per-IP limit only | A per-address limit was added, then removed on review: a stranger could use it up and silently stop the owner's own resets | Accept (bounded per IP) |
 | M-06 | P3 | iOS staging/dev builds show "Maw3ed" | Install both | Locale `CFBundleDisplayName` | Per-environment name | Accept |
 | M-07 | Decision | "preview" mobile profile talks to production | `eas.json` | Intentional per docs | Confirm | Owner |
 | D-01 | P3 | `db:push` would drop SQL-only indexes | Run it | Prisma schema lacks them | Never run against real DBs (documented) | Accept |

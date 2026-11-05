@@ -25,7 +25,7 @@ latent flag). The P3 items are listed below with their owners.
 |---|---|---|---|---|
 | F-20 | P1 | `/api/business/reports/operations` gave revenue and per-staff commission to anyone with `reports.read`, including a MANAGED organization with REPORTS, which the database bars from FINANCE | Money only with `finance.read`; others get counts (`withoutMoney`) | `api/business/reports/operations/route.test.ts` |
 | F-21 | P2 | A branch-limited delegate read the whole business's waitlist, with names and phones | Refused for branch-limited delegations (entries carry no branch) | covered by route review; `qa-phase24`/`22c` delegate checks unchanged |
-| F-22 | P2 | A suspended organization's people kept its venues: desk (visitor names), decisions, overrides, pass issuing, public page | Venue guard, pass decisions and the public venue filter require the owning organization APPROVED | `venues/guard-suspended.test.ts` |
+| F-22 | P2 | A suspended organization's people kept its venues: desk (visitor names), decisions, overrides, pass issuing, public page | Venue guard, pass decisions and the public venue filter stop a SUSPENDED or REJECTED organization's venues | `venues/guard-suspended.test.ts` |
 | F-23 | P2 | Webhook SSRF guard open to DNS rebinding; ping reported results on demand; NAT64 / 6to4 / IPv4-compatible IPv6 not refused | Send connects only through a lookup that refuses private answers (`postPinned`); ping limited to 10/h per endpoint; ranges added | `enterprise/ssrf-pinned.test.ts` |
 | F-24 | P3 | Queued webhook deliveries ignored a grant narrowed to some branches | Send-time re-check compares branches | `webhook-branches.test.ts` |
 | F-25 | P3 | Organization package report and integrations "subscriptions" ignored expiry and organization status | Live grants of an approved organization only | `organizations/live-grants.test.ts` |
@@ -34,7 +34,6 @@ latent flag). The P3 items are listed below with their owners.
 | S-01 | P2 | Mobile password login limited per IP only; web login per email only | Both paths limited per account (shared bucket) and per caller across accounts | `rate-limit.test.ts` |
 | S-03 | P3 | Staff create linked another business's services | Filtered to the business's own services, as the update already was | `api/business/staff/route.test.ts` |
 | S-08 | P3 | Sentry received booking, pass, waitlist, check-in and reset tokens in URLs | Path and query secrets redacted before sending | `sentry-scrub.test.ts` |
-| S-09 | P3 | Reset emails throttled per IP only (inbox flooding) | Per address too, answered as success | `rate-limit.test.ts` |
 | S-10 | P3 | Changing the WhatsApp number kept "phone verified" and the badge | Verification cleared when the number really changes (normalised); badge re-derived | `api/business/route.test.ts` |
 | F-02 | P2 | `Permissions-Policy: camera=()` blocked the check-in scanner (not a security hole; a hardening setting that broke a feature) | `camera=(self)` | `security/permissions-policy.test.ts` |
 
@@ -47,6 +46,7 @@ latent flag). The P3 items are listed below with their owners.
 | S-05 | P3 | A mobile access token works for up to 15 minutes after logout or revocation | Bounded: business, admin, organization and venue guards re-read the database | `sid` in the access token, checked against `MobileSession` | Accept for launch |
 | S-06 | P3 | Per-device logout leaves that device's push token if the app's unregister call fails | The app unregisters before logout; server-side only on failure | Bind `DeviceToken` to `MobileSession` | Accept |
 | S-07 | P3 | One one-time code works for every purpose (booking proof, sign-in, deletion) | Social engineering ("read me your booking code") | `purpose` column on `LoginCode` | Accept; message wording warns |
+| S-09 | P3 | Reset emails limited per IP only (one inbox can be flooded from many IPs) | Annoyance | A per-address limit was tried and removed on review: a stranger could use it up and silently stop the owner's resets | Accept |
 | S-11 | P3 | Sign-up says an email is already registered | Enumeration, throttled 5/h per IP | Generic answer plus email | Accept |
 | S-04 | — | Email verification links are reusable until expiry | Deliberate: mail scanners open links first; verifying is idempotent; profile changes delete pending links | — | Accepted by design |
 | S-07b | P3 | Mobile: 6 high advisories in the Expo toolchain (`@expo/cli`, `expo-router` → `query-string`/`decode-uri-component`) | Build tooling; deep-link URL parsing | Next Expo SDK | Tracked as S-07 in `SECURITY_REPORT.md` |
