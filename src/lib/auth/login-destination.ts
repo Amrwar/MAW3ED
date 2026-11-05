@@ -40,6 +40,25 @@ export function loginDestination(
   return "/dashboard";
 }
 
+/**
+ * Where "Continue with Google" on /login returns to: the same return
+ * addresses loginDestination honours, decided before anybody is signed
+ * in, so without knowing whether they own a business. A /dashboard path
+ * is kept either way; the dashboard sends an account without a business
+ * on to onboarding itself. Null means "no return address": go back to
+ * /login and let its layout send the account home.
+ */
+export function googleReturnPath(search: string, origin: string): string | null {
+  const params = new URLSearchParams(search);
+  for (const raw of [params.get("next"), params.get("callbackUrl")]) {
+    const path = returnPath(raw, origin);
+    if (!path) continue;
+    const bare = path.split("?")[0].replace(/^\/en(?=\/|$)/, "") || "/";
+    if (/^\/dashboard(\/|$)/.test(bare) || RETURNABLE.some((r) => r.test(bare))) return path;
+  }
+  return null;
+}
+
 /** A same-site path (with its query) from `next` or `callbackUrl`, else null. */
 function returnPath(raw: string | null, origin: string): string | null {
   if (!raw) return null;

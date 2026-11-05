@@ -499,6 +499,7 @@ export const translations = {
         submit:       "أكّد الرقم",
         switching:    "الرقم ده عليه حساب بالفعل على موعد. بندخلك عليه دلوقتي...",
         failed:       "مقدرناش نضيف الرقم دلوقتي. جرّب تاني.",
+        switchFailed: "رقمك اتربط بحسابك على موعد، بس مقدرناش ندخلك عليه دلوقتي. دوس تاني عشان تكمّل بحساب Google.",
         ownerHint:    "عندك نشاط؟ لوحة التحكم مكانها زي ما هي.",
       },
       profile: {
@@ -860,11 +861,14 @@ export const translations = {
         orPhone:  "أو برقم الموبايل",
         failed:   "مقدرناش نفتح Google دلوقتي. جرّب تاني.",
       },
-      // What NextAuth's ?error= means, in words (it returns to /login).
+      // What a sign-in's ?error= means, in words (lib/auth/error-key.ts).
       errors: {
         title:                 "مقدرناش ندخلك",
+        customerHint:          "بتدخل كعميل؟ ادخل من صفحة العملاء",
         OAuthAccountNotLinked: "حساب Google ده مربوط بحساب تاني على موعد. ادخل بالطريقة اللي استخدمتها قبل كده.",
-        AccessDenied:          "مقدرناش ندخلك بحساب Google ده. لازم يكون إيميله متأكَّد عند Google. جرّب تاني، أو ادخل بطريقة تانية.",
+        AccessDenied:          "مقدرناش ندخلك بالطريقة دي. جرّب تاني، أو ادخل بطريقة تانية.",
+        EmailUnverified:       "الإيميل بتاع حساب Google ده مش متأكَّد عند Google. أكّده عندهم الأول، أو ادخل بطريقة تانية.",
+        SignedIn:              "في حساب تاني مسجّل دخول على المتصفح ده. اخرج منه الأول، وبعدين كمّل بحساب Google.",
         OAuthCallbackError:    "الدخول بحساب Google ماكملش. لو لغيته بالغلط، جرّب تاني.",
         Configuration:         "الدخول بالطريقة دي مش شغال دلوقتي. جرّب بعد شوية أو ادخل بطريقة تانية.",
         generic:               "حصلت مشكلة وإحنا بندخلك. حدّث الصفحة وجرّب تاني.",
@@ -1612,6 +1616,7 @@ export const translations = {
         submit:       "Confirm number",
         switching:    "This number already has a Maw3ed account. Signing you in to it now…",
         failed:       "We couldn't add the number right now. Try again.",
+        switchFailed: "Your number is now linked to your Maw3ed account, but we couldn't sign you in to it just now. Press the button to continue with Google.",
         ownerHint:    "Own a business? Your dashboard stays where it is.",
       },
       profile: {
@@ -1973,11 +1978,14 @@ export const translations = {
         orPhone:  "or use your mobile number",
         failed:   "We couldn't open Google right now. Try again.",
       },
-      // What NextAuth's ?error= means, in words (it returns to /login).
+      // What a sign-in's ?error= means, in words (lib/auth/error-key.ts).
       errors: {
         title:                 "We couldn't sign you in",
+        customerHint:          "Signing in as a customer? Use the customer sign-in",
         OAuthAccountNotLinked: "This Google account is linked to a different Maw3ed account. Sign in the way you did before.",
-        AccessDenied:          "We couldn't sign you in with this Google account. Its email needs to be verified with Google. Try again, or sign in another way.",
+        AccessDenied:          "We couldn't sign you in that way. Try again, or sign in another way.",
+        EmailUnverified:       "This Google account's email isn't verified with Google. Verify it there first, or sign in another way.",
+        SignedIn:              "Another account is signed in on this browser. Sign out of it first, then continue with Google.",
         OAuthCallbackError:    "Signing in with Google didn't finish. If you cancelled by mistake, try again.",
         Configuration:         "This way of signing in isn't working right now. Try again later or sign in another way.",
         generic:               "Something went wrong while signing you in. Refresh the page and try again.",

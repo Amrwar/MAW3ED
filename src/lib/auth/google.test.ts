@@ -13,9 +13,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   config: null as null | {
     providers: { id: string; options?: Record<string, unknown> }[];
-    callbacks: { signIn: (p: unknown) => Promise<boolean> | boolean };
+    callbacks: { signIn: (p: unknown) => Promise<boolean | string> | boolean | string };
   },
-  revoked: false,
+  signedInAs: null as string | null,
 }));
 
 vi.mock("next-auth", () => ({
@@ -25,10 +25,15 @@ vi.mock("next-auth", () => ({
   },
 }));
 vi.mock("@auth/prisma-adapter", () => ({ PrismaAdapter: () => ({}) }));
-vi.mock("@/lib/db", () => ({ db: {} }));
+vi.mock("@/lib/db", () => ({
+  db: { account: { findUnique: async () => null }, user: { findUnique: async () => null } },
+}));
 vi.mock("@/lib/rate-limit", () => ({ rateLimit: vi.fn(), callerKey: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ log: { warn: () => undefined, info: () => undefined, error: () => undefined } }));
-vi.mock("@/lib/auth/oauth-guard", () => ({ carriesRevokedSession: async () => state.revoked }));
+vi.mock("@/lib/auth/oauth-guard", () => ({
+  sessionCookieUser: async () => state.signedInAs,
+  signInDestination: async () => null,
+}));
 
 /** A Credentials provider carries the id it was given in its options until NextAuth merges them. */
 const idOf = (p: { id: string; options?: Record<string, unknown> }) => (p.options?.id as string | undefined) ?? p.id;
@@ -47,7 +52,7 @@ async function load(env: { id?: string; secret?: string }) {
 afterEach(() => {
   delete process.env.AUTH_GOOGLE_ID;
   delete process.env.AUTH_GOOGLE_SECRET;
-  state.revoked = false;
+  state.signedInAs = null;
 });
 
 describe("the Google provider", () => {
@@ -79,15 +84,15 @@ describe("the Google provider", () => {
 });
 
 describe("the signIn callback", () => {
-  const google = { provider: "google", type: "oidc" };
+  // The rules themselves are tested in google-signin.test.ts; this is
+  // that src/auth.ts applies them to Google and only to Google.
+  const google = { provider: "google", type: "oidc", providerAccountId: "g-1" };
 
   it("refuses a Google address Google has not verified", async () => {
     const { callbacks } = await load({ id: "i", secret: "s" });
-    expect(await callbacks.signIn({ account: google, profile: { email: "a@b.test", email_verified: false } })).toBe(false);
-    expect(await callbacks.signIn({ account: google, profile: { email: "a@b.test" } })).toBe(false);
+    expect(await callbacks.signIn({ account: google, profile: { email: "a@b.test", email_verified: false } })).toBe("/login?error=EmailUnverified");
     // A string "true" is not Google saying yes.
-    expect(await callbacks.signIn({ account: google, profile: { email: "a@b.test", email_verified: "true" } })).toBe(false);
-    expect(await callbacks.signIn({ account: google, profile: { email_verified: true } })).toBe(false);
+    expect(await callbacks.signIn({ account: google, profile: { email: "a@b.test", email_verified: "true" } })).toBe("/login?error=EmailUnverified");
   });
 
   it("accepts a verified one", async () => {
@@ -95,10 +100,10 @@ describe("the signIn callback", () => {
     expect(await callbacks.signIn({ account: google, profile: { email: "a@b.test", email_verified: true } })).toBe(true);
   });
 
-  it("refuses when the browser still carries a revoked session", async () => {
+  it("refuses while somebody else is signed in in the browser", async () => {
     const { callbacks } = await load({ id: "i", secret: "s" });
-    state.revoked = true;
-    expect(await callbacks.signIn({ account: google, profile: { email: "a@b.test", email_verified: true } })).toBe(false);
+    state.signedInAs = "person-a";
+    expect(await callbacks.signIn({ account: google, profile: { email: "a@b.test", email_verified: true } })).toBe("/login?error=SignedIn");
   });
 
   it("leaves the password and phone sign-ins to their own authorize()", async () => {

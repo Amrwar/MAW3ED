@@ -86,8 +86,15 @@ export async function linkVerifiedPhone(userId: string, phone: string): Promise<
 
 async function mergeInto(fromId: string, intoId: string): Promise<LinkPhoneResult> {
   return db.$transaction(async (tx) => {
-    // Read inside the transaction, so nothing can be added to G between
-    // deciding it is empty and deleting it.
+    // Lock G's row before judging it. A plain read inside the
+    // transaction is not enough under READ COMMITTED: onboarding could
+    // create G's business between our read and our delete, and the
+    // delete would cascade it away. Creating a business (or a staff
+    // seat, a venue role, an app session) takes a key-share lock on the
+    // User row it points at, which FOR UPDATE conflicts with. So either
+    // that insert commits first and the read below sees it, or it waits
+    // for us and then fails on the deleted user. Never a silent cascade.
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${fromId} FOR UPDATE`;
     const from = await tx.user.findUnique({
       where: { id: fromId },
       select: {

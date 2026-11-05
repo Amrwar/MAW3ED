@@ -45,6 +45,7 @@ export default function AddPhone({ isOwner }: { isOwner: boolean }) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [switchFailed, setSwitchFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const codeRef = useRef<HTMLInputElement>(null);
@@ -102,8 +103,7 @@ export default function AddPhone({ isOwner }: { isOwner: boolean }) {
         return;
       }
       if (data.merged) {
-        setSwitching(true);
-        await signIn("google", { redirectTo: "/account" });
+        await switchToMergedAccount();
         return;
       }
       // The token carries the phone; refresh it now rather than at its
@@ -114,6 +114,39 @@ export default function AddPhone({ isOwner }: { isOwner: boolean }) {
       setError(p.failed);
       setBusy(false);
     }
+  }
+
+  /**
+   * After a merge this account no longer exists; signing in with Google
+   * again opens the one that holds the number. If that cannot start (a
+   * network failure), say so and offer the button again rather than
+   * leave "signing you in…" on screen for good. The merge itself is
+   * done, so the retry is only the sign-in.
+   */
+  async function switchToMergedAccount() {
+    setSwitching(true);
+    setSwitchFailed(false);
+    try {
+      await signIn("google", { redirectTo: "/account" });
+    } catch {
+      setSwitching(false);
+      setSwitchFailed(true);
+      setBusy(false);
+    }
+  }
+
+  if (switchFailed) {
+    return (
+      <div className="card mx-auto w-full max-w-[28rem] p-7">
+        <h1 className="m-0 text-[1.5rem] font-bold text-[var(--color-ink)]">{p.title}</h1>
+        <div className="mt-5 flex flex-col gap-4">
+          <Alert tone="danger">{p.switchFailed}</Alert>
+          <Button type="button" variant="primary" fullWidth onClick={switchToMergedAccount}>
+            {t.auth.google.continue}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (

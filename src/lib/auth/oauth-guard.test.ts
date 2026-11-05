@@ -2,63 +2,61 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { encode } from "next-auth/jwt";
 
 /**
- * A Google sign-in in a browser that still carries a revoked session is
- * refused, because NextAuth would otherwise link the Google account to
- * the user that cookie names (lib/auth/oauth-guard.ts). The cookie is a
- * real NextAuth token, encoded the way NextAuth encodes it.
+ * Reading the browser's session cookie the way NextAuth does, to know
+ * whom a Google sign-in would be linked to (lib/auth/oauth-guard.ts).
+ * The cookie is a real NextAuth token, encoded as NextAuth encodes it.
  */
 
 const state = vi.hoisted(() => ({
   cookies: [] as { name: string; value: string }[],
-  user: null as null | { sessionsRevokedAt: Date | null },
+  users: new Set<string>(),
 }));
 
 vi.mock("next/headers", () => ({
-  cookies: async () => ({ getAll: () => state.cookies }),
+  cookies: async () => ({
+    getAll: () => state.cookies,
+    get: (name: string) => state.cookies.find((c) => c.name === name),
+  }),
 }));
 vi.mock("@/lib/db", () => ({
-  db: { user: { findUnique: async () => state.user } },
+  db: { user: { findUnique: async ({ where }: { where: { id: string } }) => (state.users.has(where.id) ? { id: where.id } : null) } },
 }));
 
-import { carriesRevokedSession, sessionCookieValue } from "./oauth-guard";
+import { sessionCookieUser, sessionCookieValue, signInDestination } from "./oauth-guard";
 
 const SECRET = "oauth-guard-test-secret-0123456789";
 const NAME = "authjs.session-token";
-const token = (signedInAt: number) => encode({ token: { sub: "u1", signedInAt }, secret: SECRET, salt: NAME });
+const token = (sub: string) => encode({ token: { sub, signedInAt: Date.now() }, secret: SECRET, salt: NAME });
 
 beforeEach(() => {
   process.env.AUTH_SECRET = SECRET;
   state.cookies = [];
-  state.user = null;
+  state.users = new Set(["u1"]);
 });
 
-describe("a Google sign-in and the session already in the browser", () => {
-  it("is fine with no session cookie at all", async () => {
-    expect(await carriesRevokedSession()).toBe(false);
+describe("whom the browser is signed in as", () => {
+  it("nobody without a session cookie", async () => {
+    expect(await sessionCookieUser()).toBeNull();
   });
 
-  it("is fine with a live session", async () => {
-    state.cookies = [{ name: NAME, value: await token(Date.now() - 1000) }];
-    state.user = { sessionsRevokedAt: new Date(Date.now() - 60_000) };
-    expect(await carriesRevokedSession()).toBe(false);
+  it("the user the cookie names, when that user exists", async () => {
+    state.cookies = [{ name: NAME, value: await token("u1") }];
+    expect(await sessionCookieUser()).toBe("u1");
   });
 
-  it("refuses a session signed in before 'sign out everywhere'", async () => {
-    state.cookies = [{ name: NAME, value: await token(Date.now() - 60_000) }];
-    state.user = { sessionsRevokedAt: new Date() };
-    expect(await carriesRevokedSession()).toBe(true);
+  it("the same under the secure name", async () => {
+    state.cookies = [{ name: `__Secure-${NAME}`, value: await encode({ token: { sub: "u1" }, secret: SECRET, salt: `__Secure-${NAME}` }) }];
+    expect(await sessionCookieUser()).toBe("u1");
   });
 
-  it("is fine when the cookie's user is gone (NextAuth links nobody then)", async () => {
-    state.cookies = [{ name: NAME, value: await token(Date.now() - 60_000) }];
-    state.user = null;
-    expect(await carriesRevokedSession()).toBe(false);
+  it("nobody when that user is gone (as after the phone step merged it away)", async () => {
+    state.cookies = [{ name: NAME, value: await token("deleted") }];
+    expect(await sessionCookieUser()).toBeNull();
   });
 
-  it("ignores a cookie it cannot read, as NextAuth does", async () => {
+  it("nobody for a cookie it cannot read, as for NextAuth", async () => {
     state.cookies = [{ name: NAME, value: "not-a-token" }];
-    state.user = { sessionsRevokedAt: new Date() };
-    expect(await carriesRevokedSession()).toBe(false);
+    expect(await sessionCookieUser()).toBeNull();
   });
 
   it("joins a chunked cookie in order", () => {
@@ -74,5 +72,11 @@ describe("a Google sign-in and the session already in the browser", () => {
     ).toBe("ab");
     expect(sessionCookieValue([{ name: NAME, value: "whole" }], NAME)).toBe("whole");
     expect(sessionCookieValue([], NAME)).toBeNull();
+  });
+
+  it("reads where the sign-in was heading from NextAuth's callback-url cookie", async () => {
+    expect(await signInDestination()).toBeNull();
+    state.cookies = [{ name: "authjs.callback-url", value: "http://localhost:3000/account/favorites" }];
+    expect(await signInDestination()).toBe("/account/favorites");
   });
 });

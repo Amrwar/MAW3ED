@@ -1,36 +1,31 @@
 import { cookies } from "next/headers";
 import { decode } from "next-auth/jwt";
 import { db } from "@/lib/db";
-import { sessionRevoked } from "@/lib/security/session-policy";
 
 /**
- * Whether the browser finishing a Google sign-in still carries a web
- * session that has been revoked.
+ * Who the browser finishing a Google sign-in is already signed in as.
  *
  * Why it matters: when a Google sign-in arrives with a session cookie,
  * NextAuth links the Google account to whoever that cookie names
- * (@auth/core handle-login), checking only that the user exists. It does
- * not know about our revocation (sessionsRevokedAt, set by a password
- * reset and "sign out everywhere"). Somebody holding a stolen cookie
- * after the owner signed out everywhere could otherwise attach their own
- * Google account to the owner's and walk back in with a fresh session.
- *
- * A legitimate visitor rarely hits this: the page they press the button
- * on fetches /api/auth/session, which already clears a revoked cookie.
+ * (@auth/core handle-login: `if (user) linkAccount({ …, userId: user.id })`),
+ * checking only that the user exists: not our revocation, not whether
+ * the person at the keyboard is that user. On a shared computer somebody
+ * could attach their own Google account to the account left signed in,
+ * and with a stolen cookie somebody could do it after the owner signed
+ * out everywhere. lib/auth/google-signin.ts refuses both.
  *
  * Mirrors how NextAuth reads the cookie (either name, chunks joined in
  * order, the cookie name as the salt), so it judges the same token
- * NextAuth would link to.
+ * NextAuth would link to. A cookie it cannot read, or one naming a user
+ * who no longer exists, names nobody, for NextAuth as for this.
  */
 const NAMES = ["__Secure-authjs.session-token", "authjs.session-token"];
 
-export async function carriesRevokedSession(): Promise<boolean> {
+export async function sessionCookieUser(): Promise<string | null> {
   const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
-  if (!secret) return false;
+  if (!secret) return null;
 
-  const jar = await cookies();
-  const all = jar.getAll();
-
+  const all = (await cookies()).getAll();
   for (const name of NAMES) {
     const value = sessionCookieValue(all, name);
     if (!value) continue;
@@ -39,10 +34,10 @@ export async function carriesRevokedSession(): Promise<boolean> {
     const sub = typeof token?.sub === "string" ? token.sub : null;
     if (!sub) continue;
 
-    const user = await db.user.findUnique({ where: { id: sub }, select: { sessionsRevokedAt: true } });
-    if (user && sessionRevoked(token?.signedInAt as number | undefined, user.sessionsRevokedAt)) return true;
+    const user = await db.user.findUnique({ where: { id: sub }, select: { id: true } });
+    if (user) return user.id;
   }
-  return false;
+  return null;
 }
 
 /** The cookie under `name`, or its chunks `name.0`, `name.1`… joined. */
@@ -55,4 +50,19 @@ export function sessionCookieValue(all: { name: string; value: string }[], name:
     .sort((a, b) => Number(a.m![0]) - Number(b.m![0]))
     .map((x) => x.c.value);
   return chunks.length ? chunks.join("") : null;
+}
+
+/**
+ * Where the sign-in was going (NextAuth's callback-url cookie, set from
+ * signIn()'s redirectTo), as a path, or null.
+ */
+export async function signInDestination(): Promise<string | null> {
+  const jar = await cookies();
+  const raw = jar.get("__Secure-authjs.callback-url")?.value ?? jar.get("authjs.callback-url")?.value;
+  if (!raw) return null;
+  try {
+    return new URL(raw, "http://x").pathname;
+  } catch {
+    return null;
+  }
 }

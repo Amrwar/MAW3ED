@@ -67,10 +67,12 @@ const optional = z.object({
 
   /**
    * The "Follow us" links beside the sign-in forms. Each is drawn only
-   * when set; only http(s) addresses are used (lib/social-links.ts).
+   * when set to an http(s) address; anything else is ignored
+   * (lib/social-links.ts), not refused here, so a typo in a cosmetic
+   * link cannot fail every request that reads the environment.
    */
-  NEXT_PUBLIC_INSTAGRAM_URL: z.union([z.string().url(), z.literal("")]).optional(),
-  NEXT_PUBLIC_FACEBOOK_URL: z.union([z.string().url(), z.literal("")]).optional(),
+  NEXT_PUBLIC_INSTAGRAM_URL: z.string().optional(),
+  NEXT_PUBLIC_FACEBOOK_URL: z.string().optional(),
 
   DATABASE_URL_UNPOOLED: z.string().optional(),
   CRON_SECRET: z.string().optional(),

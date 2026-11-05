@@ -38,8 +38,19 @@ describe.skipIf(!local)("POST /api/account/phone on a real database", () => {
   const tag = `acphone-${Date.now()}`;
   const stamp = String(Date.now()).slice(-7);
   // Distinct Egyptian mobiles per case, canonical form.
-  const phones = { fresh: `2010${stamp}1`, held: `2010${stamp}2`, owner: `2010${stamp}3`, wrong: `2010${stamp}4` };
+  const phones = {
+    fresh: `2010${stamp}1`,
+    held: `2010${stamp}2`,
+    owner: `2010${stamp}3`,
+    wrong: `2010${stamp}4`,
+    has: `2010${stamp}5`,
+    other: `2010${stamp}6`,
+  };
   const ids = { users: [] as string[], businesses: [] as string[] };
+  // A business to book with and save, shared and never changed: each
+  // case makes its own users, so the cases run in any order.
+  let businessId = "";
+  let serviceId = "";
 
   const send = (phone: string, code: string) =>
     POST(new Request("http://x/api/account/phone", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: `+${phone}`, code }) }));
@@ -71,6 +82,14 @@ describe.skipIf(!local)("POST /api/account/phone on a real database", () => {
     ({ POST } = await import("./route"));
     ({ createLoginCode } = await import("@/lib/auth/login-code"));
     ({ pseudonym } = await import("@/lib/security/pseudonym"));
+
+    const [city, category] = await Promise.all([db.city.findFirstOrThrow(), db.category.findFirstOrThrow()]);
+    const owner = await db.user.create({ data: { email: `${tag}-biz@example.test`, name: tag } });
+    ids.users.push(owner.id);
+    const business = await db.business.create({ data: { slug: tag, nameAr: tag, ownerId: owner.id, cityId: city.id, categoryId: category.id } });
+    ids.businesses.push(business.id);
+    businessId = business.id;
+    serviceId = (await db.service.create({ data: { businessId, nameAr: "خدمة", duration: 30, price: 100 } })).id;
   });
 
   afterAll(async () => {
@@ -90,16 +109,10 @@ describe.skipIf(!local)("POST /api/account/phone on a real database", () => {
     // been booked under since: the fence and the name both come from that.
     const releasedAt = new Date(Date.now() - 30 * 86_400_000);
     await db.phoneRelease.create({ data: { phoneHash: pseudonym(phones.fresh), releasedAt } });
-    const [city, category] = await Promise.all([db.city.findFirstOrThrow(), db.category.findFirstOrThrow()]);
-    const owner = await db.user.create({ data: { email: `${tag}-biz@example.test`, name: tag } });
-    ids.users.push(owner.id);
-    const business = await db.business.create({ data: { slug: tag, nameAr: tag, ownerId: owner.id, cityId: city.id, categoryId: category.id } });
-    ids.businesses.push(business.id);
-    const service = await db.service.create({ data: { businessId: business.id, nameAr: "خدمة", duration: 30, price: 100 } });
     const date = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
     await db.booking.create({
       data: {
-        businessId: business.id, serviceId: service.id, customerName: "ليلى", customerPhone: `0${phones.fresh.slice(2)}`,
+        businessId, serviceId, customerName: "ليلى", customerPhone: `0${phones.fresh.slice(2)}`,
         date: new Date(`${date}T00:00:00Z`), startTime: "10:00", endTime: "10:30",
         startsAt: new Date(`${date}T10:00:00Z`), endsAt: new Date(`${date}T10:30:00Z`),
         status: "CONFIRMED", totalPrice: 100, accessToken: `${tag}-b1`,
@@ -134,7 +147,7 @@ describe.skipIf(!local)("POST /api/account/phone on a real database", () => {
     const holder = await db.user.create({ data: { phone: phones.held, phoneVerifiedAt: new Date(), name: "Holder" } });
     ids.users.push(holder.id);
     const g = await googleUser("held");
-    const business = (await db.business.findFirstOrThrow({ where: { id: { in: ids.businesses } } })).id;
+    const business = businessId;
     await db.favorite.create({ data: { userId: g.id, businessId: business } });
     who.userId = g.id;
 
@@ -173,16 +186,10 @@ describe.skipIf(!local)("POST /api/account/phone on a real database", () => {
   });
 
   it("refuses a second number for an account that already has one", async () => {
-    // The account from the first case, which now has phones.fresh.
-    const g = await db.user.findFirstOrThrow({ where: { email: `${tag}-fresh@example.test` } });
+    const g = await googleUser("has", { phone: phones.has, phoneVerifiedAt: new Date() });
     who.userId = g.id;
-    const other = `2011${stamp}9`;
-    try {
-      const res = await send(other, await codeFor(other));
-      expect(res.status).toBe(409);
-      expect((await db.user.findUniqueOrThrow({ where: { id: g.id } })).phone).toBe(phones.fresh);
-    } finally {
-      await db.loginCode.deleteMany({ where: { phone: other } });
-    }
+    const res = await send(phones.other, await codeFor(phones.other));
+    expect(res.status).toBe(409);
+    expect((await db.user.findUniqueOrThrow({ where: { id: g.id } })).phone).toBe(phones.has);
   });
 });

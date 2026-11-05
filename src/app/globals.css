@@ -8,7 +8,11 @@
    ═══════════════════════════════════════════════════════════ */
 
 /* ─── Fonts ──────────────────────────────────────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&family=Instrument+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300&display=swap");
+/* Self-hosted by next/font (src/app/fonts.ts), which sets
+   --font-almarai, --font-instrument-sans and --font-newsreader on
+   <html>; the tokens below start from them. Not an @import of Google
+   Fonts: the CSP (style-src and font-src 'self') blocks that, and did,
+   so no page ever had the brand faces. */
 
 @import "tailwindcss";
 
@@ -119,9 +123,9 @@
   --color-warning-light:   var(--color-warn-soft);
 
   /* Typography ----------------------------------------- */
-  --font-arabic:   "Almarai", "Segoe UI", system-ui, sans-serif;
-  --font-latin:    "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
-  --font-display:  "Newsreader", Georgia, serif;
+  --font-arabic:   var(--font-almarai), "Almarai", "Segoe UI", system-ui, sans-serif;
+  --font-latin:    var(--font-instrument-sans), "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-display:  var(--font-newsreader), "Newsreader", Georgia, serif;
   --font-sans:     var(--font-arabic);
 
   /* Radii ---------------------------------------------- */

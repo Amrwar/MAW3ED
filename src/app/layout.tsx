@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Providers from "./providers";
+import { fontVariables } from "./fonts";
 import { getLang } from "@/lib/lang-server";
 import { DEFAULT_OG_IMAGE, ogLocale } from "@/lib/seo/meta";
 import { siteUrl } from "@/lib/url";
@@ -72,7 +73,7 @@ export default async function RootLayout({
   const dir  = lang === "en" ? "ltr" : "rtl";
 
   return (
-    <html lang={lang} dir={dir}>
+    <html lang={lang} dir={dir} className={fontVariables}>
       <body className="antialiased min-h-screen">
         {/*
           Skip to the content.

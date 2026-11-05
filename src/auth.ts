@@ -11,7 +11,7 @@ import { accountForVerifiedPhone, verifyLoginCode } from "@/lib/auth/login-code"
 import { normalisePhone } from "@/lib/phone";
 import { SESSION_MAX_AGE_SECONDS, needsRecheck, sessionRevoked } from "@/lib/security/session-policy";
 import { googleProfileAccepted, googleProviders } from "@/lib/auth/google";
-import { carriesRevokedSession } from "@/lib/auth/oauth-guard";
+import { decideGoogleSignIn } from "@/lib/auth/google-signin";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -145,7 +145,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     // Google has just proved the address (the signIn callback below
     // refuses one it has not), so an account whose email is that address
     // counts as verified, which is what readiness and the verify-email
-    // banner ask about.
+    // banner ask about. An account that was unverified until now had its
+    // password removed before the link (lib/auth/google-signin.ts), so
+    // nothing set by whoever registered the address survives this.
     async signIn({ user, account, profile }) {
       if (account?.provider !== "google" || !user.id || !googleProfileAccepted(profile)) return;
       const email = String(profile!.email).trim().toLowerCase();
@@ -159,25 +161,14 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 
     /**
      * Google only; the Credentials providers decide in authorize().
-     *
-     * An unverified Google address is refused: with email linking on,
-     * accepting one would hand the Maw3ed account registered under that
-     * address to whoever typed it into a Google account. A browser still
-     * carrying a revoked session is refused too, or NextAuth would link
-     * the Google account to the revoked one (lib/auth/oauth-guard).
-     * Returning false sends the visitor to /login?error=AccessDenied.
+     * Verified addresses only, never linked into an account somebody
+     * else left signed in, and an unverified pre-registered account is
+     * disarmed before it is linked (lib/auth/google-signin.ts). A refusal
+     * is the address of the sign-in page that explains it.
      */
     async signIn({ account, profile }) {
       if (account?.provider !== "google") return true;
-      if (!googleProfileAccepted(profile)) {
-        log.warn("[auth] Google sign-in refused: email not verified");
-        return false;
-      }
-      if (await carriesRevokedSession()) {
-        log.warn("[auth] Google sign-in refused: revoked session in the browser");
-        return false;
-      }
-      return true;
+      return decideGoogleSignIn(account, profile);
     },
 
     async jwt({ token, user, trigger }) {

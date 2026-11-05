@@ -12,7 +12,7 @@ import { loginSchema } from "@/lib/validations";
 import Button from "@/components/ui/Button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Alert from "@/components/ui/Alert";
-import { loginDestination } from "@/lib/auth/login-destination";
+import { googleReturnPath, loginDestination } from "@/lib/auth/login-destination";
 import { localizePath } from "@/lib/locale-path";
 import GoogleButton from "@/components/auth/GoogleButton";
 import AuthErrorNotice from "@/components/auth/AuthErrorNotice";
@@ -62,14 +62,23 @@ export default function LoginPage() {
         <p className="auth-sub">{l.subtitle}</p>
       </div>
 
-      {/* NextAuth comes back here with ?error= (auth.config.ts pages). */}
+      {/* NextAuth comes back here with ?error= (auth.config.ts pages),
+          whichever page the sign-in started on: hence the way back to
+          the customer sign-in. */}
       <Suspense fallback={null}>
-        <AuthErrorNotice />
+        <AuthErrorNotice customerLink />
       </Suspense>
 
-      {/* Back to /login once signed in: its layout sends the account
-          home (bounceSignedIn): the dashboard, or onboarding. */}
-      <GoogleButton redirectTo={localizePath("/login", lang)} divider={t.auth.google.orEmail} />
+      {/* A same-site return address this login honours (?next=,
+          ?callbackUrl=: lib/auth/login-destination) goes straight there;
+          otherwise back to /login, whose layout sends the account home
+          (bounceSignedIn): the dashboard, or onboarding. */}
+      <GoogleButton
+        redirectTo={() =>
+          googleReturnPath(window.location.search, window.location.origin) ?? localizePath("/login", lang)
+        }
+        divider={t.auth.google.orEmail}
+      />
 
       <form method="post" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
         <div>

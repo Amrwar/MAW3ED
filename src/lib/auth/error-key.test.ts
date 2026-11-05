@@ -15,6 +15,8 @@ describe("the ?error= NextAuth comes back with", () => {
     expect(authErrorKey("AccessDenied")).toBe("AccessDenied");
     expect(authErrorKey("OAuthCallbackError")).toBe("OAuthCallbackError");
     expect(authErrorKey("Configuration")).toBe("Configuration");
+    expect(authErrorKey("EmailUnverified")).toBe("EmailUnverified");
+    expect(authErrorKey("SignedIn")).toBe("SignedIn");
   });
 
   it("never echoes whatever else is in the address bar", () => {
@@ -23,7 +25,7 @@ describe("the ?error= NextAuth comes back with", () => {
   });
 
   it("has words for every key, in both languages", () => {
-    for (const key of ["OAuthAccountNotLinked", "AccessDenied", "OAuthCallbackError", "Configuration", "generic"] as const) {
+    for (const key of ["OAuthAccountNotLinked", "AccessDenied", "EmailUnverified", "SignedIn", "OAuthCallbackError", "Configuration", "generic"] as const) {
       expect(translations.ar.auth.errors[key]).toMatch(/\S/);
       expect(translations.en.auth.errors[key]).toMatch(/\S/);
     }
