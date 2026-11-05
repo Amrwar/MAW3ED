@@ -7,8 +7,9 @@ name: Uptime
 # its database answer, 503 when the database does not.
 #
 # Down = two failed checks in a row, 60 s apart (one blip is not an alert).
-# Then the run fails and one issue labelled "uptime" is opened, which
-# notifies the repository's watchers. Later failures add nothing while that
+# Then the run fails and one issue labelled "uptime" is opened and assigned
+# to the repository owner (an assignment always notifies, watching or not).
+# Later failures add nothing while that
 # issue is open. The first healthy check after it comments the outage
 # length and closes the issue.
 #
@@ -63,7 +64,7 @@ jobs:
           open=$(gh issue list --label uptime --state open --json number -q '.[0].number')
           if [ -z "$open" ]; then
             gh label create uptime --color B60205 --description "Opened by the Uptime workflow" --force >/dev/null
-            gh issue create --label uptime \
+            gh issue create --label uptime --assignee "${{ github.repository_owner }}" \
               --title "Production is down: /api/health failing" \
               --body "$(printf '%s\n' \
                 "The uptime check failed twice in a row, 60 s apart." \
