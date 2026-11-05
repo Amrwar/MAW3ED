@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { VERSION_LABEL, APP_COMMIT } from "@/lib/version";
 import { SUPPORT_WHATSAPP, whatsappHref } from "@/lib/contact";
+import { operatorLine } from "@/lib/support";
 
 export default function Footer({ cta = true }: { cta?: boolean }) {
   const { t, lang } = useLanguage();
@@ -190,6 +191,7 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
             </span>
           </p>
           <p className="m-0 text-[0.78125rem] text-[var(--color-night-subtle)]">{madeIn}</p>
+          <p className="m-0 basis-full text-[0.75rem] text-[var(--color-night-subtle)]">{operatorLine(lang === "ar" ? "ar" : "en")}</p>
         </div>
       </div>
     </footer>

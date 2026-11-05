@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getLang } from "@/lib/lang-server";
 import { buildMetadata } from "@/lib/seo/meta";
 import LegalPage, { LegalSection } from "@/components/legal/LegalPage";
-import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/support";
+import { SUPPORT_EMAIL, SUPPORT_MAILTO, operatorLine } from "@/lib/support";
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getLang();
@@ -63,6 +63,7 @@ export default function TermsPage() {
         <p>
           لأي استفسارات حول شروط الاستخدام، تواصل معنا عبر البريد الإلكتروني: {email}.
         </p>
+        <p>{operatorLine("ar")}</p>
       </LegalSection>
     </>
   );
@@ -98,6 +99,7 @@ export default function TermsPage() {
         <p>
           For any questions about these terms of use, email us at {email}.
         </p>
+        <p>{operatorLine("en")}</p>
       </LegalSection>
     </>
   );
@@ -106,7 +108,7 @@ export default function TermsPage() {
     <LegalPage
       path="/terms"
       title={{ ar: "شروط الاستخدام", en: "Terms of use" }}
-      updated={{ ar: "آخر تحديث: مارس 2025", en: "Last updated: March 2025" }}
+      updated={{ ar: "آخر تحديث: نوفمبر 2026", en: "Last updated: November 2026" }}
       body={{ ar, en }}
     />
   );
