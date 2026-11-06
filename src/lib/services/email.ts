@@ -28,7 +28,26 @@ import { arCount, money } from "@/lib/fmt";
 import { failed, sent, skipped, type SendOutcome } from "./send-outcome";
 
 const client  = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM    = process.env.EMAIL_FROM ?? "Maw3ed <noreply@maw3ed.net>";
+const FROM    = process.env.EMAIL_FROM?.trim() || "Maw3ed <noreply@maw3ed.net>";
+/**
+ * Mail about what a business pays Maw3ed (its subscription) comes from
+ * billing@, and a reply goes there too: an owner answering a renewal
+ * reminder is a billing question, and noreply@ is not read.
+ */
+const BILLING_FROM = process.env.EMAIL_FROM_BILLING?.trim() || `Maw3ed Billing <billing@${domainOf(FROM) ?? "maw3ed.net"}>`;
+
+/**
+ * The bare address in "Name <addr>" or "addr", or null when there is
+ * none: a malformed value then costs the reply-to, not the whole send.
+ */
+export function addressOf(from: string): string | null {
+  return from.match(/<\s*([^<>\s]+@[^<>\s]+)\s*>/)?.[1] ?? from.match(/^\s*([^<>\s]+@[^<>\s]+)\s*$/)?.[1] ?? null;
+}
+
+/** The domain EMAIL_FROM sends from, so billing@ is on the one Resend verified for this deployment. */
+function domainOf(from: string): string | null {
+  return addressOf(from)?.split("@")[1] ?? null;
+}
 
 /**
  * Whether a send will be attempted at all.
@@ -51,6 +70,8 @@ export interface EmailPayload {
   to:      string;
   subject: string;
   html:    string;
+  /** "billing": sent from, and answered to, the billing address. */
+  kind?:   "billing";
 }
 
 /**
@@ -64,11 +85,14 @@ export async function sendEmail(payload: EmailPayload): Promise<SendOutcome> {
   if (!payload.to) return skipped("no-address");
 
   try {
+    const billing = payload.kind === "billing";
+    const replyTo = billing ? addressOf(BILLING_FROM) : null;
     const { data, error } = await client.emails.send({
-      from:    FROM,
+      from:    billing ? BILLING_FROM : FROM,
       to:      payload.to,
       subject: payload.subject,
       html:    payload.html,
+      ...(replyTo ? { replyTo } : {}),
     });
 
     if (error) {
@@ -222,6 +246,7 @@ export async function sendSubscriptionRenewalReminder(
   if (!ownerEmail?.trim()) return skipped("no-address");
   return sendEmail({
     to:      ownerEmail.trim(),
+    kind:    "billing",
     subject: `⏰ اشتراكك في موعد هينتهي خلال ${arCount(params.daysLeft, { one: "يوم واحد", two: "يومين", few: "أيام", many: "يوم" })}`,
     html:    subscriptionRenewalReminderHtml(params),
   });
@@ -241,6 +266,7 @@ export async function sendSubscriptionExpiredEmail(
   if (!ownerEmail?.trim()) return skipped("no-address");
   return sendEmail({
     to:      ownerEmail.trim(),
+    kind:    "billing",
     subject: "انتهى اشتراكك في موعد — جدّد عشان ترجع مميزات باقتك",
     html:    subscriptionExpiredHtml(params),
   });

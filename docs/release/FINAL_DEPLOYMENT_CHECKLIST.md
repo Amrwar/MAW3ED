@@ -54,6 +54,10 @@ Must be set: `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AUTH_URL`/`NEXTAUTH_URL`,
 `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, Paymob (4), Stripe (2), WhatsApp (token, number, templates),
 Cloudinary (3). All present on 2026-11-05.
 
+Optional: `EMAIL_FROM_BILLING` (subscription mail sender and reply-to). Unset, it is
+`billing@` on `EMAIL_FROM`'s domain, which must then receive mail (on maw3ed.net it is an
+alias on the Workspace mailbox).
+
 Must **not** be set in production: `PAYMOB_FAKE`, `ACCESS_SANDBOX`, `WEBHOOK_ALLOW_PRIVATE`,
 `SITE_NOINDEX`, `BOOKING_PHONE_VERIFICATION` (until M-03 is fixed). None set on 2026-11-05.
 
