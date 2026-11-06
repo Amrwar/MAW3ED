@@ -142,9 +142,11 @@ export default function BusinessCard({ business: b, className }: Props) {
             )}
           </h3>
 
-          {b.taglineAr && (
+          {/* English pages show the machine English of an Arabic-only
+              tagline (lib/translate); the card stays unlabelled. */}
+          {(b.taglineAr || b.taglineEn) && (
             <p dir="auto" className="m-0 mt-1 line-clamp-1 text-start text-[0.8125rem] text-[var(--color-subtle)]">
-              {b.taglineAr}
+              {(!isAr && b.taglineEn) || b.taglineAr}
             </p>
           )}
         </div>

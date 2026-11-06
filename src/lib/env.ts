@@ -76,6 +76,13 @@ const optional = z.object({
 
   DATABASE_URL_UNPOOLED: z.string().optional(),
   CRON_SECRET: z.string().optional(),
+  /** Automatic English (lib/translate) through Vercel AI Gateway. On
+   *  Vercel the deployment authenticates itself; locally set a key. */
+  AI_GATEWAY_API_KEY: z.string().optional(),
+  /** A provider/model id from https://ai-gateway.vercel.sh/v1/models. */
+  AI_GATEWAY_MODEL: z.string().optional(),
+  /** "0" switches automatic translation off. */
+  AUTO_TRANSLATE: z.string().optional(),
 
   // Email (Resend)
   RESEND_API_KEY: z.string().optional(),

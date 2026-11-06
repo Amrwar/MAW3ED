@@ -47,6 +47,8 @@ export type Business = {
   hours?: BusinessHours[];
   about?: string;
   aboutAr?: string;
+  /** Machine English of an Arabic about text (lib/translate). */
+  aboutEn?: string;
   minPrice?: number;
   maxPrice?: number;
 };

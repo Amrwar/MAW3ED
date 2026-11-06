@@ -26,6 +26,11 @@ export function localName(en: boolean, nameAr: string, nameEn: string | null | u
 
 const ARABIC = /[\u0600-\u06FF]/;
 
+/** True when the text contains Arabic script. */
+export function hasArabic(text: string | null | undefined): boolean {
+  return !!text && ARABIC.test(text);
+}
+
 /* Why a whole day cannot be booked (lib/bookings/availability UnavailableReason): another time that day will not do. */
 const DAY_UNAVAILABLE_EN: Record<string, string> = {
   past: "That date has passed. Choose another date.",

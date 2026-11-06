@@ -287,6 +287,15 @@ model Business {
   latitude                   Float?
   longitude                  Float?
   about                      String?            @db.Text
+  /// English written by machine (lib/translate) for text the owner gave
+  /// only in Arabic. Never shown over the owner's own English: readers
+  /// prefer nameEn, then these. Redone when the Arabic changes.
+  nameEnAuto                 String?
+  taglineEnAuto              String?
+  aboutEnAuto                String?            @db.Text
+  /// Fingerprint of the Arabic each *EnAuto was made from, per field,
+  /// so a translation is redone only when its source text changed.
+  autoEnSource               Json?
   coverImage                 String?
   logoImage                  String?
   isVerified                 Boolean            @default(false) // earned, not self-set: see lib/verification.ts
@@ -612,6 +621,10 @@ model Service {
   /// Folded name text for search: a GENERATED column (maw3ed_search_norm, prisma/migrations/phase26_search_funnel.sql). Never written by the application.
   searchKey String?
   descriptionAr String?
+  /// Machine English for Arabic-only text (lib/translate); see Business.
+  nameEnAuto        String?
+  descriptionEnAuto String?
+  autoEnSource      Json?
   duration      Int // minutes
   price         Decimal  @db.Decimal(10, 2)
   currency      String   @default("EGP")

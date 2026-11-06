@@ -9,6 +9,7 @@ import { coverClassFor } from "@/lib/category-cover";
 import { num } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
 import { cdnImage } from "@/lib/cdn-image";
+import { englishOf } from "@/lib/translate/english";
 
 interface Props {
   business: {
@@ -16,6 +17,8 @@ interface Props {
     slug: string;
     nameAr: string;
     nameEn: string | null;
+    /** Machine English of the Arabic name (lib/translate). */
+    nameEnAuto?: string | null;
     logoImage: string | null;
     coverImage: string | null;
     isVerified: boolean;
@@ -42,7 +45,7 @@ export default function FavoriteCard({ business: b }: Props) {
 
   if (removed) return null;
 
-  const name = !isAr && b.nameEn ? b.nameEn : b.nameAr;
+  const name = (!isAr && englishOf(b.nameEn, b.nameEnAuto)) || b.nameAr;
   const category = isAr ? b.category.nameAr : b.category.nameEn;
   const city = isAr ? b.city.nameAr : b.city.nameEn;
 

@@ -101,4 +101,5 @@ export const JOB_SLA_MINUTES: Record<string, number> = {
   operations: 30,
   access: 20,
   integrations: 20,
+  translations: 26 * 60,
 };

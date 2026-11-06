@@ -5,6 +5,7 @@ import { ok, err, requireBusiness } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { syncVerifiedBadge } from "@/lib/business-verification";
 import { normalisePhone } from "@/lib/phone";
+import { translateAfterSave } from "@/lib/translate";
 
 /** GET /api/business — current user's business with relations */
 export async function GET() {
@@ -70,6 +71,8 @@ export async function PUT(req: Request) {
       data:  { ...parsed.data, ...extraData, ...(numberChanged ? { phoneVerifiedAt: null } : {}) },
     });
     if (numberChanged) await syncVerifiedBadge(business.id);
+    // English for whatever the owner wrote only in Arabic (lib/translate).
+    translateAfterSave(business.id);
 
     // Only the profile goes back: a PROFILE delegate saves through this
     // route and must not receive the owner's private fields in the reply.

@@ -6,6 +6,7 @@ import { cairoDateString, cairoMinutes, cairoWallClock, dateToUTC } from "@/lib/
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
 import { customerMayChange } from "@/lib/bookings/self-service";
 import { canReviewBooking } from "@/lib/review-policy";
+import { englishOf } from "@/lib/translate/english";
 
 /**
  * Everything the customer account reads.
@@ -145,7 +146,7 @@ const BOOKING_SELECT = {
   endsAt: true,
   serviceId: true,
   staffMemberId: true,
-  service: { select: { nameAr: true, nameEn: true, duration: true } },
+  service: { select: { nameAr: true, nameEn: true, nameEnAuto: true, duration: true } },
   staffMember: { select: { nameAr: true, nameEn: true } },
   resource: { select: { name: true } },
   branch: { select: { nameAr: true, nameEn: true, address: true } },
@@ -155,6 +156,7 @@ const BOOKING_SELECT = {
       slug: true,
       nameAr: true,
       nameEn: true,
+      nameEnAuto: true,
       phone: true,
       whatsapp: true,
       address: true,
@@ -194,7 +196,7 @@ function shape(b: Row, todayDate: string, nowMin: number): AccountBooking {
     serviceId: b.serviceId,
     staffMemberId: b.staffMemberId,
     serviceName: b.service.nameAr,
-    serviceNameEn: b.service.nameEn,
+    serviceNameEn: englishOf(b.service.nameEn, b.service.nameEnAuto),
     staffName: b.staffMember?.nameAr ?? null,
     staffNameEn: b.staffMember?.nameEn ?? null,
     resourceName: b.resource?.name ?? null,
@@ -207,7 +209,7 @@ function shape(b: Row, todayDate: string, nowMin: number): AccountBooking {
     business: {
       slug: b.business.slug,
       nameAr: b.business.nameAr,
-      nameEn: b.business.nameEn,
+      nameEn: englishOf(b.business.nameEn, b.business.nameEnAuto),
       phone: b.business.phone,
       whatsapp: b.business.whatsapp,
       address: b.branch?.address ?? b.business.address,
@@ -395,6 +397,7 @@ export async function getFavorites(userId: string) {
           slug: true,
           nameAr: true,
           nameEn: true,
+          nameEnAuto: true,
           logoImage: true,
           coverImage: true,
           isVerified: true,
@@ -515,8 +518,8 @@ export async function getPaymentHistory(phone: string, since?: Date | null) {
           reference: true,
           date: true,
           startTime: true,
-          service: { select: { nameAr: true, nameEn: true } },
-          business: { select: { nameAr: true, nameEn: true, slug: true } },
+          service: { select: { nameAr: true, nameEn: true, nameEnAuto: true } },
+          business: { select: { nameAr: true, nameEn: true, nameEnAuto: true, slug: true } },
         },
       },
     },
@@ -536,9 +539,9 @@ export async function getPaymentHistory(phone: string, since?: Date | null) {
     bookingDate: p.booking?.date.toISOString() ?? null,
     startTime: p.booking?.startTime ?? null,
     serviceAr: p.booking?.service.nameAr ?? null,
-    serviceEn: p.booking?.service.nameEn ?? null,
+    serviceEn: p.booking ? englishOf(p.booking.service.nameEn, p.booking.service.nameEnAuto) : null,
     businessAr: p.booking?.business.nameAr ?? null,
-    businessEn: p.booking?.business.nameEn ?? null,
+    businessEn: p.booking ? englishOf(p.booking.business.nameEn, p.booking.business.nameEnAuto) : null,
     businessSlug: p.booking?.business.slug ?? null,
   }));
 }
