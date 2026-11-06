@@ -140,7 +140,7 @@ export default async function HomePage() {
    Each owns its query, so a slow one delays only its own row. */
 
 const POPULAR_MIN_BOOKINGS = 10;
-const POPULAR_MIN_BUSINESSES = 4;
+const POPULAR_MIN_BUSINESSES = 3;
 
 async function PopularRow() {
   // One large card and three beside it.
@@ -150,7 +150,7 @@ async function PopularRow() {
   });
 
   // "Most booked" is a claim about the listings, so it waits until
-  // there is something to compare: all four shown with ten
+  // there is something to compare: three of the four shown with ten
   // or more bookings. Below that the row calls itself "newest", which
   // the ordering also satisfies (ties broken by createdAt). One booking
   // somewhere used to be enough to call a row "where people book".

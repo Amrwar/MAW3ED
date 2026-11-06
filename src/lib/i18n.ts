@@ -170,7 +170,7 @@ export const translations = {
     },
     howItWorks: {
       eyebrow:      "موعد بيشتغل إزاي",
-      title:        "٣ خطوات وتحجز",
+      title:        "٣ خطوات بسيطة",
       subtitle:     "موعد مصمم ليكون سهلًا للعملاء وقويًا للأعمال في نفس الوقت.",
       forCustomers: "للعملاء",
       forBusinesses:"للأعمال",
@@ -1296,7 +1296,7 @@ export const translations = {
     },
     howItWorks: {
       eyebrow:      "How Maw3ed Works",
-      title:        "Three steps to a booking",
+      title:        "Three simple steps",
       subtitle:     "Maw3ed is designed to be effortless for customers and powerful for businesses.",
       forCustomers: "For Customers",
       forBusinesses:"For Businesses",

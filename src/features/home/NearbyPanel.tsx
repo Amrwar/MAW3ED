@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Tabs from "@/components/ui/Tabs";
 import Link from "@/components/shared/LocaleLink";
 import { ArrowLeft, ArrowRight, MapPin, Store } from "lucide-react";
 import BusinessCard from "@/components/shared/BusinessCard";
@@ -43,8 +44,22 @@ export default function NearbyPanel({ businesses, cityName, viewAllHref }: Props
     return [...seen].map(([slug, name]) => ({ slug, name }));
   }, [businesses, lang]);
 
-  // One row of three: the panel is a taste of the city, "all places" is the rest.
-  const shown = (area === ALL ? businesses : businesses.filter((b) => b.neighborhood?.slug === area)).slice(0, SHOWN);
+  // A choice left over from an earlier list (a refresh, another city)
+  // falls back to every area rather than filtering down to nothing.
+  const active = areas.some((a) => a.slug === area) ? area : ALL;
+  // One row of three: the panel is a taste of the city; the link below
+  // goes to the rest, narrowed to the chosen area when there is one.
+  const shown = (active === ALL ? businesses : businesses.filter((b) => b.neighborhood?.slug === active)).slice(0, SHOWN);
+  const allHref = active === ALL ? viewAllHref : `${viewAllHref}&neighborhood=${encodeURIComponent(active)}`;
+  const where = areas.find((a) => a.slug === active)?.name ?? cityName;
+
+  /** The hero's own city select, further up this page: brought into view and focused. */
+  function changeCity() {
+    const select = document.getElementById("hero-city");
+    if (!select) return;
+    select.scrollIntoView({ behavior: "smooth", block: "center" });
+    select.focus({ preventScroll: true });
+  }
 
   return (
     <section className="bg-[var(--color-ground)] py-20">
@@ -66,18 +81,18 @@ export default function NearbyPanel({ businesses, cityName, viewAllHref }: Props
 
             <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 xl:mt-auto xl:flex-col xl:items-start xl:pt-10">
               {businesses.length > 0 && (
-                <Link href={viewAllHref} className="btn btn-outline btn-pill btn-sm">
-                  {cityName ? f.nearbyAllIn.replace("{city}", cityName) : f.viewAll}
+                <Link href={allHref} className="btn btn-outline btn-pill btn-sm">
+                  {where ? f.nearbyAllIn.replace("{city}", where) : f.viewAll}
                   <ArrowIcon size={15} strokeWidth={2} aria-hidden="true" />
                 </Link>
               )}
-              {/* The city is the hero's own select, further up this page. */}
-              <a
-                href="#hero-city"
+              <button
+                type="button"
+                onClick={changeCity}
                 className="inline-flex min-h-11 items-center text-[0.875rem] font-bold text-[var(--color-jade)] hover:text-[var(--color-jade-hover)]"
               >
                 {f.changeCity}
-              </a>
+              </button>
             </div>
           </div>
 
@@ -96,31 +111,14 @@ export default function NearbyPanel({ businesses, cityName, viewAllHref }: Props
             ) : (
               <>
                 {areas.length >= 2 && (
-                  <div
-                    role="group"
-                    aria-label={f.areasLabel}
-                    className="-mx-1 mb-6 flex gap-1 overflow-x-auto border-b border-[var(--color-line)] px-1"
-                  >
-                    {[{ slug: ALL, name: f.allAreas }, ...areas].map((a) => {
-                      const on = a.slug === area;
-                      return (
-                        <button
-                          key={a.slug || "all"}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() => setArea(a.slug)}
-                          className={cn(
-                            "-mb-px min-h-11 shrink-0 border-b-2 px-3 text-[0.9375rem] transition-colors",
-                            on
-                              ? "border-[var(--color-jade)] font-bold text-[var(--color-ink)]"
-                              : "border-transparent text-[var(--color-muted)] hover:text-[var(--color-ink)]",
-                          )}
-                        >
-                          {a.name}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <Tabs
+                    variant="underline"
+                    label={f.areasLabel}
+                    value={active}
+                    onChange={setArea}
+                    items={[{ value: ALL, label: f.allAreas }, ...areas.map((a) => ({ value: a.slug, label: a.name }))]}
+                    className="mb-6 overflow-x-auto"
+                  />
                 )}
 
                 {/* Sideways on phones, one card and a bit of the next in

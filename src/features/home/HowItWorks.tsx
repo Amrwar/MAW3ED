@@ -8,6 +8,8 @@ import {
   Share2, Store, TrendingUp, MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { clock12, money } from "@/lib/fmt";
+import type { Lang } from "@/lib/i18n";
 
 const CUSTOMER_ICONS = [Search, CalendarDays, CheckCircle2];
 const BUSINESS_ICONS = [Store, Share2, TrendingUp];
@@ -24,11 +26,10 @@ export default function HowItWorks() {
   const { t, lang } = useLanguage();
   const h = t.howItWorks;
   const [tab, setTab] = useState<"customer" | "business">("customer");
-  const en = lang === "en";
 
   const steps = tab === "customer" ? h.customerSteps : h.businessSteps;
   const icons = tab === "customer" ? CUSTOMER_ICONS : BUSINESS_ICONS;
-  const pictures = tab === "customer" ? customerPictures(en) : businessPictures(en);
+  const pictures = tab === "customer" ? customerPictures(lang) : businessPictures(lang);
 
   return (
     <section className="border-y border-[var(--color-line)] bg-[var(--color-surface)] py-20">
@@ -125,7 +126,7 @@ function Row({ icon, title, sub, soft }: { icon: ReactNode; title: string; sub?:
   );
 }
 
-function Slots({ times, picked }: { times: string[]; picked: string }) {
+function Slots({ times, picked, lang }: { times: string[]; picked: string; lang: Lang }) {
   return (
     <div className="grid grid-cols-3 gap-2">
       {times.map((x) => (
@@ -138,14 +139,15 @@ function Slots({ times, picked }: { times: string[]; picked: string }) {
               : "border-[var(--color-line)] text-[var(--color-ink)]",
           )}
         >
-          {x}
+          {clock12(x, lang)}
         </span>
       ))}
     </div>
   );
 }
 
-function customerPictures(en: boolean): ReactNode[] {
+function customerPictures(lang: Lang): ReactNode[] {
+  const en = lang === "en";
   return [
     <Panel key="search">
       <div className="flex items-center gap-2.5 rounded-full border border-[var(--color-line-2)] px-4 py-2.5 text-[0.875rem] text-[var(--color-subtle)]">
@@ -161,22 +163,23 @@ function customerPictures(en: boolean): ReactNode[] {
     <Panel key="slots">
       <div className="mb-3 flex items-baseline justify-between gap-3 text-[0.8125rem]">
         <span className="font-bold text-[var(--color-ink)]">{en ? "Tomorrow" : "بكرة"}</span>
-        <span className="truncate text-[var(--color-subtle)]">{en ? "Consultation · 400 EGP" : "كشف · ٤٠٠ ج.م"}</span>
+        <span className="truncate text-[var(--color-subtle)]">{en ? "Consultation" : "كشف"} · {money(400, lang, "EGP")}</span>
       </div>
-      <Slots times={["10:00", "10:30", "11:00", "12:30", "4:00", "4:30"]} picked="11:00" />
+      <Slots times={["10:00", "10:30", "11:00", "12:30", "16:00", "16:30"]} picked="11:00" lang={lang} />
     </Panel>,
     <div key="done" className="flex flex-col gap-2.5">
       <Row
         icon={<CheckCircle2 size={19} strokeWidth={1.9} />}
         title={en ? "Booking confirmed" : "تم تأكيد الحجز"}
-        sub={en ? "Tomorrow 11:00 AM · Nasr City" : "بكرة ١١:٠٠ ص · مدينة نصر"}
+        sub={`${en ? "Tomorrow" : "بكرة"} ${clock12("11:00", lang)} · ${en ? "Nasr City" : "مدينة نصر"}`}
       />
       <Row soft icon={<Bell size={16} strokeWidth={1.9} className="text-[var(--color-warn)]" />} title={en ? "Reminder before your appointment" : "تذكير قبل ميعادك"} />
     </div>,
   ];
 }
 
-function businessPictures(en: boolean): ReactNode[] {
+function businessPictures(lang: Lang): ReactNode[] {
+  const en = lang === "en";
   return [
     <Panel key="page">
       <div className="mb-3 flex items-center gap-3">
@@ -186,8 +189,8 @@ function businessPictures(en: boolean): ReactNode[] {
         <span className="text-[0.9375rem] font-bold text-[var(--color-ink)]">{en ? "Your business" : "نشاطك"}</span>
       </div>
       {[
-        [en ? "Haircut · 30 min" : "قص شعر · ٣٠ دقيقة", en ? "150 EGP" : "١٥٠ ج.م"],
-        [en ? "Beard trim · 20 min" : "تهذيب دقن · ٢٠ دقيقة", en ? "80 EGP" : "٨٠ ج.م"],
+        [en ? "Haircut · 30 min" : "قص شعر · ٣٠ دقيقة", money(150, lang, "EGP")],
+        [en ? "Beard trim · 20 min" : "تهذيب دقن · ٢٠ دقيقة", money(80, lang, "EGP")],
       ].map(([s, p]) => (
         <div key={s} className="flex justify-between gap-3 border-t border-[var(--color-line)] py-2 text-[0.8125rem]">
           <span className="text-[var(--color-ink-2)]">{s}</span>
@@ -215,7 +218,7 @@ function businessPictures(en: boolean): ReactNode[] {
       <Row
         icon={<CalendarDays size={18} strokeWidth={1.9} />}
         title={en ? "New booking" : "حجز جديد"}
-        sub={en ? "Tomorrow 11:00 AM · Haircut" : "بكرة ١١:٠٠ ص · قص شعر"}
+        sub={`${en ? "Tomorrow" : "بكرة"} ${clock12("11:00", lang)} · ${en ? "Haircut" : "قص شعر"}`}
       />
       <Row soft icon={<Bell size={16} strokeWidth={1.9} className="text-[var(--color-warn)]" />} title={en ? "Reminder sent to your customer" : "اتبعت تذكير لعميلك"} />
     </div>,

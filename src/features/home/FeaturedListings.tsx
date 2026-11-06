@@ -11,7 +11,7 @@ import { cdnImage } from "@/lib/cdn-image";
 import { countText } from "@/lib/i18n";
 import { clock12, money } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
-import { businessName, businessPlace, dayLabel, SaveButton } from "./listing-bits";
+import { businessName, businessPlace, dayLabel, SaveButton } from "@/components/shared/listing-bits";
 
 interface Props {
   eyebrow: string;
@@ -95,6 +95,7 @@ function LeadCard({ business: b }: { business: PublicBusiness }) {
         <img
           src={cdnImage(b.coverImage, 1200)}
           alt=""
+          loading="lazy"
           className="absolute inset-0 -z-20 h-full w-full object-cover"
         />
       ) : (

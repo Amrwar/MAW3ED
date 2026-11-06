@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "@/components/shared/LocaleLink";
-import { countText } from "@/lib/i18n";
 import {
   BadgeCheck,
   CalendarClock,
-  Heart,
   MapPin,
   Sparkles,
   Star,
@@ -14,7 +12,8 @@ import {
 } from "lucide-react";
 import type { DiscoveryBusiness } from "@/lib/discovery/search";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useFavorites } from "@/hooks/useFavorites";
+import { countText } from "@/lib/i18n";
+import { businessName, businessPlace, dayLabel, SaveButton } from "@/components/shared/listing-bits";
 import { coverClassFor } from "@/lib/category-cover";
 import { clock12, money } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
@@ -37,19 +36,11 @@ export default function BusinessCard({ business: b, className }: Props) {
   const { t, lang } = useLanguage();
   const c = t.businessCard;
   const isAr = lang === "ar";
-  const { isFavorite, toggle } = useFavorites();
-
-  const name = !isAr && b.nameEn ? b.nameEn : b.nameAr;
+  const name = businessName(b, lang);
   const categoryName = isAr ? b.category.nameAr : b.category.nameEn;
-  const place = [b.neighborhood && (isAr ? b.neighborhood.nameAr : b.neighborhood.nameEn), isAr ? b.city.nameAr : b.city.nameEn]
-    .filter(Boolean)
-    .join(isAr ? "، " : ", ");
+  const place = businessPlace(b, lang);
 
   const href = `/company/${b.slug}`;
-  const saved = isFavorite(b.id);
-
-  const dayLabel = (offset: number) =>
-    offset === 0 ? c.today : offset === 1 ? c.tomorrow : countText(lang, offset, c.inDays);
 
   return (
     <article
@@ -81,28 +72,7 @@ export default function BusinessCard({ business: b, className }: Props) {
           {categoryName}
         </span>
 
-        {/* Saved to this browser, not to an account — hence the wording
-            in the label rather than a bare "favourite". */}
-        <button
-          type="button"
-          onClick={() => toggle(b.id)}
-          aria-pressed={saved}
-          aria-label={saved ? c.unsave : c.save}
-          className={cn(
-            "absolute end-3 top-3 flex h-11 w-11 items-center justify-center rounded-full",
-            "bg-[var(--color-surface)]/95 shadow-[var(--shadow-raised)] transition-colors",
-            saved
-              ? "text-[var(--color-danger)]"
-              : "text-[var(--color-muted)] hover:text-[var(--color-danger)]",
-          )}
-        >
-          <Heart
-            size={17}
-            strokeWidth={2}
-            aria-hidden="true"
-            className={saved ? "fill-current" : undefined}
-          />
-        </button>
+        <SaveButton id={b.id} labels={c} className="absolute end-3 top-3" />
 
         {/* The owner's logo, where there is one and a cover behind it. */}
         {b.logoImage && b.coverImage && (
@@ -204,7 +174,7 @@ export default function BusinessCard({ business: b, className }: Props) {
           {b.nextSlot && (
             <span className="flex items-center gap-1.5 text-[var(--color-jade)]">
               <CalendarClock size={13} strokeWidth={1.9} aria-hidden="true" className="shrink-0" />
-              {c.nextFree} {dayLabel(b.nextSlot.dayOffset)}{" "}
+              {c.nextFree} {dayLabel(b.nextSlot.dayOffset, lang, c)}{" "}
               <span>{clock12(b.nextSlot.time, lang)}</span>
             </span>
           )}
