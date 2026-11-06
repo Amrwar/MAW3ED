@@ -23,6 +23,8 @@ interface Props {
  */
 /** Which empty categories to show first: what people search for most. */
 const UPCOMING_FIRST = ["dentists", "gyms", "beauty-centers", "clinics", "salons", "spas", "education", "labs"];
+/** Live and coming-soon tiles together, at most. */
+const UPCOMING_FILL_TO = 8;
 function rank(slug: string): number {
   const i = UPCOMING_FIRST.indexOf(slug);
   return i === -1 ? UPCOMING_FIRST.length : i;
@@ -41,13 +43,14 @@ export default function CategoriesSection({ categories, limit = 8 }: Props) {
   const shown = categories.filter((c) => c.count > 0).slice(0, limit);
   if (shown.length === 0) return null;
 
-  // A row of three looked like the whole catalogue. Up to six, the
-  // kinds of place still to come are shown too — as tiles that say so
-  // and link nowhere, since their pages do not exist yet.
+  // A row of three looked like the whole catalogue. Up to eight (two
+  // full rows of four on a desktop), the kinds of place still to come
+  // are shown too — as tiles that say so and link nowhere, since their
+  // pages do not exist yet.
   const upcoming = categories
     .filter((c) => c.count === 0)
     .sort((a, b) => rank(a.slug) - rank(b.slug))
-    .slice(0, Math.max(0, 6 - shown.length));
+    .slice(0, Math.max(0, UPCOMING_FILL_TO - shown.length));
 
   return (
     <section className="bg-[var(--color-ground)] pt-20">
