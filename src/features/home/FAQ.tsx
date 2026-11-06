@@ -16,8 +16,11 @@ export default function FAQ() {
   const { t } = useLanguage();
   const f = t.faq;
   const [open, setOpen] = useState<number | null>(0);
-  // The address is a link, so the sentence is split around it.
-  const [before = "", after = ""] = f.supportBody.split("{email}");
+  // The address is a link, so the sentence is split around it. A
+  // translation that lost or repeated the placeholder still reads: the
+  // sentence without it, then the address.
+  const parts = f.supportBody.split("{email}");
+  const [before, after] = parts.length === 2 ? parts : [`${f.supportBody.replaceAll("{email}", "").trim()} `, ""];
 
   return (
     <section className="border-y border-[var(--color-line)] bg-[var(--color-surface)] py-20">

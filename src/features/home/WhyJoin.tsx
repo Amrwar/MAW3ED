@@ -32,7 +32,7 @@ export default function WhyJoin() {
   ];
 
   return (
-    <section className="overflow-x-clip bg-[var(--color-ground)] py-20">
+    <section className="overflow-hidden bg-[var(--color-ground)] py-20">
       <div className="container-app">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
 
@@ -63,14 +63,15 @@ export default function WhyJoin() {
               <Link href="/signup?type=business" className="btn btn-pill btn-primary font-extrabold">
                 {w.cta1}
               </Link>
-              <Link href="/for-business" className="btn btn-pill btn-outline bg-[var(--color-surface)]">
+              <Link href="/for-business" className="btn btn-pill btn-outline">
                 {w.cta2}
               </Link>
             </div>
           </div>
 
           {/* The panel's colour runs on past the container to the edge of
-              the screen on wide layouts; the section clips the overflow. */}
+              the screen on wide layouts; the section clips the overflow
+              (overflow-hidden, not -x-clip, which Safari before 16 lacks). */}
           <div className="relative min-w-0 rounded-[var(--radius-2xl)] bg-[var(--color-jade-soft)] px-5 py-8 sm:px-10 sm:py-10 lg:rounded-none lg:bg-transparent lg:px-0 lg:py-14 lg:ps-12">
             <span
               aria-hidden="true"
@@ -101,7 +102,7 @@ export default function WhyJoin() {
                     <div key={p.name} className="flex items-center justify-between gap-4 border-t border-[var(--color-line)] py-3.5">
                       <div className="min-w-0">
                         <div className="truncate text-[0.9375rem] font-semibold text-[var(--color-ink)]">{p.name}</div>
-                        <div className="text-[0.8125rem] text-[var(--color-muted)]">
+                        <div className="text-[0.8125rem] text-[var(--color-muted)]" style={{ unicodeBidi: "plaintext" }}>
                           {clock12(p.time, lang)} · {p.what}
                         </div>
                       </div>

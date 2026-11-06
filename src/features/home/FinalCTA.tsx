@@ -13,11 +13,11 @@ import { useLanguage } from "@/contexts/LanguageContext";
 export default function FinalCTA() {
   const { t } = useLanguage();
   const c = t.finalCta;
-  const h = t.howItWorks;
 
+  // The note is about signing a business up, so it sits in that box.
   const paths = [
-    { Icon: Search, label: h.forCustomers, line: c.customerLine, href: "/businesses", cta: c.cta1, primary: true },
-    { Icon: Store, label: h.forBusinesses, line: c.businessLine, href: "/signup?type=business", cta: c.cta2, primary: false },
+    { Icon: Search, label: c.customersLabel, line: c.customerLine, href: "/businesses", cta: c.cta1, primary: true, note: null },
+    { Icon: Store, label: c.businessesLabel, line: c.businessLine, href: "/signup?type=business", cta: c.cta2, primary: false, note: c.note },
   ];
 
   return (
@@ -40,11 +40,10 @@ export default function FinalCTA() {
               <p className="mt-5 max-w-[46ch] text-base leading-[1.8] text-[var(--color-night-text)]">
                 {c.subtitle}
               </p>
-              <p className="mt-6 text-xs text-[var(--color-night-subtle)]">{c.note}</p>
             </div>
 
             <ul className="m-0 flex list-none flex-col gap-4 p-0">
-              {paths.map(({ Icon, label, line, href, cta, primary }) => (
+              {paths.map(({ Icon, label, line, href, cta, primary, note }) => (
                 <li
                   key={href}
                   className="rounded-[var(--radius-xl)] border border-[var(--color-night-line)] bg-[var(--color-night-2)] p-6 sm:p-7"
@@ -63,12 +62,13 @@ export default function FinalCTA() {
                     href={href}
                     className={
                       primary
-                        ? "btn btn-pill mt-5 bg-white font-extrabold text-[var(--color-ink)] hover:bg-white/90"
-                        : "btn btn-pill mt-5 border border-[var(--color-night-edge)]! bg-transparent! font-extrabold text-white! hover:bg-white/10!"
+                        ? "btn btn-pill mt-5 bg-white! font-extrabold! text-[var(--color-ink)]! hover:bg-white/90!"
+                        : "btn btn-pill mt-5 border border-[var(--color-night-edge)]! bg-transparent! font-extrabold! text-white! hover:bg-white/10!"
                     }
                   >
                     {cta}
                   </Link>
+                  {note && <p className="m-0 mt-4 text-xs text-[var(--color-night-subtle)]">{note}</p>}
                 </li>
               ))}
             </ul>
