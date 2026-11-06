@@ -1,3 +1,4 @@
+import { noBusinessDestination } from "@/lib/dashboard/guard";
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -23,10 +24,17 @@ export default async function DashboardPage() {
     const acting = await actingAccess(session.user.id);
     if (acting) return <DelegateHome business={acting.business} actor={acting.actor} />;
   }
-  if (!session?.user?.businessId) redirect("/onboarding");
+  if (!session?.user?.id) redirect("/login");
+  // By owner, not from the token alone: a token naming a deleted or
+  // re-created business sent this page to /onboarding while onboarding,
+  // which looks by owner, sent it back (lib/dashboard/onboarding-loop.test.ts).
+  // Not requireBusinessPage(): it redirects to /dashboard while acting,
+  // and here, where acting already fell through, that would loop.
+  const owned = await db.business.findUnique({ where: { ownerId: session.user.id }, select: { id: true } });
+  if (!owned) redirect(await noBusinessDestination(session.user.id));
 
   const business = await db.business.findUnique({
-    where:   { id: session.user.businessId },
+    where:   { id: owned.id },
     include: {
       services:     { where: { isAvailable: true }, orderBy: { sortOrder: "asc" } },
       availability: { orderBy: { dayOfWeek: "asc" } },
@@ -38,7 +46,7 @@ export default async function DashboardPage() {
 
   if (!business) redirect("/onboarding");
 
-  const businessId       = session.user.businessId;
+  const businessId       = owned.id;
 
   // The headline numbers come from getDashboardKpis; this is only what
   // the lists below need. Seven aggregate queries that fed the old

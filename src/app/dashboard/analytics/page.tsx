@@ -1,8 +1,7 @@
+import { requireBusinessPage } from "@/lib/dashboard/guard";
 import { getLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
 import Link from "@/components/shared/LocaleLink";
 import { translations } from "@/lib/i18n";
 import AnalyticsClient from "./_components/AnalyticsClient";
@@ -12,13 +11,15 @@ import { getEffectivePlan, canUseFeature, type Plan, type SubscriptionStatus } f
 export const metadata: Metadata = { title: "الإحصائيات" };
 
 export default async function AnalyticsPage() {
-  const session = await auth();
-  if (!session?.user?.businessId) redirect("/onboarding");
+  // Not from the token alone: one naming a deleted or re-created business
+  // sent this page to /onboarding while onboarding, which looks by owner,
+  // sent it back (lib/dashboard/onboarding-loop.test.ts).
+  const { business: owned } = await requireBusinessPage();
 
   const lang = await getLang();
   const an   = translations[lang].dashboard.analytics;
 
-  const businessId = session.user.businessId;
+  const businessId = owned.id;
 
   // ── Plan gate: analytics requires GROWTH+ ────────────────────────────────
   const bizPlan = await db.business.findUnique({

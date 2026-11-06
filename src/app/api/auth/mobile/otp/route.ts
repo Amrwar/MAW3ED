@@ -4,6 +4,7 @@ import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
 import { normalisePhone } from "@/lib/phone";
 import { accountForVerifiedPhone, verifyLoginCode } from "@/lib/auth/login-code";
+import { phoneSignInRefusedFor } from "@/lib/auth/phone-signin-policy";
 import { startMobileSession } from "@/lib/auth/mobile-session";
 
 const schema = z.object({
@@ -56,6 +57,13 @@ export async function POST(req: Request) {
     // which of them it was is a hint to whoever is guessing.
     if (!result.ok) return err("الكود غير صحيح أو انتهت صلاحيته", 401);
 
+    // Owners and admins with a password or Google sign in that way: a
+    // phone code alone must not open a business or the admin console.
+    // Decided before accountForVerifiedPhone, which stamps the number as
+    // verified (lib/auth/phone-signin-policy.ts).
+    if (await phoneSignInRefusedFor(result.phone)) {
+      return err("الحساب ده بيدخل بالإيميل وكلمة السر أو بجوجل، مش بكود التليفون", 403);
+    }
     const account = await accountForVerifiedPhone(result.phone);
     const { deviceName, platform } = parsed.data;
     const login = await startMobileSession(account.id, { deviceName, platform });

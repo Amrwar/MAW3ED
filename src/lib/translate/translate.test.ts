@@ -92,6 +92,14 @@ describe("translateItems", () => {
     expect([...out.entries()]).toEqual([["a", "Mohamed Salah Barbershop"]]);
   });
 
+  it("bounds the model call with a timeout, so a hung request cannot eat the cron budget", async () => {
+    generateText.mockResolvedValue({ output: { translations: [] } });
+    await translateItems([{ id: "a", kind: "name", source: "عيادة" }]);
+    const signal = generateText.mock.calls[0][0].abortSignal;
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(signal.aborted).toBe(false);
+  });
+
   it("makes no call for an empty batch", async () => {
     expect((await translateItems([])).size).toBe(0);
     expect(generateText).not.toHaveBeenCalled();

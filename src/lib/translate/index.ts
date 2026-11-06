@@ -121,6 +121,9 @@ export interface TranslationItem {
   source: string;
 }
 
+/** Longest one model call (all its retries) may take. */
+export const MODEL_TIMEOUT_MS = 60_000;
+
 /** Translates a batch; returns id → English. Throws on model failure. */
 export async function translateItems(items: TranslationItem[]): Promise<Map<string, string>> {
   if (items.length === 0) return new Map();
@@ -132,6 +135,10 @@ export async function translateItems(items: TranslationItem[]): Promise<Map<stri
       items.map((i) => ({ id: i.id, kind: i.kind, arabic: i.source })),
     )}`,
     maxRetries: 2,
+    // A hung call must not eat the cron's whole budget: the 240 s check
+    // runs only between businesses, so one stuck request used to run
+    // until the platform killed the function.
+    abortSignal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
   });
   const wanted = new Set(items.map((i) => i.id));
   const out = new Map<string, string>();

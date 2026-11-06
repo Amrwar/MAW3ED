@@ -14,6 +14,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { safeNext } from "@/lib/account/safe-next";
+import { USE_PASSWORD_CODE } from "@/lib/auth/phone-signin-code";
 
 type Step = "phone" | "code";
 
@@ -100,8 +101,9 @@ export default function PhoneLogin() {
 
       if (result?.error) {
         // The server deliberately does not say which of wrong, expired
-        // or exhausted it was; neither does this.
-        setError(a.codeError);
+        // or exhausted it was; neither does this. It does say when the
+        // code was right but the account is an owner's or admin's.
+        setError(result.code === USE_PASSWORD_CODE ? a.usePassword : a.codeError);
         setCode("");
         codeRef.current?.focus();
         return;
