@@ -19,6 +19,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("next-auth", () => ({
+  CredentialsSignin: class extends Error {},
   default: (config: typeof state.config) => {
     state.config = config;
     return { auth: vi.fn(), handlers: {}, signIn: vi.fn(), signOut: vi.fn() };

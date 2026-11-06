@@ -1,5 +1,5 @@
+import { requireBusinessPage } from "@/lib/dashboard/guard";
 import type { Metadata } from "next";
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import crypto from "crypto";
@@ -22,11 +22,13 @@ async function generateReferralCode(): Promise<string> {
 }
 
 export default async function ReferralsPage() {
-  const session = await auth();
-  if (!session?.user?.businessId) redirect("/onboarding");
+  // Not from the token alone: one naming a deleted or re-created business
+  // sent this page to /onboarding while onboarding, which looks by owner,
+  // sent it back (lib/dashboard/onboarding-loop.test.ts).
+  const { business: owned } = await requireBusinessPage();
 
   const business = await db.business.findUnique({
-    where:  { id: session.user.businessId },
+    where:  { id: owned.id },
     select: {
       id:           true,
       referralCode: true,

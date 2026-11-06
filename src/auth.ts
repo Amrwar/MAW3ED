@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import { callerKey, rateLimit } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
 import Credentials from "next-auth/providers/credentials";
@@ -8,6 +8,12 @@ import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
 import { db } from "@/lib/db";
 import { accountForVerifiedPhone, verifyLoginCode } from "@/lib/auth/login-code";
+import { USE_PASSWORD_CODE, phoneSignInRefused } from "@/lib/auth/phone-signin-policy";
+
+/** Owners and admins sign in by password or Google (lib/auth/phone-signin-policy.ts). */
+class UsePasswordSignIn extends CredentialsSignin {
+  code = USE_PASSWORD_CODE;
+}
 import { normalisePhone } from "@/lib/phone";
 import { SESSION_MAX_AGE_SECONDS, needsRecheck, sessionRevoked } from "@/lib/security/session-policy";
 import { googleProfileAccepted, googleProviders } from "@/lib/auth/google";
@@ -127,6 +133,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           include: { business: { select: { id: true } } },
         });
         if (!user) return null;
+        if (phoneSignInRefused(user)) {
+          log.warn("[auth] phone sign-in refused for an owner or admin account");
+          throw new UsePasswordSignIn();
+        }
 
         return {
           id:         user.id,

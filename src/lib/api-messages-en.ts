@@ -97,6 +97,7 @@ export const MESSAGES: Record<string, string> = {
   "انتظر دقيقة قبل طلب كود جديد": "Wait a minute before asking for a new code.",
   "طلبت أكواد كتير. جرّب تاني بعد شوية": "You've asked for too many codes. Try again in a little while.",
   "الكود غير صحيح أو انتهت صلاحيته": "That code isn't right or has expired.",
+  "الحساب ده بيدخل بالإيميل وكلمة السر أو بجوجل، مش بكود التليفون": "This account signs in with email and password, or with Google, not with a phone code.",
   "الكود لازم يكون 6 أرقام": "The code must be 6 digits.",
   "اطلب كود جديد الأول": "Ask for a new code first.",
   "الكود انتهت صلاحيته — اطلب كود جديد": "That code has expired. Ask for a new one.",

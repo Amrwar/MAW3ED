@@ -1,3 +1,4 @@
+import { requireBusinessPage } from "@/lib/dashboard/guard";
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -23,10 +24,13 @@ export default async function DashboardPage() {
     const acting = await actingAccess(session.user.id);
     if (acting) return <DelegateHome business={acting.business} actor={acting.actor} />;
   }
-  if (!session?.user?.businessId) redirect("/onboarding");
+  // Not from the token alone: one naming a deleted or re-created business
+  // sent this page to /onboarding while onboarding, which looks by owner,
+  // sent it back (lib/dashboard/onboarding-loop.test.ts).
+  const { business: owned } = await requireBusinessPage();
 
   const business = await db.business.findUnique({
-    where:   { id: session.user.businessId },
+    where:   { id: owned.id },
     include: {
       services:     { where: { isAvailable: true }, orderBy: { sortOrder: "asc" } },
       availability: { orderBy: { dayOfWeek: "asc" } },
@@ -38,7 +42,7 @@ export default async function DashboardPage() {
 
   if (!business) redirect("/onboarding");
 
-  const businessId       = session.user.businessId;
+  const businessId       = owned.id;
 
   // The headline numbers come from getDashboardKpis; this is only what
   // the lists below need. Seven aggregate queries that fed the old

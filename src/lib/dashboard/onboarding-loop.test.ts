@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 
 /**
@@ -86,5 +86,32 @@ describe("the pair, together", () => {
     for (const file of [ONBOARDING, DASHBOARD_LAYOUT, DASHBOARD_GUARD]) {
       expect(read(file), file).toContain("db.business.findUnique");
     }
+  });
+});
+
+/**
+ * Every dashboard page, not only the layout: a page that sends you to
+ * /onboarding on the token's businessId alone loops just the same
+ * (found in the post-Phase-28 audit on /dashboard, /dashboard/analytics
+ * and /dashboard/referrals).
+ */
+describe("dashboard pages", () => {
+  const pages: string[] = [];
+  const walk = (dir: string) => {
+    for (const name of readdirSync(join(ROOT, dir))) {
+      const rel = `${dir}/${name}`;
+      if (statSync(join(ROOT, rel)).isDirectory()) walk(rel);
+      else if (name === "page.tsx") pages.push(rel);
+    }
+  };
+  walk("src/app/dashboard");
+
+  it("found the pages", () => {
+    expect(pages.length).toBeGreaterThan(10);
+  });
+
+  it.each(pages)("%s never redirects to /onboarding on the token's businessId alone", (p) => {
+    const source = read(p);
+    expect(source).not.toMatch(/if \(!session\?\.user\?\.businessId\) redirect\("\/onboarding"\)/);
   });
 });
