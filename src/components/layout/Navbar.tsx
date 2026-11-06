@@ -73,7 +73,10 @@ export default function Navbar() {
         scrolled && "border-b border-[var(--color-night-line)]",
       )}
     >
-      <div className="container-app">
+      {/* Full width, not the 1240px page column: on a wide screen a
+          capped bar floats in the middle, and the logo and pages should
+          sit at the start edge with the account at the end edge. */}
+      <div className="w-full px-5 md:px-8 xl:px-10">
         <div className="flex items-center h-20 gap-6 lg:gap-8">
 
           <Logo size="sm" href="/" variant="white" />
