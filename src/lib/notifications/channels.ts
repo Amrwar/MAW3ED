@@ -85,6 +85,8 @@ export const emailChannel: Channel = {
       to: recipient.email,
       subject: copy.title,
       html: notificationHtml(copy.title, copy.body ?? null, recipient.href),
+      // Renewed, and any other subscription news without its own email.
+      ...(event.type.startsWith("subscription.") ? { kind: "billing" as const } : {}),
     });
   },
 };
