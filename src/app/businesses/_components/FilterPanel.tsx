@@ -9,22 +9,25 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { num } from "@/lib/fmt";
 import { cn } from "@/lib/utils";
 
+type Patch = (patch: Partial<DiscoveryQuery>) => void;
+
 interface Props {
   query: DiscoveryQuery;
   facets: Facets;
   priceBounds: { min: number; max: number } | null;
-  onChange: (patch: Partial<DiscoveryQuery>) => void;
+  onChange: Patch;
 }
 
-/**
- * The filter column.
+/*
+ * The filters.
  *
- * It only reports what it is handed: a count of zero is shown rather
- * than hidden, because a dead end the visitor can see is better than
- * one they discover by tapping. Shown and also disabled — 33 of the 41
- * options here currently match nothing, and leaving them live meant 33
- * clickable rows that could only ever return an empty page.
+ * They only report what they are handed: a count of zero is shown
+ * rather than hidden, because a dead end the visitor can see is better
+ * than one they discover by tapping. Shown and also disabled — most
+ * options currently match nothing, and leaving them live meant rows
+ * that could only ever return an empty page.
  */
+
 /**
  * The options worth listing: those matching something, plus the one
  * already chosen (so it can be un-chosen). The panel used to list every
@@ -34,224 +37,325 @@ function offered<T extends { slug: string; count: number }>(list: T[], chosen: s
   return list.filter((x) => x.count > 0 || x.slug === chosen);
 }
 
-export default function FilterPanel({ query, facets, priceBounds, onChange }: Props) {
-  // This panel is on the page twice: the desktop sidebar and the
-  // filter drawer a phone opens. Hard-coded ids made both copies claim
-  // the same ones, and a label resolves to the first match in document
-  // order — so every price label in the drawer pointed at the sidebar's
-  // input, which is display:none on a phone. Tapping the label focused
-  // something invisible: no caret, no keyboard, nothing.
-  const uid = useId();
+function useNames() {
+  const { lang } = useLanguage();
+  const isAr = lang === "ar";
+  return (x: { nameAr: string; nameEn: string }) => (isAr ? x.nameAr : x.nameEn);
+}
 
+/**
+ * Every filter, grouped: the phone's filter sheet. On a wider screen
+ * each group is its own pill in the filter bar (FilterBar), which
+ * renders the sections below one at a time.
+ */
+export default function FilterPanel({ query, facets, priceBounds, onChange }: Props) {
   const { t, lang } = useLanguage();
   const f = t.filters;
-  const isAr = lang === "ar";
-  const name = (x: { nameAr: string; nameEn: string }) => (isAr ? x.nameAr : x.nameEn);
-
-  const parent = facets.categories.find(
-    (c) => c.slug === query.category || c.children.some((k) => k.slug === query.subcategory),
-  );
 
   return (
     <div className="flex flex-col gap-7">
-
-      {/* ── Quick toggles ── */}
       <Group title={f.quick}>
-        <div className="flex flex-col gap-1">
-          <Toggle
-            label={f.openNow}
-            checked={query.availability === "open-now"}
-            onChange={(on) => onChange({ availability: on ? "open-now" : "any", page: 1 })}
-          />
-          <Toggle
-            label={f.availableToday}
-            checked={query.availability === "today"}
-            onChange={(on) => onChange({ availability: on ? "today" : "any", page: 1 })}
-          />
-          <Toggle
-            label={f.availableTomorrow}
-            checked={query.availability === "tomorrow"}
-            onChange={(on) => onChange({ availability: on ? "tomorrow" : "any", page: 1 })}
-          />
-          <Toggle
-            label={f.verified}
-            hint={f.verifiedHint}
-            checked={query.verified}
-            onChange={(on) => onChange({ verified: on, page: 1 })}
-          />
-          <Toggle
-            label={f.instant}
-            hint={f.instantHint}
-            checked={query.instant}
-            onChange={(on) => onChange({ instant: on, page: 1 })}
-          />
-          <Toggle
-            label={f.online}
-            checked={query.online}
-            onChange={(on) => onChange({ online: on, page: 1 })}
-          />
-        </div>
+        <QuickToggles query={query} onChange={onChange} />
       </Group>
-
-      {/* ── Category, with its subcategories ── */}
+      <Group title={f.when}>
+        <WhenOptions query={query} onChange={onChange} />
+      </Group>
       <Group title={f.category}>
-        <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-          <li>
-            <Row
-              label={f.allCategories}
-              active={!query.category && !query.subcategory}
-              onClick={() => onChange({ category: "", subcategory: "", page: 1 })}
-            />
-          </li>
-          {offered(facets.categories, query.category).map((c) => (
-            <li key={c.id}>
-              <Row
-                label={name(c)}
-                count={c.count}
-                active={query.category === c.slug && !query.subcategory}
-                onClick={() =>
-                  onChange({
-                    category: query.category === c.slug ? "" : c.slug,
-                    subcategory: "",
-                    page: 1,
-                  })
-                }
-              />
-              {/* Children appear once their parent is the active branch,
-                  so the column does not open as a wall of options. */}
-              {parent?.id === c.id && offered(c.children, query.subcategory).length > 0 && (
-                <ul className="m-0 mt-0.5 flex list-none flex-col gap-0.5 p-0 ps-3">
-                  {offered(c.children, query.subcategory).map((k) => (
-                    <li key={k.id}>
-                      <Row
-                        label={name(k)}
-                        count={k.count}
-                        active={query.subcategory === k.slug}
-                        onClick={() =>
-                          onChange({
-                            category: c.slug,
-                            subcategory: query.subcategory === k.slug ? "" : k.slug,
-                            page: 1,
-                          })
-                        }
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          ))}
-        </ul>
+        <CategoryOptions query={query} facets={facets} onChange={onChange} />
       </Group>
-
-      {/* ── City, and its neighbourhoods once one is picked ── */}
       <Group title={f.city}>
-        <ul className="m-0 flex max-h-72 list-none flex-col gap-0.5 overflow-y-auto p-0">
-          <li>
-            <Row
-              label={f.allCities}
-              active={!query.city}
-              onClick={() => onChange({ city: "", neighborhood: "", page: 1 })}
-            />
-          </li>
-          {offered(facets.cities, query.city).map((c) => (
-            <li key={c.id}>
-              <Row
-                label={name(c)}
-                count={c.count}
-                active={query.city === c.slug && !query.neighborhood}
-                onClick={() =>
-                  onChange({
-                    city: query.city === c.slug ? "" : c.slug,
-                    neighborhood: "",
-                    page: 1,
-                  })
-                }
-              />
-            </li>
-          ))}
-        </ul>
+        <CityOptions query={query} facets={facets} onChange={onChange} />
       </Group>
-
       {facets.neighborhoods.length > 0 && (
         <Group title={f.neighborhood}>
-          <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-            <li>
-              <Row
-                label={f.allNeighborhoods}
-                active={!query.neighborhood}
-                onClick={() => onChange({ neighborhood: "", page: 1 })}
-              />
-            </li>
-            {facets.neighborhoods.map((n) => (
-              <li key={n.id}>
-                <Row
-                  label={name(n)}
-                  active={query.neighborhood === n.slug}
-                  onClick={() =>
-                    onChange({
-                      neighborhood: query.neighborhood === n.slug ? "" : n.slug,
-                      page: 1,
-                    })
-                  }
-                />
-              </li>
-            ))}
-          </ul>
+          <NeighborhoodOptions query={query} facets={facets} onChange={onChange} />
         </Group>
       )}
-
-      {/* ── Price ── */}
       {priceBounds && (
-        <Group title={f.price} hint={`${num(priceBounds.min, lang)} – ${num(priceBounds.max, lang)} ${t.businessCard.currency}`}>
-          <div className="flex items-center gap-2">
-            <NumberField
-              id={`${uid}-min-price`}
-              label={f.priceFrom}
-              value={query.minPrice}
-              placeholder={String(priceBounds.min)}
-              onCommit={(v) => onChange({ minPrice: v, page: 1 })}
-            />
-            <span aria-hidden="true" className="mt-5 text-[var(--color-faint)]">—</span>
-            <NumberField
-              id={`${uid}-max-price`}
-              label={f.priceTo}
-              value={query.maxPrice}
-              placeholder={String(priceBounds.max)}
-              onCommit={(v) => onChange({ maxPrice: v, page: 1 })}
-            />
-          </div>
+        <Group
+          title={f.price}
+          hint={`${num(priceBounds.min, lang)} – ${num(priceBounds.max, lang)} ${t.businessCard.currency}`}
+        >
+          <PriceFields query={query} priceBounds={priceBounds} onChange={onChange} />
         </Group>
       )}
-
-      {/* ── Rating ── */}
       <Group title={f.rating} hint={f.ratingHint}>
-        <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-          <li>
-            <Row
-              label={f.anyRating}
-              active={query.rating === null}
-              onClick={() => onChange({ rating: null, page: 1 })}
-            />
-          </li>
-          {RATING_FLOORS.map((r) => (
-            <li key={r}>
-              <Row
-                label={`${num(r, lang)}+`}
-                active={query.rating === r}
-                onClick={() => onChange({ rating: query.rating === r ? null : r, page: 1 })}
-              />
-            </li>
-          ))}
-        </ul>
+        <RatingOptions query={query} onChange={onChange} />
       </Group>
     </div>
   );
 }
 
+/* ─── Sections: whole above, one at a time in FilterBar ──── */
+
+export function QuickToggles({ query, onChange }: { query: DiscoveryQuery; onChange: Patch }) {
+  const { t } = useLanguage();
+  const f = t.filters;
+  return (
+    <div className="flex flex-col gap-1">
+      <Toggle
+        label={f.verified}
+        hint={f.verifiedHint}
+        checked={query.verified}
+        onChange={(on) => onChange({ verified: on, page: 1 })}
+      />
+      <Toggle
+        label={f.instant}
+        hint={f.instantHint}
+        checked={query.instant}
+        onChange={(on) => onChange({ instant: on, page: 1 })}
+      />
+      <Toggle
+        label={f.online}
+        checked={query.online}
+        onChange={(on) => onChange({ online: on, page: 1 })}
+      />
+    </div>
+  );
+}
+
+/**
+ * One choice, not three checkboxes: open now, today and tomorrow all
+ * set the same URL value, so ticking one used to untick another
+ * without saying so.
+ */
+export function WhenOptions({ query, onChange }: { query: DiscoveryQuery; onChange: Patch }) {
+  const { t } = useLanguage();
+  const f = t.filters;
+  const options: { value: DiscoveryQuery["availability"]; label: string }[] = [
+    { value: "any", label: f.anyTime },
+    { value: "open-now", label: f.openNow },
+    { value: "today", label: f.availableToday },
+    { value: "tomorrow", label: f.availableTomorrow },
+  ];
+  return (
+    <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+      {options.map((o) => (
+        <li key={o.value}>
+          <Row
+            label={o.label}
+            active={query.availability === o.value}
+            onClick={() => onChange({ availability: o.value, page: 1 })}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function CategoryOptions({
+  query,
+  facets,
+  onChange,
+}: {
+  query: DiscoveryQuery;
+  facets: Facets;
+  onChange: Patch;
+}) {
+  const { t } = useLanguage();
+  const name = useNames();
+  const f = t.filters;
+  const parent = facets.categories.find(
+    (c) => c.slug === query.category || c.children.some((k) => k.slug === query.subcategory),
+  );
+  return (
+    <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+      <li>
+        <Row
+          label={f.allCategories}
+          active={!query.category && !query.subcategory}
+          onClick={() => onChange({ category: "", subcategory: "", page: 1 })}
+        />
+      </li>
+      {offered(facets.categories, query.category).map((c) => (
+        <li key={c.id}>
+          <Row
+            label={name(c)}
+            count={c.count}
+            active={query.category === c.slug && !query.subcategory}
+            onClick={() =>
+              onChange({
+                category: query.category === c.slug ? "" : c.slug,
+                subcategory: "",
+                page: 1,
+              })
+            }
+          />
+          {/* Children appear once their parent is the active branch,
+              so the list does not open as a wall of options. */}
+          {parent?.id === c.id && offered(c.children, query.subcategory).length > 0 && (
+            <ul className="m-0 mt-0.5 flex list-none flex-col gap-0.5 p-0 ps-3">
+              {offered(c.children, query.subcategory).map((k) => (
+                <li key={k.id}>
+                  <Row
+                    label={name(k)}
+                    count={k.count}
+                    active={query.subcategory === k.slug}
+                    onClick={() =>
+                      onChange({
+                        category: c.slug,
+                        subcategory: query.subcategory === k.slug ? "" : k.slug,
+                        page: 1,
+                      })
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function CityOptions({
+  query,
+  facets,
+  onChange,
+}: {
+  query: DiscoveryQuery;
+  facets: Facets;
+  onChange: Patch;
+}) {
+  const { t } = useLanguage();
+  const name = useNames();
+  const f = t.filters;
+  return (
+    // Capped: a long list of cities would push everything below it in
+    // the phone sheet off screen.
+    <ul className="m-0 flex max-h-72 list-none flex-col gap-0.5 overflow-y-auto p-0">
+      <li>
+        <Row
+          label={f.allCities}
+          active={!query.city}
+          onClick={() => onChange({ city: "", neighborhood: "", page: 1 })}
+        />
+      </li>
+      {offered(facets.cities, query.city).map((c) => (
+        <li key={c.id}>
+          <Row
+            label={name(c)}
+            count={c.count}
+            active={query.city === c.slug && !query.neighborhood}
+            onClick={() =>
+              onChange({
+                city: query.city === c.slug ? "" : c.slug,
+                neighborhood: "",
+                page: 1,
+              })
+            }
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function NeighborhoodOptions({
+  query,
+  facets,
+  onChange,
+}: {
+  query: DiscoveryQuery;
+  facets: Facets;
+  onChange: Patch;
+}) {
+  const { t } = useLanguage();
+  const name = useNames();
+  const f = t.filters;
+  return (
+    <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+      <li>
+        <Row
+          label={f.allNeighborhoods}
+          active={!query.neighborhood}
+          onClick={() => onChange({ neighborhood: "", page: 1 })}
+        />
+      </li>
+      {facets.neighborhoods.map((n) => (
+        <li key={n.id}>
+          <Row
+            label={name(n)}
+            active={query.neighborhood === n.slug}
+            onClick={() =>
+              onChange({
+                neighborhood: query.neighborhood === n.slug ? "" : n.slug,
+                page: 1,
+              })
+            }
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function PriceFields({
+  query,
+  priceBounds,
+  onChange,
+}: {
+  query: DiscoveryQuery;
+  priceBounds: { min: number; max: number };
+  onChange: Patch;
+}) {
+  // The fields can be on the page twice (the bar's popover and the
+  // phone sheet), and a label resolves to the first matching id in the
+  // document: fixed ids would point one copy's labels at the other's
+  // inputs.
+  const uid = useId();
+  const { t } = useLanguage();
+  const f = t.filters;
+  return (
+    <div className="flex items-center gap-2">
+      <NumberField
+        id={`${uid}-min-price`}
+        label={f.priceFrom}
+        value={query.minPrice}
+        placeholder={String(priceBounds.min)}
+        onCommit={(v) => onChange({ minPrice: v, page: 1 })}
+      />
+      <span aria-hidden="true" className="mt-5 text-[var(--color-faint)]">—</span>
+      <NumberField
+        id={`${uid}-max-price`}
+        label={f.priceTo}
+        value={query.maxPrice}
+        placeholder={String(priceBounds.max)}
+        onCommit={(v) => onChange({ maxPrice: v, page: 1 })}
+      />
+    </div>
+  );
+}
+
+export function RatingOptions({ query, onChange }: { query: DiscoveryQuery; onChange: Patch }) {
+  const { t, lang } = useLanguage();
+  const f = t.filters;
+  return (
+    <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+      <li>
+        <Row
+          label={f.anyRating}
+          active={query.rating === null}
+          onClick={() => onChange({ rating: null, page: 1 })}
+        />
+      </li>
+      {RATING_FLOORS.map((r) => (
+        <li key={r}>
+          <Row
+            label={`${num(r, lang)}+`}
+            active={query.rating === r}
+            onClick={() => onChange({ rating: query.rating === r ? null : r, page: 1 })}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /* ─── Pieces ─────────────────────────────────────────────── */
 
-function Group({
+export function Group({
   title,
   hint,
   children,
