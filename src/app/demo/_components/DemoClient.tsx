@@ -220,8 +220,7 @@ export default function DemoClient() {
   );
 }
 
-function subtitle(tab: Tab, en: boolean): string {
-  const s: Record<Tab, [string, string]> = {
+const SUBTITLES: Record<Tab, [string, string]> = {
     overview:  ["Today at a glance, and what needs you.", "يومك في نظرة، واللي محتاجك."],
     calendar:  ["Who is booked when, per team member.", "مين محجوز إمتى، لكل حد في الفريق."],
     book:      ["Add a walk-in or a phone booking. Only free times are offered.", "ضيف حجز من المحل أو التليفون. المواعيد الفاضية بس اللي بتظهر."],
@@ -232,6 +231,8 @@ function subtitle(tab: Tab, en: boolean): string {
     offers:    ["Discount codes customers type when they book.", "أكواد خصم العميل بيكتبها وهو بيحجز."],
     reports:   ["Bookings, no-shows and revenue, counted like the real reports.", "الحجوزات واللي محضروش والإيراد، محسوبين زي التقارير الحقيقية."],
     team:      ["Each team member's day.", "يوم كل حد في الفريق."],
-  };
-  return en ? s[tab][0] : s[tab][1];
+};
+
+function subtitle(tab: Tab, en: boolean): string {
+  return en ? SUBTITLES[tab][0] : SUBTITLES[tab][1];
 }

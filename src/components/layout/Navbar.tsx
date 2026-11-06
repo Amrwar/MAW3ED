@@ -134,6 +134,7 @@ export default function Navbar() {
               <span className="hidden md:inline-flex xl:hidden">
                 <Link
                   href="/demo"
+                  aria-current={isActive("/demo") ? "page" : undefined}
                   aria-label={demoLabel}
                   title={demoLabel}
                   className="relative inline-flex size-11 items-center justify-center rounded-full border border-[var(--color-night-edge)] text-[var(--color-night-accent)] transition-colors hover:border-[var(--color-night-accent)] hover:bg-[var(--color-night-2)]"

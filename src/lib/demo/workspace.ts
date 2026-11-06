@@ -11,6 +11,8 @@
 
 import { computeStaffedAvailability, type DayHoursRule, type StaffDayRule } from "@/lib/bookings/availability";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
+import { normaliseCode } from "@/lib/discounts/apply";
+import { REMINDER_LEAD_HOURS } from "@/lib/notifications/reminder-lead";
 
 export interface DemoService {
   id: string;
@@ -97,7 +99,7 @@ const SERVICES: DemoService[] = [
 ];
 
 const STAFF: DemoStaff[] = [
-  { id: "t-1", ar: "كريم (تجريبي)", en: "Karim (sample)", workingDays: [0, 1, 2, 3, 4, 6] },
+  { id: "t-1", ar: "كريم (تجريبي)", en: "Karim (sample)", workingDays: [0, 1, 2, 3, 4, 5, 6] },
   { id: "t-2", ar: "يوسف (تجريبي)", en: "Youssef (sample)", workingDays: [0, 1, 2, 3, 4, 5, 6] },
 ];
 
@@ -113,7 +115,9 @@ const CUSTOMERS: DemoCustomer[] = NAMES.map((name, i) => ({
 
 const HOURS: DayHoursRule[] = [0, 1, 2, 3, 4, 5, 6].map((d) => ({
   dayOfWeek: d,
-  openTime: d === 5 ? "14:00" : "10:00",
+  // The same every day: the seeded bookings are on "today", whichever
+  // weekday that is, and must fall inside opening hours.
+  openTime: "10:00",
   closeTime: "22:00",
   isClosed: false,
 }));
@@ -139,8 +143,8 @@ const OFFERS: DemoOffer[] = [
 
 const SETTINGS: DemoSettings = { reminderEnabled: true, reminderLeadHours: 24, autoConfirm: false };
 
-/** Reminder lead times the real settings form offers. */
-export const REMINDER_LEAD_CHOICES = [1, 2, 3, 6, 12, 24, 48, 72] as const;
+/** Reminder lead times: the real settings form's own list. */
+export const REMINDER_LEAD_CHOICES = REMINDER_LEAD_HOURS;
 
 /** A fresh copy every time, so a reset really resets. */
 export function initialDemoState(): DemoState {
@@ -261,18 +265,18 @@ export function demoReply(state: DemoState, reviewId: string, text: string): Dem
 }
 
 /**
- * A new discount code, or null with the reason it was refused: the same
- * shape of rule as the real form (letters and digits, a sensible percent,
- * no duplicate codes).
+ * A new discount code, or the reason it was refused, by the real rules
+ * (api/business/discounts): a code of up to 40 characters, normalised as
+ * the product normalises it; a whole percent from 1 to 100; no duplicate.
  */
 export function demoAddOffer(
   state: DemoState,
   rawCode: string,
   percent: number,
 ): { state: DemoState } | { error: "code" | "percent" | "duplicate" } {
-  const code = rawCode.trim().toUpperCase();
-  if (!/^[A-Z0-9]{3,15}$/.test(code)) return { error: "code" };
-  if (!Number.isInteger(percent) || percent < 5 || percent > 90) return { error: "percent" };
+  const code = normaliseCode(rawCode);
+  if (code.length === 0 || code.length > 40) return { error: "code" };
+  if (!Number.isInteger(percent) || percent < 1 || percent > 100) return { error: "percent" };
   if (state.offers.some((o) => o.code === code)) return { error: "duplicate" };
   return {
     state: { ...state, offers: [...state.offers, { id: `o-new-${state.offers.length + 1}`, code, percent, uses: 0, active: true }] },

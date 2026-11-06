@@ -35,8 +35,10 @@ describe("demo workspace", () => {
   });
 
   it("does not offer a staff member on their day off", () => {
-    const s = initialDemoState();
-    // Karim does not work Fridays (5); the only slots go to Youssef.
+    // Both seeded team members work every day (the seeded bookings are on
+    // "today", whatever weekday that is), so give Karim Fridays off here.
+    const base = initialDemoState();
+    const s = { ...base, staff: base.staff.map((st) => (st.id === "t-1" ? { ...st, workingDays: [0, 1, 2, 3, 4, 6] } : st)) };
     const any = demoSlots(s, "s-cut", null, 5, 0);
     expect(Object.values(any.assignments).every((id) => id === "t-2")).toBe(true);
     expect(demoSlots(s, "s-cut", "t-1", 5, 0).slots).toHaveLength(0);
@@ -64,10 +66,13 @@ describe("the demo's grow and insight features", () => {
     const s = initialDemoState();
     const ok = demoAddOffer(s, " summer15 ", 15);
     expect("state" in ok && ok.state.offers.at(-1)).toMatchObject({ code: "SUMMER15", percent: 15, uses: 0, active: true });
-    expect(demoAddOffer(s, "ab", 15)).toEqual({ error: "code" });
-    expect(demoAddOffer(s, "HAS SPACE", 15)).toEqual({ error: "code" });
-    expect(demoAddOffer(s, "SUMMER", 4)).toEqual({ error: "percent" });
-    expect(demoAddOffer(s, "SUMMER", 91)).toEqual({ error: "percent" });
+    // The real API takes any code up to 40 characters, and 1 to 100%.
+    expect("state" in demoAddOffer(s, "EID-2026", 100)).toBe(true);
+    expect("state" in demoAddOffer(s, "AB", 1)).toBe(true);
+    expect(demoAddOffer(s, "   ", 15)).toEqual({ error: "code" });
+    expect(demoAddOffer(s, "X".repeat(41), 15)).toEqual({ error: "code" });
+    expect(demoAddOffer(s, "SUMMER", 0)).toEqual({ error: "percent" });
+    expect(demoAddOffer(s, "SUMMER", 101)).toEqual({ error: "percent" });
     expect(demoAddOffer(s, "SUMMER", 12.5)).toEqual({ error: "percent" });
     expect(demoAddOffer(s, "welcome10", 20)).toEqual({ error: "duplicate" });
     expect(s.offers).toHaveLength(1);

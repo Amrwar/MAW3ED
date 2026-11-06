@@ -24,6 +24,8 @@ const STATUS: Record<DemoStatus, { ar: string; en: string; cls: string }> = {
 const panel = "rounded-[var(--radius-lg)] bg-[var(--color-surface)] shadow-[var(--shadow-card)] border border-[var(--color-line)]";
 const field = "w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2.5 text-sm";
 const egp = (n: number, en: boolean) => (en ? `${n} EGP` : `${n} ج.م`);
+/** "1 visit", "2 visits": English counts read right at one and above. */
+const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
 /* ── Overview ─────────────────────────────────────────────────── */
 
@@ -95,12 +97,12 @@ export function Overview({ state, en, setState, go }: { state: DemoState; en: bo
           ) : null}
           {o.pending > 0 && (
             <p className="m-0 rounded-[var(--radius-md)] bg-[var(--color-warn-soft)] p-3 text-sm text-[var(--color-warn)]">
-              {en ? `${o.pending} booking waiting for your confirmation.` : `${o.pending} حجز مستني تأكيدك.`}
+              {en ? `${n(o.pending, "booking is", "bookings are")} waiting for your confirmation.` : `${o.pending} حجز مستني تأكيدك.`}
             </p>
           )}
           {o.unanswered > 0 && (
             <button type="button" onClick={() => go("reviews")} className="block w-full rounded-[var(--radius-md)] bg-[var(--color-jade-tint)] p-3 text-start text-sm text-[var(--color-jade-hover)]">
-              {en ? `${o.unanswered} reviews without a reply →` : `${o.unanswered} تقييم من غير رد ←`}
+              {en ? `${n(o.unanswered, "review", "reviews")} without a reply →` : `${o.unanswered} تقييم من غير رد ←`}
             </button>
           )}
           <button type="button" onClick={() => go("book")} className="btn btn-outline btn-sm w-full gap-1.5">
@@ -182,7 +184,7 @@ export function BookForm({ state, en, setState, go }: { state: DemoState; en: bo
     const d = new Date();
     return { dow: d.getDay(), nowMin: d.getHours() * 60 + d.getMinutes() };
   });
-  const { slots, assignments } = useMemo(
+  const { slots } = useMemo(
     () => demoSlots(state, serviceId, staffId, dow, nowMin),
     [state, serviceId, staffId, dow, nowMin],
   );
@@ -223,7 +225,13 @@ export function BookForm({ state, en, setState, go }: { state: DemoState; en: bo
                 dir="ltr"
                 className="btn btn-sm btn-outline num"
                 onClick={() => {
-                  setState((prev) => demoBook(prev, { serviceId, staffId: staffId ?? assignments[t] ?? state.staff[0].id, time: t, customerName: name }));
+                  // Re-checked against the latest state, so a double tap
+                  // cannot book the same person twice at one time.
+                  setState((prev) => {
+                    const fresh = demoSlots(prev, serviceId, staffId, dow, nowMin);
+                    if (!fresh.slots.includes(t)) return prev;
+                    return demoBook(prev, { serviceId, staffId: staffId ?? fresh.assignments[t] ?? prev.staff[0].id, time: t, customerName: name });
+                  });
                   go("overview");
                 }}
               >
@@ -255,7 +263,7 @@ export function Customers({ state, en }: { state: DemoState; en: boolean }) {
               <p className="m-0 text-xs text-[var(--color-subtle)]" dir="ltr">{c.phone}</p>
             </div>
             {svc && <span className="text-xs text-[var(--color-muted)]">{en ? `Last: ${svc.en}` : `آخر خدمة: ${svc.ar}`}</span>}
-            <span className="badge badge-default">{en ? `${c.visits} visits` : `${c.visits} زيارات`}</span>
+            <span className="badge badge-default">{en ? n(c.visits, "visit", "visits") : `${c.visits} زيارات`}</span>
           </div>
         );
       })}
@@ -316,14 +324,19 @@ export function BookingPage({ state, en }: { state: DemoState; en: boolean }) {
               type="button"
               className="btn btn-sm btn-outline gap-1.5"
               onClick={() => {
-                navigator.clipboard?.writeText(`https://www.${link}`).then(() => setCopied(true), () => setCopied(false));
+                // The demo's own address, never a real-looking business
+                // page that could 404 or one day be somebody else's.
+                navigator.clipboard?.writeText("https://www.maw3ed.net/demo").then(
+                  () => { setCopied(true); setTimeout(() => setCopied(false), 2000); },
+                  () => setCopied(false),
+                );
               }}
             >
               {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
               {copied ? (en ? "Copied" : "اتنسخ") : (en ? "Copy" : "انسخ")}
             </button>
           </div>
-          <p className="m-0 mt-1.5 text-[0.6875rem] text-[var(--color-subtle)]">{en ? "A sample address: yours is your business's own." : "عنوان تجريبي: بتاعك بيبقى باسم نشاطك."}</p>
+          <p className="m-0 mt-1.5 text-[0.6875rem] text-[var(--color-subtle)]">{en ? "A sample address: yours carries your business's name. Copying here gives the demo's link." : "عنوان تجريبي: بتاعك بيبقى باسم نشاطك. النسخ هنا بيديك لينك الديمو."}</p>
         </div>
         <div className="border-t border-[var(--color-line)] pt-4 text-center">
           <p className="m-0 text-sm font-bold">{en ? "QR for your counter" : "QR للكاشير"}</p>
@@ -475,8 +488,8 @@ export function Offers({ state, en, setState }: { state: DemoState; en: boolean;
   const [percent, setPercent] = useState("15");
   const [error, setError] = useState<string | null>(null);
   const reasons = {
-    code: en ? "Use 3 to 15 letters or digits, like SUMMER15." : "استخدم من ٣ لـ ١٥ حرف أو رقم، زي SUMMER15.",
-    percent: en ? "Pick a discount between 5% and 90%." : "اختار خصم من ٥٪ لـ ٩٠٪.",
+    code: en ? "Type a code of up to 40 characters, like SUMMER15." : "اكتب كود لحد ٤٠ حرف، زي SUMMER15.",
+    percent: en ? "Pick a whole percent from 1 to 100." : "اختار نسبة صحيحة من ١ لـ ١٠٠.",
     duplicate: en ? "You already have that code." : "الكود ده موجود عندك.",
   };
   return (
@@ -487,7 +500,12 @@ export function Offers({ state, en, setState }: { state: DemoState; en: boolean;
           e.preventDefault();
           const r = demoAddOffer(state, code, Number(percent));
           if ("error" in r) return setError(reasons[r.error]);
-          setState(r.state); setCode(""); setError(null);
+          // Applied to the latest state, like every other change here.
+          setState((p) => {
+            const again = demoAddOffer(p, code, Number(percent));
+            return "state" in again ? again.state : p;
+          });
+          setCode(""); setError(null);
         }}
       >
         <label className="min-w-[10rem] flex-1 space-y-1.5 text-sm">
@@ -496,7 +514,7 @@ export function Offers({ state, en, setState }: { state: DemoState; en: boolean;
         </label>
         <label className="w-32 space-y-1.5 text-sm">
           <span className="font-bold">{en ? "Discount %" : "الخصم ٪"}</span>
-          <input className={field} type="number" min={5} max={90} value={percent} onChange={(e) => setPercent(e.target.value)} />
+          <input className={field} type="number" min={1} max={100} value={percent} onChange={(e) => setPercent(e.target.value)} />
         </label>
         <button type="submit" className="btn btn-primary gap-1.5"><Plus size={15} aria-hidden="true" />{en ? "Create code" : "اعمل كود"}</button>
         {error && <p role="alert" className="m-0 w-full text-sm text-[var(--color-danger)]">{error}</p>}
@@ -506,7 +524,7 @@ export function Offers({ state, en, setState }: { state: DemoState; en: boolean;
         {state.offers.map((o) => (
           <div key={o.id} className={`flex flex-wrap items-center gap-3 p-4 ${o.active ? "" : "opacity-60"}`}>
             <span className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-jade)] bg-[var(--color-jade-tint)] px-2.5 py-1 font-mono text-sm font-bold text-[var(--color-jade-hover)]" dir="ltr">{o.code}</span>
-            <span className="flex-1 text-sm">{en ? `${o.percent}% off · used ${o.uses} times` : `خصم ${o.percent}٪ · اتستخدم ${o.uses} مرات`}</span>
+            <span className="flex-1 text-sm">{en ? `${o.percent}% off · ${o.uses === 0 ? "not used yet" : `used ${n(o.uses, "time", "times")}`}` : `خصم ${o.percent}٪ · ${o.uses === 0 ? "لسه متستخدمش" : `اتستخدم ${o.uses} مرات`}`}</span>
             <Switch on={o.active} label={en ? `Code ${o.code} active` : `الكود ${o.code} شغال`} onChange={() => setState((p) => demoToggleOffer(p, o.id))} />
           </div>
         ))}
@@ -576,7 +594,7 @@ export function Team({ state, en }: { state: DemoState; en: boolean }) {
               <div>
                 <p className="m-0 font-bold">{en ? st.en : st.ar}</p>
                 <p className="m-0 text-xs text-[var(--color-subtle)]">
-                  {en ? `${stats?.bookings} bookings · ${stats?.minutes} min today` : `${stats?.bookings} حجز · ${stats?.minutes} دقيقة النهارده`}
+                  {en ? `${n(stats?.bookings ?? 0, "booking", "bookings")} · ${stats?.minutes} min today` : `${stats?.bookings} حجز · ${stats?.minutes} دقيقة النهارده`}
                 </p>
               </div>
             </div>
