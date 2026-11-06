@@ -12,6 +12,8 @@ These are proposals from the post-Phase-28 audit (docs/audits/POST_PHASE_28_PUBL
 - Privacy notice: a section on organizations, delegated managers and the enterprise API and webhooks.
 - Low security items: HMAC'd OTP hashes, session revocation on logout, owner-visible pending staff claims.
 - CI: a DB-backed vitest job (Q-2), and a Playwright smoke on preview deployments (Q-3).
+- S-1 follow-ups: require a password or verified email before an account can own a business, then refuse phone sign-in for every owner; revoke phone-issued sessions for owners and admins.
+- Service price mode: fixed / free / on request (a migration), so "Price not set" goes away without mislabelling free services or package-paid bookings.
 - Listing-quality nudge in the owner dashboard: missing English, every service on "price on request", a category that doesn't match the services.
 
 **Acceptance criteria:**

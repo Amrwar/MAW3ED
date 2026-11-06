@@ -14,7 +14,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { safeNext } from "@/lib/account/safe-next";
-import { USE_PASSWORD_CODE } from "@/lib/auth/phone-signin-policy";
+import { USE_PASSWORD_CODE } from "@/lib/auth/phone-signin-code";
 
 type Step = "phone" | "code";
 

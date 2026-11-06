@@ -110,8 +110,14 @@ describe("dashboard pages", () => {
     expect(pages.length).toBeGreaterThan(10);
   });
 
-  it.each(pages)("%s never redirects to /onboarding on the token's businessId alone", (p) => {
+  it.each(pages)("%s never decides on the token's businessId alone", (p) => {
     const source = read(p);
-    expect(source).not.toMatch(/if \(!session\?\.user\?\.businessId\) redirect\("\/onboarding"\)/);
+    // Any spelling of "no businessId in the token, so onboarding".
+    expect(source).not.toMatch(/businessId\)\s*(return\s+)?redirect\(\s*["'`]\/onboarding/);
+    // A page that can send you to onboarding must have looked the
+    // business up the way onboarding does: through a guard, or by owner.
+    if (/redirect\(\s*["'`]\/onboarding/.test(source)) {
+      expect(source).toMatch(/requireBusinessPage|requireDashboardAccess|ownerId/);
+    }
   });
 });

@@ -202,7 +202,7 @@ export default async function BookingPage({ params }: Params) {
               value={
                 Number(booking.totalPrice) > 0
                   ? money(Number(booking.totalPrice), lang, booking.currency)
-                  : say("السعر عند الاستفسار", "Price on request")
+                  : say("السعر غير محدد", "Price not set")
               }
             />
             {booking.depositAmount !== null && Number(booking.depositAmount) > 0 && (

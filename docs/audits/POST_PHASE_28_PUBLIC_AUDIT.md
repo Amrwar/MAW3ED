@@ -23,11 +23,11 @@ Detail files: [PUBLIC_CONTENT_FINDINGS.md](PUBLIC_CONTENT_FINDINGS.md) · [ORGAN
 
 | ID | Severity | Defect | Status |
 |---|---|---|---|
-| S-1 | **High** | A phone OTP signed into **any** account holding the number, including business owners (whose dashboard holds every customer's details and payments) and admins. One SMS/WhatsApp factor bypassed both password and Google. Evidence: `auth.ts` phone-otp `authorize`; `api/auth/mobile/otp` | **Fixed**: `lib/auth/phone-signin-policy.ts` refuses owners and admins on web and mobile, with a clear message ("sign in with email/password or Google"). Staff phone login is unchanged |
+| S-1 | **High** | A phone OTP signed into **any** account holding the number, including business owners (whose dashboard holds every customer's details and payments) and admins. One SMS/WhatsApp factor bypassed both password and Google. Evidence: `auth.ts` phone-otp `authorize`; `api/auth/mobile/otp` | **Fixed for owners and admins with a password or Google**: `lib/auth/phone-signin-policy.ts`, web and mobile, checked **before** the number is stamped as verified. Shows a clear "use email/password or Google" message. **Residual:** an owner whose account was made by phone code (no password, no Google) keeps phone sign-in, because refusing would lock them out; onboarding only requires a session. Sessions issued before this change are not revoked. Both are Phase 29 |
 | S-2 | **High** | A recycled phone number whose old holder **never deleted** their account: the new holder signs straight into that account (`login-code.ts:151-156`). They get its full booking history, each booking's `accessToken` (cancel/reschedule), payments, reviews and data export | **Open: needs a schema change**, see the proposal below |
 | C-1 | Medium | The deletion page said past bookings "will show again" in a new account on the same number. The code does the opposite (`PhoneRelease` fence) | **Fixed** (AR+EN) |
 | C-2 | Medium | FAQ promised a fixed two-hour cancellation window. The cutoff is per business (`cancellationCutoffHours`), as the help centre says | **Fixed** |
-| C-3 | Medium | Services priced 0 (allowed on purpose: the business quotes the price) displayed "Price not set", which reads as a broken listing | **Fixed**: now "Price on request / السعر عند الاستفسار". Help article explains 0 |
+| C-3 | Low | A service priced 0 shows "Price not set", which reads as a broken listing. But 0 means three different things: free, price on request, and (on bookings) paid by package or voucher | **Open, Phase 29**: add an explicit price mode (fixed / free / on request) on Service. A label change alone would mislead, so it was tried and reverted after review |
 | L-1 | Medium | `/dashboard`, `/dashboard/analytics` and `/dashboard/referrals` sent a token with a stale or empty `businessId` to `/onboarding`, which looks up by owner and sends it back, so the browser bounced between them (same class as the earlier production report fixed in the layout) | **Fixed**: all three use `requireBusinessPage()` (owner fallback). Regression test scans every dashboard page |
 | L-2 | Low | Translation model call had no timeout. One hung call could eat the cron's 300 s and starve later businesses | **Fixed**: `AbortSignal.timeout(60 s)` + test |
 | C-4 | Low | Terms of Use is 207 words. It is silent on deposits and refunds, subscriptions, cancellation, liability, governing law, organizations and visitor access | Open: Phase 29, legal review |
@@ -108,6 +108,21 @@ None. Phases 22 through 28 are merged, with their production migrations applied.
 | **Possible, tests proposed** | Translations: no timeout (fixed, L-2), cron runs may overlap (Q-4). Reminders: `take: 1000` starvation (Q-5). Mobile payment polling: no error backoff (Q-6). Stripe: the claim is not released if the function is killed mid-handler (Q-7) |
 | **Guarded (evidence in the subagent report, summarised)** | Notification outbox: 5 attempts with backoff, then DEAD. Outbound webhooks: 8 attempts; endpoint disabled after 20 failures; SSRF guard. Access sync: 6 attempts with a time budget. Automations: page cap plus a 240 s deadline. Payment reaper: `take 500` with row locks. Realtime stream: client stops after 8 failures. Mobile app: every listener cleaned up; a 401 retries once with a single shared refresh. No `revalidate*` calls anywhere. No effect calls `router.push` unconditionally |
 
+## Code review
+
+`/code-review medium` on the branch raised 10 candidates. I checked each in the code:
+
+- **Fixed (7):**
+  - Owner lockout: an owner with no other way in keeps phone sign-in.
+  - The number was stamped verified before the refusal; the check now runs first.
+  - The price label was misleading for free services and package bookings; reverted.
+  - `/dashboard` could redirect to itself while acting; it now looks the business up by owner directly.
+  - A missing account got the wrong error message.
+  - The loop test matched one exact string; it now catches any spelling.
+  - The error class sat inside the import block.
+- **Documented (2):** phone sessions issued before this change are not revoked (Phase 29); duplicate queries on dashboard pages (minor).
+- **Accepted (1):** the refusal message tells a code holder that the number belongs to a business or admin account. They already hold the number, and owners need a clear message.
+
 ## 9. Tests executed (exact results, local, branch `fix/public-copy-consistency`)
 
 | Check | Result |
@@ -115,14 +130,14 @@ None. Phases 22 through 28 are merged, with their production migrations applied.
 | `npx tsc --noEmit` | exit 0 |
 | `npx eslint src` | 0 errors, 6 warnings (the warning count is the same as main) |
 | `npx eslint .` (whole repo) | 2457 errors, 30985 warnings, all outside `src/` (see Q-11) |
-| `npx vitest run` | 147 files passed, 22 skipped (DB). **1451 passed, 228 skipped, 0 failed**, after the new tests were added |
+| `npx vitest run` | 147 files passed, 22 skipped (DB). **1455 passed, 228 skipped, 0 failed**, after the new tests were added |
 | `npx next build` | exit 0. Compiled in 12.3 s, 236/236 static pages |
 | Live HTTP checks | robots, sitemap (64 URLs), canonical, hreflang and JSON-LD on 11 pages, plus 4 company pages, FAQ and help text |
 | Browser E2E, Lighthouse, axe, device, partner, concurrency | **Not run** (no tooling here or unsafe on production) |
 
 ## 10. Recommended work, by impact and dependency
 
-1. **Merge this branch** (S-1, C-1..C-3, L-1, L-2).
+1. **Merge this branch** (S-1, C-1, C-2, L-1, L-2).
 2. **Owner actions, no code needed:**
    - Buy AI Gateway credit (fixes the English listings).
    - Re-categorise or hide BerryGum.

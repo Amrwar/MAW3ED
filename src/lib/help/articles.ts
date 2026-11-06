@@ -48,7 +48,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
             "صفحتك بتتعمل خاصة: محدش يشوفها غيرك لحد ما تنشرها. صفحة \"تجهيز النشاط\" بتقولك بالظبط إيه الناقص.",
           ],
           bullets: [
-            "المطلوب قبل النشر: التصنيف، رقم تليفون، إيميل متأكد، العنوان، مواعيد العمل، خدمة واحدة على الأقل بمدة صح وسعر (أو 0 عشان يظهر «السعر عند الاستفسار»)، ومراجعة سياسات الحجز والإلغاء.",
+            "المطلوب قبل النشر: التصنيف، رقم تليفون، إيميل متأكد، العنوان، مواعيد العمل، خدمة واحدة على الأقل بمدة وسعر صح، ومراجعة سياسات الحجز والإلغاء.",
             "المستحسن (مش بيمنع النشر): الموقع على الخريطة، تأكيد الواتساب، اللوجو والوصف، الفريق أو الطاولات، وحجز تجريبي.",
             "لو بدأت التسجيل ومكملتش، بنحفظ خطواتك على السيرفر وتقدر تكمّل من أي جهاز.",
           ],
@@ -71,7 +71,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
             "Your page starts private: nobody but you can see it until you publish. The Setup page lists exactly what is missing.",
           ],
           bullets: [
-            "Required before publishing: category, phone number, confirmed email, address, opening hours, at least one service with a valid duration and a price (or 0 to show “Price on request”), and a review of your booking and cancellation policies.",
+            "Required before publishing: category, phone number, confirmed email, address, opening hours, at least one service with a valid duration and price, and a review of your booking and cancellation policies.",
             "Recommended (never blocks publishing): map location, confirmed WhatsApp, logo and description, team or tables, and a test booking.",
             "If you start signing up and stop, your progress is saved on our server and you can continue on any device.",
           ],

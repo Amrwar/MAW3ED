@@ -1,4 +1,4 @@
-import { requireBusinessPage } from "@/lib/dashboard/guard";
+import { noBusinessDestination } from "@/lib/dashboard/guard";
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -24,10 +24,14 @@ export default async function DashboardPage() {
     const acting = await actingAccess(session.user.id);
     if (acting) return <DelegateHome business={acting.business} actor={acting.actor} />;
   }
-  // Not from the token alone: one naming a deleted or re-created business
-  // sent this page to /onboarding while onboarding, which looks by owner,
-  // sent it back (lib/dashboard/onboarding-loop.test.ts).
-  const { business: owned } = await requireBusinessPage();
+  if (!session?.user?.id) redirect("/login");
+  // By owner, not from the token alone: a token naming a deleted or
+  // re-created business sent this page to /onboarding while onboarding,
+  // which looks by owner, sent it back (lib/dashboard/onboarding-loop.test.ts).
+  // Not requireBusinessPage(): it redirects to /dashboard while acting,
+  // and here, where acting already fell through, that would loop.
+  const owned = await db.business.findUnique({ where: { ownerId: session.user.id }, select: { id: true } });
+  if (!owned) redirect(await noBusinessDestination(session.user.id));
 
   const business = await db.business.findUnique({
     where:   { id: owned.id },
