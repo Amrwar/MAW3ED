@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
-import { ArrowRight, Smartphone } from "lucide-react";
+import { ArrowRight, Languages, MessageCircle, Sparkles } from "lucide-react";
+import Logo from "@/components/shared/Logo";
 import Link from "@/components/shared/LocaleLink";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
@@ -137,39 +138,33 @@ export default function AddPhone({ isOwner }: { isOwner: boolean }) {
 
   if (switchFailed) {
     return (
-      <div className="card mx-auto w-full max-w-[28rem] p-7">
-        <h1 className="m-0 text-[1.5rem] font-bold text-[var(--color-ink)]">{p.title}</h1>
+      <Frame>
+        <h1 className="auth-title">{p.title}</h1>
         <div className="mt-5 flex flex-col gap-4">
           <Alert tone="danger">{p.switchFailed}</Alert>
           <Button type="button" variant="primary" fullWidth onClick={switchToMergedAccount}>
             {t.auth.google.continue}
           </Button>
         </div>
-      </div>
+      </Frame>
     );
   }
 
   return (
-    <div className="card mx-auto w-full max-w-[28rem] p-7">
-      <span
-        aria-hidden="true"
-        className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-jade-soft)] text-[var(--color-jade)]"
-      >
-        <Smartphone size={22} strokeWidth={1.8} />
-      </span>
-      <h1 className="m-0 text-[1.5rem] font-bold text-[var(--color-ink)]">
-        {step === "phone" ? p.title : p.codeTitle}
-      </h1>
-      <p className="m-0 mt-2 text-[0.9375rem] leading-relaxed text-[var(--color-muted)]">
-        {step === "phone" ? p.subtitle : a.codeSubtitle.replace("{phone}", phone.trim())}
-      </p>
+    <Frame>
+      <header className="mb-6">
+        <h1 className="auth-title">{step === "phone" ? p.title : p.codeTitle}</h1>
+        <p className="auth-sub">
+          {step === "phone" ? p.subtitle : a.codeSubtitle.replace("{phone}", phone.trim())}
+        </p>
+      </header>
 
       {switching ? (
-        <p role="status" className="m-0 mt-6 text-[0.9375rem] text-[var(--color-ink)]">
+        <p role="status" className="m-0 text-[0.9375rem] text-[var(--color-ink)]">
           {p.switching}
         </p>
       ) : step === "phone" ? (
-        <form method="post" onSubmit={sendCode} className="mt-6 flex flex-col gap-4">
+        <form method="post" onSubmit={sendCode} className="flex flex-col gap-4">
           <Input
             label={a.phoneLabel}
             type="tel"
@@ -189,7 +184,7 @@ export default function AddPhone({ isOwner }: { isOwner: boolean }) {
           </Button>
         </form>
       ) : (
-        <form method="post" onSubmit={confirm} className="mt-6 flex flex-col gap-4">
+        <form method="post" onSubmit={confirm} className="flex flex-col gap-4">
           <Input
             ref={codeRef}
             label={a.codeLabel}
@@ -239,6 +234,40 @@ export default function AddPhone({ isOwner }: { isOwner: boolean }) {
           </Link>
         </div>
       )}
+    </Frame>
+  );
+}
+
+/**
+ * The sign-in pages' look (AuthShell) as one card inside the account
+ * page, which keeps the site's header and footer: the dark brand panel
+ * beside the form, stacked above it on a phone. Same classes, so the
+ * fields and the button take the same shape as on /account-login.
+ */
+function Frame({ children }: { children: React.ReactNode }) {
+  const { t } = useLanguage();
+  const b = t.auth.brand;
+  return (
+    <div className="auth-card">
+      <aside className="auth-card-brand" aria-label={b.label}>
+        <Logo size="md" variant="white" className="auth-brand-logo" />
+        <p className="auth-headline">{b.headline}</p>
+        <ul className="auth-facts">
+          <li>
+            <MessageCircle size={16} strokeWidth={1.8} aria-hidden="true" />
+            {b.factWhatsApp}
+          </li>
+          <li>
+            <Languages size={16} strokeWidth={1.8} aria-hidden="true" />
+            {b.factLanguages}
+          </li>
+          <li>
+            <Sparkles size={16} strokeWidth={1.8} aria-hidden="true" />
+            {b.factFree}
+          </li>
+        </ul>
+      </aside>
+      <div className="auth-pane auth-card-form">{children}</div>
     </div>
   );
 }
