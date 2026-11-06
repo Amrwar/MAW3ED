@@ -79,8 +79,11 @@ export default function HeroSearch({ cities, suggestions, initialCity = "" }: Pr
        and the hero are two surfaces with an edge between them rather
        than one dark block.
     */
-    <section className="hero-wash pt-20">
-      <div className="container-app py-14 lg:py-24">
+    // The whole first screen, content centred in it: the next section
+    // peeking in under the fold looked unfinished. svh, not vh, so a
+    // phone's collapsing address bar does not push it past the screen.
+    <section className="hero-wash flex min-h-[100svh] flex-col justify-center pt-20">
+      <div className="container-app w-full py-14 lg:py-16">
         <div className="mx-auto flex max-w-[52rem] flex-col items-center text-center">
 
           <h1 className="display-title text-balance text-[var(--color-ink)]">
