@@ -34,11 +34,19 @@ const FROM    = process.env.EMAIL_FROM?.trim() || "Maw3ed <noreply@maw3ed.net>";
  * billing@, and a reply goes there too: an owner answering a renewal
  * reminder is a billing question, and noreply@ is not read.
  */
-const BILLING_FROM = process.env.EMAIL_FROM_BILLING?.trim() || "Maw3ed Billing <billing@maw3ed.net>";
+const BILLING_FROM = process.env.EMAIL_FROM_BILLING?.trim() || `Maw3ed Billing <billing@${domainOf(FROM) ?? "maw3ed.net"}>`;
 
-/** The bare address in "Name <addr>", or the string itself. */
-function addressOf(from: string): string {
-  return from.match(/<([^>]+)>/)?.[1] ?? from;
+/**
+ * The bare address in "Name <addr>" or "addr", or null when there is
+ * none: a malformed value then costs the reply-to, not the whole send.
+ */
+export function addressOf(from: string): string | null {
+  return from.match(/<\s*([^<>\s]+@[^<>\s]+)\s*>/)?.[1] ?? from.match(/^\s*([^<>\s]+@[^<>\s]+)\s*$/)?.[1] ?? null;
+}
+
+/** The domain EMAIL_FROM sends from, so billing@ is on the one Resend verified for this deployment. */
+function domainOf(from: string): string | null {
+  return addressOf(from)?.split("@")[1] ?? null;
 }
 
 /**
@@ -78,12 +86,13 @@ export async function sendEmail(payload: EmailPayload): Promise<SendOutcome> {
 
   try {
     const billing = payload.kind === "billing";
+    const replyTo = billing ? addressOf(BILLING_FROM) : null;
     const { data, error } = await client.emails.send({
       from:    billing ? BILLING_FROM : FROM,
       to:      payload.to,
       subject: payload.subject,
       html:    payload.html,
-      ...(billing ? { replyTo: addressOf(BILLING_FROM) } : {}),
+      ...(replyTo ? { replyTo } : {}),
     });
 
     if (error) {

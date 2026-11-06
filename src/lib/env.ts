@@ -87,7 +87,7 @@ const optional = z.object({
   // Email (Resend)
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
-  /** Sender for subscription (billing) mail; defaults to billing@maw3ed.net. */
+  /** Sender for subscription (billing) mail; defaults to billing@ on EMAIL_FROM's domain. */
   EMAIL_FROM_BILLING: z.string().optional(),
 
   // The address the contact page and FAQ send users to. Declared here

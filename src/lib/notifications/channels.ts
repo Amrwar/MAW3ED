@@ -10,7 +10,7 @@ import { notificationHtml } from "@/lib/services/email-templates";
 import { smsText, type Copy } from "./copy";
 import type { Recipient } from "./recipients";
 import type { Audience, EventType, NotificationEvent } from "./events";
-import { EVENT_KIND } from "./events";
+import { EVENT_KIND, isSubscriptionEvent } from "./events";
 import { bespokeSender, type BespokeContext } from "./templates";
 
 /**
@@ -84,9 +84,9 @@ export const emailChannel: Channel = {
     return sendEmail({
       to: recipient.email,
       subject: copy.title,
-      html: notificationHtml(copy.title, copy.body ?? null, recipient.href),
+      html: notificationHtml(copy.title, copy.body ?? null, recipient.href, isSubscriptionEvent(event)),
       // Renewed, and any other subscription news without its own email.
-      ...(event.type.startsWith("subscription.") ? { kind: "billing" as const } : {}),
+      ...(isSubscriptionEvent(event) ? { kind: "billing" as const } : {}),
     });
   },
 };

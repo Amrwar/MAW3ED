@@ -28,7 +28,11 @@ function formatDateAr(iso: string): string {
 
 // ── Shared layout wrapper ─────────────────────────────────────
 
-function layout(body: string): string {
+/**
+ * `replyable`: the mail comes from an address somebody reads (billing@),
+ * so the footer asks for a reply instead of forbidding one.
+ */
+function layout(body: string, replyable = false): string {
   return `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -54,7 +58,9 @@ function layout(body: string): string {
         <!-- Footer -->
         <tr><td style="padding:20px 0 0;text-align:center;">
           <p style="margin:0;font-size:12px;color:#9ca3af;">
-            الرسالة دي اتبعتت تلقائيًا من <strong>موعد</strong> · متردّش على الإيميل ده
+            ${replyable
+              ? "الرسالة دي من فريق الاشتراكات في <strong>موعد</strong> · لو عندك سؤال عن اشتراكك ردّ على الإيميل ده"
+              : "الرسالة دي اتبعتت تلقائيًا من <strong>موعد</strong> · متردّش على الإيميل ده"}
           </p>
         </td></tr>
 
@@ -340,7 +346,7 @@ export function subscriptionRenewalReminderHtml(params: {
     ${button(renewUrl, "جدّد الاشتراك ←")}
     ${THANKS}
   `;
-  return layout(body);
+  return layout(body, true);
 }
 
 // ── Subscription expired template ─────────────────────────────
@@ -379,7 +385,7 @@ export function subscriptionExpiredHtml(params: {
     ${button(renewUrl, "جدّد الاشتراك ←")}
     ${THANKS}
   `;
-  return layout(body);
+  return layout(body, true);
 }
 
 // ── Password reset template ───────────────────────────────────
@@ -494,6 +500,8 @@ export function notificationHtml(
   title: string,
   body: string | null,
   href: string | null,
+  /** From billing@: the footer asks for a reply (see layout). */
+  replyable = false,
 ): string {
   const link = href ? (/^https?:\/\//i.test(href) ? href : siteUrl(href)) : null;
   return layout(`
@@ -509,7 +517,7 @@ export function notificationHtml(
            <a href="${escapeHtml(link)}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">عرض التفاصيل</a>
          </td></tr></table>`
       : ""
-  }`);
+  }`, replyable);
 }
 
 /**
