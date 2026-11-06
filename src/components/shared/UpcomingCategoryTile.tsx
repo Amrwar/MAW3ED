@@ -4,7 +4,18 @@ import { coverClassFor } from "@/lib/category-cover";
  * A category nobody has listed in yet. Greyed, and it links nowhere:
  * /categories/[slug] does not exist until a business is published in it.
  */
-export default function UpcomingCategoryTile({ slug, name, isAr }: { slug: string; name: string; isAr: boolean }) {
+export default function UpcomingCategoryTile({
+  slug,
+  nameAr,
+  nameEn,
+  isAr,
+}: {
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  isAr: boolean;
+}) {
+  const name = isAr ? nameAr : nameEn || nameAr;
   return (
     <div className="card block overflow-hidden opacity-75">
       <span aria-hidden="true" className={`block h-[8.5rem] grayscale ${coverClassFor(slug)}`} />

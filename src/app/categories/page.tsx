@@ -6,7 +6,6 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PageHero from "@/components/shared/PageHero";
 import { getFacets } from "@/lib/discovery/search";
-import { getCategoriesWithCounts } from "@/lib/data";
 import { upcomingCategories } from "@/lib/category-upcoming";
 import UpcomingCategoryTile from "@/components/shared/UpcomingCategoryTile";
 import { buildMetadata } from "@/lib/seo/meta";
@@ -21,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return lang === "en"
     ? buildMetadata({
         title: "Browse by category",
-        description: "Every category with businesses taking bookings on Maw3ed — pick one and see the places in it.",
+        description: "Every category on Maw3ed — pick one to see the places taking bookings in it, and what is coming soon.",
         path: "/categories",
         lang,
       })
@@ -46,10 +45,10 @@ export async function generateMetadata(): Promise<Metadata> {
  * what every visitor saw.
  *
  * It now reads the same facets the browse page filters on. A category
- * appears when it has at least one published business, which is also
- * the condition for /categories/[slug] existing — so every tile leads
- * somewhere real, and the count beside it is the number of places the
- * visitor will actually find.
+ * with at least one published business is a link (the condition for
+ * /categories/[slug] existing), and the count beside it is the number
+ * of places the visitor will actually find. Categories with none come
+ * after, greyed and unlinked, marked "Coming soon", as on the home page.
  */
 export default async function CategoriesPage() {
   const lang = await getLang();
@@ -58,11 +57,12 @@ export default async function CategoriesPage() {
   const isAr = lang === "ar";
   const ArrowIcon = isAr ? ArrowLeft : ArrowRight;
 
-  const [facets, all] = await Promise.all([getFacets(), getCategoriesWithCounts()]);
+  const facets = await getFacets();
   const categories = facets.categories.filter((cat) => cat.count > 0);
-  // The ones still to come, as on the home page: every empty category,
-  // greyed and unlinked (their pages do not exist yet).
-  const upcoming = upcomingCategories(all, categories.map((cat) => cat.slug));
+  // The ones still to come, as on the home page: every top-level
+  // category with nothing in it (counts here include subcategories),
+  // greyed and unlinked, since their pages do not exist yet.
+  const upcoming = upcomingCategories(facets.categories);
 
   return (
     <>
@@ -114,7 +114,7 @@ export default async function CategoriesPage() {
                 })}
                 {upcoming.map((cat) => (
                   <li key={cat.id} className="min-w-0">
-                    <UpcomingCategoryTile slug={cat.slug} name={isAr ? cat.nameAr : cat.nameEn || cat.nameAr} isAr={isAr} />
+                    <UpcomingCategoryTile slug={cat.slug} nameAr={cat.nameAr} nameEn={cat.nameEn} isAr={isAr} />
                   </li>
                 ))}
               </ul>

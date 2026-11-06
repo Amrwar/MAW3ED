@@ -17,7 +17,9 @@ export default function ScrollCue() {
   function next(e: React.MouseEvent<HTMLButtonElement>) {
     const hero = e.currentTarget.closest("section");
     if (!hero) return;
-    const header = document.querySelector("header")?.offsetHeight ?? 0;
+    // The bar's own height (h-20), not the <header>'s, which grows
+    // when the phone menu is open.
+    const header = 80;
     const top = hero.getBoundingClientRect().bottom + window.scrollY - header;
     const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.scrollTo({ top, behavior: smooth ? "smooth" : "auto" });

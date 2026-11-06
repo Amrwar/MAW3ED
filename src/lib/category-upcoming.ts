@@ -13,18 +13,26 @@ function rank(slug: string): number {
   return i === -1 ? UPCOMING_FIRST.length : i;
 }
 
+interface Countable {
+  id: string;
+  slug: string;
+  count: number;
+  /** Set on a subcategory in a flat list; absent where counts are rolled up. */
+  parentId?: string | null;
+}
+
 /**
- * The empty categories, most wanted first, leaving out any slug in
- * `live` (a parent counted through its children is not "coming").
+ * The empty categories, most wanted first. In a flat list (parents and
+ * subcategories side by side, each with its own count), a parent whose
+ * businesses are all filed under a subcategory is not "coming", and
+ * neither is an empty subcategory of a parent that has businesses:
+ * browsing the parent already covers it.
  */
-export function upcomingCategories<T extends { slug: string; count: number }>(
-  all: T[],
-  live: Iterable<string> = [],
-  limit = Infinity,
-): T[] {
-  const skip = new Set(live);
+export function upcomingCategories<T extends Countable>(all: T[], limit = Infinity): T[] {
+  const live = new Set(all.filter((c) => c.count > 0).map((c) => c.id));
+  const liveParents = new Set(all.filter((c) => c.count > 0 && c.parentId).map((c) => c.parentId as string));
   return all
-    .filter((c) => c.count === 0 && !skip.has(c.slug))
+    .filter((c) => c.count === 0 && !liveParents.has(c.id) && !(c.parentId && live.has(c.parentId)))
     .sort((a, b) => rank(a.slug) - rank(b.slug))
     .slice(0, Math.max(0, limit));
 }

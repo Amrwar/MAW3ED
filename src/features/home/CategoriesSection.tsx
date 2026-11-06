@@ -43,7 +43,7 @@ export default function CategoriesSection({ categories, limit = 8 }: Props) {
   // full rows of four on a desktop), the kinds of place still to come
   // are shown too — as tiles that say so and link nowhere, since their
   // pages do not exist yet.
-  const upcoming = upcomingCategories(categories, [], UPCOMING_FILL_TO - shown.length);
+  const upcoming = upcomingCategories(categories, UPCOMING_FILL_TO - shown.length);
 
   return (
     <section className="bg-[var(--color-ground)] pt-20">
@@ -103,7 +103,7 @@ export default function CategoriesSection({ categories, limit = 8 }: Props) {
               key={cat.id}
               className="min-w-0 basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-3rem)/4)]"
             >
-              <UpcomingCategoryTile slug={cat.slug} name={isAr ? cat.nameAr : cat.nameEn} isAr={isAr} />
+              <UpcomingCategoryTile slug={cat.slug} nameAr={cat.nameAr} nameEn={cat.nameEn} isAr={isAr} />
             </li>
           ))}
         </ul>
