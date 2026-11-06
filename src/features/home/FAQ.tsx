@@ -16,6 +16,8 @@ export default function FAQ() {
   const { t } = useLanguage();
   const f = t.faq;
   const [open, setOpen] = useState<number | null>(0);
+  // The address is a link, so the sentence is split around it.
+  const [before = "", after = ""] = f.supportBody.split("{email}");
 
   return (
     <section className="border-y border-[var(--color-line)] bg-[var(--color-surface)] py-20">
@@ -36,11 +38,11 @@ export default function FAQ() {
               </span>
               <h3 className="m-0 mt-5 text-[1.0625rem] font-bold text-[var(--color-ink)]">{f.notFoundTitle}</h3>
               <p className="m-0 mt-2 text-[0.875rem] leading-[1.75] text-[var(--color-muted)]">
-                {f.writeTo}{" "}
+                {before}
                 <a href={SUPPORT_MAILTO} dir="ltr" className="font-semibold text-[var(--color-jade)] hover:text-[var(--color-jade-hover)]">
                   {SUPPORT_EMAIL}
                 </a>
-                {f.orContactPage}
+                {after}
               </p>
               <Link href="/contact" className="btn btn-primary btn-pill btn-sm mt-5">
                 {f.contactBtn}

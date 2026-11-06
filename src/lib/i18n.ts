@@ -786,8 +786,7 @@ export const translations = {
       title:       "الأسئلة الشائعة",
       subtitle:    "إجابات على أكثر الأسئلة شيوعًا حول موعد.",
       notFoundTitle:"لم تجد إجابة لسؤالك؟",
-      writeTo:      "ابعتلنا على",
-      orContactPage:"، أو استخدم صفحة التواصل.",
+      supportBody:  "ابعتلنا على {email}، أو استخدم صفحة التواصل.",
       contactBtn:  "تواصل معنا",
       // General questions; the homepage shows these. The FAQ page adds
       // the two groups below them.
@@ -1907,8 +1906,7 @@ export const translations = {
       title:        "Frequently Asked Questions",
       subtitle:     "Answers to the most common questions about Maw3ed.",
       notFoundTitle:"Didn't find an answer?",
-      writeTo:      "Write to",
-      orContactPage:" or use the contact page.",
+      supportBody:  "Write to {email} or use the contact page.",
       contactBtn:   "Contact Us",
       // General questions; the homepage shows these. The FAQ page adds
       // the two groups below them.
