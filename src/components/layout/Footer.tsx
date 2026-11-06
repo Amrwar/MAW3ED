@@ -3,13 +3,12 @@
 import Link from "@/components/shared/LocaleLink";
 import { useSession } from "next-auth/react";
 import Logo from "@/components/shared/Logo";
-import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { VERSION_LABEL, APP_COMMIT } from "@/lib/version";
 import { SUPPORT_WHATSAPP, whatsappHref } from "@/lib/contact";
 import { operatorLine } from "@/lib/support";
 
-export default function Footer({ cta = true }: { cta?: boolean }) {
+export default function Footer() {
   const { t, lang } = useLanguage();
   const f = t.footer;
   const { data: session, status } = useSession();
@@ -33,7 +32,6 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
           { label: f.links.addBusiness, href: "/signup?type=business" },
           { label: f.links.login,       href: "/login" },
         ];
-  const showCta = cta && !signedIn;
 
   const columns = [
     {
@@ -78,40 +76,7 @@ export default function Footer({ cta = true }: { cta?: boolean }) {
       the hero opens on, so the two bracket everything between them.
     */
     <footer className="bg-[var(--color-night)] text-[var(--color-inverse)]">
-      <div className={cn("container-app", showCta ? "pt-0" : "pt-16")}>
-
-        {/* The one thing worth asking for, where a reader who got this
-            far is most likely to say yes.
-
-            Off on a page that already ends with its own call to action.
-            The home page does, and two near-identical asks stacked back
-            to back read as a page that does not know what it wants. */}
-        {showCta && (
-          /*
-            Relative, not a negative top margin. A negative margin on the
-            first child drags the footer's own top edge up with it, so
-            the card lands exactly on the boundary and overlaps nothing.
-            Relative leaves the footer's box where it is and moves only
-            the paint, so the card genuinely straddles the seam; the
-            negative bottom margin takes back the space it left behind.
-          */
-          <div className="relative -top-11 -mb-6 flex flex-wrap items-center justify-between gap-6 rounded-[var(--radius-xl)] bg-[var(--color-jade)] px-8 py-10 shadow-[var(--shadow-float)] sm:px-11">
-            <div className="min-w-0">
-              <h2 className="m-0 text-[1.375rem] font-bold leading-[1.45] text-[var(--color-inverse)] sm:text-[1.625rem]">
-                {f.ctaTitle}
-              </h2>
-              <p className="m-0 mt-2 text-[0.9375rem] text-[var(--color-jade-soft)]">
-                {f.ctaBody}
-              </p>
-            </div>
-            <Link
-              href="/signup"
-              className="shrink-0 rounded-[var(--radius-md)] bg-[var(--color-inverse)] px-8 py-4 text-[0.9375rem] font-extrabold text-[var(--color-jade-hover)] transition-colors hover:bg-[var(--color-jade-soft)]"
-            >
-              {f.ctaButton}
-            </Link>
-          </div>
-        )}
+      <div className="container-app pt-16">
 
         <div className="grid grid-cols-1 gap-10 pb-13 pt-13 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
 
