@@ -65,6 +65,8 @@ export type CategoryWithCount = {
   bgColor: string;
   /** Published businesses in this category. Often zero; that is fine. */
   count:   number;
+  /** The category it is filed under, if it is a subcategory. */
+  parentId: string | null;
 };
 
 /**
@@ -94,6 +96,7 @@ export async function getCategoriesWithCounts(): Promise<CategoryWithCount[]> {
       color:   c.color,
       bgColor: c.bgColor,
       count:   counts.get(c.id) ?? 0,
+      parentId: c.parentId,
     }))
     .sort((a, b) => b.count - a.count || a.nameAr.localeCompare(b.nameAr, "ar"));
 }

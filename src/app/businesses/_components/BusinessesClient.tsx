@@ -233,6 +233,7 @@ export default function BusinessesClient({
         badge={isAr ? "اكتشف" : "Discover"}
         title={b.pageTitle}
         subtitle={isAr ? "ابحث واحجز من الأنشطة المتاحة في منطقتك" : "Search and book from the businesses listed near you"}
+        fill={false}
       />
 
       {/* ── Search bar ── */}
