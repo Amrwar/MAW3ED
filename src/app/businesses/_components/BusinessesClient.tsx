@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState, useTransition, useId } from "react";
 import { countText } from "@/lib/i18n";
 import Link from "@/components/shared/LocaleLink";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, SlidersHorizontal, Store, X } from "lucide-react";
+import { Search, Store, X } from "lucide-react";
 import BusinessCard, { BusinessCardSkeleton } from "@/components/shared/BusinessCard";
 import PageHero from "@/components/shared/PageHero";
 import EmptyState from "@/components/ui/EmptyState";
@@ -27,6 +27,7 @@ import { num } from "@/lib/fmt";
 import { localizePath } from "@/lib/locale-path";
 import { cn } from "@/lib/utils";
 import FilterPanel from "./FilterPanel";
+import FilterBar from "./FilterBar";
 import PaginationBar from "./PaginationBar";
 import PlacesBlock from "./PlacesBlock";
 import { useFunnelStep } from "@/lib/analytics/funnel-client";
@@ -264,29 +265,25 @@ export default function BusinessesClient({
               {isPending ? b.searching : b.searchBtn}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setFiltersOpen(true)}
-              className="btn btn-outline shrink-0 lg:hidden"
-            >
-              <SlidersHorizontal size={16} strokeWidth={1.8} aria-hidden="true" />
-              {f.title}
-              {filterCount > 0 && (
-                <span className="num rounded-full bg-[var(--color-jade)] px-1.5 text-[0.6875rem] font-bold text-[var(--color-inverse)]">
-                  {filterCount}
-                </span>
-              )}
-            </button>
           </form>
         </div>
       </div>
 
+      {/* ── Filters: one row of pills (FilterBar), the full set in a
+          sheet on a phone. The old sidebar took 16rem from the results. ── */}
+      <FilterBar
+        query={query}
+        facets={facets}
+        priceBounds={priceBounds}
+        onChange={push}
+        onOpenAll={() => setFiltersOpen(true)}
+        activeCount={filterCount}
+      />
+
       {/* ── Results ── */}
-      <div className="container-app flex flex-wrap items-start gap-8 py-10">
+      <div className="container-app py-8">
 
-        <aside className="hidden w-[16rem] shrink-0 lg:block">{panel}</aside>
-
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
 
           {/* Count, applied chips and sort */}
           <div className="mb-5 flex flex-wrap items-center gap-3">
@@ -399,7 +396,7 @@ export default function BusinessesClient({
 
               <ul
                 className={cn(
-                  "m-0 grid list-none grid-cols-1 gap-5 p-0 transition-opacity sm:grid-cols-2 xl:grid-cols-3",
+                  "m-0 grid list-none grid-cols-1 gap-5 p-0 transition-opacity sm:grid-cols-2 lg:grid-cols-3",
                   isPending && "opacity-60",
                 )}
               >
@@ -497,7 +494,7 @@ export default function BusinessesClient({
 
 function ResultSkeleton() {
   return (
-    <ul className="m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
         <li key={i}>
           <BusinessCardSkeleton />

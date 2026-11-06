@@ -533,6 +533,26 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-ink);
 }
 
+/* A row of chips that scrolls sideways rather than wrapping or
+   squeezing (the Browse filter bar). No visible scrollbar: the row
+   is swiped on touch and fits whole on a desktop. */
+.filter-row {
+  scrollbar-width: none;
+  scroll-padding-inline: 1rem;
+}
+.filter-row::-webkit-scrollbar { display: none; }
+
+/* The phone's "all filters" chip: night-filled, so it leads the row. */
+.chip-night,
+.chip-night:hover {
+  background: var(--color-night);
+  border-color: var(--color-night);
+  color: var(--color-inverse);
+}
+.chip-night:hover { background: var(--color-night-2); }
+/* A pill whose panel is open but has nothing chosen yet. */
+.chip-open { border-color: var(--color-ink); color: var(--color-ink); }
+
 /* The same chip on the jade-wash hero: filled white with a jade
    edge, so it sits on the tint rather than disappearing into it. */
 .chip-on-wash {
