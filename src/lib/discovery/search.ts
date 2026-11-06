@@ -17,6 +17,7 @@ import { timeToMinutes } from "@/lib/bookings/time";
 import { searchTerms } from "./synonyms";
 import { settleInstantBadges } from "@/lib/bookings/allowance";
 import { PLAN_PRICES_EGP, canUseFeature, getEffectivePlan, type Plan } from "@/lib/plans";
+import { englishOf } from "@/lib/translate/english";
 
 /**
  * The discovery query.
@@ -31,8 +32,11 @@ export interface DiscoveryBusiness {
   id: string;
   slug: string;
   nameAr: string;
+  /** The owner's English, else machine English (lib/translate). */
   nameEn: string | null;
   taglineAr: string | null;
+  /** Machine English of the Arabic tagline; there is no English field. */
+  taglineEn: string | null;
   coverImage: string | null;
   logoImage: string | null;
   isVerified: boolean;
@@ -299,7 +303,9 @@ const SELECT = {
   slug: true,
   nameAr: true,
   nameEn: true,
+  nameEnAuto: true,
   taglineAr: true,
+  taglineEnAuto: true,
   coverImage: true,
   logoImage: true,
   isVerified: true,
@@ -340,8 +346,9 @@ function toBusiness(row: Row, nowDay: number, nowTime: string): DiscoveryBusines
     id: row.id,
     slug: row.slug,
     nameAr: row.nameAr,
-    nameEn: row.nameEn,
+    nameEn: englishOf(row.nameEn, row.nameEnAuto),
     taglineAr: row.taglineAr,
+    taglineEn: row.taglineEnAuto,
     coverImage: row.coverImage,
     logoImage: row.logoImage,
     isVerified: row.isVerified,

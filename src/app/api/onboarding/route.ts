@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import crypto from "crypto";
 import { log } from "@/lib/logger";
 import { recordMilestone } from "@/lib/business/lifecycle";
+import { translateAfterSave } from "@/lib/translate";
 
 /** Generate a unique 8-char uppercase hex referral code. */
 async function generateReferralCode(): Promise<string> {
@@ -140,6 +141,8 @@ export async function POST(req: Request) {
 
     // Clear referral cookie so it isn't accidentally reused
     if (refCode) cookieStore.delete("maw3ed_ref");
+
+    translateAfterSave(business.id);
 
     // Never published at this point; the success screen sends the owner
     // to the setup checklist, which says what is left before going live.

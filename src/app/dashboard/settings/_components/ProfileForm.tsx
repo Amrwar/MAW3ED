@@ -321,13 +321,23 @@ export default function ProfileForm({ profile, cities, categories, onSaved }: Pr
           </Field>
           <Field
             label={isAr ? "اسم العمل بالإنجليزية" : "Business Name (English)"}
-            hint={isAr ? "اختياري — للعملاء الدوليين" : "Optional — for international customers"}
+            hint={
+              // Left empty, English pages use the automatic translation
+              // of the Arabic name (lib/translate), shown as the placeholder.
+              profile.nameEnAuto
+                ? isAr
+                  ? "اختياري — لو سبته فاضي هنستخدم الترجمة التلقائية الظاهرة"
+                  : "Optional — left empty, English pages use the automatic translation shown"
+                : isAr
+                  ? "اختياري — للعملاء الدوليين"
+                  : "Optional — for international customers"
+            }
           >
             <input
               value={form.nameEn}
               onChange={(e) => set("nameEn", e.target.value)}
               style={fieldBase}
-              placeholder="e.g. Dr. Ahmed Clinic"
+              placeholder={profile.nameEnAuto || "e.g. Dr. Ahmed Clinic"}
               dir="ltr"
               onFocus={onFocus}
               onBlur={onBlur}

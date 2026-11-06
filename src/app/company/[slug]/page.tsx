@@ -31,6 +31,7 @@ import { cairoNow, openState, type DayHours } from "@/lib/discovery/hours";
 import { businessNextSlot } from "@/lib/discovery/profile";
 import { getBusinessReviews, getRatingSummary } from "@/lib/reviews";
 import { translations } from "@/lib/i18n";
+import { englishOf } from "@/lib/translate/english";
 
 interface Params {
   params: Promise<{ slug: string }>;
@@ -47,8 +48,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       ownerId:     true,
       nameAr:      true,
       nameEn:      true,
+      nameEnAuto:  true,
       taglineAr:   true,
+      taglineEnAuto: true,
       about:       true,
+      aboutEnAuto: true,
       coverImage:  true,
       logoImage:   true,
       ratingAvg:   true,
@@ -73,7 +77,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const canonical = String(alternates.canonical);
   // The page's language for everything Maw3ed writes; the owner's own
   // words (tagline, about) stay as they wrote them.
-  const name = en && biz.nameEn ? biz.nameEn : biz.nameAr;
+  const name = (en && englishOf(biz.nameEn, biz.nameEnAuto)) || biz.nameAr;
   const city = en ? biz.city.nameEn : biz.city.nameAr;
   const hood = biz.neighborhood ? (en ? biz.neighborhood.nameEn : biz.neighborhood.nameAr) : null;
   const category = en ? biz.category.nameEn : biz.category.nameAr;
@@ -87,10 +91,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // Description, in order of how much it actually says about the place:
   // the owner's tagline, then their own words, then a sentence built
   // from what is on file. Nothing is invented at any step.
+  // English pages use the machine English of an Arabic-only tagline.
+  const aboutText = (en && biz.aboutEnAuto?.trim()) || biz.about?.trim();
   const description =
+    (en && biz.taglineEnAuto?.trim()) ||
     biz.taglineAr?.trim() ||
-    (biz.about?.trim()
-      ? biz.about.trim().slice(0, 155) + (biz.about.trim().length > 155 ? "…" : "")
+    (aboutText
+      ? aboutText.slice(0, 155) + (aboutText.length > 155 ? "…" : "")
       : en
         ? `Book at ${name} — ${category} in ${place}. See the services, prices and free times and book online.`
         : `احجز موعدك في ${name} — ${category} في ${place}. شوف الخدمات والأسعار والمواعيد المتاحة واحجز أونلاين.`);
@@ -241,8 +248,10 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     id:            s.id,
     businessId:    s.businessId,
     nameAr:        s.nameAr,
-    nameEn:        s.nameEn ?? undefined,
+    nameEn:        englishOf(s.nameEn, s.nameEnAuto) ?? undefined,
+    autoEnglish:   (!s.nameEn?.trim() && !!s.nameEnAuto) || !!s.descriptionEnAuto,
     descriptionAr: s.descriptionAr ?? undefined,
+    descriptionEn: s.descriptionEnAuto ?? undefined,
     duration:      s.duration,
     price:         Number(s.price),
     currency:      s.currency,
@@ -253,8 +262,9 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     id:           dbBusiness.id,
     slug:         dbBusiness.slug,
     nameAr:       dbBusiness.nameAr,
-    nameEn:       dbBusiness.nameEn ?? "",
+    nameEn:       englishOf(dbBusiness.nameEn, dbBusiness.nameEnAuto) ?? "",
     taglineAr:    dbBusiness.taglineAr ?? "",
+    taglineEn:    dbBusiness.taglineEnAuto ?? undefined,
     category:     dbBusiness.category.nameAr,
     categorySlug: dbBusiness.category.slug,
     // Read, never asserted. This was hardcoded to 4.8 against an empty
@@ -272,6 +282,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
     isVerified:   dbBusiness.isVerified,
     isOpen:       open.state === "open",
     about:        dbBusiness.about ?? undefined,
+    aboutEn:      dbBusiness.aboutEnAuto ?? undefined,
     hours: dbBusiness.availability.map((a) => ({
       day:    EN_DAYS[a.dayOfWeek] ?? "",
       dayAr:  AR_DAYS[a.dayOfWeek] ?? "",
@@ -300,13 +311,13 @@ export default async function CompanyPage({ params, searchParams }: Params) {
         ? `/${dbBusiness.city.slug}/${dbBusiness.category.slug}`
         : `/businesses?city=${dbBusiness.city.slug}`,
     },
-    { label: lang === "en" && dbBusiness.nameEn ? dbBusiness.nameEn : dbBusiness.nameAr },
+    { label: (lang === "en" && englishOf(dbBusiness.nameEn, dbBusiness.nameEnAuto)) || dbBusiness.nameAr },
   ];
 
   const jsonLd = buildLocalBusinessJsonLd({
     slug:         dbBusiness.slug,
     nameAr:       dbBusiness.nameAr,
-    nameEn:       dbBusiness.nameEn,
+    nameEn:       englishOf(dbBusiness.nameEn, dbBusiness.nameEnAuto),
     about:        dbBusiness.about,
     taglineAr:    dbBusiness.taglineAr,
     phone:        dbBusiness.phone,
@@ -323,7 +334,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
         : null,
     services:     dbBusiness.services.map((s) => ({
       nameAr:   s.nameAr,
-      nameEn:   s.nameEn,
+      nameEn:   englishOf(s.nameEn, s.nameEnAuto),
       price:    Number(s.price),
       currency: s.currency,
       duration: s.duration,
@@ -403,7 +414,7 @@ export default async function CompanyPage({ params, searchParams }: Params) {
             id:               dbBusiness.id,
             slug:             dbBusiness.slug,
             nameAr:           dbBusiness.nameAr,
-            nameEn:           dbBusiness.nameEn,
+            nameEn:           englishOf(dbBusiness.nameEn, dbBusiness.nameEnAuto),
             categoryName:     lang === "ar" ? dbBusiness.category.nameAr : dbBusiness.category.nameEn,
             categorySlug:     dbBusiness.category.slug,
             cityName:         lang === "ar" ? dbBusiness.city.nameAr : dbBusiness.city.nameEn,

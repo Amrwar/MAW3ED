@@ -6,6 +6,7 @@ import { getBusinessReviews, getRatingSummary, type PublicReview, type RatingSum
 import { canUseFeature, getEffectivePlan } from "@/lib/plans";
 import { staffWeek } from "@/lib/discovery/staff";
 import { overAllowance } from "@/lib/bookings/allowance";
+import { englishOf } from "@/lib/translate/english";
 
 /**
  * One business as the public may see it — the app's business screen.
@@ -24,9 +25,13 @@ export interface PublicProfile {
   id: string;
   slug: string;
   nameAr: string;
+  /** The owner's English, else machine English (lib/translate). */
   nameEn: string | null;
   taglineAr: string | null;
+  /** Machine English of the tagline and of an Arabic about text. */
+  taglineEn: string | null;
   about: string | null;
+  aboutEn: string | null;
   coverImage: string | null;
   logoImage: string | null;
   isVerified: boolean;
@@ -51,6 +56,7 @@ export interface PublicProfile {
     nameAr: string;
     nameEn: string | null;
     descriptionAr: string | null;
+    descriptionEn: string | null;
     durationMinutes: number;
     /** null when the service has no price set — never shown as free. */
     price: number | null;
@@ -128,9 +134,12 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
       slug: true,
       nameAr: true,
       nameEn: true,
+      nameEnAuto: true,
       cancellationCutoffHours: true,
       taglineAr: true,
+      taglineEnAuto: true,
       about: true,
+      aboutEnAuto: true,
       coverImage: true,
       logoImage: true,
       isVerified: true,
@@ -156,7 +165,10 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
       services: {
         where: { isAvailable: true },
         orderBy: { sortOrder: "asc" },
-        select: { id: true, nameAr: true, nameEn: true, descriptionAr: true, duration: true, price: true, currency: true },
+        select: {
+          id: true, nameAr: true, nameEn: true, nameEnAuto: true,
+          descriptionAr: true, descriptionEnAuto: true, duration: true, price: true, currency: true,
+        },
       },
       availability: {
         orderBy: { dayOfWeek: "asc" },
@@ -252,8 +264,9 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
     return {
       id: s.id,
       nameAr: s.nameAr,
-      nameEn: s.nameEn,
+      nameEn: englishOf(s.nameEn, s.nameEnAuto),
       descriptionAr: s.descriptionAr,
+      descriptionEn: s.descriptionEnAuto,
       durationMinutes: s.duration,
       price: price > 0 ? price : null,
       currency: s.currency,
@@ -269,9 +282,11 @@ export async function getPublicProfile(slug: string): Promise<PublicProfile | nu
     id: b.id,
     slug: b.slug,
     nameAr: b.nameAr,
-    nameEn: b.nameEn,
+    nameEn: englishOf(b.nameEn, b.nameEnAuto),
     taglineAr: b.taglineAr,
+    taglineEn: b.taglineEnAuto,
     about: b.about,
+    aboutEn: b.aboutEnAuto,
     coverImage: b.coverImage,
     logoImage: b.logoImage,
     isVerified: b.isVerified,

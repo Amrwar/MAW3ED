@@ -4,6 +4,10 @@ export type Service = {
   nameAr: string;
   nameEn?: string;
   descriptionAr?: string;
+  /** Machine English of descriptionAr (lib/translate). */
+  descriptionEn?: string;
+  /** Its English name or description was translated by machine. */
+  autoEnglish?: boolean;
   duration: number; // in minutes
   price: number;
   currency: string;

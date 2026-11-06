@@ -61,6 +61,7 @@ export default async function SettingsPage({
     slug:       business.slug,
     nameAr:     business.nameAr,
     nameEn:     business.nameEn     ?? "",
+    nameEnAuto: business.nameEnAuto ?? "",
     taglineAr:  business.taglineAr  ?? "",
     phone:      business.phone      ?? "",
     whatsapp:   business.whatsapp   ?? "",

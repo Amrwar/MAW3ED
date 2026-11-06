@@ -69,13 +69,17 @@ export default function ServicesSection({ services, providers, nextSlot, onBook 
                   {lang === "en" && service.nameEn ? service.nameEn : service.nameAr}
                 </h3>
 
-                {service.descriptionAr && (
+                {lang === "en" && service.descriptionEn ? (
+                  <p className="m-0 mt-1.5 line-clamp-2 text-[0.84375rem] leading-relaxed text-[var(--color-subtle)]">
+                    {service.descriptionEn}
+                  </p>
+                ) : service.descriptionAr ? (
                   <p
                     {...(lang === "en" ? { lang: "ar", dir: "rtl" } : {})}
                     className="m-0 mt-1.5 line-clamp-2 text-[0.84375rem] leading-relaxed text-[var(--color-subtle)]">
                     {service.descriptionAr}
                   </p>
-                )}
+                ) : null}
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[0.8125rem] text-[var(--color-subtle)]">
                   {service.duration > 0 && (
@@ -130,6 +134,9 @@ export default function ServicesSection({ services, providers, nextSlot, onBook 
           );
         })}
       </ul>
+      {lang === "en" && services.some((s) => s.autoEnglish) && (
+        <p className="m-0 mt-3 text-[0.75rem] text-[var(--color-faint)]">Some service details were translated automatically from Arabic</p>
+      )}
     </section>
   );
 }

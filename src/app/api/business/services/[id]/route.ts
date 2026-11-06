@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { serviceSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import { log } from "@/lib/logger";
+import { translateAfterSave } from "@/lib/translate";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -26,6 +27,7 @@ export async function PUT(req: Request, { params }: Params) {
       data:  parsed.data,
     });
 
+    translateAfterSave(business.id);
     return ok(updated);
   } catch (e) {
     if (e instanceof Response) return e;

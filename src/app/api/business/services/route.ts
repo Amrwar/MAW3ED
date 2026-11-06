@@ -3,6 +3,7 @@ import { serviceSchema } from "@/lib/validations";
 import { ok, err } from "@/lib/api";
 import { requireBusinessAccess } from "@/lib/business-access";
 import { log } from "@/lib/logger";
+import { translateAfterSave } from "@/lib/translate";
 
 /** GET /api/business/services */
 export async function GET() {
@@ -40,6 +41,7 @@ export async function POST(req: Request) {
       },
     });
 
+    translateAfterSave(business.id);
     return ok(service, 201);
   } catch (e) {
     if (e instanceof Response) return e;

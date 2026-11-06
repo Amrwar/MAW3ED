@@ -21,6 +21,7 @@ export const CRON_SCHEDULES: Record<string, string> = {
   operations: "*/10 * * * *",
   integrations: "*/5 * * * *",
   access: "*/5 * * * *",
+  translations: "30 3 * * *",
 };
 
 export const monitorSlug = (job: string) => `cron-${job}`;

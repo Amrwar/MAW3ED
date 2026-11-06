@@ -20,6 +20,8 @@ export type Profile = {
   slug:           string;
   nameAr:         string;
   nameEn:         string;
+  /** Machine English of the Arabic name, shown as a suggestion. */
+  nameEnAuto?:    string;
   taglineAr:      string;
   phone:          string;
   whatsapp:       string;
