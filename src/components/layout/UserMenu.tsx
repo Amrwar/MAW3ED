@@ -50,7 +50,6 @@ function getInitials(name?: string | null, email?: string | null): string {
 }
 
 // ─── UserAvatar ────────────────────────────────────────────
-// Exported so Navbar can reuse it in the mobile menu.
 
 export function UserAvatar({
   name,
@@ -77,7 +76,9 @@ export function UserAvatar({
 }
 
 // ─── NotificationBell ──────────────────────────────────────
-// Standalone bell button — no dropdown yet, clean placeholder.
+// Standalone bell button — no dropdown yet, clean placeholder. It sits
+// on the dark header, so it takes the night colours. Shown from 768px;
+// when it gains a feed, phones need a way to it too.
 
 export function NotificationBell() {
   const { lang } = useLanguage();
@@ -87,7 +88,7 @@ export function NotificationBell() {
     <button
       type="button"
       aria-label={label}
-      className="relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-subtle)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-muted)]"
+      className="relative flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-night-text)] transition-colors hover:bg-[var(--color-night-2)] hover:text-[var(--color-inverse)]"
     >
       <Bell size={17} strokeWidth={1.8} aria-hidden="true" />
     </button>
@@ -124,7 +125,8 @@ export function UserMenu({ user }: UserMenuProps) {
     <Dropdown
       label={L.menu}
       align="end"
-      width="15rem"
+      width="16rem"
+      sheetOnPhone
       trigger={({ open, toggle }) => (
         <button
           type="button"
@@ -135,7 +137,8 @@ export function UserMenu({ user }: UserMenuProps) {
           className={cn(
             "flex h-11 items-center gap-1.5 rounded-[var(--radius-md)] px-1.5 outline-none transition-colors",
             "focus-visible:ring-2 focus-visible:ring-[var(--color-jade)] focus-visible:ring-offset-1",
-            open ? "bg-[var(--color-surface-3)]" : "hover:bg-[var(--color-surface-2)]",
+            // The trigger sits on the dark header at every width.
+            open ? "bg-[var(--color-night-2)]" : "hover:bg-[var(--color-night-2)]",
           )}
         >
           <UserAvatar name={user.name} email={user.email} size="md" />
@@ -144,7 +147,7 @@ export function UserMenu({ user }: UserMenuProps) {
             strokeWidth={2.5}
             aria-hidden="true"
             className={cn(
-              "text-[var(--color-subtle)] transition-transform duration-200",
+              "hidden text-[var(--color-night-text)] transition-transform duration-200 sm:block",
               open && "rotate-180",
             )}
           />

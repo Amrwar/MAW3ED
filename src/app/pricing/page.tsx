@@ -144,17 +144,6 @@ export default function PricingPage() {
           dir={isAr ? "rtl" : "ltr"}
         >
 
-          {/* Ambient blue glow */}
-          <div
-            aria-hidden
-            className="absolute inset-x-0 top-0 pointer-events-none"
-            style={{
-              height: 500,
-              background:
-                "radial-gradient(ellipse 70% 55% at 50% 0%, rgba(14,127,94,0.07) 0%, transparent 100%)",
-            }}
-          />
-
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20 relative z-10">
 
             {/* ── Monthly / yearly ──────────────────────────── */}
