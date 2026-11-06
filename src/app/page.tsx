@@ -10,7 +10,6 @@ import Footer from "@/components/layout/Footer";
 import HeroSearch from "@/features/home/HeroSearch";
 import CategoriesSection from "@/features/home/CategoriesSection";
 import FeaturedListings, { FeaturedListingsSkeleton } from "@/features/home/FeaturedListings";
-import NearbyPanel, { NearbyPanelSkeleton } from "@/features/home/NearbyPanel";
 import HowItWorks from "@/features/home/HowItWorks";
 import TrustSignals from "@/features/home/TrustSignals";
 import WhyJoin from "@/features/home/WhyJoin";
@@ -93,37 +92,27 @@ export default async function HomePage() {
           </Suspense>
         </SectionBoundary>
 
-        {/* 4 — In the city this visitor last chose. Renders nothing
-               until they have chosen one. */}
-        {savedCity && (
-          <SectionBoundary {...e}>
-            <Suspense fallback={<NearbyPanelSkeleton />}>
-              <NearbyRow citySlug={savedCity} />
-            </Suspense>
-          </SectionBoundary>
-        )}
-
-        {/* 5 — Three steps to a booking */}
+        {/* 4 — Three steps to a booking */}
         <HowItWorks />
 
-        {/* 6 — What the platform guarantees, with the real counts */}
+        {/* 5 — What the platform guarantees, with the real counts */}
         <SectionBoundary {...e}>
           <Suspense fallback={null}>
             <TrustRow />
           </Suspense>
         </SectionBoundary>
 
-        {/* 7 — The pitch to business owners */}
+        {/* 6 — The pitch to business owners */}
         <WhyJoin />
 
-        {/* 8 — Objections.
+        {/* 7 — Objections.
                A testimonials section used to sit here. Its quotes were
                written by hand in src/data/testimonials.ts and
                presented as real customers, so it is gone until there
                is something real to quote. */}
         <FAQ />
 
-        {/* 9 — Close */}
+        {/* 8 — Close */}
         <FinalCTA />
       </main>
 
@@ -165,25 +154,6 @@ async function PopularRow() {
       title={popular ? f.popularTitle : f.newestTitle}
       businesses={businesses}
       viewAllHref="/businesses"
-    />
-  );
-}
-
-async function NearbyRow({ citySlug }: { citySlug: string }) {
-  const [businesses, cities, lang] = await Promise.all([
-    // Enough for the area tabs to have something to choose between.
-    getPublishedBusinesses({ citySlug, take: 6 }),
-    getCitiesWithListings(),
-    getLang(),
-  ]);
-
-  const city = cities.find((c) => c.slug === citySlug);
-
-  return (
-    <NearbyPanel
-      businesses={businesses}
-      cityName={city && (lang === "en" ? city.nameEn || city.nameAr : city.nameAr)}
-      viewAllHref={`/businesses?city=${citySlug}`}
     />
   );
 }
