@@ -533,18 +533,17 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-ink);
 }
 
-/* The same chip on a dark band. Outlined rather than filled, so the
-   search card stays the brightest thing in the hero and these read as
-   suggestions beneath it rather than competing with it. */
-.chip-on-dark {
-  background: transparent;
-  border-color: var(--color-night-edge);
-  color: var(--color-night-text);
+/* The same chip on the jade-wash hero: filled white with a jade
+   edge, so it sits on the tint rather than disappearing into it. */
+.chip-on-wash {
+  background: var(--color-surface);
+  border-color: var(--color-jade-line);
+  color: var(--color-jade-hover);
 }
-.chip-on-dark:hover {
-  background: var(--color-night-2);
-  border-color: var(--color-night-accent);
-  color: var(--color-inverse);
+.chip-on-wash:hover {
+  background: var(--color-jade-soft);
+  border-color: var(--color-jade);
+  color: var(--color-jade-hover);
 }
 
 .chip-active {
@@ -742,6 +741,48 @@ h1, h2, h3, h4, h5, h6 {
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-dropdown-in { animation: dropdown-in 0.15s ease forwards; }
+
+/* The opening band of a page (home and PageHero): a soft jade wash
+   that fades into the page ground, under a faint dot grid. Light, so
+   it reads as the page's own surface rather than a continuation of
+   the dark header above it. */
+.hero-wash {
+  position: relative;
+  isolation: isolate;
+  /* Ends transparent, not on --color-ground: some pages sit on
+     surface-2, and a wash that ended on the wrong one left an edge. */
+  background: linear-gradient(180deg, #E4F0EA 0%, var(--color-jade-tint) 55%, transparent 100%);
+}
+/* The dot grid, faded out towards the bottom with the wash. */
+.hero-wash::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(circle at 1px 1px, rgb(13 122 90 / 0.10) 1px, transparent 0) 0 0 / 22px 22px;
+  mask-image: linear-gradient(180deg, #000 45%, transparent 100%);
+}
+
+/* The small label above a hero title, as a white pill on the wash. */
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3125rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-jade-line);
+  color: var(--color-jade);
+}
+
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.animate-sheet-in { animation: sheet-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet-in { animation: none; }
+}
 
 @keyframes shimmer {
   from { background-position: 200% 0; }

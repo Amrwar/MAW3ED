@@ -52,16 +52,9 @@ export default function ForBusinessContent({
   const heroTitle = (
     <>
       {fb.heroTitle}{" "}
-      <span
-        style={{
-          background: "linear-gradient(135deg, var(--color-jade) 0%, var(--color-jade-line) 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          backgroundClip: "text",
-        }}
-      >
-        {fb.heroAccent}
-      </span>
+      {/* Solid jade, as on the home hero: a gradient that ended on
+          jade-line faded into the light wash behind it. */}
+      <span className="font-extrabold text-[var(--color-jade)]">{fb.heroAccent}</span>
     </>
   );
 

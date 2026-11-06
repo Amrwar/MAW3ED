@@ -12,30 +12,25 @@ interface PageHeroProps {
 /**
  * The opening band on an internal page.
  *
- * Dark, because every page should start the way the home page starts
- * and end the way it ends — the hero and the footer are the same
- * --color-night, and everything between them sits on light ground. This
- * was light for a while, deliberately, to match a home page that was
- * then light; it follows it back rather than drifting away from it.
- *
- * The colours are set on the elements rather than through the
- * section-* classes, which resolve to ink on light and would be
- * unreadable here.
+ * A light jade wash (.hero-wash), the same as the home page's hero:
+ * the header above is dark, and a hero in the header's own colour
+ * merged with it into one block, with no edge where the bar ended and
+ * the page began.
  */
 export default function PageHero({ badge, title, subtitle, cta }: PageHeroProps) {
   return (
-    <section className="bg-[var(--color-night)] pt-20">
+    <section className="hero-wash pt-20">
       <div className="container-app py-16 text-center">
         {badge && (
-          <span className="section-eyebrow text-[var(--color-night-accent)]">{badge}</span>
+          <span className="section-eyebrow hero-pill">{badge}</span>
         )}
 
-        <h1 className="display-title mx-auto mt-3 max-w-[18ch] text-[clamp(2rem,4.5vw,3rem)] text-[var(--color-inverse)]">
+        <h1 className="display-title mx-auto mt-3 max-w-[18ch] text-[clamp(2rem,4.5vw,3rem)] text-[var(--color-ink)]">
           {title}
         </h1>
 
         {subtitle && (
-          <p className="section-subtitle mx-auto mt-5 text-[var(--color-night-text)]">
+          <p className="section-subtitle mx-auto mt-5 text-[var(--color-muted)]">
             {subtitle}
           </p>
         )}
