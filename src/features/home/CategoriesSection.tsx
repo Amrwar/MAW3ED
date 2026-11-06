@@ -4,6 +4,8 @@ import Link from "@/components/shared/LocaleLink";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { coverClassFor } from "@/lib/category-cover";
+import { upcomingCategories } from "@/lib/category-upcoming";
+import UpcomingCategoryTile from "@/components/shared/UpcomingCategoryTile";
 import { countText } from "@/lib/i18n";
 import type { CategoryWithCount } from "@/lib/data";
 
@@ -21,14 +23,8 @@ interface Props {
  * beauty — keyed by slug, with a rotating list of plausible numbers
  * for any slug that table missed.
  */
-/** Which empty categories to show first: what people search for most. */
-const UPCOMING_FIRST = ["dentists", "gyms", "beauty-centers", "clinics", "salons", "spas", "education", "labs"];
 /** Live and coming-soon tiles together, at most. */
 const UPCOMING_FILL_TO = 8;
-function rank(slug: string): number {
-  const i = UPCOMING_FIRST.indexOf(slug);
-  return i === -1 ? UPCOMING_FIRST.length : i;
-}
 
 export default function CategoriesSection({ categories, limit = 8 }: Props) {
   const { t, lang } = useLanguage();
@@ -47,10 +43,7 @@ export default function CategoriesSection({ categories, limit = 8 }: Props) {
   // full rows of four on a desktop), the kinds of place still to come
   // are shown too — as tiles that say so and link nowhere, since their
   // pages do not exist yet.
-  const upcoming = categories
-    .filter((c) => c.count === 0)
-    .sort((a, b) => rank(a.slug) - rank(b.slug))
-    .slice(0, Math.max(0, UPCOMING_FILL_TO - shown.length));
+  const upcoming = upcomingCategories(categories, [], UPCOMING_FILL_TO - shown.length);
 
   return (
     <section className="bg-[var(--color-ground)] pt-20">
@@ -110,17 +103,7 @@ export default function CategoriesSection({ categories, limit = 8 }: Props) {
               key={cat.id}
               className="min-w-0 basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-3rem)/4)]"
             >
-              <div className="card block overflow-hidden opacity-75">
-                <span aria-hidden="true" className={`block h-[8.5rem] grayscale ${coverClassFor(cat.slug)}`} />
-                <span className="block px-5 pb-5 pt-4">
-                  <span className="block truncate text-base font-bold text-[var(--color-muted)]">
-                    {isAr ? cat.nameAr : cat.nameEn}
-                  </span>
-                  <span className="mt-1 block text-[0.78125rem] text-[var(--color-subtle)]">
-                    {isAr ? "قريبًا على موعد" : "Coming soon"}
-                  </span>
-                </span>
-              </div>
+              <UpcomingCategoryTile slug={cat.slug} name={isAr ? cat.nameAr : cat.nameEn} isAr={isAr} />
             </li>
           ))}
         </ul>

@@ -6,6 +6,9 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PageHero from "@/components/shared/PageHero";
 import { getFacets } from "@/lib/discovery/search";
+import { getCategoriesWithCounts } from "@/lib/data";
+import { upcomingCategories } from "@/lib/category-upcoming";
+import UpcomingCategoryTile from "@/components/shared/UpcomingCategoryTile";
 import { buildMetadata } from "@/lib/seo/meta";
 import { coverClassFor } from "@/lib/category-cover";
 import { translations } from "@/lib/i18n";
@@ -55,8 +58,11 @@ export default async function CategoriesPage() {
   const isAr = lang === "ar";
   const ArrowIcon = isAr ? ArrowLeft : ArrowRight;
 
-  const facets = await getFacets();
+  const [facets, all] = await Promise.all([getFacets(), getCategoriesWithCounts()]);
   const categories = facets.categories.filter((cat) => cat.count > 0);
+  // The ones still to come, as on the home page: every empty category,
+  // greyed and unlinked (their pages do not exist yet).
+  const upcoming = upcomingCategories(all, categories.map((cat) => cat.slug));
 
   return (
     <>
@@ -66,7 +72,7 @@ export default async function CategoriesPage() {
 
         <section className="py-14">
           <div className="container-app">
-            {categories.length === 0 ? (
+            {categories.length === 0 && upcoming.length === 0 ? (
               <p className="m-0 py-10 text-center text-[0.9375rem] text-[var(--color-subtle)]">
                 {isAr
                   ? "لسه مفيش فئات فيها أنشطة. ارجع بص تاني قريب."
@@ -106,6 +112,11 @@ export default async function CategoriesPage() {
                     </li>
                   );
                 })}
+                {upcoming.map((cat) => (
+                  <li key={cat.id} className="min-w-0">
+                    <UpcomingCategoryTile slug={cat.slug} name={isAr ? cat.nameAr : cat.nameEn || cat.nameAr} isAr={isAr} />
+                  </li>
+                ))}
               </ul>
             )}
           </div>

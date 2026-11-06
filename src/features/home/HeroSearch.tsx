@@ -6,6 +6,7 @@ import { Search, MapPin, CalendarDays, BadgeCheck, Zap, Wallet } from "lucide-re
 import { useLanguage } from "@/contexts/LanguageContext";
 import { localizePath } from "@/lib/locale-path";
 import { cn } from "@/lib/utils";
+import ScrollCue from "@/components/shared/ScrollCue";
 
 type City = { id: string; slug: string; nameAr: string; nameEn: string };
 type Category = { slug: string; nameAr: string; nameEn: string };
@@ -83,7 +84,7 @@ export default function HeroSearch({ cities, suggestions, initialCity = "" }: Pr
     // peeking in under the fold looked unfinished. svh, not vh, so a
     // phone's collapsing address bar does not push it past the screen.
     <section className="hero-wash flex min-h-[100svh] flex-col justify-center pt-20">
-      <div className="container-app w-full py-14 lg:py-16">
+      <div className="container-app w-full pb-24 pt-14 lg:pt-16">
         <div className="mx-auto flex max-w-[52rem] flex-col items-center text-center">
 
           <h1 className="display-title text-balance text-[var(--color-ink)]">
@@ -250,6 +251,7 @@ export default function HeroSearch({ cities, suggestions, initialCity = "" }: Pr
           </ul>
         </div>
       </div>
+      <ScrollCue />
     </section>
   );
 }
