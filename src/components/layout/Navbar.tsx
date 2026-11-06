@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "@/components/shared/LocaleLink";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Menu, X, Globe } from "lucide-react";
+import { Menu, X, Globe, PlayCircle } from "lucide-react";
 import Logo from "@/components/shared/Logo";
 import { UserMenu, NotificationBell } from "@/components/layout/UserMenu";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,11 @@ export default function Navbar() {
     if (href === "/") return page === "/";
     return page.startsWith(href);
   }
+
+  // The demo is for people deciding whether to list a business; an
+  // owner already has the real dashboard.
+  const showDemo = !sessionPending && !user?.businessId;
+  const demoLabel = lang === "ar" ? "جرّب الديمو" : "Live demo";
 
   const navLinks = [
     { label: t.nav.home,        href: "/"             },
@@ -105,6 +110,39 @@ export default function Navbar() {
 
           {/* Language, notifications, account: the end side */}
           <div className="ms-auto flex items-center gap-2 lg:gap-3.5 shrink-0">
+            {/* Outlined on the dark bar, a live dot for "it works now":
+                distinct from the solid green "List your business". */}
+            {showDemo && (
+              <span className="hidden xl:inline-flex">
+                <Link
+                  href="/demo"
+                  aria-current={isActive("/demo") ? "page" : undefined}
+                  className="group inline-flex h-11 items-center gap-2 rounded-full border border-[var(--color-night-edge)] px-4 text-[0.875rem] font-bold text-[var(--color-inverse)] transition-colors hover:border-[var(--color-night-accent)] hover:bg-[var(--color-night-2)]"
+                >
+                  <span aria-hidden="true" className="relative flex size-2">
+                    <span className="absolute inline-flex size-full rounded-full bg-[var(--color-night-accent)] opacity-60 motion-safe:animate-ping" />
+                    <span className="relative inline-flex size-2 rounded-full bg-[var(--color-night-accent)]" />
+                  </span>
+                  {demoLabel}
+                  <PlayCircle size={16} strokeWidth={1.8} aria-hidden="true" className="text-[var(--color-night-accent)] transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5" />
+                </Link>
+              </span>
+            )}
+            {/* Narrower bars have no room for the label: the same button,
+                round, with its name for screen readers and on hover. */}
+            {showDemo && (
+              <span className="hidden md:inline-flex xl:hidden">
+                <Link
+                  href="/demo"
+                  aria-label={demoLabel}
+                  title={demoLabel}
+                  className="relative inline-flex size-11 items-center justify-center rounded-full border border-[var(--color-night-edge)] text-[var(--color-night-accent)] transition-colors hover:border-[var(--color-night-accent)] hover:bg-[var(--color-night-2)]"
+                >
+                  <PlayCircle size={19} strokeWidth={1.8} aria-hidden="true" />
+                  <span aria-hidden="true" className="absolute end-1.5 top-1.5 size-2 rounded-full bg-[var(--color-night-accent)] motion-safe:animate-pulse" />
+                </Link>
+              </span>
+            )}
             <button
               type="button"
               onClick={toggleLang}
@@ -160,6 +198,18 @@ export default function Navbar() {
             id="site-menu"
             className="md:hidden mb-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-dropdown)] animate-dropdown-in"
           >
+            {showDemo && (
+              <Link
+                href="/demo"
+                className="mb-1 flex min-h-12 items-center gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-jade-line)] bg-[var(--color-jade-tint)] px-4 text-[0.9375rem] font-bold text-[var(--color-jade)]"
+              >
+                <PlayCircle size={18} strokeWidth={1.8} aria-hidden="true" />
+                {demoLabel}
+                <span className="ms-auto text-xs font-normal text-[var(--color-muted)]">
+                  {lang === "ar" ? "من غير تسجيل" : "No sign-up"}
+                </span>
+              </Link>
+            )}
             {navLinks.map((link) => (
               <Link
                 key={link.href}
