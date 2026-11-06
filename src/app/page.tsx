@@ -9,7 +9,8 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import HeroSearch from "@/features/home/HeroSearch";
 import CategoriesSection from "@/features/home/CategoriesSection";
-import BusinessRow, { BusinessRowSkeleton } from "@/features/home/BusinessRow";
+import FeaturedListings, { FeaturedListingsSkeleton } from "@/features/home/FeaturedListings";
+import NearbyPanel, { NearbyPanelSkeleton } from "@/features/home/NearbyPanel";
 import HowItWorks from "@/features/home/HowItWorks";
 import TrustSignals from "@/features/home/TrustSignals";
 import WhyJoin from "@/features/home/WhyJoin";
@@ -87,7 +88,7 @@ export default async function HomePage() {
 
         {/* 3 — Where people are actually booking */}
         <SectionBoundary {...e}>
-          <Suspense fallback={<BusinessRowSkeleton />}>
+          <Suspense fallback={<FeaturedListingsSkeleton />}>
             <PopularRow />
           </Suspense>
         </SectionBoundary>
@@ -96,7 +97,7 @@ export default async function HomePage() {
                until they have chosen one. */}
         {savedCity && (
           <SectionBoundary {...e}>
-            <Suspense fallback={<BusinessRowSkeleton count={3} />}>
+            <Suspense fallback={<NearbyPanelSkeleton />}>
               <NearbyRow citySlug={savedCity} />
             </Suspense>
           </SectionBoundary>
@@ -139,25 +140,29 @@ export default async function HomePage() {
    Each owns its query, so a slow one delays only its own row. */
 
 const POPULAR_MIN_BOOKINGS = 10;
-const POPULAR_MIN_BUSINESSES = 4;
+const POPULAR_MIN_BUSINESSES = 3;
 
 async function PopularRow() {
+  // One large card and three beside it.
   const businesses = await getPublishedBusinesses({
-    take: 6,
+    take: 4,
     orderBy: "mostBooked",
   });
 
   // "Most booked" is a claim about the listings, so it waits until
-  // there is something to compare: at least four of the six with ten
+  // there is something to compare: three of the four shown with ten
   // or more bookings. Below that the row calls itself "newest", which
   // the ordering also satisfies (ties broken by createdAt). One booking
   // somewhere used to be enough to call a row "where people book".
   const established = businesses.filter((b) => (b.bookingCount ?? 0) >= POPULAR_MIN_BOOKINGS).length;
   const popular = established >= POPULAR_MIN_BUSINESSES;
 
+  const lang = await getLang();
+  const f = (translations[lang] ?? translations.ar).featured;
   return (
-    <BusinessRowServer
-      kind={popular ? "popular" : "newest"}
+    <FeaturedListings
+      eyebrow={popular ? f.popularEyebrow : f.newestEyebrow}
+      title={popular ? f.popularTitle : f.newestTitle}
       businesses={businesses}
       viewAllHref="/businesses"
     />
@@ -166,7 +171,8 @@ async function PopularRow() {
 
 async function NearbyRow({ citySlug }: { citySlug: string }) {
   const [businesses, cities, lang] = await Promise.all([
-    getPublishedBusinesses({ citySlug, take: 3 }),
+    // Enough for the area tabs to have something to choose between.
+    getPublishedBusinesses({ citySlug, take: 6 }),
     getCitiesWithListings(),
     getLang(),
   ]);
@@ -174,8 +180,7 @@ async function NearbyRow({ citySlug }: { citySlug: string }) {
   const city = cities.find((c) => c.slug === citySlug);
 
   return (
-    <BusinessRowServer
-      kind="nearby"
+    <NearbyPanel
       businesses={businesses}
       cityName={city && (lang === "en" ? city.nameEn || city.nameAr : city.nameAr)}
       viewAllHref={`/businesses?city=${citySlug}`}
@@ -186,48 +191,6 @@ async function NearbyRow({ citySlug }: { citySlug: string }) {
 async function TrustRow() {
   const reach = await getPlatformReach();
   return <TrustSignals reach={reach.businesses >= SHOW_COUNTS_FROM ? reach : null} />;
-}
-
-/**
- * Picks the copy for a row on the server so the client component stays
- * a presentational one. The labels live in the translation file; this
- * only decides which of them applies.
- */
-async function BusinessRowServer({
-  kind,
-  businesses,
-  cityName,
-  viewAllHref,
-}: {
-  kind: "popular" | "newest" | "nearby";
-  businesses: Awaited<ReturnType<typeof getPublishedBusinesses>>;
-  cityName?: string;
-  viewAllHref: string;
-}) {
-  const lang = await getLang();
-  const f = (translations[lang] ?? translations.ar).featured;
-
-  if (kind === "nearby") {
-    return (
-      <BusinessRow
-        eyebrow={f.nearbyEyebrow}
-        title={cityName ? `${f.nearbyTitle} — ${cityName}` : f.nearbyTitle}
-        note={f.nearbyNote}
-        businesses={businesses}
-        viewAllHref={viewAllHref}
-        empty={{ title: f.nearbyEmptyTitle, body: f.nearbyEmptyBody }}
-      />
-    );
-  }
-
-  return (
-    <BusinessRow
-      eyebrow={kind === "popular" ? f.popularEyebrow : f.newestEyebrow}
-      title={kind === "popular" ? f.popularTitle : f.newestTitle}
-      businesses={businesses}
-      viewAllHref={viewAllHref}
-    />
-  );
 }
 
 /**
