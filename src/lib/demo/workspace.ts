@@ -11,6 +11,8 @@
 
 import { computeStaffedAvailability, type DayHoursRule, type StaffDayRule } from "@/lib/bookings/availability";
 import { minutesToTime, timeToMinutes } from "@/lib/bookings/time";
+import { normaliseCode } from "@/lib/discounts/apply";
+import { REMINDER_LEAD_HOURS } from "@/lib/notifications/reminder-lead";
 
 export interface DemoService {
   id: string;
@@ -29,7 +31,9 @@ export interface DemoStaff {
 
 export interface DemoCustomer {
   id: string;
+  /** Arabic, and English for an English visitor; one typed in is both. */
   name: string;
+  en: string;
   /** Visibly fake: 0100 000 0xxx. */
   phone: string;
   visits: number;
@@ -47,12 +51,42 @@ export interface DemoBooking {
   status: DemoStatus;
 }
 
+/** A review left after a visit; the owner can answer it, as on /dashboard/reviews. */
+export interface DemoReview {
+  id: string;
+  customerId: string;
+  rating: number;
+  ar: string;
+  en: string;
+  reply: string | null;
+}
+
+/** A discount code, as on /dashboard/offers: a percentage off with a code. */
+export interface DemoOffer {
+  id: string;
+  code: string;
+  percent: number;
+  uses: number;
+  active: boolean;
+}
+
+/** The notification settings the real settings page has. */
+export interface DemoSettings {
+  reminderEnabled: boolean;
+  /** Hours before the appointment, from the same choices as the real form. */
+  reminderLeadHours: number;
+  autoConfirm: boolean;
+}
+
 export interface DemoState {
   services: DemoService[];
   staff: DemoStaff[];
   customers: DemoCustomer[];
   bookings: DemoBooking[];
   hours: DayHoursRule[];
+  reviews: DemoReview[];
+  offers: DemoOffer[];
+  settings: DemoSettings;
 }
 
 export const DEMO_BUSINESS = { ar: "صالون تجريبي", en: "Sample Salon" } as const;
@@ -65,7 +99,7 @@ const SERVICES: DemoService[] = [
 ];
 
 const STAFF: DemoStaff[] = [
-  { id: "t-1", ar: "كريم (تجريبي)", en: "Karim (sample)", workingDays: [0, 1, 2, 3, 4, 6] },
+  { id: "t-1", ar: "كريم (تجريبي)", en: "Karim (sample)", workingDays: [0, 1, 2, 3, 4, 5, 6] },
   { id: "t-2", ar: "يوسف (تجريبي)", en: "Youssef (sample)", workingDays: [0, 1, 2, 3, 4, 5, 6] },
 ];
 
@@ -74,13 +108,16 @@ const NAMES = ["عميل تجريبي ١", "عميل تجريبي ٢", "عميل
 const CUSTOMERS: DemoCustomer[] = NAMES.map((name, i) => ({
   id: `c-${i + 1}`,
   name,
+  en: `Sample customer ${i + 1}`,
   phone: `0100 000 0${String(100 + i).padStart(3, "0")}`,
   visits: [5, 1, 3, 0, 2, 7][i] ?? 0,
 }));
 
 const HOURS: DayHoursRule[] = [0, 1, 2, 3, 4, 5, 6].map((d) => ({
   dayOfWeek: d,
-  openTime: d === 5 ? "14:00" : "10:00",
+  // The same every day: the seeded bookings are on "today", whichever
+  // weekday that is, and must fall inside opening hours.
+  openTime: "10:00",
   closeTime: "22:00",
   isClosed: false,
 }));
@@ -94,9 +131,27 @@ const BOOKINGS: DemoBooking[] = [
   { id: "b-6", customerId: "c-6", serviceId: "s-combo", staffId: "t-2", start: 18 * 60 + 30, status: "PENDING" },
 ];
 
+const REVIEWS: DemoReview[] = [
+  { id: "r-1", customerId: "c-1", rating: 5, ar: "مواعيد مظبوطة وشغل نضيف. الحجز من اللينك خلّص في دقيقة.", en: "On time and neat work. Booking from the link took a minute.", reply: "شكرًا! مستنيينك المرة الجاية." },
+  { id: "r-2", customerId: "c-2", rating: 4, ar: "الخدمة كويسة، بس استنيت شوية.", en: "Good service, though I waited a little.", reply: null },
+  { id: "r-3", customerId: "c-6", rating: 5, ar: "التذكير على واتساب فكّرني بالميعاد. ممتاز.", en: "The WhatsApp reminder saved me. Excellent.", reply: null },
+];
+
+const OFFERS: DemoOffer[] = [
+  { id: "o-1", code: "WELCOME10", percent: 10, uses: 4, active: true },
+];
+
+const SETTINGS: DemoSettings = { reminderEnabled: true, reminderLeadHours: 24, autoConfirm: false };
+
+/** Reminder lead times: the real settings form's own list. */
+export const REMINDER_LEAD_CHOICES = REMINDER_LEAD_HOURS;
+
 /** A fresh copy every time, so a reset really resets. */
 export function initialDemoState(): DemoState {
-  return structuredClone({ services: SERVICES, staff: STAFF, customers: CUSTOMERS, bookings: BOOKINGS, hours: HOURS });
+  return structuredClone({
+    services: SERVICES, staff: STAFF, customers: CUSTOMERS, bookings: BOOKINGS, hours: HOURS,
+    reviews: REVIEWS, offers: OFFERS, settings: SETTINGS,
+  });
 }
 
 const service = (s: DemoState, id: string) => s.services.find((x) => x.id === id);
@@ -149,9 +204,11 @@ export function demoBook(
   input: { serviceId: string; staffId: string; time: string; customerName: string },
 ): DemoState {
   const id = `c-new-${state.customers.length + 1}`;
+  const typed = input.customerName.trim();
   const customer: DemoCustomer = {
     id,
-    name: input.customerName.trim() || `عميل تجريبي ${state.customers.length + 1}`,
+    name: typed || `عميل تجريبي ${state.customers.length + 1}`,
+    en: typed || `Sample customer ${state.customers.length + 1}`,
     phone: `0100 000 0${String(100 + state.customers.length).padStart(3, "0")}`,
     visits: 0,
   };
@@ -199,3 +256,54 @@ export function demoReport(state: DemoState) {
 }
 
 export const clockOf = (minutes: number) => minutesToTime(minutes);
+
+
+/** The owner's answer to a review; an empty one removes it. */
+export function demoReply(state: DemoState, reviewId: string, text: string): DemoState {
+  const reply = text.trim() || null;
+  return { ...state, reviews: state.reviews.map((r) => (r.id === reviewId ? { ...r, reply } : r)) };
+}
+
+/**
+ * A new discount code, or the reason it was refused, by the real rules
+ * (api/business/discounts): a code of up to 40 characters, normalised as
+ * the product normalises it; a whole percent from 1 to 100; no duplicate.
+ */
+export function demoAddOffer(
+  state: DemoState,
+  rawCode: string,
+  percent: number,
+): { state: DemoState } | { error: "code" | "percent" | "duplicate" } {
+  const code = normaliseCode(rawCode);
+  if (code.length === 0 || code.length > 40) return { error: "code" };
+  if (!Number.isInteger(percent) || percent < 1 || percent > 100) return { error: "percent" };
+  if (state.offers.some((o) => o.code === code)) return { error: "duplicate" };
+  return {
+    state: { ...state, offers: [...state.offers, { id: `o-new-${state.offers.length + 1}`, code, percent, uses: 0, active: true }] },
+  };
+}
+
+export function demoToggleOffer(state: DemoState, offerId: string): DemoState {
+  return { ...state, offers: state.offers.map((o) => (o.id === offerId ? { ...o, active: !o.active } : o)) };
+}
+
+export function demoSetSettings(state: DemoState, patch: Partial<DemoSettings>): DemoState {
+  return { ...state, settings: { ...state.settings, ...patch } };
+}
+
+/** The home screen's numbers for "today". Expected revenue counts what is still to happen too. */
+export function demoOverview(state: DemoState) {
+  const live = state.bookings.filter((b) => b.status !== "CANCELLED");
+  const price = (b: DemoBooking) => service(state, b.serviceId)?.price ?? 0;
+  const rated = state.reviews.length ? state.reviews.reduce((s, r) => s + r.rating, 0) / state.reviews.length : 0;
+  return {
+    today: live.length,
+    pending: live.filter((b) => b.status === "PENDING").length,
+    expected: live.filter((b) => b.status !== "NO_SHOW").reduce((s, b) => s + price(b), 0),
+    earned: live.filter((b) => b.status === "COMPLETED").reduce((s, b) => s + price(b), 0),
+    rating: Math.round(rated * 10) / 10,
+    unanswered: state.reviews.filter((r) => !r.reply).length,
+  };
+}
+
+export const serviceOf = service;

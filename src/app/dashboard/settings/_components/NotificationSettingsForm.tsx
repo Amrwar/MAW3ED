@@ -7,6 +7,7 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Toggle from "@/components/ui/Toggle";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { REMINDER_LEAD_HOURS } from "@/lib/notifications/reminder-lead";
 
 export interface NotificationPrefs {
   notifyByEmail: boolean;
@@ -69,7 +70,6 @@ export default function NotificationSettingsForm({
     }
   }
 
-  const LEAD_HOURS = [1, 2, 3, 6, 12, 24, 48, 72];
   const SOON_MINS = [15, 30, 60, 120, 180, 360];
 
   return (
@@ -185,7 +185,7 @@ export default function NotificationSettingsForm({
                 value={String(p.reminderLeadHours)}
                 onChange={(e) => save({ reminderLeadHours: Number(e.target.value) })}
               >
-                {LEAD_HOURS.map((h) => (
+                {REMINDER_LEAD_HOURS.map((h) => (
                   <option key={h} value={h}>
                     {hoursLabel(h, ar)}
                   </option>
