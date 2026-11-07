@@ -120,7 +120,8 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
 
   const trail = [
     { name: isAr ? "الرئيسية" : "Home", path: "/" },
-    { name: cityName, path: `/businesses?city=${combo.city.slug}` },
+    // Plain text: the only page for a city is the filtered list, which is noindex.
+    { name: cityName },
     { name: catName },
   ];
 

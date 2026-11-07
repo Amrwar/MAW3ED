@@ -11,7 +11,6 @@ businesses. Today that means:
 
 | page                        | generated | possible |
 | --------------------------- | --------- | -------- |
-| `/cities/[city]`            | 4         | 27       |
 | `/categories/[category]`    | 4         | 14       |
 | `/[city]/[category]`        | 5         | 378      |
 

@@ -299,7 +299,7 @@ try {
     const token = (await bookingRow(1))[0]?.accessToken;
     const urls = [
       ["/", 200], ["/en", 200], ["/businesses", 200], ["/businesses?city=cairo", 200], ["/en/businesses?q=salon", 200],
-      ["/company/qa-salon", 200], ["/en/company/qa-salon", 200], ["/categories/salons", 200], ["/cities", 200],
+      ["/company/qa-salon", 200], ["/en/company/qa-salon", 200], ["/categories/salons", 200],
       ["/pricing", 200], ["/faq", 200], ["/for-business", 200], ["/login", 200], ["/signup", 200],
       ["/privacy?lang=en", 200], ["/api/public/qa-salon", 200], ["/api/public/businesses?limit=1", 200],
       ...(token ? [[`/booking/${token}`, 200], [`/en/booking/${token}`, 200], [`/api/public/booking/${token}/calendar`, 200]] : []),

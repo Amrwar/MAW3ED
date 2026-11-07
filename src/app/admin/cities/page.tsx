@@ -1,4 +1,5 @@
 import Link from "@/components/shared/LocaleLink";
+import { discoveryHref } from "@/lib/discovery/params";
 import { db } from "@/lib/db";
 import { requireAdminPage } from "@/lib/admin/guard";
 import { AdminHeading, AdminTable, Pill } from "../_components/AdminBits";
@@ -26,7 +27,7 @@ export default async function AdminCitiesPage() {
         subtitle={`${cities.length} مدينة، ${used} منها فيها أعمال.`}
       />
       <AdminTable
-        head={["المدينة", "الرابط", "أعمال", "أحياء", "صفحة الهبوط"]}
+        head={["المدينة", "الرابط", "أعمال", "أحياء", "أنشطتها"]}
         rows={cities.map((c) => [
           <span key="n">
             <span className="font-bold text-[var(--color-ink)]">{c.nameAr}</span>
@@ -36,8 +37,8 @@ export default async function AdminCitiesPage() {
           <span key="b" className="num">{c._count.businesses}</span>,
           <span key="h" className="num">{c._count.neighborhoods}</span>,
           c._count.businesses > 0 ? (
-            <Link key="l" href={`/cities/${c.slug}`} target="_blank" className="text-[0.75rem] font-bold text-[var(--color-jade)]">
-              مفتوحة
+            <Link key="l" href={discoveryHref({ city: c.slug })} target="_blank" className="text-[0.75rem] font-bold text-[var(--color-jade)]">
+              شوف الأنشطة
             </Link>
           ) : (
             <Pill key="l">مفيش</Pill>

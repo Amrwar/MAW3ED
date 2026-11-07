@@ -113,7 +113,7 @@ const DELEGATE = [
 
 const ANON = [
   "/", "/businesses", "/businesses?q=%D8%AD%D9%84%D8%A7%D9%82%D8%A9", "/businesses?q=zzzzqqq",
-  "/categories", "/categories/salons", "/cities",
+  "/categories", "/categories/salons",
   "/company/qa-salon", "/company/qa-listing-2", "/company/qa-listing-0",
   "/pricing", "/faq", "/for-business", "/contact", "/privacy", "/terms",
   "/login", "/signup", "/account-login", "/forgot-password",

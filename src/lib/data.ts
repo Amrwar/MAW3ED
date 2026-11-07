@@ -21,8 +21,8 @@ export async function getCategoryBySlug(slug: string) {
 }
 
 /**
- * Published businesses for the simple listings — a category page, a
- * city page, a row on the homepage.
+ * Published businesses for the simple listings — a category page or a
+ * row on the homepage.
  *
  * Delegates to the discovery search so there is one definition of what
  * a published business looks like, one place that decides a price of

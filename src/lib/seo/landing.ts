@@ -26,13 +26,6 @@ import { log } from "@/lib/logger";
  */
 export const MIN_BUSINESSES = 1;
 
-export interface LandingCity {
-  slug: string;
-  nameAr: string;
-  nameEn: string | null;
-  count: number;
-}
-
 export interface LandingCategory {
   slug: string;
   nameAr: string;
@@ -49,32 +42,6 @@ export interface LandingCombo {
   categoryNameAr: string;
   categoryNameEn: string | null;
   count: number;
-}
-
-/** Cities with at least MIN_BUSINESSES published listings, busiest first. */
-export async function getLandingCities(): Promise<LandingCity[]> {
-  const grouped = await db.business.groupBy({
-    by: ["cityId"],
-    where: { isPublished: true },
-    _count: { _all: true },
-  });
-  const keep = grouped.filter((g) => g._count._all >= MIN_BUSINESSES);
-  if (keep.length === 0) return [];
-
-  const cities = await db.city.findMany({
-    where: { id: { in: keep.map((g) => g.cityId) } },
-    select: { id: true, slug: true, nameAr: true, nameEn: true },
-  });
-  const counts = new Map(keep.map((g) => [g.cityId, g._count._all]));
-
-  return cities
-    .map((c) => ({
-      slug: c.slug,
-      nameAr: c.nameAr,
-      nameEn: c.nameEn,
-      count: counts.get(c.id) ?? 0,
-    }))
-    .sort((a, b) => b.count - a.count || a.nameAr.localeCompare(b.nameAr, "ar"));
 }
 
 /** Categories with at least MIN_BUSINESSES published listings. */
