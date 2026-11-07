@@ -8,7 +8,6 @@ import { listPublicOrganizations } from "@/lib/organizations/public";
 import { HELP_ARTICLES } from "@/lib/help/articles";
 import {
   getLandingCategories,
-  getLandingCities,
   getLandingCombos,
 
   prerenderHints,} from "@/lib/seo/landing";
@@ -55,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // A sitemap listing only the static routes is a worse sitemap; a
   // failed build ships nothing at all. On Vercel, where the database is
   // reachable, this changes nothing.
-  const [businesses, cities, categories, combos, venues, organizations] = await Promise.all([
+  const [businesses, categories, combos, venues, organizations] = await Promise.all([
     prerenderHints("published businesses", () =>
       db.business.findMany({
         where: { isPublished: true },
@@ -68,7 +67,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         orderBy: { updatedAt: "desc" },
       }),
     ),
-    prerenderHints("cities", getLandingCities),
     prerenderHints("categories", getLandingCategories),
     prerenderHints("city/category combos", getLandingCombos),
     // Only venues that list somebody: an empty directory is not indexed.
@@ -90,7 +88,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return m;
   };
   const anyBusiness = businesses[0]?.updatedAt; // ordered newest first
-  const byCity = newest((b) => b.city.slug);
   const byCategory = newest((b) => b.category.slug);
   const byCombo = newest((b) => `${b.city.slug}/${b.category.slug}`);
 
@@ -98,7 +95,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: siteUrl("/"), lastModified: anyBusiness, changeFrequency: "daily", priority: 1.0 },
     { url: siteUrl("/businesses"), lastModified: anyBusiness, changeFrequency: "daily", priority: 0.9 },
     { url: siteUrl("/categories"), lastModified: anyBusiness, changeFrequency: "weekly", priority: 0.6 },
-    { url: siteUrl("/cities"), lastModified: anyBusiness, changeFrequency: "weekly", priority: 0.6 },
     { url: siteUrl("/for-business"), changeFrequency: "monthly", priority: 0.6 },
     { url: siteUrl("/pricing"), changeFrequency: "monthly", priority: 0.5 },
     { url: siteUrl("/faq"), changeFrequency: "monthly", priority: 0.4 },
@@ -109,13 +105,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: siteUrl("/privacy"), changeFrequency: "yearly", priority: 0.2 },
     { url: siteUrl("/account-deletion"), changeFrequency: "yearly", priority: 0.2 },
   ];
-
-  const cityRoutes: MetadataRoute.Sitemap = cities.map((c) => ({
-    url: siteUrl(`/cities/${c.slug}`),
-    lastModified: byCity.get(c.slug),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  }));
 
   const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
     url: siteUrl(`/categories/${c.slug}`),
@@ -172,7 +161,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return inBothLanguages([
     ...staticRoutes,
     ...comboRoutes,
-    ...cityRoutes,
     ...categoryRoutes,
     ...venueRoutes,
     ...organizationRoutes,

@@ -20,7 +20,6 @@ const TEXT = {
     retry:            "↺ إعادة المحاولة",
     more:             "قد يهمك أيضًا",
     categories:       "التصنيفات",
-    cities:           "المدن",
     forBusiness:      "لأصحاب الأعمال",
     contact:          "تواصل معنا",
     rights:           "جميع الحقوق محفوظة",
@@ -37,7 +36,6 @@ const TEXT = {
     retry:            "↺ Try again",
     more:             "You might also like",
     categories:       "Categories",
-    cities:           "Cities",
     forBusiness:      "For business owners",
     contact:          "Contact us",
     rights:           "All rights reserved",
@@ -243,7 +241,6 @@ export default function ErrorPage({
                   { href: "/",             label: tx.home        },
                   { href: "/businesses",   label: tx.browse      },
                   { href: "/categories",   label: tx.categories  },
-                  { href: "/cities",       label: tx.cities      },
                   { href: "/for-business", label: tx.forBusiness },
                   { href: "/contact",      label: tx.contact     },
                 ].map((link) => (

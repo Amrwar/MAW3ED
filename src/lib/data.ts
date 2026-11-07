@@ -20,11 +20,6 @@ export async function getCategoryBySlug(slug: string) {
   return db.category.findUnique({ where: { slug } });
 }
 
-/** Single city by slug */
-export async function getCityBySlug(slug: string) {
-  return db.city.findUnique({ where: { slug } });
-}
-
 /**
  * Published businesses for the simple listings — a category page, a
  * city page, a row on the homepage.

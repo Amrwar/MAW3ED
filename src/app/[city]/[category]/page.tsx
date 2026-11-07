@@ -120,8 +120,7 @@ export default async function CityCategoryPage({ params, searchParams }: Props) 
 
   const trail = [
     { name: isAr ? "الرئيسية" : "Home", path: "/" },
-    { name: isAr ? "المدن" : "Cities", path: "/cities" },
-    { name: cityName, path: `/cities/${combo.city.slug}` },
+    { name: cityName, path: `/businesses?city=${combo.city.slug}` },
     { name: catName },
   ];
 
