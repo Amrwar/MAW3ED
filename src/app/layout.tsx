@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Providers from "./providers";
+import { Analytics } from "@vercel/analytics/next";
 import { fontVariables } from "./fonts";
 import { getLang } from "@/lib/lang-server";
 import { DEFAULT_OG_IMAGE, ogLocale } from "@/lib/seo/meta";
@@ -90,6 +91,10 @@ export default async function RootLayout({
           {lang === "ar" ? "تخطَّ إلى المحتوى" : "Skip to content"}
         </a>
         <Providers lang={lang}>{children}</Providers>
+        {/* Vercel Web Analytics: page views and referrers, no cookies,
+            served and beaconed same-origin (/_vercel/insights), so the
+            CSP needs nothing new. Inert outside Vercel deployments. */}
+        <Analytics />
       </body>
     </html>
   );

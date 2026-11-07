@@ -38,8 +38,9 @@ export async function generateMetadata(): Promise<Metadata> {
  *   - location: mobile/features/location/location.ts and
  *     src/app/api/public/businesses/nearby/route.ts (per request, not
  *     logged, not stored);
- *   - analytics: mobile/lib/analytics.ts (no sink installed), no web
- *     analytics script;
+ *   - analytics: mobile/lib/analytics.ts (no sink installed); on the
+ *     website, Vercel Web Analytics (app/layout.tsx: cookieless page
+ *     views, same-origin beacon);
  *   - crash reports: src/lib/sentry-shared.ts (scrubbed, no replay);
  *   - cookies: LanguageContext, HeroSearch, ref/[code], review-identity;
  *   - deletion: src/lib/account/deletion.ts and /account-deletion.
@@ -142,7 +143,7 @@ export default async function PrivacyPage() {
               <li>Stripe: لما صاحب النشاط يدفع الاشتراك بكارت دولي — المبلغ وإيميل صاحب النشاط، والكارت بيتكتب على صفحة Stripe نفسها.</li>
               <li>Cloudinary: الصور اللي بتترفع (صور الأنشطة والتقييمات).</li>
               <li>Sentry: تقارير الأعطال (تفاصيل بالأسفل).</li>
-              <li>Vercel (الاستضافة) وNeon (قاعدة البيانات): كل البيانات المخزنة على المنصة.</li>
+              <li>Vercel (الاستضافة وإحصائيات زيارات الموقع) وNeon (قاعدة البيانات): كل البيانات المخزنة على المنصة.</li>
             </LegalList>
             {/* VERIFY: Cloudinary is the upload target in src/lib/services/cloudinary.ts — confirm review photos go through it in production. */}
             {/* VERIFY: Neon as the database host comes from .env.example only; confirm the production provider and region. */}
@@ -161,7 +162,11 @@ export default async function PrivacyPage() {
           (session replay).
         </p>
         {/* Mobile crash reports: mobile/lib/sentry.ts + mobile/lib/scrub.ts drop request bodies, headers and cookies and mask phone numbers; off until EXPO_PUBLIC_SENTRY_DSN is set. */}
-        <p>مفيش أدوات تحليلات أو تتبّع من أطراف خارجية في الموقع أو التطبيق.</p>
+        <p>
+          على الموقع بنستخدم Vercel Web Analytics علشان نعرف عدد زيارات الصفحات ومنين الزوار جايين (زي الدولة ونوع الجهاز
+          والصفحة اللي جابتهم). الأداة دي مش بتستخدم كوكيز، ومش بتجمع اسمك أو بريدك أو رقم موبايلك، ومش بتتابعك على مواقع
+          تانية. التطبيق مفيهوش أي أدوات تحليلات أو تتبّع من أطراف خارجية.
+        </p>
       </LegalSection>
 
       <LegalSection title="5. الكوكيز والتخزين على الجهاز">
@@ -301,7 +306,7 @@ export default async function PrivacyPage() {
               <li>Stripe: when a business owner pays a plan with an international card, the amount and the owner&apos;s email; the card is entered on Stripe&apos;s own page.</li>
               <li>Cloudinary: uploaded images (business and review photos).</li>
               <li>Sentry: error reports (see below).</li>
-              <li>Vercel (hosting) and Neon (database): all data stored on the platform.</li>
+              <li>Vercel (hosting and website visit statistics) and Neon (database): all data stored on the platform.</li>
             </LegalList>
             {/* VERIFY: Cloudinary is the upload target in src/lib/services/cloudinary.ts — confirm review photos go through it in production. */}
             {/* VERIFY: Neon as the database host comes from .env.example only; confirm the production provider and region. */}
@@ -320,7 +325,11 @@ export default async function PrivacyPage() {
           internal ID. There is no session replay.
         </p>
         {/* Mobile crash reports: mobile/lib/sentry.ts + mobile/lib/scrub.ts drop request bodies, headers and cookies and mask phone numbers; off until EXPO_PUBLIC_SENTRY_DSN is set. */}
-        <p>There are no third-party analytics or tracking tools on the website or in the app.</p>
+        <p>
+          On the website we use Vercel Web Analytics to count page views and see where visitors come from (such as country,
+          device type and referring page). It sets no cookies, does not collect your name, email or phone number, and does not
+          follow you across other sites. The app has no third-party analytics or tracking tools.
+        </p>
       </LegalSection>
 
       <LegalSection title="5. Cookies and on-device storage">
@@ -379,7 +388,7 @@ export default async function PrivacyPage() {
     <LegalPage
       path="/privacy"
       title={{ ar: "سياسة الخصوصية", en: "Privacy Policy" }}
-      updated={{ ar: "آخر تحديث: 5 نوفمبر 2026", en: "Last updated: 5 November 2026" }}
+      updated={{ ar: "آخر تحديث: 6 نوفمبر 2026", en: "Last updated: 6 November 2026" }}
       body={{ ar, en }}
     />
   );
