@@ -40,7 +40,6 @@ export default function Footer() {
         { label: f.links.home,       href: "/" },
         { label: f.links.businesses, href: "/businesses" },
         { label: f.links.categories, href: "/categories" },
-        { label: f.links.cities,     href: "/cities" },
         { label: f.links.pricing,    href: "/pricing" },
       ],
     },

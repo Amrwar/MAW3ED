@@ -40,7 +40,7 @@ const DEVICES = [
 ];
 
 const PAGES = [
-  "/", "/businesses", "/categories", "/categories/salons", "/cities", "/cities/cairo",
+  "/", "/businesses", "/categories", "/categories/salons",
   "/cairo/salons", "/company/qa-salon", "/pricing", "/for-business", "/contact", "/faq",
   "/privacy", "/account-deletion", "/terms", "/login", "/signup", "/account-login", "/forgot-password",
 ];

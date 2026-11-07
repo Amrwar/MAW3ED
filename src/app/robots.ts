@@ -8,7 +8,7 @@ import { siteNoindex } from "@/lib/seo/noindex";
  * Allow is deliberately "/" rather than a list of paths: an allow-list
  * means a new public route is invisible until somebody remembers to add
  * it here, and the previous one had already fallen behind — it listed
- * /cities/ and /categories/ but not the city-and-category pages, the
+ * the old /cities/ and /categories/ but not the city-and-category pages, the
  * account area, or anything added since.
  *
  * The disallow list is the real content: the places that are either
