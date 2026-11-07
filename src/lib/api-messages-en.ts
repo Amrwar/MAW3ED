@@ -58,6 +58,8 @@ export const MESSAGES: Record<string, string> = {
   "الإيميل غير صحيح": "That email isn't valid.",
   "إيميل غير صالح": "That email isn't valid.",
   "اكتب إيميل صحيح": "Enter a valid email.",
+  "راجع البيانات المكتوبة": "Check the details you entered.",
+  "تعذّر إرسال الرسالة دلوقتي، ابعتلنا إيميل مباشرةً": "We couldn't send your message right now. Email us directly instead.",
   "أدخل كلمة المرور": "Enter your password.",
   "كلمة المرور يجب أن تكون 8 أحرف على الأقل": "The password must be at least 8 characters.",
   "هذا البريد الإلكتروني مسجل بالفعل": "This email is already registered.",

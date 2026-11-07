@@ -125,6 +125,11 @@ export const RULES = {
   // the shape of profileView: per address alone, one carrier NAT shared
   // by thousands of phones would stop counting after a few dozen.
   funnel: { limit: 60, windowSeconds: 60 * 60 },
+  // The contact form, per address: a person writes once or twice and
+  // maybe again to correct something; this stops a script filling the
+  // support inbox. Per sender email as well, across networks.
+  contact: { limit: 5, windowSeconds: 60 * 60 },
+  contactEmail: { limit: 5, windowSeconds: 24 * 60 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type Bucket = keyof typeof RULES;

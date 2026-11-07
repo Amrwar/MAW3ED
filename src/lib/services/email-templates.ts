@@ -536,3 +536,60 @@ export function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+
+// ── Contact form ──────────────────────────────────────────────
+
+export interface ContactMessageData {
+  name: string;
+  email: string;
+  phone?: string;
+  /** Already worded for a reader, e.g. "Business owner". */
+  role: string;
+  topic: string;
+  message: string;
+  lang: "ar" | "en";
+  sentAt: Date;
+}
+
+/**
+ * A message from /contact, as it lands in the support inbox. Read by
+ * the team, not by the sender, so it is plain and in one direction;
+ * the message itself keeps whichever direction it was written in.
+ * Replying answers the sender (reply-to is set by the caller).
+ */
+export function contactMessageHtml(d: ContactMessageData): string {
+  const row = (label: string, value: string) => `
+        <tr>
+          <td style="padding:6px 12px 6px 0;font-size:13px;color:#6b7280;white-space:nowrap;vertical-align:top;">${label}</td>
+          <td style="padding:6px 0;font-size:14px;color:#111827;">${value}</td>
+        </tr>`;
+  const email = escapeHtml(d.email);
+  return `<!DOCTYPE html>
+<html dir="ltr" lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Contact message</title></head>
+<body style="margin:0;padding:0;background:#f8f9fb;font-family:'Segoe UI',Tahoma,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fb;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+        <tr><td style="background:#0D7A5A;border-radius:16px 16px 0 0;padding:18px 28px;">
+          <p style="margin:0;color:white;font-size:18px;font-weight:800;">New message from the contact form</p>
+        </td></tr>
+        <tr><td style="background:white;padding:28px;border-radius:0 0 16px 16px;border:1px solid #e5e7eb;border-top:none;">
+          <table cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+            ${row("Name", `<span dir="auto">${escapeHtml(d.name)}</span>`)}
+            ${row("Email", `<a href="mailto:${email}" style="color:#0D7A5A;">${email}</a>`)}
+            ${d.phone ? row("Phone", `<span dir="ltr">${escapeHtml(d.phone)}</span>`) : ""}
+            ${row("Writing as", escapeHtml(d.role))}
+            ${row("Topic", escapeHtml(d.topic))}
+            ${row("Page language", d.lang === "en" ? "English" : "Arabic")}
+            ${row("Sent", escapeHtml(d.sentAt.toISOString().replace("T", " ").slice(0, 16)) + " UTC")}
+          </table>
+          <div dir="auto" style="padding:16px 18px;background:#F4F5F1;border-radius:12px;font-size:15px;line-height:1.7;color:#111827;white-space:pre-wrap;">${escapeHtml(d.message)}</div>
+          <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">Reply to this email to answer ${escapeHtml(d.name)} directly.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}

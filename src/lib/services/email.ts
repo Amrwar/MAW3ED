@@ -22,6 +22,8 @@ import {
   subscriptionExpiredHtml,
   emailVerificationHtml,
   waitlistConfirmHtml,
+  contactMessageHtml,
+  type ContactMessageData,
 } from "./email-templates";
 import { log } from "@/lib/logger";
 import { arCount, money } from "@/lib/fmt";
@@ -72,6 +74,8 @@ export interface EmailPayload {
   html:    string;
   /** "billing": sent from, and answered to, the billing address. */
   kind?:   "billing";
+  /** Where a reply goes, when it is not the sender (the contact form's visitor). */
+  replyTo?: string;
 }
 
 /**
@@ -86,7 +90,7 @@ export async function sendEmail(payload: EmailPayload): Promise<SendOutcome> {
 
   try {
     const billing = payload.kind === "billing";
-    const replyTo = billing ? addressOf(BILLING_FROM) : null;
+    const replyTo = payload.replyTo ?? (billing ? addressOf(BILLING_FROM) : null);
     const { data, error } = await client.emails.send({
       from:    billing ? BILLING_FROM : FROM,
       to:      payload.to,
@@ -319,4 +323,13 @@ export async function sendEmailVerification(
     subject: "أكّد إيميلك — موعد",
     html:    emailVerificationHtml(verifyUrl, name),
   });
+}
+
+/**
+ * A message from the contact form, to the support inbox. Replying
+ * answers the visitor, never noreply@.
+ */
+export async function sendContactMessage(to: string, data: ContactMessageData): Promise<SendOutcome> {
+  const subject = `[Contact] ${data.topic} · ${data.name}`.replace(/\s+/g, " ").slice(0, 150);
+  return sendEmail({ to, subject, html: contactMessageHtml(data), replyTo: data.email });
 }
