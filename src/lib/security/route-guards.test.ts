@@ -86,6 +86,7 @@ const OPEN: Record<string, string> = {
   "public/reviews/[id]/report": "public; rate-limited",
   "public/waitlist/confirm": "the emailed token is the credential",
   "public/waitlist/route": "public by design; rate-limited",
+  "public/contact": "the public contact form; rate-limited per caller and per sender, trap field",
   "realtime/bookings": "requireBusiness-style check inline (see route)",
   "version": "public read of the build id",
   "webhooks/paymob": "HMAC signature, verifyWebhookHmac()",

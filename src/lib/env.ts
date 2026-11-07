@@ -89,6 +89,7 @@ const optional = z.object({
   EMAIL_FROM: z.string().optional(),
   /** Sender for subscription (billing) mail; defaults to billing@ on EMAIL_FROM's domain. */
   EMAIL_FROM_BILLING: z.string().optional(),
+  CONTACT_EMAIL: z.string().optional(),
 
   // The address the contact page and FAQ send users to. Declared here
   // so the audit of what this deployment depends on is complete; the
